@@ -2,7 +2,6 @@
  * HTTP contract tests for sequenceController.
  * Verifies request validation, response shapes, error codes, and role enforcement.
  * Business logic is exercised by sequenceService.test.ts; these tests cover the HTTP layer.
- * (MINCRM-403)
  */
 
 import 'dotenv/config';

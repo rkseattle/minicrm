@@ -1,5 +1,5 @@
 /**
- * Email draft controller — request/response shaping only. (MINCRM-437)
+ * Email draft controller — request/response shaping only.
  * No business logic here; all AI orchestration goes through emailDraftService.
  */
 

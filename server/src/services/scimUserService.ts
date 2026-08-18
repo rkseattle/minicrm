@@ -1,6 +1,6 @@
 /**
  * SCIM 2.0 user service — handles provisioning, deprovisioning, and attribute
- * sync for the /scim/v2/Users endpoint. (MINCRM-541)
+ * sync for the /scim/v2/Users endpoint.
  *
  * All database access for SCIM user operations lives here. Controllers must
  * not query the database directly.
@@ -15,7 +15,7 @@ import type { AuditActor } from './auditService.js';
 
 const SCIM_USER_SCHEMAS = ['urn:ietf:params:scim:schemas:core:2.0:User'] as const;
 
-/** Denormalized role enum value for all SCIM-provisioned users (MINCRM-542) */
+/** Denormalized role enum value for all SCIM-provisioned users */
 const SCIM_USER_ROLE = 'rep' as const;
 
 // ── Internal types ────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 /**
- * Unit tests for aiFieldExclusionService. (MINCRM-461)
+ * Unit tests for aiFieldExclusionService.
  *
  * Covers:
  *  - getEffectiveExclusionList merges always_excluded, standard_fields, custom_fields
@@ -19,7 +19,7 @@ import { invalidateFieldExclusionCache } from '../ai/piiFilter.js';
 // A per-file actor, NOT the all-zeros SYSTEM_ACTOR this file used to pass: the
 // audit assertion below scopes by changed_by_id, and the system UUID is shared
 // with every other SYSTEM_ACTOR write in the repo, so it would isolate nothing.
-// changed_by_id has no FK, so this needs no users row. (MINCRM-693)
+// changed_by_id has no FK, so this needs no users row.
 const FILE_ACTOR = { id: randomUUID(), name: 'AI Field Exclusion Svc Test' };
 
 beforeEach(async () => {
@@ -85,7 +85,7 @@ describe('setFieldExclusion', () => {
     await setFieldExclusion('deal', 'loss_reason', true, FILE_ACTOR);
     const row = await pool.query<{ old_value: string; new_value: string; record_name: string }>(
       // changed_by_id scoping: record_type + record_name + field_name are all
-      // shared with aiFieldExclusionController.test.ts. (MINCRM-693)
+      // shared with aiFieldExclusionController.test.ts.
       `SELECT old_value, new_value, record_name FROM audit_log
        WHERE record_type = 'ai_field_exclusion' AND field_name = 'excluded'
          AND record_name = 'deal.loss_reason' AND changed_by_id = $1

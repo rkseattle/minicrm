@@ -1,5 +1,5 @@
 /**
- * Tests for testSelectionService. (MINCRM-624)
+ * Tests for testSelectionService.
  *
  * Runs against a real PostgreSQL test database (coverageDb) — seeds
  * coverage_test_links via linkCoverageUnitsToTest (the real ingestion path,
@@ -154,7 +154,7 @@ describe('selectTestsForChangedUnits', () => {
     ]);
   });
 
-  it('correctly routes a mix of direct-hit, inherited, and unmapped units within the SAME call (MINCRM-637 — the batched direct-lookup step and the still-per-unit inheritance step must each see only the units that actually need them)', async () => {
+  it('correctly routes a mix of direct-hit, inherited, and unmapped units within the SAME call', async () => {
     const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
     const directFile = `${FILE_PREFIX}/direct.ts`;
     const enclosingFile = `${FILE_PREFIX}/enclosing.ts`;

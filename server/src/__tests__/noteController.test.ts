@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for noteController. (MINCRM-352)
+ * HTTP contract tests for noteController.
  *
  * Covers paths that are not exercised by noteService.test.ts (service-layer unit tests):
  *   - listNotes: pagination params validated with safeParse → 400 on bad input (not 500)
@@ -376,7 +376,7 @@ describe('DELETE /api/v1/:entityType/:entityId/notes/:noteId', () => {
   });
 });
 
-// ── Tag restriction on create/update (MINCRM-506) ─────────────────────────────
+// ── Tag restriction on create/update ─────────────────────────────
 
 describe('POST /api/v1/:entityType/:entityId/notes — tag restriction', () => {
   afterEach(async () => {

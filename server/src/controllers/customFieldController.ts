@@ -1,5 +1,5 @@
 /**
- * Custom field controller — request/response shaping for custom field endpoints. (MINCRM-276)
+ * Custom field controller — request/response shaping for custom field endpoints.
  * No business logic here; all DB access goes through customFieldService.
  */
 

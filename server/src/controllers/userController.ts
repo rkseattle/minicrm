@@ -23,7 +23,7 @@ import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema
 import { countActiveNotificationRecipients } from '../services/userService.js';
 import { sendInviteEmail } from '../services/emailService.js';
 
-/** Zod schema for PATCH /users/:id/status body (MINCRM-561) */
+/** Zod schema for PATCH /users/:id/status body */
 const updateStatusSchema = z.object({
   active: z.boolean({
     required_error: 'active is required',
@@ -203,7 +203,7 @@ export async function reactivateUser(req: Request, res: Response): Promise<void>
 /**
  * PATCH /api/users/:id/status
  * Sets user status via { active: boolean }. Admin only.
- * Rejects self-deactivation with 409. (MINCRM-561)
+ * Rejects self-deactivation with 409.
  */
 export async function updateUserStatusHandler(req: Request, res: Response): Promise<void> {
   const parseResult = updateStatusSchema.safeParse(req.body);
@@ -349,7 +349,7 @@ export async function setMyPreferredLanguage(req: Request, res: Response): Promi
 
 /**
  * GET /api/users/me/notification-preferences
- * Returns the authenticated user's email notification preference flags. (MINCRM-163)
+ * Returns the authenticated user's email notification preference flags.
  */
 export async function getMyNotificationPrefs(req: Request, res: Response): Promise<void> {
   const prefs = await userService.getNotificationPrefs(req.user!.id);
@@ -362,7 +362,7 @@ export async function getMyNotificationPrefs(req: Request, res: Response): Promi
 
 /**
  * PATCH /api/users/me/notification-preferences
- * Persists the authenticated user's email notification preference flags. (MINCRM-163)
+ * Persists the authenticated user's email notification preference flags.
  */
 export async function updateMyNotificationPrefs(req: Request, res: Response): Promise<void> {
   const parseResult = updateNotificationPrefsSchema.safeParse(req.body);
@@ -393,7 +393,7 @@ export async function updateMyNotificationPrefs(req: Request, res: Response): Pr
 
 /**
  * GET /api/users/me/notification-recipient-count
- * Returns the count of active users with at least one notification enabled. Admin only. (MINCRM-163)
+ * Returns the count of active users with at least one notification enabled. Admin only.
  */
 export async function getNotificationRecipientCount(_req: Request, res: Response): Promise<void> {
   const count = await countActiveNotificationRecipients();
@@ -402,7 +402,7 @@ export async function getNotificationRecipientCount(_req: Request, res: Response
 
 /**
  * POST /api/users/:id/reset-onboarding
- * Admin resets a user's onboarding_completed flag to false. Admin only. (MINCRM-410)
+ * Admin resets a user's onboarding_completed flag to false. Admin only.
  *
  * @param req - Express request with `id` param (target user UUID).
  * @param res - Express response.
@@ -436,7 +436,7 @@ export async function resetOnboardingHandler(req: Request, res: Response): Promi
 
 /**
  * POST /api/users/:id/api-token
- * Issues a new API token for a service account user. Admin only. (MINCRM-536)
+ * Issues a new API token for a service account user. Admin only.
  * Any previously issued token is atomically revoked on issuance.
  * The plaintext token is returned exactly once — it is never stored.
  */
@@ -471,7 +471,7 @@ export async function issueApiToken(req: Request, res: Response): Promise<void> 
 
 /**
  * DELETE /api/users/:id/api-token
- * Revokes the API token for a service account user. Admin only. (MINCRM-536)
+ * Revokes the API token for a service account user. Admin only.
  * After revocation the token is immediately invalid — no grace period.
  */
 export async function revokeApiToken(req: Request, res: Response): Promise<void> {

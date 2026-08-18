@@ -2,7 +2,7 @@
  * Integration tests for importService.
  * Tests CSV parsing, account/contact/deal import, duplicate detection,
  * validation failures, and error CSV generation.
- * MINCRM-158, MINCRM-159, MINCRM-160
+ *
  *
  * Runs against a real PostgreSQL test database.
  */
@@ -152,7 +152,7 @@ describe('buildErrorCsv', () => {
   });
 });
 
-// ── importAccounts (MINCRM-159) ────────────────────────────────────────────────
+// ── importAccounts ────────────────────────────────────────────────
 
 describe('importAccounts', () => {
   const mapping: AccountMapping = { name: 'Company', industry: 'Sector' };
@@ -225,7 +225,7 @@ describe('importAccounts', () => {
   });
 });
 
-// ── importContacts (MINCRM-158) ────────────────────────────────────────────────
+// ── importContacts ────────────────────────────────────────────────
 
 describe('importContacts', () => {
   const mapping: ContactMapping = {
@@ -289,7 +289,12 @@ describe('importContacts', () => {
       account_name: 'AccountName',
     };
     const rows = [
-      { First: 'Alice', Last: 'Smith', Email: `${FILE_PREFIX}-alice@example.com`, AccountName: 'Target Account' },
+      {
+        First: 'Alice',
+        Last: 'Smith',
+        Email: `${FILE_PREFIX}-alice@example.com`,
+        AccountName: 'Target Account',
+      },
     ];
     const result = await importContacts(rows, mappingWithAccount, adminId);
     expect(result.created).toBe(1);
@@ -311,7 +316,7 @@ describe('importContacts', () => {
   });
 });
 
-// ── importDeals (MINCRM-160) ───────────────────────────────────────────────────
+// ── importDeals ───────────────────────────────────────────────────
 
 describe('importDeals', () => {
   const mapping: DealMapping = { name: 'Deal', stage: 'Stage' };
@@ -460,14 +465,14 @@ describe('importDeals', () => {
   });
 });
 
-// ── Partial-commit design documentation (MINCRM-249) ──────────────────────────
+// ── Partial-commit design documentation ──────────────────────────
 //
 // Import is intentionally per-row — successful rows commit immediately and are
 // not rolled back when subsequent rows fail. This is by design: the import
 // service favors maximum data ingestion over all-or-nothing atomicity, so
 // operators can fix and re-import only the failed rows rather than the whole file.
 
-describe('importContacts — partial-commit is intentional design (MINCRM-249)', () => {
+describe('importContacts — partial-commit is intentional design', () => {
   it('commits 3 valid rows even when the 4th row fails validation', async () => {
     // Import is intentionally per-row — successful rows commit immediately and are
     // not rolled back when subsequent rows fail. This is by design.

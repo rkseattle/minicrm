@@ -1,5 +1,5 @@
 /**
- * SSO controller — request/response shaping for SAML 2.0 / OIDC SSO. (MINCRM-399)
+ * SSO controller — request/response shaping for SAML 2.0 / OIDC SSO.
  * No business logic here; all protocol work goes through ssoService.
  *
  * The SSO flow is:
@@ -181,7 +181,7 @@ export async function handleSsoCallback(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // Issue the same JWT the password-login flow produces. (MINCRM-365)
+  // Issue the same JWT the password-login flow produces.
   const nowSeconds = Math.floor(Date.now() / 1000);
   const tokenPayload = {
     id: user.id,

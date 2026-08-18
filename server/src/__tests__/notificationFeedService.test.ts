@@ -1,5 +1,5 @@
 /**
- * Integration tests for notificationFeedService. (MINCRM-469)
+ * Integration tests for notificationFeedService.
  * Runs against a real PostgreSQL test database.
  */
 

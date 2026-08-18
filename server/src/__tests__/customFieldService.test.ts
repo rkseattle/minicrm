@@ -2,7 +2,7 @@
  * Integration tests for customFieldService.
  *
  * Runs against a real PostgreSQL test database.
- * Tables are truncated before each test to ensure isolation. (MINCRM-276)
+ * Tables are truncated before each test to ensure isolation.
  */
 
 import 'dotenv/config';
@@ -154,7 +154,7 @@ describe('updateDefinition', () => {
     expect(def.pii_excluded).toBe(false);
   });
 
-  it('sets pii_excluded to true (MINCRM-461)', async () => {
+  it('sets pii_excluded to true', async () => {
     const def = await createDefinition({ entity_type: 'contact', name: 'SSN', field_type: 'text' });
     const updated = await updateDefinition(def.id, { pii_excluded: true }, SYSTEM_ACTOR);
     expect(updated?.pii_excluded).toBe(true);

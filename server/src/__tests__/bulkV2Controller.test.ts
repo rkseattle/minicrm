@@ -1,5 +1,5 @@
 /**
- * Integration tests for the Bulk V2 controller endpoints (MINCRM-562).
+ * Integration tests for the Bulk V2 controller endpoints.
  *
  * Covers: PATCH and DELETE bulk endpoints for users, contacts, deals, and
  * activities — including capability gating, per-record success/failure

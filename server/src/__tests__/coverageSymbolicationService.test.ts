@@ -1,5 +1,5 @@
 /**
- * Unit tests for coverageSymbolicationService. (MINCRM-615)
+ * Unit tests for coverageSymbolicationService.
  *
  * The V8 path is exercised against a real temp source file and the real
  * node:inspector Profiler API (no mocking v8-to-istanbul itself) so the
@@ -127,7 +127,7 @@ describe('coverageSymbolicationService', () => {
       expect(symbolicated.units).toHaveLength(2);
       // '/src/Widget.tsx' is outside this test's temp sourceRoot, so branch
       // hit counts/positions resolve correctly (istanbul's own job) even
-      // though cross-machine path identity does not (MINCRM-636/637) — see
+      // though cross-machine path identity does not — see
       // the dedicated "flags a path outside sourceRoot" test below for that.
       expect(symbolicated.units[0]).toMatchObject({
         filePath: '/src/Widget.tsx',
@@ -143,7 +143,7 @@ describe('coverageSymbolicationService', () => {
       });
     });
 
-    it('flags a path outside sourceRoot as unresolved rather than silently storing it as a usable mapping (MINCRM-636/637)', async () => {
+    it('flags a path outside sourceRoot as unresolved rather than silently storing it as a usable mapping', async () => {
       // A frontend Istanbul dump's absolute path can never match the
       // repo-root-relative paths changeUnitResolver.ts derives from `git
       // diff` — e.g. a dump captured on a different machine, or (today's
@@ -217,7 +217,7 @@ describe('coverageSymbolicationService', () => {
       expect(symbolicated.units).toHaveLength(1);
       // '/src/utils.ts' is outside this test's temp sourceRoot — see the
       // dedicated "flags a path outside sourceRoot" test above for why
-      // resolved is false here (MINCRM-636/637); this test's own purpose is
+      // resolved is false here; this test's own purpose is
       // the function-granularity fallback, unaffected by path resolution.
       expect(symbolicated.units[0]).toMatchObject({
         filePath: '/src/utils.ts',
@@ -331,7 +331,7 @@ describe('coverageSymbolicationService', () => {
       expect(after.units[0].unitKey).not.toBe(before.units[0].unitKey);
     });
 
-    it('clamps a negative hit count to 0 rather than passing it through to a hit_count >= 0 DB constraint (MINCRM-636/637)', async () => {
+    it('clamps a negative hit count to 0 rather than passing it through to a hit_count >= 0 DB constraint', async () => {
       // Regression test: a real local run produced hitCount: -534773760 on
       // a hot node_modules/bcryptjs branch (V8's own raw counter, not
       // accumulation — first_seen_at equalled last_seen_at on the failing
@@ -403,7 +403,7 @@ describe('coverageSymbolicationService', () => {
       expect(symbolicated.units[0].hitCount).toBe(0);
     });
 
-    it('skips a null/malformed file coverage entry rather than crashing the whole dump (MINCRM-636/637)', async () => {
+    it('skips a null/malformed file coverage entry rather than crashing the whole dump', async () => {
       // Regression test: a real local run hit "TypeError: Cannot convert
       // undefined or null to object" inside Object.entries(data.fnMap),
       // meaning v8-to-istanbul's own toIstanbul() output contained at least
@@ -445,7 +445,7 @@ describe('coverageSymbolicationService', () => {
       });
     });
 
-    it('relativizes a file path that is genuinely under sourceRoot, matching what changeUnitResolver.ts derives from git diff output (MINCRM-636/637)', async () => {
+    it('relativizes a file path that is genuinely under sourceRoot, matching what changeUnitResolver.ts derives from git diff output', async () => {
       // Unlike this describe block's other fixtures (e.g. '/src/Widget.tsx'),
       // which live OUTSIDE the temp sourceRoot and so exercise the
       // uncontained fallback path, this one is placed genuinely under

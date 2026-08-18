@@ -1,5 +1,5 @@
 /**
- * Integration tests for the coverage health control API. (MINCRM-637)
+ * Integration tests for the coverage health control API.
  *
  * Covers what coverageHealthService.test.ts and coverageHealthRouteGating.test.ts
  * deliberately don't: the CONTROLLER's own status-code mapping
@@ -90,7 +90,7 @@ describe('GET /api/v1/admin/coverage/health', () => {
     expect(mockClient.release).toHaveBeenCalledOnce();
   });
 
-  // ONE test was removed here (MINCRM-685), not two: the former "503 when a
+  // ONE test was removed here, not two: the former "503 when a
   // feature-flag read fails" case. It covered isFeatureEnabled rejecting
   // against the PRODUCT database, with the report falling back to false per
   // flag rather than 500ing. GET /health no longer reads the product database

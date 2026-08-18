@@ -187,7 +187,7 @@ describe('updateVisibilityConfig', () => {
     const result = await pool.query(
       // changed_by_id scoping: multiple files flip this same org-wide row (see
       // SERIAL_FILES' own comment), so record_type + record_name isolate
-      // nothing. (MINCRM-693)
+      // nothing.
       `SELECT field_name, new_value FROM audit_log
        WHERE record_type = 'org_visibility_settings' AND record_name = 'activity'
          AND changed_by_id = $1

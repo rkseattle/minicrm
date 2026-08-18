@@ -1,6 +1,6 @@
 /**
  * Integration tests for customRolesController + user role-assignment sub-resource.
- * MINCRM-542
+ *
  *
  * Covers:
  * - GET /api/v1/custom-roles — list, 403 for non-admin

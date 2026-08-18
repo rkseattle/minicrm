@@ -1,5 +1,5 @@
 /**
- * Integration tests for auditPartitionService. (MINCRM-521)
+ * Integration tests for auditPartitionService.
  *
  * Covers:
  *  - auditPartitionName() — correct naming for any month

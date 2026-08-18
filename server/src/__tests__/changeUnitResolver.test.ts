@@ -1,5 +1,5 @@
 /**
- * Tests for changeUnitResolver. (MINCRM-623)
+ * Tests for changeUnitResolver.
  *
  * Exercised against a REAL git repository (mkdtemp + git init/commit) so
  * old-revision content is read via genuine `git show`, matching this

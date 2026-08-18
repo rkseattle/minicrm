@@ -1,6 +1,6 @@
 /**
  * Sentiment tracking service — background AI classification of activity
- * notes and call summaries, plus contact/account trend rollups. (MINCRM-472)
+ * notes and call summaries, plus contact/account trend rollups.
  *
  * scoreActivitySentiment() is the event-driven entry point, fired
  * fire-and-forget after an activity is created or its notes are updated
@@ -10,7 +10,7 @@
  *
  * Sentiment scores stored in the DB are not re-sent to the AI provider on
  * subsequent unrelated calls — only the note/summary text for the specific
- * scoring call goes through applyPiiFilter. (MINCRM-445)
+ * scoring call goes through applyPiiFilter.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -120,7 +120,7 @@ export async function scoreActivitySentiment(params: ScoreActivitySentimentParam
       const anthropicClient = new Anthropic(clientOptions);
 
       // 'contact' is the closest valid EntityType hint for activity note text — activities
-      // themselves are outside ai_field_exclusions' supported entity set. (MINCRM-445)
+      // themselves are outside ai_field_exclusions' supported entity set.
       const { sanitised } = await applyPiiFilter({ note_text: noteText }, 'contact');
 
       const response = await anthropicClient.messages.create({
@@ -146,8 +146,7 @@ export async function scoreActivitySentiment(params: ScoreActivitySentimentParam
           block.type === 'tool_use' && block.name === SCORE_TOOL_NAME,
       );
       const input = toolUseBlock?.input as
-        | { sentiment: SentimentValue; confidence: number }
-        | undefined;
+        { sentiment: SentimentValue; confidence: number } | undefined;
       if (input?.sentiment) {
         result = { sentiment: input.sentiment, confidence: input.confidence };
       }

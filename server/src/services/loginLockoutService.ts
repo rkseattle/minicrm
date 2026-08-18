@@ -1,5 +1,5 @@
 /**
- * In-memory account lockout tracker (MINCRM-391).
+ * In-memory account lockout tracker.
  *
  * After MAX_ATTEMPTS consecutive failed logins for the same email, further
  * attempts are blocked for LOCKOUT_WINDOW_MS. The counter resets on any

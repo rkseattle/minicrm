@@ -1,16 +1,16 @@
 /**
- * Tests for server reliability changes (MINCRM-108, MINCRM-122, MINCRM-248).
+ * Tests for server reliability changes.
  *
- * MINCRM-122: Verifies that automation trigger execution is fire-and-forget —
+ * Verifies that automation trigger execution is fire-and-forget —
  *   a trigger failure must not propagate to the calling service function, and
  *   the calling service must return the correct result regardless of trigger outcome.
  *   Logging behavior for the trigger itself is covered in automationService.test.ts.
  *
- * MINCRM-108: Graceful shutdown is exercised manually via `docker compose stop`.
+ * Graceful shutdown is exercised manually via `docker compose stop`.
  *   The unhandledRejection handler wired in server.ts surfaces any trigger failures
  *   that escape fireAutomationTrigger's internal catch — confirmed by code review.
  *
- * MINCRM-248: Pool exhaustion → 503. The global error handler returns 503 when
+ * Pool exhaustion → 503. The global error handler returns 503 when
  *   pool.connect() throws the pg timeout error string.
  *
  * Runs against a real PostgreSQL test database.
@@ -141,9 +141,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── MINCRM-122: fire-and-forget automation trigger ─────────────────────────
+// ── fire-and-forget automation trigger ─────────────────────────
 
-describe('MINCRM-122: fire-and-forget automation triggers', () => {
+describe('fire-and-forget automation triggers', () => {
   it('createContact returns the new contact even when no automation rules exist', async () => {
     const contact = await createContact({
       first_name: 'Alice',
@@ -227,9 +227,9 @@ describe('MINCRM-122: fire-and-forget automation triggers', () => {
   // beforeEach cleanup of automation_rule_logs/automation_rules tables.
 });
 
-// ── MINCRM-248: pool exhaustion → 503 ─────────────────────────────────────────
+// ── pool exhaustion → 503 ─────────────────────────────────────────
 
-describe('MINCRM-248: pool exhaustion returns 503', () => {
+describe('pool exhaustion returns 503', () => {
   it('returns 503 SERVICE_UNAVAILABLE when pool.connect times out', async () => {
     const { makeAuthCookie } = await import('./testUtils.js');
     const cookie = makeAuthCookie({

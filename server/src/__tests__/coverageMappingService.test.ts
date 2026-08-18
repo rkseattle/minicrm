@@ -1,5 +1,5 @@
 /**
- * Integration tests for coverageMappingService. (MINCRM-618)
+ * Integration tests for coverageMappingService.
  *
  * Runs against a real PostgreSQL test database, exercising
  * linkCoverageUnitsToTest directly with a standalone pool client — the same
@@ -129,7 +129,7 @@ describe('coverageMappingService', () => {
       expect(found[0].testName).toBe('now named');
     });
 
-    it('persists test_file alongside a link (MINCRM-660 groundwork)', async () => {
+    it('persists test_file alongside a link', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const testId = 'spec:with-file.spec.ts::test';
       const testFile = 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts';
@@ -140,7 +140,7 @@ describe('coverageMappingService', () => {
       expect(found[0].testFile).toBe(testFile);
     });
 
-    it('updates test_file on a later call when a prior call had none (MINCRM-660 groundwork)', async () => {
+    it('updates test_file on a later call when a prior call had none', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const testId = 'spec:moved.spec.ts::test';
       const testFile = 'tests/apps/minicrm/functional/deals/deal-moved.spec.ts';
@@ -322,7 +322,7 @@ describe('coverageMappingService', () => {
       expect(found).toHaveLength(0);
     });
 
-    it('logs commitSha, resultCount, and durationMs at debug level, not info (MINCRM-637)', async () => {
+    it('logs commitSha, resultCount, and durationMs at debug level, not info', async () => {
       // debug, not info — this is the per-unit inheritance fan-out inside
       // testSelectionService's mapWithConcurrencyLimit call, invoked once
       // per changed unit; logging it at info would put one line per unit
@@ -355,7 +355,7 @@ describe('coverageMappingService', () => {
     });
   });
 
-  describe('findTestsForUnitsAcrossBranches (batched, MINCRM-637)', () => {
+  describe('findTestsForUnitsAcrossBranches (batched)', () => {
     it('resolves multiple units in one call, each attributed back to its own (filePath, unitKey) pair', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const fileA = `${FILE_PREFIX}/a.ts`;
@@ -507,7 +507,7 @@ describe('coverageMappingService', () => {
       );
     });
 
-    it('logs commitSha, input/unique counts, chunkCount, totalMatchCount, and durationMs (MINCRM-637)', async () => {
+    it('logs commitSha, input/unique counts, chunkCount, totalMatchCount, and durationMs', async () => {
       const infoSpy = vi.spyOn(logger, 'info');
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const filePath = `${FILE_PREFIX}/batch-logging.ts`;
@@ -647,7 +647,7 @@ describe('coverageMappingService', () => {
     });
   });
 
-  // ── commit-agnostic collapse + streamed load (MINCRM-703) ──
+  // ── commit-agnostic collapse + streamed load ──
 
   describe('commit-agnostic collapse', () => {
     it('has the index the keyset export pages on', async () => {

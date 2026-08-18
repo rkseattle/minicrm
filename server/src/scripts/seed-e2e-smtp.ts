@@ -15,7 +15,7 @@
  *   E2E_SMTP_HOST         — default: localhost
  *   E2E_SMTP_PORT         — default: 1025
  *
- * MINCRM-306, MINCRM-502
+ *
  */
 
 import pg from 'pg';

@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for AI field exclusion admin endpoints. (MINCRM-461)
+ * HTTP contract tests for AI field exclusion admin endpoints.
  *
  * Covers:
  *  - GET /admin/ai/field-exclusions: admin-only, returns the effective exclusion list

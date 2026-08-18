@@ -1,11 +1,11 @@
 /**
- * Unit tests for coverageHealthService. (MINCRM-637)
+ * Unit tests for coverageHealthService.
  *
  * Runs against the real coverage database. The degraded-db tests mock
  * coverageDb.connect() the same way health.test.ts mocks the product
  * pool's own connect() for /api/health's equivalent failure-mode tests.
  *
- * MINCRM-685: this file used to toggle three feature_flags rows and assert the
+ * this file used to toggle three feature_flags rows and assert the
  * report's `featureFlags` block. Migration 163 deleted those rows; the report
  * now carries `routers`, read from the same COVERAGE_* env vars that decide at
  * boot whether each router registers its routes. The flag-toggling helper and
@@ -170,7 +170,7 @@ describe('getCoverageHealth', () => {
   });
 
   // The former "feature-flag read fails" degraded case is gone with the flag
-  // reads themselves (MINCRM-685). It covered isFeatureEnabled rejecting
+  // reads themselves. It covered isFeatureEnabled rejecting
   // against the PRODUCT database and the report falling back to false rather
   // than 500ing. This report no longer touches the product database at all —
   // see the service's own docblock for why that is correct rather than merely

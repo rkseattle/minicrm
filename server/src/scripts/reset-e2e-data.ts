@@ -25,7 +25,7 @@
  * Without this step, test users accumulate across runs (51k+ users observed)
  * causing GET /api/v1/users pagination to reach page=496 and time out, which
  * cascades failures across user-management, visibility, deals, and onboarding
- * test suites. (MINCRM-544)
+ * test suites.
  *
  * Usage:
  *   npm run reset:e2e-data --workspace=minicrm-server

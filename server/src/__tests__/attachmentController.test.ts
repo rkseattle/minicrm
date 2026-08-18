@@ -3,7 +3,6 @@
  * Tests listAttachments, uploadAttachment (storage-not-configured path), and deleteAttachment.
  * Attachment rows for list/delete tests are inserted directly into the DB (same pattern as
  * attachmentService.test.ts) to avoid requiring a live storage service.
- * (MINCRM-196)
  */
 
 import 'dotenv/config';

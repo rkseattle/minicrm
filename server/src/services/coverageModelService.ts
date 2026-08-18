@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA version-anchored coverage model & storage service. (MINCRM-616)
+ * Coverage/TIA version-anchored coverage model & storage service.
  *
  * Owns all DB access for coverage_units and coverage_ingested_dumps (see
  * migration 158) — no coverageDb.query() outside this module, per repo
@@ -107,7 +107,7 @@ export async function isDumpAlreadyIngested(dumpId: string): Promise<boolean> {
  * function" pattern would have a TOCTOU gap between the two round-trips;
  * doing the claim and the writes in one transaction closes it.
  *
- * Dedup/compaction (MINCRM-616): each unit's identity is
+ * Dedup/compaction: each unit's identity is
  * (commit_sha, file_path, unit_key, branch_id) — see the
  * coverage_units_identity_idx unique index in migration 158. A conflicting
  * insert merges by accumulating hit_count and advancing last_seen_at,
@@ -204,7 +204,7 @@ export async function upsertCoverageUnits(
   units: readonly NormalizedCoverageUnit[],
   // Invoked with the SAME transaction client, after the coverage_units
   // writes but before COMMIT — lets a caller (coverageIngestionService,
-  // MINCRM-618) attribute this dump's units to a test in
+  //) attribute this dump's units to a test in
   // coverage_test_links atomically alongside the coverage_units upsert,
   // without this module needing to know anything about test attribution
   // itself. Never invoked when the claim above finds the dump already
@@ -274,8 +274,7 @@ export async function findCoverageUnitsByCommitSha(commitSha: string): Promise<C
 /**
  * Deletes a single coverage_units row by ID — used by
  * coverageReconciliationService to prune units whose code no longer exists
- * in the current source tree (MINCRM-620's "units absent from the source
- * tree are pruned" AC). Unlike pruneCoverageUnits (retention-window based),
+ * in the current source tree. Unlike pruneCoverageUnits (retention-window based),
  * this targets a specific row already identified as dead by reconciliation.
  */
 export async function deleteCoverageUnitById(id: string): Promise<void> {
@@ -290,7 +289,7 @@ export interface UnitKeySearchResult {
 
 /**
  * Typeahead search over coverage_units.unit_key for a given commit — backs
- * the coverage-dashboard app's drill-down unit-key picker (MINCRM-636/637):
+ * the coverage-dashboard app's drill-down unit-key picker:
  * a plain "list every unit key" endpoint is not viable at real scale (a
  * single commit's coverage_units can run into the hundreds of thousands of
  * rows), so this always requires BOTH a commitSha (already indexed via
@@ -325,9 +324,7 @@ export async function searchUnitKeys(
 /**
  * Updates a unit's file_path and/or unit_key in place — used by
  * coverageReconciliationService to carry a mapping forward when
- * reconciliation determines the underlying code moved/renamed (MINCRM-620's
- * "renames carried over via body-hash / VCS signals rather than dropped"
- * AC / MINCRM-619's rename-carry requirement). Carrying a mapping forward
+ * reconciliation determines the underlying code moved/renamed. Carrying a mapping forward
  * this way (UPDATE in place) rather than delete-old + insert-new preserves
  * the row's accumulated hit_count, first_seen_at, and confidence_score
  * history across the rename — exactly the continuity a rename-carry is
@@ -412,8 +409,7 @@ export async function relocateCoverageUnit(
  * Sets a unit's confidence_score and stamps last_reconciled_at = now() —
  * the write coverageReconciliationService performs after computing a
  * fresh recency-decayed score for a row it has just validated against the
- * current symbol table (MINCRM-620's "each mapping carries a recency/
- * confidence score" AC).
+ * current symbol table.
  */
 export async function updateCoverageUnitConfidence(
   id: string,
@@ -440,7 +436,7 @@ export interface PruneCoverageUnitsResult {
    * this same function/transaction (rather than a separate prune call)
    * because it shares the exact same retention window and because this was
    * previously the only unbounded coverage table with zero pruning at all
-   * — MINCRM-637's own "central policy config: retention" AC covers it,
+   * — the own "central policy config: retention" AC covers it,
    * not just coverage_units/coverage_test_links (found via Greptile branch
    * review).
    */
@@ -457,7 +453,7 @@ export interface PruneCoverageUnitsResult {
    * safetyNetPolicy.hasLowConfidenceMatch treats null as "no signal to
    * check" (`confidenceScore !== null && confidenceScore < threshold`)
    * rather than "below threshold" — the exact full-suite fallback
-   * retention pruning must not weaken (MINCRM-637).
+   * retention pruning must not weaken.
    *
    * Scoped to units actually deleted THIS transaction (via the prunedUnits
    * DELETE ... RETURNING below), not to "any link whose own last_seen_at is
@@ -484,10 +480,9 @@ export interface PruneCoverageUnitsResult {
 
 /**
  * Prunes coverage_units and coverage_ingested_dumps rows not touched in
- * more than `retentionDays` days (MINCRM-616's configurable retention
- * policy), then deletes any coverage_test_links rows matching a unit
+ * more than `retentionDays` days, then deletes any coverage_test_links rows matching a unit
  * deleted by that same prune, all in the same transaction. Scheduled
- * daily via coverageRetentionScheduler.ts (MINCRM-637); also callable on
+ * daily via coverageRetentionScheduler.ts; also callable on
  * demand by an operator.
  */
 export async function pruneCoverageUnits(retentionDays: number): Promise<PruneCoverageUnitsResult> {

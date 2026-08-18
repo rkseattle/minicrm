@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for lead routing admin endpoints. (MINCRM-475)
+ * HTTP contract tests for lead routing admin endpoints.
  * Covers the admin-configured scoring weights/thresholds and the per-team
  * disable toggle — the pre-create suggestion endpoint itself is covered by
  * leadRoutingService.test.ts (service-level) and the F-ROUTE E2E specs

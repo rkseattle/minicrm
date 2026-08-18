@@ -1,7 +1,7 @@
 /**
  * Middleware that validates SCIM bearer tokens for /scim/v2/* routes.
  * Separate from the main JWT authenticate middleware — SCIM uses its own
- * long-lived token issued via /api/v1/scim-token. (MINCRM-541)
+ * long-lived token issued via /api/v1/scim-token.
  */
 
 import type { Request, Response, NextFunction, RequestHandler } from 'express';

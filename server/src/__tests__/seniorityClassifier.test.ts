@@ -1,5 +1,5 @@
 /**
- * Unit tests for the seniority classifier. (MINCRM-467)
+ * Unit tests for the seniority classifier.
  * Pure function, no I/O — no test database required.
  */
 

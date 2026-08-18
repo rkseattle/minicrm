@@ -579,7 +579,7 @@ const componentSchemas = {
     },
   },
 
-  // ── Team (MINCRM-537) ─────────────────────────────────────────────────────
+  // ── Team ─────────────────────────────────────────────────────
   Team: {
     type: 'object',
     properties: {
@@ -634,7 +634,7 @@ const componentSchemas = {
     },
   },
 
-  // ── Coverage (MINCRM-606) ─────────────────────────────────────────────────
+  // ── Coverage ─────────────────────────────────────────────────
   CoverageDump: {
     type: 'object',
     required: ['dumpId', 'agent', 'label', 'commitSha', 'capturedAt', 'format', 'path'],
@@ -652,7 +652,7 @@ const componentSchemas = {
     },
   },
 
-  // ── Coverage sessions (MINCRM-609..612) ─────────────────────────────────
+  // ── Coverage sessions ─────────────────────────────────
   CoverageSession: {
     type: 'object',
     required: [
@@ -714,7 +714,7 @@ const componentSchemas = {
     },
   },
 
-  // ── Coverage pipeline (MINCRM-614, MINCRM-615, MINCRM-616) ──────────────
+  // ── Coverage pipeline ──────────────
   IngestCoverageDumpResult: {
     type: 'object',
     required: ['dumpId', 'commitSha', 'alreadyIngested', 'unitCount', 'unresolvedCount'],
@@ -727,7 +727,7 @@ const componentSchemas = {
     },
   },
 
-  // ── Coverage mapping query API (MINCRM-618, MINCRM-621) ──────────────────
+  // ── Coverage mapping query API ──────────────────
   CoverageMappingResult: {
     type: 'object',
     required: [
@@ -764,7 +764,7 @@ const componentSchemas = {
     },
   },
 
-  // ── Coverage health (MINCRM-637) ──────────────────────────────────────────
+  // ── Coverage health ──────────────────────────────────────────
   CoverageHealthReport: {
     type: 'object',
     required: ['status', 'agentRunning', 'db', 'routers'],

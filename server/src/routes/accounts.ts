@@ -54,7 +54,7 @@ const router = Router();
  *         schema:
  *           type: string
  *           enum: [me, my_team]
- *         description: "'me' returns only the authenticated user's accounts; 'my_team' returns accounts owned by any member of the user's teams (MINCRM-545)"
+ *         description: "'me' returns only the authenticated user's accounts; 'my_team' returns accounts owned by any member of the user's teams"
  *     responses:
  *       200:
  *         description: Array of accounts
@@ -112,7 +112,7 @@ router.get('/', authenticate, asyncHandler(listAccountsHandler));
  *       Returns all matching accounts as a UTF-8 CSV file (with BOM).
  *       Reps receive only their own accounts. Admins receive their own accounts
  *       by default; pass `?all=true` to export all accounts.
- *       (MINCRM-165)
+ *
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -158,7 +158,7 @@ router.get(
  *     summary: Export accounts to PDF
  *     description: >
  *       Returns all matching accounts as a paginated PDF table, using the same filters
- *       and ownership rules as the CSV export. (MINCRM-601)
+ *       and ownership rules as the CSV export.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -207,7 +207,7 @@ router.get(
  *       Performs a bulk action on the specified account IDs in a single transaction.
  *       Reps may only act on accounts they own; any unowned ID returns 403.
  *       Admins may act on any accounts.
- *       (MINCRM-188)
+ *
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -335,7 +335,7 @@ router.post(
  *     summary: Type-ahead account name search
  *     description: >
  *       Returns up to 10 accounts whose name contains the query string.
- *       Used by the Parent Account type-ahead selector. (MINCRM-184)
+ *       Used by the Parent Account type-ahead selector.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -428,7 +428,7 @@ router.get('/:id', authenticate, asyncHandler(getAccountHandler));
  *     description: >
  *       Returns a one-record summary PDF for the given account — overview fields,
  *       custom fields, linked contacts, child accounts, and notes. Visibility
- *       matches GET /api/v1/accounts/{id}. (MINCRM-650)
+ *       matches GET /api/v1/accounts/{id}.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -624,7 +624,7 @@ router.delete(
  *     tags: [Accounts]
  *     operationId: listChildAccounts
  *     summary: List subsidiary accounts
- *     description: Returns all direct child (subsidiary) accounts. (MINCRM-184)
+ *     description: Returns all direct child (subsidiary) accounts.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -642,7 +642,7 @@ router.delete(
  */
 router.get('/:id/children', authenticate, asyncHandler(listChildAccountsHandler));
 
-// ── Account Tag Routes (MINCRM-186) ───────────────────────────────────────────
+// ── Account Tag Routes ───────────────────────────────────────────
 
 /** List all tags on an account. */
 router.get(
@@ -670,7 +670,7 @@ router.delete(
   asyncHandler(detachAccountTagHandler),
 );
 
-/** Returns the active AI churn/expansion signal for the account, or null when none is active. (MINCRM-469) */
+/** Returns the active AI churn/expansion signal for the account, or null when none is active. */
 router.get(
   '/:id/churn-expansion-signal',
   authenticate,
@@ -678,7 +678,7 @@ router.get(
   asyncHandler(getAccountChurnExpansionSignalHandler),
 );
 
-// ── AI sentiment tracking (MINCRM-472) ──────────────────────────────────────────
+// ── AI sentiment tracking ──────────────────────────────────────────
 
 /** Returns the aggregate sentiment trend across all contacts at the account, last 90 days. */
 router.get(
@@ -688,7 +688,7 @@ router.get(
   asyncHandler(getAccountSentimentTrendHandler),
 );
 
-// ── AI relationship health scoring (MINCRM-467) ─────────────────────────────────
+// ── AI relationship health scoring ─────────────────────────────────
 
 /** Returns the cached relationship health score for the account, or null when not yet computed. */
 router.get(

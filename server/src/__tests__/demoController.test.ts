@@ -1,7 +1,6 @@
 /**
  * HTTP contract tests for demoController.
  * Verifies seed/reset/remove lifecycle, 409 conflict cases, and role enforcement.
- * (MINCRM-195)
  */
 
 import 'dotenv/config';
@@ -56,7 +55,7 @@ beforeAll(async () => {
  * `authenticate` resolves the user live by the token's id and returns 401 USER_INACTIVE
  * when the row is gone (see middleware/auth.ts). So a cookie signed against a deleted
  * row's id turns every admin assertion into a 401 and every rep 403 assertion into a
- * 401, even once the user has been recreated under a new id. (MINCRM-704)
+ * 401, even once the user has been recreated under a new id.
  */
 async function ensureFixtureUsers(): Promise<void> {
   // Claims admin resolution rather than assuming it — see claimAdminResolution.
@@ -148,9 +147,9 @@ async function clearDemoData(): Promise<void> {
   await pool.query('DELETE FROM accounts WHERE is_demo = true');
   // Remove demo rep user created by insertDemoData
   await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
-  // The MINCRM-546 demo IAM users are also created by insertDemoData and carry no is_demo
+  // The demo IAM users are also created by insertDemoData and carry no is_demo
   // flag. admin@demo.minicrm.dev is an ACTIVE ADMIN, so leaving it resident makes it a
-  // candidate for getAdminUserId()'s ORDER BY created_at. (MINCRM-704)
+  // candidate for getAdminUserId()'s ORDER BY created_at.
   await pool.query(`DELETE FROM users WHERE email LIKE '%@demo.minicrm.dev'`);
 }
 
@@ -158,7 +157,6 @@ beforeEach(async () => {
   // Fixtures first, matching beforeAll's order. Re-established every test because a
   // sibling spec's bare `DELETE FROM users` or an interrupted prior run removes them, and
   // every request below authenticates with a cookie signed against the row's id.
-  // (MINCRM-704)
   await ensureFixtureUsers();
   await clearDemoData();
 });
@@ -177,7 +175,7 @@ afterAll(async () => {
 
 // ── GET /api/admin/demo/status ────────────────────────────────────────────────
 
-// ── fixture self-healing (MINCRM-704, AC 2) ───────────────────────────────────
+// ── fixture self-healing ───────────────────────────────────
 
 describe('fixture users survive a wholesale wipe', () => {
   it('deletes both fixture users mid-file — the next test must still authenticate', async () => {

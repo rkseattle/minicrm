@@ -6,7 +6,7 @@
  *
  * Runs against a real PostgreSQL test database.
  *
- * MINCRM-161, MINCRM-162, MINCRM-163
+ *
  */
 
 import 'dotenv/config';
@@ -26,7 +26,7 @@ import { utcDayOffset } from '../utils/utcDate.js';
  * utcDayOffset, not a local setDate(-1): across a DST transition the local shift
  * moves the wall clock 24h but the instant 23h or 25h, so the UTC-serialized day
  * can come back as today — and the task stops being overdue. CI runs
- * TZ=Pacific/Auckland, which transitions twice a year. (MINCRM-700)
+ * TZ=Pacific/Auckland, which transitions twice a year.
  */
 function overdueDueDate(): string {
   return utcDayOffset(new Date(), -1);

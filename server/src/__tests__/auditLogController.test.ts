@@ -1,7 +1,6 @@
 /**
  * HTTP contract tests for auditLogController.
  * Verifies role enforcement, query parameter handling, and response shapes.
- * (MINCRM-195)
  */
 
 import 'dotenv/config';
@@ -51,7 +50,7 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// Note: GET /api/audit-log was removed in MINCRM-377. The admin audit log page
+// Note: GET /api/audit-log was removed in a later change. The admin audit log page
 // now fetches via ConnectRPC (gRPC-Web) instead. The unary ListAuditEvents and
 // server-streaming StreamAuditEvents RPCs are tested by the E2E suite.
 

@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA per-build rollup. (MINCRM-629/630/631)
+ * Coverage/TIA per-build rollup.
  *
  * Owns all DB access for coverage_build_summary (see
  * qa/migrations/002_coverage_build_summary.js) — no coverageDb.query()
@@ -72,7 +72,7 @@ function toCoverageBuildSummary(row: CoverageBuildSummaryRow): CoverageBuildSumm
  * attribution of its own (see coverage_test_links' own docblock in
  * 001_coverage_baseline.js). A unit hit by both an automated and a manual
  * session at this commit counts toward BOTH counters — this is a
- * coverage-BY-test-type breakdown (MINCRM-629's "filter by test type" AC),
+ * coverage-BY-test-type breakdown,
  * not a mutually-exclusive partition of units.
  *
  * Must be invoked with the SAME transaction client the caller (

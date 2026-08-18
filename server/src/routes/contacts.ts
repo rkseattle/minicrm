@@ -76,7 +76,7 @@ const router = Router();
  *         schema:
  *           type: string
  *           enum: [me, my_team]
- *         description: "'me' returns only the authenticated user's contacts; 'my_team' returns contacts owned by any member of the user's teams (MINCRM-545)"
+ *         description: "'me' returns only the authenticated user's contacts; 'my_team' returns contacts owned by any member of the user's teams"
  *       - in: query
  *         name: account
  *         schema:
@@ -143,7 +143,7 @@ router.get('/', authenticate, asyncHandler(listContactsHandler));
  *       Reps receive only their own contacts. Admins receive their own contacts
  *       by default; pass `?all=true` to export all contacts.
  *       Accepts the same filter params as the list endpoint (search, accountSearch, account).
- *       (MINCRM-164)
+ *
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -195,7 +195,7 @@ router.get(
  *     summary: Export contacts to PDF
  *     description: >
  *       Returns all matching contacts as a paginated PDF table, using the same filters
- *       and ownership rules as the CSV export. (MINCRM-601)
+ *       and ownership rules as the CSV export.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -250,7 +250,7 @@ router.get(
  *       Performs a bulk action on the specified contact IDs in a single transaction.
  *       Reps may only act on contacts they own; any unowned ID returns 403.
  *       Admins may act on any contacts.
- *       (MINCRM-188)
+ *
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -298,7 +298,7 @@ router.post(
   asyncHandler(bulkContactsHandler),
 );
 
-// ── AI contact auto-enrich from pasted text (MINCRM-439) ────────────────────────
+// ── AI contact auto-enrich from pasted text ────────────────────────
 
 /**
  * Extracts contact fields from pasted freeform text on demand. Not tied to an
@@ -319,7 +319,7 @@ router.post(
  *   patch:
  *     tags: [Contacts]
  *     operationId: bulkPatchContacts
- *     summary: Bulk patch contacts — reassign owner (MINCRM-562)
+ *     summary: Bulk patch contacts — reassign owner
  *     description: >
  *       Reassigns owner_id on each listed contact individually.
  *       Requires bulk:operations + contacts:edit. Non-admin actors can only
@@ -375,7 +375,7 @@ router.patch(
  *   delete:
  *     tags: [Contacts]
  *     operationId: bulkDeleteContacts
- *     summary: Bulk delete contacts (MINCRM-562)
+ *     summary: Bulk delete contacts
  *     description: >
  *       Deletes each listed contact individually.
  *       Requires bulk:operations + contacts:delete. Non-admin actors can only
@@ -569,7 +569,7 @@ router.get('/:id', authenticate, asyncHandler(getContactHandler));
  *     description: >
  *       Returns a one-record summary PDF for the given contact — overview fields,
  *       custom fields, linked deals, and notes. Visibility matches
- *       GET /api/v1/contacts/{id}. (MINCRM-650)
+ *       GET /api/v1/contacts/{id}.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -890,7 +890,7 @@ router.post(
  *       transport and logs an Email activity against the contact.
  *       If SMTP is not configured, the email is not delivered but the activity is still logged
  *       and the response returns delivered: false rather than an error.
- *       Returns 400 if the contact has no email address. (MINCRM-275)
+ *       Returns 400 if the contact has no email address.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -998,7 +998,7 @@ router.post(
   asyncHandler(setDefaultContactAddressHandler),
 );
 
-// ── Contact Tag Routes (MINCRM-186) ───────────────────────────────────────────
+// ── Contact Tag Routes ───────────────────────────────────────────
 
 /** List all tags on a contact. */
 router.get(
@@ -1026,7 +1026,7 @@ router.delete(
   asyncHandler(detachContactTagHandler),
 );
 
-// ── Sequence enrollment routes (MINCRM-403) ────────────────────────────────────
+// ── Sequence enrollment routes ────────────────────────────────────
 
 /** Enroll a contact in a sales sequence. */
 router.post(
@@ -1045,7 +1045,7 @@ router.get(
   asyncHandler(listContactEnrollmentsHandler),
 );
 
-// ── GDPR routes (admin only) — MINCRM-364 ─────────────────────────────────────
+// ── GDPR routes (admin only) ─────────────────────────────────────
 
 /** Erase personal data for a contact per GDPR Art. 17. */
 router.post(
@@ -1063,7 +1063,7 @@ router.get(
   asyncHandler(gdprExportContactHandler),
 );
 
-// ── AI champion/blocker detection (MINCRM-466) ──────────────────────────────────
+// ── AI champion/blocker detection ──────────────────────────────────
 
 /** Returns the effective champion/blocker classification for the contact. */
 router.get(
@@ -1089,7 +1089,7 @@ router.patch(
   asyncHandler(overrideContactChampionBlockerHandler),
 );
 
-// ── AI sentiment tracking (MINCRM-472) ──────────────────────────────────────────
+// ── AI sentiment tracking ──────────────────────────────────────────
 
 /** Returns the sentiment trend for the contact's last 10 interactions. */
 router.get(
@@ -1099,7 +1099,7 @@ router.get(
   asyncHandler(getContactSentimentTrendHandler),
 );
 
-// ── AI smart follow-up timing suggestions (MINCRM-470) ──────────────────────────
+// ── AI smart follow-up timing suggestions ──────────────────────────
 
 /** Returns the best-time-to-contact suggestion for the contact, or null when insufficient data. */
 router.get(
@@ -1109,7 +1109,7 @@ router.get(
   asyncHandler(getFollowUpTimingHandler),
 );
 
-// ── AI warm introduction path mapping (MINCRM-468) ──────────────────────────────
+// ── AI warm introduction path mapping ──────────────────────────────
 
 /** Returns ranked warm introduction paths to the contact through the rep's own network. */
 router.get(
@@ -1119,7 +1119,7 @@ router.get(
   asyncHandler(getWarmIntroPathsHandler),
 );
 
-// ── AI email draft generation (MINCRM-437) ──────────────────────────────────────
+// ── AI email draft generation ──────────────────────────────────────
 
 /** Generates an on-demand AI first-draft follow-up email for the contact. */
 router.post(

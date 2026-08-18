@@ -1,5 +1,5 @@
 /**
- * Integration tests for pipelineStageService (MINCRM-180).
+ * Integration tests for pipelineStageService.
  *
  * Runs against a real PostgreSQL test database.
  * Before each test the pipeline_stages table is restored to the six seed rows
@@ -29,7 +29,7 @@ const FILE_PREFIX = 'pipeline-stage-svc';
 /**
  * The record_name pipelineStageService writes its audit rows under. Every
  * caller of the service writes under it, so it cannot scope an assertion on its
- * own — every read below is additionally scoped by ACTOR.id. (MINCRM-693)
+ * own — every read below is additionally scoped by ACTOR.id.
  */
 const PIPELINE_STAGES_RECORD_NAME = 'pipeline_stages';
 
@@ -40,7 +40,7 @@ const PIPELINE_STAGES_RECORD_NAME = 'pipeline_stages';
  * SYSTEM_ACTOR (the all-zeros UUID) when no actor is passed. That UUID is shared
  * with every other SYSTEM_ACTOR write in the repo, so it isolates nothing —
  * passing a per-file actor is what makes changed_by_id a usable scoping
- * dimension for the audit assertions below. (MINCRM-693)
+ * dimension for the audit assertions below.
  */
 const ACTOR = { id: randomUUID(), name: 'Pipeline Stage Svc Test' };
 
@@ -48,7 +48,7 @@ const ACTOR = { id: randomUUID(), name: 'Pipeline Stage Svc Test' };
  * Counts audit rows for this file's own writes. Scoped by changed_by_id because
  * record_type + record_name are shared with every other writer of
  * `system_settings`/`pipeline_stages` — including the controller path. See
- * countAuditRowsFor. (MINCRM-693)
+ * countAuditRowsFor.
  */
 function countStageAuditRows(): Promise<number> {
   return countAuditRowsFor(pool, {
@@ -67,7 +67,7 @@ function countStageAuditRows(): Promise<number> {
  * helper does exactly this — including the single-transaction
  * DISABLE/DELETE/ENABLE sequence whose ACCESS EXCLUSIVE lock serializes
  * concurrent copies. ACTOR.id is a per-file randomUUID, so scoping by it alone
- * cannot over-delete. (MINCRM-693)
+ * cannot over-delete.
  */
 function clearPipelineStageAuditLog(): Promise<void> {
   return clearAuditLogFor(ACTOR.id);
@@ -76,7 +76,7 @@ function clearPipelineStageAuditLog(): Promise<void> {
 /** Re-seeds the six default pipeline stages before each test */
 async function resetStages(): Promise<void> {
   const defaultPipelineId = await getDefaultPipelineId();
-  // Also delete any stages that lost their pipeline_id (left by failed test runs before MINCRM-397)
+  // Also delete any stages that lost their pipeline_id (left by failed test runs before that change)
   await pool.query('DELETE FROM pipeline_stages WHERE pipeline_id = $1 OR pipeline_id IS NULL', [
     defaultPipelineId,
   ]);

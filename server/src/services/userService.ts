@@ -47,15 +47,15 @@ export interface UserRow {
   password_reset_token_hash: string | null;
   password_reset_expires_at: Date | null;
   password_changed_at: Date | null;
-  // MFA fields (MINCRM-392)
+  // MFA fields
   mfa_enabled: boolean;
   mfa_secret: string | null;
   mfa_pending_secret: string | null;
   mfa_recovery_codes: string[];
-  // SSO fields (MINCRM-399)
+  // SSO fields
   sso_provider: 'saml' | 'oidc' | null;
   sso_subject: string | null;
-  // API token fields (MINCRM-536)
+  // API token fields
   api_token_hash: string | null;
   api_token_issued_at: Date | null;
   created_at: Date;
@@ -101,7 +101,6 @@ export async function findUserById(id: string): Promise<UserRow | null> {
 
 /**
  * Creates a new user record and writes an audit entry when an actor is provided.
- * (MINCRM-170)
  *
  * @param actor - Admin who created the user; omitted for seed / test operations
  */
@@ -156,7 +155,6 @@ export async function createUser(
 
 /**
  * Updates a user's status field and writes a deactivated/reactivated audit entry.
- * (MINCRM-170)
  *
  * @param id - The user UUID.
  * @param status - The new status.
@@ -222,7 +220,6 @@ export async function updateUserStatus(
 
 /**
  * Updates a user's role field and writes a role_changed audit entry.
- * (MINCRM-170)
  *
  * @param id - The user UUID.
  * @param role - The new role.
@@ -375,7 +372,7 @@ function warnIfAdminUnusable(user: UserRow, normalizedAdminEmail: string): void 
  * Scoped to ADMIN_EMAIL rather than "does any user exist": a table-wide guard lets any
  * unrelated row — a service account, a deactivated user, a leftover test fixture —
  * permanently block admin creation with no log line, which is unrecoverable without
- * direct DB access (MINCRM-684).
+ * direct DB access.
  */
 export async function seedDefaultAdmin(): Promise<void> {
   const { ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD } = process.env;
@@ -530,7 +527,7 @@ export async function setUserPreferredLanguage(
  * Allows an admin to set another user's password directly, bypassing the invite flow.
  * Sets must_change_password = true so the user is prompted to choose a new one on login.
  * Also activates the user if they were in invited status.
- * Emits a structured audit log entry so the action is forensically traceable. (MINCRM-89)
+ * Emits a structured audit log entry so the action is forensically traceable.
  *
  * @param adminId - The UUID of the admin performing the action.
  * @param targetUserId - The UUID of the user whose password will be set.
@@ -565,7 +562,7 @@ export async function adminSetUserPassword(
     const updated = result.rows[0] ?? null;
 
     if (updated) {
-      // Audit: password_changed event — no value stored for sensitive field (MINCRM-170)
+      // Audit: password_changed event — no value stored for sensitive field
       await writeAuditEntry(client, {
         recordType: 'user',
         recordId: updated.id,
@@ -591,7 +588,7 @@ export async function adminSetUserPassword(
   }
 }
 
-// ── Password reset (MINCRM-156, MINCRM-157) ───────────────────────────────────
+// ── Password reset ───────────────────────────────────
 
 /** Length of the plaintext reset token in bytes (produces a 64-char hex string) */
 const RESET_TOKEN_BYTES = 32;
@@ -670,7 +667,7 @@ export async function findUserByResetToken(plaintextToken: string): Promise<User
   return result.rows[0] ?? null;
 }
 
-// ── Notification preferences (MINCRM-163) ────────────────────────────────────
+// ── Notification preferences ────────────────────────────────────
 
 /**
  * Returns the notification preferences for a user.
@@ -730,7 +727,7 @@ export async function listUsersOptedIn(
 
 /**
  * Returns a count of active users who have at least one notification type enabled.
- * Used by the admin settings page to show blast radius. (MINCRM-163)
+ * Used by the admin settings page to show blast radius.
  *
  * @returns Count of active users with at least one notification enabled.
  */
@@ -752,7 +749,7 @@ export async function countActiveNotificationRecipients(): Promise<number> {
  * - Returns the updated user row, or null when the token is invalid/expired.
  *
  * Setting password_changed_at invalidates all existing JWTs issued before this
- * timestamp (session invalidation on other devices — MINCRM-157).
+ * timestamp (session invalidation on other devices —).
  *
  * @param plaintextToken - The plaintext token from the reset URL.
  * @param newPassword - The user's desired new plaintext password.
@@ -783,12 +780,12 @@ export async function resetPasswordWithToken(
   return result.rows[0] ?? null;
 }
 
-// ── Onboarding reset (MINCRM-410) ─────────────────────────────────────────────
+// ── Onboarding reset ─────────────────────────────────────────────
 
 /**
  * Resets the onboarding_completed flag to false for a target user.
  * Writes an audit entry in the same transaction.
- * Admin only — the route is protected by requireRole('admin'). (MINCRM-410)
+ * Admin only — the route is protected by requireRole('admin').
  *
  * @param targetUserId - UUID of the user whose flag to reset.
  * @param actor - Admin performing the action.
@@ -843,7 +840,7 @@ export async function resetUserOnboarding(targetUserId: string, actor: AuditActo
   }
 }
 
-// ── Service account API tokens (MINCRM-536) ───────────────────────────────────
+// ── Service account API tokens ───────────────────────────────────
 
 /** Byte length of the raw token — produces a 64-char hex string */
 const API_TOKEN_BYTES = 32;

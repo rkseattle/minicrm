@@ -1,7 +1,7 @@
 /**
  * Verifies that the OPTIMISTIC_LOCK_CONFLICT 409 response body includes the full current
  * server state in `error.current`, so the client can render a three-way merge UI without
- * a second round-trip. (MINCRM-351)
+ * a second round-trip.
  *
  * Each test:
  *   1. Creates the entity (version = 1).

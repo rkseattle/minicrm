@@ -1,5 +1,5 @@
 /**
- * Relationship health controller — request/response shaping only. (MINCRM-467)
+ * Relationship health controller — request/response shaping only.
  * No business logic here; all cached-read and config access goes through relationshipHealthService.
  */
 

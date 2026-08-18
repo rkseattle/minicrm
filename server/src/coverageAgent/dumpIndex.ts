@@ -1,5 +1,5 @@
 /**
- * Append-only index of coverage dumps, for cheap dumpId lookups. (MINCRM-606)
+ * Append-only index of coverage dumps, for cheap dumpId lookups.
  *
  * Deliberately minimal: this is a lookup aid for the control API's
  * GET /dumps/:dumpId endpoint, not a mapping/query engine. One line per

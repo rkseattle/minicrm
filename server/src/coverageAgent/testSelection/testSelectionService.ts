@@ -1,14 +1,14 @@
 /**
- * Coverage/TIA test selection algorithm. (MINCRM-624)
+ * Coverage/TIA test selection algorithm.
  *
  * Resolves changeUnitResolver.ts's changed units into the minimal set of
  * affected tests via the mapping query API (coverageMappingService's
- * findTestsForUnitAcrossBranches, MINCRM-621), producing a prioritized,
+ * findTestsForUnitAcrossBranches), producing a prioritized,
  * deduplicated list with a per-test rationale. Changed units the mapping
  * API has no record of (new code, or code the map hasn't caught up with
  * yet) inherit candidates from their enclosing/calling unit instead of
  * being silently dropped; units that remain unmapped even after that are
- * surfaced separately for the safety-net policy (MINCRM-626) to widen
+ * surfaced separately for the safety-net policy to widen
  * around.
  *
  * Looks up by unitKey ACROSS EVERY BRANCH (findTestsForUnitAcrossBranches),
@@ -25,7 +25,7 @@
  *
  * The direct-lookup step resolves every changed unit's mapping in ONE
  * batched call (coverageMappingService.findTestsForUnitsAcrossBranches,
- * MINCRM-637) rather than fanning out one query per changed unit — this
+ *) rather than fanning out one query per changed unit — this
  * collapsed what was up to `ceil(N/MAX_CONCURRENT_MAPPING_LOOKUPS)`
  * sequential round trips into as many queries as
  * findTestsForUnitsAcrossBranches' own chunking needs (typically one, for
@@ -37,9 +37,9 @@
  * uncapped Promise.all over that fan-out could exhaust it. That path is
  * unreachable from this module's only production caller today
  * (select-tests.ts never supplies enclosingUnitsByUnitKey), so batching it
- * is deliberately out of scope for MINCRM-637.
+ * is deliberately out of scope for that work.
  *
- * Ranking is delegated to a pluggable TestScorer (MINCRM-627) — this module
+ * Ranking is delegated to a pluggable TestScorer — this module
  * owns only mapping-API resolution, inheritance, and cross-unit dedup;
  * per-unit ranking is entirely the scorer's concern, so a future ML ranker
  * can replace mapBasedScorer without touching any of this module's own
@@ -172,7 +172,7 @@ export interface EnclosingUnit {
  *
  * Delegates to coverageMappingService.unitPairKey — the identical
  * (filePath, unitKey) -> string shape this module used to duplicate
- * independently (found during MINCRM-637 commit review). Kept as its own
+ * independently (found during commit review). Kept as its own
  * named export here since this module's own callers/tests already import
  * it under this name for this specific semantic purpose (an
  * enclosing-unit map key, not a mapping-result attribution key) — same
@@ -200,9 +200,9 @@ export function enclosingUnitMapKey(filePath: string, unitKey: string): string {
  *   previously-mapped sibling) — this service has no AST access of its own
  *   and treats a unit as having no inheritance candidate when absent from
  *   this map, rather than guessing one.
- * @param scorer - Ranks each changed unit's own candidate tests (MINCRM-627).
+ * @param scorer - Ranks each changed unit's own candidate tests.
  *   Defaults to mapBasedScorer (confidence-first, alphabetical tie-break —
- *   this function's own ranking logic prior to MINCRM-627). Swappable for
+ *   this function's own ranking logic prior to). Swappable for
  *   a future ML ranker; never receives the safety-net baseline set (see
  *   scorer.ts's own docblock).
  */
@@ -212,7 +212,7 @@ export async function selectTestsForChangedUnits(
   enclosingUnitsByUnitKey: ReadonlyMap<string, EnclosingUnit> = new Map(),
   scorer: TestScorer = mapBasedScorer,
 ): Promise<TestSelectionResult> {
-  // Direct-lookup step: one batched call for every changed unit (MINCRM-637)
+  // Direct-lookup step: one batched call for every changed unit
   // instead of a per-unit fan-out. batchedDirectMatches always has exactly
   // one entry per (deduplicated) input pair, including pairs with zero
   // matches — see findTestsForUnitsAcrossBranches' own docblock.
@@ -242,7 +242,7 @@ export async function selectTestsForChangedUnits(
     MAX_CONCURRENT_MAPPING_LOOKUPS,
     async (unit) => {
       // No direct mapping — new code with nothing to look up yet, or a
-      // genuinely unmapped unit. Per MINCRM-624's AC, inherit candidates
+      // genuinely unmapped unit. Per the AC, inherit candidates
       // from the enclosing/calling unit rather than treating this as
       // unconditionally unmapped.
       const enclosingUnit = enclosingUnitsByUnitKey.get(
@@ -288,7 +288,7 @@ export async function selectTestsForChangedUnits(
     .filter((r) => r.tests.length === 0)
     .map((r) => ({ filePath: r.unit.filePath, unitKey: r.unit.unitKey }));
 
-  // Ranking (MINCRM-627) is delegated to the scorer, invoked ONCE over the
+  // Ranking is delegated to the scorer, invoked ONCE over the
   // full deduplicated candidate list — see scorer.ts's own docblock for why
   // this is a single cross-unit call rather than one call per changed unit.
   const deduped = dedupeByTestId(allTests);

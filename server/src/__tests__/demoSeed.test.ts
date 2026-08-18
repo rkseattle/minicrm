@@ -8,7 +8,6 @@
  * - Deleting WHERE is_demo = true removes only demo rows
  *
  * This covers the core DB contract that seed-demo.ts and remove-demo.ts rely on.
- * (MINCRM-102)
  *
  * Runs against a real PostgreSQL test database.
  */
@@ -67,7 +66,6 @@ beforeEach(async () => {
   // every test and its id refreshed because every insert here uses ownerId as a FK, and
   // a sibling spec's `DELETE FROM users` would otherwise leave it dangling. Serial order
   // is duration-derived, so this file cannot rely on running before that wipe.
-  // (MINCRM-704)
   ownerId = await ensureUser(OWNER_USER);
   await cleanOwnerData();
 });

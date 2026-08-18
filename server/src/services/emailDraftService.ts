@@ -1,6 +1,6 @@
 /**
  * Email draft generation service — on-demand AI first-draft follow-up email
- * from a contact's context and recent activity. (MINCRM-437)
+ * from a contact's context and recent activity.
  *
  * Follows the same "gather context, PII-filter, forced-tool Claude call,
  * record token usage" shape as dealHealthService.generateDealHealthCheck.
@@ -203,7 +203,7 @@ export async function generateEmailDraft(
   }
   const anthropicClient = new Anthropic(clientOptions);
 
-  // PII-filter the gathered facts before they leave the server. (MINCRM-445)
+  // PII-filter the gathered facts before they leave the server.
   const { sanitised, strippedFields } = await applyPiiFilter(context, 'contact');
   if (strippedFields.length > 0) {
     logger.info(

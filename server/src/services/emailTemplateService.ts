@@ -1,7 +1,6 @@
 /**
  * Email template service — CRUD for reusable email templates.
  * All database access for email_templates goes through this module.
- * (MINCRM-422, MINCRM-437)
  */
 
 import pool from '../db.js';

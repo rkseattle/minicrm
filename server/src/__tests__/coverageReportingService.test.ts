@@ -1,5 +1,5 @@
 /**
- * Integration tests for coverageReportingService. (MINCRM-629/630/631)
+ * Integration tests for coverageReportingService.
  *
  * Summary/trend/gaps-by-commit tests run against the real coverage test
  * database. findChangedUntestedUnits is exercised against a REAL git

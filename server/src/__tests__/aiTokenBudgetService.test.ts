@@ -1,5 +1,5 @@
 /**
- * Integration tests for aiTokenBudgetService. (MINCRM-458)
+ * Integration tests for aiTokenBudgetService.
  *
  * Covers:
  *  - getOrgTokenBudget: default 0 (unlimited), after explicit set
@@ -231,7 +231,7 @@ describe('setOrgTokenBudget', () => {
       // Scoped by changed_by_id: record_type + field_name are shared with
       // aiTokenBudgetController.test.ts, which is NOT in SERIAL_FILES and so
       // runs in the parallel project alongside this one. A single interleaved
-      // controller write would take the LIMIT 1 slot. (MINCRM-693)
+      // controller write would take the LIMIT 1 slot.
       `SELECT * FROM audit_log
        WHERE record_type = 'ai_settings' AND field_name = 'org_monthly_limit'
          AND changed_by_id = $1
@@ -305,7 +305,7 @@ describe('getOrgConsumptionSummary', () => {
   });
 });
 
-// ── recordTokenUsage: dual-write to ai_token_usage_daily (MINCRM-459) ────────
+// ── recordTokenUsage: dual-write to ai_token_usage_daily ────────
 
 describe('recordTokenUsage — daily/per-feature dual-write', () => {
   it('writes to both ai_token_usage and ai_token_usage_daily', async () => {

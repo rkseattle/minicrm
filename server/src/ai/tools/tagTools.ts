@@ -1,5 +1,5 @@
 /**
- * NLI tool definitions for Tags. (MINCRM-422, MINCRM-433)
+ * NLI tool definitions for Tags.
  */
 
 import type Anthropic from '@anthropic-ai/sdk';

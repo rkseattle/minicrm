@@ -1,5 +1,5 @@
 /**
- * Integration tests for coverageRetentionScheduler. (MINCRM-637)
+ * Integration tests for coverageRetentionScheduler.
  *
  * Runs against a real coverage database — asserts runCoverageRetentionPruning
  * calls through to pruneCoverageUnits/pruneCoverageSessions with the
@@ -99,9 +99,9 @@ describe('runCoverageRetentionPruning', () => {
     expect(stored).toHaveLength(0);
   });
 
-  it('prunes coverage_sessions rows older than the given retentionDays, regardless of status (MINCRM-637)', async () => {
+  it('prunes coverage_sessions rows older than the given retentionDays, regardless of status', async () => {
     // coverage_sessions.started_by is the "session metadata (possible PII)"
-    // MINCRM-637's own AC names — before this, coverage_sessions had zero
+    // the AC names — before this, coverage_sessions had zero
     // retention pruning at all (found via Greptile branch review).
     const session = await startCoverageSession({
       label: `${FILE_PREFIX}-old-session`,
@@ -170,7 +170,7 @@ describe('getLastRetentionPruneOutcome', () => {
     // Regression test: the daily cron's failure previously only ever
     // reached logger.error, with GET /health continuing to report
     // status: 'ok' indefinitely — this is the one background job
-    // MINCRM-637 introduces, and a failed run must now be observable on
+    // introduces, and a failed run must now be observable on
     // the health report too (found via Greptile branch review).
     vi.spyOn(coverageModelService, 'pruneCoverageUnits').mockRejectedValue(
       new Error('coverage db unreachable'),

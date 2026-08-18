@@ -1,7 +1,6 @@
 /**
  * Module-level registry holding the process's single CoverageAgentPlugin
- * instance, if coverage instrumentation is enabled. (MINCRM-604, MINCRM-606,
- * MINCRM-636)
+ * instance, if coverage instrumentation is enabled.
  *
  * server.ts constructs and registers the agent at boot (or leaves it
  * unregistered when COVERAGE_INSTRUMENTATION is off); coverageDumpService
@@ -9,7 +8,7 @@
  * server.ts -> service -> server.ts import cycle.
  *
  * Typed to the CoverageAgentPlugin interface, not the concrete
- * NodeV8CoverageAgent class — MINCRM-636's SDK contract requires that a
+ * NodeV8CoverageAgent class — the SDK contract requires that a
  * second language agent be registerable here without a type error, even
  * though NodeV8CoverageAgent is still the only implementation that exists
  * today.

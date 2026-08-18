@@ -13,7 +13,6 @@
  *   - buildToolSet is pure: it contains no DB access. The caller resolves
  *     capabilities once and passes the Set in.
  *
- * (MINCRM-422, MINCRM-434)
  */
 
 import type Anthropic from '@anthropic-ai/sdk';
@@ -38,7 +37,7 @@ import { dataHygieneTools } from './dataHygieneTools.js';
 // Admin tools are guarded by SettingsManage; write tools by their domain capability.
 
 export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
-  // ── Mutation confirmation (MINCRM-425, MINCRM-426) ────────────────────────
+  // ── Mutation confirmation ────────────────────────
   // Gated on contacts:view — the minimum capability held by any user with
   // API access. Write-capable roles (rep, manager, admin) always have contacts:view,
   // so they always receive this tool. Viewers have only read tools, so the AI
@@ -148,7 +147,7 @@ export const TOOL_FEATURE_FLAG_MAP: ReadonlyMap<string, string> = new Map([
 // returns an empty set — e.g., when the custom_roles or role_capabilities tables are
 // missing the built-in rows due to a failed or rolled-back migration.
 //
-// Keep this in sync with the seed data in db/migrations/106, 108, 109, and 114. (MINCRM-434)
+// Keep this in sync with the seed data in db/migrations/106, 108, 109, and 114.
 
 /** Minimum capabilities guaranteed to each built-in role string (static fallback). */
 export const BUILTIN_ROLE_CAPABILITIES: Readonly<Record<string, readonly Capability[]>> = {
@@ -242,7 +241,7 @@ export const ADMIN_ONLY_TOOL_NAMES = new Set<string>(adminTools.map((t) => t.nam
 export const ALL_TOOLS: Anthropic.Messages.Tool[] = [
   // requestMutationConfirmation is listed first so Claude encounters its instructions
   // before any write tool definition. It has no capability gate — viewers have no write
-  // tools so Claude will never attempt to use it for read-only sessions. (MINCRM-425)
+  // tools so Claude will never attempt to use it for read-only sessions.
   ...mutationConfirmationTools,
   ...contactTools,
   ...accountTools,

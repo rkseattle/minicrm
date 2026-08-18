@@ -1,6 +1,6 @@
 /**
  * Activity call/note summarizer service — on-demand AI summarization of
- * pasted call transcripts, meeting notes, or raw call recording text. (MINCRM-436)
+ * pasted call transcripts, meeting notes, or raw call recording text.
  *
  * Follows the same "gather context, PII-filter, forced-tool Claude call,
  * record token usage" shape as dealHealthService.generateDealHealthCheck —
@@ -134,7 +134,7 @@ export async function summarizeActivityText(
   }
   const anthropicClient = new Anthropic(clientOptions);
 
-  // PII-filter the pasted text before it leaves the server. (MINCRM-445)
+  // PII-filter the pasted text before it leaves the server.
   // 'activity' is not a valid ai_field_exclusions entity_type (contact/account/deal
   // only) — map to 'deal' like objectionMatchingService does for the same reason.
   const { sanitised, strippedFields } = await applyPiiFilter({ raw_text: rawText }, 'deal');

@@ -1,7 +1,6 @@
 /**
  * Integration tests for sequenceService.
  * Runs against a real PostgreSQL test database.
- * (MINCRM-403)
  */
 
 import 'dotenv/config';

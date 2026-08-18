@@ -1,6 +1,6 @@
 /**
  * Team service — all database operations for team and team membership management.
- * All business logic and SQL for the teams feature belongs here. (MINCRM-537)
+ * All business logic and SQL for the teams feature belongs here.
  */
 
 import pool from '../db.js';
@@ -230,7 +230,7 @@ export async function updateTeam(
 
     // FOR UPDATE serializes concurrent reparent attempts on the same team row,
     // preventing a race where two transactions both pass the cycle check before
-    // either commits (MINCRM-537).
+    // either commits.
     const beforeResult = await client.query<TeamRow>(
       'SELECT * FROM teams WHERE id = $1 FOR UPDATE',
       [id],
@@ -323,7 +323,7 @@ export async function deleteTeam(id: string, actor: AuditActor = SYSTEM_ACTOR): 
     await client.query('BEGIN');
 
     // FOR UPDATE prevents a concurrent createTeam from inserting a child row
-    // between the COUNT(*) check and the DELETE (MINCRM-537).
+    // between the COUNT(*) check and the DELETE.
     const teamResult = await client.query<{ name: string }>(
       'SELECT name FROM teams WHERE id = $1 FOR UPDATE',
       [id],
@@ -515,7 +515,7 @@ export async function getTeamIdsForManager(managerId: string): Promise<string[]>
 /**
  * Returns the UUIDs of all users who share at least one team with the given user,
  * including the user themselves. Used to power the "My Team" ownership filter on
- * list views (MINCRM-545).
+ * list views.
  *
  * Falls back to [userId] when the user belongs to no teams, so callers can always
  * use the result as an IN-list without special-casing the empty set.

@@ -1,5 +1,5 @@
 /**
- * NLI tool definitions for the Deal / Opportunity entity. (MINCRM-422)
+ * NLI tool definitions for the Deal / Opportunity entity.
  */
 
 import type Anthropic from '@anthropic-ai/sdk';

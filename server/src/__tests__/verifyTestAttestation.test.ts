@@ -1,5 +1,5 @@
 /**
- * Unit tests for the test-run attestation gate. (MINCRM-642, MINCRM-691)
+ * Unit tests for the test-run attestation gate.
  *
  * Two layers, both covered here:
  *
@@ -11,10 +11,8 @@
  *  2. **verifyAttestation's reason assembly** (verify-test-attestation.ts) —
  *     which predicate maps to which AttestationFailureReason, plus
  *     formatFailureOutput's operator-facing text and readSelectionFiles'
- *     three-way SelectionRequirement union (MINCRM-695 replaced its
- *     `string[] | null` return, under which an unreadable --selection was
- *     indistinguishable from no --selection and silently passed the gate).
- *     Added by MINCRM-691; before that the gate's
+ *     three-way SelectionRequirement union.
+ *     Added by; before that the gate's
  *     own decision logic was verified only through the pure helpers it
  *     delegates to, so a change that stopped CALLING one of them left the suite
  *     green. (An older version of this docblock claimed an E2E functional spec
@@ -33,9 +31,7 @@
  *
  * The vi.mock calls are file-scoped and so apply to layer 1's describes as
  * well. That is inert: neither mocked module is in junitXml.ts's import graph,
- * which is why those tests still import from junitXml.ts directly (MINCRM-689 —
- * keeping that import graph free of a pg.Pool is what lets qa/'s parity spec
- * share it).
+ * which is why those tests still import from junitXml.ts directly.
  */
 
 // ── Mocked seam ─────────────────────────────────────────────────────────────
@@ -43,7 +39,7 @@
 // verifyAttestation has exactly one impure collaborator:
 // findCoverageSessionDumpsByBuildSha. Substituting it at the module boundary is
 // what lets the reason assembly be driven without a live coverage database
-// (MINCRM-691, AC 5). Bare factory + relative specifier WITH the .js extension,
+//. Bare factory + relative specifier WITH the .js extension,
 // matching the source import exactly — see requireAiTokenBudget.test.ts, the
 // closest existing analogue in this workspace.
 vi.mock('../services/coverageSessionService.js', () => ({
@@ -58,7 +54,7 @@ vi.mock('../services/coverageSessionService.js', () => ({
 // verify-test-attestation.ts). Verified: with this mock removed the test still
 // passes and the real pool reports totalCount=0. The mock's value is that if
 // verifyAttestation ever starts querying directly, the seam surfaces `undefined`
-// instead of a unit test silently opening a live connection. (MINCRM-691)
+// instead of a unit test silently opening a live connection.
 vi.mock('../coverageDb.js', () => ({
   default: { end: vi.fn(async () => undefined) },
 }));
@@ -74,11 +70,9 @@ import { join, resolve as resolvePath, isAbsolute, dirname } from 'node:path';
 // suite's globalSetup creates and migrates the test database for every file
 // regardless. The import graph is simply honest about what these tests use; the
 // spec that genuinely benefits is qa/'s, which has no globalSetup.
-// (MINCRM-689)
 //
 // The vi.mock calls above are file-scoped and so apply to these describes too.
 // That is inert: neither mocked module is in junitXml.ts's import graph.
-// (MINCRM-691)
 import {
   parseJUnitResults,
   findTestsSkippedEverywhere,
@@ -114,7 +108,7 @@ function testCase(overrides: Partial<JUnitTestCase>): JUnitTestCase {
   };
 }
 
-// ── verifyAttestation harness (MINCRM-691) ──────────────────────────────────
+// ── verifyAttestation harness ──────────────────────────────────
 
 /**
  * Repo root, for the docs-parity assertion below. Named rather than inlined so
@@ -138,7 +132,7 @@ const mockFindDumps = vi.mocked(findCoverageSessionDumpsByBuildSha);
  * fail when the gate stops blocking — verified: a mutation returning
  * `passed: reasons.every(r => r === 'test-failures' || ...)`, i.e. attesting a
  * run whose tests FAILED, passed all 96 tests before this helper existed.
- * (MINCRM-691, AC 2)
+ *
  */
 async function attest(args: CliArgs): Promise<AttestationResult> {
   const result = await verifyAttestation(args);
@@ -153,7 +147,7 @@ let attestationDir: string;
  * Set up per-test filesystem and mock state for the describes that exercise
  * verify-test-attestation.ts. Called from an outer describe rather than at file
  * scope so the ~55 pure junitXml.ts tests above do not each pay a temp-directory
- * create plus recursive delete they never touch. (MINCRM-691)
+ * create plus recursive delete they never touch.
  */
 function useAttestationFixtures(): void {
   beforeEach(async () => {
@@ -168,7 +162,7 @@ function useAttestationFixtures(): void {
     // ssoController.test.ts and client/src/hooks/usePermissions.test.ts both use
     // resetAllMocks; the nearest analogue for the mock shape here,
     // requireAiTokenBudget.test.ts, uses clearAllMocks, which is safe there only
-    // because every one of its tests sets its own return value.) (MINCRM-691)
+    // because every one of its tests sets its own return value.)
     vi.resetAllMocks();
 
     // Explicit baseline: no attributed dumps. Every test asserting an exact
@@ -210,10 +204,10 @@ async function writeSelection(raw: string): Promise<string> {
  *
  * Named rather than inlined because the interesting part of a consuming test is
  * its assertion, not the twelve lines of XML and utimes needed to provoke every
- * reason at once. (MINCRM-691)
+ * reason at once.
  *
  * Deliberately does NOT write the selection file, and returns nothing.
- * MINCRM-695 added a reason that is mutually exclusive with
+ * added a reason that is mutually exclusive with
  * missing-required-tests, so the two maximal-reason tests need DIFFERENT
  * selections — one readable and unsatisfied, one unreadable. An earlier version
  * of this helper returned the selection path it wrote, which made it unusable
@@ -260,7 +254,7 @@ function dump(overrides: Partial<CoverageSessionDump> = {}): CoverageSessionDump
  * Sets the mocked dump lookup to a non-empty result, so 'no-session-attribution'
  * does NOT fire and a test can assert an exact `reasons` array for the reason it
  * actually cares about. Required by every reason test except
- * 'no-session-attribution' itself and 'results-file-missing'. (MINCRM-691)
+ * 'no-session-attribution' itself and 'results-file-missing'.
  */
 function attestedDumps(...testFiles: string[]): void {
   const files =
@@ -301,7 +295,7 @@ const PASSING_XML = `<testsuites id="" name="" tests="1" failures="0" skipped="0
 /**
  * A two-project run where each test passes under exactly one project and skips
  * under the other — the shape record mode actually produces, and the one the
- * MINCRM-687 reconciliation rule exists for. The union covers both tests, so
+ * reconciliation rule exists for. The union covers both tests, so
  * this document is attestable: no test is skipped everywhere.
  *
  * <testsuites skipped="2"> is legitimately non-zero here, and both skips are
@@ -526,7 +520,7 @@ Stack trace
     );
   });
 
-  // MINCRM-687: the gate reconciles a test's outcome across projects, which
+  // the gate reconciles a test's outcome across projects, which
   // is only possible if the parser records which project each testcase ran
   // under. Playwright puts the project name in <testsuite hostname="...">.
   it('attributes each testcase to the project of its enclosing testsuite', () => {
@@ -553,7 +547,7 @@ Stack trace
     // Shares MULTI_PROJECT_XML with the verifyAttestation tests below: this is
     // the parser's view of the same document whose gate outcome they assert, so
     // one fixture keeps the two layers describing the same run rather than two
-    // documents that can drift apart. (MINCRM-691)
+    // documents that can drift apart.
     const result = parseJUnitResults(MULTI_PROJECT_XML);
 
     const desktopOnly = result.testCases.filter((t) => t.name === 'desktop only');
@@ -572,7 +566,7 @@ Stack trace
     expect(result.totalSkipped).toBe(2);
   });
 
-  // MINCRM-687: captured console output can contain text that looks like
+  // captured console output can contain text that looks like
   // JUnit structure. Playwright's CDATA escaping neutralizes only `]]>`, so
   // a `</testsuite>` in a log line reaches this parser verbatim and would
   // truncate the suite scan, silently dropping later testcases.
@@ -622,7 +616,6 @@ Stack trace
     // project. That feeds findTestsSkippedEverywhere's cross-project attestation,
     // where a mis-attributed row can attest a skip that never passed anywhere.
     // Today's reporter never self-closes; this pins the parse either way.
-    // (MINCRM-689)
     const xml = `<testsuites id="" name="" tests="2" failures="1" skipped="0" errors="0" time="0.2">
 <testsuite name="empty.spec.ts" timestamp="2026-07-29T00:00:00.000Z" hostname="mobile-web" tests="0" failures="0" skipped="0" errors="0" time="0"/>
 <testsuite name="b.spec.ts" timestamp="2026-07-29T00:00:00.000Z" hostname="desktop" tests="2" failures="1" skipped="0" errors="0" time="0.2">
@@ -642,7 +635,7 @@ Stack trace
   });
 });
 
-// MINCRM-687: the cross-project reconciliation rule is the substance of the
+// the cross-project reconciliation rule is the substance of the
 // gate change, so it is tested directly rather than inferred from parser
 // fields. Each case below would pass under the OLD "any skip fails" rule too
 // unless stated otherwise — the discriminating case is the first one.
@@ -752,7 +745,7 @@ describe('findTestsSkippedEverywhere', () => {
   // Guards the scope limitation stated in the module docblock: the rule
   // reconciles what the results file CONTAINS. A single-project run is not
   // weakened by the change — a test skipped there passed nowhere, so it is
-  // still reported exactly as it was before MINCRM-687.
+  // still reported exactly as it was before that change.
   it('still reports a skipped test in a single-project run', () => {
     const cases = [
       testCase({ name: 'ran', project: 'desktop', passed: true }),
@@ -799,7 +792,7 @@ describe('findFailedTests', () => {
   });
 });
 
-// MINCRM-687: an ALL-PASS gate must never discard evidence of a failure.
+// an ALL-PASS gate must never discard evidence of a failure.
 // These guard the parser's row-collection, where a dedupe against
 // already-collected keys previously let a passing suite row mask an orphan
 // <failure> carrying the same (classname, name).
@@ -846,7 +839,7 @@ describe('parseJUnitResults — row collection never drops a failure', () => {
     expect(hasParseDisagreement(result)).toBe(false);
   });
 
-  // MINCRM-687 (PR review): CDATA content is not markup, so it is removed
+  // PR review: CDATA content is not markup, so it is removed
   // before any structural scan. Without that, a payload could both END a match
   // early (dropping rows) and OPEN one (fabricating a testcase that never
   // ran). These cover the class rather than one variant of it.
@@ -923,7 +916,7 @@ describe('parseJUnitResults — row collection never drops a failure', () => {
   });
 });
 
-// MINCRM-687: this is the last line of defense for a document this
+// this is the last line of defense for a document this
 // regex-based parser cannot fully read. An ALL-PASS gate must never pass on
 // evidence it failed to parse, so both predicates are pinned directly.
 describe('hasParseDisagreement', () => {
@@ -991,7 +984,7 @@ describe('hasParseDisagreement', () => {
   });
 });
 
-// MINCRM-691: the seam itself. Everything below in later phases depends on
+// the seam itself. Everything below in later phases depends on
 // verifyAttestation being reachable from a unit test at all, which it was not
 // before this — the module was considered un-importable because it pulls in
 // coverageDb. It is importable; the pool is lazy. This test pins that property
@@ -1012,7 +1005,7 @@ describe('verify-test-attestation.ts', () => {
     });
   });
 
-  // MINCRM-691 (AC 1, AC 2): the reason assembly itself — which predicate maps to
+  // the reason assembly itself — which predicate maps to
   // which reason. Every reason below is asserted BOTH ways: produced by the
   // condition that should produce it, and absent when it should not be.
   //
@@ -1039,7 +1032,7 @@ describe('verify-test-attestation.ts', () => {
           skippedTests: [],
           missingRequiredFiles: [],
           // Null, not a cause: this return happens before the selection is read
-          // at all, so there is nothing to report about it. (MINCRM-695)
+          // at all, so there is nothing to report about it.
           selectionUnreadableReason: null,
           ranFileCount: 0,
         });
@@ -1230,7 +1223,7 @@ describe('verify-test-attestation.ts', () => {
         ]);
       });
 
-      // The MINCRM-687 reconciliation rule reaching the gate: a viewport-
+      // The reconciliation rule reaching the gate: a viewport-
       // conditional test skipped under one project but passing under another is
       // attested, so this reason must NOT fire. This is the case that made the
       // gate satisfiable for the multi-project run record mode needs.
@@ -1245,7 +1238,7 @@ describe('verify-test-attestation.ts', () => {
       });
     });
 
-    describe('zero-tests-executed (MINCRM-705)', () => {
+    describe('zero-tests-executed', () => {
       it('fails a well-formed results file that reports zero tests', async () => {
         attestedDumps();
         await writeResults(
@@ -1461,7 +1454,7 @@ describe('verify-test-attestation.ts', () => {
       // An EMPTY targeted selection reconciles and trivially passes — it is a
       // real requirement list, so unlike 'none' it keeps mechanism 2 switched on.
       // Indistinguishable from 'none' in `reasons` (both empty), which is exactly
-      // why the distinction is pinned at the helper too. (MINCRM-695 AC 4)
+      // why the distinction is pinned at the helper too.
       it('reconciles an empty targeted selection and passes', async () => {
         attestedDumps('ran.spec.ts');
         await writeResults(PASSING_XML);
@@ -1476,7 +1469,7 @@ describe('verify-test-attestation.ts', () => {
       });
     });
 
-    // MINCRM-695 (AC 1, AC 2). The defect this ticket exists for: before it, every
+    // The defect this ticket exists for: before it, every
     // input below produced a PASS with an empty `reasons`, silently disabling
     // mechanism 2 of the gate. Each is asserted to fire the reason AND to sink
     // `passed`, because passing-with-no-reconciliation was the actual bug.
@@ -1511,7 +1504,7 @@ describe('verify-test-attestation.ts', () => {
         expect(result.selectionUnreadableReason).toEqual(expect.any(String));
       });
 
-      // The negative direction, per MINCRM-691's AC 1 discipline: each legitimate
+      // The negative direction, per the spec's AC 1 discipline: each legitimate
       // "nothing to reconcile" input must NOT produce this reason. These are the
       // cases a naive fix would over-catch.
       it.each([
@@ -1556,7 +1549,7 @@ describe('verify-test-attestation.ts', () => {
       // results-file-missing early return fires BEFORE the selection is read, so
       // a run missing both reports only the primary input's failure. Pinned so a
       // later refactor that moves the selection read earlier has to face the
-      // choice deliberately. (MINCRM-695)
+      // choice deliberately.
       it('is not reported when the results file is missing, which returns first', async () => {
         const result = await attest(
           attestArgs({
@@ -1620,12 +1613,11 @@ describe('verify-test-attestation.ts', () => {
     //  - selection-file-unreadable is mutually exclusive with
     //    missing-required-tests: an unreadable selection yields no requirement
     //    list, so missingRequiredFiles is [] and the shortfall cannot fire.
-    //    (MINCRM-695)
     //  - zero-tests-executed is mutually exclusive with every reason derived
     //    from a test row. This fixture is maximally BROKEN, not empty: it has
     //    failures and skips, so tests plainly ran. A file cannot simultaneously
     //    report zero tests and report failing ones. Its own describe block
-    //    covers it directly. (MINCRM-705)
+    //    covers it directly.
     //
     // So "every reason at once" is really two maximal sets, one per horn of that
     // exclusivity. Both are asserted, and between them every reason appears in a
@@ -1654,7 +1646,7 @@ describe('verify-test-attestation.ts', () => {
 
     // The other horn: same maximally-broken results file, but the selection is
     // unreadable rather than merely unsatisfied. missing-required-tests drops
-    // out and selection-file-unreadable takes its place. (MINCRM-695)
+    // out and selection-file-unreadable takes its place.
     it('accumulates every applicable reason when the selection itself is unreadable', async () => {
       await writeEveryReasonResults();
 
@@ -1698,7 +1690,7 @@ describe('verify-test-attestation.ts', () => {
     });
   });
 
-  // MINCRM-691 (AC 3): the operator-facing message text. This is what a CI reader
+  // the operator-facing message text. This is what a CI reader
   // sees under "[verify-test-attestation] FAILED:", so an empty or missing branch
   // here means a red build with no stated cause.
   describe('formatFailureOutput', () => {
@@ -1795,7 +1787,7 @@ describe('verify-test-attestation.ts', () => {
     // The `why` is the actionable part — "could not be read" without saying what
     // was wrong sends an operator to check a path that may be fine. Also
     // disclaims a test outcome, matching results-file-unparseable's treatment of
-    // the same class of failure. (MINCRM-695 AC 2)
+    // the same class of failure.
     it('names the specific cause and disclaims a test outcome for an unreadable selection', () => {
       const output = formatFailureOutput(
         failedResult({
@@ -1885,7 +1877,7 @@ describe('verify-test-attestation.ts', () => {
 
     // docs/dev/coverage.md's "Reading a failed run" is the operator's index of
     // these reasons, and it had already drifted — three of the seven were
-    // missing before MINCRM-691. Reconciling by hand fixes today and drifts
+    // missing before that change. Reconciling by hand fixes today and drifts
     // again next PR, which is the reasoning check-env-example-parity.sh and
     // check-sha-pattern-parity.sh already encode for their own invariants. Same
     // shape here: the source list is exported, so the docs are held to it.
@@ -1921,8 +1913,8 @@ describe('verify-test-attestation.ts', () => {
     });
   });
 
-  // MINCRM-691 (AC 4), rewritten for MINCRM-695 (AC 1, 3, 4, 5). Before
-  // MINCRM-695 every path but one returned null, so "no reconciliation requested"
+  // rewritten for that work (AC 1, 3, 4, 5). Before
+  // every path but one returned null, so "no reconciliation requested"
   // and "the caller asked for reconciliation and this gate could not read the
   // file" were the same value — and the second silently passed the gate. These
   // now pin the three-way union, which is what makes the two distinguishable.
@@ -1945,7 +1937,7 @@ describe('verify-test-attestation.ts', () => {
     // The short-circuit is ordered BEFORE the array check: full-suite mode means
     // "no targeted requirement to reconcile", even though select-tests.ts always
     // writes specFiles: [] in that mode. A non-empty specFiles here proves the
-    // ordering rather than coincidence. (MINCRM-695 AC 3 — this must stay 'none',
+    // ordering rather than coincidence. (AC 3 — this must stay 'none',
     // NOT become a failure.)
     it('short-circuits full-suite mode even when specFiles is populated', async () => {
       const path = await writeSelection(
@@ -1955,7 +1947,7 @@ describe('verify-test-attestation.ts', () => {
       expect(readSelectionFiles(path)).toEqual({ kind: 'none' });
     });
 
-    // MINCRM-695 AC 4. An empty array IS a requirement list (an empty one), so
+    // AC 4. An empty array IS a requirement list (an empty one), so
     // reconciliation stays ENABLED and trivially passes — materially different
     // from 'none' ("do not reconcile at all") and from 'unreadable' ("could not
     // tell"). Before the union all three were the same value.
@@ -2022,8 +2014,8 @@ describe('verify-test-attestation.ts', () => {
     });
   });
 
-  // MINCRM-696. parseArgs was the last untested decision point in this file after
-  // MINCRM-691, and not trivial glue: it sets the anti-cheat staleness window,
+  // parseArgs was the last untested decision point in this file after
+  //, and not trivial glue: it sets the anti-cheat staleness window,
   // and two of its behaviors degraded OPEN on bad input — the wrong direction for
   // a gate.
   describe('parseArgs', () => {
@@ -2042,7 +2034,7 @@ describe('verify-test-attestation.ts', () => {
       // Zero is a VALID non-negative integer, not malformed input. The staleness
       // check is `ageMinutes > maxAgeMinutes`, strictly, so 0 means "written this
       // instant" — vanishingly strict but coherent. Accepting it matches
-      // merge-junit-results.ts's /^\d+$/ contract. (MINCRM-696 AC 4)
+      // merge-junit-results.ts's /^\d+$/ contract.
       it('accepts zero rather than treating it as malformed', () => {
         expect(parseArgs([...REQUIRED, '--max-age-minutes=0']).maxAgeMinutes).toBe(0);
       });
@@ -2200,7 +2192,7 @@ describe('verify-test-attestation.ts', () => {
       // An absent --selection must stay undefined, NOT become the CWD — which is
       // what a bare resolvePath(undefined-as-'') would produce, silently turning
       // "no reconciliation requested" into an unreadable directory path and, since
-      // MINCRM-695, a hard gate failure.
+      //, a hard gate failure.
       it('leaves an absent --selection undefined rather than resolving it to the CWD', () => {
         expect(parseArgs([...REQUIRED]).selectionPath).toBeUndefined();
       });
@@ -2211,7 +2203,7 @@ describe('verify-test-attestation.ts', () => {
       // repeat this file's original defect — ignoring an input the caller
       // explicitly provided — and letting it through to resolvePath('') would
       // fail later with an incidental EISDIR from the CWD, naming the wrong
-      // problem. (MINCRM-696)
+      // problem.
       it('throws InvalidArgError for a bare --selection= rather than treating it as absent', () => {
         expect(() => parseArgs([...REQUIRED, '--selection='])).toThrow(InvalidArgError);
       });

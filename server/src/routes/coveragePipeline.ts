@@ -1,13 +1,13 @@
 /**
  * Coverage/TIA pipeline routes — internal-only tooling, gated entirely by the
  * COVERAGE_PIPELINE_INGESTION env var at boot, not a product feature_flags row.
- * (MINCRM-614, MINCRM-637, MINCRM-685)
  *
- * MINCRM-685: this router used to also require the coverage_pipeline_ingestion
+ *
+ * this router used to also require the coverage_pipeline_ingestion
  * feature_flags row (requireFeatureEnabled) alongside authenticate/
  * coverageAccessGate — see routes/coverage.ts's own docblock for the full
  * rationale (same fix, same shape, applied to this router by the story that
- * finished what MINCRM-663 started). The route below is now registered ONLY
+ * finished what started). The route below is now registered ONLY
  * when COVERAGE_PIPELINE_INGESTION is 'true' at process boot; an admin with no
  * special env context gets a plain 404, not a 403 — there is nothing here to
  * discover through the product UI at all. authenticate/coverageAccessGate

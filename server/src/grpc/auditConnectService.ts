@@ -1,7 +1,7 @@
 /**
- * ConnectRPC service implementation for the AuditService (MINCRM-377).
+ * ConnectRPC service implementation for the AuditService.
  *
- * Replaces the @grpc/grpc-js implementation from MINCRM-376 with
+ * Replaces the @grpc/grpc-js implementation from that change with
  * @connectrpc/connect-express, which serves gRPC, gRPC-Web, and the Connect
  * protocol on the same Express port as REST routes.
  *
@@ -176,7 +176,7 @@ export function registerAuditService(router: ConnectRouter): void {
      * after the EventEmitter listener is registered. This gives the client a
      * concrete signal that the subscription is active before it creates
      * resources that fire NOTIFYs, eliminating the race between HTTP response
-     * headers and listener registration (MINCRM-554).
+     * headers and listener registration.
      */
     async *streamAuditEvents(req, ctx) {
       await requireAdminFromCookie(ctx);

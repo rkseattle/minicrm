@@ -3,7 +3,7 @@
  *
  * Enforces max-500-IDs limit and validates the request body via Zod.
  * Capability checks (bulk:operations + entity capability) are handled by route
- * middleware before these handlers are reached. (MINCRM-562)
+ * middleware before these handlers are reached.
  */
 
 import type { Request, Response } from 'express';
@@ -23,7 +23,7 @@ import {
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 import { updateRoleSchema } from '@minicrm/shared/schemas/userSchema.js';
 
-/** Maximum number of IDs allowed in a single bulk request (MINCRM-562). */
+/** Maximum number of IDs allowed in a single bulk request. */
 const BULK_MAX_IDS = 500;
 
 /** Shared validation for the ids array. */

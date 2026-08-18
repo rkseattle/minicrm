@@ -1,5 +1,5 @@
 /**
- * Security regression tests for ORDER BY injection (MINCRM-73).
+ * Security regression tests for ORDER BY injection.
  *
  * Verification finding: all list endpoints use hardcoded ORDER BY clauses in
  * their service functions — no client-supplied sort column is ever interpolated
@@ -67,7 +67,7 @@ afterAll(async () => {
 
 // ── Contacts ─────────────────────────────────────────────────────────────────
 
-describe('MINCRM-73 — GET /api/contacts sort injection', () => {
+describe('GET /api/contacts sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
       .get('/api/v1/contacts')
@@ -101,7 +101,7 @@ describe('MINCRM-73 — GET /api/contacts sort injection', () => {
 
 // ── Accounts ──────────────────────────────────────────────────────────────────
 
-describe('MINCRM-73 — GET /api/accounts sort injection', () => {
+describe('GET /api/accounts sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
       .get('/api/v1/accounts')
@@ -135,7 +135,7 @@ describe('MINCRM-73 — GET /api/accounts sort injection', () => {
 
 // ── Deals ─────────────────────────────────────────────────────────────────────
 
-describe('MINCRM-73 — GET /api/deals sort injection', () => {
+describe('GET /api/deals sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
       .get('/api/v1/deals')
@@ -169,7 +169,7 @@ describe('MINCRM-73 — GET /api/deals sort injection', () => {
 
 // ── Activities ────────────────────────────────────────────────────────────────
 
-describe('MINCRM-73 — GET /api/activities sort injection', () => {
+describe('GET /api/activities sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
       .get('/api/v1/activities')

@@ -1,5 +1,5 @@
 /**
- * Integration tests for emailDraftService. (MINCRM-437)
+ * Integration tests for emailDraftService.
  *
  * Runs against a real PostgreSQL test database for contact/account/activity
  * data. The Anthropic SDK is mocked so no real API calls are made and token

@@ -1,6 +1,5 @@
 /**
  * Lead routes — all endpoints require authentication.
- * (MINCRM-173, MINCRM-174, MINCRM-175)
  */
 
 import { Router } from 'express';
@@ -71,7 +70,7 @@ router.get('/accounts/search', authenticate, asyncHandler(searchAccountsHandler)
  *       would be low, per the AC: the suggestion is suppressed and the client
  *       should default the assignee field to unassigned. Gated by the
  *       ai_lead_routing_suggestion feature flag (including any per-team override).
- *       (MINCRM-475)
+ *
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -119,7 +118,7 @@ router.post(
  *         schema:
  *           type: string
  *           enum: [me, my_team]
- *         description: "'me' returns only the authenticated user's leads; 'my_team' returns leads owned by any member of the user's teams (MINCRM-545)"
+ *         description: "'me' returns only the authenticated user's leads; 'my_team' returns leads owned by any member of the user's teams"
  *       - in: query
  *         name: status
  *         schema:
@@ -179,7 +178,7 @@ router.post(
   asyncHandler(createLeadHandler),
 );
 
-// ── Bulk V2 routes (MINCRM-562) — must be registered before /:id routes ───────
+// ── Bulk V2 routes — must be registered before /:id routes ───────
 
 /**
  * @openapi
@@ -187,7 +186,7 @@ router.post(
  *   patch:
  *     tags: [Leads]
  *     operationId: bulkPatchLeads
- *     summary: Bulk patch leads — reassign owner (MINCRM-562)
+ *     summary: Bulk patch leads — reassign owner
  *     description: >
  *       Requires bulk:operations + contacts:edit. Non-admin actors can only
  *       reassign leads they own; records outside visibility are reported in
@@ -218,7 +217,7 @@ router.patch(
  *   delete:
  *     tags: [Leads]
  *     operationId: bulkDeleteLeads
- *     summary: Bulk delete leads (MINCRM-562)
+ *     summary: Bulk delete leads
  *     description: >
  *       Requires bulk:operations + contacts:delete. Non-admin actors can only
  *       delete leads they own; records outside visibility are reported in
@@ -255,7 +254,7 @@ router.delete(
  *       params mirror GET /api/v1/leads (owner, status, lead_source,
  *       includeDisqualified, includeConverted) except pagination/sort — all
  *       matching rows are exported. Reps get leads visible to them per the
- *       owner param; admins may pass ?all=true to export every lead. (MINCRM-651)
+ *       owner param; admins may pass ?all=true to export every lead.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -311,7 +310,7 @@ router.get(
  *     summary: Export leads as a paginated PDF table
  *     description: >
  *       Renders all leads matching the given filters as a paginated PDF table.
- *       Query params and ownership rules are identical to the CSV export. (MINCRM-651)
+ *       Query params and ownership rules are identical to the CSV export.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -394,7 +393,7 @@ router.get('/:id', authenticate, asyncHandler(getLeadHandler));
  *     summary: Export a single lead to PDF
  *     description: >
  *       Returns a one-record summary PDF for the given lead — overview fields
- *       and notes. Visibility matches GET /api/v1/leads/{id}. (MINCRM-650)
+ *       and notes. Visibility matches GET /api/v1/leads/{id}.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -430,7 +429,7 @@ router.get(
  *   get:
  *     tags: [Leads]
  *     operationId: getLeadScore
- *     summary: Compute a rule-based quality score for the lead (MINCRM-441 prerequisite)
+ *     summary: Compute a rule-based quality score for the lead
  *     description: >
  *       Computes an on-demand deterministic 0-100 quality score from lead
  *       source, status, recency, and post-conversion engagement. Not
@@ -465,7 +464,7 @@ router.get(
  *   post:
  *     tags: [Leads]
  *     operationId: generateLeadScoreNarrative
- *     summary: Explain a lead's quality score in plain English (MINCRM-441)
+ *     summary: Explain a lead's quality score in plain English
  *     description: >
  *       Runs an on-demand AI narrative explanation of the lead's rule-based
  *       quality score. Not persisted — regenerated on every request.
@@ -643,7 +642,7 @@ router.post(
   asyncHandler(convertLeadHandler),
 );
 
-// ── GDPR routes (admin only) — MINCRM-364 ─────────────────────────────────────
+// ── GDPR routes (admin only) ─────────────────────────────────────
 
 /** Erase personal data for a lead per GDPR Art. 17. */
 router.post('/:id/gdpr-erase', authenticate, requireRole('admin'), asyncHandler(eraseLeadHandler));

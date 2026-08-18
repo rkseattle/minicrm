@@ -1,5 +1,5 @@
 /**
- * Unit tests for coverageDumpService. (MINCRM-606)
+ * Unit tests for coverageDumpService.
  *
  * Uses a real NodeV8CoverageAgent registered against the service's own
  * COVERAGE_DUMPS_ROOT (not mocked, not a separately-chosen temp dir) so

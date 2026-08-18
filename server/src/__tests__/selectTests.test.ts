@@ -1,5 +1,5 @@
 /**
- * Unit tests for select-tests.ts's pure/filesystem logic. (pr-tia-8, MINCRM-696)
+ * Unit tests for select-tests.ts's pure/filesystem logic. (pr-tia-8)
  *
  * globToRegExp, resolveBaselineFiles and parseArgs are exported specifically for
  * this test file — the rest of select-tests.ts (selectTests itself) is a full
@@ -75,7 +75,7 @@ describe('resolveBaselineFiles', () => {
   });
 });
 
-// MINCRM-696. This script's --base/--head carry the same `=`-preserving split as
+// This script's --base/--head carry the same `=`-preserving split as
 // verify-test-attestation.ts's parseArgs, and it was the last of the four live
 // sites left unpinned — a revert to `.split('=')[1]` passed the whole suite.
 // It also has the largest blast radius of the four: a truncated ref is a

@@ -1,6 +1,6 @@
 /**
- * Pipeline stage service — business logic for pipeline stage configuration (MINCRM-180).
- * All operations are scoped to a specific pipeline (MINCRM-397).
+ * Pipeline stage service — business logic for pipeline stage configuration.
+ * All operations are scoped to a specific pipeline.
  * All database access for pipeline_stages goes through this module.
  */
 
@@ -27,7 +27,7 @@ export interface PipelineStageRow {
   probability: number;
   is_terminal: boolean;
   is_fixed: boolean;
-  /** Configurable data quality gates for stage transitions (MINCRM-527) */
+  /** Configurable data quality gates for stage transitions */
   stage_exit_requirements: StageExitRequirements;
   created_at: Date;
   updated_at: Date;
@@ -46,8 +46,8 @@ async function resolvePipelineId(pipelineId?: string): Promise<string> {
 
 /**
  * Ensures stage_exit_requirements always has both arrays, even when the DB stores
- * the column default `{}` (which has no keys). Rows created before MINCRM-527 or
- * stages that never had requirements set are safely normalised here. (MINCRM-527)
+ * the column default `{}` (which has no keys). Rows created before that change or
+ * stages that never had requirements set are safely normalised here.
  */
 function normaliseRow(row: PipelineStageRow): PipelineStageRow {
   const raw = row.stage_exit_requirements as Partial<StageExitRequirements> | null | undefined;
@@ -111,7 +111,6 @@ export async function findPipelineStageById(id: string): Promise<PipelineStageRo
 /**
  * Finds a single pipeline stage by its name within a specific pipeline.
  * Used by dealService to resolve a stage name to its UUID on deal create/update.
- * (MINCRM-499)
  */
 export async function findPipelineStageByNameAndPipeline(
   name: string,
@@ -343,7 +342,7 @@ export async function deletePipelineStage(
     throw err;
   }
 
-  // Count open (non-terminal) deals currently in this stage, using the FK for correctness. (MINCRM-499)
+  // Count open (non-terminal) deals currently in this stage, using the FK for correctness.
   const terminalResult = await pool.query<{ id: string }>(
     'SELECT id FROM pipeline_stages WHERE pipeline_id = $1 AND is_terminal = true',
     [existing.pipeline_id],
@@ -416,7 +415,7 @@ export async function deletePipelineStage(
 
 /**
  * Atomically reorders all pipeline stages within the specified pipeline by assigning
- * sort_order 1..N in the provided ID order (MINCRM-381).
+ * sort_order 1..N in the provided ID order.
  *
  * All IDs must reference stages within the same pipeline.
  */
@@ -430,7 +429,7 @@ export async function reorderPipelineStages(
   try {
     await client.query('BEGIN');
 
-    // Serialize concurrent reorders with a transaction-scoped advisory lock (MINCRM-387)
+    // Serialize concurrent reorders with a transaction-scoped advisory lock
     await client.query("SELECT pg_advisory_xact_lock(hashtext('pipeline_stages_reorder'))");
 
     // Temporarily set all sort_orders to large negative values to vacate unique index slots

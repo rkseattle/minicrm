@@ -1,5 +1,5 @@
 /**
- * Custom roles controller — request/response shaping for MINCRM-542 capability RBAC.
+ * Custom roles controller — request/response shaping for that work capability RBAC.
  * All endpoints are admin-gated via requireCapability(SettingsManage) on the router.
  * No business logic or direct DB access here.
  */

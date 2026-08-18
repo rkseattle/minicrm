@@ -1,5 +1,5 @@
 /**
- * Authorization middleware for MiniCRM (MINCRM-542).
+ * Authorization middleware for MiniCRM.
  *
  * Three tiers of enforcement:
  *
@@ -30,7 +30,7 @@ import { userCapabilities } from '../services/roleService.js';
 /**
  * Creates an Express middleware that enforces role-based access control.
  * Accepts one or more allowed roles — the request is permitted when the
- * authenticated user's role matches any entry in the list (MINCRM-533).
+ * authenticated user's role matches any entry in the list.
  *
  * Prefer requireCapability() for new routes. Use requireRole() only when a
  * simple role-string check is sufficient (e.g. admin-only management routes
@@ -73,7 +73,7 @@ export function requireRole(...roles: UserRole[]): RequestHandler {
  * Service accounts that authenticate via cookie (not bearer token) are rejected with
  * 403 SERVICE_ACCOUNT_UI_BLOCKED — they must use the bearer token path for data access.
  * Bearer token requests from service accounts go through normal capability resolution
- * so that integrations can read and write CRM data (MINCRM-542).
+ * so that integrations can read and write CRM data.
  */
 export function requireCapability(capability: Capability): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {

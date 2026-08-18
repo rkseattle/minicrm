@@ -1,5 +1,5 @@
 /**
- * Unit tests for the coverage-map size gate. (MINCRM-703)
+ * Unit tests for the coverage-map size gate.
  *
  * WHY THIS MATTERS
  * ----------------

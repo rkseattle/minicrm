@@ -1,7 +1,6 @@
 /**
  * AI session controller — request/response shaping for /api/v1/ai/sessions/*.
  * No business logic or database access here — delegates entirely to aiSessionService.
- * (MINCRM-420, MINCRM-421)
  */
 
 import type { Request, Response } from 'express';

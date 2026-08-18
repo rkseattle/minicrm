@@ -39,7 +39,7 @@ import { COVERAGE_MAP_PATH, COVERAGE_MAP_FORMAT } from './coverageMapPath.js';
 const LOAD_BATCH_SIZE = 5000;
 
 /**
- * Exported for direct unit testing (MINCRM-696). The `=`-preserving split below
+ * Exported for direct unit testing. The `=`-preserving split below
  * is a correctness property, not a style choice, and it was previously unpinned
  * in every copy of this idiom in the repo.
  */
@@ -50,7 +50,7 @@ export function parseArgs(argv: readonly string[]): { sha: string } {
   // `main`, and a ref may contain '=' (`git check-ref-format
   // 'refs/heads/foo=bar'` exits 0). Truncating at the first '=' would key
   // coverage_test_links to a DIFFERENT commit, silently narrowing the selection
-  // that mapping feeds. (MINCRM-696)
+  // that mapping feeds.
   const sha = shaArg?.split('=').slice(1).join('=');
   if (!sha) {
     throw new Error('Usage: --sha=<commit-sha>');
@@ -66,7 +66,7 @@ export function parseArgs(argv: readonly string[]): { sha: string } {
  * corrupt committed artifact is a real defect somebody must fix, while a local
  * database being down is a routine environment problem. Without a distinct
  * code the only option is to swallow both, which is the conflation this script
- * exists to remove. (MINCRM-703)
+ * exists to remove.
  */
 export const EXIT_MAP_UNREADABLE = 2;
 

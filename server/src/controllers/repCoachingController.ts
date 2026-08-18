@@ -1,5 +1,5 @@
 /**
- * Rep coaching insights controller — request/response shaping only. (MINCRM-474)
+ * Rep coaching insights controller — request/response shaping only.
  * No business logic here; all cached-read access goes through repCoachingService.
  *
  * Access rules (enforced here, not just at the route middleware level, since

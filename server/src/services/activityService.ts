@@ -51,7 +51,7 @@ export interface ActivityRow {
   owner_name: string;
   created_at: Date;
   updated_at: Date;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
 }
 
@@ -75,7 +75,7 @@ interface ListActivitiesOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
-  /** When provided, the org visibility policy is enforced for this user (MINCRM-538) */
+  /** When provided, the org visibility policy is enforced for this user */
   requestingUser?: { id: string; role: string };
 }
 
@@ -132,7 +132,7 @@ export async function createActivity(
   void dispatchWebhookEvent('activity.created', activity as unknown as Record<string, unknown>);
 
   // Fire-and-forget: analyzeContactSignals swallows all internal errors and logs them.
-  // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
+  // Unhandled rejections are caught by the global handler in server.ts.
   void analyzeContactSignals({
     activityId: activity.id,
     contactId: activity.contact_id,
@@ -140,7 +140,7 @@ export async function createActivity(
     subject: activity.subject,
   });
 
-  // Fire-and-forget: scoreActivitySentiment swallows all internal errors and logs them. (MINCRM-472)
+  // Fire-and-forget: scoreActivitySentiment swallows all internal errors and logs them.
   void scoreActivitySentiment({
     activityId: activity.id,
     notes: activity.notes,
@@ -228,7 +228,7 @@ export async function listActivities(
     conditions.push(`a.updated_at::date <= $${values.length}::date`);
   }
 
-  // Org visibility policy enforcement (MINCRM-538)
+  // Org visibility policy enforcement
   if (options.requestingUser) {
     const visFilter = await buildVisibilityFilter(
       'activity',
@@ -300,7 +300,7 @@ export async function updateActivity(
     return findActivityById(id);
   }
 
-  // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
+  // $1=id, $2...$N=field values, $(N+1)=version
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
   const versionParam = fields.length + 2;
 
@@ -320,7 +320,7 @@ export async function updateActivity(
     );
 
     if (updateResult.rowCount === 0) {
-      // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+      // Distinguish NOT_FOUND from version mismatch
       const check = await client.query<{ id: string }>('SELECT id FROM activities WHERE id = $1', [
         id,
       ]);
@@ -367,7 +367,7 @@ export async function updateActivity(
     }
 
     // Re-score only when the note text actually changed — avoids re-scoring on every
-    // unrelated field edit (e.g. status/due_date changes). (MINCRM-472)
+    // unrelated field edit (e.g. status/due_date changes).
     if (activity && fields.includes('notes') && before && before.notes !== activity.notes) {
       void scoreActivitySentiment({
         activityId: activity.id,

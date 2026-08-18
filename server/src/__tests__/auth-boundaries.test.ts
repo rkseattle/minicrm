@@ -1,14 +1,14 @@
 /**
- * Auth boundary tests (MINCRM-80, MINCRM-81, MINCRM-88).
+ * Auth boundary tests.
  *
- * MINCRM-80 — Role boundary enforcement:
+ * Role boundary enforcement:
  *   Verifies that reps receive 403 FORBIDDEN on all admin-only endpoints.
  *
- * MINCRM-81 — Horizontal privilege enforcement (contacts + accounts):
+ * Horizontal privilege enforcement (contacts + accounts):
  *   Verifies that Rep A cannot modify or delete records owned by Rep B.
- *   Deals and activities are covered here as well (originally from MINCRM-88).
+ *   Deals and activities are covered here as well (originally from that change).
  *
- * MINCRM-88 — Horizontal privilege enforcement (deals + activities):
+ * Horizontal privilege enforcement (deals + activities):
  *   Verifies that PATCH and DELETE endpoints for deals and activities enforce
  *   record ownership:
  *     - A rep cannot modify or delete another rep's records (→ 403 FORBIDDEN)
@@ -132,7 +132,7 @@ afterAll(async () => {
 
 // ── Deals ─────────────────────────────────────────────────────────────────────
 
-describe('MINCRM-88 — deal ownership enforcement', () => {
+describe('deal ownership enforcement', () => {
   it("returns 403 FORBIDDEN when rep B patches rep A's deal", async () => {
     const deal = await createDeal({
       name: 'Rep A Deal',
@@ -149,7 +149,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it("returns 403 FORBIDDEN when rep B deletes rep A's deal (MINCRM-542: ownership check)", async () => {
+  it("returns 403 FORBIDDEN when rep B deletes rep A's deal", async () => {
     const deal = await createDeal({
       name: 'Rep A Deal To Delete',
       stage: 'Prospecting',
@@ -193,7 +193,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
 
 // ── Activities ────────────────────────────────────────────────────────────────
 
-describe('MINCRM-88 — activity ownership enforcement', () => {
+describe('activity ownership enforcement', () => {
   it("returns 403 FORBIDDEN when rep B patches rep A's activity", async () => {
     const activity = await createActivity({
       type: 'Task',
@@ -211,7 +211,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it("returns 403 FORBIDDEN when rep B deletes rep A's activity (MINCRM-542: ownership check)", async () => {
+  it("returns 403 FORBIDDEN when rep B deletes rep A's activity", async () => {
     const activity = await createActivity({
       type: 'Task',
       subject: 'Rep A Task To Delete',
@@ -260,9 +260,9 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
   });
 });
 
-// ── MINCRM-80: Role boundary enforcement ─────────────────────────────────────
+// ── Role boundary enforcement ─────────────────────────────────────
 
-describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
+describe('rep cannot access admin-only endpoints', () => {
   it('returns 403 FORBIDDEN when rep POSTs to automation rules', async () => {
     const res = await request(app)
       .post('/api/v1/automation/rules')
@@ -319,7 +319,7 @@ describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
     expect(res.status).toBe(200);
   });
 
-  it('returns 403 AUTH_FORBIDDEN when rep POSTs to /api/v1/pipelines (MINCRM-397)', async () => {
+  it('returns 403 AUTH_FORBIDDEN when rep POSTs to /api/v1/pipelines', async () => {
     const res = await request(app)
       .post('/api/v1/pipelines')
       .set('Cookie', repBCookie)
@@ -329,7 +329,7 @@ describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
     expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('returns 403 AUTH_FORBIDDEN when rep PATCHes a pipeline (MINCRM-397)', async () => {
+  it('returns 403 AUTH_FORBIDDEN when rep PATCHes a pipeline', async () => {
     // Use a known-valid UUID pattern — 404 would mean the route is accessible
     const res = await request(app)
       .patch('/api/v1/pipelines/00000000-0000-0000-0000-000000000000')
@@ -340,7 +340,7 @@ describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
     expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('returns 403 AUTH_FORBIDDEN when rep DELETEs a pipeline (MINCRM-397)', async () => {
+  it('returns 403 AUTH_FORBIDDEN when rep DELETEs a pipeline', async () => {
     const res = await request(app)
       .delete('/api/v1/pipelines/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repBCookie);
@@ -350,9 +350,9 @@ describe('MINCRM-80 — rep cannot access admin-only endpoints', () => {
   });
 });
 
-// ── MINCRM-81: Horizontal privilege enforcement (contacts + accounts) ──────────
+// ── Horizontal privilege enforcement (contacts + accounts) ──────────
 
-describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
+describe("rep cannot modify another rep's contact", () => {
   it("returns 403 FORBIDDEN when rep B patches rep A's contact", async () => {
     const contact = await createContact({
       first_name: 'Rep',
@@ -370,7 +370,7 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it("returns 403 FORBIDDEN when rep B deletes rep A's contact (MINCRM-542: ownership check)", async () => {
+  it("returns 403 FORBIDDEN when rep B deletes rep A's contact", async () => {
     const contact = await createContact({
       first_name: 'Rep',
       last_name: 'A Contact Delete',
@@ -419,7 +419,7 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
   });
 });
 
-describe("MINCRM-81 — rep cannot modify another rep's account", () => {
+describe("rep cannot modify another rep's account", () => {
   it("returns 403 FORBIDDEN when rep B patches rep A's account", async () => {
     const account = await createAccount({
       name: 'Rep A Account Patch',
@@ -435,7 +435,7 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it("returns 403 FORBIDDEN when rep B deletes rep A's account (MINCRM-542: ownership check)", async () => {
+  it("returns 403 FORBIDDEN when rep B deletes rep A's account", async () => {
     const account = await createAccount({
       name: 'Rep A Account Delete',
       owner_id: repAId,
@@ -478,9 +478,9 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
   });
 });
 
-// ── MINCRM-188: Bulk endpoint auth boundaries ─────────────────────────────────
+// ── Bulk endpoint auth boundaries ─────────────────────────────────
 
-describe('MINCRM-188 — bulk endpoints require authentication', () => {
+describe('bulk endpoints require authentication', () => {
   it('returns 401 when unauthenticated POST to /api/contacts/bulk', async () => {
     const res = await request(app)
       .post('/api/v1/contacts/bulk')
@@ -501,7 +501,7 @@ describe('MINCRM-188 — bulk endpoints require authentication', () => {
   });
 });
 
-describe('MINCRM-188 — bulk contacts ownership enforcement', () => {
+describe('bulk contacts ownership enforcement', () => {
   it('returns 403 when rep B tries to bulk-delete rep A contacts', async () => {
     const contact = await createContact({
       first_name: 'Rep',
@@ -556,7 +556,7 @@ describe('MINCRM-188 — bulk contacts ownership enforcement', () => {
 
 // ── Ownership from req.user, not request body ─────────────────────────────────
 
-describe('MINCRM-88 — ownership check uses req.user, not request body', () => {
+describe('ownership check uses req.user, not request body', () => {
   it('ignores owner_id in PATCH body for deals — rep B cannot escalate by sending rep A ID', async () => {
     const deal = await createDeal({
       name: 'Ownership Body Test Deal',
@@ -593,9 +593,9 @@ describe('MINCRM-88 — ownership check uses req.user, not request body', () => 
   });
 });
 
-// ── MINCRM-533: New role boundary enforcement ─────────────────────────────────
+// ── New role boundary enforcement ─────────────────────────────────
 
-describe('MINCRM-533 — manager and viewer are blocked from admin-only endpoints', () => {
+describe('manager and viewer are blocked from admin-only endpoints', () => {
   let managerCookie: string;
   let viewerCookie: string;
 
@@ -674,7 +674,7 @@ describe('MINCRM-533 — manager and viewer are blocked from admin-only endpoint
   });
 });
 
-describe('MINCRM-533 — service_account is blocked from admin-only endpoints', () => {
+describe('service_account is blocked from admin-only endpoints', () => {
   let serviceAccountCookie: string;
 
   beforeAll(async () => {

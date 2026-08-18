@@ -1,9 +1,9 @@
 /**
- * Coverage/TIA pluggable scoring interface. (MINCRM-627)
+ * Coverage/TIA pluggable scoring interface.
  *
- * Defines the swappable-scorer extension point MINCRM-627's AC calls for:
+ * Defines the swappable-scorer extension point the AC calls for:
  * "given (change, candidate tests, features) → ranked/capped list". A
- * future ML ranker (pr-tia-10, MINCRM-638-640) can be dropped in without
+ * future ML ranker (pr-tia-10) can be dropped in without
  * reworking testSelectionService.ts or weakening safetyNetPolicy.ts's
  * guarantees.
  *
@@ -55,7 +55,7 @@ export interface TestScorer {
 
 /**
  * The default scorer: confidence-first, alphabetical-tie-break ranking —
- * exactly testSelectionService's own pre-MINCRM-627 `prioritize` logic,
+ * exactly testSelectionService's own earlier `prioritize` logic,
  * now expressed behind the TestScorer interface instead of being a private
  * hardcoded step.
  */

@@ -1,6 +1,6 @@
 /**
  * Champion/blocker detection service — background AI classification of
- * contacts based on champion/blocker language in activity notes. (MINCRM-466)
+ * contacts based on champion/blocker language in activity notes.
  *
  * analyzeContactSignals() is the event-driven entry point, fired
  * fire-and-forget after each new activity is saved (activityService.createActivity),
@@ -145,7 +145,7 @@ export async function analyzeContactSignals(params: AnalyzeContactSignalsParams)
       // This is an event-driven background analysis, not a per-user request — ai_token_usage/
       // ai_token_usage_daily both FK user_id to a real users row (ON DELETE CASCADE, NOT NULL),
       // so there is no valid per-user attribution here. Logged for cost observability instead,
-      // matching winLossAnalysisService's background-job token accounting. (MINCRM-464, MINCRM-466)
+      // matching winLossAnalysisService's background-job token accounting.
       logger.info(
         { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens },
         'championBlocker: AI token usage (not attributed to a user — background job)',

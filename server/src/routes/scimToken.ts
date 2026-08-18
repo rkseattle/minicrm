@@ -1,5 +1,5 @@
 /**
- * SCIM token management routes. Mounted at /api/v1 in app.ts. (MINCRM-541)
+ * SCIM token management routes. Mounted at /api/v1 in app.ts.
  * Both routes require authenticate + requireCapability(Capability.IntegrationsManage).
  */
 
@@ -25,7 +25,7 @@ router.use(authenticate);
  *   get:
  *     tags: [SCIM]
  *     operationId: getScimTokenMeta
- *     summary: Get metadata about the active SCIM bearer token (MINCRM-541)
+ *     summary: Get metadata about the active SCIM bearer token
  *     description: >
  *       Returns metadata (id, createdAt, lastUsedAt) about the currently active
  *       SCIM bearer token, or null if no token has been issued. The token hash
@@ -72,7 +72,7 @@ router.get(
  *   post:
  *     tags: [SCIM]
  *     operationId: generateScimToken
- *     summary: Generate a new SCIM bearer token (MINCRM-541)
+ *     summary: Generate a new SCIM bearer token
  *     description: >
  *       Generates a new SCIM bearer token, atomically revoking any existing one.
  *       The raw token is returned exactly once in this response — it cannot be
@@ -115,7 +115,7 @@ router.post(
  *   delete:
  *     tags: [SCIM]
  *     operationId: revokeScimToken
- *     summary: Revoke the active SCIM bearer token (MINCRM-541)
+ *     summary: Revoke the active SCIM bearer token
  *     description: >
  *       Permanently revokes the currently active SCIM bearer token. Inbound SCIM
  *       requests using the revoked token will immediately receive 401. Returns 404

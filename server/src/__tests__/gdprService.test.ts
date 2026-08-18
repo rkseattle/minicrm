@@ -1,5 +1,5 @@
 /**
- * Integration tests for gdprService. (MINCRM-364)
+ * Integration tests for gdprService.
  *
  * Runs against the real PostgreSQL minicrm_test database.
  * Covers:

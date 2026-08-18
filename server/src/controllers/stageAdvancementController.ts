@@ -1,5 +1,5 @@
 /**
- * Stage advancement controller — request/response shaping only. (MINCRM-443)
+ * Stage advancement controller — request/response shaping only.
  * No business logic here; all AI orchestration and DB access goes through stageAdvancementService.
  */
 

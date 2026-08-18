@@ -1,5 +1,5 @@
 /**
- * SCIM 2.0 routes — mounted at /scim/v2 in app.ts. (MINCRM-541)
+ * SCIM 2.0 routes — mounted at /scim/v2 in app.ts.
  *
  * All resource routes use authenticateScim (Bearer token) — NOT the JWT cookie
  * auth middleware. Discovery endpoints (ServiceProviderConfig, ResourceTypes,

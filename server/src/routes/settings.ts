@@ -191,7 +191,7 @@ router.get('/nav-layout', asyncHandler(getNavLayoutHandler));
  *     operationId: setNavLayout
  *     summary: Set the system navigation layout (admin only)
  *     description: >
- *       Updates the system-wide navigation layout. Requires admin role. (MINCRM-133)
+ *       Updates the system-wide navigation layout. Requires admin role.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -234,7 +234,7 @@ router.patch('/nav-layout', authenticate, requireRole('admin'), asyncHandler(set
  *   get:
  *     tags: [Settings]
  *     operationId: getEmailNotificationsEnabled
- *     summary: Get the system-wide email notifications toggle (MINCRM-163)
+ *     summary: Get the system-wide email notifications toggle
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -255,7 +255,7 @@ router.get('/email-notifications', authenticate, asyncHandler(getEmailNotificati
  *   patch:
  *     tags: [Settings]
  *     operationId: setEmailNotificationsEnabled
- *     summary: Set the system-wide email notifications toggle (admin only, MINCRM-163)
+ *     summary: Set the system-wide email notifications toggle (admin only)
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -283,7 +283,7 @@ router.patch(
   asyncHandler(setEmailNotificationsEnabledHandler),
 );
 
-// ── Tag creation restriction (MINCRM-263) ────────────────────────────────────
+// ── Tag creation restriction ────────────────────────────────────
 
 /**
  * @openapi
@@ -291,7 +291,7 @@ router.patch(
  *   get:
  *     tags: [Settings]
  *     operationId: getTagsRestrictCreation
- *     summary: Get whether tag creation is restricted to the Tag Management page (MINCRM-263)
+ *     summary: Get whether tag creation is restricted to the Tag Management page
  *     description: >
  *       Returns whether inline tag creation is restricted to admins only.
  *       Requires authentication — rep callers need this to know whether to show
@@ -318,7 +318,7 @@ router.get('/tags-restrict-creation', authenticate, asyncHandler(getTagsRestrict
  *   patch:
  *     tags: [Settings]
  *     operationId: setTagsRestrictCreation
- *     summary: Set whether tag creation is restricted to the Tag Management page (admin only, MINCRM-263)
+ *     summary: Set whether tag creation is restricted to the Tag Management page (admin only)
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -347,7 +347,7 @@ router.patch(
   asyncHandler(setTagsRestrictCreationHandler),
 );
 
-// ── Storage configuration (MINCRM-169) ───────────────────────────────────────
+// ── Storage configuration ───────────────────────────────────────
 
 /**
  * @openapi
@@ -355,7 +355,7 @@ router.patch(
  *   get:
  *     tags: [Settings]
  *     operationId: getStorageStatus
- *     summary: Get whether storage is configured (authenticated, MINCRM-167)
+ *     summary: Get whether storage is configured (authenticated)
  *     description: >
  *       Returns only { configured: boolean }. Available to all authenticated users
  *       (not admin-only) so the attachments UI can show or hide the upload zone.
@@ -381,7 +381,7 @@ router.get('/storage/status', authenticate, asyncHandler(getStorageStatusHandler
  *   get:
  *     tags: [Settings]
  *     operationId: getStorageConfig
- *     summary: Get the storage backend configuration (admin only, MINCRM-169)
+ *     summary: Get the storage backend configuration (admin only)
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -400,7 +400,7 @@ router.get('/storage', authenticate, requireRole('admin'), asyncHandler(getStora
  *   put:
  *     tags: [Settings]
  *     operationId: setStorageConfig
- *     summary: Save storage backend configuration (admin only, MINCRM-169)
+ *     summary: Save storage backend configuration (admin only)
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -432,7 +432,7 @@ router.put('/storage', authenticate, requireRole('admin'), asyncHandler(setStora
  *   delete:
  *     tags: [Settings]
  *     operationId: clearStorageConfig
- *     summary: Clear storage backend configuration (admin only, MINCRM-169)
+ *     summary: Clear storage backend configuration (admin only)
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -456,7 +456,7 @@ router.delete(
  *   post:
  *     tags: [Settings]
  *     operationId: testStorageConfig
- *     summary: Test candidate storage credentials (admin only, MINCRM-169)
+ *     summary: Test candidate storage credentials (admin only)
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -493,7 +493,7 @@ router.post(
   asyncHandler(testStorageConfigHandler),
 );
 
-// ── Default currency (MINCRM-189) ─────────────────────────────────────────────
+// ── Default currency ─────────────────────────────────────────────
 
 /**
  * @openapi
@@ -501,7 +501,7 @@ router.post(
  *   get:
  *     tags: [Settings]
  *     operationId: getDefaultCurrency
- *     summary: Get the system default currency (MINCRM-189)
+ *     summary: Get the system default currency
  *     description: >
  *       Returns the current system-wide default currency. Public endpoint —
  *       needed by the deal create form before auth resolves.
@@ -524,7 +524,7 @@ router.get('/default-currency', asyncHandler(getDefaultCurrencyHandler));
  *   patch:
  *     tags: [Settings]
  *     operationId: setDefaultCurrency
- *     summary: Set the system default currency (admin only, MINCRM-189)
+ *     summary: Set the system default currency (admin only)
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -553,7 +553,7 @@ router.patch(
   asyncHandler(setDefaultCurrencyHandler),
 );
 
-// ── Default timezone (MINCRM-470) ─────────────────────────────────────────────
+// ── Default timezone ─────────────────────────────────────────────
 
 /**
  * @openapi
@@ -561,7 +561,7 @@ router.patch(
  *   get:
  *     tags: [Settings]
  *     operationId: getDefaultTimezone
- *     summary: Get the system default timezone (MINCRM-470)
+ *     summary: Get the system default timezone
  *     description: >
  *       Returns the current system-wide default display timezone (IANA identifier),
  *       used to render AI follow-up timing suggestions in local terms. Public endpoint.
@@ -584,7 +584,7 @@ router.get('/default-timezone', asyncHandler(getDefaultTimezoneHandler));
  *   patch:
  *     tags: [Settings]
  *     operationId: setDefaultTimezone
- *     summary: Set the system default timezone (admin only, MINCRM-470)
+ *     summary: Set the system default timezone (admin only)
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -613,7 +613,7 @@ router.patch(
   asyncHandler(setDefaultTimezoneHandler),
 );
 
-// ── Pipeline stage configuration (MINCRM-180) ────────────────────────────────
+// ── Pipeline stage configuration ────────────────────────────────
 
 /**
  * @openapi
@@ -621,7 +621,7 @@ router.patch(
  *   get:
  *     tags: [Settings]
  *     operationId: listPipelineStages
- *     summary: List all pipeline stages in order (MINCRM-180)
+ *     summary: List all pipeline stages in order
  *     description: >
  *       Returns all pipeline stages ordered by sort_order. Public endpoint —
  *       the client fetches this at app startup to populate the stage selector.
@@ -648,7 +648,7 @@ router.get('/pipeline-stages', asyncHandler(listPipelineStagesHandler));
  *   post:
  *     tags: [Settings]
  *     operationId: createPipelineStage
- *     summary: Create a new pipeline stage (admin only, MINCRM-180)
+ *     summary: Create a new pipeline stage (admin only)
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -687,7 +687,7 @@ router.post(
  *   put:
  *     tags: [Settings]
  *     operationId: reorderPipelineStages
- *     summary: Atomically reorder all pipeline stages (admin only, MINCRM-381)
+ *     summary: Atomically reorder all pipeline stages (admin only)
  *     description: >
  *       Accepts the full ordered array of stage UUIDs and assigns sort_order 1..N
  *       in a single transaction. Replaces the two-PATCH sequential swap that caused
@@ -739,7 +739,7 @@ router.put(
  *   patch:
  *     tags: [Settings]
  *     operationId: updatePipelineStage
- *     summary: Update a pipeline stage (admin only, MINCRM-180)
+ *     summary: Update a pipeline stage (admin only)
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -784,7 +784,7 @@ router.patch(
  *   delete:
  *     tags: [Settings]
  *     operationId: deletePipelineStage
- *     summary: Delete a pipeline stage (admin only, MINCRM-180)
+ *     summary: Delete a pipeline stage (admin only)
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -811,7 +811,7 @@ router.delete(
   asyncHandler(deletePipelineStageHandler),
 );
 
-// ── Exchange rates (MINCRM-251) ───────────────────────────────────────────────
+// ── Exchange rates ───────────────────────────────────────────────
 
 /**
  * @openapi
@@ -819,7 +819,7 @@ router.delete(
  *   get:
  *     tags: [Settings]
  *     operationId: getCurrencies
- *     summary: Get all exchange rate configuration (MINCRM-251)
+ *     summary: Get all exchange rate configuration
  *     description: >
  *       Returns the home currency and all configured exchange rates.
  *       Requires authentication.
@@ -856,7 +856,7 @@ router.get('/currencies', authenticate, asyncHandler(getCurrenciesHandler));
  *   put:
  *     tags: [Settings]
  *     operationId: updateCurrencies
- *     summary: Replace exchange rate configuration (admin only, MINCRM-251)
+ *     summary: Replace exchange rate configuration (admin only)
  *     description: >
  *       Atomically replaces the non-home currency set and sets the home currency.
  *       The home currency row is always stored with rate_to_home = 1.000000.
@@ -900,7 +900,7 @@ router.put(
   asyncHandler(updateCurrenciesHandler),
 );
 
-// ── SMTP configuration (MINCRM-254) ──────────────────────────────────────────
+// ── SMTP configuration ──────────────────────────────────────────
 
 /**
  * @openapi
@@ -908,7 +908,7 @@ router.put(
  *   get:
  *     tags: [Settings]
  *     operationId: getSmtpConfig
- *     summary: Get SMTP configuration (MINCRM-254)
+ *     summary: Get SMTP configuration
  *     description: >
  *       Returns current SMTP configuration. smtp_pass is never returned;
  *       smtp_pass_set indicates whether a password is stored. Requires authentication.
@@ -938,7 +938,7 @@ router.get('/smtp', authenticate, asyncHandler(getSmtpConfigHandler));
  *   put:
  *     tags: [Settings]
  *     operationId: putSmtpConfig
- *     summary: Save SMTP configuration (admin only, MINCRM-254)
+ *     summary: Save SMTP configuration (admin only)
  *     description: >
  *       Updates SMTP configuration. Omitting smtp_pass preserves the stored password.
  *       Admin only.
@@ -975,7 +975,7 @@ router.put('/smtp', authenticate, requireRole('admin'), asyncHandler(putSmtpConf
  *   post:
  *     tags: [Settings]
  *     operationId: testSmtp
- *     summary: Send a test email using the current SMTP configuration (admin only, MINCRM-254)
+ *     summary: Send a test email using the current SMTP configuration (admin only)
  *     description: >
  *       Sends a test email to the specified address. Returns { success: true } or
  *       { success: false, error: string } with the SMTP error message.
@@ -1010,7 +1010,7 @@ router.put('/smtp', authenticate, requireRole('admin'), asyncHandler(putSmtpConf
  */
 router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testSmtpHandler));
 
-// ── Onboarding (MINCRM-256) ───────────────────────────────────────────────────
+// ── Onboarding ───────────────────────────────────────────────────
 
 /**
  * @openapi
@@ -1018,12 +1018,12 @@ router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testS
  *   get:
  *     tags: [Settings]
  *     operationId: getOnboardingStatus
- *     summary: Get setup checklist status (MINCRM-379, MINCRM-410)
+ *     summary: Get setup checklist status
  *     description: >
  *       Returns is_first_run, onboarding_completed, and per-task completion for
  *       the setup checklist widget. Task completion is determined server-side.
  *       Admin users receive 5 org-wide tasks; rep users receive 4 per-user tasks.
- *       Visible to both admin and rep users (MINCRM-410).
+ *       Visible to both admin and rep users.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -1046,7 +1046,7 @@ router.post('/smtp/test', authenticate, requireRole('admin'), asyncHandler(testS
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-// Visible to both admin and rep users (MINCRM-410)
+// Visible to both admin and rep users
 router.get('/onboarding', authenticate, asyncHandler(getOnboardingStatusHandler));
 
 /**
@@ -1055,10 +1055,10 @@ router.get('/onboarding', authenticate, asyncHandler(getOnboardingStatusHandler)
  *   put:
  *     tags: [Settings]
  *     operationId: setOnboardingCompleted
- *     summary: Mark onboarding as completed (MINCRM-256, MINCRM-410)
+ *     summary: Mark onboarding as completed
  *     description: >
  *       Sets the onboarding_completed flag on the calling user's own row.
- *       Available to all authenticated users — writes to the caller's own user row (MINCRM-410).
+ *       Available to all authenticated users — writes to the caller's own user row.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -1084,7 +1084,7 @@ router.get('/onboarding', authenticate, asyncHandler(getOnboardingStatusHandler)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
-// Available to all authenticated users — writes to the caller's own user row (MINCRM-410)
+// Available to all authenticated users — writes to the caller's own user row
 router.put('/onboarding', authenticate, asyncHandler(setOnboardingCompletedHandler));
 
 /**
@@ -1093,7 +1093,7 @@ router.put('/onboarding', authenticate, asyncHandler(setOnboardingCompletedHandl
  *   delete:
  *     tags: [Settings]
  *     operationId: deletePipelineStagesReviewed
- *     summary: Clear the pipeline_stages_reviewed flag (admin only, MINCRM-410)
+ *     summary: Clear the pipeline_stages_reviewed flag (admin only)
  *     description: >
  *       Removes the pipeline_stages_reviewed flag from system_settings so the
  *       onboarding checklist task reappears. Primarily used by E2E test setup
@@ -1115,7 +1115,7 @@ router.delete(
   asyncHandler(deletePipelineStagesReviewedHandler),
 );
 
-// ── Branding (MINCRM-356) ─────────────────────────────────────────────────────
+// ── Branding ─────────────────────────────────────────────────────
 
 /**
  * @openapi
@@ -1123,7 +1123,7 @@ router.delete(
  *   get:
  *     tags: [Settings]
  *     operationId: getBranding
- *     summary: Get the custom branding configuration (MINCRM-356)
+ *     summary: Get the custom branding configuration
  *     description: >
  *       Returns the current branding config, or { branding: null } when no
  *       custom branding is configured. Public endpoint — callers need this
@@ -1149,7 +1149,7 @@ router.get('/branding', asyncHandler(getBrandingHandler));
  *   put:
  *     tags: [Settings]
  *     operationId: putBranding
- *     summary: Set or update the custom branding configuration (admin only, MINCRM-356)
+ *     summary: Set or update the custom branding configuration (admin only)
  *     description: >
  *       Merges the supplied fields onto the existing branding config.
  *       Derives primaryColorText server-side when primaryColor is provided.
@@ -1187,7 +1187,7 @@ router.put('/branding', authenticate, requireRole('admin'), asyncHandler(putBran
  *   delete:
  *     tags: [Settings]
  *     operationId: deleteBranding
- *     summary: Reset branding to defaults (admin only, MINCRM-356)
+ *     summary: Reset branding to defaults (admin only)
  *     description: >
  *       Deletes the branding configuration, restoring default MiniCRM appearance.
  *       Admin only.
@@ -1209,7 +1209,7 @@ router.delete('/branding', authenticate, requireRole('admin'), asyncHandler(dele
  *   get:
  *     tags: [Settings]
  *     operationId: getMfaRequired
- *     summary: Get org-wide MFA enforcement status (admin only, MINCRM-392)
+ *     summary: Get org-wide MFA enforcement status (admin only)
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -1240,7 +1240,7 @@ router.get(
  *   patch:
  *     tags: [Settings]
  *     operationId: setMfaRequired
- *     summary: Enable or disable org-wide MFA enforcement (admin only, MINCRM-392)
+ *     summary: Enable or disable org-wide MFA enforcement (admin only)
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -1270,7 +1270,7 @@ router.patch(
   asyncHandler(setMfaRequiredHandler),
 );
 
-// ── SSO configuration (MINCRM-399) ────────────────────────────────────────────
+// ── SSO configuration ────────────────────────────────────────────
 
 /**
  * @openapi
@@ -1299,7 +1299,7 @@ router.patch(
  *                   nullable: true
  *                   enum: [saml, oidc]
  */
-// Public — the login page queries this before the user has a session cookie. (MINCRM-399)
+// Public — the login page queries this before the user has a session cookie.
 router.get('/sso/status', asyncHandler(getSsoStatusHandler));
 
 /**
@@ -1406,7 +1406,7 @@ router.delete(
  *     summary: Get per-object data visibility policies
  *     description: >
  *       Returns the current visibility policy for each object type (contact, deal, activity).
- *       Accessible to admin and manager roles. (MINCRM-538)
+ *       Accessible to admin and manager roles.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -1434,7 +1434,7 @@ router.get(
  *     description: >
  *       Updates one or more visibility policies. Only provided object types are changed;
  *       omitted types retain their current policy. Changes take effect immediately.
- *       Admin only. (MINCRM-538)
+ *       Admin only.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -1470,7 +1470,7 @@ router.put(
   asyncHandler(putVisibilityConfigHandler),
 );
 
-// ── Relationship health scoring config (MINCRM-467) ───────────────────────────
+// ── Relationship health scoring config ───────────────────────────
 
 /**
  * @openapi

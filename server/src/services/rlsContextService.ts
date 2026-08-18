@@ -1,7 +1,6 @@
 /**
  * RLS context service — helpers for injecting the `app.current_user_id` PostgreSQL
  * session variable required by the Row-Level Security policies on core CRM tables.
- * (MINCRM-518)
  *
  * ## Why this exists
  *

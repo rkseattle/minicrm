@@ -1,6 +1,6 @@
 /**
  * Follow-up task suggestion service — on-demand AI suggestions of 1-3
- * follow-up tasks after an activity is logged. (MINCRM-438)
+ * follow-up tasks after an activity is logged.
  *
  * Follows the same "gather context, PII-filter, forced-tool Claude call,
  * record token usage" shape as dealHealthService.generateDealHealthCheck.
@@ -186,7 +186,7 @@ export async function generateTaskSuggestions(
   }
   const anthropicClient = new Anthropic(clientOptions);
 
-  // PII-filter the gathered facts before they leave the server. (MINCRM-445)
+  // PII-filter the gathered facts before they leave the server.
   // 'activity' is not a valid ai_field_exclusions entity_type (contact/account/deal
   // only) — map to 'deal' like objectionMatchingService does for the same reason:
   // this payload is activity-adjacent context, not a deal record itself, but 'deal'

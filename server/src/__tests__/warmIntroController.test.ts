@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for warm introduction path endpoints. (MINCRM-468)
+ * HTTP contract tests for warm introduction path endpoints.
  *
  * Covers:
  *  - GET /contacts/:id/warm-paths: authenticated, flag-gated

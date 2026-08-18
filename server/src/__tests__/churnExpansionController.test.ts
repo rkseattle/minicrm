@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for churn/expansion endpoints. (MINCRM-469)
+ * HTTP contract tests for churn/expansion endpoints.
  */
 
 import 'dotenv/config';

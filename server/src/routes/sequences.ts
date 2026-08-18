@@ -1,5 +1,5 @@
 /**
- * Sequence routes — sales sequences and enrollment endpoints (MINCRM-403).
+ * Sequence routes — sales sequences and enrollment endpoints.
  * CRUD on sequences and steps requires admin role.
  * Enrolling/unenrolling and viewing enrollments is available to all authenticated users.
  */

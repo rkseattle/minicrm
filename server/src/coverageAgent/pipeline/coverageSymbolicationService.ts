@@ -1,10 +1,10 @@
 /**
- * Coverage/TIA symbolication service. (MINCRM-615)
+ * Coverage/TIA symbolication service.
  *
  * Resolves a raw coverage dump payload (see CoverageDump.format) back to
  * real source: file path, qualified function/method signature, and
- * branch/block identifiers — the "code side of the map" MINCRM-615
- * requires before MINCRM-614's ingestion can persist meaningful
+ * branch/block identifiers — the "code side of the map"
+ * requires before that change's ingestion can persist meaningful
  * coverage_units rows.
  *
  * Both supported raw formats converge on istanbul-lib-coverage's
@@ -13,7 +13,7 @@
  *    reads the actual source file at the tagged commit SHA off disk (its
  *    own conversion algorithm needs the file's text, not just offsets).
  *  - istanbul (frontend): already in this shape natively — vite-plugin-istanbul
- *    (MINCRM-605) instruments against original TS/JSX via Babel + sourcemaps,
+ * instruments against original TS/JSX via Babel + sourcemaps,
  *    so window.__coverage__ dumps are pre-resolved to original source
  *    positions with no separate source-map resolution step needed here.
  *    (The `source-map` dependency is retained for a future dump format that
@@ -25,7 +25,7 @@
  * accidentally resolved against a different revision's source than the one
  * that actually ran.
  *
- * Unit keys (MINCRM-619): each function's qualified key is derived via
+ * Unit keys: each function's qualified key is derived via
  * structuralKeyService.deriveStructuralUnitKey, keyed on the function's own
  * normalized body text rather than its declaration line number, so in-line
  * edits elsewhere in the file don't change a function's identity. Deriving
@@ -191,7 +191,7 @@ async function symbolicateIstanbulCoverageMap(
     // below before unitsFromFileCoverageMap's own guard for the same
     // condition ever runs — this is a separate, earlier access to the same
     // untrusted value, not a duplicate of that guard (found via a real
-    // local coverage-map generation run, MINCRM-636/637; see
+    // local coverage-map generation run,; see
     // unitsFromFileCoverageMap's own docblock for the full context).
     if (fileCoverage == null || typeof fileCoverage !== 'object') {
       logger.warn(
@@ -209,7 +209,7 @@ async function symbolicateIstanbulCoverageMap(
     // diff` output — every findTestsForUnitAcrossBranches lookup would
     // silently return zero matches forever, degrading every PR to a
     // full-suite fallback (found via a real local coverage-map generation
-    // run, MINCRM-636/637). Relativized against sourceRoot here, exactly
+    // run). Relativized against sourceRoot here, exactly
     // like symbolicateV8ScriptCoverage's own relativePath, so both agents'
     // units share one consistent, portable filePath identity. Falls back to
     // the raw path when it isn't actually under sourceRoot (a dump built on
@@ -220,7 +220,7 @@ async function symbolicateIstanbulCoverageMap(
     // data.path itself must ALSO be realpath-resolved before comparison,
     // not just sourceRoot — otherwise a symlinked source root (macOS
     // os.tmpdir()'s /var -> /private/var, the exact case a real test caught,
-    // MINCRM-636/637) compares an unresolved path against a resolved root
+    //) compares an unresolved path against a resolved root
     // and spuriously fails containment for every file under it. Falls back
     // to the raw (unresolved) data.path when realpath fails — a synthetic
     // path with no real file backing it on this machine at all (test
@@ -240,7 +240,7 @@ async function symbolicateIstanbulCoverageMap(
     // changeUnitResolver.ts's own lookups — flagged as unresolved rather than
     // silently stored as if resolution had succeeded, matching
     // symbolicateV8ScriptCoverage's convention for its own unresolvable case
-    // (MINCRM-615's "unresolvable regions flagged rather than silently
+    // (The unresolvable regions flagged rather than silently
     // dropped" AC). Coverage counts themselves are still real and valid;
     // only cross-machine path-identity resolution failed.
     const unresolvedReason = isContained
@@ -262,19 +262,19 @@ async function symbolicateIstanbulCoverageMap(
 /**
  * Shared conversion from istanbul-lib-coverage's per-file shape into our
  * NormalizedCoverageUnit rows — the point where both the V8 and frontend
- * paths produce an identical output shape for MINCRM-614's ingestion.
+ * paths produce an identical output shape for that work's ingestion.
  *
  * The branch-vs-function fallback is decided PER FUNCTION, not per file: a
  * file can freely mix branching and non-branching functions (e.g. one
  * function with an `if`, another that's a straight-line getter with no
  * entry in branchMap at all). Deciding it per file would silently drop the
  * non-branching function's own hit count entirely whenever at least one
- * other function in the same file has branches — MINCRM-615's
+ * other function in the same file has branches — 's
  * "unresolvable regions flagged rather than silently dropped" AC applies
  * here too: no function's coverage should vanish just because a sibling
  * function happens to branch.
  *
- * sourcePathForKeyDerivation (MINCRM-619) is a best-effort absolute path to
+ * sourcePathForKeyDerivation is a best-effort absolute path to
  * read the file's own source text from, purely to derive each function's
  * structural (name + normalized-body-hash) key. It is independent of
  * overrideFilePath, which remains the identity stored on each unit row —
@@ -282,7 +282,7 @@ async function symbolicateIstanbulCoverageMap(
  * falls back to the legacy name+line key without affecting overrideFilePath
  * or any hit-count/branch data.
  *
- * unresolvedReason (MINCRM-636/637): set by symbolicateIstanbulCoverageMap
+ * unresolvedReason: set by symbolicateIstanbulCoverageMap
  * when overrideFilePath couldn't be relativized under sourceRoot (a dump
  * captured on a different machine). Every unit still gets stored —
  * coverage_units never drops resolved=false rows, matching this module's
@@ -307,7 +307,7 @@ async function symbolicateIstanbulCoverageMap(
  * other unit's real, valid coverage data in the same request. Clamping the
  * one bad unit to 0 and logging it is far preferable to an all-or-nothing
  * failure on unrelated data (found via a real local coverage-map generation
- * run, MINCRM-636/637).
+ * run).
  */
 function sanitizeHitCount(
   rawHitCount: number,
@@ -337,7 +337,7 @@ async function unitsFromFileCoverageMap(
 
     // A malformed/null entry (observed in practice from v8-to-istanbul's
     // own toIstanbul() output on at least one real dump — found via a real
-    // local coverage-map generation run, MINCRM-636/637) would otherwise
+    // local coverage-map generation run) would otherwise
     // crash Object.entries(data.fnMap) below and take down the whole
     // dump's ingestion. Flagged and skipped, not silently dropped, matching
     // this module's existing unresolved-unit convention (see the
@@ -426,7 +426,7 @@ async function readSourceTextForStructuralKey(sourcePath: string): Promise<strin
 
 /**
  * Builds a function's qualified unit key: the structural (name +
- * normalized-body-hash) key from MINCRM-619 when source text and a body
+ * normalized-body-hash) key from that change when source text and a body
  * range are available, falling back to the legacy `name@declLine` key
  * otherwise (source unreadable, or the range didn't extract cleanly — see
  * deriveStructuralUnitKey's own null-return contract).

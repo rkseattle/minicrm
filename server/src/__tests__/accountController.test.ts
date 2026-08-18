@@ -145,7 +145,7 @@ describe('POST /api/accounts', () => {
     expect(res.status).toBe(401);
   });
 
-  // MINCRM-440: duplicate-name detection on create
+  // duplicate-name detection on create
   it('returns 409 with the existing account when the name already exists (case-insensitive)', async () => {
     await createAccount(
       { name: `${FILE_PREFIX}-Acme Corp`, owner_id: repId },
@@ -250,11 +250,11 @@ describe('PATCH /api/accounts/:id — ownership', () => {
 
 // ── DELETE /api/accounts/:id — ownership ─────────────────────────────────────
 
-// Per MINCRM-542 + migration 109: reps have contacts:delete and can delete their
+// Per migration 109: reps have contacts:delete and can delete their
 // own accounts. Ownership check (owner_id = req.user.id OR role = 'admin') in
 // the controller blocks deletion of accounts owned by other users.
 describe('DELETE /api/accounts/:id — ownership', () => {
-  it('allows a rep to delete their own account (MINCRM-542)', async () => {
+  it('allows a rep to delete their own account', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
@@ -264,7 +264,7 @@ describe('DELETE /api/accounts/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it("returns 403 FORBIDDEN when a rep attempts to delete another rep's account (MINCRM-542)", async () => {
+  it("returns 403 FORBIDDEN when a rep attempts to delete another rep's account", async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
@@ -285,7 +285,7 @@ describe('DELETE /api/accounts/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it('returns 404 for a non-existent account when rep has contacts:delete (MINCRM-542)', async () => {
+  it('returns 404 for a non-existent account when rep has contacts:delete', async () => {
     const res = await request(app)
       .delete('/api/v1/accounts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
@@ -393,7 +393,7 @@ describe('GET /api/accounts/:id — visibility', () => {
   });
 });
 
-// ── GET /api/accounts — ?owner=my_team filter (MINCRM-545) ──────────────────
+// ── GET /api/accounts — ?owner=my_team filter ──────────────────
 
 describe('GET /api/accounts — ?owner=my_team filter', () => {
   const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
@@ -482,7 +482,7 @@ describe('GET /api/accounts — ?owner=my_team filter', () => {
   });
 });
 
-// ── GET /api/accounts/export and /api/accounts/export.pdf ─────────────────── (MINCRM-601)
+// ── GET /api/accounts/export and /api/accounts/export.pdf ───────────────────
 
 describe('GET /api/accounts/export', () => {
   it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {

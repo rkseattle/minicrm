@@ -1,5 +1,5 @@
 /**
- * Unit tests for coverageConfig. (MINCRM-604, MINCRM-607)
+ * Unit tests for coverageConfig.
  *
  * Covers env-var precedence for commit SHA resolution, granularity parsing,
  * and the enabled-by-default-off gate.

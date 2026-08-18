@@ -1,5 +1,5 @@
 /**
- * Integration tests for the report controller. (MINCRM-295)
+ * Integration tests for the report controller.
  *
  * Covers: win/loss report (date validation, ownership scoping for reps vs admins),
  * activity volume report (same scoping logic), and stage trend report (days param
@@ -208,7 +208,7 @@ describe('GET /api/reports/activity-volume', () => {
   });
 });
 
-// ── GET /api/reports/activity-volume/export.pdf ──────────────────────────────── (MINCRM-601)
+// ── GET /api/reports/activity-volume/export.pdf ────────────────────────────────
 
 describe('GET /api/reports/activity-volume/export.pdf', () => {
   const VALID_PARAMS = '?start=2025-01-01&end=2025-12-31';

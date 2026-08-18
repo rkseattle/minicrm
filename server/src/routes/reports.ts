@@ -99,7 +99,7 @@ router.get(
  *       Returns activity counts broken down by rep and activity type (Note, Call, Email,
  *       Meeting, Task) for a given date range (matched on activities.created_at).
  *       Admins see all reps and can filter by owner_id; reps always see only their own data.
- *       Implements MINCRM-181.
+ *       Implements.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -160,7 +160,7 @@ router.get(
  *     summary: Export the activity volume report to PDF
  *     description: >
  *       Returns the activity volume report as a paginated PDF table, using the same
- *       filters and ownership rules as the JSON endpoint above. (MINCRM-601)
+ *       filters and ownership rules as the JSON endpoint above.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -216,7 +216,7 @@ router.get(
  *       Returns deal entry and conversion counts per pipeline stage, bucketed by
  *       week (30-day window) or month (60- or 90-day window). Uses audit_log entries
  *       to detect when deals entered each stage and whether they subsequently advanced.
- *       Accessible to all authenticated users. Implements MINCRM-284.
+ *       Accessible to all authenticated users. Implements.
  *     security:
  *       - cookieAuth: []
  *     parameters:

@@ -1,5 +1,5 @@
 /**
- * Integration tests for SCIM 2.0 controller handlers. (MINCRM-541)
+ * Integration tests for SCIM 2.0 controller handlers.
  *
  * Covers HTTP-layer behaviour of /scim/v2/Users, /scim/v2/Groups, and
  * /api/v1/scim/group-role-mappings — request validation, error shapes,

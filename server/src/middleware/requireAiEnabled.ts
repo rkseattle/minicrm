@@ -1,7 +1,7 @@
 /**
  * Middleware that rejects requests to /api/v1/ai/* with 503 when the master
  * AI toggle is off. Client-side hiding is UX-only; this guard is the actual
- * security and availability control. (MINCRM-457)
+ * security and availability control.
  */
 
 import type { Request, Response, NextFunction } from 'express';

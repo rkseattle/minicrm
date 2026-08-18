@@ -1,5 +1,5 @@
 /**
- * PII data minimization layer for NLI tool call results. (MINCRM-445, MINCRM-461)
+ * PII data minimization layer for NLI tool call results.
  *
  * Sits between the tool executor and the AI API call. Every tool result is
  * passed through applyPiiFilter() before being JSON-serialised into the
@@ -12,7 +12,7 @@
  *      encrypted keys, MFA secrets, SSN, tax ID, bank account numbers, etc.).
  *      This set is immutable — never admin-configurable.
  *
- *   2. Admin-configurable standard-field exclusions (MINCRM-461) — additional
+ *   2. Admin-configurable standard-field exclusions — additional
  *      field names an admin has excluded via ai_field_exclusions, loaded and
  *      cached in-memory (see loadAdminExcludedFields/invalidateFieldExclusionCache
  *      below). Applied in ADDITION to, never instead of, ALWAYS_EXCLUDED_FIELDS.
@@ -80,7 +80,7 @@ export const ALWAYS_EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   'account_number',
 ]);
 
-// ── Admin-configurable exclusion cache (MINCRM-461) ────────────────────────────
+// ── Admin-configurable exclusion cache ────────────────────────────
 
 /**
  * Defensive TTL for the admin-excluded-fields cache. Invalidation is triggered

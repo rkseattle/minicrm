@@ -1,5 +1,5 @@
 /**
- * Tests for dependencyGraphService. (MINCRM-625)
+ * Tests for dependencyGraphService.
  *
  * Pure logic (a deterministic rule table over file paths) — no DB or git
  * repo needed, unlike its sibling diffParser/changeUnitResolver suites.

@@ -1,5 +1,5 @@
 /**
- * Unit tests for coveragePolicyConfig. (MINCRM-637)
+ * Unit tests for coveragePolicyConfig.
  *
  * Covers env-var resolution/defaults for the three policy axes this module
  * centralizes on top of coverageConfig.ts's own granularity/commitSha:
@@ -136,7 +136,7 @@ describe('resolveCoveragePolicy', () => {
   it('uses a caller-supplied CoverageConfig instead of resolving its own, when given one', () => {
     // server.ts passes its own already-resolved coverageConfig so boot
     // never shells out to `git rev-parse HEAD` twice for the same
-    // commitSha (found via Greptile branch review, MINCRM-637).
+    // commitSha (found via Greptile branch review).
     const policy = resolveCoveragePolicy({
       enabled: true,
       granularity: 'function',

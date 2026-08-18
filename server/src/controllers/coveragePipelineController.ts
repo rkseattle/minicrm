@@ -1,7 +1,7 @@
 /**
  * Coverage/TIA pipeline controller — request/response shaping for the
  * ingestion trigger endpoint. No business logic here; all symbolication and
- * storage goes through coverageIngestionService. (MINCRM-614)
+ * storage goes through coverageIngestionService.
  * Admin-only, feature-flag gated (enforced by the route layer).
  */
 

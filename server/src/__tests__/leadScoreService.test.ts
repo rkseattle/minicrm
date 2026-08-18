@@ -1,5 +1,5 @@
 /**
- * Integration tests for leadScoreService. (MINCRM-441 prerequisite)
+ * Integration tests for leadScoreService.
  * Runs against a real PostgreSQL test database for activity-count lookups.
  * No AI call is made — pure deterministic scoring.
  */

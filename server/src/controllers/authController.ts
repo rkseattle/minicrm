@@ -37,7 +37,7 @@ import logger from '../logger.js';
 // definition shared by every login path, rather than a copy per controller kept
 // honest by a comment. Imported above, not re-exported: a re-export would give
 // the same constant a second importable identity, which is the thing this
-// consolidation set out to remove. (MINCRM-703)
+// consolidation set out to remove.
 
 /**
  * POST /api/auth/login
@@ -57,7 +57,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   const { email, password } = parseResult.data;
 
-  // Account lockout check (MINCRM-391): reject before any DB or bcrypt work.
+  // Account lockout check: reject before any DB or bcrypt work.
   if (isLockedOut(email)) {
     const retryAfter = secondsUntilUnlocked(email);
     res.setHeader('Retry-After', String(retryAfter));
@@ -111,7 +111,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   clearFailedAttempts(email);
 
-  // SSO-bound users (non-admin) must authenticate via their IdP, not a password. (MINCRM-399)
+  // SSO-bound users (non-admin) must authenticate via their IdP, not a password.
   // Admins are exempt so there is always an escape hatch to recover from a misconfigured IdP.
   if (isSsoBoundUser(user)) {
     res.status(403).json({
@@ -124,7 +124,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   }
 
   // MFA challenge: if user has MFA enabled, issue a short-lived pre-auth token
-  // instead of the session cookie. The client completes login via /auth/mfa/verify-login. (MINCRM-392)
+  // instead of the session cookie. The client completes login via /auth/mfa/verify-login.
   if (user.mfa_enabled) {
     const mfaToken = issueMfaToken(user.id);
     res.status(200).json({ mfaRequired: true, mfaToken });
@@ -145,7 +145,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     role: user.role,
     status: user.status,
     // login_at marks when this session was originally created; preserved across
-    // every refresh so the 8-hour absolute cap is always measured from first login. (MINCRM-365)
+    // every refresh so the 8-hour absolute cap is always measured from first login.
     login_at: nowSeconds,
   };
 
@@ -161,7 +161,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     mfaSetupRequired,
   });
 
-  // Fire-and-forget: audit login event — failure must not block the login response (MINCRM-170)
+  // Fire-and-forget: audit login event — failure must not block the login response
   void writeAuditEntryBestEffort({
     recordType: 'user',
     recordId: user.id,
@@ -182,7 +182,7 @@ export async function logout(req: Request, res: Response): Promise<void> {
   clearSessionCookie(res);
   res.status(200).json({ message: 'Logged out successfully' });
 
-  // Fire-and-forget: audit logout event — failure must not block the response (MINCRM-170)
+  // Fire-and-forget: audit logout event — failure must not block the response
   void writeAuditEntryBestEffort({
     recordType: 'user',
     recordId: user.id,
@@ -273,7 +273,7 @@ if (!process.env.APP_BASE_URL && process.env.NODE_ENV === 'production') {
  * POST /api/auth/forgot-password
  * Accepts an email address and initiates the password reset flow.
  * Always returns 200 regardless of whether the email matches a user,
- * to prevent user enumeration (MINCRM-156).
+ * to prevent user enumeration.
  */
 export async function forgotPassword(req: Request, res: Response): Promise<void> {
   const parseResult = forgotPasswordSchema.safeParse(req.body);
@@ -307,7 +307,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
 /**
  * POST /api/auth/reset-password
  * Validates a reset token, updates the user's password, and logs them in.
- * Invalidates the token after use (MINCRM-157).
+ * Invalidates the token after use.
  */
 export async function resetPassword(req: Request, res: Response): Promise<void> {
   const parseResult = resetPasswordSchema.safeParse(req.body);
@@ -359,7 +359,7 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
  * Issues a refreshed JWT for an authenticated user, resetting the idle timeout.
  *
  * The original `login_at` claim is preserved so the 8-hour absolute session cap
- * is enforced regardless of how many times the token is refreshed. (MINCRM-365)
+ * is enforced regardless of how many times the token is refreshed.
  *
  * Returns 401 AUTH_SESSION_ABSOLUTE_TIMEOUT if the absolute cap has been reached;
  * this check is redundant with the authenticate middleware but explicit here for

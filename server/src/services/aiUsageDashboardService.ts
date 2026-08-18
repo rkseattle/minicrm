@@ -1,6 +1,6 @@
 /**
  * AI usage dashboard service — aggregates ai_token_usage_daily for the admin
- * usage/cost dashboard. (MINCRM-459)
+ * usage/cost dashboard.
  *
  * Reads from ai_token_usage_daily (not ai_token_usage) because it is the only
  * table with day-level and per-feature granularity; ai_token_usage remains the
@@ -85,7 +85,7 @@ interface DailyRawRow {
  * not request shaping: it belongs beside toDateString/rangeIncludesCurrentMonth,
  * which have to agree with it about what "a month" means. The controller still
  * owns HTTP input validation — it Zod-parses the query and passes the typed
- * result here. (MINCRM-700)
+ * result here.
  *
  * `now` is injectable so tests can pin a fixed instant without faking global
  * timers — vitest's setSystemTime requires vi.useFakeTimers(), which cannot

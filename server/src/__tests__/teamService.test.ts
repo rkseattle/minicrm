@@ -1,5 +1,5 @@
 /**
- * Unit tests for teamService. (MINCRM-537)
+ * Unit tests for teamService.
  *
  * Tests run against a real PostgreSQL test database.
  * Teams and memberships are truncated before each test.
@@ -408,7 +408,7 @@ describe('getTeamMemberIds', () => {
   });
 });
 
-// ── getCoMemberIds (MINCRM-545) ────────────────────────────────────────────────
+// ── getCoMemberIds ────────────────────────────────────────────────
 
 describe('getCoMemberIds', () => {
   it('returns [userId] when the user belongs to no teams', async () => {

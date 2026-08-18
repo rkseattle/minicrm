@@ -1,6 +1,6 @@
 /**
  * NLI tool definitions for the Contact entity.
- * Pure schema declarations — no business logic. (MINCRM-422)
+ * Pure schema declarations — no business logic.
  */
 
 import type Anthropic from '@anthropic-ai/sdk';

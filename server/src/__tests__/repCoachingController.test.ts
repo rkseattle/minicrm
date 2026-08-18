@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for rep coaching insights endpoints. (MINCRM-474)
+ * HTTP contract tests for rep coaching insights endpoints.
  */
 
 import 'dotenv/config';

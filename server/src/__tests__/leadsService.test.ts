@@ -6,7 +6,6 @@
  * The leads and lead_status_history tables are truncated before each test.
  *
  * Run: npm test (from /server)
- * (MINCRM-173, MINCRM-174, MINCRM-175)
  */
 
 import 'dotenv/config';
@@ -220,7 +219,7 @@ describe('listLeads', () => {
   });
 });
 
-// ── exportLeadsForCsv (MINCRM-651) ───────────────────────────────────────────
+// ── exportLeadsForCsv ───────────────────────────────────────────
 
 describe('exportLeadsForCsv', () => {
   it('returns matching leads enriched with owner_name, excluding Disqualified and converted by default', async () => {
@@ -276,7 +275,7 @@ describe('exportLeadsForCsv', () => {
   });
 });
 
-// ── updateLead (MINCRM-174) ──────────────────────────────────────────────────
+// ── updateLead ──────────────────────────────────────────────────
 
 describe('updateLead — status lifecycle', () => {
   it('writes a status history entry when status changes', async () => {
@@ -364,7 +363,7 @@ describe('deleteLead', () => {
   });
 });
 
-// ── convertLead (MINCRM-175) ─────────────────────────────────────────────────
+// ── convertLead ─────────────────────────────────────────────────
 
 describe('convertLead', () => {
   it('atomically creates contact, account, and deal from a lead', async () => {
@@ -493,7 +492,7 @@ describe('convertLead', () => {
     expect(result.account_id).toBe(existingAccountId);
   });
 
-  it('rejects conversion when last_name is empty (MINCRM-507)', () => {
+  it('rejects conversion when last_name is empty', () => {
     // Absent key → "Required"; empty string → our custom message. Both cases must fail.
     const absentParsed = convertLeadSchema.safeParse({
       contact: { first_name: 'Jane', email: 'jane@example.com' },
@@ -646,11 +645,11 @@ describe('searchAccountsForConversion', () => {
   });
 });
 
-// ── Audit log coverage (MINCRM-382) ─────────────────────────────────────────────
+// ── Audit log coverage ─────────────────────────────────────────────
 
 const AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000002', name: 'Lead Audit Actor' };
 
-describe('audit log entries for leads (MINCRM-382)', () => {
+describe('audit log entries for leads', () => {
   beforeEach(async () => {
     await clearAuditLogFor(AUDIT_ACTOR.id);
   });

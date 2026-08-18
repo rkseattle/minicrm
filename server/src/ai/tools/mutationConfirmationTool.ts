@@ -4,7 +4,7 @@
  * This tool is the mandatory first step before any create, update, or delete
  * operation. It captures the pending action for user review and returns it for
  * storage on the assistant message. The actual write tool must only be called
- * after the user confirms the action in their next message. (MINCRM-425, MINCRM-426)
+ * after the user confirms the action in their next message.
  */
 
 import type Anthropic from '@anthropic-ai/sdk';

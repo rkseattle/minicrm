@@ -1,5 +1,5 @@
 /**
- * Data hygiene routes — nightly hygiene queue read/action endpoints. (MINCRM-476)
+ * Data hygiene routes — nightly hygiene queue read/action endpoints.
  * All endpoints require authentication and the ai_data_hygiene_assistant feature flag.
  */
 
@@ -28,7 +28,7 @@ const router = Router();
  *       scope=mine (default) restricts to the caller's own records; scope=all
  *       is admin-only. Never triggers a synchronous scan. Findings currently
  *       within their dismiss-suppression window are excluded. Gated by the
- *       ai_data_hygiene_assistant feature flag. (MINCRM-476)
+ *       ai_data_hygiene_assistant feature flag.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -109,7 +109,7 @@ router.post(
  *     description: >
  *       Removes findings for a record that was updated or archived via its own
  *       normal edit flow — this endpoint does not itself modify the record.
- *       (MINCRM-476)
+ *
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -147,8 +147,8 @@ router.post(
  *     operationId: mergeDuplicateContactFindings
  *     summary: Merge a flagged duplicate contact pair
  *     description: >
- *       Reuses the existing contact merge logic (MINCRM-187) and clears both
- *       contacts' hygiene findings. (MINCRM-476)
+ *       Reuses the existing contact merge logic and clears both
+ *       contacts' hygiene findings.
  *     security:
  *       - cookieAuth: []
  *     requestBody:

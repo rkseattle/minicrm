@@ -1,6 +1,5 @@
 /**
  * Unit/integration tests for auth, requireRole, and asyncHandler middleware.
- * (MINCRM-295)
  */
 
 import 'dotenv/config';
@@ -204,7 +203,7 @@ describe('requireRole middleware', () => {
 // reached through the normal request flow (authenticate always runs first).
 
 describe('requireRole — called without req.user', () => {
-  it('returns 401 AUTH_MISSING_TOKEN when req.user is not set (MINCRM-533)', () => {
+  it('returns 401 AUTH_MISSING_TOKEN when req.user is not set', () => {
     const middleware = requireRole('admin');
     const req = { user: undefined } as unknown as Request;
     const json = vi.fn();
@@ -224,7 +223,7 @@ describe('requireRole — called without req.user', () => {
 
 // ── requireCapability — service account blocking ──────────────────────────────
 
-describe('requireCapability — service account UI blocking (MINCRM-542)', () => {
+describe('requireCapability — service account UI blocking', () => {
   it('returns 403 SERVICE_ACCOUNT_UI_BLOCKED when a service_account requests a non-api:access capability', async () => {
     const middleware = requireCapability(Capability.ContactsView);
     const req = { user: { id: 'test-id', role: 'service_account' } } as unknown as Request;
@@ -261,7 +260,7 @@ describe('requireCapability — service account UI blocking (MINCRM-542)', () =>
 
 // ── requireCapabilities — multi-capability AND gate ───────────────────────────
 
-describe('requireCapabilities (MINCRM-542)', () => {
+describe('requireCapabilities', () => {
   it('returns 401 when req.user is undefined', async () => {
     const middleware = requireCapabilities(Capability.ContactsView, Capability.DealsView);
     const req = { user: undefined } as unknown as Request;
@@ -351,14 +350,14 @@ describe('asyncHandler middleware', () => {
   });
 });
 
-// ── requireFeatureEnabledOrgWide (MINCRM-694) ─────────────────────────────────
+// ── requireFeatureEnabledOrgWide ─────────────────────────────────
 
 describe('requireFeatureEnabledOrgWide', () => {
   /**
    * Exercised directly rather than through a route: these assertions are about
    * the middleware's own three branches.
    *
-   * MINCRM-685 left this file as the ONLY coverage of requireFeatureEnabledOrgWide.
+   * left this file as the ONLY coverage of requireFeatureEnabledOrgWide.
    * Its two callers were coverageMapping.ts and coverageReporting.ts, both of
    * which moved to boot-time env-var gating and no longer consult any
    * feature_flags row — so there is no integrated path left to cover it. The

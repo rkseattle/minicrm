@@ -17,7 +17,7 @@
  * because all five happened to agree. A sixth login path — another SSO provider,
  * a device-trust flow — would be one forgotten `httpOnly` away from shipping a
  * script-readable session cookie, and nothing would have failed. Centralizing
- * makes the policy impossible to partially apply. (MINCRM-703)
+ * makes the policy impossible to partially apply.
  */
 
 import type { Response } from 'express';
@@ -30,16 +30,16 @@ import type { Response } from 'express';
  * and the test stack (localhost:5175) otherwise share one jar: logging into either
  * overwrites the other's token, and the victim sees "your session has expired" because
  * the surviving token names a user that exists only in the other stack's database.
- * Defaults to the historical value, so unset changes nothing. (MINCRM-684)
+ * Defaults to the historical value, so unset changes nothing.
  *
  * Defined here rather than in the auth middleware because the cookie's name is
  * part of the same policy as its attributes and lifetime; the middleware
- * re-exports it so existing importers are unaffected. (MINCRM-703)
+ * re-exports it so existing importers are unaffected.
  */
 export const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME ?? 'minicrm_token';
 
 /**
- * JWT idle-expiry window — 30 minutes (MINCRM-365).
+ * JWT idle-expiry window — 30 minutes.
  *
  * The token slides with use, but only because the client calls the refresh
  * endpoint on activity: `authenticate` verifies a token without ever re-issuing
@@ -52,7 +52,7 @@ export const JWT_IDLE_EXPIRY_SECONDS = 30 * 60;
 export const COOKIE_MAX_AGE_MS = JWT_IDLE_EXPIRY_SECONDS * 1000;
 
 /**
- * Absolute session cap — 8 hours from original login (MINCRM-365).
+ * Absolute session cap — 8 hours from original login.
  *
  * Enforced against the `login_at` claim, which is embedded at login and
  * preserved through every refresh, so refreshing cannot extend a session past

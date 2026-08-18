@@ -57,7 +57,7 @@ const router = Router();
  *         schema:
  *           type: string
  *           enum: [me, my_team]
- *         description: "'me' returns only the authenticated user's deals; 'my_team' returns deals owned by any member of the user's teams (MINCRM-545)"
+ *         description: "'me' returns only the authenticated user's deals; 'my_team' returns deals owned by any member of the user's teams"
  *     responses:
  *       200:
  *         description: Array of deals
@@ -116,7 +116,7 @@ router.get('/', authenticate, asyncHandler(listDealsHandler));
  *       Returns all matching deals as a UTF-8 CSV file (with BOM).
  *       Reps receive only their own deals. Admins receive their own deals
  *       by default; pass `?all=true` to export all deals.
- *       (MINCRM-166)
+ *
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -158,7 +158,7 @@ router.get(
  *     summary: Export deals to PDF
  *     description: >
  *       Returns all matching deals as a paginated PDF table, using the same filters
- *       and ownership rules as the CSV export. (MINCRM-601)
+ *       and ownership rules as the CSV export.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -204,7 +204,7 @@ router.get(
  *       Reps may only act on deals they own; any unowned ID returns 403.
  *       Admins may act on any deals.
  *       Stage is validated against the live pipeline_stages table.
- *       (MINCRM-188)
+ *
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -261,7 +261,7 @@ router.post(
  *   patch:
  *     tags: [Deals]
  *     operationId: bulkPatchDeals
- *     summary: Bulk patch deals — reassign owner or change stage (MINCRM-562)
+ *     summary: Bulk patch deals — reassign owner or change stage
  *     description: >
  *       Reassigns owner_id and/or changes stage on each listed deal individually.
  *       Requires bulk:operations + deals:edit. Non-admin actors can only
@@ -318,7 +318,7 @@ router.patch(
  *   delete:
  *     tags: [Deals]
  *     operationId: bulkDeleteDeals
- *     summary: Bulk delete deals (MINCRM-562)
+ *     summary: Bulk delete deals
  *     description: >
  *       Deletes each listed deal individually.
  *       Requires bulk:operations + deals:delete. Non-admin actors can only
@@ -506,7 +506,7 @@ router.get('/:id', authenticate, asyncHandler(getDealHandler));
  *     description: >
  *       Returns a one-record summary PDF for the given deal — overview fields,
  *       custom fields, linked contacts, and notes. Visibility matches
- *       GET /api/v1/deals/{id}. (MINCRM-650)
+ *       GET /api/v1/deals/{id}.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -834,7 +834,7 @@ router.delete(
  *       Stalled) with a narrative and recommended next actions. Not persisted — the
  *       assessment is regenerated on every call. Reps may only run this on deals they
  *       own; admins may run it on any deal. Gated by the ai_deal_health_check feature
- *       flag. (MINCRM-442)
+ *       flag.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -895,7 +895,7 @@ router.post(
  *       next pipeline stage. Returns { ready: false } (not an error) when the deal is in a
  *       terminal stage, has no next stage configured, or the AI is not confident — the client
  *       should render no indicator in that case. Reps may only check deals they own; admins
- *       may check any deal. Gated by the ai_stage_advancement feature flag. (MINCRM-443)
+ *       may check any deal. Gated by the ai_stage_advancement feature flag.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -948,7 +948,7 @@ router.get(
   asyncHandler(getStageAdvancementHandler),
 );
 
-/** Returns the AI champion/blocker stakeholder map for the deal's linked contacts. (MINCRM-466) */
+/** Returns the AI champion/blocker stakeholder map for the deal's linked contacts. */
 router.get(
   '/:id/stakeholder-map',
   authenticate,
@@ -956,12 +956,12 @@ router.get(
   asyncHandler(getDealStakeholderMapHandler),
 );
 
-// ── AI proposal draft generation (MINCRM-473) ───────────────────────────────────
+// ── AI proposal draft generation ───────────────────────────────────
 
 /**
  * Generates (or regenerates, with optional focus_notes) an AI proposal draft
  * for the deal. High-token operation — gated by requireAiTokenBudget after
- * the feature flag check, per MINCRM-458.
+ * the feature flag check, per the spec.
  */
 router.post(
   '/:id/proposal-draft',
@@ -979,7 +979,7 @@ router.post(
   asyncHandler(exportProposalDraftDocxHandler),
 );
 
-// ── Deal Tag Routes (MINCRM-186) ───────────────────────────────────────────────
+// ── Deal Tag Routes ───────────────────────────────────────────────
 
 /** List all tags on a deal. */
 router.get(

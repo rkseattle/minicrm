@@ -1,6 +1,6 @@
 /**
  * GDPR service — handles personal data erasure (Art. 17 right to erasure) and
- * subject-access exports for contacts and leads. (MINCRM-364)
+ * subject-access exports for contacts and leads.
  *
  * Erasure is transactional: the gdpr_deletion_log INSERT, all PII overwrites,
  * and the audit entry are committed together or all roll back.
@@ -31,7 +31,7 @@ const CONTACT_PII_FIELDS = [
   'phone',
   'title',
   'department',
-  // Address rows are deleted from contact_addresses table (MINCRM-500)
+  // Address rows are deleted from contact_addresses table
   'contact_addresses',
   'linkedin_url',
   'twitter_x_url',
@@ -214,7 +214,7 @@ export async function eraseContact(
       [id],
     );
 
-    // Step 5 — delete all contact_addresses rows (address data is PII). (MINCRM-500)
+    // Step 5 — delete all contact_addresses rows (address data is PII).
     await client.query(`DELETE FROM contact_addresses WHERE contact_id = $1`, [id]);
 
     // Step 6 — scrub subject and notes on linked activities

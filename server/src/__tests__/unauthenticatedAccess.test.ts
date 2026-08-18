@@ -1,5 +1,5 @@
 /**
- * Systematic unauthenticated access tests (MINCRM-245).
+ * Systematic unauthenticated access tests.
  *
  * Verifies that every non-public API route returns 401 when called without an
  * auth cookie. This prevents a developer accidentally omitting the `authenticate`
@@ -104,7 +104,7 @@ const PROTECTED_ROUTES: Array<{ method: string; path: string }> = [
   { method: 'GET', path: '/api/v1/attachments' },
   { method: 'DELETE', path: `/api/v1/attachments/${NIL_UUID}` },
 
-  // Note: GET /api/v1/audit-log was removed in MINCRM-377 (now served via ConnectRPC).
+  // Note: GET /api/v1/audit-log was removed in a later change (now served via ConnectRPC).
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
   { method: 'GET', path: '/api/v1/dashboard/summary' },
@@ -115,7 +115,7 @@ const PROTECTED_ROUTES: Array<{ method: string; path: string }> = [
   { method: 'DELETE', path: '/api/v1/admin/demo' },
 ];
 
-describe('MINCRM-245 — protected routes return 401 without a cookie', () => {
+describe('protected routes return 401 without a cookie', () => {
   test.each(PROTECTED_ROUTES)(
     '$method $path returns 401 without a cookie',
     async ({ method, path }) => {

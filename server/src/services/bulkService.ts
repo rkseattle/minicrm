@@ -1,7 +1,6 @@
 /**
  * Bulk service — atomic multi-record operations for contacts, accounts, and deals.
  * All mutations run in a single transaction; partial failures roll back entirely.
- * (MINCRM-188)
  */
 
 import pool from '../db.js';
@@ -404,7 +403,7 @@ export async function bulkDeals(
           changedById: actor.id,
           changedByName: actor.name,
         });
-        // Stage history row for each deal that actually changed stage (MINCRM-474).
+        // Stage history row for each deal that actually changed stage.
         // Bulk change_stage always targets a single new stage across all ids, so this
         // is always a real transition when row.stage !== stage (rows already at the
         // target stage are skipped to avoid a duplicate day-0-style row).

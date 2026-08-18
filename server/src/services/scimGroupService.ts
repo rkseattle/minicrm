@@ -1,5 +1,5 @@
 /**
- * SCIM Group service — all DB access for SCIM 2.0 Group provisioning. (MINCRM-541)
+ * SCIM Group service — all DB access for SCIM 2.0 Group provisioning.
  *
  * Handles provisioning CRM teams from SCIM Groups, syncing team memberships,
  * and managing scim_group_role_mappings so that group membership events

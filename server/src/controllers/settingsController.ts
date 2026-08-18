@@ -74,7 +74,7 @@ export async function setDefaultLanguageHandler(req: Request, res: Response): Pr
   const language = await setDefaultLanguage(parsed.data.language, actor);
   res.status(200).json({ language });
 
-  // Audit: system settings updated (MINCRM-170)
+  // Audit: system settings updated
   void writeAuditEntryBestEffort({
     recordType: 'system_settings',
     recordName: 'Default Language',
@@ -91,7 +91,6 @@ export async function setDefaultLanguageHandler(req: Request, res: Response): Pr
  * GET /api/settings/nav-layout
  * Returns the current system-wide navigation layout.
  * Public endpoint — clients need this before auth to render the shell.
- * (MINCRM-133)
  *
  * @param _req - Express request (unused).
  * @param res - Express response.
@@ -103,7 +102,7 @@ export async function getNavLayoutHandler(_req: Request, res: Response): Promise
 
 /**
  * PATCH /api/settings/nav-layout
- * Updates the system-wide navigation layout. Admin only. (MINCRM-133)
+ * Updates the system-wide navigation layout. Admin only.
  *
  * @param req - Express request with body `{ layout: NavLayout }`.
  * @param res - Express response.
@@ -125,7 +124,7 @@ export async function setNavLayoutHandler(req: Request, res: Response): Promise<
   const layout = await setNavLayout(parsed.data.layout, actor);
   res.status(200).json({ layout });
 
-  // Audit: system settings updated (MINCRM-170)
+  // Audit: system settings updated
   void writeAuditEntryBestEffort({
     recordType: 'system_settings',
     recordName: 'Navigation Layout',
@@ -138,7 +137,7 @@ export async function setNavLayoutHandler(req: Request, res: Response): Promise<
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }
 
-// ── Email notifications global toggle (MINCRM-163) ───────────────────────────
+// ── Email notifications global toggle ───────────────────────────
 
 /**
  * GET /api/settings/email-notifications
@@ -158,7 +157,7 @@ export async function getEmailNotificationsEnabledHandler(
 
 /**
  * PATCH /api/settings/email-notifications
- * Sets whether the system-wide email notifications are enabled. Admin only. (MINCRM-163)
+ * Sets whether the system-wide email notifications are enabled. Admin only.
  *
  * @param req - Express request with body `{ enabled: boolean }`.
  * @param res - Express response.
@@ -179,7 +178,7 @@ export async function setEmailNotificationsEnabledHandler(
   const enabled = await setEmailNotificationsEnabled(req.body.enabled as boolean, actor);
   res.status(200).json({ enabled });
 
-  // Audit: system settings updated (MINCRM-170)
+  // Audit: system settings updated
   void writeAuditEntryBestEffort({
     recordType: 'system_settings',
     recordName: 'Email Notifications',
@@ -192,7 +191,7 @@ export async function setEmailNotificationsEnabledHandler(
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }
 
-// ── Default currency (MINCRM-189) ─────────────────────────────────────────────
+// ── Default currency ─────────────────────────────────────────────
 
 /**
  * GET /api/settings/default-currency
@@ -209,7 +208,7 @@ export async function getDefaultCurrencyHandler(_req: Request, res: Response): P
 
 /**
  * PATCH /api/settings/default-currency
- * Updates the system-wide default currency. Admin only. (MINCRM-189)
+ * Updates the system-wide default currency. Admin only.
  *
  * @param req - Express request with body `{ currency: SupportedCurrency }`.
  * @param res - Express response.
@@ -243,7 +242,7 @@ export async function setDefaultCurrencyHandler(req: Request, res: Response): Pr
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }
 
-// ── Default timezone (MINCRM-470) ─────────────────────────────────────────────
+// ── Default timezone ─────────────────────────────────────────────
 
 /**
  * GET /api/settings/default-timezone
@@ -260,7 +259,7 @@ export async function getDefaultTimezoneHandler(_req: Request, res: Response): P
 
 /**
  * PATCH /api/settings/default-timezone
- * Updates the system-wide default display timezone. Admin only. (MINCRM-470)
+ * Updates the system-wide default display timezone. Admin only.
  *
  * @param req - Express request with body `{ timezone: string }`.
  * @param res - Express response.
@@ -294,7 +293,7 @@ export async function setDefaultTimezoneHandler(req: Request, res: Response): Pr
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }
 
-// ── Tag creation restriction (MINCRM-263) ────────────────────────────────────
+// ── Tag creation restriction ────────────────────────────────────
 
 /**
  * GET /api/settings/tags-restrict-creation
@@ -312,7 +311,7 @@ export async function getTagsRestrictCreationHandler(_req: Request, res: Respons
 
 /**
  * PATCH /api/settings/tags-restrict-creation
- * Sets whether tag creation is restricted. Admin only. (MINCRM-263)
+ * Sets whether tag creation is restricted. Admin only.
  *
  * @param req - Express request with body `{ restricted: boolean }`.
  * @param res - Express response.
@@ -342,7 +341,7 @@ export async function setTagsRestrictCreationHandler(req: Request, res: Response
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }
 
-// ── Exchange rates (MINCRM-251) ───────────────────────────────────────────────
+// ── Exchange rates ───────────────────────────────────────────────
 
 /**
  * GET /api/settings/currencies
@@ -360,7 +359,7 @@ export async function getCurrenciesHandler(_req: Request, res: Response): Promis
 /**
  * PUT /api/settings/currencies
  * Atomically replaces the non-home currency set and sets the home currency.
- * Admin only. (MINCRM-251)
+ * Admin only.
  *
  * @param req - Express request with body `{ home_currency, currencies }`.
  * @param res - Express response.
@@ -397,12 +396,12 @@ export async function updateCurrenciesHandler(req: Request, res: Response): Prom
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
 }
 
-// ── Onboarding (MINCRM-256) ───────────────────────────────────────────────────
+// ── Onboarding ───────────────────────────────────────────────────
 
 /**
  * GET /api/settings/onboarding
  * Returns first-run detection status and onboarding_completed flag.
- * Visible to both admin and rep users (MINCRM-410).
+ * Visible to both admin and rep users.
  *
  * @param req - Express request.
  * @param res - Express response.
@@ -417,7 +416,7 @@ export async function getOnboardingStatusHandler(req: Request, res: Response): P
 
 /**
  * PUT /api/settings/onboarding
- * Updates the onboarding_completed flag for the calling user. (MINCRM-256, MINCRM-410)
+ * Updates the onboarding_completed flag for the calling user.
  * Available to all authenticated users — writes to the caller's own user row.
  *
  * @param req - Express request with body `{ onboarding_completed: boolean }`.
@@ -464,7 +463,7 @@ export async function setOnboardingCompletedHandler(req: Request, res: Response)
 /**
  * DELETE /api/v1/settings/pipeline-stages-reviewed
  * Clears the pipeline_stages_reviewed flag so the onboarding task reappears.
- * Admin only. Primarily used by E2E test setup (ensureSystemDefaults). (MINCRM-410)
+ * Admin only. Primarily used by E2E test setup (ensureSystemDefaults).
  */
 export async function deletePipelineStagesReviewedHandler(
   _req: Request,
@@ -474,7 +473,7 @@ export async function deletePipelineStagesReviewedHandler(
   res.status(204).end();
 }
 
-// ── MFA enforcement (MINCRM-392) ──────────────────────────────────────────────
+// ── MFA enforcement ──────────────────────────────────────────────
 
 /**
  * GET /api/v1/settings/mfa-required
@@ -517,7 +516,7 @@ export async function setMfaRequiredHandler(req: Request, res: Response): Promis
 /**
  * GET /api/settings/visibility
  * Returns the current per-object-type data visibility policies.
- * Accessible to admin and manager roles. (MINCRM-538)
+ * Accessible to admin and manager roles.
  */
 export async function getVisibilityConfigHandler(_req: Request, res: Response): Promise<void> {
   const config = await getAllVisibilityPolicies();
@@ -526,7 +525,7 @@ export async function getVisibilityConfigHandler(_req: Request, res: Response): 
 
 /**
  * PUT /api/settings/visibility
- * Updates one or more per-object-type visibility policies. Admin only. (MINCRM-538)
+ * Updates one or more per-object-type visibility policies. Admin only.
  */
 export async function putVisibilityConfigHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateVisibilityConfigSchema.safeParse(req.body);

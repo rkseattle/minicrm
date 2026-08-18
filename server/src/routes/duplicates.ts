@@ -1,6 +1,6 @@
 /**
  * Duplicate-explanation routes — cross-entity AI explanation of why two
- * contact or account records look like duplicates. (MINCRM-440)
+ * contact or account records look like duplicates.
  */
 
 import { Router } from 'express';
@@ -18,7 +18,7 @@ const router = Router();
  *   post:
  *     tags: [Duplicates]
  *     operationId: explainDuplicate
- *     summary: Explain why two records look like duplicates (MINCRM-440)
+ *     summary: Explain why two records look like duplicates
  *     description: >
  *       Runs an on-demand AI explanation of why two contact or account records
  *       were flagged as potential duplicates. Not persisted — generated fresh

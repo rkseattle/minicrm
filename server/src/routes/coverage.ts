@@ -1,9 +1,9 @@
 /**
  * Coverage/TIA control API routes — internal-only tooling, gated entirely
  * by the COVERAGE_INSTRUMENTATION env var at boot, not a product feature_flags
- * row. (MINCRM-606, MINCRM-663, MINCRM-637)
+ * row.
  *
- * MINCRM-663: this router used to also require the coverage_instrumentation
+ * this router used to also require the coverage_instrumentation
  * feature_flags row (requireFeatureEnabled) alongside authenticate/
  * coverageAccessGate on every route. That flag rendered in the CRM's own
  * admin Settings page (FeatureFlagsSettings.tsx has no category/system_flag
@@ -18,7 +18,7 @@
  * authenticate/coverageAccessGate remain on every route: an internal-only
  * env var is not a substitute for auth, only for the product-facing flag.
  *
- * MINCRM-637: coverageAccessGate (server/src/middleware/coverageAccessGate.ts)
+ * coverageAccessGate (server/src/middleware/coverageAccessGate.ts)
  * replaces a bare requireRole('admin') — capability-based when
  * COVERAGE_CAPABILITY_GATING=true, otherwise identical to today's role check.
  * Note this router's own registration gate (above) means the capability swap
@@ -59,7 +59,7 @@ const router = Router();
  *       not working needs an answer in precisely the deployment where every
  *       gate is off, and a health check that 404s whenever the subsystem is
  *       disabled cannot distinguish "disabled" from "misdeployed". No
- *       feature-flag gate either — MINCRM-663/685 removed every coverage
+ *       feature-flag gate either — removed every coverage
  *       feature_flags row in favour of boot-time env vars.
  *     security:
  *       - cookieAuth: []

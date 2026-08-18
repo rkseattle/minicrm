@@ -19,12 +19,12 @@
  * coverageMappingService, coverageBuildSummaryService,
  * coverageReportingService (reads coverage_units/coverage_test_links/
  * coverage_build_summary for the reporting query API), and
- * coverageHealthService (a SELECT 1 reachability check, MINCRM-637 — no
+ * coverageHealthService (a SELECT 1 reachability check — no
  * coverage-domain table reads/writes of its own). Everything else in
  * server/src/services/ continues to use db.ts's product-database pool, which
  * is unchanged by the coverage split.
  *
- * Nothing in the product database gates these endpoints any more (MINCRM-685):
+ * Nothing in the product database gates these endpoints any more:
  * the coverage_pipeline_ingestion/coverage_mapping_query/
  * coverage_reporting_query feature_flags rows that used to are deleted, and
  * each router now decides whether to register its routes from a boot-time env
@@ -62,7 +62,7 @@ const STATEMENT_TIMEOUT_MS = 30_000;
  * when the COVERAGE_DB_* equivalents are unset. The invariant this relies on is
  * per-stack, not repo-wide: within any one environment the product and coverage
  * databases share a Postgres instance, credentials and port, differing only by
- * database name. Since MINCRM-684 there are two such stacks locally — dev on
+ * database name. There are now two such stacks locally — dev on
  * :5432 (minicrm / minicrm_coverage, docker-compose.yml) and test on :5433
  * (minicrm_e2e / minicrm_coverage_e2e, docker-compose.test.yml) — so the
  * fallback is what keeps a test process's coverage pool on the same port as its

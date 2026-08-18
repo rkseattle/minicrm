@@ -1,18 +1,18 @@
 /**
  * Coverage/TIA mapping query routes — internal-only tooling, gated entirely
  * by the COVERAGE_MAPPING_QUERY env var at boot, not a product feature_flags
- * row. (MINCRM-621, MINCRM-637, MINCRM-685)
+ * row.
  *
- * MINCRM-685: this router used to also require the coverage_mapping_query
+ * this router used to also require the coverage_mapping_query
  * feature_flags row, via buildCoverageAccessGate's flag step — see
  * routes/coverage.ts's own docblock for the full rationale (same fix, same
- * shape, applied here by the story that finished what MINCRM-663 started).
+ * shape, applied here by the story that finished what started).
  * The routes below are now registered ONLY when COVERAGE_MAPPING_QUERY is
  * 'true' at process boot; an admin with no special env context gets a plain
  * 404, not a 403 — there is nothing here to discover through the product UI
  * at all.
  *
- * That also retires MINCRM-694's narrowing FOR THIS ROUTER. Under
+ * That also retires the narrowing FOR THIS ROUTER. Under
  * COVERAGE_DASHBOARD_NO_AUTH the org-wide flag check was the last gate on an
  * unauthenticated request; the boot-time env var replaces it. That is a real
  * tradeoff, not a pure win: an unset var is a harder gate (the route was never
@@ -26,7 +26,7 @@
  * deployment. requireFeatureEnabledOrgWide itself is untouched and still
  * covered by its own unit tests.
  *
- * COVERAGE_DASHBOARD_NO_AUTH (MINCRM-636/637): drops authenticate +
+ * COVERAGE_DASHBOARD_NO_AUTH: drops authenticate +
  * coverageAccessGate for this router too, same shape as
  * coverageReporting.ts/coverageSessions.ts — the coverage-dashboard app's
  * Traceability tab calls tests-for-unit/units-for-test directly for its
@@ -169,7 +169,7 @@ function registerCoverageMappingRoutes(): void {
    *   get:
    *     tags: [Coverage]
    *     operationId: searchUnitKeys
-   *     summary: Typeahead search over unit keys for a given commit (MINCRM-636/637)
+   *     summary: Typeahead search over unit keys for a given commit
    *     description: >
    *       Backs the coverage-dashboard app's drill-down unit-key picker. Always
    *       requires both commitSha and a non-empty search term — a plain "list
@@ -231,7 +231,7 @@ function registerCoverageMappingRoutes(): void {
    *   get:
    *     tags: [Coverage]
    *     operationId: searchTestIds
-   *     summary: Typeahead search over test IDs/names for a given commit (MINCRM-636/637)
+   *     summary: Typeahead search over test IDs/names for a given commit
    *     description: >
    *       Backs the coverage-dashboard app's drill-down test-ID picker. Always
    *       requires both commitSha and a non-empty search term, matching

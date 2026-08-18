@@ -1,5 +1,5 @@
 /**
- * junitXml.ts — Pure Playwright JUnit XML parsing. (MINCRM-687, MINCRM-689)
+ * junitXml.ts — Pure Playwright JUnit XML parsing.
  *
  * Split out of verify-test-attestation.ts so this logic can be imported without
  * dragging a Postgres pool along. That script imports coverageSessionService and
@@ -8,7 +8,7 @@
  * document should not pay that, and a test that only wants to check parsing
  * certainly should not.
  *
- * What that actually costs, measured rather than assumed (MINCRM-691): NOT open
+ * What that actually costs, measured rather than assumed: NOT open
  * sockets. `new pg.Pool()` is lazy and connects on the first query()/connect(),
  * so importing coverageDb reports totalCount/idleCount/waitingCount all 0. The
  * real costs are a process-wide `types.setTypeParser(20, ...)` mutation, a
@@ -20,7 +20,7 @@
  * and blast radius.
  *
  * The concrete consumer this unblocks is qa/scripts/merge-junit-results.ts's
- * spec (MINCRM-689), which pins its sibling implementation of the
+ * spec, which pins its sibling implementation of the
  * captured-output rule against `stripCapturedOutput` here. Before this split,
  * that parity test pulled the whole DB-bound import graph into a Playwright
  * worker while the module docblocks claimed the opposite.
@@ -56,7 +56,7 @@ export interface JUnitTestCase {
    * <testsuite hostname="...">. Playwright's JUnit reporter emits ONE
    * <testsuite> per (spec file, project) pair and puts the project name in
    * `hostname` — verified against real reporter output for a
-   * `--project=desktop --project=mobile-web` run (MINCRM-687). Empty string
+   * `--project=desktop --project=mobile-web` run. Empty string
    * when absent, which is how a single-project run from an older reporter
    * degrades.
    */
@@ -126,7 +126,7 @@ export function parseJUnitResults(xml: string): JUnitParseResult {
   // verbatim and would otherwise terminate the suite scan early, silently
   // dropping every later testcase in that suite. The per-testcase scan
   // already stripped these blocks from each <testcase> body; doing it once
-  // up front protects the suite-level scan introduced for MINCRM-687 by the
+  // up front protects the suite-level scan introduced for that work by the
   // same rule, rather than leaving the newer regex the unguarded one.
   const scrubbedXml = stripCapturedOutput(xml);
 
@@ -136,7 +136,7 @@ export function parseJUnitResults(xml: string): JUnitParseResult {
   // than sweeping every <testcase> in the document keeps that attribution
   // structural — a testcase's project is whichever suite encloses it — so a
   // multi-project run can tell "skipped under mobile-web but passed under
-  // desktop" from "skipped everywhere". (MINCRM-687)
+  // desktop" from "skipped everywhere".
   const suiteRegex = suiteRegionRegex();
   let suiteMatch: RegExpExecArray | null;
   while ((suiteMatch = suiteRegex.exec(scrubbedXml)) !== null) {
@@ -149,7 +149,7 @@ export function parseJUnitResults(xml: string): JUnitParseResult {
   // Sweep anything outside a <testsuite> — a reporter that omits the wrapper
   // entirely, or a document that is only partly suite-wrapped. Attributed to
   // the empty project, so the all-pass rule below degrades to the
-  // pre-MINCRM-687 behavior for those rows rather than dropping them.
+  // the earlier behaviour for those rows rather than dropping them.
   //
   // stripSuiteBlocks removes every complete <testsuite> region first, so a
   // row can only appear here if it genuinely sits outside one — no row is
@@ -169,7 +169,6 @@ export function parseJUnitResults(xml: string): JUnitParseResult {
  * correctness argument depends on those two operations covering EXACTLY the
  * same regions, so they must not be two hand-copied regexes that can drift.
  * Built fresh per call because /g regexes carry mutable lastIndex state.
- * (MINCRM-687)
  *
  * Matches the self-closing `<testsuite …/>` form as well (group 2 is undefined
  * there — callers must treat it as an empty body). Without that branch, a
@@ -180,7 +179,7 @@ export function parseJUnitResults(xml: string): JUnitParseResult {
  * Playwright project. That feeds findTestsSkippedEverywhere's cross-project
  * attestation directly, where a mis-attributed row can attest a skip that never
  * passed anywhere. Not reachable from today's reporter, which never self-closes,
- * but the cost of the branch is one alternation. (MINCRM-689)
+ * but the cost of the branch is one alternation.
  */
 function suiteRegionRegex(): RegExp {
   return /<testsuite\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testsuite>)/g;
@@ -228,7 +227,6 @@ function suiteRegionRegex(): RegExp {
  * it by a parity test. That module cannot import this one at runtime (it must
  * stay free of this workspace's DB imports), so the two definitions are pinned
  * by test rather than shared — see qa/e2e/tests/framework/merge-junit-results.spec.ts.
- * (MINCRM-687, MINCRM-689)
  */
 export function stripCapturedOutput(xml: string): string {
   const withoutCdata = xml.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '');
@@ -262,7 +260,7 @@ function collectTestCases(scope: string, project: string, sink: JUnitTestCase[])
     // CDATA-bodied element document-wide before any scan began, so `body`
     // cannot contain captured console output or failure text. Stripping again
     // would be a second copy of a rule that must not drift from the first.
-    // (MINCRM-687 — this used to strip <system-out>/<system-err> locally,
+    // (this used to strip <system-out>/<system-err> locally,
     // which protected these two regexes but left the suite-level scan
     // unguarded.)
     const hasFailureOrError = /<(failure|error)\b/.test(body);
@@ -283,7 +281,7 @@ function collectTestCases(scope: string, project: string, sink: JUnitTestCase[])
 /**
  * Identity of a test independent of which project it ran under — the pair
  * that Playwright repeats once per project in the JUnit XML. Used to
- * reconcile a test's outcomes across projects. (MINCRM-687)
+ * reconcile a test's outcomes across projects.
  *
  * Joined on NUL because `classname` is a file path and `name` is
  * Playwright's title path, both of which may contain spaces — a space
@@ -303,7 +301,6 @@ function testCaseKey(testCase: Pick<JUnitTestCase, 'classname' | 'name'>): strin
 /**
  * Collapses per-project duplicates of the same test to one entry, so a test
  * skipped under three projects is reported once rather than three times.
- * (MINCRM-687)
  */
 function dedupeByKey(testCases: JUnitTestCase[]): JUnitTestCase[] {
   const seen = new Set<string>();
@@ -336,7 +333,7 @@ function dedupeByKey(testCases: JUnitTestCase[]): JUnitTestCase[] {
  * Guarded on `totalTests > 0` so a document carrying no <testsuites>
  * attributes at all (which yields 0) is not condemned on the strength of an
  * absent declaration. Pure and exported so both predicates are unit-testable
- * without a database. (MINCRM-687)
+ * without a database.
  */
 export function hasParseDisagreement(parsed: JUnitParseResult): boolean {
   const rowCountDisagrees = parsed.totalTests > 0 && parsed.totalTests !== parsed.testCases.length;
@@ -361,7 +358,7 @@ export function hasParseDisagreement(parsed: JUnitParseResult): boolean {
  * discard evidence on the strength of a row it cannot place.
  *
  * Pure, and exported for direct unit testing — this rule is the substance of
- * MINCRM-687's gate change, so it must be verifiable without a database
+ * the gate change, so it must be verifiable without a database
  * rather than only through verifyAttestation's DB-bound path.
  */
 export function findTestsSkippedEverywhere(
@@ -400,7 +397,7 @@ export function findTestsSkippedEverywhere(
 /**
  * Tests that failed in at least one project run, deduped by identity: one
  * broken test is one thing to fix, not N. Exported alongside
- * findTestsSkippedEverywhere for the same reason. (MINCRM-687)
+ * findTestsSkippedEverywhere for the same reason.
  */
 export function findFailedTests(
   testCases: readonly JUnitTestCase[],
@@ -411,7 +408,7 @@ export function findFailedTests(
   // collapsed, but two DIFFERENT messages are two distinct pieces of
   // diagnostic evidence — a desktop-only assertion error and a mobile-only
   // one are not interchangeable, and dropping either would send whoever
-  // reads this output chasing half the problem. (MINCRM-687)
+  // reads this output chasing half the problem.
   const seen = new Set<string>();
   return failures
     .filter((t) => {

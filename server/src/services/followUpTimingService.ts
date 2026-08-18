@@ -1,6 +1,6 @@
 /**
  * Follow-up timing suggestion service — derives the best day/time to reach a
- * contact from their historical interaction pattern. (MINCRM-470)
+ * contact from their historical interaction pattern.
  *
  * Deterministic/SQL-driven, like relationshipHealthService — no LLM call.
  * computeFollowUpTimingSuggestions() is the cron entry point (server/src/server.ts),

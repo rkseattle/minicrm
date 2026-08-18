@@ -19,7 +19,7 @@ const DEFAULT_DB_PORT = 5432;
 /** Default maximum pool size — matches pg's own default so the value is visible in code */
 const DEFAULT_POOL_MAX = 10;
 
-/** Statement timeout in milliseconds — cancels any query running longer than this. (MINCRM-248) */
+/** Statement timeout in milliseconds — cancels any query running longer than this. */
 const STATEMENT_TIMEOUT_MS = 30_000;
 
 /**
@@ -35,22 +35,22 @@ const pool = new Pool({
 
   // Maximum connections to maintain in the pool.
   // Should not exceed PostgreSQL's max_connections (default 100).
-  // Configurable via DB_POOL_MAX for environments with different limits. (MINCRM-248)
+  // Configurable via DB_POOL_MAX for environments with different limits.
   max: Number(process.env.DB_POOL_MAX) || DEFAULT_POOL_MAX,
 
   // Milliseconds a connection is held idle before being closed.
-  // Balances connection reuse against server-side resource consumption. (MINCRM-248)
+  // Balances connection reuse against server-side resource consumption.
   idleTimeoutMillis: 30_000,
 
   // Milliseconds to wait for a connection before throwing an error.
   // The pg default is 0, which causes requests to hang indefinitely under pool
   // exhaustion. A non-zero value causes a fast failure that the global error
-  // handler converts to a 503 response. (MINCRM-248)
+  // handler converts to a 503 response.
   connectionTimeoutMillis: 5_000,
 
   // Sent in the PostgreSQL startup message — no separate SET query needed.
   // Avoids the pg@9 DeprecationWarning that fired when the previous connect-event
-  // approach issued a fire-and-forget SET query before the client was acquired. (MINCRM-292)
+  // approach issued a fire-and-forget SET query before the client was acquired.
   statement_timeout: STATEMENT_TIMEOUT_MS,
 });
 

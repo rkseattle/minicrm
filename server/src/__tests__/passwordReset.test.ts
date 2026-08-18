@@ -1,5 +1,5 @@
 /**
- * Integration tests for the password reset flow (MINCRM-156, MINCRM-157).
+ * Integration tests for the password reset flow.
  *
  * Tests cover:
  *   - createPasswordResetToken: generates a token, overwrites an existing one
@@ -291,7 +291,7 @@ describe('POST /api/auth/reset-password', () => {
 });
 
 // ---------------------------------------------------------------------------
-// authenticate middleware: session invalidation after password reset (MINCRM-157)
+// authenticate middleware: session invalidation after password reset
 // ---------------------------------------------------------------------------
 
 describe('authenticate middleware — session invalidation after password reset', () => {
@@ -309,7 +309,7 @@ describe('authenticate middleware — session invalidation after password reset'
     // Simulate a password reset by setting password_changed_at to a future time.
     // A 1-second offset is too tight — under parallel test load the DB clock and the
     // JWT iat can land in the same second. Use 1 hour to guarantee the token predates
-    // the "reset" regardless of timing jitter. (MINCRM-399: stabilized against parallel load)
+    // the "reset" regardless of timing jitter.
     await pool.query(
       `UPDATE users SET password_changed_at = now() + interval '1 hour' WHERE id = $1`,
       [user.id],

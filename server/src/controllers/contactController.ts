@@ -104,7 +104,7 @@ export async function createContactHandler(req: Request, res: Response): Promise
       { id: req.user!.id, name: req.user!.name },
     );
   } catch (err) {
-    // DB unique constraint fired (TOCTOU race or force=true on an existing email). (MINCRM-247)
+    // DB unique constraint fired (TOCTOU race or force=true on an existing email).
     if ((err as { code?: string }).code === 'DUPLICATE_EMAIL') {
       res.status(409).json({
         error: { code: 'DUPLICATE_EMAIL', message: 'A contact with this email already exists' },
@@ -172,7 +172,7 @@ export async function listContactsHandler(req: Request, res: Response): Promise<
     : undefined;
   const dir = req.query.dir === 'desc' ? ('DESC' as const) : ('ASC' as const);
 
-  // Tag filter (MINCRM-186): ?tags=uuid,uuid — comma-separated tag IDs (any-match)
+  // Tag filter: ?tags=uuid,uuid — comma-separated tag IDs (any-match)
   const tagIds =
     typeof req.query.tags === 'string' && req.query.tags.trim().length > 0
       ? req.query.tags
@@ -252,7 +252,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-      // Include current server state so the client can render a three-way merge without a second round-trip (MINCRM-351)
+      // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findContactById(id);
       res.status(409).json({ error: { code, message: (err as Error).message, current } });
       return;
@@ -265,7 +265,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
   }
   res.status(200).json({ contact });
 
-  // Fire-and-forget: notify the new owner when the contact is reassigned. (MINCRM-162)
+  // Fire-and-forget: notify the new owner when the contact is reassigned.
   if (contact && parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
     void (async () => {
       try {
@@ -334,7 +334,7 @@ interface ContactExportData {
 /**
  * Resolves the owner/search/account filters for the current request, fetches matching
  * contacts, and merges in custom field columns. Shared by the CSV and PDF export handlers
- * so both formats reflect identical rows and ownership rules (MINCRM-601).
+ * so both formats reflect identical rows and ownership rules.
  *
  * @returns null if the request had an invalid `account` param; the response has already
  * been written to in that case and the caller must return without further writes.
@@ -348,7 +348,7 @@ async function resolveContactExportData(
 
   // Org-wide readers (admin/viewer): export all when ?all=true, otherwise own records only.
   // All other roles (rep, manager): apply visibility filter via requestingUser so managers
-  // get team-scoped results matching what they see in the list view (MINCRM-534).
+  // get team-scoped results matching what they see in the list view.
   const ownerId = orgWideRead && !exportAll ? req.user!.id : undefined;
   const requestingUser = !orgWideRead ? { id: req.user!.id, role: req.user!.role } : undefined;
 
@@ -382,7 +382,7 @@ async function resolveContactExportData(
     requestingUser,
   });
 
-  // Custom field columns — fetch definitions and values in application code (MINCRM-276)
+  // Custom field columns — fetch definitions and values in application code
   const customDefs = await listDefinitions('contact');
   const recordIds = contactRows.map((r) => r.id);
   const valuesByRecord = new Map<string, Map<string, string | null>>();
@@ -439,7 +439,6 @@ async function resolveContactExportData(
  * Reps automatically get their own contacts; admins may omit ?owner to get all.
  * Pass ?all=true to bypass the rep-scoped default and export all visible records
  * (admins only; reps always export their own).
- * (MINCRM-164)
  */
 export async function exportContactsHandler(req: Request, res: Response): Promise<void> {
   const data = await resolveContactExportData(req, res);
@@ -457,14 +456,12 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
  * GET /api/contacts/export.pdf
  * Renders all matching contacts as a paginated PDF table.
  *
- * Query params and ownership rules are identical to the CSV export above (MINCRM-601).
+ * Query params and ownership rules are identical to the CSV export above.
  */
 /**
  * PDF-only: columns useful in CSV/spreadsheet form but low-value in a printed
  * table, dropped once Contacts' 18-column export exceeds WIDE_TABLE_COLUMN_THRESHOLD.
- * (MINCRM-654, follow-up: Contacts is still unreadable in portrait even after the
- * original 2-column drop — combined with landscape orientation and the reduced
- * wide-table font size, dropping these 7 gets the printed table down to 11 columns.)
+ *
  */
 const CONTACT_PDF_LOW_PRIORITY_COLUMNS = new Set([
   'LinkedIn URL',
@@ -508,7 +505,7 @@ export async function exportContactsPdfHandler(req: Request, res: Response): Pro
  * GET /api/contacts/:id/export.pdf
  * Renders a single contact as a one-record summary PDF, mirroring the data
  * shown on the contact detail page. Visibility matches getContactHandler — no
- * ownership restriction on read, consistent with GET /api/contacts/:id. (MINCRM-650)
+ * ownership restriction on read, consistent with GET /api/contacts/:id.
  */
 export async function exportContactPdfHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
@@ -623,7 +620,6 @@ export async function deleteContactHandler(req: Request, res: Response): Promise
  * Merges the contact identified by :id (the winner) with a specified loser contact.
  * Only admins and the winner's owner may perform a merge.
  * Body: { loserId: string, fieldChoices: Record<field, 'winner'|'loser'> }
- * (MINCRM-187)
  */
 export async function mergeContactHandler(req: Request, res: Response): Promise<void> {
   const winnerId = String(req.params['id']);
@@ -787,7 +783,7 @@ export async function setDefaultContactAddressHandler(req: Request, res: Respons
   res.status(200).json({ address });
 }
 
-/** Zod schema for the send-email request body (MINCRM-275) */
+/** Zod schema for the send-email request body */
 const sendContactEmailSchema = z.object({
   subject: z
     .string({ required_error: 'Subject is required' })
@@ -800,7 +796,7 @@ const sendContactEmailSchema = z.object({
 
 /**
  * POST /api/contacts/:id/send-email
- * Sends a composed email to the contact and logs an Email activity. (MINCRM-275)
+ * Sends a composed email to the contact and logs an Email activity.
  */
 export async function sendContactEmailHandler(req: Request, res: Response): Promise<void> {
   const contactId = String(req.params['id']);

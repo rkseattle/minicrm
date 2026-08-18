@@ -1,5 +1,5 @@
 /**
- * Integration tests for dealHealthService. (MINCRM-442)
+ * Integration tests for dealHealthService.
  *
  * Runs against a real PostgreSQL test database for all deal/activity data.
  * The Anthropic SDK is mocked so no real API calls are made and token usage
@@ -76,7 +76,6 @@ beforeEach(async () => {
   // fire-and-forget after every insert. With ai_configuration.enabled=true above, that
   // background hook would otherwise call the same mocked Anthropic client and pollute
   // mockCreate's call count/args for this file's own generateDealHealthCheck assertions.
-  // (MINCRM-472)
   await pool.query(
     `UPDATE feature_flags SET enabled = false WHERE flag_key = 'ai_sentiment_tracking'`,
   );
@@ -96,7 +95,7 @@ afterAll(async () => {
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
   // Restore the flag disabled in beforeEach — feature_flags is a shared global table and
   // this file runs serially alongside every other test file, so leaving it disabled would
-  // break unrelated later suites (e.g. championBlockerService/-Controller). (MINCRM-472)
+  // break unrelated later suites (e.g. championBlockerService/-Controller).
   await pool.query(
     `UPDATE feature_flags SET enabled = true WHERE flag_key = 'ai_sentiment_tracking'`,
   );

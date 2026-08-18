@@ -1,6 +1,6 @@
 /**
  * Internal shape produced by symbolication, consumed by ingestion's DB
- * upsert. (MINCRM-614, MINCRM-615)
+ * upsert.
  *
  * Distinct from the shared coverageUnitSchema (shared/schemas/coveragePipelineSchema.ts):
  * that schema is the DB row / API response shape (has id, firstSeenAt,

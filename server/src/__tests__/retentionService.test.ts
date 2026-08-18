@@ -1,5 +1,5 @@
 /**
- * Unit tests for retentionService.ts. (MINCRM-447, MINCRM-462)
+ * Unit tests for retentionService.ts.
  *
  * Covers:
  *  - getAiSessionRetentionStats reflects current ai_sessions/ai_messages counts
@@ -87,7 +87,7 @@ describe('purgeAiSessions', () => {
     await purgeAiSessions();
 
     // Deliberately NOT scoped by changed_by_id, unlike the other audit
-    // assertions hardened under MINCRM-693: purgeAiSessions always writes as
+    // assertions hardened under that change: purgeAiSessions always writes as
     // SYSTEM_ACTOR (retentionService.ts:123), so changed_by_id carries the
     // shared all-zeros UUID and isolates nothing.
     //
@@ -99,7 +99,7 @@ describe('purgeAiSessions', () => {
     // and dataHygieneService.test.ts describe: the serial project still runs
     // alongside the parallel one, so this holds only while no parallel-project
     // file purges AI sessions. Documented as safe rather than fixed, per
-    // MINCRM-693 AC 2.
+    // AC 2.
     const row = await pool.query<{ new_value: string }>(
       `SELECT new_value FROM audit_log
        WHERE record_type = 'ai_sessions' AND event_type = 'deleted'

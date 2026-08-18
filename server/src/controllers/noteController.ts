@@ -1,5 +1,5 @@
 /**
- * Note controller — request/response shaping for note endpoints. (MINCRM-352)
+ * Note controller — request/response shaping for note endpoints.
  * No business logic; all DB access goes through noteService.
  */
 
@@ -97,7 +97,7 @@ export async function createNoteHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // When tags are supplied, enforce tags_restrict_creation for rep callers (MINCRM-506)
+  // When tags are supplied, enforce tags_restrict_creation for rep callers
   if (parsed.data.tags && parsed.data.tags.length > 0 && req.user!.role === 'rep') {
     const restricted = await getTagsRestrictCreation();
     if (restricted) {
@@ -194,7 +194,7 @@ export async function updateNoteHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // When non-empty tags are present in the update body, enforce tags_restrict_creation for rep callers (MINCRM-506)
+  // When non-empty tags are present in the update body, enforce tags_restrict_creation for rep callers
   // Empty array (clearing tags) does not create new tags, so no restriction applies.
   if (parsed.data.tags !== undefined && parsed.data.tags.length > 0 && req.user!.role === 'rep') {
     const restricted = await getTagsRestrictCreation();

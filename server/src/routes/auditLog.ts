@@ -1,10 +1,10 @@
 /**
- * Audit log routes. (MINCRM-170, MINCRM-171, MINCRM-172)
+ * Audit log routes.
  *
  * GET /api/v1/audit-log/record  — any authenticated user: entries for a specific record
  * GET /api/v1/audit-log/actors  — admin only: distinct users in the audit log
  *
- * Note: GET /api/v1/audit-log (paginated system-wide list) was removed in MINCRM-377.
+ * Note: GET /api/v1/audit-log (paginated system-wide list) was removed in a later change.
  * The admin audit log page now fetches via gRPC (ConnectRPC) instead.
  */
 

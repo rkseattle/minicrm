@@ -2,7 +2,7 @@
  * Tests for currencyService and the /api/settings/currencies endpoints.
  *
  * Uses the real minicrm_test PostgreSQL database — no mocked pool.
- * Covers MINCRM-251.
+ * Covers.
  */
 
 import 'dotenv/config';
@@ -358,7 +358,7 @@ describe('PUT /api/settings/currencies', () => {
 });
 
 // ---------------------------------------------------------------------------
-// currency_rate_history snapshot tests (MINCRM-526)
+// currency_rate_history snapshot tests
 // ---------------------------------------------------------------------------
 
 describe('updateCurrencies() — currency_rate_history snapshots', () => {

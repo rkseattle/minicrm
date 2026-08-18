@@ -1,7 +1,7 @@
 /**
  * Objection pattern matching service — on-demand AI classification of
  * objections in activity notes, with precedent matching against past won
- * deals. (MINCRM-471)
+ * deals.
  *
  * classifyActivityObjection() and findObjectionPrecedents() both run
  * on-demand (not pre-computed), per the ticket's AC. Classification uses a
@@ -170,8 +170,7 @@ export async function classifyActivityObjection(
         block.type === 'tool_use' && block.name === CLASSIFY_TOOL_NAME,
     );
     const input = toolUseBlock?.input as
-      | { objection_detected: boolean; category?: ObjectionCategory }
-      | undefined;
+      { objection_detected: boolean; category?: ObjectionCategory } | undefined;
     if (input?.objection_detected && input.category) {
       category = input.category;
     }

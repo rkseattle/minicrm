@@ -1,6 +1,6 @@
 /**
  * MFA controller — TOTP two-factor authentication setup and login challenge.
- * Request/response shaping only — no direct DB access. (MINCRM-392)
+ * Request/response shaping only — no direct DB access.
  */
 
 import type { Request, Response } from 'express';

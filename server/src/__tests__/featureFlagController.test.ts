@@ -2,7 +2,6 @@
  * HTTP contract tests for featureFlagController.
  * Verifies auth enforcement, response shapes, validation, and error codes.
  * Business logic is covered by featureFlagService.test.ts.
- * (MINCRM-463, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
  *
  * Run: npm test --workspace=minicrm-server
  */
@@ -15,7 +14,7 @@ import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
-// (MINCRM-491) group endpoint tests added at bottom of file.
+// group endpoint tests added at bottom of file.
 
 const FILE_PREFIX = 'ff-ctrl';
 const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
@@ -209,7 +208,7 @@ describe('PATCH /api/v1/admin/feature-flags/:key', () => {
     expect(res.body.flag.role_overrides.admin).toBe(true);
   });
 
-  // MINCRM-565 — dynamic role key validation
+  // dynamic role key validation
   it('accepts role_overrides with a custom role name and persists it', async () => {
     const roleResult = await pool.query<{ id: string }>(
       `INSERT INTO public.custom_roles (name, description, is_builtin)
@@ -260,7 +259,7 @@ describe('PATCH /api/v1/admin/feature-flags/:key', () => {
     expect(res.status).toBe(404);
   });
 
-  // MINCRM-488: enable_at scheduling
+  // enable_at scheduling
   it('accepts a future enable_at and returns it in the response', async () => {
     const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
     const res = await request(app)
@@ -533,7 +532,7 @@ describe('GET /api/v1/feature-flags/me reflects beta enrollment', () => {
   });
 });
 
-// ── PATCH — rollout fields (MINCRM-490) ───────────────────────────────────────
+// ── PATCH — rollout fields ───────────────────────────────────────
 
 describe('PATCH /api/v1/admin/feature-flags/:key — rollout fields', () => {
   it('accepts rollout_percentage and returns it in the response', async () => {
@@ -598,7 +597,7 @@ describe('PATCH /api/v1/admin/feature-flags/:key — rollout fields', () => {
   });
 });
 
-// ── User overrides API (MINCRM-492) ───────────────────────────────────────────
+// ── User overrides API ───────────────────────────────────────────
 
 describe('User overrides API', () => {
   let overrideUserId: string;
@@ -782,7 +781,7 @@ describe('User overrides API', () => {
   });
 });
 
-// ── GET /api/v1/admin/feature-flags/groups (MINCRM-491) ───────────────────────
+// ── GET /api/v1/admin/feature-flags/groups ───────────────────────
 
 describe('GET /api/v1/admin/feature-flags/groups', () => {
   it('returns 401 with no auth cookie', async () => {
@@ -825,7 +824,7 @@ describe('GET /api/v1/admin/feature-flags/groups', () => {
   });
 });
 
-// ── POST /api/v1/admin/feature-flags/groups (MINCRM-491) ──────────────────────
+// ── POST /api/v1/admin/feature-flags/groups ──────────────────────
 
 describe('POST /api/v1/admin/feature-flags/groups', () => {
   it('returns 401 with no auth cookie', async () => {
@@ -897,7 +896,7 @@ describe('POST /api/v1/admin/feature-flags/groups', () => {
   });
 });
 
-// ── PATCH /api/v1/admin/feature-flags/groups/:key (MINCRM-491) ────────────────
+// ── PATCH /api/v1/admin/feature-flags/groups/:key ────────────────
 
 describe('PATCH /api/v1/admin/feature-flags/groups/:key', () => {
   beforeEach(async () => {
@@ -960,7 +959,7 @@ describe('PATCH /api/v1/admin/feature-flags/groups/:key', () => {
   });
 });
 
-// ── DELETE /api/v1/admin/feature-flags/groups/:key (MINCRM-491) ──────────────
+// ── DELETE /api/v1/admin/feature-flags/groups/:key ──────────────
 
 describe('DELETE /api/v1/admin/feature-flags/groups/:key', () => {
   beforeEach(async () => {
@@ -997,7 +996,7 @@ describe('DELETE /api/v1/admin/feature-flags/groups/:key', () => {
     expect(res.status).toBe(204);
   });
 
-  it('cascade-deletes a group with member flags and returns 204 (MINCRM-567)', async () => {
+  it('cascade-deletes a group with member flags and returns 204', async () => {
     await pool.query(
       `UPDATE feature_flags SET group_key = 'ff-ctrl-del-group' WHERE flag_key = 'mobile_access'`,
     );
@@ -1012,7 +1011,7 @@ describe('DELETE /api/v1/admin/feature-flags/groups/:key', () => {
   });
 });
 
-// ── GET /api/v1/admin/feature-flags/groups/:key/beta-users (MINCRM-491) ───────
+// ── GET /api/v1/admin/feature-flags/groups/:key/beta-users ───────
 
 describe('GET /api/v1/admin/feature-flags/groups/:key/beta-users', () => {
   beforeEach(async () => {
@@ -1054,7 +1053,7 @@ describe('GET /api/v1/admin/feature-flags/groups/:key/beta-users', () => {
   });
 });
 
-// ── POST /api/v1/admin/feature-flags/groups/:key/beta-users (MINCRM-491) ──────
+// ── POST /api/v1/admin/feature-flags/groups/:key/beta-users ──────
 
 describe('POST /api/v1/admin/feature-flags/groups/:key/beta-users', () => {
   let groupBetaTargetId: string;
@@ -1125,7 +1124,7 @@ describe('POST /api/v1/admin/feature-flags/groups/:key/beta-users', () => {
   });
 });
 
-// ── DELETE /api/v1/admin/feature-flags/groups/:key/beta-users/:userId (MINCRM-491)
+// ── DELETE /api/v1/admin/feature-flags/groups/:key/beta-users/:userId
 
 describe('DELETE /api/v1/admin/feature-flags/groups/:key/beta-users/:userId', () => {
   let groupBetaRemoveTargetId: string;
@@ -1196,7 +1195,7 @@ describe('DELETE /api/v1/admin/feature-flags/groups/:key/beta-users/:userId', ()
   });
 });
 
-// ── PATCH /:key assigns group_key via existing endpoint (MINCRM-491) ──────────
+// ── PATCH /:key assigns group_key via existing endpoint ──────────
 
 describe('PATCH /api/v1/admin/feature-flags/:key group assignment', () => {
   beforeEach(async () => {
@@ -1260,7 +1259,7 @@ describe('PATCH /api/v1/admin/feature-flags/:key group assignment', () => {
   });
 });
 
-// ── GET /me — ai_features master gate + query efficiency (MINCRM-460) ────────
+// ── GET /me — ai_features master gate + query efficiency ────────
 
 describe('GET /api/v1/feature-flags/me — ai_features master gate', () => {
   beforeEach(async () => {

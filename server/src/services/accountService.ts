@@ -41,17 +41,17 @@ export interface AccountRow {
   employee_range: string | null;
   revenue_range: string | null;
   owner_id: string;
-  /** Account classification type (MINCRM-183) */
+  /** Account classification type */
   account_type: AccountType | null;
-  /** UUID of the parent account (MINCRM-184) */
+  /** UUID of the parent account */
   parent_account_id: string | null;
   created_at: Date;
   updated_at: Date;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
-  /** Tags attached to this account — only populated in list responses (MINCRM-186) */
+  /** Tags attached to this account — only populated in list responses */
   tags?: Array<{ id: string; name: string }>;
-  /** Cached relationship health badge — only populated in list responses; null if no score computed yet (MINCRM-467) */
+  /** Cached relationship health badge — only populated in list responses; null if no score computed yet */
   health_score?: { score: number; state: AccountHealthState; single_threaded_risk: boolean } | null;
 }
 
@@ -63,7 +63,7 @@ export type AccountSortColumn = (typeof ACCOUNT_SORT_COLUMNS)[number];
 interface ListAccountsOptions {
   /** When provided, only accounts with this owner_id are returned */
   ownerId?: string;
-  /** When provided, only accounts whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  /** When provided, only accounts whose owner_id is in this set are returned */
   ownerIds?: string[];
   /**
    * When provided, accounts are filtered by a case-insensitive substring match
@@ -75,7 +75,7 @@ interface ListAccountsOptions {
    * (case-insensitive substring match) are returned.
    */
   industry?: string;
-  /** When provided, only accounts with this account_type are returned (MINCRM-183) */
+  /** When provided, only accounts with this account_type are returned */
   accountType?: AccountType;
   /** Column to sort by; defaults to 'created_at' */
   sort?: AccountSortColumn;
@@ -85,9 +85,9 @@ interface ListAccountsOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
-  /** When provided, only accounts tagged with at least one of these tag IDs are returned (MINCRM-186) */
+  /** When provided, only accounts tagged with at least one of these tag IDs are returned */
   tagIds?: string[];
-  /** When provided, only accounts whose cached relationship health state matches one of these (MINCRM-467) */
+  /** When provided, only accounts whose cached relationship health state matches one of these */
   healthStatuses?: AccountHealthState[];
 }
 
@@ -95,7 +95,6 @@ interface ListAccountsOptions {
  * Checks whether setting parentId as the parent of accountId would create a circular chain.
  * Traverses upward from parentId until it either reaches a root (no parent) or finds accountId.
  * Must be called within a transaction if called alongside other account writes.
- * (MINCRM-184)
  *
  * @param accountId - The account being updated
  * @param parentId - The proposed parent account UUID
@@ -165,7 +164,7 @@ export async function setAccountContacts(
 
 /**
  * Creates a new account record, optionally linking contacts atomically.
- * Writes an audit entry in the same transaction. (MINCRM-170)
+ * Writes an audit entry in the same transaction.
  *
  * @param params - Account fields plus the owner's user ID and optional contact_ids
  * @param actor - User performing the action (for audit log)
@@ -192,7 +191,7 @@ export async function createAccount(
     await client.query('BEGIN');
     await setRlsUserId(client);
 
-    // Validate no circular parent chain before inserting (MINCRM-184)
+    // Validate no circular parent chain before inserting
     if (parent_account_id) {
       // Use the client (within the transaction) to avoid TOCTOU races
       const isCircular = await wouldCreateCircularParent(
@@ -230,7 +229,7 @@ export async function createAccount(
       await setAccountContacts(account.id, contact_ids, client);
     }
 
-    // Audit: record created (MINCRM-170)
+    // Audit: record created
     await writeAuditEntry(client, {
       recordType: 'account',
       recordId: account.id,
@@ -271,7 +270,7 @@ export async function findAccountById(id: string): Promise<AccountRow | null> {
 /**
  * Finds an account by exact, case-insensitive name match. Used for duplicate
  * detection on account create — mirrors findContactByEmail's role for
- * contacts. (MINCRM-440)
+ * contacts.
  *
  * @param name - Account name to match exactly (case-insensitive)
  * @returns The matching account row, or null if none exists
@@ -323,7 +322,7 @@ export async function listAccounts(
     conditions.push(`account_type = $${values.length}`);
   }
 
-  // Tag filter (MINCRM-186) — any-match: account must have at least one of the given tag IDs
+  // Tag filter — any-match: account must have at least one of the given tag IDs
   if (options.tagIds && options.tagIds.length > 0) {
     const placeholders = options.tagIds.map((_, i) => `$${values.length + i + 1}`).join(', ');
     options.tagIds.forEach((tid) => values.push(tid));
@@ -332,7 +331,7 @@ export async function listAccounts(
     );
   }
 
-  // Relationship health filter (MINCRM-467) — "Show At Risk or Dormant accounts"
+  // Relationship health filter — "Show At Risk or Dormant accounts"
   if (options.healthStatuses && options.healthStatuses.length > 0) {
     values.push(options.healthStatuses);
     conditions.push(
@@ -342,7 +341,7 @@ export async function listAccounts(
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  // Allowlist-validated sort column and direction (MINCRM-68)
+  // Allowlist-validated sort column and direction
   const sortCol = (ACCOUNT_SORT_COLUMNS as readonly string[]).includes(options.sort ?? '')
     ? options.sort!
     : 'created_at';
@@ -352,7 +351,7 @@ export async function listAccounts(
   const limit = options.limit ?? 50;
   const offset = (page - 1) * limit;
 
-  // Embed tags via lateral subquery (MINCRM-186) — avoids N+1 without separate API calls
+  // Embed tags via lateral subquery — avoids N+1 without separate API calls
   const tagsSubquery = `
     COALESCE((
       SELECT JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'name', t.name) ORDER BY t.name)
@@ -360,7 +359,7 @@ export async function listAccounts(
       WHERE at2.account_id = accounts.id
     ), '[]'::json) AS tags`;
 
-  // Embed the cached health score badge via a scalar subquery (MINCRM-467) — avoids N+1
+  // Embed the cached health score badge via a scalar subquery — avoids N+1
   // without a separate request per row on the list view.
   const healthScoreSubquery = `
     (SELECT JSON_BUILD_OBJECT(
@@ -392,7 +391,7 @@ export async function listAccounts(
 
 /**
  * Updates one or more fields on an existing account, optionally updating linked contacts atomically.
- * Writes per-field audit entries in the same transaction. (MINCRM-170)
+ * Writes per-field audit entries in the same transaction.
  *
  * @param id - Account UUID
  * @param params - Fields to update (at least one required); optional contact_ids replaces current links
@@ -417,7 +416,7 @@ export async function updateAccount(
     await client.query('BEGIN');
     await setRlsUserId(client);
 
-    // Validate no circular parent chain inside the transaction to avoid TOCTOU races (MINCRM-184)
+    // Validate no circular parent chain inside the transaction to avoid TOCTOU races
     if (accountParams.parent_account_id) {
       const isCircular = await wouldCreateCircularParent(
         id,
@@ -435,7 +434,7 @@ export async function updateAccount(
 
     if (fields.length > 0) {
       // Build dynamic SET clause: name = $2, industry = $3, ..., version = version + 1
-      // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
+      // $1=id, $2...$N=field values, $(N+1)=version
       const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
       const versionParam = fields.length + 2;
 
@@ -448,7 +447,7 @@ export async function updateAccount(
       );
 
       if (result.rowCount === 0) {
-        // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+        // Distinguish NOT_FOUND from version mismatch
         const check = await client.query<{ id: string }>('SELECT id FROM accounts WHERE id = $1', [
           id,
         ]);
@@ -470,7 +469,7 @@ export async function updateAccount(
 
       account = result.rows[0] ?? null;
     } else {
-      // No account fields to update — just fetch the existing row and check version (MINCRM-349)
+      // No account fields to update — just fetch the existing row and check version
       const result = await client.query<AccountRow>(
         'SELECT * FROM accounts WHERE id = $1 LIMIT 1',
         [id],
@@ -499,7 +498,7 @@ export async function updateAccount(
     }
 
     if (account && before) {
-      // Audit: per-field diff (MINCRM-170)
+      // Audit: per-field diff
       const auditBase = {
         recordType: 'account' as const,
         recordId: account.id,
@@ -572,7 +571,6 @@ interface ExportAccountsOptions {
 /**
  * Returns all accounts matching the given filters, enriched with owner name,
  * contact count, and deal count, for CSV export. No pagination.
- * (MINCRM-165)
  *
  * @param options - Filters (same semantics as listAccounts, minus pagination/sort)
  * @returns Array of enriched account rows ordered by name ASC
@@ -631,7 +629,6 @@ export async function exportAccountsForCsv(
 /**
  * Deletes an account by its UUID and writes an audit entry in the same transaction.
  * Associated contacts have their account_id set to NULL (not deleted).
- * (MINCRM-170)
  *
  * @param id - Account UUID
  * @param actor - User performing the action (for audit log)
@@ -648,7 +645,7 @@ export async function deleteAccount(
     await client.query('BEGIN');
     await setRlsUserId(client);
 
-    // Soft-delete notes before removing the parent row to prevent orphaned active notes (MINCRM-523)
+    // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'account', id);
 
     // Unlink contacts first (though the FK is SET NULL on delete, being explicit is clearer)
@@ -662,7 +659,7 @@ export async function deleteAccount(
     const account = result.rows[0] ?? null;
 
     if (account) {
-      // Audit: record deleted (MINCRM-170)
+      // Audit: record deleted
       await writeAuditEntry(client, {
         recordType: 'account',
         recordId: id,
@@ -694,7 +691,7 @@ export async function deleteAccount(
 
 /**
  * Returns all direct child accounts (subsidiaries) of the given account.
- * Used on the account detail page to display the subsidiary list. (MINCRM-184)
+ * Used on the account detail page to display the subsidiary list.
  *
  * @param parentId - UUID of the parent account
  * @returns Array of child account rows
@@ -709,7 +706,7 @@ export async function listChildAccounts(parentId: string): Promise<AccountRow[]>
 
 /**
  * Searches accounts by name (case-insensitive substring) for type-ahead use.
- * Excludes the account with excludeId to prevent self-parenting. (MINCRM-184)
+ * Excludes the account with excludeId to prevent self-parenting.
  *
  * @param query - Substring to match against account name
  * @param excludeId - Account UUID to exclude from results

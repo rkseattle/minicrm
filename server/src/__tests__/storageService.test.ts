@@ -1,5 +1,5 @@
 /**
- * Unit + integration tests for storageService. (MINCRM-197)
+ * Unit + integration tests for storageService.
  *
  * MinIO client calls are intercepted via vi.mock('minio') — no real S3 calls.
  * DB-touching paths (getStorageConfig / setStorageConfig) run against the real

@@ -1,5 +1,5 @@
 /**
- * Sentry error tracking integration for the server (MINCRM-285).
+ * Sentry error tracking integration for the server.
  * Only initializes when SENTRY_DSN is set and NODE_ENV is not 'test'.
  * All exports are safe to call unconditionally — they no-op when Sentry is not active.
  */
@@ -17,7 +17,7 @@ function sha256Hex(value: string): string {
 }
 
 /**
- * Redacts PII from a Sentry event before transmission (MINCRM-394).
+ * Redacts PII from a Sentry event before transmission.
  * - Removes POST body (request.data) to prevent credential/payload leakage
  * - Hashes user.email, user.username, user.name (SHA-256) so errors can be
  *   correlated to a specific user without exposing the raw value

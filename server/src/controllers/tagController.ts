@@ -1,5 +1,5 @@
 /**
- * Tag controller — request/response shaping for tag endpoints (MINCRM-186).
+ * Tag controller — request/response shaping for tag endpoints.
  * No business logic here; all DB access goes through tagService.
  */
 
@@ -43,7 +43,7 @@ export async function listTagsHandler(req: Request, res: Response): Promise<void
 /**
  * POST /api/tags
  * Creates a new tag. Returns the existing tag if name already exists (idempotent).
- * When tags_restrict_creation is true, rep callers receive 403. (MINCRM-263)
+ * When tags_restrict_creation is true, rep callers receive 403.
  */
 export async function createTagHandler(req: Request, res: Response): Promise<void> {
   const parsed = createTagSchema.safeParse(req.body);

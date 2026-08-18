@@ -1,5 +1,5 @@
 /**
- * JWT security tests (MINCRM-244).
+ * JWT security tests.
  *
  * Verifies that the auth middleware correctly rejects:
  *   1. Tokens signed with a wrong secret (forged tokens)
@@ -52,7 +52,7 @@ afterAll(async () => {
 
 // ── Test 1: Forged JWT (wrong secret) ────────────────────────────────────────
 
-describe('MINCRM-244 — forged JWT (wrong secret)', () => {
+describe('forged JWT (wrong secret)', () => {
   it('returns 401 when the token is signed with a different secret', async () => {
     const forgedToken = jwt.sign(
       { id: repUserId, email: repUserEmail, name: repUserName, role: 'rep' },
@@ -69,7 +69,7 @@ describe('MINCRM-244 — forged JWT (wrong secret)', () => {
 
 // ── Test 2: Tampered payload (role escalation) ───────────────────────────────
 
-describe('MINCRM-244 — tampered payload (role escalation)', () => {
+describe('tampered payload (role escalation)', () => {
   it('returns 401 when the payload role is mutated from rep to admin without re-signing', async () => {
     // Create a valid rep token
     const validToken = jwt.sign(
@@ -102,7 +102,7 @@ describe('MINCRM-244 — tampered payload (role escalation)', () => {
 
 // ── Test 3: Expired JWT ──────────────────────────────────────────────────────
 
-describe('MINCRM-244 — expired JWT', () => {
+describe('expired JWT', () => {
   it('returns 401 when the token has a past expiry', async () => {
     const expiredToken = jwt.sign(
       { id: repUserId, email: repUserEmail, name: repUserName, role: 'rep' },
@@ -119,7 +119,7 @@ describe('MINCRM-244 — expired JWT', () => {
 
 // ── Test 4: Malformed token ──────────────────────────────────────────────────
 
-describe('MINCRM-244 — malformed cookie values', () => {
+describe('malformed cookie values', () => {
   const malformedValues = [
     'not-a-jwt-at-all',
     'only.two-segments',
@@ -143,7 +143,7 @@ describe('MINCRM-244 — malformed cookie values', () => {
 
 // ── Test 5: No cookie at all ─────────────────────────────────────────────────
 
-describe('MINCRM-244 — no cookie', () => {
+describe('no cookie', () => {
   it('returns 401 on an authenticated endpoint when no cookie is sent', async () => {
     const res = await request(app).get('/api/v1/contacts');
 

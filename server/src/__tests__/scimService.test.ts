@@ -1,5 +1,5 @@
 /**
- * Integration tests for SCIM 2.0 services. (MINCRM-541)
+ * Integration tests for SCIM 2.0 services.
  *
  * Covers:
  * - scimTokenService: generate, getScimTokenMeta, revokeScimToken, validateScimToken

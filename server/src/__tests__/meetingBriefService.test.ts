@@ -1,5 +1,5 @@
 /**
- * Integration tests for meetingBriefService. (MINCRM-465)
+ * Integration tests for meetingBriefService.
  *
  * Runs against a real PostgreSQL test database for all contact/account/deal/
  * activity data. The Anthropic SDK is mocked so no real API calls are made.
@@ -93,7 +93,7 @@ beforeEach(async () => {
   // which fires both analyzeContactSignals and scoreActivitySentiment fire-and-forget after
   // every insert. With ai_configuration.enabled=true above, those background hooks would
   // otherwise call the same mocked Anthropic client and pollute mockCreate's call count/args
-  // for this file's own assertions. (MINCRM-465, MINCRM-472)
+  // for this file's own assertions.
   await pool.query(
     `UPDATE feature_flags SET enabled = false
      WHERE flag_key IN ('ai_sentiment_tracking', 'ai_champion_blocker_detection')`,
@@ -214,7 +214,7 @@ describe('generateMeetingBrief', () => {
     expect(persisted?.brief.account_summary).toBe(result?.brief.account_summary);
   });
 
-  // ── AI follow-up timing suggestion integration (MINCRM-470) ────────────────────
+  // ── AI follow-up timing suggestion integration ────────────────────
 
   it('includes the follow-up timing suggestion when the flag is enabled and a suggestion exists', async () => {
     const contactId = await createTestContact();

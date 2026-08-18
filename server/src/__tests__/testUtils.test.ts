@@ -1,7 +1,7 @@
 /**
  * Unit tests for the shared fixture helpers in testUtils.ts.
  *
- * These pin the MINCRM-704 fix: demo specs depend on a fixture admin that a sibling
+ * These pin the fix: demo specs depend on a fixture admin that a sibling
  * spec's bare `DELETE FROM users` (userService.test.ts) or an interrupted run can remove,
  * and on that fixture being the one `demoService.getAdminUserId()` actually resolves.
  * Both properties are invisible from the symptom when they break, so they are asserted
@@ -161,7 +161,7 @@ describe('ensureUser', () => {
     // is expressed in seconds so it is directly comparable with claimAdminResolution's
     // fallback, and seconds do not convert to a whole number of leap-aware years — a
     // hardcoded expectation silently pins one spelling of the constant and has to be
-    // hand-corrected whenever it changes. (MINCRM-704)
+    // hand-corrected whenever it changes.
     await ensureUser(ADMIN_USER);
 
     const row = await pool.query<{ matches_default: boolean }>(
@@ -218,7 +218,7 @@ describe('assertResolvedAdminIs', () => {
     // window is short; do not extend this transaction. Same isolation pattern as
     // expectActorScopingIsolatesForeignRows
     // in testUtils.ts already uses for exactly this reason. assertResolvedAdminIs must
-    // run on that same client to see the uncommitted state. (MINCRM-704)
+    // run on that same client to see the uncommitted state.
     const client = await pool.connect();
     try {
       await client.query('BEGIN');

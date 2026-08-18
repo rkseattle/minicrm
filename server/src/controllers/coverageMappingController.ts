@@ -1,6 +1,6 @@
 /**
  * Coverage/TIA mapping query controller — request/response shaping only.
- * All DB access goes through coverageMappingService. (MINCRM-621)
+ * All DB access goes through coverageMappingService.
  * Admin-only, feature-flag gated (enforced by the route layer).
  */
 

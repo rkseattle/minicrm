@@ -1,6 +1,6 @@
 /**
  * Duplicate detection explanation service — on-demand AI explanation of why
- * two contact or account records are flagged as potential duplicates. (MINCRM-440)
+ * two contact or account records are flagged as potential duplicates.
  *
  * Follows the same "gather context, PII-filter, forced-tool Claude call,
  * record token usage" shape as dealHealthService.generateDealHealthCheck.
@@ -127,7 +127,7 @@ export async function explainDuplicateMatch(
     matched_signals: matchResult.matched_signals,
   };
 
-  // PII-filter both records' field data before it leaves the server. (MINCRM-445)
+  // PII-filter both records' field data before it leaves the server.
   const { sanitised, strippedFields } = await applyPiiFilter(context, 'contact');
   if (strippedFields.length > 0) {
     logger.info(

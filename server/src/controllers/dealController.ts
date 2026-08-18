@@ -63,7 +63,7 @@ export async function createDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // Validate stage against live pipeline_stages table for the specified pipeline (MINCRM-180, MINCRM-397)
+  // Validate stage against live pipeline_stages table for the specified pipeline
   const validStages = await getStageNames(parsed.data.pipeline_id);
   if (!validStages.includes(parsed.data.stage)) {
     res.status(400).json({
@@ -84,7 +84,7 @@ export async function createDealHandler(req: Request, res: Response): Promise<vo
  * Lists deals with optional filters and pagination:
  *   ?owner=me         — scope to the authenticated user's deals
  *   ?account=<uuid>   — filter by account UUID
- *   ?hideClosed=true  — exclude Closed Won and Closed Lost deals (MINCRM-176)
+ *   ?hideClosed=true  — exclude Closed Won and Closed Lost deals
  *   ?sort=<col>       — sort column (created_at|name|close_date|value)
  *   ?dir=asc|desc     — sort direction
  *   ?page=<n>         — 1-based page number (default 1)
@@ -115,7 +115,7 @@ export async function listDealsHandler(req: Request, res: Response): Promise<voi
     : undefined;
   const dir = req.query.dir === 'desc' ? ('DESC' as const) : ('ASC' as const);
 
-  // Tag filter (MINCRM-186): ?tags=uuid,uuid — comma-separated tag IDs (any-match)
+  // Tag filter: ?tags=uuid,uuid — comma-separated tag IDs (any-match)
   const tagIds =
     typeof req.query.tags === 'string' && req.query.tags.trim().length > 0
       ? req.query.tags
@@ -124,7 +124,7 @@ export async function listDealsHandler(req: Request, res: Response): Promise<voi
           .filter(Boolean)
       : undefined;
 
-  // Optional ?pipelineId= filters the board to a specific pipeline (MINCRM-397)
+  // Optional ?pipelineId= filters the board to a specific pipeline
   const pipelineId =
     typeof req.query['pipelineId'] === 'string' && req.query['pipelineId'].length > 0
       ? req.query['pipelineId']
@@ -190,7 +190,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // When pipeline_id is changing, validate the target pipeline exists (MINCRM-408)
+  // When pipeline_id is changing, validate the target pipeline exists
   if (parsed.data.pipeline_id !== undefined && parsed.data.pipeline_id !== existing.pipeline_id) {
     const targetPipeline = await findPipelineById(parsed.data.pipeline_id);
     if (!targetPipeline) {
@@ -209,7 +209,6 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   }
 
   // Validate stage against the target pipeline (incoming pipeline_id if changing, existing otherwise).
-  // (MINCRM-180, MINCRM-397, MINCRM-408)
   const effectivePipelineId = parsed.data.pipeline_id ?? existing.pipeline_id;
   if (parsed.data.stage !== undefined) {
     const validStages = await getStageNames(effectivePipelineId);
@@ -221,9 +220,9 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     }
   }
 
-  // MINCRM-121: reject a future close_date even when stage is not in the payload —
+  // reject a future close_date even when stage is not in the payload —
   // use existing.stage to determine if the deal is already in a terminal stage.
-  // Use live terminal stage list so custom terminal stages are respected (MINCRM-180, MINCRM-397, MINCRM-408).
+  // Use live terminal stage list so custom terminal stages are respected.
   if (parsed.data.close_date) {
     const stageForTerminalCheck = parsed.data.stage ?? existing.stage;
     const today = new Date().toISOString().split('T')[0];
@@ -245,7 +244,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-      // Include current server state so the client can render a three-way merge without a second round-trip (MINCRM-351)
+      // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findDealById(id);
       res.status(409).json({ error: { code, message: (err as Error).message, current } });
       return;
@@ -255,7 +254,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
       return;
     }
     if (code === 'STAGE_EXIT_REQUIREMENTS_NOT_MET') {
-      // Return the missing fields so the client can present a targeted error or warning. (MINCRM-527)
+      // Return the missing fields so the client can present a targeted error or warning.
       const typedErr = err as Error & {
         missing_fields: string[];
         warning_fields: string[];
@@ -280,7 +279,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   }
   res.status(200).json({ deal });
 
-  // Fire-and-forget: notify the new owner when the deal is reassigned. (MINCRM-162)
+  // Fire-and-forget: notify the new owner when the deal is reassigned.
   if (parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
     void (async () => {
       try {
@@ -403,7 +402,7 @@ interface DealExportData {
 /**
  * Resolves the owner/account filters for the current request, fetches matching deals,
  * and merges in custom field columns. Shared by the CSV and PDF export handlers so both
- * formats reflect identical rows and ownership rules (MINCRM-601).
+ * formats reflect identical rows and ownership rules.
  *
  * @returns null if the request had an invalid `account` param; the response has already
  * been written to in that case and the caller must return without further writes.
@@ -414,7 +413,7 @@ async function resolveDealExportData(req: Request, res: Response): Promise<DealE
 
   // Org-wide readers (admin/viewer): export all when ?all=true, otherwise own records only.
   // All other roles (rep, manager): apply visibility filter via requestingUser so managers
-  // get team-scoped results matching what they see in the list view (MINCRM-534).
+  // get team-scoped results matching what they see in the list view.
   const ownerId = orgWideRead && !exportAll ? req.user!.id : undefined;
   const requestingUser = !orgWideRead ? { id: req.user!.id, role: req.user!.role } : undefined;
 
@@ -432,7 +431,7 @@ async function resolveDealExportData(req: Request, res: Response): Promise<DealE
 
   const dealRows = await exportDealsForCsv({ ownerId, accountId, requestingUser });
 
-  // Custom field columns — fetch definitions and values in application code (MINCRM-276)
+  // Custom field columns — fetch definitions and values in application code
   const customDefs = await listDefinitions('deal');
   const recordIds = dealRows.map((r) => r.id);
   const valuesByRecord = new Map<string, Map<string, string | null>>();
@@ -479,7 +478,6 @@ async function resolveDealExportData(req: Request, res: Response): Promise<DealE
  *
  * Query params mirror the list endpoint (owner, account) except pagination/sort.
  * Reps automatically get their own deals; admins may pass ?all=true to export all.
- * (MINCRM-166)
  */
 export async function exportDealsHandler(req: Request, res: Response): Promise<void> {
   const data = await resolveDealExportData(req, res);
@@ -497,9 +495,9 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
  * GET /api/deals/export.pdf
  * Renders all matching deals as a paginated PDF table.
  *
- * Query params and ownership rules are identical to the CSV export above (MINCRM-601).
+ * Query params and ownership rules are identical to the CSV export above.
  */
-/** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. (MINCRM-655) */
+/** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. */
 const DEAL_PDF_NUMERIC_COLUMNS = new Set(['Value']);
 
 /**
@@ -542,7 +540,7 @@ export async function exportDealsPdfHandler(req: Request, res: Response): Promis
  * GET /api/deals/:id/export.pdf
  * Renders a single deal as a one-record summary PDF, mirroring the data shown
  * on the deal detail page. Visibility matches getDealHandler — no ownership
- * restriction on read, consistent with GET /api/deals/:id. (MINCRM-650)
+ * restriction on read, consistent with GET /api/deals/:id.
  */
 export async function exportDealPdfHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);

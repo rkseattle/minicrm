@@ -1,6 +1,5 @@
 /**
  * CSV serialization utilities for export endpoints.
- * (MINCRM-164, MINCRM-165, MINCRM-166)
  */
 
 /** Characters that Excel/Sheets treat as formula starters — prefix with ' to prevent DDE injection */
@@ -22,7 +21,7 @@ export function formatExportDate(value: Date): string {
  * Fields containing commas, double-quotes, or newlines are wrapped in double-quotes.
  * Embedded double-quotes are escaped by doubling them.
  * Fields whose first character is a spreadsheet formula trigger character are prefixed
- * with a single quote to prevent DDE/formula injection (MINCRM-164).
+ * with a single quote to prevent DDE/formula injection.
  *
  * @param value - Raw cell value (null/undefined rendered as empty string)
  * @returns Properly escaped CSV field

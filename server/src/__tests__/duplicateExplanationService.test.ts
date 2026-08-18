@@ -1,5 +1,5 @@
 /**
- * Integration tests for duplicateExplanationService. (MINCRM-440)
+ * Integration tests for duplicateExplanationService.
  *
  * The Anthropic SDK is mocked so no real API calls are made and token usage
  * recording is deterministic. No database access is required — this service

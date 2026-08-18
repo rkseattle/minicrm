@@ -5,7 +5,7 @@
  * Two test users are created: an owner (rep) and another rep.
  * Tables are truncated before each test to ensure isolation.
  *
- * MINCRM-188
+ *
  */
 
 import 'dotenv/config';

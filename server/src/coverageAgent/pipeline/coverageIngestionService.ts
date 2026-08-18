@@ -1,13 +1,12 @@
 /**
- * Coverage/TIA ingestion & normalization service. (MINCRM-614)
+ * Coverage/TIA ingestion & normalization service.
  *
  * Reads a single already-persisted raw coverage dump (file-based, see
  * coverageAgent/dumpIndex.ts / coverageDumpService.findCoverageDump — Phase
  * 1's storage decision, unchanged by this phase), symbolicates it via
- * coverageSymbolicationService (MINCRM-615), and upserts the result into
+ * coverageSymbolicationService, and upserts the result into
  * the version-anchored coverage_units model via coverageModelService
- * (MINCRM-616).
- *
+ * *
  * Idempotent AND race-safe: re-ingesting a dumpId that's already in
  * coverage_ingested_dumps is a no-op. The race-safety itself lives in
  * coverageModelService.upsertCoverageUnits (an atomic claim-then-write
@@ -16,8 +15,7 @@
  * discarded rather than skipping it up front), but never double-counts
  * hit_count even if two calls for the same dumpId race, unlike a
  * check-then-act pattern split across two separate round-trips would.
- *
- * Test attribution (MINCRM-618): after resolving units, this module looks
+ * Test attribution: after resolving units, this module looks
  * up whether the dump being ingested has a coverage_session_dumps row (see
  * coverageSessionService.findCoverageSessionDumpByDumpId) with a non-null
  * test_id. If so, the SAME set of units is also linked to that test via
@@ -29,8 +27,7 @@
  * (or a session attribution with a null test_id — e.g. a manual-recorder
  * check-in with no single associated test) is ingested into coverage_units
  * exactly as before, simply producing no coverage_test_links rows for it.
- *
- * Build summary rollup (MINCRM-629/630/631): unlike test-link attribution,
+ * Build summary rollup: unlike test-link attribution,
  * coverageBuildSummaryService.upsertBuildSummaryForCommit runs on EVERY
  * ingestion regardless of session/test attribution — the reporting
  * dashboard's per-build/trend views need a summary row for any commit that
@@ -91,7 +88,7 @@ export async function ingestCoverageDump(
   dumpId: string,
   options: IngestCoverageDumpOptions = {},
 ): Promise<IngestCoverageDumpResult> {
-  // Wall-clock duration for operator alerting (MINCRM-637) — measured from
+  // Wall-clock duration for operator alerting — measured from
   // the very start of this call (including the raw-payload read and
   // symbolication, not just the DB transaction) since that's the latency an
   // operator or CI job actually experiences per ingestion call.

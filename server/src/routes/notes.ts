@@ -1,5 +1,5 @@
 /**
- * Notes routes — all endpoints require authentication. (MINCRM-352)
+ * Notes routes — all endpoints require authentication.
  * Routes are mounted at /api/v1/:entityType/:entityId/notes.
  */
 

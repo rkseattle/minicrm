@@ -9,7 +9,6 @@
  * Consumers (e.g. gRPC streaming handler) subscribe via:
  *   auditEventBus.on('audit_event', (event: AuditNotification) => { ... })
  *
- * (MINCRM-375)
  */
 
 import { EventEmitter } from 'events';

@@ -1,5 +1,5 @@
 /**
- * Unit tests for the shared SSRF-prevention utility. (MINCRM-656)
+ * Unit tests for the shared SSRF-prevention utility.
  * webhookService.test.ts covers this logic indirectly via validateWebhookUrl();
  * these tests cover the shared core directly since it's now a standalone utility
  * other services (PDF branding logo fetch) also depend on.

@@ -1,5 +1,5 @@
 /**
- * Deal health check controller — request/response shaping only. (MINCRM-442)
+ * Deal health check controller — request/response shaping only.
  * No business logic here; all AI orchestration and DB access goes through dealHealthService.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Integration tests for featureFlagService. (MINCRM-463, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
+ * Integration tests for featureFlagService.
  *
  * Runs against the real PostgreSQL minicrm_test DB.
  * The feature_flags table is seeded by migration 066; tests rely on the seed data.
@@ -122,7 +122,7 @@ describe('listFeatureFlags', () => {
   });
 
   /**
-   * AC-7 guard for MINCRM-685, inverted into something that can fail.
+   * AC-7 guard for that work, inverted into something that can fail.
    *
    * The acceptance criterion is "no test asserts the removed flags exist",
    * which on its own is satisfied by deleting assertions and would stay
@@ -130,15 +130,15 @@ describe('listFeatureFlags', () => {
    * property that actually matters instead: internal Coverage/TIA tooling has
    * no feature_flags row at all, because FeatureFlagsSettings.tsx renders every
    * row it finds and a re-seeded one would be discoverable and toggleable from
-   * the product's own admin Settings page — the exact thing MINCRM-663 and
-   * MINCRM-685 removed. Gate coverage tooling at boot
+   * the product's own admin Settings page — the exact thing and
+   * removed. Gate coverage tooling at boot
    * (server/src/coverageAgent/coverageBootGate.ts), never with a flag row.
    *
    * Checks both the registry and the table: a key can be added to
    * FEATURE_FLAG_KEYS without a migration, or seeded by a migration without
    * being in the registry, and either alone puts a toggle back in the UI.
    */
-  it('has no coverage_* feature flag in the registry or the table (MINCRM-663, MINCRM-685)', async () => {
+  it('has no coverage_* feature flag in the registry or the table', async () => {
     expect(FEATURE_FLAG_KEYS.filter((key) => key.startsWith('coverage_'))).toEqual([]);
 
     const flags = await listFeatureFlags();
@@ -356,7 +356,7 @@ describe('updateFeatureFlag', () => {
     expect(updated?.updated_by_name).toBe('FF Service Actor');
   });
 
-  // MINCRM-565 — dynamic role key validation
+  // dynamic role key validation
   it('accepts role_overrides with all built-in role keys', async () => {
     const updated = await updateFeatureFlag(
       'notes',
@@ -479,7 +479,7 @@ describe('getActiveUserCountForFlag', () => {
   });
 });
 
-// ── enable_at (MINCRM-488) ────────────────────────────────────────────────────
+// ── enable_at ────────────────────────────────────────────────────
 
 describe('enable_at scheduling', () => {
   it('isFeatureEnabled returns true when enable_at is in the past and enabled=false', async () => {
@@ -586,7 +586,7 @@ describe('enable_at scheduling', () => {
   });
 });
 
-// ── beta users (MINCRM-489) ───────────────────────────────────────────────────
+// ── beta users ───────────────────────────────────────────────────
 
 describe('beta user enrollment', () => {
   it('enrollBetaUser allows a user to see a disabled flag as enabled', async () => {
@@ -680,7 +680,7 @@ describe('beta user enrollment', () => {
   });
 });
 
-// ── ai_features master toggle gates ai_* sub-feature flags (MINCRM-460) ──────
+// ── ai_features master toggle gates ai_* sub-feature flags ──────
 
 describe('ai_features master toggle', () => {
   it('ai_nli_page resolves enabled when ai_features is enabled', async () => {
@@ -740,7 +740,7 @@ describe('ai_features master toggle', () => {
   });
 });
 
-// ── stableHash (MINCRM-490) ───────────────────────────────────────────────────
+// ── stableHash ───────────────────────────────────────────────────
 
 describe('stableHash', () => {
   it('produces a deterministic result for a fixed input', () => {
@@ -775,7 +775,7 @@ describe('stableHash', () => {
   });
 });
 
-// ── Rollout bucketing (MINCRM-490) ────────────────────────────────────────────
+// ── Rollout bucketing ────────────────────────────────────────────
 
 describe('rollout bucketing', () => {
   let targetUserId: string;
@@ -909,7 +909,7 @@ describe('rollout bucketing', () => {
 
     const auditRow = await pool.query(
       // changed_by_id scoping: record_name + field_name are shared with any
-      // other file advancing this org-wide flag. (MINCRM-693)
+      // other file advancing this org-wide flag.
       `SELECT * FROM audit_log
        WHERE record_name = 'Mobile Access'
          AND field_name = 'rollout_percentage'
@@ -940,7 +940,7 @@ describe('rollout bucketing', () => {
   });
 });
 
-// ── User overrides (MINCRM-492) ───────────────────────────────────────────────
+// ── User overrides ───────────────────────────────────────────────
 
 describe('user overrides', () => {
   let targetUserId: string;
@@ -1035,7 +1035,7 @@ describe('user overrides', () => {
     const auditRow = await pool.query(
       // changed_by_id scoping: record_name + field_name are shared with
       // featureFlagController.test.ts, which PUTs mobile_access overrides. With
-      // LIMIT 1 a foreign row would take the slot. (MINCRM-693)
+      // LIMIT 1 a foreign row would take the slot.
       `SELECT * FROM audit_log
        WHERE record_name LIKE '%Mobile%'
          AND field_name = 'user_override'
@@ -1051,7 +1051,7 @@ describe('user overrides', () => {
     await upsertUserOverride('mobile_access', targetUserId, 'force_disabled', null, ACTOR());
     await deleteUserOverride('mobile_access', targetUserId, ACTOR());
     const auditRow = await pool.query(
-      // See above — same shared record_name/field_name. (MINCRM-693)
+      // See above — same shared record_name/field_name.
       `SELECT * FROM audit_log
        WHERE record_name LIKE '%Mobile%'
          AND field_name = 'user_override'
@@ -1064,7 +1064,7 @@ describe('user overrides', () => {
   });
 });
 
-// ── Flag groups (MINCRM-491) ──────────────────────────────────────────────────
+// ── Flag groups ──────────────────────────────────────────────────
 
 describe('flag groups CRUD', () => {
   const GROUP_KEY = 'ff-svc-test-group';
@@ -1149,7 +1149,7 @@ describe('flag groups CRUD', () => {
     expect(result).toBe(false);
   });
 
-  it('deleteFlagGroup with member flags cascade-unassigns them and deletes the group (MINCRM-567)', async () => {
+  it('deleteFlagGroup with member flags cascade-unassigns them and deletes the group', async () => {
     await createFlagGroup({ group_key: GROUP_KEY, label: 'Has Member' }, ACTOR());
     await pool.query(`UPDATE feature_flags SET group_key = $1 WHERE flag_key = 'mobile_access'`, [
       GROUP_KEY,
@@ -1165,7 +1165,7 @@ describe('flag groups CRUD', () => {
     expect(flagRow.rows[0]?.updated_by).toBe(actorId);
   });
 
-  it('deleteFlagGroup writes audit entries for unassigned flags and the group itself (MINCRM-567)', async () => {
+  it('deleteFlagGroup writes audit entries for unassigned flags and the group itself', async () => {
     await createFlagGroup({ group_key: GROUP_KEY, label: 'Delete Audit' }, ACTOR());
     await pool.query(`UPDATE feature_flags SET group_key = $1 WHERE flag_key = 'mobile_access'`, [
       GROUP_KEY,
@@ -1214,7 +1214,7 @@ describe('flag groups CRUD', () => {
   });
 });
 
-describe('flag group gate evaluation (MINCRM-491)', () => {
+describe('flag group gate evaluation', () => {
   const GROUP_KEY = 'ff-svc-gate-group';
 
   beforeEach(async () => {
@@ -1325,7 +1325,7 @@ describe('flag group gate evaluation (MINCRM-491)', () => {
   });
 });
 
-describe('flag group beta user management (MINCRM-491)', () => {
+describe('flag group beta user management', () => {
   const GROUP_KEY = 'ff-svc-beta-group';
   let targetUserId: string;
   const TARGET_EMAIL = `${FILE_PREFIX}-group-beta-target@example.com`;
@@ -1404,7 +1404,7 @@ describe('flag group beta user management (MINCRM-491)', () => {
   });
 });
 
-describe('updateFeatureFlag group assignment (MINCRM-491)', () => {
+describe('updateFeatureFlag group assignment', () => {
   const GROUP_KEY = 'ff-svc-assign-group';
 
   beforeEach(async () => {

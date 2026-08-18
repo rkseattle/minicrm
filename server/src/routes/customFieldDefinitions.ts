@@ -1,5 +1,5 @@
 /**
- * Custom field definition routes. (MINCRM-276)
+ * Custom field definition routes.
  * GET is authenticated; POST/PATCH/DELETE require admin role.
  */
 

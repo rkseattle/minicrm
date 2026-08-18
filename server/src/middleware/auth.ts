@@ -2,9 +2,9 @@
  * Authentication middleware.
  * Verifies the JWT stored in the httpOnly cookie, then performs a live DB
  * lookup to confirm the user is still active and does not have a forced
- * password-change pending (MINCRM-74).
+ * password-change pending.
  *
- * MINCRM-365: JWT expiry is 30 minutes (sliding idle timeout). The `login_at`
+ * JWT expiry is 30 minutes (sliding idle timeout). The `login_at`
  * claim enforces an 8-hour absolute session cap regardless of refresh activity.
  */
 
@@ -18,7 +18,7 @@ import { runWithRequestContext } from '../utils/requestContext.js';
  * Session-cookie policy — name, lifetime, and attributes — lives in
  * auth/sessionCookie.ts, alongside the helpers that write and clear the cookie.
  * Re-exported here because callers have long imported the name from this
- * module. (MINCRM-703)
+ * module.
  */
 import { AUTH_COOKIE_NAME, ABSOLUTE_SESSION_CAP_SECONDS } from '../auth/sessionCookie.js';
 
@@ -38,7 +38,7 @@ export { AUTH_COOKIE_NAME };
 export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const cookieToken = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
-  // Service accounts authenticate via Authorization: Bearer <token> (MINCRM-536).
+  // Service accounts authenticate via Authorization: Bearer <token>.
   // Cookie takes precedence — a request with both a valid cookie and a Bearer header
   // is treated as a human session.
   const authHeader = req.headers.authorization ?? '';
@@ -82,7 +82,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     return;
   }
 
-  // Enforce absolute 8-hour session cap (MINCRM-365).
+  // Enforce absolute 8-hour session cap.
   // login_at is embedded at original login and preserved through every refresh.
   // A missing login_at means the token predates this feature — allow it through
   // so existing sessions are not abruptly invalidated on deploy.
@@ -99,7 +99,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     }
   }
 
-  // Invalidate sessions from before a password reset (MINCRM-157).
+  // Invalidate sessions from before a password reset.
   // Compare at second granularity to match JWT iat precision: floor password_changed_at
   // to whole seconds so a token issued in the same second as the reset is accepted,
   // while any token issued in an earlier second is correctly rejected.
@@ -137,7 +137,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     role: user.role,
     status: user.status,
     authMethod: 'cookie',
-    // Preserve the JWT claims that are not in the DB record (MINCRM-365).
+    // Preserve the JWT claims that are not in the DB record.
     login_at: decoded.login_at,
     iat: decoded.iat,
     exp: decoded.exp,
@@ -151,7 +151,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 }
 
 /**
- * Bearer-token authentication path for service account users (MINCRM-536).
+ * Bearer-token authentication path for service account users.
  * Hashes the supplied token and performs a live DB lookup. No JWT involved —
  * the token is a long-lived opaque secret, not a signed claim set.
  */

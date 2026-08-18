@@ -167,10 +167,10 @@ describe('PATCH /api/contacts/:id — ownership', () => {
 
 // ── DELETE /api/contacts/:id ─────────────────────────────────────────────────
 
-// Per MINCRM-542 + migration 109: reps have contacts:delete and can delete their
+// Per migration 109: reps have contacts:delete and can delete their
 // own contacts. Ownership check in the controller blocks deletion of other users' contacts.
 describe('DELETE /api/contacts/:id — ownership', () => {
-  it('allows a rep to delete their own contact (MINCRM-542)', async () => {
+  it('allows a rep to delete their own contact', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
@@ -180,7 +180,7 @@ describe('DELETE /api/contacts/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it("returns 403 FORBIDDEN when a rep attempts to delete another rep's contact (MINCRM-542)", async () => {
+  it("returns 403 FORBIDDEN when a rep attempts to delete another rep's contact", async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
@@ -201,7 +201,7 @@ describe('DELETE /api/contacts/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it('returns 404 for a non-existent contact when rep has contacts:delete (MINCRM-542)', async () => {
+  it('returns 404 for a non-existent contact when rep has contacts:delete', async () => {
     const res = await request(app)
       .delete('/api/v1/contacts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
@@ -310,7 +310,7 @@ describe('POST /api/contacts — duplicate detection', () => {
     expect(res.body.duplicate.id).toBeDefined();
   });
 
-  // MINCRM-247: the DB unique constraint on contacts.email means ?force=true can no
+  // the DB unique constraint on contacts.email means ?force=true can no
   // longer bypass the duplicate check — the constraint fires at the DB level and the
   // controller returns 409 with DUPLICATE_EMAIL instead of creating a duplicate.
   it('returns 409 DUPLICATE_EMAIL when ?force=true but the DB unique constraint fires', async () => {
@@ -353,7 +353,7 @@ describe('GET /api/contacts/:id — visibility', () => {
   });
 });
 
-// ── POST /api/contacts/:id/send-email (MINCRM-275) ──────────────────────────
+// ── POST /api/contacts/:id/send-email ──────────────────────────
 
 describe('POST /api/contacts/:id/send-email', () => {
   it('returns 200 with delivered: false and an activityId when SMTP is not configured', async () => {
@@ -452,7 +452,7 @@ describe('POST /api/contacts/:id/send-email', () => {
   });
 });
 
-// ── GET /api/contacts — ?owner=my_team filter (MINCRM-545) ──────────────────
+// ── GET /api/contacts — ?owner=my_team filter ──────────────────
 
 describe('GET /api/contacts — ?owner=my_team filter', () => {
   const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
@@ -541,7 +541,7 @@ describe('GET /api/contacts — ?owner=my_team filter', () => {
   });
 });
 
-// ── GET /api/contacts/export and /api/contacts/export.pdf ─────────────────── (MINCRM-601)
+// ── GET /api/contacts/export and /api/contacts/export.pdf ───────────────────
 
 describe('GET /api/contacts/export', () => {
   it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {

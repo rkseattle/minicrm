@@ -1,5 +1,5 @@
 /**
- * Integration tests for noteService. (MINCRM-352)
+ * Integration tests for noteService.
  *
  * Runs against the real PostgreSQL minicrm_test database.
  * Covers: CRUD, visibility masking, creator-only visibility-change enforcement,
@@ -750,7 +750,7 @@ describe('deleteNote', () => {
   });
 });
 
-// ── note_tags junction (MINCRM-506) ──────────────────────────────────────────
+// ── note_tags junction ──────────────────────────────────────────
 
 describe('note tags via note_tags junction', () => {
   it('stores tags in note_tags and returns them in NoteResponse', async () => {
@@ -839,7 +839,7 @@ describe('note tags via note_tags junction', () => {
   });
 });
 
-// ── softDeleteNotesByEntity (MINCRM-523) ──────────────────────────────────────
+// ── softDeleteNotesByEntity ──────────────────────────────────────
 
 describe('softDeleteNotesByEntity', () => {
   it('sets deleted_at on all active notes for the entity', async () => {

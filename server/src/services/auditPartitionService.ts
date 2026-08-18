@@ -1,5 +1,5 @@
 /**
- * Audit partition management service. (MINCRM-521)
+ * Audit partition management service.
  *
  * Manages monthly child partitions for the audit_log partitioned table.
  * Called at server startup and on a monthly node-cron schedule to ensure

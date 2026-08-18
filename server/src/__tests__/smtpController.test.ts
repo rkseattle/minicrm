@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for smtpController. (MINCRM-254)
+ * HTTP contract tests for smtpController.
  *
  * Covers GET /api/settings/smtp, PUT /api/settings/smtp, and auth-boundary enforcement.
  * POST /api/settings/smtp/test is not integration-tested here because it requires a

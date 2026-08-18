@@ -94,7 +94,7 @@ const activityVolumeQuerySchema = z.object({
 /**
  * Parses and scopes the activity volume query params shared by the JSON and PDF export
  * handlers. Returns null if validation failed; the response has already been written to
- * in that case and the caller must return without further writes. (MINCRM-601)
+ * in that case and the caller must return without further writes.
  */
 function resolveActivityVolumeParams(
   req: Request,
@@ -136,7 +136,7 @@ function resolveActivityVolumeParams(
  * Returns an activity count matrix broken down by rep and activity type for a date range.
  * - Admins may filter by owner_id; if omitted, returns team-wide data.
  * - Reps always receive data scoped to their own activities.
- * Implements MINCRM-181.
+ * Implements.
  */
 export async function getActivityVolumeReportHandler(req: Request, res: Response): Promise<void> {
   const params = resolveActivityVolumeParams(req, res);
@@ -149,7 +149,7 @@ export async function getActivityVolumeReportHandler(req: Request, res: Response
 /**
  * GET /api/v1/reports/activity-volume/export.pdf
  * Renders the activity volume report as a paginated PDF table. Query params and
- * ownership rules are identical to the JSON endpoint above. (MINCRM-601)
+ * ownership rules are identical to the JSON endpoint above.
  */
 export async function exportActivityVolumeReportPdfHandler(
   req: Request,
@@ -188,7 +188,7 @@ export async function exportActivityVolumeReportPdfHandler(
   );
 }
 
-// ── Stage Trend Report (MINCRM-284) ──────────────────────────────────────────
+// ── Stage Trend Report ──────────────────────────────────────────
 
 /** Zod schema for stage trend report query parameters */
 const stageTrendQuerySchema = z.object({
@@ -203,7 +203,7 @@ const stageTrendQuerySchema = z.object({
  * GET /api/v1/reports/stage-trend
  * Returns stage entry and conversion counts over the last 30, 60, or 90 days.
  * Accessible to all authenticated users; no owner scoping (aggregated data).
- * Implements MINCRM-284.
+ * Implements.
  */
 export async function getStageTrendReportHandler(req: Request, res: Response): Promise<void> {
   const parsed = stageTrendQuerySchema.safeParse(req.query);

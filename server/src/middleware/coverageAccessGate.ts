@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA route access gate — flagged capability rollout. (MINCRM-637)
+ * Coverage/TIA route access gate — flagged capability rollout.
  *
  * Every coverage route used a bare `requireRole('admin')` check. This
  * introduces `Capability.CoverageAdmin` as the repo's documented preferred
@@ -26,7 +26,7 @@ import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
 /**
  * Shared by the three routers the coverage-dashboard app actually calls
- * (MINCRM-636/637): coverageReporting.ts, coverageSessions.ts, and
+ * coverageReporting.ts, coverageSessions.ts, and
  * coverageMapping.ts — the last backing the Traceability tab's drill-down and
  * typeahead. Deliberately NOT wired into coverageAccessGate itself: that would
  * silently apply the bypass to every consumer of this gate, including
@@ -37,12 +37,12 @@ import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
  * An earlier version of this docblock named only two routers and claimed
  * coverageMapping.ts was among those the flag "was never meant to open up".
  * That was already untrue when written — that router opted in — and the
- * contradiction is what MINCRM-694's investigation ran into, since both
+ * contradiction is what the investigation ran into, since both
  * routers point readers here for the rationale.
  *
  * What the bypass replaces: authenticate and coverageAccessGate — which since
- * MINCRM-685 is the whole chain, because there is no feature-flag step left to
- * keep. MINCRM-694 had narrowed that step to requireFeatureEnabledOrgWide
+ * is the whole chain, because there is no feature-flag step left to
+ * keep. An earlier change had narrowed that step to requireFeatureEnabledOrgWide
  * rather than dropping it, since the flag's org-wide `enabled` column was the
  * last gate on an unauthenticated request here. Each of these routers is now
  * gated wholesale by its own boot-time env var instead: unset means the routes
@@ -107,17 +107,17 @@ export const coverageAccessGate: RequestHandler = async (
 
 /**
  * Builds the full access chain a dashboard-facing coverage router needs, in one
- * place. (MINCRM-694, MINCRM-685)
+ * place.
  *
  * Extracted because coverageReporting.ts, coverageMapping.ts, and
  * coverageSessions.ts each held a hand-written copy of the same nested
- * callback chain, and MINCRM-694 had to edit two of the three identically —
+ * callback chain, and that change had to edit two of the three identically —
  * which is exactly the duplication that let one copy drift from the other in
  * the first place. A third copy is one more place for the next fix to miss.
  *
  * Normal path: authenticate → coverageAccessGate.
  * COVERAGE_DASHBOARD_NO_AUTH path: neither. Dropping the CRM login is the whole
- * point of that flag, and after MINCRM-685 there is no feature-flag step left
+ * point of that flag, and after a later change there is no feature-flag step left
  * behind it, so on that path these routers run entirely ungated per request.
  *
  * Be precise about what that exposes, because "internal read-only reporting" is
@@ -126,11 +126,11 @@ export const coverageAccessGate: RequestHandler = async (
  * POST /sessions, POST /:sessionId/end, and POST /:sessionId/dumps, so under
  * the bypass those writes are unauthenticated.
  *
- * That is PRE-EXISTING, not introduced by MINCRM-685. MINCRM-694 passed `null`
+ * That is PRE-EXISTING, not introduced here. That change passed `null`
  * as this router's flag key precisely because it had no feature_flags row, and
  * a null key already meant no check on either path — verified against main
  * before this branch: buildCoverageAccessGate(null) called next() with no
- * arguments for an unauthenticated request. What MINCRM-685 changed is that the
+ * arguments for an unauthenticated request. What that change changed is that the
  * OTHER two routers now behave the same way, having lost the org-wide flag
  * check that was their last per-request gate.
  *
@@ -141,7 +141,7 @@ export const coverageAccessGate: RequestHandler = async (
  * not infer a read-only guarantee this gate does not provide — and so that
  * anyone tightening it knows the sessions router is where the write surface is.
  *
- * MINCRM-685 removed this builder's feature-flag step, along with the
+ * removed this builder's feature-flag step, along with the
  * `flagKey` parameter and the `CoverageRouterFlagKey` union that typed it.
  * Every coverage router is now gated wholesale by its own boot-time env var
  * (COVERAGE_MAPPING_QUERY / COVERAGE_REPORTING_QUERY / COVERAGE_SESSION_MANAGEMENT),
@@ -149,7 +149,7 @@ export const coverageAccessGate: RequestHandler = async (
  * that had one were deleted as internal CI/dev tooling that had no business
  * being toggleable from the product's own admin Settings page.
  *
- * That retires MINCRM-694's org-wide narrowing, which existed because the flag
+ * That retires the org-wide narrowing, which existed because the flag
  * was the last gate on an unauthenticated no-auth-mode request. The env var
  * replaces it: unset means the routes were never registered, so nothing
  * reaches this middleware at all, where the flag was a mutable row an admin

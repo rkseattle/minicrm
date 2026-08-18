@@ -1,5 +1,5 @@
 /**
- * Integration tests for mfaService. (MINCRM-392)
+ * Integration tests for mfaService.
  *
  * Covers: MFA setup/verify/disable round-trip, recovery code burn-on-use,
  * TOTP login challenge flow (valid + invalid codes), MFA token issuance/verification,

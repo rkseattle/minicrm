@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for data hygiene endpoints. (MINCRM-476)
+ * HTTP contract tests for data hygiene endpoints.
  */
 
 import 'dotenv/config';

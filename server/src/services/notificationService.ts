@@ -2,13 +2,13 @@
  * Notification service — orchestrates email notification delivery.
  *
  * Responsibilities:
- *   - sendOverdueDigests(): daily batch job for overdue task emails (MINCRM-161)
- *   - queueAssignmentNotification(): batches assignment emails within a 2-minute window (MINCRM-162)
+ *   - sendOverdueDigests(): daily batch job for overdue task emails
+ *   - queueAssignmentNotification(): batches assignment emails within a 2-minute window
  *
  * All errors are caught and logged — a failing notification must never abort
  * the triggering operation.
  *
- * MINCRM-161, MINCRM-162, MINCRM-163
+ *
  */
 
 import pool from '../db.js';
@@ -40,7 +40,7 @@ interface PendingBatch {
   timer: ReturnType<typeof setTimeout>;
 }
 
-// ── Assignment batching (MINCRM-162) ──────────────────────────────────────────
+// ── Assignment batching ──────────────────────────────────────────
 
 /** In-memory map of pending assignment batches keyed by recipient user ID */
 const pendingBatches = new Map<string, PendingBatch>();
@@ -117,7 +117,7 @@ async function flushAssignmentBatch(recipientId: string): Promise<void> {
   }
 }
 
-// ── Overdue task digest (MINCRM-161) ─────────────────────────────────────────
+// ── Overdue task digest ─────────────────────────────────────────
 
 /**
  * Maps a linked record type to its URL path prefix.
@@ -144,7 +144,7 @@ function buildRecordPath(type: string | null, id: string | null): string | null 
  *
  * Respects the global email kill switch and individual user opt-out flags.
  * Safe to call repeatedly — already-notified tasks are excluded via the
- * overdue_task_notifications dedup table. (MINCRM-161)
+ * overdue_task_notifications dedup table.
  */
 export async function sendOverdueDigests(): Promise<void> {
   try {

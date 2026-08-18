@@ -4,7 +4,7 @@
  *   1. POST /api/admin/import/:entity/run returns 202 + job_id without running the import inline
  *   2. GET /api/admin/import/jobs/:id returns the current job status
  *   3. pruneOldJobs deletes rows older than 7 days and leaves recent rows intact
- * MINCRM-255
+ *
  */
 
 import 'dotenv/config';
@@ -89,7 +89,7 @@ describe('POST /api/admin/import/contacts/run — async timing', () => {
     // 3s still fails loudly if the handler ever becomes synchronous (importing
     // the fixture CSV row-by-row would take far longer), while leaving headroom
     // for a busy runner. The 202 + status: 'pending' assertions above are the
-    // real guarantee; this is the backstop. (MINCRM-691)
+    // real guarantee; this is the backstop.
     expect(elapsed).toBeLessThan(3_000);
   });
 });
@@ -228,7 +228,7 @@ describe('pruneOldJobs', () => {
   });
 });
 
-// ── 4. FK ON DELETE SET NULL — user deletion preserves import history (MINCRM-505) ──
+// ── 4. FK ON DELETE SET NULL — user deletion preserves import history ──
 
 describe('import_jobs.created_by FK — ON DELETE SET NULL', () => {
   it('preserves import_jobs row with created_by = NULL when the owning user is deleted', async () => {

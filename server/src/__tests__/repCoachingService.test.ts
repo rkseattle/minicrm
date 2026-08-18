@@ -1,5 +1,5 @@
 /**
- * Integration tests for repCoachingService. (MINCRM-474)
+ * Integration tests for repCoachingService.
  * Runs against a real PostgreSQL test database — scoring is deterministic/SQL-driven,
  * no Anthropic SDK mock needed (this feature makes no AI provider calls at all).
  *
@@ -29,14 +29,14 @@ const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 /**
  * The record_name setRepCoachingConfig writes its audit rows under. Shared with
  * repCoachingController.test.ts, which is precisely why it cannot scope an
- * assertion on its own — see the audit-count tests below. (MINCRM-693)
+ * assertion on its own — see the audit-count tests below.
  */
 const REP_COACHING_CONFIG_RECORD_NAME = 'Rep Coaching Insights Configuration';
 
 let repAId: string;
 let repBId: string;
 
-/** Counts this file's own config audit rows. See countAuditRowsFor. (MINCRM-693) */
+/** Counts this file's own config audit rows. See countAuditRowsFor. */
 function countConfigAuditRows(actorId: string): Promise<number> {
   return countAuditRowsFor(pool, {
     recordType: 'ai_settings',
@@ -311,7 +311,6 @@ describe('getRepCoachingConfig / setRepCoachingConfig', () => {
     // concurrently running file can write a row carrying it. Compare before vs
     // after rather than asserting an absolute '0', which would additionally
     // assert that nothing earlier in this file wrote under the same actor.
-    // (MINCRM-693)
     const before = await countConfigAuditRows(repAId);
 
     await setRepCoachingConfig(
@@ -331,7 +330,7 @@ describe('getRepCoachingConfig / setRepCoachingConfig', () => {
 
   it("counts this file's real config writes while ignoring another actor's", async () => {
     // Demonstrates the fix holds rather than merely observing it pass once
-    // (MINCRM-693 AC 3). Both halves matter:
+    //. Both halves matter:
     //   1. A REAL setRepCoachingConfig write under this file's actor IS counted
     //      — so the scoping cannot pass by matching nothing at all.
     //   2. A row under a different actor, carrying the identical record_type and

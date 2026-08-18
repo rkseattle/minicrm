@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA dump service. (MINCRM-604, MINCRM-606)
+ * Coverage/TIA dump service.
  *
  * Not a DB-backed service — dump metadata is file-based (see
  * coverageAgent/dumpIndex.ts) since phase 1 has no per-owner semantics and

@@ -1,5 +1,5 @@
 /**
- * Sequence service — business logic for sales sequences and enrollments (MINCRM-403).
+ * Sequence service — business logic for sales sequences and enrollments.
  * All database access for sales_sequences, sales_sequence_steps, sequence_enrollments,
  * and sequence_enrollment_logs goes through this module.
  */
@@ -22,7 +22,7 @@ import {
 import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 
-/** Concurrent enrollment-processing limit for the due-enrollments cron (MINCRM-403). */
+/** Concurrent enrollment-processing limit for the due-enrollments cron. */
 const ENROLLMENT_PROCESSING_CONCURRENCY = 5;
 
 // ── Row types ──────────────────────────────────────────────────────────────────
@@ -740,7 +740,7 @@ export async function unenrollContact(
  *   2. Logs the result in sequence_enrollment_logs.
  *   3. Advances current_step_id to the next step (or marks the enrollment completed).
  *
- * Called every 15 minutes by node-cron in server.ts (MINCRM-403).
+ * Called every 15 minutes by node-cron in server.ts.
  * Errors in individual enrollments are caught and logged so one bad enrollment
  * never blocks the others.
  */

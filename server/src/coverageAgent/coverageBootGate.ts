@@ -1,6 +1,5 @@
 /**
  * Boot-time route-registration gate shared by every Coverage/TIA router.
- * (MINCRM-663, MINCRM-685)
  *
  * Each coverage router registers its routes only when its own env var is
  * 'true' at process boot, so a deployment that did not opt in gets a plain 404
@@ -27,8 +26,7 @@
 /**
  * Every boot-time coverage route gate.
  *
- * Ordered by the story that introduced each one (MINCRM-663's two first, then
- * MINCRM-685's three) — deliberately NOT app.ts's mounting order, which is
+ * Ordered by the story that introduced each one — deliberately NOT app.ts's mounting order, which is
  * about path specificity and has no bearing on registration.
  */
 export const COVERAGE_ROUTE_GATE_ENV_VARS = [

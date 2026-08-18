@@ -1,5 +1,5 @@
 /**
- * Unit tests for structuralKeyService. (MINCRM-619)
+ * Unit tests for structuralKeyService.
  */
 
 import { describe, expect, it } from 'vitest';

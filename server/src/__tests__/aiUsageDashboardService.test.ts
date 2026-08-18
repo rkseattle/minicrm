@@ -1,5 +1,5 @@
 /**
- * Integration tests for aiUsageDashboardService. (MINCRM-459)
+ * Integration tests for aiUsageDashboardService.
  *
  * Covers:
  *  - getUsageSummary: totals, trend vs prior period, per-user, per-feature, cost math
@@ -246,7 +246,7 @@ describe('resolveDateRange', () => {
   // 22:30 UTC on the last day of July 2026. Every timezone ahead of UTC by more
   // than 90 minutes is already on 2026-08-01 at this instant, so a boundary
   // built from local calendar fields resolves to a different month than the
-  // UTC-resolved usage_date column it is compared against. MINCRM-700.
+  // UTC-resolved usage_date column it is compared against..
   const MONTH_END_UTC = new Date('2026-07-31T22:30:00.000Z');
 
   // The absolute-instant assertions further down are necessary but not
@@ -254,7 +254,7 @@ describe('resolveDateRange', () => {
   // same values, so they would stay green on a revert if CI ran UTC. This one
   // states the property directly — a UTC month boundary is UTC midnight on the
   // 1st, in every process timezone — and CI now runs Pacific/Auckland, where
-  // the local and UTC constructions genuinely disagree. (ci.yml, MINCRM-700)
+  // the local and UTC constructions genuinely disagree. (ci.yml)
   it('builds month bounds from UTC fields, not the process timezone', () => {
     const range = resolveDateRange({ preset: 'current_month' }, MONTH_END_UTC);
 

@@ -8,7 +8,6 @@
  *
  *   router.post('/nli', authenticate, requireAiEnabled, requireAiTokenBudget, asyncHandler(handler))
  *
- * (MINCRM-458)
  */
 
 import type { Request, Response, NextFunction, RequestHandler } from 'express';

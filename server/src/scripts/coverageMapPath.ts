@@ -8,7 +8,7 @@
  *
  * .jsonl, not .json: the file is now line-delimited JSON so neither end has to
  * hold it in memory, and a .json extension on a file that is not valid JSON
- * breaks every generic reader silently. (MINCRM-703)
+ * breaks every generic reader silently.
  */
 
 import { resolve as resolvePath, dirname } from 'node:path';
@@ -32,6 +32,6 @@ export const COVERAGE_MAP_PATH = resolvePath(REPO_ROOT, 'qa/coverage-map.jsonl')
  *
  * Present so a reader can reject a file it does not understand rather than
  * misparse one. Version 1 had no marker at all, so the only symptom of reading
- * the wrong layout was that every line failed validation. (MINCRM-703)
+ * the wrong layout was that every line failed validation.
  */
 export const COVERAGE_MAP_FORMAT = 2;

@@ -5,7 +5,6 @@
  * All writes are transactional with audit entries. Ownership is enforced at the
  * SQL level (WHERE id = $1 AND user_id = $2) so cross-user access is impossible
  * regardless of controller input.
- * (MINCRM-427)
  */
 
 import type { PoolClient } from 'pg';

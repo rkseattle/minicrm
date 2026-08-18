@@ -1,5 +1,5 @@
 /**
- * Integration tests for followUpTimingService. (MINCRM-470)
+ * Integration tests for followUpTimingService.
  * Runs against a real PostgreSQL test database — timing derivation is
  * deterministic/SQL-driven, no Anthropic SDK mock needed.
  *
@@ -24,8 +24,7 @@ const FILE_PREFIX = 'followup-timing-svc';
  * America/Los_Angeles in PST or -7 in PDT. Used so timezone-projection test
  * expectations reflect whatever DST rules are in effect when the suite runs,
  * rather than hardcoding an offset that only holds for part of the year —
- * projectToTimezone() itself uses the current week's offset (see MINCRM-470
- * follow-up fix), so tests must match that same "now-relative" behavior.
+ * projectToTimezone() itself uses the current week's offset, so tests must match that same "now-relative" behavior.
  */
 function currentUtcOffsetHours(timezone: string): number {
   const now = new Date();
@@ -187,7 +186,7 @@ describe('getFollowUpTiming', () => {
     const suggestion = await getFollowUpTiming(contact.id);
     expect(suggestion).not.toBeNull();
     expect(suggestion!.timezone).toBe('America/Los_Angeles');
-    // projectToTimezone uses the current week's DST offset (see MINCRM-470 follow-up
+    // projectToTimezone uses the current week's DST offset (see the history follow-up
     // fix), not the offset in effect on the fixture dates above — so the expected
     // hour must be computed from today's offset, not hardcoded to January's PST.
     const expectedHour = (17 + currentUtcOffsetHours('America/Los_Angeles') + 24) % 24;
@@ -217,7 +216,7 @@ describe('getFollowUpTiming', () => {
 
     const suggestion = await getFollowUpTiming(contact.id);
     expect(suggestion).not.toBeNull();
-    // projectToTimezone uses the current week's DST offset (see MINCRM-470 follow-up
+    // projectToTimezone uses the current week's DST offset (see the history follow-up
     // fix), so expected hours are computed from today's offset rather than hardcoded
     // to January's PST. hour_end_utc=24 (Wed 00:00 UTC) projects to hour_start + 1 —
     // a coherent 1-hour range, not "3pm-12pm".

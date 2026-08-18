@@ -1,5 +1,5 @@
 /**
- * Integration tests for coverageIngestionService. (MINCRM-614)
+ * Integration tests for coverageIngestionService.
  *
  * Exercises the full pipeline end to end against real infrastructure: a
  * real NodeV8CoverageAgent dump (file-based, under the service's own
@@ -113,7 +113,7 @@ describe('coverageIngestionService', () => {
     expect(stored.every((unit) => unit.commitSha === TEST_COMMIT_SHA)).toBe(true);
   });
 
-  it('logs completion with dumpId, durationMs, and unitCount (MINCRM-637)', async () => {
+  it('logs completion with dumpId, durationMs, and unitCount', async () => {
     const infoSpy = vi.spyOn(logger, 'info');
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require(join(sourceRoot, 'fixture.js')).branchy(true);
@@ -168,7 +168,7 @@ describe('coverageIngestionService', () => {
     );
   });
 
-  describe('test attribution (MINCRM-618)', () => {
+  describe('test attribution', () => {
     it('links ingested units to the test recorded against the dump via coverage_session_dumps', async () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       require(join(sourceRoot, 'fixture.js')).branchy(true);
@@ -199,7 +199,7 @@ describe('coverageIngestionService', () => {
       expect(links.length).toBeGreaterThan(0);
       expect(links.every((link) => link.testName === 'creates a deal')).toBe(true);
       expect(links.every((link) => link.commitSha === TEST_COMMIT_SHA)).toBe(true);
-      // MINCRM-660 groundwork: testFile must reach coverage_test_links so a
+      // groundwork: testFile must reach coverage_test_links so a
       // selected testId can be resolved back to the spec file that produced it.
       expect(
         links.every(
@@ -255,7 +255,7 @@ describe('coverageIngestionService', () => {
     });
   });
 
-  describe('build summary rollup (MINCRM-629/630/631)', () => {
+  describe('build summary rollup', () => {
     it('upserts a coverage_build_summary row on ingestion, even with no session/test attribution', async () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       require(join(sourceRoot, 'fixture.js')).branchy(true);

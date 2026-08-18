@@ -1,13 +1,13 @@
 /**
  * Search service — cross-entity search across contacts, accounts, deals, leads,
  * and activities. Queries all entity types in parallel using ILIKE for
- * case-insensitive partial-word matching. (MINCRM-207)
+ * case-insensitive partial-word matching.
  *
  * Performance: all searches use %pattern% ILIKE. GIN trigram indexes
  * (pg_trgm) on contacts.first_name, contacts.last_name, contacts.email,
- * accounts.name, and deals.name were added in migration 041 (MINCRM-274) and
+ * accounts.name, and deals.name were added in migration 041 and
  * allow PostgreSQL to use index scans for leading-wildcard ILIKE patterns.
- * Migration 049 (MINCRM-362) adds a GIN index on notes.body_text to support
+ * Migration 049 adds a GIN index on notes.body_text to support
  * the notes join added below.
  */
 

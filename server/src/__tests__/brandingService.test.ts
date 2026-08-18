@@ -1,5 +1,5 @@
 /**
- * Integration tests for brandingService. (MINCRM-356)
+ * Integration tests for brandingService.
  *
  * Runs against the real PostgreSQL minicrm_test DB.
  * Cleans up the branding key in system_settings before each test.
@@ -21,7 +21,7 @@ beforeEach(async () => {
   await pool.query(`DELETE FROM system_settings WHERE key = 'branding'`);
   // Tests truncate system_settings directly via SQL (not through deleteBranding()),
   // which wouldn't invalidate getBranding()'s in-memory TTL cache — clear it
-  // explicitly so each test observes the DB state it just set up. (MINCRM-656)
+  // explicitly so each test observes the DB state it just set up.
   __clearCacheForTest();
 });
 
@@ -75,7 +75,7 @@ describe('getBranding', () => {
     expect(result).toBeNull();
   });
 
-  it('serves a cached value on a subsequent call, not re-reading the DB (MINCRM-656)', async () => {
+  it('serves a cached value on a subsequent call, not re-reading the DB', async () => {
     await setBranding({ companyName: 'Cached Co' });
     const first = await getBranding();
     expect(first?.companyName).toBe('Cached Co');

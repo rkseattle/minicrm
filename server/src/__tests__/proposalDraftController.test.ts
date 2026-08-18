@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for proposal draft endpoints. (MINCRM-473)
+ * HTTP contract tests for proposal draft endpoints.
  */
 
 import 'dotenv/config';

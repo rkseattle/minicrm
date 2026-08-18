@@ -2,7 +2,7 @@
  * Integration tests for customReportService.
  *
  * Runs against a real PostgreSQL test database (minicrm_test).
- * Tables are cleaned before each test to ensure isolation. (MINCRM-402)
+ * Tables are cleaned before each test to ensure isolation.
  */
 
 import 'dotenv/config';

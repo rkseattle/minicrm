@@ -1,5 +1,5 @@
 /**
- * Warm introduction path mapping service. (MINCRM-468)
+ * Warm introduction path mapping service.
  *
  * Traversal (Rep -> Known Contact -> Target Contact, capped at 2 hops) is
  * pure query/graph logic over existing relationship data — no AI call.

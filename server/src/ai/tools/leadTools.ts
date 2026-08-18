@@ -1,5 +1,5 @@
 /**
- * NLI tool definitions for the Lead entity. (MINCRM-422)
+ * NLI tool definitions for the Lead entity.
  */
 
 import type Anthropic from '@anthropic-ai/sdk';

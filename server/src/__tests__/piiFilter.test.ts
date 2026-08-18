@@ -1,5 +1,5 @@
 /**
- * Unit tests for the PII data minimization layer. (MINCRM-445, MINCRM-461)
+ * Unit tests for the PII data minimization layer.
  *
  * Verifies that applyPiiFilter correctly strips always-excluded fields,
  * admin-configured standard-field exclusions, and custom field values with
@@ -364,7 +364,7 @@ describe('applyPiiFilter — strippedFields deduplication', () => {
   });
 });
 
-// ── applyPiiFilter: admin-configured standard-field exclusions (MINCRM-461) ──
+// ── applyPiiFilter: admin-configured standard-field exclusions ──
 
 describe('applyPiiFilter — admin-configured standard-field exclusions', () => {
   it('does not strip a field with no configured exclusion', async () => {

@@ -1,5 +1,5 @@
 /**
- * MFA routes — TOTP two-factor authentication. (MINCRM-392)
+ * MFA routes — TOTP two-factor authentication.
  * Route definitions + @openapi JSDoc only — no logic, no service imports.
  */
 
@@ -244,13 +244,13 @@ router.post('/recovery-login', asyncHandler(verifyMfaRecoveryLogin));
 // Returns the current TOTP code for the authenticated user's active secret.
 // Only available when NODE_ENV !== 'production'.
 // Used by E2E tests to complete the MFA login flow without a real authenticator
-// app. Follows the same pattern as /auth/dev/reset-token. (MINCRM-392)
+// app. Follows the same pattern as /auth/dev/reset-token.
 if (process.env.NODE_ENV !== 'production') {
   /**
    * GET /api/v1/auth/mfa/dev/totp-code — dev/test only.
    * Returns the current TOTP code for the authenticated user's active or pending
    * MFA secret. Used by E2E tests to complete the MFA flow without a real
-   * authenticator app. Never available in production. (MINCRM-392)
+   * authenticator app. Never available in production.
    */
   router.get(
     '/dev/totp-code',
@@ -259,11 +259,9 @@ if (process.env.NODE_ENV !== 'production') {
       const { generateCurrentTotpCode } = await import('../services/mfaService.js');
       const code = await generateCurrentTotpCode(req.user!.id);
       if (!code) {
-        res
-          .status(400)
-          .json({
-            error: { code: 'MFA_NOT_ENABLED', message: 'MFA is not enabled for this user.' },
-          });
+        res.status(400).json({
+          error: { code: 'MFA_NOT_ENABLED', message: 'MFA is not enabled for this user.' },
+        });
         return;
       }
       res.status(200).json({ code });

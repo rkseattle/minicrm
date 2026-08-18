@@ -1,5 +1,5 @@
 /**
- * Integration tests for activitySummaryService. (MINCRM-436)
+ * Integration tests for activitySummaryService.
  *
  * Runs against a real PostgreSQL test database. The Anthropic SDK is mocked so
  * no real API calls are made and token usage recording is deterministic.

@@ -1,5 +1,5 @@
 /**
- * API-layer password complexity tests (MINCRM-246).
+ * API-layer password complexity tests.
  *
  * Verifies that the server independently enforces password complexity rules on
  * all four password-accepting endpoints. A user bypassing the React form and
@@ -11,7 +11,7 @@
  *   - POST /api/auth/reset-password    (password reset via token — unauthenticated)
  *   - POST /api/users/:id/admin-set-password  (admin only)
  *
- * PASSWORD_MIN_LENGTH is 12 (from shared/schemas/userSchema.ts — raised by MINCRM-391).
+ * PASSWORD_MIN_LENGTH is 12 (from shared/schemas/userSchema.ts — raised by).
  *
  * Runs against a real PostgreSQL test database via supertest.
  */
@@ -29,7 +29,7 @@ const BASE_USER = {
   status: 'active' as const,
 };
 
-/** A password that satisfies all complexity requirements (MINCRM-391: 12+ chars, letter, digit, special) */
+/** A password that satisfies all complexity requirements */
 const VALID_PASSWORD = 'ValidPass1!@#';
 
 /** Passwords that must be rejected by the server */
@@ -129,7 +129,7 @@ async function getFreshResetToken(): Promise<string> {
 
 // ── POST /api/users/set-password ─────────────────────────────────────────────
 
-describe('MINCRM-246 — POST /api/users/set-password password complexity', () => {
+describe('POST /api/users/set-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     const token = await getFreshInviteToken();
     const res = await request(app)
@@ -152,7 +152,7 @@ describe('MINCRM-246 — POST /api/users/set-password password complexity', () =
 
 // ── POST /api/auth/change-password ───────────────────────────────────────────
 
-describe('MINCRM-246 — POST /api/auth/change-password password complexity', () => {
+describe('POST /api/auth/change-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     // The complexity check fires before the credential check — any currentPassword
     // value is fine here; the response will be 400 before bcrypt is reached.
@@ -177,7 +177,7 @@ describe('MINCRM-246 — POST /api/auth/change-password password complexity', ()
 
 // ── POST /api/auth/reset-password ────────────────────────────────────────────
 
-describe('MINCRM-246 — POST /api/auth/reset-password password complexity', () => {
+describe('POST /api/auth/reset-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     // Zod validates the password field before the token is verified, so any
     // token value triggers a 400 on a weak password.
@@ -206,7 +206,7 @@ describe('MINCRM-246 — POST /api/auth/reset-password password complexity', () 
 
 // ── POST /api/users/:id/admin-set-password ────────────────────────────────────
 
-describe('MINCRM-246 — POST /api/users/:id/admin-set-password password complexity', () => {
+describe('POST /api/users/:id/admin-set-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     const res = await request(app)
       .post(`/api/v1/users/${targetUserId}/admin-set-password`)
@@ -227,7 +227,7 @@ describe('MINCRM-246 — POST /api/users/:id/admin-set-password password complex
   });
 });
 
-// Sanity check: documents that the constant matches the updated NIST 800-63B requirement (MINCRM-391)
+// Sanity check: documents that the constant matches the updated NIST 800-63B requirement
 test(`PASSWORD_MIN_LENGTH is ${PASSWORD_MIN_LENGTH} (sanity check for test assumptions)`, () => {
   expect(PASSWORD_MIN_LENGTH).toBe(12);
 });

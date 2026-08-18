@@ -2,7 +2,7 @@
  * Demo data service.
  * Provides seed, remove, reset, and status operations for demo-flagged records.
  * All fixture data lives here — the CLI scripts (seed-demo.ts, remove-demo.ts) are
- * thin wrappers that call these functions. (MINCRM-102, MINCRM-103, MINCRM-206)
+ * thin wrappers that call these functions.
  */
 
 import bcrypt from 'bcryptjs';
@@ -41,7 +41,7 @@ const DEMO_ACCOUNTS = [
   },
 ];
 
-// Contacts span multiple locales to demonstrate i18n/l10n support (MINCRM-408).
+// Contacts span multiple locales to demonstrate i18n/l10n support.
 // Acme contacts (indices 0–9): US/EN base with French and Japanese contacts woven in.
 // Globex contacts (indices 10–19): US/EN base with German, Korean, and Chinese contacts.
 const DEMO_CONTACTS = [
@@ -222,7 +222,7 @@ const DEMO_CONTACTS = [
   },
 ];
 
-// Contact addresses spanning multiple countries to demonstrate i18n address formatting (MINCRM-408).
+// Contact addresses spanning multiple countries to demonstrate i18n address formatting.
 const DEMO_CONTACT_ADDRESSES = [
   {
     contactIndex: 0, // Alice Chen — San Francisco
@@ -304,7 +304,7 @@ function futureMonths(monthsAhead: number): string {
   return shifted.toISOString().slice(0, 10);
 }
 
-// pipeline: 'enterprise' deals are assigned to the Enterprise B2B demo pipeline (MINCRM-408).
+// pipeline: 'enterprise' deals are assigned to the Enterprise B2B demo pipeline.
 // All others go to the default pipeline (pipeline_id: null resolved to default at insert time).
 // Indices 0–9 preserve the original ordering so DEMO_ACTIVITIES dealIndex values stay valid.
 // Indices 10–16 are new Enterprise B2B deals covering every stage of that pipeline.
@@ -597,7 +597,7 @@ const DEMO_ACTIVITIES: Array<{
   },
 ];
 
-// Demo leads showcasing the full status lifecycle, source variety, and international names (MINCRM-206, MINCRM-408)
+// Demo leads showcasing the full status lifecycle, source variety, and international names
 const DEMO_LEADS = [
   {
     first_name: 'Tyler',
@@ -645,7 +645,7 @@ const DEMO_LEADS = [
   },
 ];
 
-// Tags and their associations across entity types (MINCRM-206, MINCRM-186)
+// Tags and their associations across entity types
 // contactIndex/accountIndex/dealIndex reference their respective fixture arrays.
 const DEMO_TAGS = [
   {
@@ -692,7 +692,7 @@ const DEMO_TAGS = [
   },
 ];
 
-// Demo automation rules showcasing trigger/action variety (MINCRM-206)
+// Demo automation rules showcasing trigger/action variety
 // Note: trigger_config.stage for deal_stage_changed must match the PIPELINE_STAGES bootstrap
 // constant (not the live DB table) because dealStageChangedConfigSchema validates against the
 // static enum at rule evaluation time.
@@ -735,7 +735,7 @@ const DEMO_AUTOMATION_RULES = [
   },
 ] as const;
 
-// ── Rep user fixtures (MINCRM-267) ────────────────────────────────────────────
+// ── Rep user fixtures ────────────────────────────────────────────
 
 const DEMO_REP = {
   name: 'Alex Rivera',
@@ -744,10 +744,10 @@ const DEMO_REP = {
   role: 'rep' as const,
 };
 
-// ── Extended demo users (MINCRM-546) ─────────────────────────────────────────
+// ── Extended demo users ─────────────────────────────────────────
 // All use @demo.minicrm.dev domain to distinguish from the original .app domain.
 
-/** Password shared by all MINCRM-546 demo users */
+/** Password shared by all demo users */
 const DEMO_IAM_PASSWORD = 'Demo1234!';
 
 const DEMO_IAM_USERS = [
@@ -768,7 +768,7 @@ const DEMO_IAM_USERS = [
 /** Bytes of entropy for the service-account API token (matches userService) */
 const DEMO_API_TOKEN_BYTES = 32;
 
-/** Custom role seeded by MINCRM-546 */
+/** Custom role seeded by the demo data */
 const DEMO_SENIOR_REP_ROLE_NAME = 'Senior Rep';
 
 /** Capabilities granted to the "Senior Rep" custom role (additive on top of built-in rep) */
@@ -779,7 +779,7 @@ const DEMO_SENIOR_REP_CAPABILITIES = [
   'data:export',
 ] as const;
 
-// Rep accounts include international companies to demonstrate cross-locale data (MINCRM-408).
+// Rep accounts include international companies to demonstrate cross-locale data.
 const DEMO_REP_ACCOUNTS = [
   {
     // Japanese technology company — demonstrates CJK account names and ¥ currency context
@@ -809,7 +809,7 @@ const DEMO_REP_ACCOUNTS = [
   },
 ];
 
-// Rep contacts span Japanese, English, and German locales (MINCRM-408).
+// Rep contacts span Japanese, English, and German locales.
 const DEMO_REP_CONTACTS = [
   // ── シナプス・テクノロジーズ株式会社 contacts (indices 0–2) ────────────────
   {
@@ -883,7 +883,7 @@ const DEMO_REP_CONTACTS = [
   },
 ];
 
-// Rep-owned deals. pipeline: 'enterprise' routes to the Enterprise B2B pipeline (MINCRM-408).
+// Rep-owned deals. pipeline: 'enterprise' routes to the Enterprise B2B pipeline.
 const DEMO_REP_DEALS = [
   // ── Default pipeline ──────────────────────────────────────────────────────
   {
@@ -1010,7 +1010,7 @@ const DEMO_REP_ACTIVITIES: Array<{
   },
 ];
 
-// Rep leads include international names to reinforce i18n (MINCRM-408).
+// Rep leads include international names to reinforce i18n.
 const DEMO_REP_LEADS = [
   {
     // French lead — inbound web inquiry
@@ -1043,7 +1043,7 @@ function tiptapText(text: string): string {
   });
 }
 
-// Notes for admin-owned entities (MINCRM-353)
+// Notes for admin-owned entities
 // contactIndex references DEMO_CONTACTS; dealIndex references DEMO_DEALS; accountIndex references DEMO_ACCOUNTS.
 const DEMO_NOTES: Array<{
   entityType: 'contact' | 'account' | 'deal';
@@ -1140,7 +1140,7 @@ const DEMO_NOTES: Array<{
   },
 ];
 
-// Custom field definitions (MINCRM-353)
+// Custom field definitions
 const DEMO_CUSTOM_FIELD_DEFINITIONS: Array<{
   entity_type: 'contact' | 'deal';
   name: string;
@@ -1271,7 +1271,7 @@ const DEMO_CUSTOM_FIELD_VALUES: Array<{
   },
 ];
 
-// Webhook subscriptions (MINCRM-353)
+// Webhook subscriptions
 const DEMO_WEBHOOK_SUBSCRIPTIONS: Array<{
   url: string;
   events: string[];
@@ -1292,7 +1292,7 @@ const DEMO_WEBHOOK_SUBSCRIPTIONS: Array<{
 // Demo webhook URLs — used for teardown matching
 const DEMO_WEBHOOK_URLS = DEMO_WEBHOOK_SUBSCRIPTIONS.map((s) => s.url);
 
-// Currency exchange rates (MINCRM-353)
+// Currency exchange rates
 const DEMO_CURRENCIES: Array<{
   code: string;
   name: string;
@@ -1310,7 +1310,7 @@ const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
 // Names used for teardown — extracted so removeDemoData doesn't depend on the definitions array shape
 const DEMO_CUSTOM_FIELD_DEFINITION_NAMES = DEMO_CUSTOM_FIELD_DEFINITIONS.map((d) => d.name);
 
-// Demo sales sequence — showcases a 3-step new-customer cadence (MINCRM-403)
+// Demo sales sequence — showcases a 3-step new-customer cadence
 const DEMO_SEQUENCE_STEPS = [
   {
     sort_order: 1,
@@ -1341,7 +1341,7 @@ const DEMO_SEQUENCE_STEPS = [
   },
 ];
 
-// Demo saved reports — showcase common report patterns and visibility settings (MINCRM-402)
+// Demo saved reports — showcase common report patterns and visibility settings
 const DEMO_CUSTOM_REPORTS: Array<{
   name: string;
   entity_type: string;
@@ -1398,7 +1398,7 @@ const DEMO_CUSTOM_REPORTS: Array<{
 
 const DEMO_CUSTOM_REPORT_NAMES = DEMO_CUSTOM_REPORTS.map((r) => r.name);
 
-// Demo pipeline added by seed to demonstrate multi-pipeline support (MINCRM-408).
+// Demo pipeline added by seed to demonstrate multi-pipeline support.
 // This is a second, non-default pipeline so evaluators can see that pipelines are
 // configurable beyond the built-in "Default" one.
 const DEMO_PIPELINE_NAME = 'Enterprise B2B';
@@ -1480,7 +1480,7 @@ export async function getDemoStatus(): Promise<{ active: boolean }> {
  * @param client - Active DB client (must already be inside a transaction).
  */
 async function removeDemoData(client: pg.PoolClient): Promise<void> {
-  // Notes have no is_demo flag — identify by parent entity (MINCRM-353)
+  // Notes have no is_demo flag — identify by parent entity
   await client.query(`
     DELETE FROM notes
     WHERE entity_id IN (
@@ -1491,7 +1491,7 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
     )
   `);
 
-  // Custom field values reference demo contacts and deals (MINCRM-353)
+  // Custom field values reference demo contacts and deals
   await client.query(`
     DELETE FROM custom_field_values
     WHERE record_id IN (
@@ -1505,20 +1505,20 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
     DEMO_CUSTOM_FIELD_DEFINITION_NAMES,
   ]);
 
-  // Sales sequences (MINCRM-403)
+  // Sales sequences
   await client.query(`DELETE FROM sales_sequences WHERE is_demo = true`);
 
-  // Custom reports identified by name (no is_demo flag) (MINCRM-402)
+  // Custom reports identified by name (no is_demo flag)
   await client.query(`DELETE FROM custom_reports WHERE name = ANY($1::text[])`, [
     DEMO_CUSTOM_REPORT_NAMES,
   ]);
 
-  // Webhook subscriptions identified by URL (no is_demo flag) (MINCRM-353)
+  // Webhook subscriptions identified by URL (no is_demo flag)
   await client.query(`DELETE FROM webhook_subscriptions WHERE url = ANY($1::text[])`, [
     DEMO_WEBHOOK_URLS,
   ]);
 
-  // Currency rates — only remove the non-home demo rows (MINCRM-353)
+  // Currency rates — only remove the non-home demo rows
   await client.query(`DELETE FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`, [
     DEMO_CURRENCY_CODES,
   ]);
@@ -1565,7 +1565,7 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
   await client.query(`DELETE FROM deals WHERE is_demo = true`);
 
   // Delete the demo pipeline — pipeline_stages cascade automatically via ON DELETE CASCADE.
-  // Guard on is_default = false so this can never remove the default pipeline (MINCRM-408).
+  // Guard on is_default = false so this can never remove the default pipeline.
   await client.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
     DEMO_PIPELINE_NAME,
   ]);
@@ -1576,17 +1576,17 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
   // Remove the demo rep user — all their owned records are already deleted above via is_demo
   await client.query(`DELETE FROM users WHERE email = $1`, [DEMO_REP.email]);
 
-  // MINCRM-546: remove IAM demo teams (cascade deletes team_memberships)
+  // remove IAM demo teams (cascade deletes team_memberships)
   await client.query(`DELETE FROM teams WHERE name = ANY($1::text[])`, [
     ['West Coast Sales', 'East Coast Sales', 'Sales'],
   ]);
 
-  // MINCRM-546: remove Senior Rep custom role (cascade deletes role_capabilities + user_custom_roles)
+  // remove Senior Rep custom role (cascade deletes role_capabilities + user_custom_roles)
   await client.query(`DELETE FROM public.custom_roles WHERE name = $1 AND is_builtin = false`, [
     DEMO_SENIOR_REP_ROLE_NAME,
   ]);
 
-  // MINCRM-546: remove IAM demo users — owned records already gone via is_demo cascade above
+  // remove IAM demo users — owned records already gone via is_demo cascade above
   await client.query(`DELETE FROM users WHERE email = ANY($1::text[])`, [
     DEMO_IAM_USERS.map((u) => u.email),
   ]);
@@ -1706,7 +1706,7 @@ async function insertDemoData(
     );
   }
 
-  // 5a. Demo pipeline + stages — must exist before deals reference them (MINCRM-408).
+  // 5a. Demo pipeline + stages — must exist before deals reference them.
   // Resolve the default pipeline ID so deals are explicitly linked (not left as NULL).
   const defaultPipelineResult = await client.query<{ id: string }>(
     `SELECT id FROM pipelines WHERE is_default = true LIMIT 1`,
@@ -1744,7 +1744,7 @@ async function insertDemoData(
   }
 
   // 5. Deals — Acme deals → account 0, Globex deals → account 1.
-  // pipeline: 'enterprise' → demoPipelineId; all others → defaultPipelineId. (MINCRM-408)
+  // pipeline: 'enterprise' → demoPipelineId; all others → defaultPipelineId.
   const dealIds: string[] = [];
   for (const deal of DEMO_DEALS) {
     const accountId = deal.name.startsWith('Acme') ? accountIds[0] : accountIds[1];
@@ -1867,7 +1867,7 @@ async function insertDemoData(
     }
   }
 
-  // 10. Rep-owned accounts (MINCRM-267)
+  // 10. Rep-owned accounts
   const repAccountIds: string[] = [];
   for (const account of DEMO_REP_ACCOUNTS) {
     const result = await client.query<{ id: string }>(
@@ -2007,7 +2007,7 @@ async function insertDemoData(
     );
   }
 
-  // 16. Notes — spread across contacts, accounts, and deals for both users (MINCRM-353)
+  // 16. Notes — spread across contacts, accounts, and deals for both users
   for (const note of DEMO_NOTES) {
     let entityId: string;
     if (note.entityType === 'contact') {
@@ -2038,7 +2038,7 @@ async function insertDemoData(
     }
   }
 
-  // 17. Custom field definitions and values (MINCRM-353)
+  // 17. Custom field definitions and values
   const customFieldDefIds: Record<string, string> = {};
   for (const def of DEMO_CUSTOM_FIELD_DEFINITIONS) {
     const result = await client.query<{ id: string }>(
@@ -2075,7 +2075,7 @@ async function insertDemoData(
   }
 
   // 18. Webhook subscriptions — no unique constraint on url, so we rely on the hasDemoData()
-  // guard in seedDemo/resetDemo to prevent duplicate inserts. (MINCRM-353)
+  // guard in seedDemo/resetDemo to prevent duplicate inserts.
   for (const webhook of DEMO_WEBHOOK_SUBSCRIPTIONS) {
     const encryptedSecret = encrypt(webhook.dummySecret);
     await client.query(
@@ -2085,7 +2085,7 @@ async function insertDemoData(
     );
   }
 
-  // 19. Currency exchange rates (MINCRM-353)
+  // 19. Currency exchange rates
   for (const currency of DEMO_CURRENCIES) {
     await client.query(
       `INSERT INTO currencies (code, name, symbol, rate_to_home, is_home)
@@ -2095,7 +2095,7 @@ async function insertDemoData(
     );
   }
 
-  // 20. Custom reports — demonstrate the report builder with pre-built examples (MINCRM-402)
+  // 20. Custom reports — demonstrate the report builder with pre-built examples
   for (const report of DEMO_CUSTOM_REPORTS) {
     await client.query(
       `INSERT INTO custom_reports (name, entity_type, config, visibility, created_by)
@@ -2105,7 +2105,7 @@ async function insertDemoData(
     );
   }
 
-  // 21. Sales sequence — demonstrate a 3-step new-customer cadence (MINCRM-403)
+  // 21. Sales sequence — demonstrate a 3-step new-customer cadence
   const seqResult = await client.query<{ id: string }>(
     `INSERT INTO sales_sequences (name, description, enabled, created_by, is_demo)
      VALUES ($1, $2, true, $3, true)
@@ -2143,7 +2143,7 @@ async function insertDemoData(
     }
   }
 
-  // ── 22. MINCRM-546 — IAM demo users, teams, custom role, and record redistribution ──
+  // ── 22. IAM demo users, teams, custom role, and record redistribution ──
 
   // 22a. Hash password once (bcrypt is CPU-bound; do it before any DB calls to keep
   //      the hot path short while holding a transaction).

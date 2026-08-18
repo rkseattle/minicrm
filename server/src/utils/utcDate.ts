@@ -1,6 +1,6 @@
 /**
  * UTC calendar helpers for values compared against timezone-naive `date`
- * columns. (MINCRM-700)
+ * columns.
  *
  * Postgres sessions in this stack run Etc/UTC, so `date` columns
  * (`ai_token_usage_daily.usage_date`, `deals.close_date`, `activities.due_date`)

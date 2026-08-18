@@ -1,11 +1,11 @@
 /**
- * Coverage/TIA changed-code-unit resolver. (MINCRM-623)
+ * Coverage/TIA changed-code-unit resolver.
  *
  * Takes diffParser.ts's per-file changed line ranges and resolves them to
  * changed UNITS: (filePath, unitKey, branchId) triples keyed exactly the way
  * structuralKeyService.deriveStructuralUnitKey derives coverage_units'
  * own unit_key, so the result can be looked up directly against the mapping
- * query API (MINCRM-621) with no translation step.
+ * query API with no translation step.
  *
  * Function/method boundaries are found via the TypeScript compiler API
  * (ts.createSourceFile + a manual ts.forEachChild walk), not
@@ -19,7 +19,7 @@
  * Only .ts/.tsx/.js/.jsx source is walked. Every other file this resolver is
  * asked about (already filtered to non-"isNonSourceFile" by the caller, per
  * diffParser's classification) is treated as opaque and produces no units —
- * MINCRM-623's AC only calls for "language-aware for MiniCRM's backend and
+ * the AC only calls for "language-aware for MiniCRM's backend and
  * frontend", not universal language support.
  */
 
@@ -69,7 +69,7 @@ export interface UnresolvedFileChange {
 
 export interface ChangeDetectionResult {
   changedUnits: ChangedUnit[];
-  /** Config/resource/migration files from the diff, untouched — MINCRM-625's dependency-graph step owns these. */
+  /** Config/resource/migration files from the diff, untouched — the dependency-graph step owns these. */
   nonSourceFileChanges: FileDiff[];
   unresolvedFileChanges: UnresolvedFileChange[];
 }

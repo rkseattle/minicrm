@@ -1,5 +1,5 @@
 /**
- * Warm introduction path controller — request/response shaping only. (MINCRM-468)
+ * Warm introduction path controller — request/response shaping only.
  * No business logic here; all graph traversal and AI orchestration goes through warmIntroService.
  */
 

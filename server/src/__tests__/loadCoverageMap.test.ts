@@ -1,5 +1,5 @@
 /**
- * Unit tests for load-coverage-map.ts's argument parsing. (MINCRM-696)
+ * Unit tests for load-coverage-map.ts's argument parsing.
  *
  * Narrow by design: only `parseArgs` is covered here. The rest of the script is
  * a DB-backed loader whose one collaborator, loadCoverageTestLinksForCommit, is
@@ -18,8 +18,7 @@
  * Importing this module pulls in coverageDb, a pg.Pool. That is safe for the
  * same reason it is safe in verifyTestAttestation.test.ts: `new pg.Pool()` is
  * lazy and opens no socket until query()/connect(), and the script's
- * direct-invocation guard keeps main() from firing under Vitest. (MINCRM-691
- * documents the same property at length for the sibling script.)
+ * direct-invocation guard keeps main() from firing under Vitest.
  */
 
 import { vi } from 'vitest';
@@ -67,7 +66,7 @@ describe('load-coverage-map parseArgs', () => {
   });
 });
 
-// ── streamed load: absent vs unreadable (MINCRM-703) ──
+// ── streamed load: absent vs unreadable ──
 
 describe('load-coverage-map file handling', () => {
   // A temp file, never the real qa/coverage-map.jsonl. These tests write,

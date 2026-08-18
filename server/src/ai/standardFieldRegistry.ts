@@ -1,6 +1,6 @@
 /**
  * Registry of standard (non-custom) entity fields eligible for admin-configurable
- * AI payload exclusion. (MINCRM-461)
+ * AI payload exclusion.
  *
  * Deliberately excludes internal/system columns (id, owner_id, created_at,
  * updated_at, version, is_demo, foreign keys) that have no PII/business-sensitivity

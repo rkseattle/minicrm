@@ -1,5 +1,5 @@
 /**
- * NLI tool definitions for Notes. (MINCRM-422, MINCRM-432)
+ * NLI tool definitions for Notes.
  */
 
 import type Anthropic from '@anthropic-ai/sdk';

@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for AI sentiment tracking endpoints. (MINCRM-472)
+ * HTTP contract tests for AI sentiment tracking endpoints.
  *
  * Covers:
  *  - GET /contacts/:id/sentiment-trend: authenticated, visibility-enforced

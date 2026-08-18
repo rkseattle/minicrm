@@ -1,5 +1,5 @@
 /**
- * Integration tests for the coverage control API. (MINCRM-606, MINCRM-663)
+ * Integration tests for the coverage control API.
  * Covers: auth boundaries (401/403-role), Zod validation, 409
  * COVERAGE_NOT_ENABLED, 404 DUMP_NOT_FOUND, and the browser-ingestion
  * happy path. The backend-agent happy path (reset/dump/snapshot with the
@@ -7,7 +7,7 @@
  * NodeV8CoverageAgent.test.ts — this file does not re-verify agent
  * internals, only the HTTP layer wrapping it.
  *
- * MINCRM-663: this router's routes are now registered only when
+ * this router's routes are now registered only when
  * COVERAGE_INSTRUMENTATION='true' at process boot (see routes/coverage.ts's
  * own docblock) — no longer gated by a coverage_instrumentation
  * feature_flags row, so there is no flag to toggle on/off within a test
@@ -77,7 +77,7 @@ describe('coverage control API — auth boundaries', () => {
   });
 });
 
-describe('coverage control API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+describe('coverage control API — COVERAGE_CAPABILITY_GATING=true', () => {
   const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
 
   beforeEach(() => {

@@ -1,5 +1,5 @@
 /**
- * Integration tests for auditEventBus and maskAuditEvent. (MINCRM-375)
+ * Integration tests for auditEventBus and maskAuditEvent.
  *
  * Covers:
  *  - auditEventBus emits 'audit_event' on an audit_log INSERT
@@ -113,7 +113,6 @@ describe('auditEventBus', () => {
   // bus. The generous ceiling still catches the regression that matters — a bus
   // that never emits — while a genuine latency budget, if one is ever wanted,
   // belongs in a perf test with a controlled environment rather than here.
-  // (MINCRM-691)
   it('emits audit_event on an audit_log INSERT', async () => {
     const eventPromise = waitForEvent(RECORD_ID_EMIT, 5_000);
 

@@ -1,7 +1,7 @@
 /**
  * Coverage/TIA session controller — request/response shaping only. All
  * business logic and DB access goes through coverageSessionService.
- * (MINCRM-609..612)
+ *
  */
 
 import type { Request, Response } from 'express';

@@ -1,5 +1,5 @@
 /**
- * Session-cookie policy — unit specs (MINCRM-703).
+ * Session-cookie policy — unit specs.
  *
  * WHY THIS MATTERS
  * ----------------

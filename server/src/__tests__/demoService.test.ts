@@ -1,6 +1,6 @@
 /**
  * Integration tests for demoService.
- * Verifies seed, remove, reset, and status operations against a real test DB. (MINCRM-103, MINCRM-206, MINCRM-353, MINCRM-408)
+ * Verifies seed, remove, reset, and status operations against a real test DB.
  *
  * Runs against the minicrm_test database.
  */
@@ -26,7 +26,7 @@ const ADMIN_USER = {
  * shares minicrm_test with specs that delete users wholesale — userService.test.ts
  * runs a bare `DELETE FROM users`. Serial order is duration-derived rather than fixed
  * (vitest sorts failed-first, then duration-descending), so no file can rely on running
- * before that wipe. (MINCRM-704)
+ * before that wipe.
  */
 let adminUserId: string;
 
@@ -42,9 +42,9 @@ const DEMO_CUSTOM_FIELD_NAMES = [
   'Contract Signed Date',
   'Estimated ARR',
 ];
-// Derived from DEMO_CURRENCIES in demoService.ts (JPY added in MINCRM-408 for i18n demo)
+// Derived from DEMO_CURRENCIES in demoService.ts (JPY added in a later change for i18n demo)
 const DEMO_CURRENCY_CODES = ['GBP', 'EUR', 'CAD', 'JPY'];
-// Derived from DEMO_PIPELINE_NAME / DEMO_PIPELINE_STAGES in demoService.ts (MINCRM-408)
+// Derived from DEMO_PIPELINE_NAME / DEMO_PIPELINE_STAGES in demoService.ts
 const DEMO_PIPELINE_NAME = 'Enterprise B2B';
 const DEMO_PIPELINE_STAGE_NAMES = [
   'Discovery',
@@ -116,18 +116,18 @@ async function cleanDemoData(): Promise<void> {
         OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
   );
   await pool.query(`DELETE FROM deals WHERE is_demo = true`);
-  // Remove the demo pipeline — stages cascade via ON DELETE CASCADE (MINCRM-408)
+  // Remove the demo pipeline — stages cascade via ON DELETE CASCADE
   await pool.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
     DEMO_PIPELINE_NAME,
   ]);
   await pool.query(`DELETE FROM contacts WHERE is_demo = true`);
   await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
-  // Remove demo rep user — created by insertDemoData, not covered by is_demo flag (MINCRM-267)
+  // Remove demo rep user — created by insertDemoData, not covered by is_demo flag
   await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
-  // The MINCRM-546 demo IAM users are also created by insertDemoData and also carry no
+  // The demo IAM users are also created by insertDemoData and also carry no
   // is_demo flag. admin@demo.minicrm.dev is an ACTIVE ADMIN, so leaving it resident makes
   // it a candidate for getAdminUserId()'s ORDER BY created_at — the same leftover-fixture
-  // residue this file's other cleanup exists to prevent. (MINCRM-704)
+  // residue this file's other cleanup exists to prevent.
   await pool.query(`DELETE FROM users WHERE email LIKE '%@demo.minicrm.dev'`);
 }
 
@@ -145,7 +145,7 @@ beforeEach(async () => {
   // Admin first, matching beforeAll's order: cleanDemoData resolves users by email and
   // prunes owned rows behind ON DELETE RESTRICT owner FKs. Re-established every test
   // because a sibling spec's `DELETE FROM users` or an interrupted prior run removes it,
-  // and seedDemo() has no way to recover from its absence. (MINCRM-704)
+  // and seedDemo() has no way to recover from its absence.
   // Claims admin resolution rather than assuming it: seedDemo() resolves the OLDEST active
   // admin globally, so a sibling demo spec's surviving fixture would otherwise own the
   // seeded data while this file's owner-scoped cleanup missed it.
@@ -157,7 +157,7 @@ afterAll(async () => {
   // Live lookup, not the cached adminUserId: a sibling spec's `DELETE FROM users` can
   // land between the last test and this hook, and cleaning by a stale id would run ~20
   // owner-scoped DELETEs against a row that no longer exists while leaving the rows that
-  // do. Reading current state means an absent fixture skips the block, as before. (MINCRM-704)
+  // do. Reading current state means an absent fixture skips the block, as before.
   const adminResult = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [
     ADMIN_USER.email,
   ]);
@@ -233,7 +233,7 @@ afterAll(async () => {
       [adminId],
     );
     await pool.query(`DELETE FROM deals WHERE is_demo = true OR owner_id = $1`, [adminId]);
-    // Remove the demo pipeline — stages cascade via ON DELETE CASCADE (MINCRM-408)
+    // Remove the demo pipeline — stages cascade via ON DELETE CASCADE
     await pool.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
       DEMO_PIPELINE_NAME,
     ]);
@@ -245,7 +245,7 @@ afterAll(async () => {
   await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
 });
 
-// ── no-active-admin precondition (MINCRM-704, AC 5) ───────────────────────────
+// ── no-active-admin precondition ───────────────────────────
 
 describe('seedDemo — no active admin', () => {
   it('rejects with the service’s own named error when no active admin exists', async () => {
@@ -341,7 +341,7 @@ describe('seedDemo', () => {
     const leads = await pool.query<{ first_name: string; status: string }>(
       `SELECT first_name, status FROM leads WHERE is_demo = true ORDER BY first_name`,
     );
-    // 5 admin-owned leads + 2 rep-owned leads (MINCRM-267)
+    // 5 admin-owned leads + 2 rep-owned leads
     expect(leads.rowCount).toBe(7);
 
     const statuses = leads.rows.map((r) => r.status).sort();
@@ -1002,7 +1002,7 @@ describe('removeDemo — currencies', () => {
   });
 });
 
-// ── seedDemo — pipeline (MINCRM-408) ─────────────────────────────────────────
+// ── seedDemo — pipeline ─────────────────────────────────────────
 
 describe('seedDemo — pipeline', () => {
   it('creates the Enterprise B2B pipeline as a non-default pipeline', async () => {
@@ -1093,7 +1093,7 @@ describe('seedDemo — pipeline', () => {
   });
 });
 
-// ── removeDemo — pipeline (MINCRM-408) ───────────────────────────────────────
+// ── removeDemo — pipeline ───────────────────────────────────────
 
 describe('removeDemo — pipeline', () => {
   it('removes the Enterprise B2B pipeline after removeDemo', async () => {

@@ -213,7 +213,7 @@ export async function listRuleLogsHandler(req: Request, res: Response): Promise<
   const rawLogs = await listRuleLogs(id);
 
   // Scrub sensitive fields from action_config_snapshot before returning to the client.
-  // send_webhook configs may include Authorization headers or API keys. (MINCRM-509)
+  // send_webhook configs may include Authorization headers or API keys.
   const logs = rawLogs.map((log) => {
     if (log.action_config_snapshot === null) return log;
     const snapshot = { ...log.action_config_snapshot };

@@ -1,5 +1,5 @@
 /**
- * Meeting brief controller — request/response shaping only. (MINCRM-465)
+ * Meeting brief controller — request/response shaping only.
  * No business logic here; all AI orchestration and DB access goes through meetingBriefService.
  */
 
@@ -20,7 +20,7 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
 const BRIEF_ELIGIBLE_TYPES: ReadonlySet<string> = new Set(['Call', 'Meeting']);
 
 /**
- * Mirrors the UI gate in ActivityTimeline (MINCRM-465): briefs are only for
+ * Mirrors the UI gate in ActivityTimeline: briefs are only for
  * future-dated Call/Meeting activities linked to a contact. Enforced here too
  * so a direct POST cannot generate a brief for an activity the UI would never
  * show the action for (e.g. an owned Email, Note, or Task).

@@ -1,11 +1,11 @@
 /**
- * Rule-based lead scoring engine. (MINCRM-441 prerequisite)
+ * Rule-based lead scoring engine.
  *
  * Deterministic, on-demand scoring of a lead's quality, computed on read —
  * no persisted score column, no background scoring job, matching this
  * codebase's existing "explain on demand" convention (dealHealthService,
  * duplicateMatchService). Pure data comparison — no AI call is made here;
- * MINCRM-441's AI narrative feature consumes this score's factor breakdown
+ * the AI narrative feature consumes this score's factor breakdown
  * as input to its prompt.
  *
  * Scope note: the leads table has no title, company-size, or direct

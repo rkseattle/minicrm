@@ -5,21 +5,20 @@
  * (diffParser -> changeUnitResolver -> testSelectionService ->
  * dependencyGraphService -> safetyNetPolicy, see docs/adr/003-test-impact-
  * analysis-selection.md) end to end and resolves its output to a concrete
- * list of spec files CI/local tooling can actually run. MINCRM-633's CI
- * select-mode job and MINCRM-641's local pre-push hook both invoke this
+ * list of spec files CI/local tooling can actually run. the CI
+ * select-mode job and the local pre-push hook both invoke this
  * SAME script with the SAME config — the "no divergence between local and
  * CI selection" AC both tickets require is satisfied by construction (one
  * code path), not by convention (two hand-synced implementations).
  *
  * What this script adds on top of the selection pipeline itself:
  *  - Resolves each FinalSelectedTest's testId to a spec file path via
- *    coverageMappingService.findUnitsForTest (MINCRM-660 groundwork,
- *    testFile column added in migration 003) — the selection pipeline
+ *    coverageMappingService.findUnitsForTest — the selection pipeline
  *    itself only ever deals in testId, never file paths.
  *  - Emits a single JSON result to stdout so callers (a CI step, the
  *    pre-push hook, gen-shards.ts) can consume it without re-implementing
  *    any selection logic of their own.
- *  - Prints the human-readable selection rationale to stderr — MINCRM-633's
+ *  - Prints the human-readable selection rationale to stderr — 's
  *    "emits selection rationale into the build log/PR" AC — keeping stdout
  *    reserved for the single JSON payload.
  *
@@ -71,7 +70,7 @@ const MAX_CONCURRENT_FILE_LOOKUPS = 5;
 
 // ── Always-run baseline (smoke/critical paths) ────────────────────────────
 //
-// A minimal, deliberately small starter set — MINCRM-626's safety net unions
+// A minimal, deliberately small starter set — the safety net unions
 // this in unconditionally regardless of what the diff itself maps to.
 // Expressed as spec file GLOBS (not testIds, which only exist after a test
 // has actually run and been attributed) since the baseline must resolve to
@@ -102,7 +101,7 @@ interface CliArgs {
 }
 
 /**
- * Exported for direct unit testing (MINCRM-696, AC 6).
+ * Exported for direct unit testing.
  *
  * The `=`-preserving split below is a correctness property, not a style choice:
  * a truncated ref is a DIFFERENT ref, which resolveShaForRef may resolve
@@ -126,11 +125,10 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   // resolveShaForRef either misresolves or throws on, and parseGitDiff then
   // diffs the wrong range — narrowing the selection. The `?? ` fallback chain is
   // unaffected: both forms yield '' for a bare `--base=`, which is not nullish.
-  // (MINCRM-696)
   const baseRef =
     baseArg?.split('=').slice(1).join('=') ?? process.env.GITHUB_BASE_REF ?? 'origin/main';
 
-  // Caller audit (MINCRM-688). The GIT_COMMIT_SHA/GITHUB_SHA links in this
+  // Caller audit. The GIT_COMMIT_SHA/GITHUB_SHA links in this
   // chain are UNREACHABLE from every committed caller — all three pass
   // --head= explicitly:
   //   - .github/workflows/ci.yml, the `tia-selection` job's "Run TIA selection"
@@ -164,7 +162,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   //
   // Call sites named rather than cited by line: same-file line references rot
   // on the next edit to this file — including the one that added this comment.
-  // Same `=`-preserving split as baseRef above, for the same reason. (MINCRM-696)
+  // Same `=`-preserving split as baseRef above, for the same reason.
   const headRef =
     headArg?.split('=').slice(1).join('=') ??
     process.env.GIT_COMMIT_SHA ??
@@ -281,7 +279,7 @@ async function mapWithConcurrencyLimit<T, R>(
   return results;
 }
 
-/** Resolves each selected test's testId to a spec file path via its coverage_test_links attribution (MINCRM-660 groundwork). Baseline tests (reason: 'baseline', no real testId yet) are never passed here — see resolveBaselineFiles instead. */
+/** Resolves each selected test's testId to a spec file path via its coverage_test_links attribution. Baseline tests (reason: 'baseline', no real testId yet) are never passed here — see resolveBaselineFiles instead. */
 async function resolveTestFiles(
   commitSha: string,
   tests: readonly FinalSelectedTest[],

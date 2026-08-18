@@ -1,6 +1,6 @@
 /**
  * Churn/expansion signal detection service — nightly AI job that scans
- * closed-won accounts for churn risk and expansion opportunity signals. (MINCRM-469)
+ * closed-won accounts for churn risk and expansion opportunity signals.
  *
  * detectChurnExpansionSignals() is the cron entry point (server/src/server.ts).
  * Inserts a new signal row per account per run; clears a prior active signal
@@ -233,7 +233,7 @@ async function processAccount(
     });
 
     // Background job, not a per-user request — see winLossAnalysisService/championBlockerService
-    // for why token usage is logged rather than recorded against a real user FK. (MINCRM-464, MINCRM-466)
+    // for why token usage is logged rather than recorded against a real user FK.
     logger.info(
       { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens },
       'churnExpansion: AI token usage (not attributed to a user — background job)',
@@ -341,7 +341,7 @@ async function processAccount(
     // 23505: account_churn_expansion_signals_one_active_per_type — an overlapping
     // detection run already inserted the active row for this account/signal_type
     // between our read of `existing` and this insert. That run's row wins; this
-    // one is a no-op rather than a crash. (MINCRM-469, migration 145)
+    // one is a no-op rather than a crash.
     if ((err as { code?: string }).code === '23505') {
       logger.warn(
         { accountId: account.id, signalType: result.signalType },
@@ -407,7 +407,7 @@ export async function getAccountChurnExpansionSignal(
  * Returns all active churn-risk and expansion signals across accounts, for the Reporting view / NLI.
  *
  * @param ownerId - When non-null, scopes results to accounts owned by this user (rep scoping).
- *   Pass null for the org-wide view (admin only). (MINCRM-469)
+ *   Pass null for the org-wide view (admin only).
  */
 export async function listChurnExpansionSignals(
   ownerId: string | null,

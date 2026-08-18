@@ -64,7 +64,7 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
  *
  * If an account with the same name already exists (case-insensitive), returns
  * 409 with the duplicate account's id and name unless the request includes
- * ?force=true, which bypasses the duplicate check. (MINCRM-440)
+ * ?force=true, which bypasses the duplicate check.
  */
 export async function createAccountHandler(req: Request, res: Response): Promise<void> {
   const parsed = createAccountSchema.safeParse(req.body);
@@ -124,7 +124,7 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
       ? req.query.industry.trim()
       : undefined;
 
-  // account_type filter — validate against allowlist (MINCRM-183)
+  // account_type filter — validate against allowlist
   const accountTypeRaw =
     typeof req.query.account_type === 'string' && req.query.account_type.trim().length > 0
       ? req.query.account_type.trim()
@@ -152,7 +152,7 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
     : undefined;
   const dir = req.query.dir === 'desc' ? ('DESC' as const) : ('ASC' as const);
 
-  // Tag filter (MINCRM-186): ?tags=uuid,uuid — comma-separated tag IDs (any-match)
+  // Tag filter: ?tags=uuid,uuid — comma-separated tag IDs (any-match)
   const tagIds =
     typeof req.query.tags === 'string' && req.query.tags.trim().length > 0
       ? req.query.tags
@@ -161,7 +161,7 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
           .filter(Boolean)
       : undefined;
 
-  // Relationship health filter (MINCRM-467): ?health_status=at_risk,dormant — allowlist-validated
+  // Relationship health filter: ?health_status=at_risk,dormant — allowlist-validated
   const healthStatuses =
     typeof req.query.health_status === 'string' && req.query.health_status.trim().length > 0
       ? req.query.health_status
@@ -262,7 +262,7 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
       return;
     }
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-      // Include current server state so the client can render a three-way merge without a second round-trip (MINCRM-351)
+      // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findAccountById(id);
       res.status(409).json({ error: { code, message: (err as Error).message, current } });
       return;
@@ -271,7 +271,7 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
   }
   res.status(200).json({ account });
 
-  // Fire-and-forget: notify the new owner when the account is reassigned. (MINCRM-162)
+  // Fire-and-forget: notify the new owner when the account is reassigned.
   if (account && parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
     void (async () => {
       try {
@@ -315,7 +315,7 @@ interface AccountExportData {
 /**
  * Resolves the owner/search/industry filters for the current request, fetches matching
  * accounts, and merges in custom field columns. Shared by the CSV and PDF export handlers
- * so both formats reflect identical rows and ownership rules (MINCRM-601).
+ * so both formats reflect identical rows and ownership rules.
  */
 async function resolveAccountExportData(req: Request): Promise<AccountExportData> {
   const isAdmin = req.user!.role === 'admin';
@@ -335,7 +335,7 @@ async function resolveAccountExportData(req: Request): Promise<AccountExportData
 
   const accountRows = await exportAccountsForCsv({ ownerId, search, industry });
 
-  // Custom field columns — fetch definitions and values in application code (MINCRM-276)
+  // Custom field columns — fetch definitions and values in application code
   const customDefs = await listDefinitions('account');
   const recordIds = accountRows.map((r) => r.id);
   const valuesByRecord = new Map<string, Map<string, string | null>>();
@@ -384,7 +384,6 @@ async function resolveAccountExportData(req: Request): Promise<AccountExportData
  * Query params mirror the list endpoint (owner, search, industry) except
  * pagination/sort — all matching rows are exported.
  * Reps automatically get their own accounts; admins may pass ?all=true to export all.
- * (MINCRM-165)
  */
 export async function exportAccountsHandler(req: Request, res: Response): Promise<void> {
   const data = await resolveAccountExportData(req);
@@ -401,9 +400,9 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
  * GET /api/accounts/export.pdf
  * Renders all matching accounts as a paginated PDF table.
  *
- * Query params and ownership rules are identical to the CSV export above (MINCRM-601).
+ * Query params and ownership rules are identical to the CSV export above.
  */
-/** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. (MINCRM-655) */
+/** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. */
 const ACCOUNT_PDF_NUMERIC_COLUMNS = new Set(['Contacts', 'Deals']);
 
 /**
@@ -450,7 +449,7 @@ export async function exportAccountsPdfHandler(req: Request, res: Response): Pro
  * GET /api/accounts/:id/export.pdf
  * Renders a single account as a one-record summary PDF, mirroring the data
  * shown on the account detail page. Visibility matches getAccountHandler —
- * subject to the org's account visibility policy. (MINCRM-650)
+ * subject to the org's account visibility policy.
  */
 export async function exportAccountPdfHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
@@ -568,7 +567,7 @@ export async function deleteAccountHandler(req: Request, res: Response): Promise
 
 /**
  * GET /api/accounts/:id/children
- * Returns all direct subsidiary accounts of the given account. (MINCRM-184)
+ * Returns all direct subsidiary accounts of the given account.
  */
 export async function listChildAccountsHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
@@ -586,7 +585,7 @@ export async function listChildAccountsHandler(req: Request, res: Response): Pro
 /**
  * GET /api/accounts/search
  * Type-ahead search for accounts by name. Returns up to 10 matches.
- * Used by the Parent Account selector in AccountForm. (MINCRM-184)
+ * Used by the Parent Account selector in AccountForm.
  *
  * Query params:
  *   ?q=<text>       — required substring to match

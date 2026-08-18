@@ -1,5 +1,5 @@
 /**
- * Unit tests for cryptoService. (MINCRM-197)
+ * Unit tests for cryptoService.
  *
  * No database or external dependencies — pure Node.js crypto.
  * NODE_ENCRYPTION_KEY is loaded from .env.test via the global test setup.

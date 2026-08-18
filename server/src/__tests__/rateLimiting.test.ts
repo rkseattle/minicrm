@@ -1,5 +1,5 @@
 /**
- * Rate limiter tests (MINCRM-243).
+ * Rate limiter tests.
  *
  * Verifies that the login, forgot-password, and reset-password rate limiters
  * fire at their configured thresholds. Normally the limiters are bypassed via
@@ -27,7 +27,7 @@ afterAll(() => {
 
 // ── Login rate limiter (max: 10) ─────────────────────────────────────────────
 
-describe('MINCRM-243 — login rate limiter', () => {
+describe('login rate limiter', () => {
   it('allows exactly 10 login attempts then blocks the 11th with 429', async () => {
     // Send 10 failed login attempts — all should return 401 (wrong credentials),
     // not 429 (the limiter has not fired yet).
@@ -74,7 +74,7 @@ describe('MINCRM-243 — login rate limiter', () => {
 
 // ── Forgot-password rate limiter (max: 5) ────────────────────────────────────
 
-describe('MINCRM-243 — forgot-password rate limiter', () => {
+describe('forgot-password rate limiter', () => {
   it('allows exactly 5 requests then blocks the 6th with 429', async () => {
     for (let i = 0; i < 5; i++) {
       const res = await request(app)
@@ -117,7 +117,7 @@ describe('MINCRM-243 — forgot-password rate limiter', () => {
 
 // ── Reset-password rate limiter (max: 10) ────────────────────────────────────
 
-describe('MINCRM-243 — reset-password rate limiter', () => {
+describe('reset-password rate limiter', () => {
   it('allows exactly 10 requests then blocks the 11th with 429', async () => {
     // Send 10 reset attempts with an invalid token — all should return 400
     // (invalid token), not 429.

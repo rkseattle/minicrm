@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA session service. (MINCRM-609..612)
+ * Coverage/TIA session service.
  *
  * A CoverageSession is a logical grouping of coverage dumps attributed to a
  * single automated E2E test run or manual-exploratory-testing session. It
@@ -153,7 +153,7 @@ export async function startCoverageSession(
  * Ends an active coverage session. Optimistic-locked on `version` so two
  * concurrent end-session requests (e.g. a flaky retry racing the original
  * teardown) can't both report success — the second sees a conflict rather
- * than silently double-processing the same session. (MINCRM-612)
+ * than silently double-processing the same session.
  */
 export async function endCoverageSession(
   sessionId: string,
@@ -246,7 +246,7 @@ export async function listActiveCoverageSessions(
  * none is active for it (unknown ID, or its session already ended). Used by
  * the coverage dump endpoint to auto-attribute a dump when the caller sent
  * the x-coverage-correlation-id header, without requiring every caller to
- * separately know and pass a sessionId. (MINCRM-610)
+ * separately know and pass a sessionId.
  */
 export async function findActiveCoverageSessionByCorrelationId(
   correlationId: string,
@@ -268,7 +268,7 @@ export async function findActiveCoverageSessionByCorrelationId(
  * attempt distinguishes Playwright test retries: a retried test re-runs
  * under the same test_id with attempt incremented, so a flaky test's first
  * (failed) and second (passed) attempts are two distinct rows rather than
- * one overwriting the other. (MINCRM-612)
+ * one overwriting the other.
  */
 export async function recordCoverageSessionDump(
   sessionId: string,
@@ -284,7 +284,7 @@ export async function recordCoverageSessionDump(
   // different session's correlation ID (which would corrupt any downstream
   // lookup keyed on coverage_session_dumps.correlation_id, e.g.
   // findActiveCoverageSessionByCorrelationId). A dump can only ever be
-  // attributed to a session while it's still active. (MINCRM-612)
+  // attributed to a session while it's still active.
   const result = await coverageDb.query<{
     id: string;
     session_id: string;
@@ -350,7 +350,7 @@ export async function recordCoverageSessionDump(
 
 /**
  * Looks up a single dump's session attribution (test_id/test_name/test_file),
- * if any. Used by coverageIngestionService (MINCRM-618) to attribute the
+ * if any. Used by coverageIngestionService to attribute the
  * units produced by ingesting this dump to the specific test that generated
  * it. Returns null for a dump with no coverage_session_dumps row at all — a
  * normal case (e.g. a manually-triggered dump/ingest outside any session),
@@ -396,7 +396,7 @@ export async function findCoverageSessionDumpByDumpId(
 /**
  * Finds every test-attributed dump recorded against a given build SHA,
  * across every session (active or ended) tagged with that SHA — the
- * "which tests ran, against which SHA" query MINCRM-642's attestation
+ * "which tests ran, against which SHA" query the attestation
  * gate reconciles selection output against. Rows with a null test_id
  * (session-level dumps with no single associated test, e.g. a manual
  * check-in) are excluded — they carry no test identity to reconcile.
@@ -444,7 +444,7 @@ export async function findCoverageSessionDumpsByBuildSha(
 
 /**
  * Prunes coverage_sessions rows started more than `retentionDays` days ago
- * (MINCRM-637's configurable retention policy), regardless of status —
+ *, regardless of status —
  * both a long-ended session and one abandoned mid-run (a crashed E2E job,
  * a browser tab closed mid-recording, never explicitly ended — see
  * listActiveCoverageSessions' own docblock on why those can otherwise
@@ -453,7 +453,7 @@ export async function findCoverageSessionDumpsByBuildSha(
  * ON DELETE CASCADE (qa/migrations/001_coverage_baseline.js) — no separate
  * delete needed here.
  *
- * started_by is the column MINCRM-637's own AC names as "session metadata
+ * started_by is the column the AC names as "session metadata
  * (possible PII)" — before this function, coverage_sessions had zero
  * retention pruning at all, unlike coverage_units/coverage_test_links,
  * despite the ticket's central-policy-config AC covering retention

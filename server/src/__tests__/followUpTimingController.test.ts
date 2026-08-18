@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for follow-up timing suggestion endpoints. (MINCRM-470)
+ * HTTP contract tests for follow-up timing suggestion endpoints.
  */
 
 import 'dotenv/config';

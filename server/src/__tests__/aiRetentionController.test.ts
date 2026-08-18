@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for AI session retention admin endpoints. (MINCRM-462)
+ * HTTP contract tests for AI session retention admin endpoints.
  *
  * Covers:
  *  - GET /admin/ai/retention-stats: admin-only, returns session/message counts
@@ -56,7 +56,7 @@ beforeAll(async () => {
   repCookie = makeAuthCookie({ id: rep.id, email: rep.email, role: rep.role, name: rep.name });
 
   // ai_nli_page (and its ai_features master toggle — see featureFlagService's
-  // master-gate, MINCRM-460) can be left disabled by other test runs that toggle
+  // master-gate) can be left disabled by other test runs that toggle
   // or reset the AI master switch. This file only asserts retention-window
   // behavior, so seed/force both enabled regardless of ambient state.
   await pool.query(
@@ -129,7 +129,7 @@ describe('POST /admin/ai/retention/purge', () => {
     for (let attempt = 0; attempt < 10 && !found; attempt++) {
       const row = await pool.query<{ changed_by_name: string }>(
         // changed_by_id scoping: record_type + field_name are shared with the
-        // service-level retention tests. (MINCRM-693)
+        // service-level retention tests.
         `SELECT changed_by_name FROM audit_log
          WHERE record_type = 'ai_settings' AND field_name = 'manual_purge_triggered'
            AND changed_by_id = $1

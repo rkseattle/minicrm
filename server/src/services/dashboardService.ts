@@ -1,7 +1,7 @@
 /**
  * Dashboard service — business logic for the home dashboard summary.
  * All database access for dashboard metrics goes through this module.
- * Implements MINCRM-185 (recent activity feed).
+ * Implements (recent activity feed).
  */
 
 import pool from '../db.js';
@@ -60,25 +60,25 @@ interface DealTotalsRow {
   open_deal_count: string;
   open_pipeline_value: string | null;
   weighted_pipeline_value: string | null;
-  /** COUNT(DISTINCT currency) > 1 means mixed currencies (MINCRM-189) */
+  /** COUNT(DISTINCT currency) > 1 means mixed currencies */
   currency_count: string;
-  /** Single currency code when all open deals share the same currency (MINCRM-189) */
+  /** Single currency code when all open deals share the same currency */
   single_currency: string | null;
-  /** Converted total pipeline value in home currency, null when any deal currency lacks a rate (MINCRM-253) */
+  /** Converted total pipeline value in home currency, null when any deal currency lacks a rate */
   converted_pipeline_value: string | null;
-  /** Converted weighted pipeline value in home currency (MINCRM-253) */
+  /** Converted weighted pipeline value in home currency */
   converted_weighted_value: string | null;
-  /** Code of the home currency (MINCRM-253) */
+  /** Code of the home currency */
   home_currency: string | null;
-  /** Symbol of the home currency (MINCRM-253) */
+  /** Symbol of the home currency */
   home_symbol: string | null;
-  /** Number of deals with a value whose currency has no configured rate (MINCRM-253) */
+  /** Number of deals with a value whose currency has no configured rate */
   unrated_count: string;
-  /** Comma-separated list of unrated currency codes (MINCRM-253) */
+  /** Comma-separated list of unrated currency codes */
   unrated_currencies: string | null;
-  /** ISO timestamp of the most recently updated currency rate (MINCRM-253) */
+  /** ISO timestamp of the most recently updated currency rate */
   rates_last_updated: string | null;
-  /** Number of non-home currency rows in the currencies table (MINCRM-253) */
+  /** Number of non-home currency rows in the currencies table */
   has_rates_count: string;
 }
 
@@ -89,9 +89,9 @@ interface StageQueryRow {
   value: string;
   weighted_value: string;
   sort_order: string;
-  /** COUNT(DISTINCT currency) for deals with a value in this stage (MINCRM-189) */
+  /** COUNT(DISTINCT currency) for deals with a value in this stage */
   currency_count: string;
-  /** Single currency code when all deals in the stage share the same currency (MINCRM-189) */
+  /** Single currency code when all deals in the stage share the same currency */
   single_currency: string | null;
 }
 
@@ -102,11 +102,11 @@ export interface StageBreakdownRow {
   value: string; // PostgreSQL SUM(numeric) returns a string
   /** Sum of (value × effective_probability / 100) for deals in this stage */
   weightedValue: string;
-  /** True when deals in this stage span more than one currency (MINCRM-189) */
+  /** True when deals in this stage span more than one currency */
   mixedCurrencies: boolean;
   /**
    * The currency code when all deals in the stage share one currency; null when mixed.
-   * Use this to format monetary totals correctly. (MINCRM-189)
+   * Use this to format monetary totals correctly.
    */
   currency: string | null;
 }
@@ -123,38 +123,38 @@ export interface DashboardSummary {
   openPipelineValue: string;
   /**
    * Sum of (value × effective_probability / 100) for all open deals, as a decimal string.
-   * effective_probability = deal.probability override if set, else stage default. (MINCRM-179)
+   * effective_probability = deal.probability override if set, else stage default.
    */
   weightedPipelineValue: string;
-  /** True when open deals span more than one currency; totals are not meaningful in that case (MINCRM-189) */
+  /** True when open deals span more than one currency; totals are not meaningful in that case */
   mixedCurrencies: boolean;
   /**
    * The currency code when all open deals share one currency; null when mixed or no deals.
-   * Pair with mixedCurrencies to decide whether to format monetary totals. (MINCRM-189)
+   * Pair with mixedCurrencies to decide whether to format monetary totals.
    */
   currency: string | null;
   /** Per-stage breakdown of open deal count and total value, ordered by pipeline funnel position */
   stageBreakdown: StageBreakdownRow[];
   /**
    * The 10 most recently updated activities visible to this user.
-   * Scoped same as other dashboard metrics: rep sees own, admin sees all. (MINCRM-185)
+   * Scoped same as other dashboard metrics: rep sees own, admin sees all.
    */
   recentActivities: RecentActivityEntry[];
-  /** Converted total pipeline value in home currency, null when no non-home rates exist (MINCRM-253) */
+  /** Converted total pipeline value in home currency, null when no non-home rates exist */
   convertedPipelineValue: string | null;
-  /** Converted weighted pipeline value in home currency (MINCRM-253) */
+  /** Converted weighted pipeline value in home currency */
   convertedWeightedPipelineValue: string | null;
-  /** Code of the home currency (MINCRM-253) */
+  /** Code of the home currency */
   homeCurrency: string | null;
-  /** Symbol of the home currency (MINCRM-253) */
+  /** Symbol of the home currency */
   homeSymbol: string | null;
-  /** Number of deals whose currency has no configured rate (MINCRM-253) */
+  /** Number of deals whose currency has no configured rate */
   unratedCount: number;
-  /** Comma-separated codes of currencies missing a rate (MINCRM-253) */
+  /** Comma-separated codes of currencies missing a rate */
   unratedCurrencies: string | null;
-  /** ISO timestamp of the most recently updated currency rate (MINCRM-253) */
+  /** ISO timestamp of the most recently updated currency rate */
   ratesLastUpdated: string | null;
-  /** True when at least one non-home currency rate exists in the currencies table (MINCRM-253) */
+  /** True when at least one non-home currency rate exists in the currencies table */
   hasRates: boolean;
 }
 
@@ -201,8 +201,8 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
   // Exclude closed stages from all open-deal metrics.
   // weighted_pipeline_value = SUM(value × COALESCE(d.probability, ps.probability, 0) / 100)
   // The three-argument COALESCE guards against deals whose stage has been deleted (ps absent).
-  // effective_probability comes from a LEFT JOIN to pipeline_stages. (MINCRM-179)
-  // Converted totals LEFT JOIN currencies for exchange rates. (MINCRM-253)
+  // effective_probability comes from a LEFT JOIN to pipeline_stages.
+  // Converted totals LEFT JOIN currencies for exchange rates.
   // Scalar subqueries for home currency code and symbol are used instead of a JOIN so that
   // home_currency and home_symbol are always populated even when the deals table is empty
   // (an aggregate over zero rows returns null for every MIN/MAX — scalar subqueries are
@@ -306,7 +306,6 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
   // We COALESCE across all three FK columns to find the first non-null linked
   // record name (contact full name, account name, or deal name). The order of
   // preference is: contact → account → deal (matching typical display priority).
-  // (MINCRM-185)
   const recentActivityQuery = ownerFilter
     ? `SELECT
          a.id,
@@ -374,7 +373,7 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
   const mixedCurrencies = parseInt(dealTotalsRow.currency_count, 10) > 1;
   const currency = mixedCurrencies ? null : (dealTotalsRow.single_currency ?? null);
 
-  // Currency conversion fields (MINCRM-253)
+  // Currency conversion fields
   const hasRatesCount = parseInt(dealTotalsRow.has_rates_count ?? '0', 10);
   const hasRates = hasRatesCount > 0;
   const unratedCount = parseInt(String(dealTotalsRow.unrated_count ?? '0'), 10);

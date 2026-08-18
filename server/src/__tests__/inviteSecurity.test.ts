@@ -1,13 +1,13 @@
 /**
- * Security verification tests for invite token properties (MINCRM-87) and
- * must_change_password API enforcement (MINCRM-78).
+ * Security verification tests for invite token properties and
+ * must_change_password API enforcement.
  *
- * MINCRM-87: Verifies that the invite token is:
+ * Verifies that the invite token is:
  *   1. Time-limited — jwt.sign with expiresIn: '72h'; an expired token is rejected
  *   2. Single-use — second call to set-password after activation returns 409
  *   3. Purpose-scoped — a regular auth JWT cannot be used as an invite token
  *
- * MINCRM-78: Verifies that must_change_password is enforced at the API layer,
+ * Verifies that must_change_password is enforced at the API layer,
  *   not just client-side. A user with must_change_password=true receives 403
  *   PASSWORD_CHANGE_REQUIRED on all routes except /api/auth/change-password,
  *   regardless of whether they go through the React app.
@@ -53,9 +53,9 @@ afterAll(async () => {
   await pool.query("DELETE FROM users WHERE email LIKE 'inv-sec-%'");
 });
 
-// ── MINCRM-87: invite token is time-limited ───────────────────────────────────
+// ── invite token is time-limited ───────────────────────────────────
 
-describe('MINCRM-87 — invite token expiry', () => {
+describe('invite token expiry', () => {
   it('rejects an expired invite token with AUTH_INVALID_TOKEN', async () => {
     // Sign a token that expired 1 second ago
     const expiredToken = jwt.sign(
@@ -90,9 +90,9 @@ describe('MINCRM-87 — invite token expiry', () => {
   });
 });
 
-// ── MINCRM-87: invite token is single-use ────────────────────────────────────
+// ── invite token is single-use ────────────────────────────────────
 
-describe('MINCRM-87 — invite token is single-use', () => {
+describe('invite token is single-use', () => {
   it('returns 409 USER_ALREADY_ACTIVATED on second use of the same invite token', async () => {
     // Create an invited user
     const inviteRes = await request(app)
@@ -120,9 +120,9 @@ describe('MINCRM-87 — invite token is single-use', () => {
   });
 });
 
-// ── MINCRM-87: invite token is purpose-scoped ────────────────────────────────
+// ── invite token is purpose-scoped ────────────────────────────────
 
-describe('MINCRM-87 — invite token cannot be substituted with an auth JWT', () => {
+describe('invite token cannot be substituted with an auth JWT', () => {
   it('rejects a regular session JWT used as an invite token', async () => {
     // Sign a token that looks like a session token (no purpose claim)
     const sessionToken = jwt.sign(
@@ -140,9 +140,9 @@ describe('MINCRM-87 — invite token cannot be substituted with an auth JWT', ()
   });
 });
 
-// ── MINCRM-78: must_change_password is API-enforced ──────────────────────────
+// ── must_change_password is API-enforced ──────────────────────────
 
-describe('MINCRM-78 — must_change_password enforced at the API layer', () => {
+describe('must_change_password enforced at the API layer', () => {
   let mustChangeCookie: string;
 
   beforeAll(async () => {

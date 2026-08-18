@@ -10,7 +10,6 @@
  *  - deriveDpaStatus / deriveDataPosture: composite indicator logic
  *
  * Runs against the real minicrm_test PostgreSQL database.
- * (MINCRM-457, MINCRM-502)
  */
 
 import 'dotenv/config';
@@ -241,7 +240,6 @@ describe('setAiEnabled', () => {
     // field_name are shared with aiConfigController.test.ts, which also mutates
     // the ai_features flag, so a window alone cannot isolate this assertion —
     // it only narrows the race. ACTOR.id is this file's own admin user.
-    // (MINCRM-693)
     const before = await pool.query<{ max: string | null }>(
       `SELECT MAX(created_at)::text AS max FROM audit_log
        WHERE record_type = 'feature_flag' AND field_name = 'enabled' AND changed_by_id = $1`,
@@ -435,7 +433,7 @@ describe('setAiConfig', () => {
       new_value: string | null;
     }>(
       // Scoped by changed_by_id — record_type + field_name are shared with
-      // aiConfigController.test.ts's own AI-config PATCHes. (MINCRM-693)
+      // aiConfigController.test.ts's own AI-config PATCHes.
       `SELECT field_name, old_value, new_value
        FROM audit_log
        WHERE record_type = 'ai_settings' AND field_name = 'api_key'

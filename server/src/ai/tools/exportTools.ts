@@ -1,5 +1,5 @@
 /**
- * NLI tool definitions for entity export. (MINCRM-422)
+ * NLI tool definitions for entity export.
  *
  * The export is synchronous (CSV text returned directly) — no job ID.
  * RBAC is enforced by the executor: a rep can only export records in their

@@ -1,5 +1,5 @@
 /**
- * Integration tests for the pipeline controller (MINCRM-397).
+ * Integration tests for the pipeline controller.
  *
  * Covers all four endpoints: list, create, update (PATCH), and delete.
  * Runs against a real PostgreSQL test database via supertest.

@@ -15,8 +15,7 @@
  * stub response so that test runs never consume real API tokens. A reserved message
  * prefix additionally opts into fixed pending_action / tool_results / context_proposal
  * payloads for E2E specs that need to exercise those UI paths — see
- * resolveE2eStubResponse() and shared/schemas/aiE2eStub.ts. (MINCRM-435)
- * (MINCRM-420, MINCRM-421, MINCRM-422)
+ * resolveE2eStubResponse() and shared/schemas/aiE2eStub.ts.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -98,8 +97,7 @@ const IS_E2E = process.env.E2E === 'true';
  * has no renderer for them. Must stay in sync with READ_TOOL_NAMES in NliResultBlock.tsx.
  *
  * requestMutationConfirmation is included so its AiPendingAction output can be extracted
- * and stored in the pending_action column for client confirmation rendering. (MINCRM-425)
- * (MINCRM-423, MINCRM-431)
+ * and stored in the pending_action column for client confirmation rendering.
  */
 const PERSISTABLE_TOOL_NAMES = new Set([
   'searchContacts',
@@ -127,7 +125,7 @@ const MAX_TOOL_ROUNDS = 10;
 
 /**
  * Maps a tool name substring to the entity type used to scope admin-configured
- * AI field exclusions (MINCRM-461). Tool names consistently embed the entity
+ * AI field exclusions. Tool names consistently embed the entity
  * name (searchContacts, getContact, createDeal, etc.), so a substring match is
  * sufficient — returns undefined for tools with no single associated entity
  * (e.g. reports, tags), in which case applyPiiFilter falls back to unqualified
@@ -192,7 +190,7 @@ interface E2eStubResult {
  * The RBAC_DENIED scenario throws a statusCode:403 error matching the shape
  * toolExecutor.ts produces for a real admin-only tool call, so it flows
  * through the same try/catch and controller error-mapping path a real RBAC
- * denial would use. (MINCRM-435)
+ * denial would use.
  *
  * priorSdkMessages is used only by CONTEXT_PROPOSAL, to suppress re-proposing
  * the same context entry within a session that already saw it.
@@ -438,7 +436,6 @@ export async function deleteSession(
  * append it without a refetch.
  *
  * In E2E mode the Anthropic call is replaced by a stub — no tokens are consumed.
- * (MINCRM-422)
  */
 export async function sendMessage(
   sessionId: string,
@@ -454,7 +451,7 @@ export async function sendMessage(
   // Fallback: if userCapabilities() returns an empty set (e.g., built-in
   // role_capabilities rows missing due to a failed migration), merge in the
   // static BUILTIN_ROLE_CAPABILITIES snapshot for the user's legacy role so
-  // the NLI tool set is never silently empty for a valid role. (MINCRM-434)
+  // the NLI tool set is never silently empty for a valid role.
   const dbCapabilities = await userCapabilities(userId);
   const capabilities: ReadonlySet<Capability> =
     dbCapabilities.size > 0 ? dbCapabilities : new Set(BUILTIN_ROLE_CAPABILITIES[userRole] ?? []);
@@ -462,7 +459,7 @@ export async function sendMessage(
   // Fetch user context entries before Tx 1 so the pool connection is not held
   // during an Anthropic round-trip. A concurrent context edit between this
   // point and the Claude call would use stale preferences for one message —
-  // acceptable for a UX-personalisation feature. (MINCRM-427)
+  // acceptable for a UX-personalisation feature.
   const contextEntries: AiContextEntryResponse[] = await listContextEntries(userId);
 
   // ── Tx 1: validate ownership, fetch history, insert user message ──────────
@@ -494,7 +491,7 @@ export async function sendMessage(
     const historyResult = await client1.query<AiMessageRow>(
       // TODO: reconstruct tool_use/tool_result message pairs from tool_results for full
       // context continuity across turns (entity IDs, prior search results). Currently
-      // only role+content is passed to the AI. (MINCRM-425)
+      // only role+content is passed to the AI.
       `SELECT role, content, tool_results
        FROM ai_messages
        WHERE session_id = $1
@@ -509,7 +506,7 @@ export async function sendMessage(
 
     // Only clear pending_action when the user sends an explicit confirm or cancel.
     // Clarifying questions ("which fields will change?") must leave the pending_action
-    // intact so the confirmation block stays interactive after a page refresh. (MINCRM-425)
+    // intact so the confirmation block stays interactive after a page refresh.
     const CONFIRM_PHRASE = 'Yes, go ahead.';
     const CANCEL_PHRASE = 'No, cancel that.';
     if (content === CONFIRM_PHRASE || content === CANCEL_PHRASE) {
@@ -555,9 +552,9 @@ export async function sendMessage(
   const collectedToolResults: AiToolResult[] = [];
   // Tracks the raw (pre-PII-filter) AiPendingAction returned by requestMutationConfirmation.
   // Captured before applyPiiFilter so the confirmation block shows unredacted field values
-  // to the session owner. (MINCRM-425)
+  // to the session owner.
   let rawPendingAction: unknown = null;
-  // Context proposal extracted from the final assistant text, if any. (MINCRM-429, MINCRM-430)
+  // Context proposal extracted from the final assistant text, if any.
   let rawContextProposal: AiContextProposal | null = null;
 
   if (IS_E2E) {
@@ -627,7 +624,7 @@ export async function sendMessage(
           // Pre-scan the batch: if requestMutationConfirmation is present anywhere in this
           // response, no write tool in the same batch may execute — regardless of position.
           // Without this scan a write tool that precedes the confirmation in the batch would
-          // reach executeToolCall while rawPendingAction is still null. (MINCRM-425, MINCRM-426)
+          // reach executeToolCall while rawPendingAction is still null.
           const batchHasConfirmation = response.content.some(
             (b) => b.type === 'tool_use' && b.name === 'requestMutationConfirmation',
           );
@@ -639,7 +636,7 @@ export async function sendMessage(
             if (block.type !== 'tool_use') continue;
 
             // Skip all non-confirmation tools in a batch that contains a confirmation
-            // request — writes must not execute until the user approves. (MINCRM-425)
+            // request — writes must not execute until the user approves.
             if (batchHasConfirmation && block.name !== 'requestMutationConfirmation') {
               logger.warn(
                 { sessionId, skippedTool: block.name },
@@ -671,7 +668,7 @@ export async function sendMessage(
 
             // Capture raw confirmation result BEFORE PII filtering — the confirmation block
             // is shown only to the session owner (not sent to the AI), so field values
-            // must not be stripped. (MINCRM-425)
+            // must not be stripped.
             if (block.name === 'requestMutationConfirmation') {
               rawPendingAction = toolResult;
             }
@@ -680,7 +677,7 @@ export async function sendMessage(
             // Operates on a deep copy — the original result is unchanged.
             // entityTypeHint scopes admin-configured field exclusions to the
             // correct entity when a same-named field exists on multiple
-            // entities (e.g. `name` on both accounts and deals). (MINCRM-461)
+            // entities (e.g. `name` on both accounts and deals).
             const { sanitised, strippedFields } = await applyPiiFilter(
               toolResult,
               inferEntityTypeHint(block.name),
@@ -688,7 +685,6 @@ export async function sendMessage(
 
             // Persist results only for read tools so write/export/admin outputs
             // do not bloat stored messages with data the client cannot render.
-            // (MINCRM-423, MINCRM-431)
             if (PERSISTABLE_TOOL_NAMES.has(block.name)) {
               collectedToolResults.push({
                 toolName: block.name,
@@ -718,7 +714,6 @@ export async function sendMessage(
 
           // If this batch contained a confirmation request, stop the agentic loop.
           // The write tool must only be called after the user confirms in their next message.
-          // (MINCRM-425, MINCRM-426)
           if (batchHasConfirmation) {
             const textBlock = response.content.find((b) => b.type === 'text');
             assistantContent = textBlock?.type === 'text' ? textBlock.text : '';
@@ -747,7 +742,7 @@ export async function sendMessage(
 
       // A requestMutationConfirmation batch commonly has no accompanying text block —
       // Claude just calls the tool. That's a valid response (the pending action is
-      // rendered as the confirmation card), not a provider failure. (MINCRM-425)
+      // rendered as the confirmation card), not a provider failure.
       if (!assistantContent && !rawPendingAction) {
         throw Object.assign(new Error('AI provider returned no text content'), { statusCode: 502 });
       }
@@ -772,7 +767,7 @@ export async function sendMessage(
   // before storage. The marker is Claude's structured signal that it wants to
   // propose saving an ambiguity resolution or correction as a user preference.
   // The cleaned content is stored as message content; the proposal is stored
-  // in its own column for the client to render as an accept/dismiss chip. (MINCRM-429, MINCRM-430)
+  // in its own column for the client to render as an accept/dismiss chip.
   // Always run — a safe no-op when assistantContent has no marker (true for the
   // default E2E_STUB_RESPONSE and every E2E stub scenario except CONTEXT_PROPOSAL).
   const extraction = extractContextProposal(assistantContent);
@@ -796,9 +791,8 @@ export async function sendMessage(
 
     // Use the raw (pre-PII-filter) pending action for storage — the confirmation block
     // is shown only to the session owner, not the AI, so field values must not be stripped.
-    // (MINCRM-425)
     // rawPendingAction is the return value of executeToolCall for requestMutationConfirmation,
-    // which always builds an AiPendingAction object (validated in toolExecutor). (MINCRM-425)
+    // which always builds an AiPendingAction object (validated in toolExecutor).
     const pendingActionJson = rawPendingAction
       ? JSON.stringify(rawPendingAction as AiPendingAction)
       : null;

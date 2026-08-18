@@ -24,7 +24,7 @@ interface LossReasonRow {
   count: string;
 }
 
-/** PostgreSQL row shape for the per-rep win/loss breakdown query (MINCRM-264) */
+/** PostgreSQL row shape for the per-rep win/loss breakdown query */
 interface WinLossRepAggRow {
   owner_id: string;
   owner_name: string;
@@ -40,23 +40,23 @@ interface WinLossAggRow {
   won_value: string;
   lost_count: string;
   lost_value: string;
-  /** COUNT(DISTINCT currency) across all closed deals with a value (MINCRM-189) */
+  /** COUNT(DISTINCT currency) across all closed deals with a value */
   currency_count: string;
-  /** Single currency code when all closed deals share the same currency (MINCRM-189) */
+  /** Single currency code when all closed deals share the same currency */
   single_currency: string | null;
-  /** Converted total of Closed Won deals in home currency (MINCRM-253) */
+  /** Converted total of Closed Won deals in home currency */
   converted_won_value: string | null;
-  /** Converted total of Closed Lost deals in home currency (MINCRM-253) */
+  /** Converted total of Closed Lost deals in home currency */
   converted_lost_value: string | null;
-  /** Code of the home currency (MINCRM-253) */
+  /** Code of the home currency */
   home_currency: string | null;
-  /** Symbol of the home currency (MINCRM-253) */
+  /** Symbol of the home currency */
   home_symbol: string | null;
-  /** Number of deals with a value whose currency lacks a rate (MINCRM-253) */
+  /** Number of deals with a value whose currency lacks a rate */
   unrated_count: string;
-  /** ISO timestamp of the most recently updated currency rate (MINCRM-253) */
+  /** ISO timestamp of the most recently updated currency rate */
   rates_last_updated: string | null;
-  /** Number of non-home currency rows in the currencies table (MINCRM-253) */
+  /** Number of non-home currency rows in the currencies table */
   has_rates_count: string;
 }
 
@@ -66,7 +66,7 @@ export interface LossReasonBreakdown {
   count: number;
 }
 
-/** A single rep row in the win/loss per-rep breakdown (MINCRM-264) */
+/** A single rep row in the win/loss per-rep breakdown */
 export interface WinLossRepRow {
   ownerId: string;
   ownerName: string;
@@ -94,30 +94,30 @@ export interface WinLossReport {
   winRate: number | null;
   /** Top loss reasons by count, descending. Empty when no loss reasons were captured. */
   lossReasonBreakdown: LossReasonBreakdown[];
-  /** True when closed deals span more than one currency; totals are not meaningful (MINCRM-189) */
+  /** True when closed deals span more than one currency; totals are not meaningful */
   mixedCurrencies: boolean;
   /**
    * The currency code when all closed deals share one currency; null when mixed or no deals.
-   * Pair with mixedCurrencies to format monetary totals correctly. (MINCRM-189)
+   * Pair with mixedCurrencies to format monetary totals correctly.
    */
   currency: string | null;
-  /** Converted Closed Won total in home currency (MINCRM-253) */
+  /** Converted Closed Won total in home currency */
   convertedWonValue: string | null;
-  /** Converted Closed Lost total in home currency (MINCRM-253) */
+  /** Converted Closed Lost total in home currency */
   convertedLostValue: string | null;
-  /** Code of the home currency (MINCRM-253) */
+  /** Code of the home currency */
   homeCurrency: string | null;
-  /** Symbol of the home currency (MINCRM-253) */
+  /** Symbol of the home currency */
   homeSymbol: string | null;
-  /** Number of deals with a value whose currency lacks a rate (MINCRM-253) */
+  /** Number of deals with a value whose currency lacks a rate */
   unratedCount: number;
-  /** ISO timestamp of the most recently updated currency rate (MINCRM-253) */
+  /** ISO timestamp of the most recently updated currency rate */
   ratesLastUpdated: string | null;
-  /** True when at least one non-home currency rate exists (MINCRM-253) */
+  /** True when at least one non-home currency rate exists */
   hasRates: boolean;
   /**
    * Per-rep breakdown rows — only populated when ownerId is null (team-wide view).
-   * Empty array when a specific owner filter is applied. (MINCRM-264)
+   * Empty array when a specific owner filter is applied.
    */
   repRows: WinLossRepRow[];
 }
@@ -136,7 +136,7 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
   // Single query using conditional aggregation to count + sum Won and Lost separately.
   // Filters by close_date (not created_at) per acceptance criteria.
   //
-  // Rate resolution strategy (MINCRM-526):
+  // Rate resolution strategy:
   //   1. Look up the most recent currency_rate_history row whose effective_from is at or
   //      before the deal's close_date — this gives the rate that was in effect at close.
   //   2. Fall back to the current currencies row when no history exists (e.g. the rate was
@@ -148,14 +148,14 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
   //
   // Scalar subqueries for home currency code/symbol are retained so that home_currency and
   // home_symbol remain populated even when the deals table is empty (aggregate over zero rows
-  // would otherwise make LATERAL join columns null). (MINCRM-253)
+  // would otherwise make LATERAL join columns null).
   //
   // home_currency CTE deduplicates the four scalar subqueries that look up the home currency
-  // code and symbol, so the optimizer can satisfy them from a single index scan. (MINCRM-509)
+  // code and symbol, so the optimizer can satisfy them from a single index scan.
   //
   // currency_updated_at in rate_at_close uses COALESCE(c.updated_at, rh.effective_from) so that
   // deals whose currency was later deleted from the currencies table still contribute a
-  // meaningful timestamp to rates_last_updated via their history rows. (MINCRM-509)
+  // meaningful timestamp to rates_last_updated via their history rows.
   const aggCte = `
     WITH home_currency AS (
       SELECT code, symbol FROM currencies WHERE is_home = true LIMIT 1
@@ -270,14 +270,14 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
     count: parseInt(row.count, 10),
   }));
 
-  // Currency conversion fields (MINCRM-253)
+  // Currency conversion fields
   const hasRatesCount = parseInt(aggRow.has_rates_count ?? '0', 10);
   const hasRates = hasRatesCount > 0;
   const unratedCount = parseInt(String(aggRow.unrated_count ?? '0'), 10);
 
   // ── Per-rep breakdown (team-wide only) ────────────────────────────────────
   // Only populated when no owner filter is applied; empty array for scoped queries.
-  // Sorted by owner name ascending. (MINCRM-264)
+  // Sorted by owner name ascending.
   let repRows: WinLossRepRow[] = [];
   if (!ownerFilter) {
     const repAggResult = await pool.query<WinLossRepAggRow>(
@@ -382,7 +382,7 @@ export interface ActivityVolumeReport {
   totals: ActivityTypeCounts & { total: number };
 }
 
-/** The ordered set of activity types used as report columns (MINCRM-181) */
+/** The ordered set of activity types used as report columns */
 export const ACTIVITY_TYPES = ['Note', 'Call', 'Email', 'Meeting', 'Task'] as const;
 
 /**
@@ -470,7 +470,7 @@ export async function getActivityVolumeReport(
   return { rows, totals };
 }
 
-// ── Leads Summary Report (MINCRM-424) ────────────────────────────────────────
+// ── Leads Summary Report ────────────────────────────────────────
 
 export interface LeadsSummaryReportParams {
   /**
@@ -543,7 +543,7 @@ export async function getLeadsSummaryReport(
   return { rows, total };
 }
 
-// ── Stage Trend Report (MINCRM-284) ──────────────────────────────────────────
+// ── Stage Trend Report ──────────────────────────────────────────
 
 /** Allowed values for the stageTrend `days` parameter */
 export const STAGE_TREND_DAYS_OPTIONS = [30, 60, 90] as const;

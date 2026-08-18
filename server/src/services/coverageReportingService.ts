@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA reporting & gap-analysis query service. (MINCRM-629/630/631)
+ * Coverage/TIA reporting & gap-analysis query service.
  *
  * Read-only aggregate queries over coverage_build_summary, coverage_units,
  * and coverage_test_links, backing the standalone coverage-dashboard app's
@@ -72,7 +72,7 @@ export class CoverageBuildNotFoundError extends Error {
   }
 }
 
-/** Overall + per-tier coverage summary for a single build (MINCRM-629). */
+/** Overall + per-tier coverage summary for a single build. */
 export async function getCoverageSummary(commitSha: string): Promise<CoverageSummary> {
   const summary = await findBuildSummaryByCommitSha(commitSha);
   if (!summary) {
@@ -81,13 +81,13 @@ export async function getCoverageSummary(commitSha: string): Promise<CoverageSum
   return toCoverageSummary(summary);
 }
 
-/** Coverage summaries for the most recent builds, most recent first (MINCRM-629's trend view). */
+/** Coverage summaries for the most recent builds, most recent first. */
 export async function getCoverageTrend(limit: number): Promise<CoverageSummary[]> {
   const summaries = await findRecentBuildSummaries(limit);
   return summaries.map(toCoverageSummary);
 }
 
-// ── Gap analysis (MINCRM-630) ──────────────────────────────────────────────
+// ── Gap analysis ──────────────────────────────────────────────
 
 /** A code unit no functional/manual test currently exercises. */
 export interface DeadZoneUnit {
@@ -103,7 +103,7 @@ const DEAD_ZONE_RESULT_LIMIT_MAX = 5000;
 /**
  * Finds every unit at a commit with hit_count = 0 — code no test of any
  * kind (automated or manual) has ever exercised at this commit ("dead
- * zones", MINCRM-630's first AC). resolved=false units (e.g. eval()'d
+ * zones", the first AC). resolved=false units (e.g. eval()'d
  * code, node: builtins) are included with resolved:false rather than
  * filtered out — they are still a real gap, just one the caller may want
  * to visually distinguish since it has no meaningful filePath/unitKey.
@@ -138,7 +138,7 @@ export async function findDeadZoneUnits(
 
 /**
  * Branch-granularity units with hit_count = 0 specifically — a subset of
- * findDeadZoneUnits, surfaced separately per MINCRM-630's AC to
+ * findDeadZoneUnits, surfaced separately per the spec's AC to
  * "distinguish never-taken branches (data-dependent paths needing new test
  * data)" from function-level dead zones, which usually mean "nothing calls
  * this at all" rather than "this IS called, but one of its branches never
@@ -181,10 +181,9 @@ export interface ChangedUntestedUnit {
 
 /**
  * Diffs baseSha..headSha, resolves the changed units the same way test
- * selection does (changeUnitResolver — MINCRM-623), then reports which of
+ * selection does (changeUnitResolver —), then reports which of
  * those changed units have NO row in coverage_test_links at headSha
- * (MINCRM-630's "changed-but-untested code for a given baseline..head
- * range" AC). A 'deleted' unit is excluded — there is no code left to test.
+ *. A 'deleted' unit is excluded — there is no code left to test.
  * cwd defaults to process.cwd(), matching testSelectionService's own
  * assumption that the running process's checked-out working tree is
  * headRef's content.
@@ -248,7 +247,7 @@ export async function findChangedUntestedUnits(
     }));
 }
 
-// ── Per-issue traceability & TIA value metrics (MINCRM-631) ────────────────
+// ── Per-issue traceability & TIA value metrics ────────────────
 
 /** Coverage rollup for a single MiniCRM issue key. */
 export interface IssueCoverage {
@@ -306,7 +305,7 @@ export async function getIssueCoverage(
 /**
  * Lists distinct issue keys that have at least one coverage session
  * recorded for a given build — backs the coverage-dashboard app's issue-key
- * picker (MINCRM-636/637). Unlike unit-key/test-ID search
+ * picker. Unlike unit-key/test-ID search
  * (coverageModelService.searchUnitKeys / coverageMappingService.searchTestIds),
  * this needs no separate search term: the set of issue keys touched by any
  * one build is small (bounded by how many manual-testing sessions were
@@ -336,12 +335,11 @@ export interface TiaValueMetrics {
 
 /**
  * Reports coverage trend stats across a build range as a proxy for TIA
- * selection quality over time (MINCRM-631's "report misses caught by the
- * safety net" / "selection quality over time" AC). This module does not
+ * selection quality over time. This module does not
  * have access to CI's own test-selection run log (wiring selection output
  * into CI is explicitly out of scope for this epic — see
  * docs/dev/coverage.md's "Deferred to later phases": pr-tia-8,
- * MINCRM-633/634/660) — so "tests skipped" / "CI time saved" cannot be
+ *) — so "tests skipped" / "CI time saved" cannot be
  * computed from data available in the coverage database alone yet. This
  * function reports what IS derivable today (per-tier coverage trend across
  * the range) as the value-metrics view's initial, honest scope; a

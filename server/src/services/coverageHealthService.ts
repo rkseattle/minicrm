@@ -1,18 +1,17 @@
 /**
- * Coverage/TIA operational health check. (MINCRM-637)
+ * Coverage/TIA operational health check.
  *
  * Reports what an operator needs to know the framework's own services are
  * working: whether the backend V8 agent is running, whether the coverage
  * database is reachable, which coverage routers actually registered their
  * routes at boot, and the outcome of the most recent scheduled retention
- * prune — the one background job MINCRM-637 introduces that runs
+ * prune — the one background job introduced here that runs
  * unattended and would otherwise be invisible here (a failed nightly prune
  * previously only logged an error; this report continued to say
  * status: 'ok' indefinitely — found via Greptile branch review).
  *
  * `routers` reports which coverage routers registered at boot, from
- * coverageBootGate's snapshot (MINCRM-685 — it replaced a `featureFlags` block
- * reporting three rows migration 163 deleted). Unregistered routers are NOT a
+ * coverageBootGate's snapshot. Unregistered routers are NOT a
  * degraded condition: every gate unset is the production default, so treating
  * it as one would leave every normal deployment's check permanently red.
  * `degraded` is driven solely by an unreachable coverage database or a failed

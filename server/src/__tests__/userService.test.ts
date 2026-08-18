@@ -182,7 +182,7 @@ describe('updateUserRole', () => {
     expect(result).toBeNull();
   });
 
-  // MINCRM-533 — new roles
+  // new roles
   it('assigns manager role', async () => {
     const user = await createUser(BASE_USER);
     const updated = await updateUserRole(user.id, 'manager');
@@ -438,7 +438,7 @@ describe('adminSetUserPassword', () => {
     expect(result).toBeNull();
   });
 
-  it('emits an audit log entry on success (MINCRM-89)', async () => {
+  it('emits an audit log entry on success', async () => {
     // Verify the function returns successfully — the audit log is written to
     // structured stdout via pino and is observable via logger.info spy in integration.
     // Here we confirm the function completes without error when admin and target IDs differ.
@@ -534,7 +534,7 @@ describe('seedDefaultAdmin', () => {
     expect(user!.status).toBe('active');
   });
 
-  // MINCRM-684: the guard is scoped to ADMIN_EMAIL, not "any user exists". An
+  // the guard is scoped to ADMIN_EMAIL, not "any user exists". An
   // unrelated row (service account, deactivated user, leftover test fixture) must not
   // permanently block the configured admin from being created — that is the lockout
   // this ticket fixes.
@@ -759,7 +759,7 @@ describe('setUserPreferredLanguage', () => {
   });
 });
 
-// ── getNotificationPrefs (MINCRM-163) ─────────────────────────────────────────
+// ── getNotificationPrefs ─────────────────────────────────────────
 
 describe('getNotificationPrefs', () => {
   it('returns all-true defaults for a newly created user', async () => {
@@ -778,7 +778,7 @@ describe('getNotificationPrefs', () => {
   });
 });
 
-// ── updateNotificationPrefs (MINCRM-163) ──────────────────────────────────────
+// ── updateNotificationPrefs ──────────────────────────────────────
 
 describe('updateNotificationPrefs', () => {
   it('persists updated preference flags', async () => {
@@ -816,7 +816,7 @@ describe('updateNotificationPrefs', () => {
   });
 });
 
-// ── listUsersOptedIn (MINCRM-163) ─────────────────────────────────────────────
+// ── listUsersOptedIn ─────────────────────────────────────────────
 
 describe('listUsersOptedIn', () => {
   it('returns users opted in to overdue task notifications by default', async () => {
@@ -839,7 +839,7 @@ describe('listUsersOptedIn', () => {
   });
 });
 
-// ── countActiveNotificationRecipients (MINCRM-163) ───────────────────────────
+// ── countActiveNotificationRecipients ───────────────────────────
 
 describe('countActiveNotificationRecipients', () => {
   it('counts active users with at least one notification enabled', async () => {
@@ -869,7 +869,7 @@ describe('countActiveNotificationRecipients', () => {
   });
 });
 
-// ── resetUserOnboarding (MINCRM-410) ──────────────────────────────────────────
+// ── resetUserOnboarding ──────────────────────────────────────────
 
 describe('resetUserOnboarding', () => {
   const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };

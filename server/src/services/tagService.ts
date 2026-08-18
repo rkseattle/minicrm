@@ -1,5 +1,5 @@
 /**
- * Tag service — business logic for tag CRUD and entity attachment (MINCRM-186).
+ * Tag service — business logic for tag CRUD and entity attachment.
  * All database access for tags goes through this module.
  */
 
@@ -29,7 +29,7 @@ export type TaggableEntity = 'contact' | 'account' | 'deal' | 'lead' | 'note';
  * 'note' is excluded: note tags are managed atomically via syncEntityTagsWithinTransaction. */
 export type AttachableEntity = Exclude<TaggableEntity, 'note'>;
 
-/** Per-entity usage counts returned by getTagUsageSummary (MINCRM-433) */
+/** Per-entity usage counts returned by getTagUsageSummary */
 export interface TagUsageSummary {
   tag_id: string;
   tag_name: string;
@@ -133,7 +133,7 @@ export async function updateTag(id: string, params: UpdateTagInput): Promise<Tag
 
 /**
  * Returns the count of records tagged with a given tag, broken down by entity type.
- * Used to populate the rename/delete confirmation summary in the NLI. (MINCRM-433)
+ * Used to populate the rename/delete confirmation summary in the NLI.
  *
  * @param tagId - Tag UUID
  */
@@ -175,7 +175,7 @@ export async function getTagUsageSummary(tagId: string): Promise<TagUsageSummary
 /**
  * Renames a tag by looking it up by name, then updating it atomically.
  * Returns the updated tag row and usage summary for confirmation display, or null if not found.
- * The rename propagates automatically to all junction tables via shared tag rows. (MINCRM-433)
+ * The rename propagates automatically to all junction tables via shared tag rows.
  *
  * Audit entry recorded in the same transaction. The 23505 conflict (new name already taken)
  * is surfaced as a TAG_NAME_CONFLICT error code.

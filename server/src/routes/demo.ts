@@ -1,6 +1,6 @@
 /**
  * Demo data routes.
- * All endpoints require authentication + admin role. (MINCRM-103)
+ * All endpoints require authentication + admin role.
  */
 
 import { Router } from 'express';

@@ -1,5 +1,5 @@
 /**
- * Pipeline service — business logic for pipeline CRUD (MINCRM-397).
+ * Pipeline service — business logic for pipeline CRUD.
  * All database access for the pipelines table goes through this module.
  */
 

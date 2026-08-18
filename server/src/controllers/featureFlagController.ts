@@ -1,7 +1,6 @@
 /**
  * Feature flag controller — request/response shaping only.
  * All business logic lives in featureFlagService.
- * (MINCRM-463, MINCRM-490, MINCRM-491, MINCRM-492)
  */
 
 import type { Request, Response } from 'express';
@@ -43,7 +42,7 @@ export async function listFeatureFlagsHandler(req: Request, res: Response): Prom
   res.json({ flags });
 }
 
-/** The ai_features master toggle's key — every other ai_* flag is its child (MINCRM-460). */
+/** The ai_features master toggle's key — every other ai_* flag is its child. */
 const AI_MASTER_FEATURE_FLAG_KEY = 'ai_features';
 
 /**
@@ -240,7 +239,7 @@ export async function removeBetaUserHandler(req: Request, res: Response): Promis
   res.status(204).send();
 }
 
-// ── Per-user overrides (MINCRM-492) ────────────────────────────────────────────
+// ── Per-user overrides ────────────────────────────────────────────
 
 /**
  * GET /api/v1/admin/feature-flags/:key/overrides
@@ -347,7 +346,7 @@ export async function deleteUserOverrideHandler(req: Request, res: Response): Pr
   res.status(204).send();
 }
 
-// ── Flag group handlers (MINCRM-491) ─────────────────────────────────────────
+// ── Flag group handlers ─────────────────────────────────────────
 
 /**
  * GET /api/v1/admin/feature-flags/groups
@@ -443,7 +442,6 @@ export async function updateFlagGroupHandler(req: Request, res: Response): Promi
 /**
  * DELETE /api/v1/admin/feature-flags/groups/:key
  * Deletes a flag group, atomically unassigning any member flags first. Admin only.
- * (MINCRM-567)
  */
 export async function deleteFlagGroupHandler(req: Request, res: Response): Promise<void> {
   const groupKey = req.params['key'] as string; // Express guarantees :key is a string when route matches

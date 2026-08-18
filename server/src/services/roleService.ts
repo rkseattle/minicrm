@@ -1,5 +1,5 @@
 /**
- * Role service — capability resolution and custom role CRUD (MINCRM-542).
+ * Role service — capability resolution and custom role CRUD.
  *
  * All database access for custom_roles, role_capabilities, and user_custom_roles
  * lives here. Controllers must not query these tables directly.

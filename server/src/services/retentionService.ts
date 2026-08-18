@@ -1,5 +1,5 @@
 /**
- * retentionService.ts — Log table retention enforcement. (MINCRM-522, MINCRM-447)
+ * retentionService.ts — Log table retention enforcement.
  *
  * Deletes rows from append-only log tables that have aged past their defined
  * retention windows. Called once daily from server.ts, fire-and-forget.
@@ -84,7 +84,7 @@ async function purgeImportJobs(): Promise<number> {
  * explicitly excluded — they are persistent personalisation data, not transcripts.
  *
  * Exported so it can be invoked directly by the manual "purge now" admin
- * endpoint (MINCRM-462), reusing the exact same logic and audit trail as the
+ * endpoint, reusing the exact same logic and audit trail as the
  * nightly cron path rather than duplicating it.
  */
 export async function purgeAiSessions(): Promise<number> {
@@ -134,7 +134,7 @@ export async function purgeAiSessions(): Promise<number> {
   }
 }
 
-/** Counts of AI session data currently stored, for the retention admin UI (MINCRM-462). */
+/** Counts of AI session data currently stored, for the retention admin UI. */
 export interface AiSessionRetentionStats {
   sessionCount: number;
   messageCount: number;

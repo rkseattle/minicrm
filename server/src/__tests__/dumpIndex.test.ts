@@ -1,5 +1,5 @@
 /**
- * Unit tests for DumpIndex. (MINCRM-606)
+ * Unit tests for DumpIndex.
  *
  * Covers append + warm-cache lookup, cold-scan fallback (fresh instance
  * reading a previously-written index file), and unknown-dumpId misses.

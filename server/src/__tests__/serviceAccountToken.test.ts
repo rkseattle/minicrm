@@ -1,5 +1,5 @@
 /**
- * Service account API token lifecycle tests (MINCRM-536).
+ * Service account API token lifecycle tests.
  *
  * Covers:
  *   - issueServiceAccountToken: generates a unique plaintext token, stores its hash,
@@ -291,7 +291,7 @@ describe('findUserByApiToken', () => {
 
 // ── Bearer token HTTP authentication ─────────────────────────────────────────
 
-describe('MINCRM-536 — Bearer token HTTP authentication', () => {
+describe('Bearer token HTTP authentication', () => {
   it('authenticates a service account via Authorization: Bearer and returns 200 on GET contacts', async () => {
     const sa = await createUser({
       email: `${FILE_PREFIX}-sa-http@example.com`,
@@ -360,7 +360,7 @@ describe('MINCRM-536 — Bearer token HTTP authentication', () => {
     expect(res.status).toBe(403);
   });
 
-  it('service account can create contacts via bearer token (contacts:create in built-in role, MINCRM-542)', async () => {
+  it('service account can create contacts via bearer token (contacts:create in built-in role)', async () => {
     // Migration 107 grants contacts:create (and other data capabilities) to the service_account
     // built-in role. Bearer-authenticated requests from service accounts go through normal
     // capability resolution — SERVICE_ACCOUNT_UI_BLOCKED only fires for cookie-authenticated

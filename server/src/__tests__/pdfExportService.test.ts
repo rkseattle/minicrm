@@ -1,5 +1,5 @@
 /**
- * Unit tests for the shared PDF export document builder. (MINCRM-601)
+ * Unit tests for the shared PDF export document builder.
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -67,7 +67,6 @@ async function renderToBuffer(
  * meaningful for Standard 14 fonts (Helvetica etc.), where WinAnsi glyph codes are
  * ASCII-identity — the bundled CJK fallback font uses compact non-ASCII glyph
  * indices instead, so CJK placements should be identified by `font`, not `text`.
- * (MINCRM-654)
  */
 function extractTextPlacements(
   pdfBuffer: Buffer,
@@ -94,7 +93,7 @@ function extractTextPlacements(
  * Maps each `/Fn` alias used in a content stream to the PDF BaseFont name declared
  * in its font resource dictionary (e.g. `/F3` -> `NotoSansCJK,Bold` or similar),
  * so tests can identify which registered font (Helvetica vs. the CJK fallback) a
- * given placement's `font` alias refers to without relying on glyph text. (MINCRM-654)
+ * given placement's `font` alias refers to without relying on glyph text.
  */
 function extractFontAliasMap(pdfBuffer: Buffer): Map<string, string> {
   const latin1 = pdfBuffer.toString('latin1');
@@ -122,7 +121,7 @@ function extractFontAliasMap(pdfBuffer: Buffer): Map<string, string> {
  * Extracts the literal text drawn via TJ/Tj operators across all content streams,
  * decoding pdfkit's hex-encoded glyph runs. Only reliable for the Standard 14 fonts
  * (Helvetica etc.), where WinAnsi glyph codes are ASCII-identity — sufficient for
- * asserting presence/absence of specific column labels in tests. (MINCRM-654)
+ * asserting presence/absence of specific column labels in tests.
  */
 function extractRenderedText(pdfBuffer: Buffer): string {
   const chunks: string[] = [];
@@ -137,7 +136,7 @@ function extractRenderedText(pdfBuffer: Buffer): string {
 /**
  * Extracts every filled-rectangle operation (`x y w h re` ... `scn` ... `f`) across
  * all content streams — pdfkit emits this shape for both `doc.rect(...).fill(...)`
- * calls used by header shading and zebra-striped data rows. (MINCRM-655)
+ * calls used by header shading and zebra-striped data rows.
  */
 function extractFilledRects(
   pdfBuffer: Buffer,
@@ -161,7 +160,7 @@ function extractFilledRects(
 /**
  * Extracts every stroked horizontal line (`x1 y m` ... `x2 y l` ... `S`) across all
  * content streams — pdfkit emits this shape for the title rule and the header row's
- * bottom border. (MINCRM-655)
+ * bottom border.
  */
 function extractStrokedLines(
   pdfBuffer: Buffer,
@@ -187,7 +186,7 @@ function extractStrokedLines(
  * `TJ` block, paired with the decoded text — pdfkit emits `.fillColor(color).text(x)`
  * as `/DeviceRGB cs r g b scn` then the usual `Tm`/`Tf`/`TJ` triplet, with no `re`
  * rectangle involved (unlike header/zebra-row shading). Only reliable for Standard
- * 14 fonts, where WinAnsi glyph codes are ASCII-identity. (MINCRM-656)
+ * 14 fonts, where WinAnsi glyph codes are ASCII-identity.
  */
 function extractTextFillColors(
   pdfBuffer: Buffer,
@@ -315,7 +314,7 @@ describe('renderPdfDocument', () => {
     expect(pageCountMatches.length).toBeGreaterThan(1);
   });
 
-  it('does not overlap the header row and first data row when a header label wraps to multiple lines (MINCRM-654)', async () => {
+  it('does not overlap the header row and first data row when a header label wraps to multiple lines', async () => {
     // A long label in a narrow (heavily-weighted-down) column forces the header to
     // wrap to 3 lines — renderTableHeaderRow() must reserve the full wrapped height,
     // not a single line, or the first data row's Tm Y-position collides with it.
@@ -364,7 +363,7 @@ describe('renderPdfDocument', () => {
     expect(lowestHeaderY - dataRowY).toBeGreaterThan(MIN_NON_OVERLAPPING_GAP);
   });
 
-  it('renders non-Latin (CJK) cell content without corrupting subsequent row positions (MINCRM-654)', async () => {
+  it('renders non-Latin (CJK) cell content without corrupting subsequent row positions', async () => {
     const buffer = await renderToBuffer({
       title: 'CJK Report',
       sections: [
@@ -420,7 +419,7 @@ describe('renderPdfDocument', () => {
     expect(rowYs[1] - rowYs[2]).toBeGreaterThan(MIN_NON_OVERLAPPING_GAP);
   });
 
-  it('drops lowPriority columns once a table exceeds the wide-table threshold, without affecting narrower tables (MINCRM-654)', async () => {
+  it('drops lowPriority columns once a table exceeds the wide-table threshold, without affecting narrower tables', async () => {
     const wideColumns = Array.from({ length: 12 }, (_, i) => ({
       key: `col${i}`,
       label: `ColLabel${i}`,
@@ -554,7 +553,7 @@ describe('renderPdfDocument', () => {
     expect(dataSizes).toEqual(new Set([9]));
   });
 
-  it('right-aligns a column marked align: "right", leaving unmarked columns left-aligned (MINCRM-655)', async () => {
+  it('right-aligns a column marked align: "right", leaving unmarked columns left-aligned', async () => {
     const buffer = await renderToBuffer({
       title: 'Aligned Report',
       sections: [
@@ -591,7 +590,7 @@ describe('renderPdfDocument', () => {
     expect(countCell!.x).toBeGreaterThan(400);
   });
 
-  it('applies consistent cell padding so text does not sit flush against the left margin (MINCRM-655)', async () => {
+  it('applies consistent cell padding so text does not sit flush against the left margin', async () => {
     const buffer = await renderToBuffer({
       title: 'Padding Report',
       sections: [
@@ -614,7 +613,7 @@ describe('renderPdfDocument', () => {
     expect(dataCell!.x).toBeGreaterThan(50);
   });
 
-  it('shades the header row and draws a bottom border distinguishing it from data rows (MINCRM-655)', async () => {
+  it('shades the header row and draws a bottom border distinguishing it from data rows', async () => {
     const buffer = await renderToBuffer({
       title: 'Shaded Header Report',
       sections: [
@@ -637,7 +636,7 @@ describe('renderPdfDocument', () => {
     expect(strokedLines.length).toBeGreaterThanOrEqual(2); // title rule + header border
   });
 
-  it('zebra-stripes alternating data rows, and keeps the pattern consistent across a page break (MINCRM-655)', async () => {
+  it('zebra-stripes alternating data rows, and keeps the pattern consistent across a page break', async () => {
     const manyRows = Array.from({ length: 60 }, (_, i) => ({ name: `Row ${i}` }));
     const buffer = await renderToBuffer({
       title: 'Zebra Report',
@@ -698,7 +697,7 @@ describe('renderPdfDocument', () => {
   });
 });
 
-describe('renderPdfDocument branding (MINCRM-656)', () => {
+describe('renderPdfDocument branding', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -707,7 +706,7 @@ describe('renderPdfDocument branding (MINCRM-656)', () => {
   it('renders equivalent output whether branding is explicitly null or simply omitted', async () => {
     // Byte-for-byte equality isn't achievable — pdfkit embeds a /CreationDate and
     // /ID that differ between any two render calls regardless of content — so this
-    // compares text content and page count instead. (MINCRM-656)
+    // compares text content and page count instead.
     const spec: PdfDocumentSpec = {
       title: 'Accounts',
       sections: [{ heading: 'Accounts', lines: ['Row 1'] }],
@@ -1042,7 +1041,7 @@ describe('buildNotesTableSection', () => {
     ...overrides,
   });
 
-  it('formats the pre-stringified ISO created_at as a human-readable date, not a raw ISO string (MINCRM-650)', () => {
+  it('formats the pre-stringified ISO created_at as a human-readable date, not a raw ISO string', () => {
     const section = buildNotesTableSection([makeNote()]);
 
     expect(section.table?.rows[0]?.created_at).toBe('2026-07-01 14:32:00 UTC');

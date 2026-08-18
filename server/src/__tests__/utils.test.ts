@@ -1,5 +1,5 @@
 /**
- * Unit tests for csvUtils, userUtils, and reset-onboarding HTTP endpoint. (MINCRM-295, MINCRM-410)
+ * Unit tests for csvUtils, userUtils, and reset-onboarding HTTP endpoint.
  */
 
 import 'dotenv/config';
@@ -87,7 +87,7 @@ describe('csvFilename', () => {
   });
 });
 
-// ── POST /api/v1/users/:id/reset-onboarding (MINCRM-410) ─────────────────────
+// ── POST /api/v1/users/:id/reset-onboarding ─────────────────────
 
 describe('POST /api/v1/users/:id/reset-onboarding', () => {
   const ADMIN_EMAIL = 'utils-test-admin@example.com';
@@ -196,15 +196,15 @@ describe('sanitizeUser', () => {
       password_reset_token_hash: null,
       password_reset_expires_at: null,
       password_changed_at: null,
-      // MFA fields (MINCRM-392)
+      // MFA fields
       mfa_enabled: false,
       mfa_secret: null,
       mfa_pending_secret: null,
       mfa_recovery_codes: [],
-      // SSO fields (MINCRM-399)
+      // SSO fields
       sso_provider: null,
       sso_subject: null,
-      // API token fields (MINCRM-536)
+      // API token fields
       api_token_hash: null,
       api_token_issued_at: null,
       created_at: new Date(),

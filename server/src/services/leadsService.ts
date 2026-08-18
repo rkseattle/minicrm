@@ -1,7 +1,6 @@
 /**
  * Leads service — business logic for lead CRUD, status lifecycle, and conversion.
  * All database access for leads goes through this module.
- * (MINCRM-173, MINCRM-174, MINCRM-175)
  */
 
 import pool from '../db.js';
@@ -51,11 +50,11 @@ export interface LeadRow {
   disqualification_reason: string | null;
   notes: string | null;
   owner_id: string;
-  /** Free-text sales territory, used for routing suggestions (MINCRM-475) */
+  /** Free-text sales territory, used for routing suggestions */
   territory: string | null;
-  /** Free-text industry/vertical, used for routing suggestions (MINCRM-475) */
+  /** Free-text industry/vertical, used for routing suggestions */
   industry: string | null;
-  /** Free-text company-size bucket, used for routing suggestions (MINCRM-475) */
+  /** Free-text company-size bucket, used for routing suggestions */
   employee_range: string | null;
   converted_at: Date | null;
   converted_contact_id: string | null;
@@ -63,7 +62,7 @@ export interface LeadRow {
   converted_deal_id: string | null;
   created_at: Date;
   updated_at: Date;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
 }
 
@@ -99,7 +98,7 @@ export type LeadSortColumn = (typeof LEAD_SORT_COLUMNS)[number];
 /** Options for filtering and paginating the leads list */
 interface ListLeadsOptions {
   ownerId?: string;
-  /** When provided, only leads whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  /** When provided, only leads whose owner_id is in this set are returned */
   ownerIds?: string[];
   status?: string;
   lead_source?: string;
@@ -167,7 +166,7 @@ export async function createLead(
 
     const lead = result.rows[0];
 
-    // Record initial status in history (MINCRM-174)
+    // Record initial status in history
     await client.query(
       `INSERT INTO lead_status_history (lead_id, from_status, to_status, changed_by_id, changed_by_name)
        VALUES ($1, NULL, $2, $3, $4)`,
@@ -185,7 +184,7 @@ export async function createLead(
     });
 
     // Log the routing decision when the manager was shown a suggestion before
-    // creating this lead (MINCRM-475) — no-op when the create request never
+    // creating this lead — no-op when the create request never
     // echoed one back (e.g. routing suggestion feature disabled, or the manager
     // never requested one).
     //
@@ -302,12 +301,12 @@ export async function listLeads(
     conditions.push(`lead_source = $${values.length}`);
   }
 
-  // Hide Disqualified leads by default (MINCRM-174)
+  // Hide Disqualified leads by default
   if (!options.includeDisqualified && !options.status) {
     conditions.push(`status != 'Disqualified'`);
   }
 
-  // Hide converted leads by default (MINCRM-175)
+  // Hide converted leads by default
   if (!options.includeConverted) {
     conditions.push(`converted_at IS NULL`);
   }
@@ -345,7 +344,7 @@ export async function listLeads(
 
 /**
  * Updates one or more fields on an existing lead.
- * When status changes, writes a history entry (MINCRM-174).
+ * When status changes, writes a history entry.
  *
  * @param id - Lead UUID
  * @param params - Fields to update (at least one required)
@@ -373,7 +372,7 @@ export async function updateLead(
   const before = await findLeadById(id);
   if (!before) return null;
 
-  // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
+  // $1=id, $2...$N=field values, $(N+1)=version
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
   const versionParam = fields.length + 2;
 
@@ -388,7 +387,7 @@ export async function updateLead(
     );
 
     if (result.rowCount === 0) {
-      // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+      // Distinguish NOT_FOUND from version mismatch
       const check = await client.query<{ id: string }>('SELECT id FROM leads WHERE id = $1', [id]);
       if (check.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -408,7 +407,7 @@ export async function updateLead(
 
     const lead = result.rows[0] ?? null;
 
-    // Write status history entry if status changed (MINCRM-174)
+    // Write status history entry if status changed
     if (lead && params.status !== undefined && params.status !== before.status) {
       await client.query(
         `INSERT INTO lead_status_history (lead_id, from_status, to_status, changed_by_id, changed_by_name)
@@ -447,7 +446,7 @@ export async function updateLead(
 
 /**
  * Deletes a lead by its UUID.
- * Deletion does not create any associated contact, account, or deal. (MINCRM-173)
+ * Deletion does not create any associated contact, account, or deal.
  *
  * @param id - Lead UUID
  * @param actor - User performing the action (for audit log)
@@ -462,7 +461,7 @@ export async function deleteLead(
     await client.query('BEGIN');
     await setRlsUserId(client);
 
-    // Soft-delete notes before removing the parent row to prevent orphaned active notes (MINCRM-523)
+    // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'lead', id);
 
     const result = await client.query<LeadRow>('DELETE FROM leads WHERE id = $1 RETURNING *', [id]);
@@ -491,7 +490,7 @@ export async function deleteLead(
 }
 
 /**
- * Returns the status history for a lead, ordered chronologically. (MINCRM-174)
+ * Returns the status history for a lead, ordered chronologically.
  *
  * @param leadId - Lead UUID
  * @returns Array of status history entries
@@ -508,7 +507,7 @@ export async function getLeadStatusHistory(leadId: string): Promise<LeadStatusHi
  * Atomically converts a qualified lead into a contact, account, and deal.
  * All three records are created (or the account is linked) in a single transaction.
  * On success, the lead's converted_at, status, and FK columns are updated.
- * The lead record is retained for reporting — it is not deleted. (MINCRM-175)
+ * The lead record is retained for reporting — it is not deleted.
  *
  * @param leadId - Lead UUID to convert
  * @param input - Prefilled conversion form data
@@ -646,7 +645,7 @@ export async function convertLead(
     return { contact_id: contactId, account_id: accountId, deal_id: dealId };
   } catch (error) {
     await client.query('ROLLBACK');
-    // PostgreSQL error code 23505 = unique_violation on contacts.email. (MINCRM-247)
+    // PostgreSQL error code 23505 = unique_violation on contacts.email.
     if ((error as { code?: string }).code === '23505') {
       throw Object.assign(new Error('A contact with this email address already exists'), {
         code: 'DUPLICATE_EMAIL',
@@ -659,7 +658,7 @@ export async function convertLead(
 }
 
 /**
- * Finds the lead that a contact was converted from, if any. (MINCRM-175)
+ * Finds the lead that a contact was converted from, if any.
  *
  * @param contactId - Contact UUID
  * @returns The source lead row, or null
@@ -675,7 +674,7 @@ export async function findLeadByContactId(contactId: string): Promise<LeadRow | 
 }
 
 /**
- * Finds the lead that a deal was converted from, if any. (MINCRM-175)
+ * Finds the lead that a deal was converted from, if any.
  *
  * @param dealId - Deal UUID
  * @returns The source lead row, or null
@@ -692,7 +691,7 @@ export async function findLeadByDealId(dealId: string): Promise<LeadRow | null> 
 
 /**
  * Searches existing accounts by name (case-insensitive substring match).
- * Used by the lead conversion flow to find an existing account to link. (MINCRM-175)
+ * Used by the lead conversion flow to find an existing account to link.
  *
  * @param query - Substring to match against account names
  * @returns Array of matching account id + name pairs (max 20)
@@ -717,7 +716,7 @@ export interface LeadExportRow extends LeadRow {
 /** Options for filtering leads to export (mirrors listLeads options minus pagination/sort) */
 interface ExportLeadsOptions {
   ownerId?: string;
-  /** When provided, only leads whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  /** When provided, only leads whose owner_id is in this set are returned */
   ownerIds?: string[];
   status?: string;
   lead_source?: string;
@@ -730,7 +729,7 @@ interface ExportLeadsOptions {
 /**
  * Returns all leads matching the given filters, enriched with the owner's
  * display name, for CSV/PDF export. No pagination — same filter semantics as
- * listLeads. (MINCRM-651)
+ * listLeads.
  *
  * @param options - Filters (same semantics as listLeads, minus pagination/sort)
  * @returns Array of enriched lead rows ordered by created_at DESC
@@ -761,12 +760,12 @@ export async function exportLeadsForCsv(
     conditions.push(`l.lead_source = $${values.length}`);
   }
 
-  // Hide Disqualified leads by default (MINCRM-174)
+  // Hide Disqualified leads by default
   if (!options.includeDisqualified && !options.status) {
     conditions.push(`l.status != 'Disqualified'`);
   }
 
-  // Hide converted leads by default (MINCRM-175)
+  // Hide converted leads by default
   if (!options.includeConverted) {
     conditions.push(`l.converted_at IS NULL`);
   }

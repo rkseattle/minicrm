@@ -111,7 +111,7 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── updateDealSchema — close_date validation (MINCRM-121) ─────────────────────────
+// ── updateDealSchema — close_date validation ─────────────────────────
 
 describe('updateDealSchema — close_date future-date validation', () => {
   it('accepts a close_date equal to today for a terminal stage', () => {
@@ -162,7 +162,7 @@ describe('updateDealSchema — close_date future-date validation', () => {
   });
 
   it('allows a future close_date when no stage is specified', () => {
-    // Note: controller-level check handles the bypass for already-closed deals (MINCRM-121)
+    // Note: controller-level check handles the bypass for already-closed deals
     const result = updateDealSchema.safeParse({ close_date: '2099-12-31', version: 1 });
     expect(result.success).toBe(true);
   });
@@ -173,7 +173,7 @@ describe('updateDealSchema — close_date future-date validation', () => {
   });
 });
 
-// ── updateDealHandler — close_date bypass via existing stage (MINCRM-121) ─────────
+// ── updateDealHandler — close_date bypass via existing stage ─────────
 
 describe('updateDeal — close_date enforcement on already-closed deals', () => {
   it('allows updating a non-date field on a closed deal without triggering the guard', async () => {
@@ -254,7 +254,7 @@ describe('DB constraints — deals', () => {
     ).rejects.toThrow();
   });
 
-  it('accepts any stage string at the DB level (stage validation now at app layer, MINCRM-180)', async () => {
+  it('accepts any stage string at the DB level (stage validation now at app layer)', async () => {
     // Migration 021 removed the deals_stage_check constraint so admins can define
     // custom stage names. The pipelineStageService.getStageNames() list is the
     // authoritative allowlist — enforced in the deal controller, not in the DB.
@@ -351,7 +351,7 @@ describe('listDeals', () => {
     expect(result.data[0].name).toBe('Account Deal');
   });
 
-  it('excludes Closed Won and Closed Lost deals when excludeClosedStages is true (MINCRM-176)', async () => {
+  it('excludes Closed Won and Closed Lost deals when excludeClosedStages is true', async () => {
     await createDeal({ ...BASE_DEAL, name: 'Open Deal', owner_id: ownerId });
     const closedWon = await createDeal({
       ...BASE_DEAL,
@@ -758,7 +758,7 @@ describe('exportDealsForCsv', () => {
   });
 });
 
-// ── Deal probability (MINCRM-179) ──────────────────────────────────────────────────────
+// ── Deal probability ──────────────────────────────────────────────────────
 
 describe('deal probability — effective_probability and probability_is_overridden', () => {
   it('inherits stage default probability when no override is set', async () => {
@@ -827,7 +827,7 @@ describe('deal probability — effective_probability and probability_is_overridd
   });
 });
 
-// ── currency field (MINCRM-189) ───────────────────────────────────────────────
+// ── currency field ───────────────────────────────────────────────
 // Reset default_currency to USD before each test so the suite is independent of
 // settingsService.test.ts which may leave a non-USD default_currency in the DB.
 
@@ -878,7 +878,7 @@ describe('exportDealsForCsv — currency field', () => {
   });
 });
 
-// ── deals.pipeline_id NOT NULL constraint (MINCRM-504) ────────────────────────
+// ── deals.pipeline_id NOT NULL constraint ────────────────────────
 
 describe('deals.pipeline_id NOT NULL constraint', () => {
   it('rejects a raw INSERT with pipeline_id = NULL at the DB level', async () => {
@@ -898,7 +898,7 @@ describe('deals.pipeline_id NOT NULL constraint', () => {
   });
 });
 
-// ── set_updated_at trigger (MINCRM-503) ──────────────────────────────────────
+// ── set_updated_at trigger ──────────────────────────────────────
 
 describe('set_updated_at trigger — deals', () => {
   it('automatically advances updated_at on UPDATE', async () => {
