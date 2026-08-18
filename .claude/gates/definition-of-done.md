@@ -67,6 +67,21 @@ is mandatory for that commit. It asserts the dev and test stacks share no
 never names a dev database. Isolation by `DB_NAME` alone is what let a test run truncate
 the dev database (MINCRM-684).
 
+**Any source comment added or changed in the diff** — it must carry no work-item ID
+(`MINCRM-N`, `LAR-N`, `MININT-N`). `npm run lint` enforces this via
+`local-comments/no-work-item-id-in-comment`, so step 2 already covers `.ts`/`.tsx`/`.mjs`/
+`.cjs`/`.js`. `db/migrations/**` is ESLint-ignored, so it is covered instead by
+`npx tsx scripts/strip-work-item-ids.ts --verify`, which runs in CI on every
+`lint-and-typecheck`. Put the reason in the comment and the ID in the commit message.
+Exempt: the `-ok` suppression markers and `@openapi` blocks.
+
+**A comments-only commit** (a comment refactor, an ID strip, a concision pass) —
+`npx tsx scripts/check-comments-only-diff.ts <base-ref>` must pass. It parses both sides
+of every changed source file and compares the token streams with comments removed, so a
+catalog `COMMENT ON` string edited inside a `pgm.sql` template literal is caught even
+though it looks like a comment in the diff. Any non-comment hunk is a bug in the pass,
+fixed at its source rather than hand-patched.
+
 **Changed `.md` files** — run `markdownlint-cli2` on them. CI `lint-docs` catches what
 the pre-commit hook misses.
 

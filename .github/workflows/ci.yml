@@ -77,6 +77,8 @@ jobs:
       audit-gate: ${{ steps.filter.outputs.audit-gate }}
       grep-invert-parity: ${{ steps.filter.outputs.grep-invert-parity }}
       dockerfiles:       ${{ steps.filter.outputs.dockerfiles }}
+      eslint-config:     ${{ steps.filter.outputs.eslint-config }}
+      comment-ids:       ${{ steps.filter.outputs.comment-ids }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -150,6 +152,28 @@ jobs:
               - '*.yml'
               - 'Dockerfile*'
               - '.github/**'
+            # Single-purpose filter for the ESLint rule set. The `config` filter's
+            # root-level '*.json'/'*.yml' globs do not match .mjs, so eslint.config.mjs
+            # and eslint-plugins/** were covered by no filter at all: a PR adding a
+            # custom rule and wiring it — touching nothing else — skipped
+            # lint-and-typecheck entirely and went green without ever running the rule.
+            # Kept separate from `server`/`qa` so a rule edit does not boot the whole
+            # E2E matrix; OR'd into lint-and-typecheck (which runs the rules) and
+            # coverage-dashboard-tests (which runs their RuleTester self-tests).
+            eslint-config:
+              - 'eslint.config.mjs'
+              - 'eslint-plugins/**'
+            # Single-purpose filter for the comment-ID guard. eslint.config.mjs ignores
+            # db/migrations/**, so the ESLint rule never sees it and the codemod's
+            # --verify is the only enforcement there — but `migrations` is consumed by
+            # no job at all and `qa/migrations/**` reaches only server-tests, so a
+            # migration adding `// MINCRM-N` in a JS comment ran no guard. scripts/ is
+            # included so editing the guard itself re-runs it.
+            comment-ids:
+              - 'db/migrations/**'
+              - 'qa/migrations/**'
+              - 'scripts/strip-work-item-ids.ts'
+              - 'scripts/check-comments-only-diff.ts'
             # Single-purpose filter for the docker-images job. The `config` filter's
             # 'Dockerfile*' matches only root-level files, so server/Dockerfile and
             # client/Dockerfile were covered by nothing — and no job built them either.
@@ -395,7 +419,7 @@ jobs:
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
     needs: changes
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true'
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -410,6 +434,21 @@ jobs:
 
       - name: Lint (root + server + client)
         run: npm run lint
+
+      # Self-test first: a guard that has stopped detecting anything must fail loudly
+      # rather than pass every check it is asked to run.
+      - name: Comments-only guard self-test
+        run: npx tsx scripts/check-comments-only-diff.ts --self-test
+
+      - name: Work-item-ID codemod self-test
+        run: npx tsx scripts/strip-work-item-ids.ts --self-test
+
+      # Covers db/migrations and qa/migrations, which eslint.config.mjs ignores, so
+      # the ESLint rule above never sees them. Without this the ID convention is
+      # unenforced in exactly the directories where a catalog comment can be mistaken
+      # for a source comment.
+      - name: No work-item IDs in source comments
+        run: npx tsx scripts/strip-work-item-ids.ts --verify
 
       - name: Typecheck client
         run: npm run typecheck --workspace=minicrm-client
@@ -952,7 +991,15 @@ jobs:
   coverage-dashboard-tests:
     name: Phase 2 - Coverage Dashboard Unit Tests
     needs: [lint-and-typecheck, changes]
-    if: needs.changes.outputs.coverage-dashboard == 'true'
+    # always() + the explicit upstream result check: GitHub auto-skips a job when
+    # anything in `needs` was skipped, before evaluating `if:`. Without this, an
+    # eslint-plugins-only PR would skip this job even though the eslint-config gate
+    # below matches — and the rule's RuleTester self-tests live here. The result
+    # check preserves the upstream gate so a real lint failure still blocks.
+    if: >-
+      always() &&
+      (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
+      (needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.eslint-config == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
