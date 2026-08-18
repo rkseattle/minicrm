@@ -1,6 +1,6 @@
 /**
  * Storage service — wraps the MinIO/S3-compatible client.
- * All object storage I/O goes through this module. (MINCRM-167, MINCRM-169)
+ * All object storage I/O goes through this module.
  *
  * Configuration is read from system_settings at runtime so an admin can
  * update the storage backend without restarting the server.

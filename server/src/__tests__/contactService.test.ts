@@ -205,7 +205,7 @@ describe('DB constraints — contacts', () => {
     ).rejects.toThrow();
   });
 
-  // MINCRM-247: DB-level UNIQUE constraint test — bypasses the service-layer
+  // DB-level UNIQUE constraint test — bypasses the service-layer
   // SELECT duplicate check by inserting directly into contacts, then calling
   // createContact. This exercises the 23505 catch added for TOCTOU safety.
   it('throws DUPLICATE_EMAIL when the DB unique constraint fires on concurrent inserts', async () => {
@@ -703,7 +703,7 @@ describe('deleteContact', () => {
     expect(result).toBeNull();
   });
 
-  it('soft-deletes all notes for the contact before hard-deleting it (MINCRM-523)', async () => {
+  it('soft-deletes all notes for the contact before hard-deleting it', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: ownerId });
 
     // Create two active notes on the contact
@@ -920,7 +920,7 @@ describe('createContact — address and social fields', () => {
 
 describe('updateContact — address and social fields', () => {
   it('does not accept address fields on contacts update (address goes through contact_addresses)', async () => {
-    // Address fields were removed from ALLOWED_UPDATE_FIELDS in MINCRM-500.
+    // Address fields were removed from ALLOWED_UPDATE_FIELDS in a later change.
     // Verify that passing them in an update payload does not blow up and that the
     // contact row itself still lacks address columns.
     const contact = await createContact({ ...makeContact(), owner_id: ownerId });
@@ -1158,7 +1158,7 @@ describe('mergeContacts', () => {
 
   it('re-links loser contact_addresses to winner and respects social field choices', async () => {
     // Address fields are no longer merged by field-choice — both contacts' address rows
-    // are re-linked to the winner. Social fields still support field-level choices. (MINCRM-500)
+    // are re-linked to the winner. Social fields still support field-level choices.
     const winner = await createContact({
       ...makeContact(),
       owner_id: ownerId,

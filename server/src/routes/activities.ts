@@ -319,7 +319,7 @@ router.post(
  *   patch:
  *     tags: [Activities]
  *     operationId: bulkPatchActivities
- *     summary: Bulk patch activities — reassign owner (MINCRM-562)
+ *     summary: Bulk patch activities — reassign owner
  *     description: >
  *       Reassigns owner_id on each listed activity individually.
  *       Requires bulk:operations + activities:edit. Non-admin actors can only
@@ -375,7 +375,7 @@ router.patch(
  *   delete:
  *     tags: [Activities]
  *     operationId: bulkDeleteActivities
- *     summary: Bulk delete activities (MINCRM-562)
+ *     summary: Bulk delete activities
  *     description: >
  *       Deletes each listed activity individually.
  *       Requires bulk:operations + activities:delete. Non-admin actors can only
@@ -653,7 +653,7 @@ router.delete(
   asyncHandler(deleteActivityHandler),
 );
 
-// ── AI call/note summarizer (MINCRM-436) ────────────────────────────────────────
+// ── AI call/note summarizer ────────────────────────────────────────
 
 /**
  * Summarizes pasted call transcript / meeting notes / raw text on demand.
@@ -668,7 +668,7 @@ router.post(
   asyncHandler(summarizeActivityHandler),
 );
 
-// ── AI follow-up task suggestions (MINCRM-438) ──────────────────────────────────
+// ── AI follow-up task suggestions ──────────────────────────────────
 
 /** Suggests 1-3 follow-up tasks for a just-saved activity, on demand. */
 router.post(
@@ -679,7 +679,7 @@ router.post(
   asyncHandler(generateTaskSuggestionsHandler),
 );
 
-// ── AI objection pattern matching (MINCRM-471) ──────────────────────────────────
+// ── AI objection pattern matching ──────────────────────────────────
 
 /** Classifies the activity's note text into an objection category on demand. */
 router.post(
@@ -697,7 +697,7 @@ router.get(
   asyncHandler(getObjectionPrecedentsHandler),
 );
 
-// ── AI sentiment tracking (MINCRM-472) ──────────────────────────────────────────
+// ── AI sentiment tracking ──────────────────────────────────────────
 
 /** Records a rep's "Not accurate" feedback on the activity's AI sentiment score. */
 router.post(
@@ -708,7 +708,7 @@ router.post(
   asyncHandler(flagActivitySentimentInaccurateHandler),
 );
 
-// ── AI pre-meeting brief generation (MINCRM-465) ────────────────────────────────
+// ── AI pre-meeting brief generation ────────────────────────────────
 
 /** Generates (or regenerates) the AI pre-meeting brief for the activity. */
 router.post(
@@ -727,6 +727,6 @@ router.get(
   asyncHandler(getMeetingBriefHandler),
 );
 
-// ── Bulk V2 routes (MINCRM-562) ───────────────────────────────────────────────
+// ── Bulk V2 routes ───────────────────────────────────────────────
 
 export default router;

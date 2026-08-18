@@ -1,5 +1,5 @@
 /**
- * Attachment routes. (MINCRM-167)
+ * Attachment routes.
  * All routes require authentication.
  * DELETE enforces uploader/admin ownership in the service layer.
  */

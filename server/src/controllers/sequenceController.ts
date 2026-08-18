@@ -1,5 +1,5 @@
 /**
- * Sequence controller — request/response shaping for sales sequence endpoints (MINCRM-403).
+ * Sequence controller — request/response shaping for sales sequence endpoints.
  * No business logic here; all DB access goes through sequenceService.
  */
 

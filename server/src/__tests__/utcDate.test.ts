@@ -1,5 +1,5 @@
 /**
- * Unit tests for the UTC calendar helpers. (MINCRM-700)
+ * Unit tests for the UTC calendar helpers.
  *
  * These back three live call sites that compare or write against timezone-naive
  * `date` columns: aiUsageDashboardService (usage_date range bounds),

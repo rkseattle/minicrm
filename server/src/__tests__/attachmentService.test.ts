@@ -1,5 +1,5 @@
 /**
- * Integration tests for attachmentService and cryptoService. (MINCRM-167, MINCRM-169)
+ * Integration tests for attachmentService and cryptoService.
  *
  * Note: uploadAttachment and downloadAttachment require a live MinIO instance.
  * Those paths are tested by inserting rows directly into the DB and verifying
@@ -243,4 +243,4 @@ describe('downloadAttachment', () => {
 });
 
 // storageService and cryptoService are covered by their dedicated test files:
-// storageService.test.ts and cryptoService.test.ts (MINCRM-197)
+// storageService.test.ts and cryptoService.test.ts

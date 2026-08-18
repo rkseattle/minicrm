@@ -1,7 +1,7 @@
 /**
  * Pre-meeting brief generation service — on-demand AI assembly of contact/
  * account/opportunity/activity context into a structured brief for an
- * upcoming Call or Meeting activity. (MINCRM-465)
+ * upcoming Call or Meeting activity.
  *
  * Follows the same "gather context, PII-filter, forced single-tool call"
  * shape as dealHealthService.ts. Persisted (overwritten on regenerate) so
@@ -145,7 +145,7 @@ async function gatherNewsHook(
         // Validate each item individually so one malformed result (missing
         // title/url, or a URL that fails to parse) is skipped rather than
         // either persisting a broken href or throwing and dropping every
-        // other valid item already found in this response. (MINCRM-465
+        // other valid item already found in this response.
         // self-review)
         if (typeof result.title !== 'string' || !result.title.trim()) continue;
         if (typeof result.url !== 'string' || !result.url.trim()) continue;
@@ -344,7 +344,7 @@ export async function generateMeetingBrief(
     }
     const anthropicClient = new Anthropic(clientOptions);
 
-    // PII-filter the gathered facts before they leave the server. (MINCRM-445)
+    // PII-filter the gathered facts before they leave the server.
     const { sanitised, strippedFields } = await applyPiiFilter(context, 'contact');
     if (strippedFields.length > 0) {
       logger.info(
@@ -430,7 +430,7 @@ export async function generateMeetingBrief(
       known_objections: context.known_objections,
     };
 
-    // Optional news hook (MINCRM-465) — only attempted when the admin has enabled it and
+    // Optional news hook — only attempted when the admin has enabled it and
     // there's a company name to search for. Best-effort: never fails the brief.
     if (row.web_search_enabled && context.contact.company) {
       const newsHook = await gatherNewsHook(anthropicClient, row.model, context.contact.company);
@@ -440,7 +440,7 @@ export async function generateMeetingBrief(
     }
   }
 
-  // Follow-up timing suggestion (MINCRM-470) — a cached, deterministically-computed
+  // Follow-up timing suggestion — a cached, deterministically-computed
   // fact, not LLM-authored. Fetched at read time (after the AI call, not sent to the
   // LLM as context) so it always reflects the latest cached suggestion regardless of
   // whether the brief itself was just regenerated or served from the E2E stub path.

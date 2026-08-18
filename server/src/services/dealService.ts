@@ -26,7 +26,7 @@ const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', n
  * transaction/client as the deal write it accompanies. Exported so
  * bulkService/bulkV2Service's change_stage actions (which bypass updateDeal)
  * can write the same history row. Not called from pipelineStageService's
- * stage-rename path — renaming a stage's label is not a transition. (MINCRM-474)
+ * stage-rename path — renaming a stage's label is not a transition.
  */
 export async function writeDealStageHistoryEntry(
   client: PoolClient,
@@ -57,15 +57,15 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateDealInput> = new Set([
 /** Shape of a deal row returned from the database */
 export interface DealRow {
   id: string;
-  /** UUID of the pipeline this deal belongs to (MINCRM-397) */
+  /** UUID of the pipeline this deal belongs to */
   pipeline_id: string;
-  /** FK to pipeline_stages.id — the authoritative stage reference (MINCRM-499) */
+  /** FK to pipeline_stages.id — the authoritative stage reference */
   pipeline_stage_id: string;
   name: string;
-  /** @deprecated Stage name kept for transition period; use pipeline_stage_id (MINCRM-499) */
+  /** @deprecated Stage name kept for transition period; use pipeline_stage_id */
   stage: string;
   value: string | null; // pg returns numeric as string
-  /** ISO 4217 currency code for the deal value (MINCRM-189) */
+  /** ISO 4217 currency code for the deal value */
   currency: string;
   close_date: string | null;
   loss_reason: string | null;
@@ -74,19 +74,18 @@ export interface DealRow {
   /**
    * Resolved effective probability for this deal (0–100).
    * Returns the deal's manual override when set; otherwise the current stage default.
-   * Computed via JOIN to pipeline_stages in all queries. (MINCRM-179)
+   * Computed via JOIN to pipeline_stages in all queries.
    */
   effective_probability: number;
   /**
    * True when the deal has a manually stored probability (not inheriting from stage default).
-   * (MINCRM-179)
    */
   probability_is_overridden: boolean;
   created_at: Date;
   updated_at: Date;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
-  /** Tags attached to this deal — only populated in list responses (MINCRM-186) */
+  /** Tags attached to this deal — only populated in list responses */
   tags?: Array<{ id: string; name: string }>;
 }
 
@@ -98,13 +97,13 @@ export type DealSortColumn = (typeof DEAL_SORT_COLUMNS)[number];
 interface ListDealsOptions {
   /** When provided, only deals with this owner_id are returned */
   ownerId?: string;
-  /** When provided, only deals whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  /** When provided, only deals whose owner_id is in this set are returned */
   ownerIds?: string[];
   /** When provided, only deals linked to this account_id are returned */
   accountId?: string;
-  /** When true, terminal-stage deals are excluded (MINCRM-176) */
+  /** When true, terminal-stage deals are excluded */
   excludeClosedStages?: boolean;
-  /** When provided, only deals belonging to this pipeline are returned (MINCRM-397) */
+  /** When provided, only deals belonging to this pipeline are returned */
   pipelineId?: string;
   /** Column to sort by; defaults to 'created_at' */
   sort?: DealSortColumn;
@@ -114,15 +113,14 @@ interface ListDealsOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
-  /** When provided, only deals tagged with at least one of these tag IDs are returned (MINCRM-186) */
+  /** When provided, only deals tagged with at least one of these tag IDs are returned */
   tagIds?: string[];
-  /** When provided, the org visibility policy is enforced for this user (MINCRM-538) */
+  /** When provided, the org visibility policy is enforced for this user */
   requestingUser?: { id: string; role: string };
 }
 
 /**
  * Creates a new deal record and writes an audit entry in the same transaction.
- * (MINCRM-170)
  *
  * @param params - Deal fields plus the owner's user ID
  * @param actor - User performing the action (for audit log)
@@ -144,12 +142,12 @@ export async function createDeal(
     pipeline_id: pipelineIdParam,
   } = params;
 
-  // Fall back to the system default currency when not specified on the deal (MINCRM-189)
+  // Fall back to the system default currency when not specified on the deal
   const resolvedCurrency = currency ?? (await getDefaultCurrency());
-  // Fall back to the default pipeline when not specified (MINCRM-397)
+  // Fall back to the default pipeline when not specified
   const resolvedPipelineId = pipelineIdParam ?? (await getDefaultPipelineId());
 
-  // Resolve stage name to UUID — the controller has already validated the name exists. (MINCRM-499)
+  // Resolve stage name to UUID — the controller has already validated the name exists.
   const stageRow = await findPipelineStageByNameAndPipeline(stage, resolvedPipelineId);
   if (!stageRow) {
     throw Object.assign(new Error(`Stage "${stage}" not found in pipeline ${resolvedPipelineId}`), {
@@ -164,7 +162,7 @@ export async function createDeal(
 
     // Insert the deal, then immediately re-query with the pipeline_stages JOIN so
     // effective_probability and probability_is_overridden are resolved correctly.
-    // pipeline_stage_id is written alongside stage for FK integrity. (MINCRM-179, MINCRM-499)
+    // pipeline_stage_id is written alongside stage for FK integrity.
     const insertResult = await client.query<{ id: string }>(
       `INSERT INTO deals (pipeline_id, pipeline_stage_id, name, stage, value, currency, close_date, account_id, owner_id, probability)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -191,7 +189,7 @@ export async function createDeal(
 
     const deal = result.rows[0];
 
-    // Audit: record created (MINCRM-170)
+    // Audit: record created
     await writeAuditEntry(client, {
       recordType: 'deal',
       recordId: deal.id,
@@ -202,13 +200,13 @@ export async function createDeal(
       source: actor.source ?? null,
     });
 
-    // Day-0 stage history row (MINCRM-474)
+    // Day-0 stage history row
     await writeDealStageHistoryEntry(client, deal.id, resolvedPipelineId, stage);
 
     await client.query('COMMIT');
 
     // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
-    // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
+    // Unhandled rejections are caught by the global handler in server.ts.
     void fireAutomationTrigger('deal_created', {
       recordId: deal.id,
       recordType: 'deal',
@@ -245,7 +243,6 @@ export async function findDealById(id: string): Promise<DealRow | null> {
  * effective_probability = deal.probability if overridden, else stage default, else 0.
  * The final fallback to 0 guards against a deal whose stage was deleted (ps row absent).
  * probability_is_overridden = true when d.probability IS NOT NULL.
- * (MINCRM-179, MINCRM-499)
  */
 const DEAL_SELECT = `d.id, d.pipeline_id, d.pipeline_stage_id, d.name, d.stage, d.value, d.currency, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
   COALESCE(d.probability, ps.probability, 0) AS effective_probability,
@@ -254,7 +251,7 @@ const DEAL_SELECT = `d.id, d.pipeline_id, d.pipeline_stage_id, d.name, d.stage, 
 
 /**
  * FROM clause — joins pipeline_stages via FK for probability resolution.
- * Uses pipeline_stage_id (indexed) instead of the deprecated name-based join. (MINCRM-499)
+ * Uses pipeline_stage_id (indexed) instead of the deprecated name-based join.
  */
 const DEAL_FROM = `deals d LEFT JOIN pipeline_stages ps ON ps.id = d.pipeline_stage_id`;
 
@@ -291,13 +288,13 @@ export async function listDeals(
   }
 
   if (options.excludeClosedStages) {
-    // Exclude terminal stages using the FK — avoids the stale text-column join. (MINCRM-397, MINCRM-499)
+    // Exclude terminal stages using the FK — avoids the stale text-column join.
     conditions.push(
       `d.pipeline_stage_id NOT IN (SELECT id FROM pipeline_stages WHERE pipeline_id = d.pipeline_id AND is_terminal = true)`,
     );
   }
 
-  // Tag filter (MINCRM-186) — any-match: deal must have at least one of the given tag IDs
+  // Tag filter — any-match: deal must have at least one of the given tag IDs
   if (options.tagIds && options.tagIds.length > 0) {
     const placeholders = options.tagIds.map((_, i) => `$${values.length + i + 1}`).join(', ');
     options.tagIds.forEach((tid) => values.push(tid));
@@ -306,7 +303,7 @@ export async function listDeals(
     );
   }
 
-  // Org visibility policy enforcement (MINCRM-538)
+  // Org visibility policy enforcement
   if (options.requestingUser) {
     const visFilter = await buildVisibilityFilter(
       'deal',
@@ -323,7 +320,7 @@ export async function listDeals(
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  // Allowlist-validated sort column and direction (MINCRM-68)
+  // Allowlist-validated sort column and direction
   const sortCol = (DEAL_SORT_COLUMNS as readonly string[]).includes(options.sort ?? '')
     ? options.sort!
     : 'created_at';
@@ -333,7 +330,7 @@ export async function listDeals(
   const limit = options.limit ?? 50;
   const offset = (page - 1) * limit;
 
-  // Embed tags via lateral subquery (MINCRM-186)
+  // Embed tags via lateral subquery
   const dealTagsSubquery = `
     COALESCE((
       SELECT JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'name', t.name) ORDER BY t.name)
@@ -366,7 +363,6 @@ export async function listDeals(
 
 /**
  * Updates one or more fields on an existing deal and writes per-field audit entries.
- * (MINCRM-170)
  *
  * @param id - Deal UUID
  * @param params - Fields to update (at least one required)
@@ -381,7 +377,7 @@ export async function updateDeal(
   before?: DealRow,
   requestingUser?: { id: string; role: string },
 ): Promise<DealRow | null> {
-  // Managers may only reassign records to users within their own team(s) (MINCRM-534)
+  // Managers may only reassign records to users within their own team(s)
   if (params.owner_id !== undefined && requestingUser) {
     await validateReassignment(params.owner_id, requestingUser);
   }
@@ -399,7 +395,7 @@ export async function updateDeal(
   const previousStage = before?.stage;
 
   // When stage is changing, resolve the new stage name to its UUID and enforce exit requirements.
-  // The controller has already validated the stage name exists. (MINCRM-499, MINCRM-527)
+  // The controller has already validated the stage name exists.
   let resolvedStageId: string | undefined;
   if (params.stage !== undefined && params.stage !== before?.stage) {
     const effectivePipelineId =
@@ -419,7 +415,7 @@ export async function updateDeal(
     resolvedStageId = stageRow.id;
 
     // Validate stage_exit_requirements against the deal's effective state after this update.
-    // Fields being set in this same request satisfy requirements even if null before. (MINCRM-527)
+    // Fields being set in this same request satisfy requirements even if null before.
     const { required_fields, warning_fields } = stageRow.stage_exit_requirements;
     if (required_fields.length > 0 || warning_fields.length > 0) {
       // Merge current deal state with incoming params to get the post-update picture
@@ -459,7 +455,7 @@ export async function updateDeal(
   }
 
   // Build dynamic SET clause — include pipeline_stage_id alongside stage when stage changes.
-  // $1=id, $2...$N=field values, [$N+1=pipeline_stage_id if injected], $(last)=version (MINCRM-349, MINCRM-499)
+  // $1=id, $2...$N=field values, [$N+1=pipeline_stage_id if injected], $(last)=version
   const fieldValues = fields.map((f) => dealParams[f as keyof typeof dealParams]);
   const setClauses = fields.map((field, index) => `${field} = $${index + 2}`);
 
@@ -486,7 +482,7 @@ export async function updateDeal(
     );
 
     if (updateResult.rowCount === 0) {
-      // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+      // Distinguish NOT_FOUND from version mismatch
       const check = await client.query<{ id: string }>('SELECT id FROM deals WHERE id = $1', [id]);
       if (check.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -504,7 +500,7 @@ export async function updateDeal(
       );
     }
 
-    // Re-fetch with pipeline_stages JOIN so effective_probability is resolved (MINCRM-179)
+    // Re-fetch with pipeline_stages JOIN so effective_probability is resolved
     const updatedId = updateResult.rows[0]?.id ?? null;
     const fetchResult = updatedId
       ? await client.query<DealRow>(`SELECT ${DEAL_SELECT} FROM ${DEAL_FROM} WHERE d.id = $1`, [
@@ -515,7 +511,7 @@ export async function updateDeal(
     const deal = fetchResult.rows[0] ?? null;
 
     if (deal && before) {
-      // Audit: per-field diff (MINCRM-170)
+      // Audit: per-field diff
       const auditBase = {
         recordType: 'deal' as const,
         recordId: deal.id,
@@ -539,7 +535,7 @@ export async function updateDeal(
       await writeAuditEntries(client, [...fieldEntries, ...ownershipEntries]);
     }
 
-    // Stage history row on a real transition only (MINCRM-474) — not written when
+    // Stage history row on a real transition only — not written when
     // stage is present in the payload but unchanged (see the `else if` branch above).
     if (deal && params.stage !== undefined && deal.stage !== previousStage) {
       await writeDealStageHistoryEntry(client, deal.id, deal.pipeline_id, deal.stage);
@@ -548,7 +544,7 @@ export async function updateDeal(
     await client.query('COMMIT');
 
     // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
-    // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
+    // Unhandled rejections are caught by the global handler in server.ts.
     if (deal && params.stage !== undefined && deal.stage !== previousStage) {
       void fireAutomationTrigger('deal_stage_changed', {
         recordId: deal.id,
@@ -591,7 +587,7 @@ export interface DealExportRow {
   name: string;
   stage: string;
   value: string | null;
-  /** ISO 4217 currency code for the deal value (MINCRM-189) */
+  /** ISO 4217 currency code for the deal value */
   currency: string;
   close_date: string | null;
   loss_reason: string | null;
@@ -608,14 +604,13 @@ interface ExportDealsOptions {
   ownerId?: string;
   /** When provided, only deals linked to this account_id are returned */
   accountId?: string;
-  /** When provided, the org visibility policy is enforced for this user (MINCRM-534) */
+  /** When provided, the org visibility policy is enforced for this user */
   requestingUser?: { id: string; role: string };
 }
 
 /**
  * Returns all deals matching the given filters, enriched with account name,
  * semicolon-separated contact names, and owner name, for CSV export. No pagination.
- * (MINCRM-166)
  *
  * @param options - Filters (same semantics as listDeals, minus pagination/sort)
  * @returns Array of enriched deal rows ordered by created_at ASC
@@ -688,7 +683,6 @@ export async function exportDealsForCsv(
  * Deletes a deal by its UUID and writes an audit entry in the same transaction.
  * Associated deal_contacts rows are removed via CASCADE.
  * Linked contacts and accounts are not affected.
- * (MINCRM-170)
  *
  * @param id - Deal UUID
  * @param actor - User performing the action (for audit log)
@@ -705,11 +699,11 @@ export async function deleteDeal(
     await client.query('BEGIN');
     await setRlsUserId(client);
 
-    // Soft-delete notes before removing the parent row to prevent orphaned active notes (MINCRM-523)
+    // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'deal', id);
 
     // Use a CTE so we can JOIN pipeline_stages on the deleted row, keeping the returned
-    // DealRow consistent with every other query path. (MINCRM-179, MINCRM-499)
+    // DealRow consistent with every other query path.
     const result = await client.query<DealRow>(
       `WITH deleted AS (
          DELETE FROM deals WHERE id = $1 RETURNING *
@@ -729,7 +723,7 @@ export async function deleteDeal(
     const deal = result.rows[0] ?? null;
 
     if (deal) {
-      // Audit: record deleted (MINCRM-170)
+      // Audit: record deleted
       await writeAuditEntry(client, {
         recordType: 'deal',
         recordId: id,

@@ -1,5 +1,5 @@
 /**
- * Sequence enrollment routes — unenroll and get-by-id (MINCRM-403).
+ * Sequence enrollment routes — unenroll and get-by-id.
  * Enroll and list-by-contact are on the contacts router.
  */
 

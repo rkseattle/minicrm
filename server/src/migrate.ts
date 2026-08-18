@@ -2,14 +2,14 @@
  * Runs all pending database migrations using node-pg-migrate's programmatic API.
  * Safe to call on every startup — already-applied migrations are skipped.
  *
- * Uses the two-step fresh-bootstrap strategy (MINCRM-528) so this function works
+ * Uses the two-step fresh-bootstrap strategy so this function works
  * correctly on a brand-new database as well as an already-migrated one:
  *   1. Run count:1 — applies 000_baseline if not yet applied (no-op otherwise).
  *   2. Fake-mark the remaining baseline-covered migrations so they are never
  *      re-executed (no-op when they are already recorded in pgmigrations).
  *   3. Run all remaining truly-pending migrations for real.
  *
- * The whole sequence is wrapped in a Postgres advisory lock (MINCRM-658) so that
+ * The whole sequence is wrapped in a Postgres advisory lock so that
  * concurrent invocations — e.g. the test server's boot-time runMigrations() racing
  * a developer's `npm run e2e:setup` against the same database — serialize instead
  * of interleaving. See docs/dev/migrations.md "Concurrency & Locking".
@@ -34,7 +34,7 @@ export const MIGRATIONS_DIR = resolve(__dirname, '../../db/migrations');
  * keyed by a bigint; this is a fixed, arbitrary constant unique to migrations
  * within this application (chosen so it does not collide with any other
  * advisory lock usage — there is none elsewhere in this codebase as of
- * MINCRM-658). Kept within Number.MAX_SAFE_INTEGER so pg can bind it as a
+ *). Kept within Number.MAX_SAFE_INTEGER so pg can bind it as a
  * plain JS number rather than needing BigInt parameter support.
  * Session-scoped: held by one client connection for the lifetime of the
  * migration run, released explicitly or on disconnect.
@@ -123,7 +123,7 @@ export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promis
  * is wrong: it silently fake-marks (i.e. never executes) every migration added
  * since the baseline snapshot was taken, so their schema changes are never
  * applied on a fresh bootstrap (globalSetup.ts, migrate:fresh) — this broke
- * silently for the first migration added after MINCRM-528 shipped baseline
+ * silently for the first migration added after the baseline shipped baseline
  * coverage through migration 136.
  */
 export const BASELINE_COVERED_MIGRATION_COUNT = 152;
@@ -135,7 +135,7 @@ const MIGRATION_FILENAME_PREFIX = /^(\d+)_/;
 const BASELINE_FILE = resolve(MIGRATIONS_DIR, '000_baseline.js');
 
 /**
- * Validates BASELINE_COVERED_MIGRATION_COUNT two ways (MINCRM-658) rather than
+ * Validates BASELINE_COVERED_MIGRATION_COUNT two ways rather than
  * trusting the constant blindly. Pure function of its inputs so it can be unit
  * tested directly, without mocking fs or the require() of the baseline file.
  *
@@ -211,7 +211,7 @@ export async function runMigrations(): Promise<void> {
   // (e.g. @, :, /, %, ?, #) would otherwise change how postgres:// is parsed
   // even though a structured pg.Client config accepts the same credentials
   // verbatim — mirrors the identical fix applied to runCoverageMigrations()
-  // below (MINCRM-664, found via Greptile PR review on PR #356).
+  // below.
   const databaseUrl = `postgres://${encodeURIComponent(dbUser)}:${encodeURIComponent(dbPassword)}@${process.env.DB_HOST ?? 'localhost'}:${process.env.DB_PORT ?? 5432}/${process.env.DB_NAME}`;
 
   logger.info('Running database migrations...');
@@ -221,7 +221,7 @@ export async function runMigrations(): Promise<void> {
     dir: MIGRATIONS_DIR,
     direction: 'up' as const,
     migrationsTable: 'pgmigrations',
-    checkOrder: false, // 000_baseline was added after 001-101 on existing DBs (MINCRM-528)
+    checkOrder: false, // 000_baseline was added after 001-101 on existing DBs
     log: (msg: string) => logger.debug(msg),
   };
 

@@ -1,6 +1,6 @@
 /**
  * Pipeline controller — request/response shaping for pipeline management
- * endpoints (MINCRM-397). No business logic; all DB access via pipelineService.
+ * endpoints. No business logic; all DB access via pipelineService.
  */
 
 import type { Request, Response } from 'express';

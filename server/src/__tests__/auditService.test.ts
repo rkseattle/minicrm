@@ -11,7 +11,6 @@
  *  - listAuditLog (paginated, filtered system-wide query)
  *  - listAuditLogActors (distinct user list)
  *
- * (MINCRM-170, MINCRM-172)
  */
 
 import 'dotenv/config';
@@ -590,7 +589,7 @@ describe('listAuditLogActors', () => {
   });
 });
 
-// ── source tagging (MINCRM-444) ───────────────────────────────────────────────
+// ── source tagging ───────────────────────────────────────────────
 
 describe('source tagging', () => {
   it('stores source = "AI (NLI)" when provided', async () => {

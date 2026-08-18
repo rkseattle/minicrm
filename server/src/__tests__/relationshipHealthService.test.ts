@@ -1,5 +1,5 @@
 /**
- * Integration tests for relationshipHealthService. (MINCRM-467)
+ * Integration tests for relationshipHealthService.
  * Runs against a real PostgreSQL test database — scoring is deterministic/SQL-driven,
  * no Anthropic SDK mock needed.
  *

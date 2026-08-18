@@ -5,7 +5,6 @@
  * Must be used after the `authenticate` middleware so that req.user is set for role checks.
  * Composes naturally with requireRole: router.get('/path', authenticate, requireRole('admin'),
  * requireFeatureEnabled('reporting'), asyncHandler(handler))
- * (MINCRM-463)
  */
 
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
@@ -50,7 +49,6 @@ export function requireFeatureEnabled(flagKey: string): RequestHandler {
 /**
  * Creates an Express middleware that rejects the request with 403 if the named
  * feature flag is disabled ORG-WIDE, without consulting any authenticated user.
- * (MINCRM-694)
  *
  * Exists for routes reachable with no `req.user` at all — specifically the
  * coverage routers under COVERAGE_DASHBOARD_NO_AUTH, which skip `authenticate`

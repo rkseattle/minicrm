@@ -3,7 +3,7 @@
  *
  * Verifies that converted pipeline values and win/loss totals are computed
  * correctly when exchange rates are configured in the currencies table.
- * Implements MINCRM-253.
+ * Implements.
  *
  * Uses the real minicrm_test PostgreSQL database — no mocked pool.
  */
@@ -150,7 +150,7 @@ async function insertClosedDeal(opts: {
 }
 
 // ---------------------------------------------------------------------------
-// getDashboardSummary — currency conversion (MINCRM-253)
+// getDashboardSummary — currency conversion
 // ---------------------------------------------------------------------------
 
 describe('getDashboardSummary — currency conversion', () => {
@@ -226,7 +226,7 @@ describe('getDashboardSummary — currency conversion', () => {
 });
 
 // ---------------------------------------------------------------------------
-// getWinLossReport — currency conversion (MINCRM-253)
+// getWinLossReport — currency conversion
 // ---------------------------------------------------------------------------
 
 const DATE_RANGE = { startDate: '2025-01-01', endDate: '2025-12-31' };

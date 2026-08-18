@@ -2,7 +2,6 @@
  * HTTP contract tests for settingsController.
  * Verifies GET/PATCH for default language, nav layout, and email notifications,
  * plus role enforcement on write operations.
- * (MINCRM-195)
  */
 
 import 'dotenv/config';
@@ -236,7 +235,7 @@ describe('PATCH /api/settings/email-notifications', () => {
   });
 });
 
-// ── GET /api/settings/onboarding (MINCRM-256, MINCRM-379) ────────────────────
+// ── GET /api/settings/onboarding ────────────────────
 
 describe('GET /api/settings/onboarding', () => {
   it('returns 200 with is_first_run, onboarding_completed, and tasks for admin', async () => {
@@ -253,7 +252,7 @@ describe('GET /api/settings/onboarding', () => {
     }
   });
 
-  it('returns 200 with 4 rep-specific tasks when a rep accesses (MINCRM-410)', async () => {
+  it('returns 200 with 4 rep-specific tasks when a rep accesses', async () => {
     const res = await request(app).get('/api/v1/settings/onboarding').set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
@@ -267,11 +266,11 @@ describe('GET /api/settings/onboarding', () => {
   });
 });
 
-// ── PUT /api/settings/onboarding (MINCRM-256, MINCRM-410) ────────────────────
+// ── PUT /api/settings/onboarding ────────────────────
 
 describe('PUT /api/settings/onboarding', () => {
   afterEach(async () => {
-    // Reset flag on both test users after each test (MINCRM-410 — flag now lives on user row)
+    // Reset flag on both test users after each test
     await pool.query(`UPDATE users SET onboarding_completed = false WHERE email = ANY($1)`, [
       [ADMIN_EMAIL, REP_EMAIL],
     ]);
@@ -297,7 +296,7 @@ describe('PUT /api/settings/onboarding', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('returns 200 when a rep updates their own onboarding_completed to true (MINCRM-410)', async () => {
+  it('returns 200 when a rep updates their own onboarding_completed to true', async () => {
     const res = await request(app)
       .put('/api/v1/settings/onboarding')
       .set('Cookie', repCookie)
@@ -326,7 +325,7 @@ describe('PUT /api/settings/onboarding', () => {
   });
 });
 
-// ── DELETE /api/settings/pipeline-stages-reviewed (MINCRM-410) ───────────────
+// ── DELETE /api/settings/pipeline-stages-reviewed ───────────────
 
 describe('DELETE /api/v1/settings/pipeline-stages-reviewed', () => {
   beforeEach(async () => {

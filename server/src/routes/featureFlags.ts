@@ -1,6 +1,5 @@
 /**
  * Feature flag routes — all endpoints require authentication and admin role.
- * (MINCRM-463, MINCRM-490, MINCRM-491, MINCRM-492)
  */
 
 import { Router } from 'express';
@@ -89,7 +88,7 @@ router.get('/me', authenticate, asyncHandler(getMyFeatureFlagsHandler));
  */
 router.get('/', authenticate, requireRole('admin'), asyncHandler(listFeatureFlagsHandler));
 
-// ── Flag groups (MINCRM-491) ───────────────────────────────────────────────────
+// ── Flag groups ───────────────────────────────────────────────────
 // NOTE: Group routes must be registered before /:key to prevent Express from
 // matching the literal string 'groups' as a flag key.
 
@@ -220,7 +219,7 @@ router.patch(
  *     summary: Delete a flag group
  *     description: >
  *       Deletes a flag group, atomically unassigning all member flags (setting their group_key
- *       to null) in the same transaction before removing the group. Admin only. (MINCRM-567)
+ *       to null) in the same transaction before removing the group. Admin only.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -412,7 +411,7 @@ router.delete(
  *                 description: >
  *                   ISO 8601 timestamp at which the flag should automatically enable.
  *                   Must be a future date when setting. Pass null to clear the schedule.
- *                   (MINCRM-488)
+ *
  *     responses:
  *       200:
  *         description: Feature flag updated
@@ -554,7 +553,7 @@ router.delete(
   asyncHandler(removeBetaUserHandler),
 );
 
-// ── Per-user overrides (MINCRM-492) ────────────────────────────────────────────
+// ── Per-user overrides ────────────────────────────────────────────
 
 /**
  * @openapi

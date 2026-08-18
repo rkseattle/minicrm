@@ -1,5 +1,5 @@
 /**
- * Unit tests for coverageAccessGate (MINCRM-637).
+ * Unit tests for coverageAccessGate.
  *
  * Calls the middleware directly with mocked Request/Response/next, same
  * pattern as middleware.test.ts's own requireRole/requireCapability tests
@@ -250,13 +250,13 @@ describe('migration 162 — coverage:admin capability grant scope', () => {
 });
 
 /**
- * MINCRM-685: the no-auth bypass must drop auth and the role/capability gate,
+ * the no-auth bypass must drop auth and the role/capability gate,
  * and nothing else.
  *
- * This is the surviving half of MINCRM-694's guarantee. That story fixed a
+ * This is the surviving half of the guarantee. That story fixed a
  * defect where COVERAGE_DASHBOARD_NO_AUTH dropped the feature-flag check along
  * with auth, so coverage_reporting_query/coverage_mapping_query read as enabled
- * no matter what was stored. MINCRM-685 deleted those rows and moved each
+ * no matter what was stored. A later change deleted those rows and moved each
  * router behind a boot-time env var: an unset var means the routes were never
  * registered, so nothing reaches this middleware at all, where the flag was a
  * mutable row an admin could flip from the product UI. Harder by default, at
@@ -269,7 +269,7 @@ describe('migration 162 — coverage:admin capability grant scope', () => {
  * avoid passing vacuously. At this level the chain is exercised directly, with
  * no app boot and no module-caching hazard.
  */
-describe('buildCoverageAccessGate — COVERAGE_DASHBOARD_NO_AUTH bypass scope (MINCRM-685)', () => {
+describe('buildCoverageAccessGate — COVERAGE_DASHBOARD_NO_AUTH bypass scope', () => {
   const previousNoAuth = process.env.COVERAGE_DASHBOARD_NO_AUTH;
   const previousNodeEnv = process.env.NODE_ENV;
 

@@ -1,5 +1,5 @@
 /**
- * Churn/expansion controller — request/response shaping only. (MINCRM-469)
+ * Churn/expansion controller — request/response shaping only.
  * No business logic here; all cached-read access goes through churnExpansionService.
  */
 

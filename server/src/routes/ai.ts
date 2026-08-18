@@ -10,7 +10,6 @@
  *
  * Future AI feature routes (NLI, suggestions, etc.) belong in a separate
  * router mounted at /api/v1/ai that uses requireAiEnabled middleware.
- * (MINCRM-457, MINCRM-458)
  */
 
 import { Router } from 'express';
@@ -638,7 +637,7 @@ router.get(
  *     description: >
  *       enabled=false disables intelligent lead routing for every member of the
  *       team, falling back to manual assignment. enabled=null clears the
- *       override, reverting to the global flag state. (MINCRM-475)
+ *       override, reverting to the global flag state.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -1009,7 +1008,7 @@ export default router;
 // ── User-facing AI router ──────────────────────────────────────────────────────
 // Mounted exclusively at /api/v1/ai. Kept separate from the admin router so
 // that mounting the admin router at /api/v1/admin/ai does not accidentally
-// expose admin-only handlers at /api/v1/ai/*. (MINCRM-458)
+// expose admin-only handlers at /api/v1/ai/*.
 
 const aiUserRouter = Router();
 

@@ -1,5 +1,5 @@
 /**
- * Unit tests for the Sentry PII redaction hook (MINCRM-394).
+ * Unit tests for the Sentry PII redaction hook.
  *
  * Verifies that redactPiiFromEvent:
  *   - strips request.data (POST bodies)
@@ -23,7 +23,7 @@ function sha256Hex(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
-describe('MINCRM-394 — redactPiiFromEvent (server)', () => {
+describe('redactPiiFromEvent (server)', () => {
   it('removes request.data from the event', () => {
     const event = makeEvent({
       request: {

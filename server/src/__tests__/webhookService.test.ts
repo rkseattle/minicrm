@@ -482,7 +482,7 @@ describe('dispatchWebhookEvent', () => {
   }, 10_000);
 });
 
-// ── FK ON DELETE SET NULL — user deletion preserves webhook history (MINCRM-505) ──
+// ── FK ON DELETE SET NULL — user deletion preserves webhook history ──
 
 describe('webhook_subscriptions.created_by FK — ON DELETE SET NULL', () => {
   it('sets created_by to NULL when the owning user is deleted, and preserves the subscription row', async () => {

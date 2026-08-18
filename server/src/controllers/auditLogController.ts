@@ -1,7 +1,6 @@
 /**
  * Audit log controller — request/response shaping for audit log endpoints.
  * No business logic here; all queries go through auditService.
- * (MINCRM-170, MINCRM-172)
  */
 
 import type { Request, Response } from 'express';
@@ -13,7 +12,6 @@ import { getRecordAuditLog, listAuditLogActors } from '../services/auditService.
  * Returns audit log entries for a single record.
  * Available to any authenticated user (scoped to record context on the detail page).
  * Query params: record_type, record_id, all (optional, returns full history when true)
- * (MINCRM-171)
  */
 export async function getRecordAuditLogHandler(req: Request, res: Response): Promise<void> {
   const parsed = recordAuditLogParamsSchema.safeParse(req.query);
@@ -40,7 +38,6 @@ export async function getRecordAuditLogHandler(req: Request, res: Response): Pro
  * GET /api/audit-log/actors
  * Returns distinct users who appear in the audit log.
  * Used to populate the user filter dropdown on the admin audit log page. Admin only.
- * (MINCRM-172)
  */
 export async function listAuditLogActorsHandler(_req: Request, res: Response): Promise<void> {
   const actors = await listAuditLogActors();

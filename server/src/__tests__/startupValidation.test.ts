@@ -1,5 +1,5 @@
 /**
- * Startup validation tests (MINCRM-301).
+ * Startup validation tests.
  *
  * Verifies that server.ts exits non-zero before binding when required
  * environment variables are absent or malformed. Uses spawnSync so each
@@ -43,7 +43,7 @@ function spawnServer(env: Record<string, string>): number | null {
 // child process has time to boot tsx and exit before Vitest kills the test.
 const SPAWN_TEST_TIMEOUT = 12_000;
 
-describe('MINCRM-301 — NODE_ENCRYPTION_KEY startup validation', () => {
+describe('NODE_ENCRYPTION_KEY startup validation', () => {
   it(
     'exits non-zero when NODE_ENCRYPTION_KEY is absent',
     () => {
@@ -95,7 +95,7 @@ describe('MINCRM-301 — NODE_ENCRYPTION_KEY startup validation', () => {
 
 // ── JWT_SECRET validation still works alongside the new check ─────────────────
 
-describe('MINCRM-301 — JWT_SECRET validation still enforced', () => {
+describe('JWT_SECRET validation still enforced', () => {
   it(
     'exits non-zero when JWT_SECRET is absent',
     () => {

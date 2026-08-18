@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for champion/blocker endpoints. (MINCRM-466)
+ * HTTP contract tests for champion/blocker endpoints.
  *
  * Covers:
  *  - GET /contacts/:id/champion-blocker: authenticated, flag-gated, returns cached shape
@@ -107,7 +107,7 @@ describe('GET /api/v1/contacts/:id/champion-blocker', () => {
   it('returns 403 when a rep requests a contact owned by another rep under a private visibility policy', async () => {
     // Default org visibility policy is 'org' (all reps see all records) — this
     // test asserts the private-policy denial path, so it must set that policy
-    // explicitly rather than relying on an unstated default. (MINCRM-472 self-review)
+    // explicitly rather than relying on an unstated default.
     await pool.query(
       `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'contact'`,
     );
@@ -192,7 +192,7 @@ describe('GET /api/v1/deals/:id/stakeholder-map', () => {
   it('returns 403 when a rep requests a stakeholder map for a deal owned by another rep under a private visibility policy', async () => {
     // Default org visibility policy is 'org' (all reps see all records) — this
     // test asserts the private-policy denial path, so it must set that policy
-    // explicitly rather than relying on an unstated default. (MINCRM-472 self-review)
+    // explicitly rather than relying on an unstated default.
     await pool.query(
       `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'deal'`,
     );

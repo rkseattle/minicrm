@@ -1,5 +1,5 @@
 /**
- * Notification feed routes. (MINCRM-469)
+ * Notification feed routes.
  * All endpoints require authentication only — no feature flag, since this is
  * generic infrastructure any feature may write to.
  */

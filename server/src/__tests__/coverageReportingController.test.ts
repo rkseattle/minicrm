@@ -1,5 +1,5 @@
 /**
- * Integration tests for the coverage reporting query API. (MINCRM-629/630/631)
+ * Integration tests for the coverage reporting query API.
  * Covers: auth boundaries (401 unauthenticated, 403 non-admin role), Zod validation, and the
  * query happy path for each endpoint.
  */
@@ -83,7 +83,7 @@ describe('coverage reporting API — auth boundaries', () => {
   });
 
   // The former "403 FEATURE_DISABLED when the flag is off" case is gone with
-  // the coverage_reporting_query row (MINCRM-685). Its replacement lives in
+  // the coverage_reporting_query row. Its replacement lives in
   // coverageRouteGating.test.ts, which asserts a 404 when
   // COVERAGE_REPORTING_QUERY is unset at boot — the routes are not registered
   // at all rather than registered-and-refusing. It cannot live here: this file
@@ -92,7 +92,7 @@ describe('coverage reporting API — auth boundaries', () => {
   // file is built around.
 });
 
-describe('coverage reporting API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+describe('coverage reporting API — COVERAGE_CAPABILITY_GATING=true', () => {
   const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
 
   beforeEach(async () => {
@@ -129,7 +129,7 @@ describe('coverage reporting API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637
   });
 });
 
-describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636/637)', () => {
+describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true', () => {
   const originalNoAuth = process.env.COVERAGE_DASHBOARD_NO_AUTH;
   const originalNodeEnv = process.env.NODE_ENV;
 
@@ -156,8 +156,8 @@ describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636
     expect(res.body.error.code).toBe('COVERAGE_BUILD_NOT_FOUND');
   });
 
-  // MINCRM-694's flag-enforcement-under-the-bypass case is retired here, and the
-  // invariant it pinned is DELIBERATELY DROPPED rather than relocated (MINCRM-685;
+  // the flag-enforcement-under-the-bypass case is retired here, and the
+  // invariant it pinned is DELIBERATELY DROPPED rather than relocated (
   // the coverage_reporting_query row it named no longer exists). Stating
   // that plainly because it is a real reduction, not a refactor: with
   // COVERAGE_DASHBOARD_NO_AUTH on, this router now has no per-request gate at
@@ -304,7 +304,7 @@ describe('coverage reporting API — query happy path', () => {
   });
 });
 
-describe('coverage reporting API — GET /issue-keys (MINCRM-636/637)', () => {
+describe('coverage reporting API — GET /issue-keys', () => {
   const commitSha = `${FILE_PREFIX}-issue-keys-${randomUUID()}`;
 
   beforeAll(async () => {

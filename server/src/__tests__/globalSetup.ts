@@ -59,7 +59,7 @@ async function ensureDatabaseExists(params: {
 export default async function globalSetup(): Promise<void> {
   // No 5432 default. This function runs CREATE DATABASE and the full migration
   // sequence, so a wrong port provisions minicrm_test on the DEV instance — the shared
-  // setup MINCRM-684 removed. Isolation must not rest solely on .env.test carrying
+  // setup that was removed. Isolation must not rest solely on .env.test carrying
   // DB_PORT: a bare `npx vitest run` (without the DOTENV_CONFIG_PATH that
   // server/package.json's `test` script sets) would otherwise silently target dev.
   // assertTestDatabasePort exempts CI, where 5432 is the only Postgres.
@@ -78,7 +78,7 @@ export default async function globalSetup(): Promise<void> {
   const databaseUrl = `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
 
   // Use the same three-step fresh-bootstrap approach as runMigrations() in
-  // ../migrate.ts (MINCRM-528): step 1 runs only 000_baseline; step 2 fake-marks
+  // ../migrate.ts: step 1 runs only 000_baseline; step 2 fake-marks
   // the fixed number of migrations 000_baseline was last regenerated to cover
   // (countBaselineCoveredMigrations() — NOT every file on disk, which would
   // silently skip real execution of any migration added since); step 3 runs
@@ -93,7 +93,7 @@ export default async function globalSetup(): Promise<void> {
   };
 
   // Shares the same advisory lock key as runMigrations(), create-e2e-db.ts, and
-  // migrate-fresh.ts (MINCRM-658), so this bootstrap cannot interleave with a
+  // migrate-fresh.ts, so this bootstrap cannot interleave with a
   // concurrent migration run against the same database (e.g. a developer
   // running `npm test` while the test server is also booting against minicrm_test).
   await withMigrationLock(databaseUrl, async () => {

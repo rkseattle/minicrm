@@ -30,7 +30,7 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateContactInput> = new Set([
   'department',
   'account_id',
   'owner_id',
-  // Social profile URLs (MINCRM-190)
+  // Social profile URLs
   'linkedin_url',
   'twitter_x_url',
   'other_url',
@@ -42,7 +42,7 @@ export interface EmbeddedTag {
   name: string;
 }
 
-/** Default address embedded in contact responses (sourced from contact_addresses, MINCRM-500) */
+/** Default address embedded in contact responses (sourced from contact_addresses) */
 export interface ContactDefaultAddress {
   id: string;
   label: string | null;
@@ -62,22 +62,22 @@ export interface ContactRow {
   email: string;
   phone: string | null;
   title: string | null;
-  /** Timestamp of the most recent change to `title` specifically (MINCRM-476) */
+  /** Timestamp of the most recent change to `title` specifically */
   title_updated_at: Date | null;
   department: string | null;
   account_id: string | null;
   owner_id: string;
-  // Social profile URLs (MINCRM-190)
+  // Social profile URLs
   linkedin_url: string | null;
   twitter_x_url: string | null;
   other_url: string | null;
   created_at: Date;
   updated_at: Date;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
-  /** Default address from contact_addresses — null when no default row exists (MINCRM-500) */
+  /** Default address from contact_addresses — null when no default row exists */
   default_address: ContactDefaultAddress | null;
-  /** Tags attached to this contact — only populated in list responses (MINCRM-186) */
+  /** Tags attached to this contact — only populated in list responses */
   tags?: EmbeddedTag[];
 }
 
@@ -89,7 +89,7 @@ export type ContactSortColumn = (typeof CONTACT_SORT_COLUMNS)[number];
 interface ListContactsOptions {
   /** When provided, only contacts with this owner_id are returned */
   ownerId?: string;
-  /** When provided, only contacts whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  /** When provided, only contacts whose owner_id is in this set are returned */
   ownerIds?: string[];
   /** When provided, only contacts linked to this account_id are returned */
   accountId?: string;
@@ -111,9 +111,9 @@ interface ListContactsOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
-  /** When provided, only contacts tagged with at least one of these tag IDs are returned (MINCRM-186) */
+  /** When provided, only contacts tagged with at least one of these tag IDs are returned */
   tagIds?: string[];
-  /** When provided, the org visibility policy is enforced for this user (MINCRM-538) */
+  /** When provided, the org visibility policy is enforced for this user */
   requestingUser?: { id: string; role: string };
 }
 
@@ -137,7 +137,7 @@ export async function createContact(
     department,
     account_id,
     owner_id,
-    // Address fields are written to contact_addresses, not contacts (MINCRM-500)
+    // Address fields are written to contact_addresses, not contacts
     address_line1,
     address_line2,
     city,
@@ -179,7 +179,7 @@ export async function createContact(
     const contact = result.rows[0];
 
     // If any address field was supplied, create a default contact_addresses row
-    // in the same transaction. (MINCRM-500)
+    // in the same transaction.
     const hasAddress =
       address_line1 || address_line2 || city || state_region || postal_code || country;
     if (hasAddress) {
@@ -199,7 +199,7 @@ export async function createContact(
       );
     }
 
-    // Audit: record created (MINCRM-170)
+    // Audit: record created
     await writeAuditEntry(client, {
       recordType: 'contact',
       recordId: contact.id,
@@ -213,11 +213,11 @@ export async function createContact(
     await client.query('COMMIT');
 
     // Re-fetch with default_address joined — RETURNING * on contacts does not include the
-    // address sub-resource written above (MINCRM-500).
+    // address sub-resource written above.
     const enriched = (await findContactById(contact.id)) ?? contact;
 
     // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
-    // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
+    // Unhandled rejections are caught by the global handler in server.ts.
     void fireAutomationTrigger('contact_created', {
       recordId: contact.id,
       recordType: 'contact',
@@ -230,7 +230,7 @@ export async function createContact(
   } catch (error) {
     await client.query('ROLLBACK');
     // PostgreSQL error code 23505 = unique_violation — catches concurrent inserts
-    // that both bypass the service-layer duplicate check (TOCTOU race). (MINCRM-247)
+    // that both bypass the service-layer duplicate check (TOCTOU race).
     if ((error as { code?: string }).code === '23505') {
       throw Object.assign(new Error('A contact with this email address already exists'), {
         code: 'DUPLICATE_EMAIL',
@@ -343,7 +343,7 @@ export async function listContacts(
     conditions.push(`a.name ILIKE $${values.length}`);
   }
 
-  // Tag filter (MINCRM-186) — any-match: contact must have at least one of the given tag IDs
+  // Tag filter — any-match: contact must have at least one of the given tag IDs
   if (options.tagIds && options.tagIds.length > 0) {
     const placeholders = options.tagIds.map((_, i) => `$${values.length + i + 1}`).join(', ');
     options.tagIds.forEach((tid) => values.push(tid));
@@ -352,7 +352,7 @@ export async function listContacts(
     );
   }
 
-  // Org visibility policy enforcement (MINCRM-538)
+  // Org visibility policy enforcement
   if (options.requestingUser) {
     const visFilter = await buildVisibilityFilter(
       'contact',
@@ -373,7 +373,7 @@ export async function listContacts(
     ? 'FROM contacts c LEFT JOIN accounts a ON c.account_id = a.id LEFT JOIN contact_addresses ca ON ca.contact_id = c.id AND ca.is_default = true'
     : 'FROM contacts c LEFT JOIN contact_addresses ca ON ca.contact_id = c.id AND ca.is_default = true';
 
-  // Allowlist-validated sort column and direction (MINCRM-68)
+  // Allowlist-validated sort column and direction
   const sortCol = (CONTACT_SORT_COLUMNS as readonly string[]).includes(options.sort ?? '')
     ? options.sort!
     : 'created_at';
@@ -383,7 +383,7 @@ export async function listContacts(
   const limit = options.limit ?? 50;
   const offset = (page - 1) * limit;
 
-  // Embed tags via lateral subquery (MINCRM-186) — avoids N+1 without separate API calls
+  // Embed tags via lateral subquery — avoids N+1 without separate API calls
   const tagsSubquery = `
     COALESCE((
       SELECT JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'name', t.name) ORDER BY t.name)
@@ -391,7 +391,7 @@ export async function listContacts(
       WHERE ct.contact_id = c.id
     ), '[]'::json) AS tags`;
 
-  // Embed default address as a JSON object (MINCRM-500)
+  // Embed default address as a JSON object
   const defaultAddressSubquery = `
     CASE WHEN ca.id IS NOT NULL THEN JSON_BUILD_OBJECT(
       'id', ca.id, 'label', ca.label,
@@ -400,7 +400,7 @@ export async function listContacts(
       'postal_code', ca.postal_code, 'country', ca.country
     ) ELSE NULL END AS default_address`;
 
-  // Run count and data queries in parallel (MINCRM-68)
+  // Run count and data queries in parallel
   const [countResult, dataResult] = await Promise.all([
     withRlsQuery((client) =>
       client.query<{ count: string }>(
@@ -433,7 +433,7 @@ export async function listContacts(
  * @param before - Snapshot of the contact before update (used for diff)
  * @returns The updated contact row, or null if not found
  */
-/** Address fields accepted in updateContact — forwarded to contact_addresses (MINCRM-500) */
+/** Address fields accepted in updateContact — forwarded to contact_addresses */
 const ADDRESS_UPDATE_FIELDS = [
   'address_line1',
   'address_line2',
@@ -451,7 +451,7 @@ export async function updateContact(
   before?: ContactRow,
   requestingUser?: { id: string; role: string },
 ): Promise<ContactRow | null> {
-  // Managers may only reassign records to users within their own team(s) (MINCRM-534)
+  // Managers may only reassign records to users within their own team(s)
   if (params.owner_id !== undefined && requestingUser) {
     await validateReassignment(params.owner_id, requestingUser);
   }
@@ -465,7 +465,7 @@ export async function updateContact(
     ALLOWED_UPDATE_FIELDS.has(field as keyof UpdateContactInput),
   );
 
-  // Extract any address fields supplied in the update payload (MINCRM-500)
+  // Extract any address fields supplied in the update payload
   const addressFields = ADDRESS_UPDATE_FIELDS.filter(
     (f) => (normalized as Record<string, unknown>)[f] !== undefined,
   );
@@ -486,7 +486,7 @@ export async function updateContact(
     if (fields.length === 0) {
       // Payload contains only address fields (+ version) — no scalar contact columns to update.
       // Still bump updated_at and version so the optimistic lock is consumed and concurrent
-      // address-only PATCHes with the same version are correctly rejected. (MINCRM-500)
+      // address-only PATCHes with the same version are correctly rejected.
       const result = await client.query<ContactRow>(
         `UPDATE contacts
          SET updated_at = now(), version = version + 1
@@ -495,7 +495,7 @@ export async function updateContact(
         [id, version],
       );
       if (result.rowCount === 0) {
-        // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+        // Distinguish NOT_FOUND from version mismatch
         const check = await client.query<{ id: string }>('SELECT id FROM contacts WHERE id = $1', [
           id,
         ]);
@@ -513,13 +513,13 @@ export async function updateContact(
       contact = result.rows[0] ?? null;
     } else {
       // Build dynamic SET clause: first_name = $2, last_name = $3, ..., version = version + 1
-      // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
+      // $1=id, $2...$N=field values, $(N+1)=version
       const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
       const versionParam = fields.length + 2;
 
       // Stamp title_updated_at only when title is actually changing — updated_at
       // bumps on any field edit, so it can't answer "how long has the title been
-      // stale" on its own (MINCRM-476).
+      // stale" on its own.
       const titleChanging =
         fields.includes('title') && before !== undefined && normalized.title !== before.title;
       const titleUpdatedAtClause = titleChanging ? ', title_updated_at = now()' : '';
@@ -533,7 +533,7 @@ export async function updateContact(
       );
 
       if (result.rowCount === 0) {
-        // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+        // Distinguish NOT_FOUND from version mismatch
         const check = await client.query<{ id: string }>('SELECT id FROM contacts WHERE id = $1', [
           id,
         ]);
@@ -552,7 +552,7 @@ export async function updateContact(
       contact = result.rows[0] ?? null;
     }
 
-    // Forward address fields to the default contact_addresses row. (MINCRM-500)
+    // Forward address fields to the default contact_addresses row.
     // Upserts the existing default row if one exists; inserts a new default row otherwise.
     if (contact && addressUpdate) {
       const addrCols = Object.keys(addressUpdate) as AddressUpdateField[];
@@ -567,7 +567,7 @@ export async function updateContact(
     }
 
     if (contact && before) {
-      // Audit: per-field diff (MINCRM-170)
+      // Audit: per-field diff
       const auditBase = {
         recordType: 'contact' as const,
         recordId: contact.id,
@@ -598,7 +598,7 @@ export async function updateContact(
     await client.query('COMMIT');
 
     // Re-fetch with default_address joined — RETURNING * on contacts does not include the
-    // address sub-resource (MINCRM-500).
+    // address sub-resource.
     const enriched = contact ? ((await findContactById(contact.id)) ?? contact) : null;
 
     if (enriched) {
@@ -627,14 +627,14 @@ export interface ContactExportRow {
   phone: string | null;
   title: string | null;
   department: string | null;
-  // Address fields sourced from the default contact_addresses row (MINCRM-500)
+  // Address fields sourced from the default contact_addresses row
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
   state_region: string | null;
   postal_code: string | null;
   country: string | null;
-  // Social profile URLs (MINCRM-190)
+  // Social profile URLs
   linkedin_url: string | null;
   twitter_x_url: string | null;
   other_url: string | null;
@@ -654,14 +654,13 @@ interface ExportContactsOptions {
   search?: string;
   /** Case-insensitive substring match on the linked account name */
   accountSearch?: string;
-  /** When provided, the org visibility policy is enforced for this user (MINCRM-534) */
+  /** When provided, the org visibility policy is enforced for this user */
   requestingUser?: { id: string; role: string };
 }
 
 /**
  * Returns all contacts matching the given filters, enriched with account name
  * and owner name, for CSV export. No pagination — returns every matching row.
- * (MINCRM-164)
  *
  * @param options - Filters (same semantics as listContacts, minus pagination/sort)
  * @returns Array of enriched contact rows ordered by last_name ASC, first_name ASC
@@ -767,7 +766,7 @@ export async function deleteContact(
     await client.query('BEGIN');
     await setRlsUserId(client);
 
-    // Soft-delete notes before removing the parent row to prevent orphaned active notes (MINCRM-523)
+    // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'contact', id);
 
     const result = await client.query<ContactRow>(
@@ -778,7 +777,7 @@ export async function deleteContact(
     const contact = result.rows[0] ?? null;
 
     if (contact) {
-      // Audit: record deleted (MINCRM-170)
+      // Audit: record deleted
       await writeAuditEntry(client, {
         recordType: 'contact',
         recordId: id,
@@ -811,7 +810,7 @@ export async function deleteContact(
 }
 
 /**
- * Input for merging two contact records. (MINCRM-187)
+ * Input for merging two contact records.
  * The winner is the record that survives; the loser is deleted.
  * For each field where the two contacts differ, the caller specifies which value to keep.
  */
@@ -824,7 +823,7 @@ export interface MergeContactsInput {
    * Per-field winner source — 'winner' keeps the current winner value, 'loser' takes the loser value.
    * Fields omitted here default to keeping the winner's current value.
    * Address fields are not merged by field-choice; the loser's contact_addresses rows are
-   * re-linked to the winner so both address histories are preserved. (MINCRM-500)
+   * re-linked to the winner so both address histories are preserved.
    */
   fieldChoices: Partial<
     Record<
@@ -868,7 +867,6 @@ const MERGEABLE_FIELDS = [
  *   5. Delete the loser record.
  *   6. Write an audit entry on the winner: "merged" with loser name.
  *   7. Create a system activity note on the winner's timeline.
- * (MINCRM-187)
  *
  * @param input - Merge parameters
  * @param actor - User performing the merge (for audit log)
@@ -952,7 +950,7 @@ export async function mergeContacts(
 
     // Re-link loser's contact_addresses to the winner (step 4a).
     // If the loser's row is marked is_default and the winner already has a default,
-    // demote the loser's row so the unique partial index is not violated. (MINCRM-500)
+    // demote the loser's row so the unique partial index is not violated.
     const winnerHasDefault = await client.query<{ exists: boolean }>(
       `SELECT EXISTS (
          SELECT 1 FROM contact_addresses WHERE contact_id = $1 AND is_default = true
@@ -1008,7 +1006,7 @@ export async function mergeContacts(
     await client.query('COMMIT');
 
     // Re-fetch with default_address joined — SELECT * on contacts does not include the
-    // address sub-resource (MINCRM-500).
+    // address sub-resource.
     return (await findContactById(winnerId)) ?? updatedWinner;
   } catch (error) {
     await client.query('ROLLBACK');

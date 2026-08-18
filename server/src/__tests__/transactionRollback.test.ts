@@ -1,5 +1,5 @@
 /**
- * Transaction rollback tests (MINCRM-249).
+ * Transaction rollback tests.
  *
  * Verifies that mid-transaction failures leave the database in a clean state.
  * Each test injects an error after one or more mutations have been written,

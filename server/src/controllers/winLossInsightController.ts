@@ -1,5 +1,5 @@
 /**
- * Win/loss insights controller — request/response shaping only. (MINCRM-464)
+ * Win/loss insights controller — request/response shaping only.
  * No business logic here; all cached-read access goes through winLossAnalysisService.
  */
 

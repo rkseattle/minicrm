@@ -1,5 +1,5 @@
 /**
- * Integration tests for ssoService — user provisioning, linking, and enforcement. (MINCRM-399)
+ * Integration tests for ssoService — user provisioning, linking, and enforcement.
  *
  * Covers:
  *   - findOrProvisionSsoUser: match by subject, match by email (bind), JIT provision

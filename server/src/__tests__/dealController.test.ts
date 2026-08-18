@@ -1,5 +1,5 @@
 /**
- * Integration tests for the deal controller. (MINCRM-295)
+ * Integration tests for the deal controller.
  *
  * Covers: create, list (with filters), get single, update (ownership + stage
  * validation), link/unlink contact, delete, and CSV export.
@@ -314,7 +314,7 @@ describe('PATCH /api/deals/:id — ownership', () => {
   });
 });
 
-// ── PATCH /api/deals/:id — pipeline reassignment (MINCRM-408) ────────────────
+// ── PATCH /api/deals/:id — pipeline reassignment ────────────────
 
 describe('PATCH /api/deals/:id — pipeline reassignment', () => {
   let enterprisePipelineId: string;
@@ -490,10 +490,10 @@ describe('DELETE /api/deals/:id/contacts/:contactId — unlink contact', () => {
 
 // ── DELETE /api/deals/:id ─────────────────────────────────────────────────────
 
-// Per MINCRM-542 + migration 109: reps have deals:delete and can delete their
+// Per migration 109: reps have deals:delete and can delete their
 // own deals. Ownership check in the controller blocks deletion of other users' deals.
 describe('DELETE /api/deals/:id — ownership', () => {
-  it('allows a rep to delete their own deal (MINCRM-542)', async () => {
+  it('allows a rep to delete their own deal', async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
 
     const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', repCookie);
@@ -501,7 +501,7 @@ describe('DELETE /api/deals/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it("returns 403 FORBIDDEN when a rep tries to delete another rep's deal (MINCRM-542)", async () => {
+  it("returns 403 FORBIDDEN when a rep tries to delete another rep's deal", async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
 
     const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', otherRepCookie);
@@ -518,7 +518,7 @@ describe('DELETE /api/deals/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it('returns 404 for a non-existent deal when rep has deals:delete (MINCRM-542)', async () => {
+  it('returns 404 for a non-existent deal when rep has deals:delete', async () => {
     const res = await request(app)
       .delete('/api/v1/deals/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
@@ -552,7 +552,7 @@ describe('GET /api/deals/export', () => {
   });
 });
 
-// ── GET /api/deals/export.pdf ─────────────────────────────────────────────── (MINCRM-601)
+// ── GET /api/deals/export.pdf ───────────────────────────────────────────────
 
 describe('GET /api/deals/export.pdf', () => {
   it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
@@ -589,7 +589,7 @@ describe('GET /api/deals/export.pdf', () => {
   });
 });
 
-// ── GET /api/deals/:id/export.pdf (MINCRM-650) ──────────────────────────────
+// ── GET /api/deals/:id/export.pdf ──────────────────────────────
 
 describe('GET /api/deals/:id/export.pdf', () => {
   it('returns a single-record PDF with the correct Content-Type and Content-Disposition headers', async () => {
@@ -656,7 +656,7 @@ describe('GET /api/deals/:id/export.pdf', () => {
   });
 });
 
-// ── GET /api/deals — ?owner=my_team filter (MINCRM-545) ─────────────────────
+// ── GET /api/deals — ?owner=my_team filter ─────────────────────
 
 describe('GET /api/deals — ?owner=my_team filter', () => {
   const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;

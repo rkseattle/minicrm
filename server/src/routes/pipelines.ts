@@ -1,5 +1,5 @@
 /**
- * Pipelines routes (MINCRM-397).
+ * Pipelines routes.
  * GET is authenticated (any role); write operations are admin-only.
  */
 
@@ -23,7 +23,7 @@ const router = Router();
  *   get:
  *     tags: [Pipelines]
  *     operationId: listPipelines
- *     summary: List all pipelines (MINCRM-397)
+ *     summary: List all pipelines
  *     description: Returns all pipelines ordered by default-first, then name.
  *     security:
  *       - cookieAuth: []
@@ -50,7 +50,7 @@ router.get('/', authenticate, asyncHandler(listPipelinesHandler));
  *   post:
  *     tags: [Pipelines]
  *     operationId: createPipeline
- *     summary: Create a new pipeline (admin only, MINCRM-397)
+ *     summary: Create a new pipeline (admin only)
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -88,7 +88,7 @@ router.post(
  *   patch:
  *     tags: [Pipelines]
  *     operationId: updatePipeline
- *     summary: Rename a pipeline (admin only, MINCRM-397)
+ *     summary: Rename a pipeline (admin only)
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -132,7 +132,7 @@ router.patch(
  *   delete:
  *     tags: [Pipelines]
  *     operationId: deletePipeline
- *     summary: Delete a non-default pipeline (admin only, MINCRM-397)
+ *     summary: Delete a non-default pipeline (admin only)
  *     description: >
  *       Blocked if this is the default pipeline (403) or if it has deals (409).
  *       Deleting a pipeline also removes its associated stages (CASCADE).

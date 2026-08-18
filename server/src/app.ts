@@ -79,7 +79,7 @@ app.use(
 // CORS_ORIGIN is a comma-separated list of allowed origins.
 // Default: http://localhost:5173 (Vite dev server on the same machine).
 //
-// LAN access (MINCRM-148): when a mobile device connects via the server's LAN IP
+// LAN access: when a mobile device connects via the server's LAN IP
 // (e.g. http://192.168.1.100:5173) the browser sends that address as the CORS
 // origin, which will be rejected unless it is included in CORS_ORIGIN.
 // Add the LAN address alongside localhost:
@@ -113,24 +113,24 @@ app.use(
   }),
 );
 
-// ── ConnectRPC middleware (MINCRM-377) ─────────────────────────────────────────
+// ── ConnectRPC middleware ─────────────────────────────────────────
 // Must be mounted BEFORE express.json() and cookieParser() so that Connect/gRPC-Web
 // requests are intercepted before any body-buffering middleware can consume the
 // raw request stream. The Connect protocol reads the body itself.
 app.use(expressConnectMiddleware({ routes: registerAuditService, requestPathPrefix: '/api' }));
 
 // ── Body parsing ───────────────────────────────────────────────────────────────
-// MINCRM-606: raised from the express.json() default of 100kb — real frontend
+// raised from the express.json() default of 100kb — real frontend
 // Istanbul coverage payloads (POST /api/v1/admin/coverage/dump, source:'browser')
 // commonly exceed that (a manual test produced a ~370KB backend V8 payload;
 // browser Istanbul maps run comparably large or larger for a full SPA).
 const JSON_BODY_SIZE_LIMIT = '10mb';
 app.use(express.json({ limit: JSON_BODY_SIZE_LIMIT }));
-// SAML POST binding sends assertions as application/x-www-form-urlencoded (MINCRM-399)
+// SAML POST binding sends assertions as application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// Coverage/TIA correlation-ID propagation (MINCRM-610): reads
+// Coverage/TIA correlation-ID propagation: reads
 // x-coverage-correlation-id, if present, into req.coverageCorrelationId for
 // every route. A no-op for the overwhelming majority of requests, which
 // carry no such header — only the E2E harness and the manual-testing
@@ -140,7 +140,7 @@ app.use(correlationId());
 // ── Routes (v1) ────────────────────────────────────────────────────────────────
 // All resource routes are mounted under /api/v1/. The /api/health endpoint is
 // intentionally unversioned — it is a platform/infra endpoint, not an API resource.
-// MINCRM-283
+//
 const API_V1 = '/api/v1';
 
 app.use(`${API_V1}/auth`, authRoutes);
@@ -163,22 +163,22 @@ app.use(`${API_V1}/automation/rules`, automationRoutes);
 app.use(`${API_V1}/admin/webhooks`, webhookRoutes);
 app.use(`${API_V1}/admin/demo`, demoRoutes);
 app.use(`${API_V1}/admin/import`, importRoutes);
-// Coverage/TIA session management (MINCRM-609..612) — mounted at the more
+// Coverage/TIA session management — mounted at the more
 // specific /admin/coverage/sessions path BEFORE the general /admin/coverage
 // router below, so a future route added to coverage.ts (e.g. a top-level
 // `/:something`) can never shadow this one, mirroring the
 // /reports/custom-before-/reports precedent elsewhere in this file.
 app.use(`${API_V1}/admin/coverage/sessions`, coverageSessionRoutes);
-// Coverage/TIA data pipeline (MINCRM-614, MINCRM-615, MINCRM-616) — same
+// Coverage/TIA data pipeline — same
 // more-specific-before-general mounting precedent as /coverage/sessions above.
 app.use(`${API_V1}/admin/coverage/pipeline`, coveragePipelineRoutes);
-// Coverage/TIA mapping query API (MINCRM-618, MINCRM-621) — same
+// Coverage/TIA mapping query API — same
 // more-specific-before-general mounting precedent as /coverage/sessions above.
 app.use(`${API_V1}/admin/coverage/mapping`, coverageMappingRoutes);
-// Coverage/TIA reporting query API (MINCRM-629, MINCRM-630, MINCRM-631) —
+// Coverage/TIA reporting query API —
 // same more-specific-before-general mounting precedent as /coverage/sessions above.
 app.use(`${API_V1}/admin/coverage/reporting`, coverageReportingRoutes);
-// Coverage/TIA control API (MINCRM-604, MINCRM-606)
+// Coverage/TIA control API
 app.use(`${API_V1}/admin/coverage`, coverageRoutes);
 app.use(`${API_V1}/search`, searchRoutes);
 app.use(`${API_V1}/attachments`, attachmentRoutes);
@@ -187,35 +187,35 @@ app.use(`${API_V1}/leads`, leadRoutes);
 app.use(`${API_V1}/tags`, tagRoutes);
 app.use(`${API_V1}/custom-fields/definitions`, customFieldDefinitionRoutes);
 app.use(`${API_V1}/custom-fields`, customFieldValueRoutes);
-// Notes are mounted under each entity path (MINCRM-352)
+// Notes are mounted under each entity path
 app.use(`${API_V1}/:entityType/:entityId/notes`, noteRoutes);
-// GDPR erasure and export endpoints (MINCRM-364)
+// GDPR erasure and export endpoints
 app.use(`${API_V1}/gdpr`, gdprRoutes);
-// MFA (TOTP two-factor authentication) endpoints (MINCRM-392)
+// MFA (TOTP two-factor authentication) endpoints
 app.use(`${API_V1}/auth/mfa`, mfaRoutes);
-// SSO (SAML 2.0 / OIDC single sign-on) endpoints (MINCRM-399)
+// SSO (SAML 2.0 / OIDC single sign-on) endpoints
 app.use(`${API_V1}/auth/sso`, ssoRoutes);
-// Pipeline management (MINCRM-397)
+// Pipeline management
 app.use(`${API_V1}/pipelines`, pipelineRoutes);
-// Sales sequences (MINCRM-403)
+// Sales sequences
 app.use(`${API_V1}/sequences`, sequenceRoutes);
 app.use(`${API_V1}/sequence-enrollments`, sequenceEnrollmentRoutes);
-// Feature flag registry (MINCRM-463)
+// Feature flag registry
 // Public path exposes /me for all authenticated users; admin-only routes on this
 // router (/ and /:key) are still protected by requireRole('admin') middleware.
 app.use(`${API_V1}/feature-flags`, featureFlagRoutes);
 app.use(`${API_V1}/admin/feature-flags`, featureFlagRoutes);
-// Teams — read endpoints open to all authenticated users; mutations admin-only (MINCRM-537)
+// Teams — read endpoints open to all authenticated users; mutations admin-only
 app.use(`${API_V1}/teams`, teamRoutes);
 app.use(`${API_V1}/custom-roles`, customRoleRoutes);
-// SCIM token management — issue/revoke the long-lived SCIM bearer token. (MINCRM-541)
+// SCIM token management — issue/revoke the long-lived SCIM bearer token.
 app.use(API_V1, scimTokenRoutes);
-// SCIM group → role mapping admin endpoints (MINCRM-541)
+// SCIM group → role mapping admin endpoints
 app.use(API_V1, scimGroupMappingRoutes);
 app.use('/scim/v2', scimRoutes);
-// User-facing AI routes — only /token-budget/me; no admin handlers. (MINCRM-458)
+// User-facing AI routes — only /token-budget/me; no admin handlers.
 app.use(`${API_V1}/ai`, aiUserRouter);
-// Admin AI config/token-budget routes — full router at the admin prefix. (MINCRM-457, MINCRM-458)
+// Admin AI config/token-budget routes — full router at the admin prefix.
 app.use(`${API_V1}/admin/ai`, aiRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
@@ -267,7 +267,7 @@ app.get('/api/health', async (_req: Request, res: Response) => {
   if (!client) return;
 
   try {
-    // SET LOCAL limits this timeout to the current transaction only (MINCRM-258)
+    // SET LOCAL limits this timeout to the current transaction only
     await client.query("SET LOCAL statement_timeout = '2s'");
     await client.query('SELECT 1');
     res.status(200).json({
@@ -303,7 +303,7 @@ if (process.env.NODE_ENV !== 'production') {
    * POST /api/v1/test/advance-sequences — dev/test only.
    * Calls advanceDueEnrollments() immediately so E2E tests can verify
    * that sequence cron logic fires correctly without waiting 15 minutes.
-   * Never available in production. (MINCRM-403)
+   * Never available in production.
    */
   app.post(
     `${API_V1}/test/advance-sequences`,
@@ -325,7 +325,7 @@ app.use((_req: Request, res: Response) => {
 // ── Global error handler ───────────────────────────────────────────────────────
 // Must have four parameters so Express recognizes it as an error handler.
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  // Pool exhaustion: all connections were held for > connectionTimeoutMillis. (MINCRM-248)
+  // Pool exhaustion: all connections were held for > connectionTimeoutMillis.
   if (err.message?.includes('timeout exceeded when trying to connect')) {
     res.status(503).json({
       error: {
@@ -337,7 +337,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   }
 
   // body-parser/raw-body sets .type = 'entity.too.large' on oversized request
-  // bodies (MINCRM-606: relevant to POST /api/v1/admin/coverage/dump, which
+  // bodies (relevant to POST /api/v1/admin/coverage/dump, which
   // can carry a multi-MB frontend coverage payload) — map explicitly so it
   // returns the app's error shape instead of falling through to a raw 500.
   if ((err as { type?: string }).type === 'entity.too.large') {

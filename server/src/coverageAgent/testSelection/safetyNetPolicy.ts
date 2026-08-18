@@ -1,18 +1,18 @@
 /**
- * Coverage/TIA safety-net selection policy. (MINCRM-626)
+ * Coverage/TIA safety-net selection policy.
  *
- * Wraps testSelectionService's (MINCRM-624) mapping-based selection and
- * dependencyGraphService's (MINCRM-625) config/infra widening with the
- * guardrails MINCRM-626's AC requires:
+ * Wraps testSelectionService's mapping-based selection and
+ * dependencyGraphService's config/infra widening with the
+ * guardrails the AC requires:
  *  - An always-run baseline set (smoke/critical paths) unioned in
  *    unconditionally, regardless of what the diff itself resolved to.
  *  - A full-suite fallback triggered by low confidence, unmapped changes, or
  *    a dependency-graph "always widen" signal — never a partial/best-guess
- *    widening in these cases, since MINCRM-626's own framing ("a missed
+ *    widening in these cases, since a later change's own framing ("a missed
  *    test never becomes a missed regression") calls for the safe default,
  *    not a narrower one.
  *  - Configurable thresholds, resolved by the caller from
- *    coveragePolicyConfig.ts (MINCRM-637) and passed in explicitly — this
+ *    coveragePolicyConfig.ts and passed in explicitly — this
  *    module itself no longer reads process.env, matching the repo's
  *    "resolve once at boot/script-start, pass the result down" convention
  *    (coverageConfig.ts's resolveCoverageConfig) rather than reading env

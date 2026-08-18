@@ -1,6 +1,6 @@
 /**
  * Win/loss pattern analysis service — nightly AI job that mines closed deals
- * for patterns correlating with winning and losing. (MINCRM-464)
+ * for patterns correlating with winning and losing.
  *
  * analyzeWinLossPatterns() is the cron entry point (server/src/server.ts).
  * It replaces the full deal_win_loss_insights table contents on each run —

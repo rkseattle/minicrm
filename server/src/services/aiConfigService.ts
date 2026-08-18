@@ -2,7 +2,6 @@
  * AI configuration service — all reads and writes for AI provider/model settings.
  * Owns the full lifecycle: storage in ai_configuration, API key encryption,
  * DPA acknowledgment, deployment mode, and derived status indicators.
- * (MINCRM-457, MINCRM-502)
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -247,7 +246,7 @@ export async function setAiSessionRetention(
 /**
  * Updates the AI cost estimation rates (cents per 1,000,000 tokens, input and
  * output separately). Writes one audit entry per changed field in the same
- * transaction as the data write. (MINCRM-459)
+ * transaction as the data write.
  */
 export async function setAiCostRates(
   params: SetAiCostRatesInput,
@@ -499,7 +498,7 @@ export async function setAiEnabled(
     // link and every ai_* sub-feature flag can never observe a state where
     // one table reflects the new enabled value and the other doesn't
     // (featureFlagService.isFlagEnabledForUser gates every ai_* flag on
-    // ai_features — see MINCRM-460). Written inline rather than through
+    // ai_features — see the history). Written inline rather than through
     // updateFeatureFlag() because that function owns its own connection and
     // transaction and can't participate in this one; it only ever needs to
     // touch the `enabled` column here, never role_overrides — those stay

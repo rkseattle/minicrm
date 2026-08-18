@@ -1,5 +1,5 @@
 /**
- * Unit tests for GET /api/health deep database connectivity check (MINCRM-258).
+ * Unit tests for GET /api/health deep database connectivity check.
  *
  * The pool is mocked so these tests do not require a live database connection.
  * Each test verifies the response shape and status code for a distinct failure mode.
@@ -15,7 +15,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('GET /api/health — MINCRM-258', () => {
+describe('GET /api/health', () => {
   it('returns 200 with { status: ok, db: ok } when the database is reachable', async () => {
     const mockClient = {
       query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),

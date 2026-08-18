@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA build-time reconciliation & confidence scoring. (MINCRM-620)
+ * Coverage/TIA build-time reconciliation & confidence scoring.
  *
  * Re-validates coverage_units against the CURRENT source tree and commit
  * history — not the commit_sha a unit was originally ingested at — and:
@@ -10,9 +10,9 @@
  *  3. Carries a unit's mapping forward (in place — same row, same
  *     accumulated hit_count/history) when its file was renamed/moved,
  *     using git's own rename-detection between the unit's own commit_sha
- *     and current HEAD as the VCS signal MINCRM-619/620 call for.
+ *     and current HEAD as the VCS signal call for.
  *
- * File-granularity rename detection (not per-function): MINCRM-619's
+ * File-granularity rename detection (not per-function): 's
  * structural key (name + normalized-body-hash, see structuralKeyService.ts)
  * is ALREADY stable across in-file edits by construction — a function's key
  * survives reformatting and unrelated edits elsewhere in its own file
@@ -21,7 +21,7 @@
  * from the hash. Git's rename detection (`git diff --find-renames`)
  * operates at file granularity, which is exactly the gap this closes —
  * re-deriving each function's own body hash again here would be redundant
- * with what MINCRM-619 already guarantees, not an additional safeguard.
+ * with what the reconciler already guarantees, not an additional safeguard.
  *
  * No new AST/git library dependency: shells out to `git` via execFileSync
  * with array arguments (never a shell string), mirroring the existing
@@ -29,14 +29,14 @@
  *
  * Callable on demand only, not scheduled. Note this is no longer the same
  * precedent coverageModelService.pruneCoverageUnits sets — that function is
- * now cron-scheduled (coverageRetentionScheduler.ts, MINCRM-637), since
+ * now cron-scheduled (coverageRetentionScheduler.ts), since
  * retention pruning genuinely has no meaningful judgment call to make on a
  * fixed daily cadence. Reconciliation is different: it re-validates against
  * the CURRENT source tree and git history for a caller-supplied commit,
  * which only makes sense at a meaningful build-time boundary (e.g. a CI job
  * for a specific commit), not on a wall-clock schedule with no commit
  * context of its own — wiring it into such a trigger remains the CI/CD
- * Integration epic's concern (MINCRM-632, `pr-tia-7`).
+ * Integration epic's concern.
  */
 
 import { access } from 'fs/promises';
@@ -203,7 +203,7 @@ export async function reconcileCoverageUnits(
       let survivingId = unit.id;
 
       if (relocatedTo) {
-        // unit_key itself is unchanged — MINCRM-619's structural key
+        // unit_key itself is unchanged — the structural key
         // already survives content edits by construction; only file_path
         // needs to move to reflect where git says the file now lives.
         survivingId = await relocateCoverageUnit(unit.id, relocatedTo, unit.unitKey);

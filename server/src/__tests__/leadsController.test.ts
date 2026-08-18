@@ -1,7 +1,6 @@
 /**
  * HTTP contract tests for leadsController.
  * Verifies request validation, response shapes, ownership enforcement, and conversion.
- * (MINCRM-196)
  */
 
 import 'dotenv/config';
@@ -251,7 +250,7 @@ describe('GET /api/leads', () => {
   });
 });
 
-// ── GET /api/leads/export and /api/leads/export.pdf (MINCRM-651) ───────────
+// ── GET /api/leads/export and /api/leads/export.pdf ───────────
 
 describe('GET /api/leads/export', () => {
   it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {
@@ -358,7 +357,7 @@ describe('GET /api/leads/:id', () => {
   });
 });
 
-// ── GET /api/leads/:id/export.pdf (MINCRM-650) ──────────────────────────────
+// ── GET /api/leads/:id/export.pdf ──────────────────────────────
 
 describe('GET /api/leads/:id/export.pdf', () => {
   it('returns a single-record PDF with the correct Content-Type and Content-Disposition headers', async () => {
@@ -725,7 +724,7 @@ describe('GET /api/leads/accounts/search', () => {
   });
 });
 
-// ── GET /api/leads — ?owner=my_team filter (MINCRM-545) ─────────────────────
+// ── GET /api/leads — ?owner=my_team filter ─────────────────────
 
 describe('GET /api/leads — ?owner=my_team filter', () => {
   const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
@@ -816,7 +815,7 @@ describe('GET /api/leads — ?owner=my_team filter', () => {
   });
 });
 
-describe('POST /api/v1/leads/routing-suggestion (MINCRM-475)', () => {
+describe('POST /api/v1/leads/routing-suggestion', () => {
   it('returns 401 without authentication', async () => {
     await request(app).post('/api/v1/leads/routing-suggestion').send({}).expect(401);
   });
@@ -829,7 +828,7 @@ describe('POST /api/v1/leads/routing-suggestion (MINCRM-475)', () => {
     // candidate pool is populated by whichever other test files' fixture
     // users happen to be active at request time. A hardcoded expect(204)
     // here previously only passed because of a since-fixed service bug
-    // (MINCRM-475 / F-ROUTE3) that forced confidence to 'low' whenever the
+    // that forced confidence to 'low' whenever the
     // workload/availability team averages were momentarily zero — masking
     // this file's lack of control over the org-wide pool rather than
     // actually asserting "no signal". This test can only correctly assert

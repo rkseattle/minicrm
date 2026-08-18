@@ -1,5 +1,5 @@
 /**
- * Duplicate explanation controller — request/response shaping only. (MINCRM-440)
+ * Duplicate explanation controller — request/response shaping only.
  * No business logic here; all AI orchestration goes through duplicateExplanationService.
  */
 

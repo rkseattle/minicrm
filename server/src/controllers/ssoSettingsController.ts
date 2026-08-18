@@ -1,5 +1,5 @@
 /**
- * SSO settings controller — request/response shaping for SSO configuration endpoints. (MINCRM-399)
+ * SSO settings controller — request/response shaping for SSO configuration endpoints.
  * No business logic here; all DB access goes through ssoSettingsService and ssoService.
  */
 

@@ -1,6 +1,6 @@
 /**
  * Coverage/TIA health controller — request/response shaping only. All
- * health-check logic lives in coverageHealthService. (MINCRM-637)
+ * health-check logic lives in coverageHealthService.
  */
 
 import type { Request, Response } from 'express';

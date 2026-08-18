@@ -1,5 +1,5 @@
 /**
- * Unit tests for roleService — capability RBAC (MINCRM-542).
+ * Unit tests for roleService — capability RBAC.
  *
  * Covers:
  * - userCapabilities(): union from user_custom_roles + fallback via users.role
@@ -76,7 +76,7 @@ describe('userCapabilities', () => {
     expect(caps.has(Capability.ContactsView)).toBe(true);
     expect(caps.has(Capability.ContactsCreate)).toBe(true);
     expect(caps.has(Capability.ContactsEdit)).toBe(true);
-    // rep has contacts:delete — migration 109 restored pre-MINCRM-542 behavior
+    // rep has contacts:delete — migration 109 restored the earlier behaviour
     expect(caps.has(Capability.ContactsDelete)).toBe(true);
     // rep does NOT have admin-only capabilities
     expect(caps.has(Capability.SettingsManage)).toBe(false);

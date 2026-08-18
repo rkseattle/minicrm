@@ -1,5 +1,5 @@
 /**
- * Integration tests for smtpSettingsService. (MINCRM-254, MINCRM-502)
+ * Integration tests for smtpSettingsService.
  *
  * Verifies that SMTP config is read/written correctly, that the password is
  * encrypted at rest and never returned in the public view, and that omitting

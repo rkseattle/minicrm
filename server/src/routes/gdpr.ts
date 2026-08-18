@@ -1,6 +1,6 @@
 /**
  * GDPR routes — system-wide deletion log and status endpoints.
- * All endpoints require authentication and admin role. (MINCRM-364)
+ * All endpoints require authentication and admin role.
  */
 
 import { Router } from 'express';

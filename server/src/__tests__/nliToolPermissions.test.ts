@@ -1,5 +1,5 @@
 /**
- * Unit tests for NLI tool capability filtering. (MINCRM-434)
+ * Unit tests for NLI tool capability filtering.
  *
  * Verifies that buildToolSet returns the correct tool subsets for different
  * capability sets and role strings.

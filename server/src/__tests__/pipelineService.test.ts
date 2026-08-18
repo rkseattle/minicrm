@@ -1,5 +1,5 @@
 /**
- * Integration tests for pipelineService (MINCRM-397).
+ * Integration tests for pipelineService.
  *
  * Runs against a real PostgreSQL test database.
  * The default pipeline is guaranteed to exist after migration 056.
@@ -39,7 +39,7 @@ async function cleanupTestPipelines(): Promise<void> {
  * record_type/record_name predicates kept as a narrowing filter so the intent
  * stays legible at the call site. It does not delegate to that helper only
  * because it runs before ACTOR.id is populated in some orderings; the delete
- * semantics are otherwise identical. (MINCRM-693)
+ * semantics are otherwise identical.
  *
  * All three statements run in one transaction on a single client, since
  * ALTER TABLE ... DISABLE/ENABLE TRIGGER is catalog-level (visible to every
@@ -58,7 +58,7 @@ async function clearPipelineAuditLog(): Promise<void> {
     await client.query(
       // Scoped by changed_by_id, not record_type/record_name: those two are
       // shared with pipelineController.test.ts, so an unscoped delete removes a
-      // concurrently running file's rows out from under it. (MINCRM-693)
+      // concurrently running file's rows out from under it.
       `DELETE FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND changed_by_id = $1`,
       [ACTOR.id],
     );
@@ -96,7 +96,7 @@ beforeEach(async () => {
   // Re-established every test: ACTOR.id is the FK target for every pipeline this file
   // creates, and a sibling spec's bare `DELETE FROM users` (userService.test.ts) would
   // otherwise leave it dangling. Serial order is duration-derived, so this file cannot
-  // rely on running before that wipe. (MINCRM-704)
+  // rely on running before that wipe.
   ACTOR.id = await ensureActor();
   await cleanupTestPipelines();
   await clearPipelineAuditLog();

@@ -1,5 +1,5 @@
 /**
- * NLI tool definitions for the AI data hygiene assistant. (MINCRM-476)
+ * NLI tool definitions for the AI data hygiene assistant.
  * Unlike rep coaching insights, hygiene findings ARE exposed to NLI per the
  * ticket's explicit requirement ("Show me my contacts with no activity in
  * the last year").

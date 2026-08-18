@@ -1,5 +1,5 @@
 /**
- * Integration tests for dataHygieneService. (MINCRM-476)
+ * Integration tests for dataHygieneService.
  * Runs against a real PostgreSQL test database. Network-dependent signals
  * (MX lookup, website reachability) are exercised with real DNS/HTTP calls
  * against known-good/known-bad targets rather than mocked, matching this
@@ -35,14 +35,14 @@ const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 /**
  * The record_name setDataHygieneConfig writes its audit rows under. Shared with
  * dataHygieneController.test.ts, which is why it cannot scope an assertion on
- * its own — see the audit-count tests below. (MINCRM-693)
+ * its own — see the audit-count tests below.
  */
 const DATA_HYGIENE_CONFIG_RECORD_NAME = 'Data Hygiene Assistant Configuration';
 
 let ownerId: string;
 let otherOwnerId: string;
 
-/** Counts this file's own config audit rows. See countAuditRowsFor. (MINCRM-693) */
+/** Counts this file's own config audit rows. See countAuditRowsFor. */
 function countConfigAuditRows(actorId: string): Promise<number> {
   return countAuditRowsFor(pool, {
     recordType: 'ai_settings',
@@ -180,7 +180,7 @@ describe('runDataHygieneScan — contact signals', () => {
     // Backdate title_updated_at to simulate a title set 2 days ago (older than
     // the 1-day threshold), then touch an unrelated field via updateContact —
     // this must NOT reset title_updated_at, proving the two timestamps are
-    // tracked independently (MINCRM-476's core requirement).
+    // tracked independently.
     await pool.query(
       `UPDATE contacts SET title_updated_at = now() - interval '2 days' WHERE id = $1`,
       [contact.id],
@@ -694,7 +694,7 @@ describe('getDataHygieneConfig / setDataHygieneConfig', () => {
     //
     // ownerId is created in beforeAll with this file's own email prefix, so no
     // concurrently running file can write a row carrying it. Compare before vs
-    // after rather than asserting an absolute '0'. (MINCRM-693)
+    // after rather than asserting an absolute '0'.
     const before = await countConfigAuditRows(ownerId);
 
     await setDataHygieneConfig(
@@ -714,7 +714,7 @@ describe('getDataHygieneConfig / setDataHygieneConfig', () => {
 
   it("counts this file's real config writes while ignoring another actor's", async () => {
     // Demonstrates the fix holds rather than merely observing it pass once
-    // (MINCRM-693 AC 3). Both halves matter: a REAL setDataHygieneConfig write
+    //. Both halves matter: a REAL setDataHygieneConfig write
     // under this file's actor IS counted (so the scoping cannot pass by matching
     // nothing), and a row under a different actor carrying the identical
     // record_type and record_name a concurrent controller test writes is NOT.

@@ -1,5 +1,5 @@
 /**
- * Note service — business logic and all DB access for the notes feature. (MINCRM-352)
+ * Note service — business logic and all DB access for the notes feature.
  *
  * Visibility rules enforced here:
  *   - private: body/title returned only to the creator
@@ -324,7 +324,7 @@ export async function createNote(
 
     const noteId = insertResult.rows[0]!.id;
 
-    // Sync tags via note_tags junction (MINCRM-506)
+    // Sync tags via note_tags junction
     if (params.tags && params.tags.length > 0) {
       await syncEntityTagsWithinTransaction(client, 'note', noteId, params.tags);
     }
@@ -441,7 +441,7 @@ export async function updateNote(
       ],
     );
 
-    // Sync tags via note_tags junction when tags were explicitly provided (MINCRM-506)
+    // Sync tags via note_tags junction when tags were explicitly provided
     if (params.tags !== undefined) {
       await syncEntityTagsWithinTransaction(client, 'note', noteId, params.tags);
     }
@@ -513,7 +513,7 @@ export async function updateNote(
   }
 }
 
-/** Parameters for cross-entity note search (MINCRM-432) */
+/** Parameters for cross-entity note search */
 export interface SearchNotesParams {
   entity_type?: NoteEntityType;
   entity_id?: string;
@@ -609,7 +609,7 @@ export async function searchNotesCrossEntity(
 /**
  * Soft-deletes all non-deleted notes for a given entity within an existing transaction.
  * Must be called before hard-deleting the parent entity row so that orphaned notes
- * are never left with deleted_at = NULL pointing at a non-existent parent. (MINCRM-523)
+ * are never left with deleted_at = NULL pointing at a non-existent parent.
  *
  * @param client - Checked-out pool client already inside a BEGIN/COMMIT block
  * @param entityType - Parent entity type (contact | account | deal | lead)

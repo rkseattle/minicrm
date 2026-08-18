@@ -2,7 +2,6 @@
  * HTTP contract tests for automationController.
  * Verifies request validation, response shapes, error codes, and role enforcement.
  * All business logic is exercised by automationService.test.ts; these tests cover the HTTP layer.
- * (MINCRM-195)
  */
 
 import 'dotenv/config';

@@ -1,10 +1,10 @@
 /**
- * Integration tests for the coverage session control API. (MINCRM-609..612, MINCRM-663)
+ * Integration tests for the coverage session control API.
  * Covers: auth boundaries (401/403-role), Zod validation, invalid
  * sessionId path params, the ended-session conflict paths (double-end,
  * dump attribution after end), and duplicate-dumpId rejection.
  *
- * MINCRM-663: this router's routes are now registered only when
+ * this router's routes are now registered only when
  * COVERAGE_SESSION_MANAGEMENT='true' at process boot (see
  * routes/coverageSessions.ts's own docblock) — no longer gated by a
  * coverage_session_management feature_flags row. .env.test sets
@@ -95,7 +95,7 @@ describe('coverage session control API — auth boundaries', () => {
   });
 });
 
-describe('coverage session control API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+describe('coverage session control API — COVERAGE_CAPABILITY_GATING=true', () => {
   const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
 
   beforeEach(() => {
@@ -132,7 +132,7 @@ describe('coverage session control API — COVERAGE_CAPABILITY_GATING=true (MINC
   });
 });
 
-describe('coverage session control API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636/637)', () => {
+describe('coverage session control API — COVERAGE_DASHBOARD_NO_AUTH=true', () => {
   const originalNoAuth = process.env.COVERAGE_DASHBOARD_NO_AUTH;
   const originalNodeEnv = process.env.NODE_ENV;
 

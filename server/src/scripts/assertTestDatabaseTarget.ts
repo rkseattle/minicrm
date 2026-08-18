@@ -1,6 +1,5 @@
 /**
  * assertTestDatabaseTarget.ts — refuse-to-run guard for the destructive E2E scripts.
- * (MINCRM-684)
  *
  * These scripts truncate and reseed every table they touch. reset-e2e-data.ts runs
  * `TRUNCATE audit_log CASCADE` plus mass DELETEs. Run against the wrong database they
@@ -26,7 +25,6 @@
 // The port rule runs the SAME code as the QA-side resolver rather than a
 // hand-synced copy. It lives in shared/ because this file is compiled into the
 // server image and cannot import from qa/ — see that module's docblock.
-// (MINCRM-699)
 import { normalizeDbPort, isDevDatabasePort } from '@minicrm/shared/testing/testStackDbPort.js';
 
 /** Databases these scripts are permitted to touch. `minicrm` and `minicrm_coverage` are deliberately absent — those are the dev/production databases. */

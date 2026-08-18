@@ -1,5 +1,5 @@
 /**
- * Unit tests for the Bulk V2 service functions (MINCRM-562).
+ * Unit tests for the Bulk V2 service functions.
  *
  * Covers per-record success/failure isolation using real savepoints against
  * the minicrm_test PostgreSQL database.

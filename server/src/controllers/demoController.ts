@@ -1,6 +1,6 @@
 /**
  * Demo data controller.
- * Request/response shaping for the /api/admin/demo endpoints. (MINCRM-103)
+ * Request/response shaping for the /api/admin/demo endpoints.
  * All business logic lives in demoService.
  */
 

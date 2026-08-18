@@ -1,5 +1,5 @@
 /**
- * Account lockout tests (MINCRM-391).
+ * Account lockout tests.
  *
  * Verifies that POST /api/auth/login blocks further attempts with 429
  * ACCOUNT_TEMPORARILY_LOCKED after LOCKOUT_MAX_ATTEMPTS consecutive failures
@@ -46,7 +46,7 @@ beforeEach(() => {
   _resetStoreForTesting();
 });
 
-describe('MINCRM-391 — account lockout', () => {
+describe('account lockout', () => {
   it('allows login before the lockout threshold is reached', async () => {
     for (let i = 0; i < LOCKOUT_MAX_ATTEMPTS - 1; i++) {
       const res = await request(app)

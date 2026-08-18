@@ -336,7 +336,7 @@ const MAX_DUE_DATE_OFFSET_DAYS = 3650;
  */
 async function executeRule(rule: AutomationRuleRow, context: TriggerContext): Promise<void> {
   // Capture the action_config at the moment of execution so the log entry remains
-  // accurate even if the rule is subsequently edited. (MINCRM-509)
+  // accurate even if the rule is subsequently edited.
   const actionConfigSnapshot = rule.action_config;
 
   const logBase = {
@@ -363,7 +363,7 @@ async function executeRule(rule: AutomationRuleRow, context: TriggerContext): Pr
       // against CURRENT_DATE (UTC), so deriving the day from local calendar
       // fields would land the task a day off — and therefore mark it overdue a
       // day early or late — for any process not running in UTC.
-      // See docs/dev/dates-and-timezones.md. (MINCRM-700)
+      // See docs/dev/dates-and-timezones.md.
       const offsetDays = Math.min(due_date_offset_days, MAX_DUE_DATE_OFFSET_DAYS);
       const dueDateStr = utcDayOffset(new Date(), offsetDays);
 
@@ -382,7 +382,7 @@ async function executeRule(rule: AutomationRuleRow, context: TriggerContext): Pr
         throw new Error(`Invalid action_config: ${configParsed.error.errors[0].message}`);
       }
       // Notification is logged to the application logger.
-      // Full email/in-app notification delivery is post-alpha (MINCRM-5).
+      // Full email/in-app notification delivery is post-alpha.
       logger.info(
         {
           ruleId: rule.id,

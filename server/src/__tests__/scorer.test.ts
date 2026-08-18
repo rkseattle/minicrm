@@ -1,5 +1,5 @@
 /**
- * Tests for scorer. (MINCRM-627)
+ * Tests for scorer.
  *
  * Pure logic over plain data fixtures. Includes a wiring-level test that
  * the safety-net invariant (scorers never see/influence the baseline set)
@@ -109,7 +109,7 @@ describe('TestScorer safety-net invariant', () => {
       unmappedChanges: [],
       dependencyWideningResults: [],
       // Matches coveragePolicyConfig.ts's own defaults — safetyNetPolicy.ts
-      // no longer has module-level defaults of its own (MINCRM-637).
+      // no longer has module-level defaults of its own.
       minConfidenceThreshold: 0.3,
       maxUnmappedRatio: 0.5,
     });

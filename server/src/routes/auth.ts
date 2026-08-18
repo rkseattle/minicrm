@@ -231,7 +231,7 @@ router.get('/me', authenticate, asyncHandler(me));
  *     description: >
  *       Issues a new JWT with a fresh 30-minute idle expiry. The original login_at
  *       claim is preserved so the 8-hour absolute session cap is still enforced.
- *       Called automatically by the client on user activity. (MINCRM-365)
+ *       Called automatically by the client on user activity.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -325,7 +325,7 @@ router.post('/change-password', authenticate, asyncHandler(changePassword));
  *     summary: Request a password reset link
  *     description: >
  *       Accepts an email address and sends a reset link if a matching active
- *       user exists. Always returns 200 to prevent user enumeration (MINCRM-156).
+ *       user exists. Always returns 200 to prevent user enumeration.
  *       Rate-limited to 5 requests per 15 minutes per IP.
  *     security: []
  *     requestBody:
@@ -370,7 +370,7 @@ router.post('/forgot-password', forgotPasswordLimiter, asyncHandler(forgotPasswo
  *     summary: Set a new password using a reset token
  *     description: >
  *       Validates the token, updates the user's password, invalidates the token,
- *       and sets a new session cookie (MINCRM-157). All existing sessions for the
+ *       and sets a new session cookie. All existing sessions for the
  *       user are invalidated via password_changed_at.
  *     security: []
  *     requestBody:
@@ -413,7 +413,7 @@ router.post('/reset-password', resetPasswordLimiter, asyncHandler(resetPassword)
 // ── Dev/test-only endpoint ───────────────────────────────────────────────────
 // Returns a plaintext reset token for a given email address.
 // Only available when NODE_ENV !== 'production'.
-// Used by E2E tests to bypass the email delivery step. (MINCRM-156)
+// Used by E2E tests to bypass the email delivery step.
 if (process.env.NODE_ENV !== 'production') {
   /**
    * POST /api/v1/auth/dev/reset-token — dev/test only.
@@ -444,7 +444,6 @@ if (process.env.NODE_ENV !== 'production') {
    * GET /api/v1/auth/dev/jwt — dev/test only.
    * Returns the raw JWT from the httpOnly session cookie so E2E tests can pass it
    * as gRPC metadata without reading cookies directly. Never available in production.
-   * (MINCRM-376)
    */
   router.get(
     '/dev/jwt',

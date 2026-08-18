@@ -3,11 +3,11 @@
  *
  * Describes the CRM entity model, tool use expectations, and behavioural
  * constraints. Kept in a dedicated module so it can be updated independently
- * of the orchestration loop. (MINCRM-422)
+ * of the orchestration loop.
  *
  * buildSystemPrompt() prepends a user-personalisation preamble when the user
  * has saved context entries, so Claude learns their individual preferences and
- * definitions without requiring repetition across sessions. (MINCRM-427)
+ * definitions without requiring repetition across sessions.
  */
 
 import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
@@ -85,7 +85,6 @@ Rules for proposing context:
  * When the user has saved context entries, a personalisation preamble is
  * prepended so Claude applies their definitions automatically without requiring
  * repetition. When the list is empty the output is identical to the base prompt.
- * (MINCRM-427)
  */
 export function buildSystemPrompt(contextEntries: AiContextEntryResponse[]): string {
   if (contextEntries.length === 0) {

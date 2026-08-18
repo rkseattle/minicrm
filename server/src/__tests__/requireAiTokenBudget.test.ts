@@ -1,5 +1,5 @@
 /**
- * Unit tests for requireAiTokenBudget middleware. (MINCRM-458)
+ * Unit tests for requireAiTokenBudget middleware.
  *
  * Covers:
  *  - Returns 401 when req.user is not set

@@ -1,5 +1,5 @@
 /**
- * Integration tests for the custom field controller. (MINCRM-295)
+ * Integration tests for the custom field controller.
  * Covers: definitions CRUD (list, create, update, delete) and values get/put.
  * All definition mutations are admin-only; value reads/writes are authenticated.
  */

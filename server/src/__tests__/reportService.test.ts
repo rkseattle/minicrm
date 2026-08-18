@@ -5,10 +5,10 @@
  * Three test users are created in beforeAll and reused across tests:
  *   - repId      — the primary rep caller
  *   - otherRepId — a second rep; used to verify ownership isolation
- *   - adminId    — admin caller; used to verify My View scoping (MINCRM-264)
+ *   - adminId    — admin caller; used to verify My View scoping
  * The deals / activities tables are truncated before each test.
  *
- * Ownership-scoping audit (MINCRM-264): both report queries in reportService.ts
+ * Ownership-scoping audit: both report queries in reportService.ts
  * already apply WHERE owner_id = $userId when ownerId is non-null, and omit the
  * clause (returning team-wide data) when ownerId is null. The controller enforces
  * that rep callers always receive ownerId = req.user.id, and admin callers receive
@@ -48,7 +48,7 @@ const OTHER_REP_USER = {
   status: 'active' as const,
 };
 
-/** Admin user — used to verify My View scoping (MINCRM-264) */
+/** Admin user — used to verify My View scoping */
 const ADMIN_USER = {
   email: `${FILE_PREFIX}-admin@example.com`,
   name: 'Report Admin',
@@ -364,7 +364,7 @@ describe('getWinLossReport — date range filtering', () => {
 });
 
 // ── Owner scoping ─────────────────────────────────────────────────────────────
-// MINCRM-264 audit: these cases confirm the three required scoping modes.
+// audit: these cases confirm the three required scoping modes.
 
 describe('getWinLossReport — owner scoping', () => {
   it('rep caller: scopes results to only their own deals', async () => {
@@ -573,7 +573,7 @@ describe('getWinLossReport — loss reason breakdown', () => {
   });
 });
 
-// ── Activity Volume Report (MINCRM-181) ───────────────────────────────────────
+// ── Activity Volume Report ───────────────────────────────────────
 
 /** Activity range covering 2025 — activities are matched by created_at */
 const ACT_RANGE = { startDate: '2025-01-01', endDate: '2025-12-31' };
@@ -660,7 +660,7 @@ describe('getActivityVolumeReport — date range filtering', () => {
   });
 });
 
-// MINCRM-264 audit: three required scoping modes for activity volume.
+// audit: three required scoping modes for activity volume.
 describe('getActivityVolumeReport — owner scoping', () => {
   it('rep caller: scopes results to only their own activities', async () => {
     await pool.query(
@@ -727,7 +727,7 @@ describe('getActivityVolumeReport — types default to zero', () => {
   });
 });
 
-// ── getStageTrendReport (MINCRM-284) ──────────────────────────────────────────
+// ── getStageTrendReport ──────────────────────────────────────────
 
 /** Insert an audit_log entry recording a deal entering a given stage at a given timestamp */
 async function insertDealStageEntry(
@@ -904,7 +904,7 @@ describe('getStageTrendReport — metadata', () => {
   });
 });
 
-// ── Historical exchange rate conversion (MINCRM-526) ─────────────────────────
+// ── Historical exchange rate conversion ─────────────────────────
 //
 // Verifies that getWinLossReport uses the exchange rate that was in effect at
 // the deal's close_date, not the current rate. This is the core correctness
@@ -994,7 +994,7 @@ describe('getWinLossReport — historical exchange rate conversion', () => {
   });
 });
 
-// ── Leads Summary Report (MINCRM-424) ────────────────────────────────────────
+// ── Leads Summary Report ────────────────────────────────────────
 
 describe('getLeadsSummaryReport — empty state', () => {
   it('returns all statuses at zero count when there are no leads', async () => {

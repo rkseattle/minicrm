@@ -1,10 +1,10 @@
 /**
- * Coverage/TIA structural key derivation. (MINCRM-619)
+ * Coverage/TIA structural key derivation.
  *
  * Derives a coverage_units.unit_key that stays stable across in-line edits
  * and simple refactors, replacing the earlier `${name}@${declLine}` key
  * (still visible in git history via qualifiedUnitKey/qualifiedUnitKeyForLine
- * prior to this change) that MINCRM-616 flagged as a placeholder: a
+ * prior to this change) that review flagged as a placeholder: a
  * line-number-based key breaks identity the moment an unrelated edit
  * shifts a function up or down in its file, even though the function's own
  * body never changed.
@@ -24,7 +24,7 @@
  * (e.g. re-ordering object properties, alpha-renaming local variables) —
  * that would make the hash "same logic, different code" rather than "same
  * code, different formatting", which is a materially fuzzier identity than
- * MINCRM-619's own AC ("normalized (AST) body hash") calls for. Whitespace/
+ * the own AC ("normalized (AST) body hash") calls for. Whitespace/
  * comment normalization is the well-understood, deterministic middle
  * ground: two functions with byte-identical logic but different
  * indentation or an added/removed comment still hash identically, while

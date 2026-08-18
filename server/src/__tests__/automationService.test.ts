@@ -405,7 +405,6 @@ describe('fireAutomationTrigger — create_task action', () => {
     // off for any non-UTC deployment. Asking Postgres for the expected value
     // rather than computing it in Node keeps the assertion honest about which
     // authority the column answers to. BASE_RULE uses an offset of 1 day.
-    // MINCRM-700.
     await createAutomationRule({ ...BASE_RULE, created_by: adminId });
 
     await fireAutomationTrigger('deal_created', {
@@ -588,9 +587,9 @@ describe('fireAutomationTrigger — contact_created', () => {
   });
 });
 
-// ── MINCRM-83: Failure isolation ───────────────────────────────────────────────
+// ── Failure isolation ───────────────────────────────────────────────
 
-describe('MINCRM-83 — failing rule does not abort the triggering operation', () => {
+describe('failing rule does not abort the triggering operation', () => {
   it('does not throw when a rule action fails, and writes an error log', async () => {
     const failingRule = await createAutomationRule({
       ...BASE_RULE,
@@ -675,7 +674,7 @@ describe('MINCRM-83 — failing rule does not abort the triggering operation', (
   });
 });
 
-// Note: MINCRM-83 Scenario 2 (disabled rule does not fire) is covered by
+// Note: scenario 2 (disabled rule does not fire) is covered by
 // the 'does not fire disabled rules' test in the create_task section above.
 
 // ── fireAutomationTrigger — send_notification ──────────────────────────────────
@@ -711,11 +710,11 @@ describe('fireAutomationTrigger — send_notification', () => {
   });
 });
 
-// ── Audit log coverage (MINCRM-382) ─────────────────────────────────────────────
+// ── Audit log coverage ─────────────────────────────────────────────
 
 const AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000003', name: 'Automation Audit Actor' };
 
-describe('audit log entries for automation rules (MINCRM-382)', () => {
+describe('audit log entries for automation rules', () => {
   beforeEach(async () => {
     await clearAuditLogFor(AUDIT_ACTOR.id);
   });
@@ -794,7 +793,7 @@ describe('audit log entries for automation rules (MINCRM-382)', () => {
   });
 });
 
-// ── action_config_snapshot (MINCRM-509) ────────────────────────────────────────
+// ── action_config_snapshot ────────────────────────────────────────
 
 describe('action_config_snapshot', () => {
   it('log row captures the action_config at fire time', async () => {

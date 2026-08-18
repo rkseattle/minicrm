@@ -5,7 +5,7 @@
  *   POST /run   — upload CSV + mapping JSON, create job and return 202
  * Job polling:
  *   GET /jobs/:job_id — poll for background import progress
- * MINCRM-158 (contacts), MINCRM-159 (accounts), MINCRM-160 (deals), MINCRM-255
+ * (contacts), (accounts), (deals)
  */
 
 import { Router } from 'express';

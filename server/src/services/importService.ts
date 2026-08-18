@@ -1,7 +1,7 @@
 /**
  * Import service — CSV import logic for accounts, contacts, and deals.
  * Handles CSV parsing, field validation, duplicate detection, and DB insertion.
- * MINCRM-158, MINCRM-159, MINCRM-160
+ *
  */
 
 import { parse } from 'csv-parse/sync';
@@ -68,7 +68,7 @@ export interface CrmField {
   required: boolean;
 }
 
-/** Importable CRM fields for accounts (MINCRM-159) */
+/** Importable CRM fields for accounts */
 export const ACCOUNT_FIELDS: CrmField[] = [
   { key: 'name', label: 'Company Name', required: true },
   { key: 'industry', label: 'Industry', required: false },
@@ -77,7 +77,7 @@ export const ACCOUNT_FIELDS: CrmField[] = [
   { key: 'revenue_range', label: 'Revenue Range', required: false },
 ];
 
-/** Importable CRM fields for contacts (MINCRM-158) */
+/** Importable CRM fields for contacts */
 export const CONTACT_FIELDS: CrmField[] = [
   { key: 'first_name', label: 'First Name', required: true },
   { key: 'last_name', label: 'Last Name', required: true },
@@ -88,7 +88,7 @@ export const CONTACT_FIELDS: CrmField[] = [
   { key: 'account_name', label: 'Account Name (for lookup)', required: false },
 ];
 
-/** Importable CRM fields for deals (MINCRM-160) */
+/** Importable CRM fields for deals */
 export const DEAL_FIELDS: CrmField[] = [
   { key: 'name', label: 'Deal Name', required: true },
   { key: 'stage', label: 'Stage', required: true },
@@ -157,7 +157,7 @@ export function buildErrorCsv(failures: ImportFailure[]): string {
   return [header, ...lines].join('\n');
 }
 
-// ── Account import (MINCRM-159) ────────────────────────────────────────────────
+// ── Account import ────────────────────────────────────────────────
 
 /** Column mapping for account import: CRM field key → CSV column header */
 export type AccountMapping = {
@@ -241,7 +241,7 @@ export async function importAccounts(
   return result;
 }
 
-// ── Contact import (MINCRM-158) ────────────────────────────────────────────────
+// ── Contact import ────────────────────────────────────────────────
 
 /** Column mapping for contact import: CRM field key → CSV column header */
 export type ContactMapping = {
@@ -350,7 +350,7 @@ export async function importContacts(
   return result;
 }
 
-// ── Deal import (MINCRM-160) ───────────────────────────────────────────────────
+// ── Deal import ───────────────────────────────────────────────────
 
 /** Column mapping for deal import: CRM field key → CSV column header */
 export type DealMapping = {

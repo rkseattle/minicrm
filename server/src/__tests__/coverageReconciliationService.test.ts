@@ -1,5 +1,5 @@
 /**
- * Tests for coverageReconciliationService. (MINCRM-620)
+ * Tests for coverageReconciliationService.
  *
  * computeConfidenceScore is pure and tested directly. reconcileCoverageUnits
  * is exercised against a REAL git repository (mkdtemp + git init/commit/mv)

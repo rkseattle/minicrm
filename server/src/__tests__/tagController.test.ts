@@ -1,10 +1,10 @@
 /**
- * Integration tests for the tag controller. (MINCRM-295)
+ * Integration tests for the tag controller.
  *
  * Covers: global tag CRUD (list, create, rename, delete, get by id) and
  * entity-scoped tag endpoints for contacts.
  *
- * Note: the MINCRM-263 tag creation restriction setting is covered by
+ * Note: the tag creation restriction setting is covered by
  * tagCreationRestriction.test.ts — those tests are not duplicated here.
  *
  * Runs against a real PostgreSQL test database via supertest.

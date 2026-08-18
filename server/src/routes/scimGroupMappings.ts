@@ -1,5 +1,5 @@
 /**
- * SCIM group-role mapping admin routes. Mounted at /api/v1 in app.ts. (MINCRM-541)
+ * SCIM group-role mapping admin routes. Mounted at /api/v1 in app.ts.
  *
  * All three routes require authenticate + requireCapability(Capability.IntegrationsManage).
  * These are standard JSON responses (not SCIM format) for use by the admin UI.
@@ -26,7 +26,7 @@ router.use(authenticate);
  *   get:
  *     tags: [SCIM]
  *     operationId: listScimGroupRoleMappings
- *     summary: List all SCIM group → custom role mappings (MINCRM-541)
+ *     summary: List all SCIM group → custom role mappings
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -68,7 +68,7 @@ router.get(
  *   put:
  *     tags: [SCIM]
  *     operationId: putScimGroupRoleMapping
- *     summary: Create or replace the role mapping for a SCIM group (MINCRM-541)
+ *     summary: Create or replace the role mapping for a SCIM group
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -108,7 +108,7 @@ router.put(
  *   delete:
  *     tags: [SCIM]
  *     operationId: deleteScimGroupRoleMapping
- *     summary: Remove the role mapping for a SCIM group (MINCRM-541)
+ *     summary: Remove the role mapping for a SCIM group
  *     security:
  *       - cookieAuth: []
  *     parameters:

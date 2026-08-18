@@ -1,11 +1,11 @@
 /**
- * Backend coverage agent using Node's V8 inspector API. (MINCRM-604)
+ * Backend coverage agent using Node's V8 inspector API.
  *
  * Attaches to the running server process via the stable `node:inspector`
  * module (not `node:inspector/promises`, which is still experimental on the
  * Node versions this repo declares support for) — no source instrumentation,
  * no build step. Coverage is controlled on demand (reset/snapshot/dump)
- * while the process stays up, per MINCRM-604's "long-running web server,
+ * while the process stays up, per the spec's "long-running web server,
  * not shutdown-based" requirement.
  *
  * V8 constraint: Profiler.takePreciseCoverage() resets accumulated call

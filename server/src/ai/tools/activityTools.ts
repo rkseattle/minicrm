@@ -1,5 +1,5 @@
 /**
- * NLI tool definitions for Activities and Tasks. (MINCRM-422)
+ * NLI tool definitions for Activities and Tasks.
  */
 
 import type Anthropic from '@anthropic-ai/sdk';

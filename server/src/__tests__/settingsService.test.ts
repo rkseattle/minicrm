@@ -137,7 +137,7 @@ describe('setNavLayout', () => {
   });
 });
 
-// ── getEmailNotificationsEnabled (MINCRM-163) ─────────────────────────────────
+// ── getEmailNotificationsEnabled ─────────────────────────────────
 
 describe('getEmailNotificationsEnabled', () => {
   it('returns true when the setting is "true"', async () => {
@@ -160,7 +160,7 @@ describe('getEmailNotificationsEnabled', () => {
   });
 });
 
-// ── setEmailNotificationsEnabled (MINCRM-163) ─────────────────────────────────
+// ── setEmailNotificationsEnabled ─────────────────────────────────
 
 describe('setEmailNotificationsEnabled', () => {
   it('persists false and returns false', async () => {
@@ -177,7 +177,7 @@ describe('setEmailNotificationsEnabled', () => {
   });
 });
 
-// ── getDefaultCurrency (MINCRM-189) ───────────────────────────────────────────
+// ── getDefaultCurrency ───────────────────────────────────────────
 
 describe('getDefaultCurrency', () => {
   beforeEach(async () => {
@@ -206,7 +206,7 @@ describe('getDefaultCurrency', () => {
   });
 });
 
-// ── setDefaultCurrency (MINCRM-189) ───────────────────────────────────────────
+// ── setDefaultCurrency ───────────────────────────────────────────
 
 describe('setDefaultCurrency', () => {
   beforeEach(async () => {
@@ -217,7 +217,7 @@ describe('setDefaultCurrency', () => {
     // The "all supported currencies" test below leaves default_currency set to
     // whichever code is last in its list (CHF) — deleting the row restores the
     // USD fallback so this doesn't leak into other test files/suites that read
-    // getDefaultCurrency() (e.g. proposalDraftService.test.ts). (MINCRM-473)
+    // getDefaultCurrency() (e.g. proposalDraftService.test.ts).
     await pool.query(`DELETE FROM system_settings WHERE key = 'default_currency'`);
   });
 
@@ -241,7 +241,7 @@ describe('setDefaultCurrency', () => {
   });
 });
 
-// ── getOnboardingStatus / setOnboardingCompleted (MINCRM-256, MINCRM-379, MINCRM-410) ──
+// ── getOnboardingStatus / setOnboardingCompleted ──
 
 const ADMIN_TASK_IDS = [
   'pipeline_stages_reviewed',
@@ -394,7 +394,7 @@ describe('getOnboardingStatus — admin caller', () => {
   });
 });
 
-describe('getOnboardingStatus — rep caller (MINCRM-410)', () => {
+describe('getOnboardingStatus — rep caller', () => {
   beforeAll(async () => {
     await pool.query('TRUNCATE contacts, accounts, deals, activities RESTART IDENTITY CASCADE');
     await pool.query(`DELETE FROM users WHERE email = 'settings-svc-rep@test.com'`);
@@ -500,7 +500,7 @@ describe('getOnboardingStatus — rep caller (MINCRM-410)', () => {
   });
 });
 
-describe('setOnboardingCompleted (MINCRM-410)', () => {
+describe('setOnboardingCompleted', () => {
   let testUserId: string;
 
   beforeAll(async () => {

@@ -1,6 +1,6 @@
 /**
  * Visibility service — resolves org-level data visibility policies and builds
- * the SQL WHERE clause fragments that enforce them at query time. (MINCRM-538)
+ * the SQL WHERE clause fragments that enforce them at query time.
  *
  * Role semantics:
  *   admin / viewer  — always see all records (org-scoped), policy is ignored
@@ -330,8 +330,7 @@ export async function validateReassignment(
  * only need a yes/no visibility check — not the strict owner-or-admin equality
  * check those controllers have historically used, which incorrectly rejects
  * managers and org/team-policy reps who can view the record through list
- * endpoints but not through the record's own action endpoints. (MINCRM-472
- * self-review)
+ * endpoints but not through the record's own action endpoints.
  *
  * @param objectType - The type of record being checked ('contact' | 'deal' | 'activity' | 'account')
  * @param ownerId    - The record's owner_id

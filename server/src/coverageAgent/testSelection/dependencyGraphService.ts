@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA config/infra dependency graph. (MINCRM-625)
+ * Coverage/TIA config/infra dependency graph.
  *
  * Handles the file changes changeUnitResolver.ts routes to
  * ChangeDetectionResult.nonSourceFileChanges — config, resource, and
@@ -7,7 +7,7 @@
  * can never be resolved via the mapping query API the way source-code
  * changes are.
  *
- * Explicitly a deterministic rule table, not ML, per MINCRM-625's own AC —
+ * Explicitly a deterministic rule table, not ML, per the spec's own AC —
  * each rule maps a glob over the changed file's path to either a widened
  * set of test-scope tags to union into selection, or a "trust nothing,
  * always widen to the full suite" flag for file classes whose blast radius
@@ -15,7 +15,7 @@
  * migrations, CI workflow definitions, and feature-flag rows themselves).
  *
  * Rules are evaluated independently per file and their results are always
- * UNIONED, never subtracted — MINCRM-625's AC is "widen selection", so a
+ * UNIONED, never subtracted — the AC is "widen selection", so a
  * config file with no matching rule simply contributes nothing rather than
  * narrowing anything Phase 2's mapping-based selection already found.
  */
@@ -136,7 +136,7 @@ export function resolveDependencyWideningForFiles(
 /**
  * True if ANY of the given widening results demand an unconditional
  * full-suite fallback — the single boolean callers (the safety-net policy,
- * MINCRM-626) need to decide whether targeted testScopes can be trusted at
+ *) need to decide whether targeted testScopes can be trusted at
  * all for this diff.
  */
 export function anyAlwaysWiden(results: readonly DependencyWideningResult[]): boolean {

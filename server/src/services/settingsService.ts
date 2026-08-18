@@ -29,19 +29,19 @@ interface SystemSettingRow {
 /** The key used to store the default language setting */
 const DEFAULT_LANGUAGE_KEY = 'default_language';
 
-/** The key used to store the navigation layout setting (MINCRM-133) */
+/** The key used to store the navigation layout setting */
 const NAV_LAYOUT_KEY = 'nav_layout';
 
-/** The key used to store the global email notifications enabled setting (MINCRM-163) */
+/** The key used to store the global email notifications enabled setting */
 const EMAIL_NOTIFICATIONS_ENABLED_KEY = 'email_notifications_enabled';
 
-/** The key used to store the default currency setting (MINCRM-189) */
+/** The key used to store the default currency setting */
 const DEFAULT_CURRENCY_KEY = 'default_currency';
 
-/** The key used to store the tag creation restriction setting (MINCRM-263) */
+/** The key used to store the tag creation restriction setting */
 const TAGS_RESTRICT_CREATION_KEY = 'tags_restrict_creation';
 
-/** The key used to track that the admin reviewed/saved pipeline stages (MINCRM-379) */
+/** The key used to track that the admin reviewed/saved pipeline stages */
 const PIPELINE_STAGES_REVIEWED_KEY = 'pipeline_stages_reviewed';
 
 /**
@@ -88,7 +88,7 @@ export async function setDefaultLanguage(
 
 /**
  * Retrieves the current system-wide navigation layout.
- * Falls back to 'top' if the row is somehow missing. (MINCRM-133)
+ * Falls back to 'top' if the row is somehow missing.
  *
  * @returns The stored nav layout value.
  */
@@ -110,7 +110,7 @@ export async function getNavLayout(): Promise<NavLayout> {
 }
 
 /**
- * Persists a new system-wide navigation layout. (MINCRM-133)
+ * Persists a new system-wide navigation layout.
  *
  * @param layout - One of the supported nav layout values.
  * @returns The updated layout value.
@@ -128,7 +128,7 @@ export async function setNavLayout(
   return layout;
 }
 
-// ── Email notifications global toggle (MINCRM-163) ───────────────────────────
+// ── Email notifications global toggle ───────────────────────────
 
 /**
  * Returns whether the system-wide email notifications are enabled.
@@ -169,7 +169,7 @@ export async function setEmailNotificationsEnabled(
   return enabled;
 }
 
-// ── Default currency (MINCRM-189) ─────────────────────────────────────────────
+// ── Default currency ─────────────────────────────────────────────
 
 /**
  * Retrieves the current system-wide default currency.
@@ -194,7 +194,7 @@ export async function getDefaultCurrency(): Promise<SupportedCurrency> {
 }
 
 /**
- * Persists a new system-wide default currency. Admin only. (MINCRM-189)
+ * Persists a new system-wide default currency. Admin only.
  *
  * @param currency - One of the supported ISO 4217 currency codes.
  * @returns The updated currency code.
@@ -212,7 +212,7 @@ export async function setDefaultCurrency(
   return currency;
 }
 
-// ── Tag creation restriction (MINCRM-263) ─────────────────────────────────────
+// ── Tag creation restriction ─────────────────────────────────────
 
 /**
  * Returns whether tag creation is restricted to the Tag Management page.
@@ -250,9 +250,9 @@ export async function setTagsRestrictCreation(
   return restricted;
 }
 
-// ── Default timezone (MINCRM-470) ─────────────────────────────────────────────
+// ── Default timezone ─────────────────────────────────────────────
 
-/** The key used to store the default display timezone setting (MINCRM-470) */
+/** The key used to store the default display timezone setting */
 const DEFAULT_TIMEZONE_KEY = 'default_timezone';
 
 /**
@@ -274,7 +274,7 @@ export async function getDefaultTimezone(): Promise<string> {
 }
 
 /**
- * Persists a new system-wide default display timezone. Admin only. (MINCRM-470)
+ * Persists a new system-wide default display timezone. Admin only.
  *
  * @param timezone - A valid IANA timezone identifier (validated by the caller's Zod schema).
  * @returns The updated timezone identifier.
@@ -292,9 +292,9 @@ export async function setDefaultTimezone(
   return timezone;
 }
 
-// ── Onboarding / Setup Checklist (MINCRM-256, MINCRM-379, MINCRM-410) ────────
+// ── Onboarding / Setup Checklist ────────
 
-/** Completion status for one setup checklist task (MINCRM-379) */
+/** Completion status for one setup checklist task */
 export interface OnboardingTask {
   id: string;
   completed: boolean;
@@ -304,11 +304,11 @@ export interface OnboardingTask {
 export interface OnboardingStatus {
   is_first_run: boolean;
   onboarding_completed: boolean;
-  /** Per-task completion, determined server-side (MINCRM-379) */
+  /** Per-task completion, determined server-side */
   tasks: OnboardingTask[];
 }
 
-/** Caller identity required for per-user onboarding status (MINCRM-410) */
+/** Caller identity required for per-user onboarding status */
 export interface OnboardingCaller {
   id: string;
   role: 'admin' | 'rep';
@@ -317,7 +317,7 @@ export interface OnboardingCaller {
 /**
  * Returns admin-specific onboarding status. Task completion is based on
  * global (org-wide) counts. The onboarding_completed flag is read from the
- * caller's own user row. (MINCRM-410)
+ * caller's own user row.
  *
  * Tasks:
  *   1. pipeline_stages_reviewed — admin reviewed/saved pipeline stages
@@ -368,7 +368,7 @@ async function getAdminOnboardingStatus(callerId: string): Promise<OnboardingSta
     {
       id: 'pipeline_stages_reviewed',
       // Auto-completes when the admin explicitly marks it done via the checklist
-      // (MINCRM-379); also pre-completed after any pipeline stage save.
+      // also pre-completed after any pipeline stage save.
       completed: settingsMap[PIPELINE_STAGES_REVIEWED_KEY] === 'true',
     },
     {
@@ -395,7 +395,7 @@ async function getAdminOnboardingStatus(callerId: string): Promise<OnboardingSta
 
 /**
  * Returns rep-specific onboarding status. Task completion is based on the
- * rep's own records (owner_id = callerId). (MINCRM-410)
+ * rep's own records (owner_id = callerId).
  *
  * Tasks:
  *   1. first_contact_added   — rep has at least one contact
@@ -449,7 +449,6 @@ async function getRepOnboardingStatus(callerId: string): Promise<OnboardingStatu
  * Returns onboarding status for the calling user. Branches on role:
  * - admin → global org-wide task completion (5 tasks)
  * - rep   → per-user record ownership (4 tasks)
- * (MINCRM-256, MINCRM-379, MINCRM-410)
  *
  * @param caller - The authenticated user making the request.
  * @returns The caller's onboarding status.
@@ -462,7 +461,7 @@ export async function getOnboardingStatus(caller: OnboardingCaller): Promise<Onb
 }
 
 /**
- * Sets the onboarding_completed flag on the caller's own user row. (MINCRM-256, MINCRM-410)
+ * Sets the onboarding_completed flag on the caller's own user row.
  *
  * @param callerId - UUID of the user whose flag to update.
  * @param completed - Whether onboarding has been completed.
@@ -485,7 +484,7 @@ export async function setOnboardingCompleted(
 
 /**
  * Marks the pipeline-stages-reviewed task as done in the setup checklist.
- * Called after the admin saves a pipeline stage change (MINCRM-379).
+ * Called after the admin saves a pipeline stage change.
  */
 export async function markPipelineStagesReviewed(actor: AuditActor = SYSTEM_ACTOR): Promise<void> {
   await pool.query(
@@ -500,11 +499,11 @@ export async function resetPipelineStagesReviewed(): Promise<void> {
   await pool.query(`DELETE FROM system_settings WHERE key = $1`, [PIPELINE_STAGES_REVIEWED_KEY]);
 }
 
-/** The key used to store the org-wide MFA enforcement setting (MINCRM-392) */
+/** The key used to store the org-wide MFA enforcement setting */
 const REQUIRE_MFA_KEY = 'require_mfa';
 
 /**
- * Returns whether MFA is required for all users org-wide. (MINCRM-392)
+ * Returns whether MFA is required for all users org-wide.
  */
 export async function getMfaRequired(): Promise<boolean> {
   const result = await pool.query<SystemSettingRow>(
@@ -515,7 +514,7 @@ export async function getMfaRequired(): Promise<boolean> {
 }
 
 /**
- * Sets the org-wide MFA enforcement flag. Admin only. (MINCRM-392)
+ * Sets the org-wide MFA enforcement flag. Admin only.
  *
  * @param required - Whether to require MFA for all users.
  * @returns The persisted value.

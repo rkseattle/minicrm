@@ -1,7 +1,7 @@
 /**
  * AI usage dashboard controller — request/response shaping for
  * /api/v1/admin/ai/usage/*. No business logic or database access here —
- * delegates entirely to aiUsageDashboardService. (MINCRM-459)
+ * delegates entirely to aiUsageDashboardService.
  */
 
 import type { Request, Response } from 'express';
@@ -80,14 +80,14 @@ const AI_USAGE_EXPORT_HEADERS = [
   'Estimated Cost (USD)',
 ] as const;
 
-/** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. (MINCRM-655) */
+/** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. */
 const AI_USAGE_NUMERIC_COLUMNS = new Set(['Input Tokens', 'Output Tokens', 'Estimated Cost (USD)']);
 
 /**
  * Resolves the requested date range and fetches export rows, shaped identically for
  * both the CSV and PDF export handlers so both formats reflect the same data. Returns
  * null if the range is invalid; the response has already been written to in that
- * case and the caller must return without further writes. (MINCRM-601)
+ * case and the caller must return without further writes.
  */
 async function resolveAiUsageExportData(
   req: Request,
@@ -127,7 +127,7 @@ export async function exportAiUsageCsvHandler(req: Request, res: Response): Prom
 /**
  * GET /api/v1/admin/ai/usage/export.pdf
  * Renders AI usage data (per-user, per-day, per-feature) as a paginated PDF table.
- * Query params and admin-only access are identical to the CSV export above. (MINCRM-601)
+ * Query params and admin-only access are identical to the CSV export above.
  */
 export async function exportAiUsagePdfHandler(req: Request, res: Response): Promise<void> {
   const rows = await resolveAiUsageExportData(req, res);

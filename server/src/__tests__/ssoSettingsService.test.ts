@@ -1,5 +1,5 @@
 /**
- * Integration tests for ssoSettingsService. (MINCRM-399)
+ * Integration tests for ssoSettingsService.
  *
  * Covers: get/set/clear SSO config, status endpoint, certificate encryption,
  * and graceful degradation when settings rows are missing.

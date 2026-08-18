@@ -1,7 +1,6 @@
 /**
  * Leads controller — request/response shaping for lead endpoints.
  * No business logic here; all DB access goes through leadsService.
- * (MINCRM-173, MINCRM-174, MINCRM-175)
  */
 
 import type { Request, Response } from 'express';
@@ -97,7 +96,6 @@ export async function createLeadHandler(req: Request, res: Response): Promise<vo
  * Computes a routing suggestion for a draft lead, before it is created.
  * Returns 204 (no body) when confidence would be low — per the AC, the
  * suggestion is suppressed and the client should default to unassigned.
- * (MINCRM-475)
  */
 export async function getLeadRoutingSuggestionHandler(req: Request, res: Response): Promise<void> {
   const parsed = leadRoutingSuggestionRequestSchema.safeParse(req.body);
@@ -207,7 +205,7 @@ export async function getLeadHandler(req: Request, res: Response): Promise<void>
  *
  * Leads do not support custom fields (ENTITY_TYPES excludes 'lead'), so unlike
  * the Deal/Account/Contact single-record PDFs, this omits a Custom Fields
- * section. (MINCRM-650)
+ * section.
  */
 export async function exportLeadPdfHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
@@ -286,7 +284,7 @@ function toLeadExportRow(lead: LeadExportRow): Record<string, string | Date | nu
  * Resolves the owner/status/source/visibility filters for the current request
  * and fetches matching leads. Shared by the CSV and PDF export handlers so
  * both formats reflect identical rows and ownership rules, mirroring
- * listLeadsHandler's filter resolution. (MINCRM-651)
+ * listLeadsHandler's filter resolution.
  */
 async function resolveLeadExportRows(req: Request): Promise<LeadExportRow[]> {
   const isAdmin = req.user!.role === 'admin';
@@ -327,7 +325,7 @@ async function resolveLeadExportRows(req: Request): Promise<LeadExportRow[]> {
  * Query params mirror the list endpoint (owner, status, lead_source,
  * includeDisqualified, includeConverted) except pagination/sort — all
  * matching rows are exported. Reps get leads visible to them per the owner
- * param; admins may pass ?all=true to export every lead. (MINCRM-651)
+ * param; admins may pass ?all=true to export every lead.
  */
 export async function exportLeadsHandler(req: Request, res: Response): Promise<void> {
   const leads = await resolveLeadExportRows(req);
@@ -345,7 +343,7 @@ export async function exportLeadsHandler(req: Request, res: Response): Promise<v
  * GET /api/leads/export.pdf
  * Renders all matching leads as a paginated PDF table.
  *
- * Query params and ownership rules are identical to the CSV export above. (MINCRM-651)
+ * Query params and ownership rules are identical to the CSV export above.
  */
 export async function exportLeadsPdfHandler(req: Request, res: Response): Promise<void> {
   const leads = await resolveLeadExportRows(req);
@@ -402,7 +400,7 @@ export async function updateLeadHandler(req: Request, res: Response): Promise<vo
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-      // Include current server state so the client can render a three-way merge without a second round-trip (MINCRM-351)
+      // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findLeadById(id);
       res.status(409).json({ error: { code, message: (err as Error).message, current } });
       return;
@@ -436,7 +434,7 @@ export async function deleteLeadHandler(req: Request, res: Response): Promise<vo
 
 /**
  * GET /api/leads/:id/status-history
- * Returns the status change history for a lead. (MINCRM-174)
+ * Returns the status change history for a lead.
  */
 export async function getLeadStatusHistoryHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
@@ -452,7 +450,7 @@ export async function getLeadStatusHistoryHandler(req: Request, res: Response): 
 
 /**
  * POST /api/leads/:id/convert
- * Atomically converts a lead into a contact, account, and deal. (MINCRM-175)
+ * Atomically converts a lead into a contact, account, and deal.
  * Lead must not be Disqualified or already converted.
  */
 export async function convertLeadHandler(req: Request, res: Response): Promise<void> {
@@ -501,7 +499,7 @@ export async function convertLeadHandler(req: Request, res: Response): Promise<v
 
 /**
  * GET /api/leads/accounts/search
- * Searches accounts by name for the conversion form. (MINCRM-175)
+ * Searches accounts by name for the conversion form.
  */
 export async function searchAccountsHandler(req: Request, res: Response): Promise<void> {
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';

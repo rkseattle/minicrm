@@ -1,6 +1,6 @@
 /**
  * Data hygiene assistant service — nightly scan for stale, incomplete, and
- * potentially invalid contact/account/opportunity records. (MINCRM-476)
+ * potentially invalid contact/account/opportunity records.
  *
  * runDataHygieneScan() is the cron entry point (server/src/server.ts) and is
  * also reused directly by the manual "run scan now" admin endpoint, following
@@ -773,7 +773,7 @@ export async function clearFindingsForEntity(
 
 /**
  * Merges two duplicate contacts flagged by the hygiene scan, reusing the
- * existing contactService.mergeContacts (MINCRM-187) rather than
+ * existing contactService.mergeContacts rather than
  * reimplementing merge logic. Clears both contacts' hygiene findings —
  * the loser no longer exists, and the winner's duplicate finding is
  * resolved by the merge itself.

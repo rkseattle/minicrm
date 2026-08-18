@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for win/loss insights endpoints. (MINCRM-464)
+ * HTTP contract tests for win/loss insights endpoints.
  *
  * Covers:
  *  - GET /insights/win-loss: authenticated, flag-gated, returns cached shape

@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA bidirectional code<->test index. (MINCRM-618)
+ * Coverage/TIA bidirectional code<->test index.
  *
  * Owns all DB access for coverage_test_links (see migration 159) — no
  * coverageDb.query() outside this module, per repo convention. Populated by
@@ -26,7 +26,7 @@ const TEST_LINK_INSERT_COLUMN_COUNT = 6;
 // parameters per statement at 65535.
 const MAX_LINKS_PER_INSERT_BATCH = Math.floor(65535 / TEST_LINK_INSERT_COLUMN_COUNT);
 
-// findTestsForUnitsAcrossBranches' own chunk size (MINCRM-637) — NOT a
+// findTestsForUnitsAcrossBranches' own chunk size — NOT a
 // bind-parameter-ceiling concern like MAX_LINKS_PER_INSERT_BATCH above
 // (a `unit_key = ANY($2)` array is one bind parameter regardless of the
 // array's own length). The actual constraint is result-set size: a single
@@ -253,7 +253,7 @@ export async function findUnitsForTest(
 
 /**
  * A mapping result carrying confidence/freshness alongside the link itself
- * — the shape the mapping QUERY API (MINCRM-621) returns, distinct from
+ * — the shape the mapping QUERY API returns, distinct from
  * CoverageTestLink (which is purely coverage_test_links' own columns).
  * confidenceScore/lastReconciledAt come from a JOIN against coverage_units
  * on the shared (commit_sha, unit_key, branch_id) identity — both tables
@@ -300,8 +300,7 @@ const MAPPING_RESULT_SELECT = `
 
 /**
  * Finds every test known to cover a given code unit, at a given commit,
- * with confidence/freshness attached — the query API's own read path
- * (MINCRM-621's "returns confidence/freshness alongside results" AC).
+ * with confidence/freshness attached — the query API's own read path.
  */
 export async function findTestsForUnitWithConfidence(
   commitSha: string,
@@ -324,7 +323,7 @@ export async function findTestsForUnitWithConfidence(
  * branch_id (but NOT file_path — see below) and matches on (file_path,
  * unit_key) instead.
  *
- * For MINCRM-624's test-selection consumer (testSelectionService.ts):
+ * For the test-selection consumer (testSelectionService.ts):
  * changeUnitResolver resolves a git diff to changed FUNCTIONS, not
  * individual branch arms within a function — it has no way to know which
  * specific branch_id (e.g. an `if` statement's true/false arm) a change
@@ -336,7 +335,7 @@ export async function findTestsForUnitWithConfidence(
  * functions most likely to have meaningful branch-level test coverage
  * (found via Greptile PR review). This function is test-selection's own
  * query, additive to the mapping query API's existing documented,
- * versioned single-identity contract (MINCRM-621) — that contract's exact-
+ * versioned single-identity contract — that contract's exact-
  * match semantics are unchanged and still used as-is by
  * findTestsForUnit(WithConfidence).
  *
@@ -398,7 +397,7 @@ export interface BatchedCoverageMappingResult {
  * character is also a field's own content). Exported as the single shared
  * implementation of this key shape: testSelectionService.ts's own
  * enclosingUnitMapKey used to be a byte-identical, independently-maintained
- * copy of this same function (found during MINCRM-637 commit review) —
+ * copy of this same function (found during commit review) —
  * that module already imports from this one, so this is the correct
  * direction to share it in, not the reverse.
  */
@@ -407,7 +406,7 @@ export function unitPairKey(filePath: string, unitKey: string): string {
 }
 
 /**
- * Batched form of findTestsForUnitAcrossBranches (MINCRM-637) — resolves
+ * Batched form of findTestsForUnitAcrossBranches — resolves
  * every (filePath, unitKey) pair in one call instead of testSelectionService's
  * former per-unit fan-out (up to `ceil(N/MAX_CONCURRENT_MAPPING_LOOKUPS)`
  * sequential round trips for N changed units). Written for
@@ -935,7 +934,7 @@ export interface TestIdSearchResult {
 /**
  * Typeahead search over coverage_test_links.test_id/test_name for a given
  * commit — backs the coverage-dashboard app's drill-down test-ID picker
- * (MINCRM-636/637), same rationale as coverageModelService.searchUnitKeys:
+ * same rationale as coverageModelService.searchUnitKeys:
  * a plain "list every test ID" endpoint is not viable at real scale, so
  * this always requires a commitSha (indexed via coverage_test_links_test_idx)
  * and a non-empty search term, capped at `limit`.

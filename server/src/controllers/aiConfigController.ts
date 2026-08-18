@@ -1,7 +1,6 @@
 /**
  * AI configuration controller — request/response shaping for /api/v1/admin/ai/*.
  * No business logic or database access here — delegates entirely to aiConfigService.
- * (MINCRM-457)
  */
 
 import type { Request, Response } from 'express';
@@ -100,7 +99,7 @@ export async function testAiConnectionHandler(req: Request, res: Response): Prom
 
 /**
  * GET /api/v1/ai/retention-window — user-facing, feature-flag gated.
- * Returns only the retention window, not the full admin AiConfigResponse. (MINCRM-462)
+ * Returns only the retention window, not the full admin AiConfigResponse.
  */
 export async function getMyRetentionWindowHandler(req: Request, res: Response): Promise<void> {
   const days = await getAiSessionRetentionDays();

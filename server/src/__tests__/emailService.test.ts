@@ -6,7 +6,7 @@
  * executes. The production transport path is guarded by NODE_ENV checks and is
  * not exercised here.
  *
- * MINCRM-156, MINCRM-161, MINCRM-162
+ *
  */
 
 import 'dotenv/config';

@@ -1,5 +1,5 @@
 /**
- * CORS configuration tests (MINCRM-148).
+ * CORS configuration tests.
  *
  * Split into two groups:
  *
@@ -23,7 +23,7 @@ import app from '../app.js';
 // Group 1: integration — middleware allow / reject behaviour
 // ---------------------------------------------------------------------------
 
-describe('CORS middleware — integration (MINCRM-148)', () => {
+describe('CORS middleware — integration', () => {
   it('allows requests from the configured origin', async () => {
     const allowedOrigin =
       process.env['CORS_ORIGIN']?.split(',')[0]?.trim() ?? 'http://localhost:5173';
@@ -67,7 +67,7 @@ function parseAllowedOrigins(raw: string): string[] {
     .filter(Boolean);
 }
 
-describe('CORS origin parsing — unit (MINCRM-148)', () => {
+describe('CORS origin parsing — unit', () => {
   it('accepts a single origin', () => {
     const origins = parseAllowedOrigins('http://localhost:5173');
     expect(origins).toEqual(['http://localhost:5173']);

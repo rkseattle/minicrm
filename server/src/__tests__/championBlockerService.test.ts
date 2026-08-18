@@ -1,5 +1,5 @@
 /**
- * Integration tests for championBlockerService. (MINCRM-466)
+ * Integration tests for championBlockerService.
  *
  * Runs against a real PostgreSQL test database for all contact/deal data.
  * The Anthropic SDK is mocked so no real API calls are made.

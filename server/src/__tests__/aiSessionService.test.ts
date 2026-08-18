@@ -1,6 +1,6 @@
 /**
  * Integration tests for aiSessionService.sendMessage — the agentic Claude
- * tool-use loop. (MINCRM-422, MINCRM-425)
+ * tool-use loop.
  *
  * Runs against a real PostgreSQL test database. The Anthropic SDK is mocked
  * so no real API calls are made.
@@ -75,7 +75,7 @@ describe('sendMessage — requestMutationConfirmation with no accompanying text'
     const session = await createSession(userId, ACTOR);
 
     // Claude commonly calls requestMutationConfirmation with no surrounding text block —
-    // this must not be mistaken for "AI provider returned no text content". (MINCRM-425)
+    // this must not be mistaken for "AI provider returned no text content".
     mockCreate.mockResolvedValue({
       usage: { input_tokens: 50, output_tokens: 20 },
       stop_reason: 'tool_use',
@@ -127,7 +127,7 @@ describe('sendMessage — requestMutationConfirmation with no accompanying text'
   });
 });
 
-describe('sendMessage — E2E stub scenarios (MINCRM-435)', () => {
+describe('sendMessage — E2E stub scenarios', () => {
   // IS_E2E is captured at module load time, so the module must be re-imported
   // with process.env.E2E set beforehand for these tests to exercise the E2E
   // branch. mockCreate must never be called here — a call would mean the stub

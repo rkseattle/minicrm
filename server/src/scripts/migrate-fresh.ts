@@ -1,5 +1,5 @@
 /**
- * migrate-fresh.ts — Initialize a brand-new database using the schema baseline (MINCRM-528)
+ * migrate-fresh.ts — Initialize a brand-new database using the schema baseline
  *
  * WHY THIS SCRIPT EXISTS
  * ----------------------
@@ -30,7 +30,7 @@
  * `docker compose up` on a fresh database works without running this script first.
  * This script is kept for CI and for explicit fresh-bootstrap use cases.
  *
- * MINCRM-528
+ *
  */
 
 import 'dotenv/config';
@@ -52,7 +52,7 @@ const SHARED_OPTIONS = {
 
 async function main(): Promise<void> {
   // Shares the same advisory lock key as runMigrations() and create-e2e-db.ts
-  // (MINCRM-658), so this script cannot interleave with a concurrent migration
+  // so this script cannot interleave with a concurrent migration
   // run against the same database.
   await withMigrationLock(databaseUrl, async () => {
     console.log('[migrate:fresh] Step 1 — applying 000_baseline schema...');

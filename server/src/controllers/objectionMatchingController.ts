@@ -1,5 +1,5 @@
 /**
- * Objection matching controller — request/response shaping only. (MINCRM-471)
+ * Objection matching controller — request/response shaping only.
  * No business logic here; all AI orchestration and DB access goes through objectionMatchingService.
  */
 

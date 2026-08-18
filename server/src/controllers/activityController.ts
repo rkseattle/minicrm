@@ -220,7 +220,7 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-      // Include current server state so the client can render a three-way merge without a second round-trip (MINCRM-351)
+      // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findActivityById(id);
       res.status(409).json({ error: { code, message: (err as Error).message, current } });
       return;

@@ -1,5 +1,5 @@
 /**
- * Integration tests for sentimentService. (MINCRM-472)
+ * Integration tests for sentimentService.
  *
  * Runs against a real PostgreSQL test database for all contact/account/activity data.
  * The Anthropic SDK is mocked so no real API calls are made.

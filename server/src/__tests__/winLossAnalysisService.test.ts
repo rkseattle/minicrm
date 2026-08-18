@@ -1,5 +1,5 @@
 /**
- * Integration tests for winLossAnalysisService. (MINCRM-464)
+ * Integration tests for winLossAnalysisService.
  *
  * Runs against a real PostgreSQL test database for all deal/activity data.
  * The Anthropic SDK is mocked so no real API calls are made.

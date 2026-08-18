@@ -1,5 +1,5 @@
 /**
- * Integration tests for leadRoutingService. (MINCRM-475)
+ * Integration tests for leadRoutingService.
  * Runs against a real PostgreSQL test database — scoring is deterministic/SQL-driven,
  * no Anthropic SDK mock needed (this feature makes no AI provider call at all).
  *
@@ -204,7 +204,7 @@ describe('scoreCandidates / confidenceFor (pure scoring logic)', () => {
   });
 
   it('confidenceFor is driven by contributingPartCount, not factors.length — a part can contribute score without earning a rendered description', () => {
-    // Regression test (MINCRM-475 / F-ROUTE3 CI flake): workload and
+    // Regression test: workload and
     // availability only produce a `factor` description when the candidate is
     // at-or-below the team average, but the underlying score still reflects
     // every part that fired. A candidate with an empty `factors` array must
@@ -311,7 +311,7 @@ describe('computeLeadRoutingSuggestion (DB integration — weak assertions only)
     }
   });
 
-  it('scores a real DB-configured candidate with both workload and availability contributing, using the actual lead_routing_scoring_config weights (regression test, MINCRM-475 F-ROUTE3 CI flake)', async () => {
+  it('scores a real DB-configured candidate with both workload and availability contributing, using the actual lead_routing_scoring_config weights (regression test, F-ROUTE3 CI flake)', async () => {
     // Root cause: pg returns numeric(4,3) columns as strings. getRoutingWeights
     // previously returned the raw query rows untouched (typed via a generic that
     // only asserts at compile time, never coerces at runtime), so

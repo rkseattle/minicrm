@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for relationship health scoring endpoints. (MINCRM-467)
+ * HTTP contract tests for relationship health scoring endpoints.
  */
 
 import 'dotenv/config';

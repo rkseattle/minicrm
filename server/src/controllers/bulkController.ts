@@ -1,6 +1,6 @@
 /**
  * Bulk controller — request/response shaping for bulk operation endpoints.
- * No business logic here; all DB access goes through bulkService. (MINCRM-188)
+ * No business logic here; all DB access goes through bulkService.
  */
 
 import type { Request, Response } from 'express';

@@ -1,5 +1,5 @@
 /**
- * NLI tool definitions for Reports. (MINCRM-422, MINCRM-424)
+ * NLI tool definitions for Reports.
  */
 
 import type Anthropic from '@anthropic-ai/sdk';

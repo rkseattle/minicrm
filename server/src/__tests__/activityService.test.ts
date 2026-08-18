@@ -895,11 +895,11 @@ describe('deleteActivity', () => {
   });
 });
 
-// ── Audit log coverage (MINCRM-382) ─────────────────────────────────────────────
+// ── Audit log coverage ─────────────────────────────────────────────
 
 const TEST_ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Audit Test Actor' };
 
-describe('audit log entries (MINCRM-382)', () => {
+describe('audit log entries', () => {
   beforeEach(async () => {
     await clearAuditLogFor(TEST_ACTOR.id);
   });
@@ -980,7 +980,7 @@ describe('audit log entries (MINCRM-382)', () => {
   });
 });
 
-// ── metadata jsonb column (MINCRM-525) ───────────────────────────────────────
+// ── metadata jsonb column ───────────────────────────────────────
 //
 // Verifies that the metadata column exists and that JSONB payloads round-trip
 // through the DB intact. The column is the designated extension point for

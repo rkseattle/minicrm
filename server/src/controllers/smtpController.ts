@@ -1,6 +1,6 @@
 /**
  * SMTP settings controller — request/response shaping for SMTP endpoints.
- * No business logic here; all DB access goes through smtpSettingsService. (MINCRM-254)
+ * No business logic here; all DB access goes through smtpSettingsService.
  */
 
 import type { Request, Response } from 'express';

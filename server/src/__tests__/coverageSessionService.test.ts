@@ -265,7 +265,7 @@ describe('recordCoverageSessionDump', () => {
     });
 
     // Same test_id, two distinct dump rows — a retry does not overwrite the
-    // first attempt's attribution (MINCRM-612).
+    // first attempt's attribution.
     expect(first.dumpId).not.toBe(retry.dumpId);
     expect(first.attempt).toBe(1);
     expect(retry.attempt).toBe(2);
@@ -447,7 +447,7 @@ describe('findCoverageSessionDumpsByBuildSha', () => {
 
 // ── pruneCoverageSessions ───────────────────────────────────────────────────
 
-describe('pruneCoverageSessions (MINCRM-637)', () => {
+describe('pruneCoverageSessions', () => {
   it('deletes an ended session older than retentionDays', async () => {
     const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
     await endCoverageSession(session.id, session.version);

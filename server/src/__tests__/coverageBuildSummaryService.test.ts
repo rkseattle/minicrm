@@ -1,5 +1,5 @@
 /**
- * Integration tests for coverageBuildSummaryService. (MINCRM-629/630/631)
+ * Integration tests for coverageBuildSummaryService.
  *
  * Runs against a real PostgreSQL test database, exercising
  * upsertBuildSummaryForCommit directly with a standalone pool client — the

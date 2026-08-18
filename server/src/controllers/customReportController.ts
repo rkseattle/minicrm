@@ -1,5 +1,5 @@
 /**
- * Custom report controller — request/response shaping for custom report endpoints. (MINCRM-402)
+ * Custom report controller — request/response shaping for custom report endpoints.
  * No business logic here; all DB access goes through customReportService.
  */
 
@@ -306,7 +306,7 @@ export async function exportCustomReportHandler(req: Request, res: Response): Pr
 
 /**
  * GET /api/v1/reports/custom/:id/export.pdf
- * Executes a saved report and renders results as a paginated PDF table. (MINCRM-601)
+ * Executes a saved report and renders results as a paginated PDF table.
  */
 export async function exportCustomReportPdfHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);

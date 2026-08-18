@@ -1,6 +1,6 @@
 /**
  * Lead score narrative service — on-demand AI plain-English explanation of a
- * lead's rule-based quality score. (MINCRM-441)
+ * lead's rule-based quality score.
  *
  * Follows the same "gather context, PII-filter, forced-tool Claude call,
  * record token usage" shape as dealHealthService.generateDealHealthCheck.
@@ -130,7 +130,7 @@ export async function generateLeadScoreNarrative(
     company_name: lead.company_name,
   };
 
-  // PII-filter the gathered facts before they leave the server. (MINCRM-445)
+  // PII-filter the gathered facts before they leave the server.
   // 'lead' is not a valid ai_field_exclusions entity_type (contact/account/deal
   // only) — map to 'contact' since a lead is pre-conversion contact data, so
   // admin-configured contact-field exclusions still apply to this payload.

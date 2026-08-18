@@ -1,5 +1,5 @@
 /**
- * Custom roles routes (MINCRM-542).
+ * Custom roles routes.
  * All routes require authentication + settings:manage capability.
  */
 
@@ -26,7 +26,7 @@ router.use(authenticate);
  *   get:
  *     tags: [CustomRoles]
  *     operationId: listCustomRoles
- *     summary: List all custom roles (MINCRM-542)
+ *     summary: List all custom roles
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -45,7 +45,7 @@ router.get('/', requireCapability(Capability.SettingsManage), asyncHandler(listC
  *   get:
  *     tags: [CustomRoles]
  *     operationId: getCustomRole
- *     summary: Get a custom role by ID (MINCRM-542)
+ *     summary: Get a custom role by ID
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -79,7 +79,7 @@ router.get(
  *   post:
  *     tags: [CustomRoles]
  *     operationId: createCustomRole
- *     summary: Create a custom role (MINCRM-542)
+ *     summary: Create a custom role
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -125,7 +125,7 @@ router.post(
  *   put:
  *     tags: [CustomRoles]
  *     operationId: updateCustomRole
- *     summary: Update a custom role (MINCRM-542)
+ *     summary: Update a custom role
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -177,7 +177,7 @@ router.put(
  *   delete:
  *     tags: [CustomRoles]
  *     operationId: deleteCustomRole
- *     summary: Delete a custom role (MINCRM-542)
+ *     summary: Delete a custom role
  *     security:
  *       - cookieAuth: []
  *     parameters:

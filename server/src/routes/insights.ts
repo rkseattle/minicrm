@@ -1,5 +1,5 @@
 /**
- * Insights routes — AI-generated cross-deal analysis endpoints. (MINCRM-464)
+ * Insights routes — AI-generated cross-deal analysis endpoints.
  * All endpoints require authentication and the ai_win_loss_insights feature flag.
  */
 
@@ -34,7 +34,7 @@ const router = Router();
  *       triggers a synchronous AI call. has_sufficient_data is false when fewer than
  *       the admin-configured minimum closed deals exist — the client should show a
  *       "not enough closed deal history yet" message in that case. Gated by the
- *       ai_win_loss_insights feature flag. (MINCRM-464)
+ *       ai_win_loss_insights feature flag.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -78,7 +78,7 @@ router.get(
  *     description: >
  *       Returns all active (non-cleared) churn-risk and expansion signals from the most
  *       recent nightly detection run, across all closed-won accounts. Gated by the
- *       ai_churn_expansion_detection feature flag. (MINCRM-469)
+ *       ai_churn_expansion_detection feature flag.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -108,7 +108,7 @@ router.get(
  *       from the most recent nightly run. Never triggers a synchronous
  *       computation. Available to any authenticated rep, manager, or admin for
  *       their own data — powers the "My Performance" dashboard section.
- *       Gated by the ai_rep_coaching_insights feature flag. (MINCRM-474)
+ *       Gated by the ai_rep_coaching_insights feature flag.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -138,7 +138,7 @@ router.get(
  *       visible to the caller. Admins see all reps org-wide; managers see only
  *       reps within their own team subtree. Powers the rep selector on
  *       /insights/coaching. Gated by the ai_rep_coaching_insights feature flag
- *       and restricted to manager/admin roles. (MINCRM-474)
+ *       and restricted to manager/admin roles.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -169,7 +169,7 @@ router.get(
  *       view any rep; managers may only view reps within their own team subtree
  *       (403 otherwise). Gated by the ai_rep_coaching_insights feature flag and
  *       restricted to manager/admin roles — reps use /coaching/me instead.
- *       (MINCRM-474)
+ *
  *     security:
  *       - cookieAuth: []
  *     parameters:

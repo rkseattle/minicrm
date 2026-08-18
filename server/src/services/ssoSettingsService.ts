@@ -1,6 +1,6 @@
 /**
  * SSO settings service — read/write SSO configuration stored in system_settings.
- * The IdP certificate is stored AES-256-GCM encrypted (same pattern as smtp_pass). (MINCRM-399)
+ * The IdP certificate is stored AES-256-GCM encrypted (same pattern as smtp_pass).
  */
 
 import pool from '../db.js';
@@ -19,7 +19,7 @@ const SSO_IDP_METADATA_URL_KEY = 'sso_idp_metadata_url';
 const SSO_ENTITY_ID_KEY = 'sso_entity_id';
 /** Value stored as AES-256-GCM ciphertext produced by cryptoService. */
 const SSO_IDP_CERTIFICATE_ENCRYPTED_KEY = 'sso_idp_certificate_encrypted';
-/** UUID of the custom_roles row to assign to JIT-provisioned SSO users. (MINCRM-540) */
+/** UUID of the custom_roles row to assign to JIT-provisioned SSO users. */
 export const SSO_JIT_DEFAULT_ROLE_ID_KEY = 'sso_jit_default_role_id';
 
 const SSO_KEYS = [
@@ -41,7 +41,7 @@ export interface SsoConfigInternal {
   entity_id: string;
   /** Decrypted PEM certificate, or null if not set. */
   idp_certificate: string | null;
-  /** UUID of the custom_roles row to assign to JIT-provisioned SSO users, or null if not set. (MINCRM-540) */
+  /** UUID of the custom_roles row to assign to JIT-provisioned SSO users, or null if not set. */
   jit_default_role_id: string | null;
 }
 
@@ -52,7 +52,7 @@ export interface SsoConfigInput {
   entity_id: string;
   /** When undefined the existing encrypted certificate is left unchanged. */
   idp_certificate?: string;
-  /** When provided (including null), upserts the JIT default role setting. (MINCRM-540) */
+  /** When provided (including null), upserts the JIT default role setting. */
   jit_default_role_id?: string | null;
 }
 
@@ -156,7 +156,7 @@ export async function getSsoConfigInternal(): Promise<SsoConfigInternal> {
   };
 }
 
-// $3 = updated_by uuid (MINCRM-520)
+// $3 = updated_by uuid
 const UPSERT_SQL = `
   INSERT INTO system_settings (key, value, updated_at, updated_by)
   VALUES ($1, $2, now(), $3)
@@ -196,7 +196,7 @@ export async function setSsoConfig(
       ]);
     }
 
-    // When jit_default_role_id is explicitly provided (even null), persist the change. (MINCRM-540)
+    // When jit_default_role_id is explicitly provided (even null), persist the change.
     // null clears the row so a missing key and an explicit null are indistinguishable to readers.
     if ('jit_default_role_id' in input) {
       if (input.jit_default_role_id === null) {

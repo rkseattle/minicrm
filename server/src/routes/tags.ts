@@ -1,5 +1,5 @@
 /**
- * Tag routes — global tag management endpoints (MINCRM-186).
+ * Tag routes — global tag management endpoints.
  * All endpoints require authentication.
  * PATCH /:id and DELETE /:id are admin-only.
  *

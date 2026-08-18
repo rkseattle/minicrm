@@ -1,12 +1,12 @@
 /**
  * Crypto service — symmetric AES-256-GCM encryption for secrets stored at rest.
- * Used to encrypt the S3 secret access key in system_settings. (MINCRM-169)
+ * Used to encrypt the S3 secret access key in system_settings.
  *
  * Requires the NODE_ENCRYPTION_KEY environment variable to be set to a
  * 64-character hex string (32 bytes). Generate one with:
  *   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
  *
- * Key rotation scaffold (MINCRM-519):
+ * Key rotation scaffold:
  * The versioned API (encryptVersioned / decryptVersioned) uses a keyring built from
  * ENCRYPTION_KEY_V<n> environment variables. NODE_ENCRYPTION_KEY is always V1 of the
  * keyring for backward compatibility.  CURRENT_ENCRYPTION_KEY_VERSION controls which
@@ -129,7 +129,7 @@ export function decrypt(payload: string): string {
   return decipher.update(ciphertext).toString('utf8') + decipher.final('utf8');
 }
 
-// ── Versioned keyring API (MINCRM-519) ────────────────────────────────────────
+// ── Versioned keyring API ────────────────────────────────────────
 
 /** Result of an encryptVersioned call: the ciphertext and the key version used. */
 export interface VersionedCiphertext {

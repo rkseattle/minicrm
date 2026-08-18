@@ -1,7 +1,7 @@
 /**
  * Account relationship health scoring — nightly job that computes a
  * deterministic composite score per account from communication frequency,
- * recency, contact seniority, sentiment trend, and contact breadth. (MINCRM-467)
+ * recency, contact seniority, sentiment trend, and contact breadth.
  *
  * Unlike churnExpansionService/sentimentService, scoring here is pure
  * arithmetic over SQL aggregates — no LLM call — since every AC input

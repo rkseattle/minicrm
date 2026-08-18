@@ -1,7 +1,6 @@
 /**
  * AI context controller — request/response shaping for /api/v1/ai/context/*.
  * No business logic or database access — delegates entirely to aiContextService.
- * (MINCRM-427, MINCRM-428)
  */
 
 import type { Request, Response } from 'express';

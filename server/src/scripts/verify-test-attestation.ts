@@ -1,8 +1,8 @@
 /**
- * verify-test-attestation.ts — Shared test-run attestation gate. (MINCRM-642)
+ * verify-test-attestation.ts — Shared test-run attestation gate.
  *
- * Applies at both hybrid selection points — MINCRM-641's local pre-push
- * hook and MINCRM-633/634's CI select-mode job — as one shared, reusable
+ * Applies at both hybrid selection points — the local pre-push
+ * hook 's CI select-mode job — as one shared, reusable
  * gate. Raises the INTEGRITY of a selected/local run (the required tests
  * genuinely ran and passed), not its COMPLETENESS (whether selection
  * picked the right tests — still the safety net's job and the post-merge
@@ -12,7 +12,7 @@
  *  1. Require a passing results file — parses a Playwright JUnit XML
  *     artifact (qa/e2e/test-results/results.xml) and fails unless every
  *     reported test passed. "Every test" is reconciled ACROSS Playwright
- *     projects (MINCRM-687): the reporter emits one <testsuite> per (spec
+ *     projects: the reporter emits one <testsuite> per (spec
  *     file, project), and a viewport-conditional test legitimately skips in
  *     the projects it does not apply to. A test counts as attested when it
  *     passed in at least one of the project runs PRESENT IN THIS RESULTS
@@ -24,7 +24,7 @@
  *     the invocation is the caller's responsibility (and, for a selected
  *     run, mechanism 2 below); this gate raises integrity of what ran.
  *  2. Reconcile run vs. selection — asserts the set of tests that
- *     actually ran (via session attribution, MINCRM-612 — NOT the raw
+ *     actually ran (via session attribution — NOT the raw
  *     JUnit XML alone, which carries no commit SHA to bind against) is a
  *     SUPERSET of the set select-tests.ts's selection output required for
  *     this diff. Running MORE than required passes; running FEWER fails,
@@ -32,7 +32,6 @@
  *     itself a failure ('selection-file-unreadable'), NOT a silent skip:
  *     the caller asked for this reconciliation, so degrading to "no
  *     reconciliation requested" would answer a question nobody asked.
- *     (MINCRM-695)
  *
  * Anti-cheat / staleness: the results artifact must be bound to the exact
  * commit SHA under test (via coverage_sessions.build_sha, resolved
@@ -57,7 +56,7 @@
  * throws before verifyAttestation runs. Both callers already treat that as a
  * failure (pre-push-tia.ts finds no parseable stdout and blocks the push;
  * record mode reads the step outcome), so the gate fails CLOSED on bad input
- * rather than falling back to a default window. (MINCRM-696)
+ * rather than falling back to a default window.
  */
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
@@ -68,7 +67,7 @@ import coverageDb from '../coverageDb.js';
 // JUnit parsing lives in junitXml.ts — pure, DB-free, and importable by
 // qa/scripts/merge-junit-results.ts's parity spec without dragging in this
 // module's DB-bound import graph. Imported, not re-exported; see the note below
-// on why the pass-through was removed. (MINCRM-689)
+// on why the pass-through was removed.
 import {
   findFailedTests,
   findTestsSkippedEverywhere,
@@ -86,7 +85,7 @@ const DEFAULT_MAX_AGE_MINUTES = 120;
  * either way; what naming the type adds is that the builder's own signature
  * stays readable as "the arguments verifyAttestation takes", and a field
  * RENAMED here surfaces at the builder instead of silently becoming an excess
- * property in the overrides. (MINCRM-691)
+ * property in the overrides.
  */
 export interface CliArgs {
   resultsPath: string;
@@ -96,7 +95,7 @@ export interface CliArgs {
 }
 
 /**
- * Exported for direct unit testing (MINCRM-696, AC 5) — the thrown TYPE is the
+ * Exported for direct unit testing — the thrown TYPE is the
  * assertion, so a test that could only check message text would keep passing if
  * this were downgraded to a bare Error.
  */
@@ -111,7 +110,7 @@ export class MissingArgsError extends Error {
  * Thrown when a flag is PRESENT but its value cannot be used. Distinct from
  * MissingArgsError, which reports an ABSENT required flag: the operator's fix
  * differs (supply the flag vs. correct the value), and conflating them would
- * print a usage string at someone who already read it. (MINCRM-696)
+ * print a usage string at someone who already read it.
  *
  * Exported for the same reason as MissingArgsError — the type is the assertion.
  */
@@ -123,8 +122,8 @@ export class InvalidArgError extends Error {
 }
 
 /**
- * Exported for direct unit testing (MINCRM-696, AC 1). It was the last untested
- * decision point in this file after MINCRM-691, and not trivial glue: it decides
+ * Exported for direct unit testing. It was the last untested
+ * decision point in this file after, and not trivial glue: it decides
  * the anti-cheat staleness window, and its `=`-preserving split is a correctness
  * property that a plausible "simplification" would silently break.
  *
@@ -137,7 +136,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   // intact. Paths and refs may both contain it — `git check-ref-format
   // 'refs/heads/foo=bar'` exits 0 — and truncating one yields a DIFFERENT,
   // usually nonexistent, path or ref rather than an error. Pinned by test
-  // (MINCRM-696 AC 6) so it cannot be "simplified" back.
+  // so it cannot be "simplified" back.
   const get = (flag: string): string | undefined =>
     argv
       .find((a) => a.startsWith(`--${flag}=`))
@@ -148,7 +147,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   // Ordered BEFORE the max-age validation on purpose: an invocation missing
   // --sha AND carrying a malformed --max-age-minutes reports the missing flag,
   // because that is the more fundamental error and the one whose usage string
-  // helps. (MINCRM-696 AC 5)
+  // helps.
   const resultsPath = get('results');
   const sha = get('sha');
   if (!resultsPath || !sha) {
@@ -169,7 +168,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     // fractions and negatives, matching merge-junit-results.ts:337.
     // Zero is accepted: `ageMinutes > maxAgeMinutes` is strict, so 0 means
     // "written this instant" — vanishingly strict but coherent, and not
-    // malformed input. (MINCRM-696 AC 2, AC 4)
+    // malformed input.
     if (!/^\d+$/.test(maxAgeArg)) {
       throw new InvalidArgError('max-age-minutes', maxAgeArg, 'requires a non-negative integer');
     }
@@ -182,7 +181,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     // undocumented and had no reading under which it was desirable: it meant two
     // relative paths given in one invocation resolved against different bases.
     // Inert for the one live --selection caller, which passes an absolute
-    // mkdtemp path. (MINCRM-696 AC 7)
+    // mkdtemp path.
     selectionPath: selectionPathOf(get('selection')),
     sha,
     maxAgeMinutes,
@@ -196,13 +195,12 @@ export function parseArgs(argv: readonly string[]): CliArgs {
  *
  *  - `undefined` (flag absent) stays `undefined`. resolvePath('') would yield
  *    the CWD, silently turning "no reconciliation requested" into a directory
- *    path — which since MINCRM-695 is a HARD gate failure (EISDIR), so the
+ *    path — which since a later change is a HARD gate failure (EISDIR), so the
  *    difference is a blocked push rather than a cosmetic one.
  *  - `''` (a bare `--selection=`) is rejected outright. The flag was supplied,
  *    so treating it as absent repeats this file's original sin — silently
  *    ignoring an input the caller explicitly provided. Rejecting it names the
  *    mistake instead of failing later with an incidental EISDIR from the CWD.
- *    (MINCRM-696)
  */
 function selectionPathOf(raw: string | undefined): string | undefined {
   if (raw === undefined) return undefined;
@@ -217,9 +215,8 @@ function selectionPathOf(raw: string | undefined): string | undefined {
 // code imports this module — it is only ever run as a CLI (server/package.json's
 // verify:test-attestation, scripts/pre-push-tia.ts, tia-record-mode.yml). A
 // pass-through export with no consumer is just a second name for the same thing.
-// (MINCRM-689)
 //
-// MINCRM-691 added the one importer: verifyTestAttestation.test.ts, which pulls
+// added the one importer: verifyTestAttestation.test.ts, which pulls
 // verifyAttestation/formatFailureOutput/readSelectionFiles in directly to test
 // them. That does not revive the case for re-exporting junitXml.js's surface —
 // the same test file imports those from junitXml.js, where they live.
@@ -231,12 +228,12 @@ export type AttestationFailureReason =
   | 'results-file-stale'
   | 'test-failures'
   | 'skipped-tests'
-  /** The reporter's own <testsuites skipped="N"> disagrees with what this parser could extract — rows were dropped, so the results file cannot be trusted either way. (MINCRM-687) */
+  /** The reporter's own <testsuites skipped="N"> disagrees with what this parser could extract — rows were dropped, so the results file cannot be trusted either way. */
   | 'results-file-unparseable'
-  /** The results file is present and well-formed but reports ZERO tests. An empty run is not a passing run; without this the gate returns no reasons at all, because every other check operates on rows that exist. Only reachable when the SHA already has attributed coverage dumps from an earlier run (otherwise no-session-attribution fires first) — which is exactly the repeat-invocation shape the pre-push hook now uses. The equivalent guard existed only as a CI workflow step, so the local hook lacked it while docs/dev/coverage.md listed it. (MINCRM-705) */
+  /** The results file is present and well-formed but reports ZERO tests. An empty run is not a passing run; without this the gate returns no reasons at all, because every other check operates on rows that exist. Only reachable when the SHA already has attributed coverage dumps from an earlier run (otherwise no-session-attribution fires first) — which is exactly the repeat-invocation shape the pre-push hook now uses. The equivalent guard existed only as a CI workflow step, so the local hook lacked it while docs/dev/coverage.md listed it. */
   | 'zero-tests-executed'
   | 'no-session-attribution'
-  /** A --selection path was given but could not be read as a requirement list — missing, unreadable, malformed JSON, or a specFiles that is not an array of strings. Distinct from "no selection requested": the caller ASKED for reconciliation and did not get it. (MINCRM-695) */
+  /** A --selection path was given but could not be read as a requirement list — missing, unreadable, malformed JSON, or a specFiles that is not an array of strings. Distinct from "no selection requested": the caller ASKED for reconciliation and did not get it. */
   | 'selection-file-unreadable'
   | 'missing-required-tests';
 
@@ -245,14 +242,14 @@ export interface AttestationResult {
   reasons: AttestationFailureReason[];
   /** The reporter's own declared count, from <testsuites tests="N"> — (test, project) pairs. */
   totalTests: number;
-  /** How many rows this parser actually recovered. Diverging from totalTests means rows were dropped, which is what 'results-file-unparseable' reports. (MINCRM-687) */
+  /** How many rows this parser actually recovered. Diverging from totalTests means rows were dropped, which is what 'results-file-unparseable' reports. */
   parsedTestCount: number;
   failedTests: Array<{ classname: string; name: string; message: string | null }>;
-  /** Tests skipped in EVERY project they were selected for — they never ran an assertion anywhere, so they cannot satisfy an ALL-PASS gate even though they carry no failure/error of their own. A test skipped under one project but passing under another is attested and absent from this list (MINCRM-687). */
+  /** Tests skipped in EVERY project they were selected for — they never ran an assertion anywhere, so they cannot satisfy an ALL-PASS gate even though they carry no failure/error of their own. A test skipped under one project but passing under another is attested and absent from this list. */
   skippedTests: Array<{ classname: string; name: string }>;
-  /** Populated only when a --selection file was given AND could be read: required-but-not-run tests, by testFile. An unreadable selection yields [] here and reports 'selection-file-unreadable' instead — the two are mutually exclusive. (MINCRM-695) */
+  /** Populated only when a --selection file was given AND could be read: required-but-not-run tests, by testFile. An unreadable selection yields [] here and reports 'selection-file-unreadable' instead — the two are mutually exclusive. */
   missingRequiredFiles: string[];
-  /** Why the --selection file could not be read, when 'selection-file-unreadable' fired; null otherwise. Carried on the result so formatFailureOutput can name the actual cause — a reason an operator cannot act on is only half a report. (MINCRM-695) */
+  /** Why the --selection file could not be read, when 'selection-file-unreadable' fired; null otherwise. Carried on the result so formatFailureOutput can name the actual cause — a reason an operator cannot act on is only half a report. */
   selectionUnreadableReason: string | null;
   ranFileCount: number;
 }
@@ -266,7 +263,6 @@ export interface AttestationResult {
  * for reconciliation and this gate could not read the file". The third collapsed
  * into the first, so a typo'd --selection path produced a PASS with no entry in
  * `reasons` — the one path where this gate stopped gating without saying so.
- * (MINCRM-695)
  *
  * `unreadable` is kept distinct for the same reason qa/scripts/container-commit-sha.ts's
  * ContainerCommitSha keeps `empty` distinct from `unreadable`: collapsing the
@@ -281,7 +277,7 @@ export type SelectionRequirement =
   { kind: 'none' } | { kind: 'files'; files: string[] } | { kind: 'unreadable'; why: string };
 
 /**
- * Exported for direct unit testing (MINCRM-691 AC 4, MINCRM-695 AC 5). Every arm
+ * Exported for direct unit testing. Every arm
  * is a decision point of the gate: `none` disables run-vs-selection
  * reconciliation legitimately, `files` enables it (including for an EMPTY
  * requirement list, which is a real if trivially-satisfied requirement and not
@@ -359,14 +355,14 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
   // Deduped by (classname, name): a test that fails under several projects is
   // one broken test to fix, not N — reporting it once per project would pad
   // the failure list without adding information. The 'test-failures' reason
-  // fires on the first entry either way. (MINCRM-687)
+  // fires on the first entry either way.
   const failedTests = findFailedTests(parsed.testCases);
   // A skipped test never ran an assertion, so it cannot satisfy an ALL-PASS
   // gate on its own (Greptile PR review: the parser previously treated
   // <skipped> testcases as passed=true, silently letting record mode
   // export/commit a coverage map derived from an incomplete run).
   //
-  // MINCRM-687: that rule is applied per TEST, not per (test, project) pair.
+  // that rule is applied per TEST, not per (test, project) pair.
   // This suite guards viewport-specific tests in BOTH directions — some skip
   // on mobile viewports, others skip on desktop ones — so no single project
   // selection produces a skip-free run, and failing on any skip made the
@@ -420,12 +416,11 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
   // (whose own `totalTests > 0` guard is deliberate, see above) all return
   // nothing for a well-formed <testsuites tests="0">, so without this the gate
   // reports `reasons: []` and attests a run that executed no tests at all.
-  // (MINCRM-705)
   if (parsed.totalTests === 0 && parsed.testCases.length === 0) {
     reasons.push('zero-tests-executed');
   }
 
-  // Session attribution (MINCRM-612) is the SHA-binding mechanism — the
+  // Session attribution is the SHA-binding mechanism — the
   // JUnit XML itself carries no commit SHA, so a results.xml alone cannot
   // prove it belongs to this SHA. No attributed dumps for this SHA means
   // this gate cannot verify what ran, which is treated as a failure, not
@@ -442,7 +437,6 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
   // exclusive by construction: with no requirement list there is nothing to diff
   // against, so missingRequiredFiles stays empty. Inventing a requirement list
   // for the unreadable case would be a second wrong answer on top of the first.
-  // (MINCRM-695)
   const selection = readSelectionFiles(args.selectionPath);
   if (selection.kind === 'unreadable') {
     reasons.push('selection-file-unreadable');
@@ -472,7 +466,7 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
  *
  * A `Record` keyed on the reason union rather than a chain of `if`s, so that
  * **adding a reason without a message is a compile error at this declaration**
- * rather than a silently empty line in CI. That is the property MINCRM-691's
+ * rather than a silently empty line in CI. That is the property 's
  * AC 3 asks for. Note the limit of the guarantee: the type forces an entry to
  * EXIST, but cannot force its body to be non-empty — a `() => []` would still
  * type-check. That residue is covered at runtime by verifyTestAttestation.test.ts,
@@ -489,7 +483,7 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
  * one by a test (verifyTestAttestation.test.ts, "documents every failure reason
  * in docs/dev/coverage.md"), so adding a reason here without documenting it
  * fails the suite rather than drifting quietly — it had already drifted by three
- * reasons before MINCRM-691.
+ * reasons before that change.
  */
 const FAILURE_MESSAGES: Record<AttestationFailureReason, (result: AttestationResult) => string[]> =
   {
@@ -544,7 +538,6 @@ const FAILURE_MESSAGES: Record<AttestationFailureReason, (result: AttestationRes
  * that its members were valid reasons — never that they covered the union — so
  * a newly added reason silently dropped out of coverage while still type-checking.
  * Deriving the list removes the class rather than repairing the guard.
- * (MINCRM-691)
  */
 // The cast is safe because FAILURE_MESSAGES is typed
 // Record<AttestationFailureReason, …>: every key is a union member by
@@ -569,7 +562,7 @@ export const ATTESTATION_FAILURE_REASONS = Object.keys(
  * preserves the original if-chain's semantics — fixed order, each section at
  * most once — for any input.
  *
- * Exported for direct unit testing (MINCRM-691, AC 3).
+ * Exported for direct unit testing.
  */
 export function formatFailureOutput(result: AttestationResult): string {
   const reasons = new Set(result.reasons);

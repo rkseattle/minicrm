@@ -1,7 +1,6 @@
 /**
  * HTTP contract tests for dashboardController.
  * Verifies expected response shape and auth enforcement.
- * (MINCRM-195)
  */
 
 import 'dotenv/config';

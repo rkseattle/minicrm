@@ -1,5 +1,5 @@
 /**
- * Tests for diffParser. (MINCRM-623)
+ * Tests for diffParser.
  *
  * Exercised against a REAL git repository (mkdtemp + git init/commit) rather
  * than mocked `git diff` output — matching coverageReconciliationService's

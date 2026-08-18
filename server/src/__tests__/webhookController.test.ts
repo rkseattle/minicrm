@@ -1,5 +1,5 @@
 /**
- * Integration tests for the webhook controller. (MINCRM-295)
+ * Integration tests for the webhook controller.
  * Covers: create, list, get, update, delete subscriptions and list delivery logs.
  * All endpoints are admin-only.
  */

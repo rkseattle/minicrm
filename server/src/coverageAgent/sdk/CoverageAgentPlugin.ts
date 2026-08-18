@@ -1,10 +1,10 @@
 /**
  * Coverage/TIA agent SDK — the plugin contract a language-specific coverage
- * agent implements. (MINCRM-604, MINCRM-606, MINCRM-636)
+ * agent implements.
  *
  * A CoverageAgentPlugin wraps a single in-process coverage source (today,
  * only the backend's own V8 inspector session — see NodeV8CoverageAgent).
- * Coverage collected client-side (the frontend Istanbul agent, MINCRM-605)
+ * Coverage collected client-side (the frontend Istanbul agent)
  * has no server-side agent to control; it is pulled and submitted by the
  * E2E client itself. See docs/dev/coverage.md for the full backend/frontend
  * split, and docs/dev/coverage-tia-sdk.md for how to add a new language
@@ -44,7 +44,7 @@ export interface CoverageDump {
 
 /**
  * Identity/capability metadata a CoverageAgentPlugin reports about itself —
- * the piece MINCRM-636's "reference implementation" AC needs so a second
+ * the piece The reference implementation" AC needs so a second
  * language's agent can be told apart from the first at runtime (logging,
  * future multi-agent registries), without the SDK itself needing to know
  * every language in advance.
@@ -73,8 +73,8 @@ export interface AgentMetadata {
 
 /**
  * Common control surface every in-process coverage agent implements.
- * See MINCRM-606 for the "uniform control API" requirement this mirrors,
- * and MINCRM-636 for the plugin/SDK framing this contract now formalizes.
+ * See the docs for the "uniform control API" requirement this mirrors,
+ * and the plugin/SDK framing this contract now formalizes.
  */
 export interface CoverageAgentPlugin {
   /** Identity/capability metadata for this agent implementation. */

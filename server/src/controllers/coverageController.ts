@@ -1,7 +1,7 @@
 /**
  * Coverage/TIA controller — request/response shaping for the coverage
  * control API. No business logic here; all agent access and dump
- * persistence goes through coverageDumpService. (MINCRM-606)
+ * persistence goes through coverageDumpService.
  * All endpoints are admin-only, feature-flag gated (enforced by the route layer).
  */
 
@@ -30,7 +30,7 @@ const DEFAULT_DUMP_LABEL = 'unlabeled';
  * Best-effort: if the caller sent x-coverage-correlation-id (see
  * correlationId middleware) and it matches a currently-active session,
  * attributes this dump to that session automatically — the auto-attribution
- * path MINCRM-610 describes ("agent partitions coverage by correlation ID
+ * path describes ("agent partitions coverage by correlation ID
  * rather than global reset/dump"), so callers that already propagate the
  * header don't also need to separately call the record-dump endpoint.
  * Never allowed to fail the dump response itself: attribution is

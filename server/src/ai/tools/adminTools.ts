@@ -1,7 +1,7 @@
 /**
  * NLI tool definitions for admin-managed configuration data.
  * These tools are read-only — mutations via NLI are out of scope.
- * Filtered out for rep-role users by buildToolSet(). (MINCRM-422)
+ * Filtered out for rep-role users by buildToolSet().
  */
 
 import type Anthropic from '@anthropic-ai/sdk';

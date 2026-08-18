@@ -1,5 +1,5 @@
 /**
- * Tests for the refuse-to-run guard on the destructive E2E scripts. (MINCRM-684)
+ * Tests for the refuse-to-run guard on the destructive E2E scripts.
  *
  * These scripts truncate and reseed every table they touch — reset-e2e-data.ts runs
  * `TRUNCATE audit_log CASCADE`. The guard is what makes "this cannot destroy the dev
@@ -165,7 +165,7 @@ describe('assertTestDatabasePort', () => {
 
   // The guard compared the RAW string to '5432', so these spellings passed it and
   // then Number()'d back to the dev port at every call site — including the ones
-  // that run TRUNCATE ... CASCADE and CREATE DATABASE. (MINCRM-699)
+  // that run TRUNCATE ... CASCADE and CREATE DATABASE.
   it.each(['05432', '005432'])('throws on a leading-zero spelling of the dev port (%s)', (port) => {
     process.env.DB_PORT = port;
 

@@ -2,7 +2,7 @@
  * Audit service — write and query structured audit log entries.
  * All writes go through this module. Entries are always written inside the
  * caller's transaction so a failed audit write rolls back the triggering change
- * and vice versa. (MINCRM-170)
+ * and vice versa.
  */
 
 import type { PoolClient } from 'pg';
@@ -47,40 +47,40 @@ export type AuditRecordType =
   | 'system_settings'
   | 'lead'
   | 'activity'
-  /** Saved custom report definitions (MINCRM-402) */
+  /** Saved custom report definitions */
   | 'custom_report'
-  /** Sales sequence definitions and enrollments (MINCRM-403) */
+  /** Sales sequence definitions and enrollments */
   | 'sequence'
   | 'sequence_enrollment'
-  /** Feature flag registry entries (MINCRM-463) */
+  /** Feature flag registry entries */
   | 'feature_flag'
-  /** Feature flag group entries (MINCRM-491) */
+  /** Feature flag group entries */
   | 'feature_flag_group'
-  /** AI provider/model configuration (MINCRM-457) */
+  /** AI provider/model configuration */
   | 'ai_settings'
-  /** Teams and team membership (MINCRM-537) */
+  /** Teams and team membership */
   | 'team'
-  /** Per-object-type data visibility policies (MINCRM-538) */
+  /** Per-object-type data visibility policies */
   | 'org_visibility_settings'
-  /** Capability-based RBAC custom role definitions (MINCRM-542) */
+  /** Capability-based RBAC custom role definitions */
   | 'custom_role'
-  /** SCIM provisioning bearer token lifecycle (MINCRM-541) */
+  /** SCIM provisioning bearer token lifecycle */
   | 'scim_token'
-  /** SCIM group-to-custom-role mapping changes (MINCRM-541) */
+  /** SCIM group-to-custom-role mapping changes */
   | 'scim_group_role_mapping'
-  /** AI conversation sessions (MINCRM-421) */
+  /** AI conversation sessions */
   | 'ai_sessions'
-  /** Per-user AI context preferences (MINCRM-427) */
+  /** Per-user AI context preferences */
   | 'user_ai_context'
-  /** Email templates for sequences and activities (MINCRM-422) */
+  /** Email templates for sequences and activities */
   | 'email_templates'
-  /** Global tag definitions renamed by NLI or admin (MINCRM-433) */
+  /** Global tag definitions renamed by NLI or admin */
   | 'tag'
-  /** AI data minimization field exclusion toggles (MINCRM-461) */
+  /** AI data minimization field exclusion toggles */
   | 'ai_field_exclusion'
-  /** AI lead routing suggestion decisions (MINCRM-475) */
+  /** AI lead routing suggestion decisions */
   | 'lead_routing_decision'
-  /** Coverage/TIA testing sessions (MINCRM-609..612) */
+  /** Coverage/TIA testing sessions */
   | 'coverage_session';
 
 /** Event types that can appear in the audit log */
@@ -95,32 +95,32 @@ export type AuditEventType =
   | 'deactivated'
   | 'reactivated'
   | 'ownership_reassigned'
-  /** Contact merge — winner record absorbed the loser (MINCRM-187) */
+  /** Contact merge — winner record absorbed the loser */
   | 'merged'
-  /** Note CRUD events (MINCRM-352) */
+  /** Note CRUD events */
   | 'note_created'
   | 'note_updated'
   | 'note_deleted'
   | 'note_visibility_changed'
-  /** GDPR Art. 17 erasure (MINCRM-364) */
+  /** GDPR Art. 17 erasure */
   | 'gdpr_erasure'
-  /** MFA enabled/disabled by user (MINCRM-392) */
+  /** MFA enabled/disabled by user */
   | 'mfa_enabled'
   | 'mfa_disabled'
-  /** SSO identity events (MINCRM-399) */
+  /** SSO identity events */
   | 'sso_login'
   | 'sso_provisioned'
   | 'sso_linked'
   | 'sso_unlinked'
-  /** Service account API token lifecycle (MINCRM-536) */
+  /** Service account API token lifecycle */
   | 'api_token_issued'
   | 'api_token_revoked'
-  /** GDPR AI data cascade — PII redaction from ai_messages/user_ai_context (MINCRM-446) */
+  /** GDPR AI data cascade — PII redaction from ai_messages/user_ai_context */
   | 'ai_gdpr_cascade'
-  /** AI lead routing suggestion accepted or overridden (MINCRM-475) */
+  /** AI lead routing suggestion accepted or overridden */
   | 'routing_accepted'
   | 'routing_overridden'
-  /** Coverage/TIA session lifecycle (MINCRM-609..612) */
+  /** Coverage/TIA session lifecycle */
   | 'coverage_session_started'
   | 'coverage_session_ended';
 
@@ -144,7 +144,7 @@ export interface AuditEntryInput {
   changedById?: string | null;
   /** Display name of the user performing the action */
   changedByName?: string | null;
-  /** Source of the write operation: AI assistant or NULL for human/REST (MINCRM-444) */
+  /** Source of the write operation: AI assistant or NULL for human/REST */
   source?: 'AI (NLI)' | 'AI (context)' | null;
 }
 
@@ -342,7 +342,7 @@ export interface ListAuditLogOptions {
   recordId?: string;
   /** Filter by event type */
   eventType?: AuditEventType;
-  /** Filter by source: 'AI (NLI)' | 'AI (context)' | 'human' (NULL rows) (MINCRM-444) */
+  /** Filter by source: 'AI (NLI)' | 'AI (context)' | 'human' (NULL rows) */
   source?: 'AI (NLI)' | 'AI (context)' | 'human';
   /** 1-based page number; defaults to 1 */
   page?: number;
@@ -360,7 +360,7 @@ export interface AuditLogPage {
 
 /**
  * Returns audit log entries for a single record, newest first.
- * Used by the Change History section on detail pages. (MINCRM-171)
+ * Used by the Change History section on detail pages.
  *
  * @param options - Record type, record ID, and optional limit/all flag
  * @returns Array of audit log rows
@@ -368,7 +368,7 @@ export interface AuditLogPage {
 export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Promise<AuditLogRow[]> {
   const { recordType, recordId, limit = 20, all = false } = options;
 
-  // Apply read-time GDPR masking via LEFT JOIN on gdpr_deletion_log. (MINCRM-364)
+  // Apply read-time GDPR masking via LEFT JOIN on gdpr_deletion_log.
   // When a record has a completed erasure, old_value/new_value are replaced with
   // '[GDPR deleted]' so audit history does not leak PII that was erased.
   const query = all
@@ -401,7 +401,7 @@ export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Prom
 
 /**
  * Returns paginated audit log entries for the system-wide admin view.
- * Supports filtering by date range, user, record type, and event type. (MINCRM-172)
+ * Supports filtering by date range, user, record type, and event type.
  *
  * @param options - Filter and pagination options
  * @returns Paginated audit log entries
@@ -464,7 +464,7 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const offset = (page - 1) * limit;
 
-  // Apply read-time GDPR masking via LEFT JOIN on gdpr_deletion_log. (MINCRM-364)
+  // Apply read-time GDPR masking via LEFT JOIN on gdpr_deletion_log.
   // When a record has a completed erasure, old_value/new_value display '[GDPR deleted]'.
   // WHERE conditions are prefixed with `a.` to avoid ambiguity after the join.
   const gdprJoin = `LEFT JOIN gdpr_deletion_log g ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL`;
@@ -534,7 +534,7 @@ export async function writeAuditEntryBestEffort(entry: AuditEntryInput): Promise
  * is applied, so subscribers that forward events to clients must call this first.
  *
  * When the record has a completed erasure in gdpr_deletion_log, old_value and
- * new_value are replaced with '[GDPR deleted]'. (MINCRM-375, MINCRM-364)
+ * new_value are replaced with '[GDPR deleted]'.
  *
  * @param event - Raw audit notification from the auditEventBus
  * @returns A copy of the event with values masked if the record has been erased

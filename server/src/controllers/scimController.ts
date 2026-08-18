@@ -1,5 +1,5 @@
 /**
- * SCIM 2.0 controller — request/response shaping for /scim/v2 routes. (MINCRM-541)
+ * SCIM 2.0 controller — request/response shaping for /scim/v2 routes.
  *
  * SCIM responses use Content-Type: application/scim+json and a different
  * error format from the rest of the application (RFC 7644 §3.12).

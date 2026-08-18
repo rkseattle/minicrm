@@ -1,5 +1,5 @@
 /**
- * Lead score controller — request/response shaping only. (MINCRM-441 prerequisite)
+ * Lead score controller — request/response shaping only.
  * No business logic here; scoring goes through leadScoreService.
  */
 

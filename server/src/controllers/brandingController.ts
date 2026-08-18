@@ -1,6 +1,6 @@
 /**
  * Branding controller — request/response shaping for branding settings endpoints.
- * No business logic here; all DB access goes through brandingService. (MINCRM-356)
+ * No business logic here; all DB access goes through brandingService.
  */
 
 import type { Request, Response } from 'express';

@@ -1,5 +1,5 @@
 /**
- * Unit tests for the context proposal extraction module. (MINCRM-429, MINCRM-430)
+ * Unit tests for the context proposal extraction module.
  *
  * These tests do not hit the database — pure string parsing.
  */

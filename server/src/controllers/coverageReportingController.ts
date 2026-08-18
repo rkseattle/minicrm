@@ -1,6 +1,6 @@
 /**
  * Coverage/TIA reporting query controller — request/response shaping only.
- * All DB access goes through coverageReportingService. (MINCRM-629/630/631)
+ * All DB access goes through coverageReportingService.
  * Admin-only, feature-flag gated (enforced by the route layer).
  */
 

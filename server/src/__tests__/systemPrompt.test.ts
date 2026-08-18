@@ -1,7 +1,7 @@
 /**
  * Unit tests for buildSystemPrompt() in server/src/ai/systemPrompt.ts.
  *
- * Covers the XML entity escaping added in MINCRM-427 to prevent injection
+ * Covers the XML entity escaping added in a later change to prevent injection
  * via crafted context entry keys or values.
  */
 
@@ -58,7 +58,7 @@ describe('buildSystemPrompt', () => {
     expect(result).not.toContain('Acme & Sons');
   });
 
-  // The FORBIDDEN carve-out (MINCRM-705).
+  // The FORBIDDEN carve-out.
   //
   // The prompt's general error guidance says to "suggest how to resolve it" and
   // "suggest next steps". For a permission denial that directly contradicts

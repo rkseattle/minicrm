@@ -1,5 +1,5 @@
 /**
- * Lead routing admin controller — request/response shaping only. (MINCRM-475)
+ * Lead routing admin controller — request/response shaping only.
  * No business logic here; all DB access goes through leadRoutingService.
  * Covers admin-configured scoring weights/thresholds and the per-team disable toggle.
  */

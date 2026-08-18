@@ -1,5 +1,5 @@
 /**
- * Tests for safetyNetPolicy. (MINCRM-626)
+ * Tests for safetyNetPolicy.
  *
  * Pure logic over plain data fixtures — no DB or git repo needed, since
  * this module only combines already-computed selection/widening signals.
@@ -27,7 +27,7 @@ const BASELINE = [
 ];
 
 // Match coveragePolicyConfig.ts's own defaults — these thresholds are no
-// longer module-level defaults inside safetyNetPolicy.ts itself (MINCRM-637;
+// longer module-level defaults inside safetyNetPolicy.ts itself (
 // every caller, including the real one in select-tests.ts, must now resolve
 // and pass them explicitly), so this test file supplies its own local
 // constants for the common case rather than relying on any implicit value.

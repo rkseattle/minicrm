@@ -3,7 +3,7 @@
  *
  * Unlike bulkService.ts (which uses all-or-nothing transactions), this service
  * uses PostgreSQL savepoints to allow partial success: one failing record does
- * not roll back mutations to other records in the same batch. (MINCRM-562)
+ * not roll back mutations to other records in the same batch.
  *
  * Design:
  *   - Single BEGIN/COMMIT wrapping the whole batch
@@ -29,7 +29,7 @@ import type { UserStatus } from '@minicrm/shared/schemas/userSchema.js';
 
 // ── Result shape ──────────────────────────────────────────────────────────────
 
-/** Response shape for all bulk V2 operations (MINCRM-562). */
+/** Response shape for all bulk V2 operations. */
 export interface BulkV2Result {
   succeeded: string[];
   failed: Array<{ id: string; reason: string }>;
@@ -392,7 +392,7 @@ export async function bulkPatchContacts(
  * Bulk DELETE contacts.
  *
  * Also soft-deletes associated notes in the same savepoint to prevent orphaned
- * active notes, mirroring the single-record deleteContact pattern. (MINCRM-523)
+ * active notes, mirroring the single-record deleteContact pattern.
  *
  * @param input - Validated bulk delete input
  * @param actor - User performing the action
@@ -561,7 +561,7 @@ export async function bulkPatchDeals(
             changedById: actor.id,
             changedByName: actor.name,
           });
-          // Stage history row on a real transition only (MINCRM-474)
+          // Stage history row on a real transition only
           if (row.stage !== patch.stage) {
             await writeDealStageHistoryEntry(client, id, row.pipeline_id, patch.stage);
           }
@@ -631,7 +631,7 @@ export async function bulkPatchDeals(
 /**
  * Bulk DELETE deals.
  *
- * Also soft-deletes associated notes in the same savepoint. (MINCRM-523)
+ * Also soft-deletes associated notes in the same savepoint.
  *
  * @param input - Validated bulk delete input
  * @param actor - User performing the action
@@ -991,7 +991,7 @@ export async function bulkPatchLeads(
  * Bulk DELETE leads.
  *
  * Also soft-deletes associated notes in the same savepoint, matching the
- * single-record deleteLead pattern. (MINCRM-523)
+ * single-record deleteLead pattern.
  *
  * @param input - Validated bulk delete input
  * @param actor - User performing the action

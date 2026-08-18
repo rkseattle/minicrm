@@ -1,10 +1,10 @@
 /**
- * Multi-signal duplicate-match scoring engine. (MINCRM-440 prerequisite)
+ * Multi-signal duplicate-match scoring engine.
  *
  * Deterministic, on-demand scoring of how likely two contact (or account)
  * records are duplicates — computed on read, never persisted, and matching
  * this codebase's convention of not maintaining a background match-scan job.
- * Pure data comparison — no AI call is made here; MINCRM-440's AI explanation
+ * Pure data comparison — no AI call is made here; the AI explanation
  * feature consumes this score's matched_signals as input to its prompt.
  */
 

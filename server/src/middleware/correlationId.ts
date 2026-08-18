@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA correlation-ID middleware. (MINCRM-610)
+ * Coverage/TIA correlation-ID middleware.
  *
  * Reads the `x-coverage-correlation-id` header (see CORRELATION_ID_HEADER in
  * shared/schemas/coverageSessionSchema.ts) sent by the E2E harness or the

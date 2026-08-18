@@ -2,7 +2,6 @@
  * SMTP settings service — read/write SMTP configuration stored in the
  * smtp_configuration singleton table.
  * The password is stored encrypted via cryptoService; it is never returned in plaintext.
- * (MINCRM-254, MINCRM-502)
  */
 
 import type { PoolClient } from 'pg';

@@ -1,6 +1,6 @@
 /**
  * Custom field service — business logic for custom field definitions and values.
- * All database access for custom_field_definitions and custom_field_values goes here. (MINCRM-276)
+ * All database access for custom_field_definitions and custom_field_values goes here.
  */
 
 import pool from '../db.js';
@@ -106,7 +106,7 @@ export async function createDefinition(
  * field_type cannot be changed after creation.
  *
  * When pii_excluded changes, writes a best-effort audit entry noting the field's
- * new AI data minimization state (MINCRM-461). updateDefinition is not wrapped in
+ * new AI data minimization state. updateDefinition is not wrapped in
  * an explicit transaction, so this uses the best-effort (non-blocking) audit write
  * rather than introducing a new transaction wrapper solely for the audit row.
  *

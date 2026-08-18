@@ -1,4 +1,4 @@
-/** Vitest configuration for the MiniCRM server test suite (MINCRM-191, MINCRM-277). */
+/** Vitest configuration for the MiniCRM server test suite. */
 
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
@@ -76,7 +76,7 @@ const SERIAL_FILES = [
   'src/__tests__/demoSeed.test.ts',
   // testUtils asserts on the OLDEST active admin across the whole users table and
   // deliberately creates admins that win that ordering; in parallel it would both
-  // perturb and be perturbed by any other file's admin fixture. (MINCRM-704)
+  // perturb and be perturbed by any other file's admin fixture.
   'src/__tests__/testUtils.test.ts',
   'src/__tests__/dashboardService.test.ts',
   // storageService writes file_storage_* keys to system_settings; running it
@@ -87,7 +87,7 @@ const SERIAL_FILES = [
   // it in parallel with emailService or contactController causes those tests to
   // attempt a real SMTP connection to smtp.example.com and fail with ENOTFOUND.
   // Also deletes the smtp_configuration singleton row in one test to exercise
-  // null-row defaults; any concurrent reader sees an empty table mid-delete. (MINCRM-502)
+  // null-row defaults; any concurrent reader sees an empty table mid-delete.
   'src/__tests__/smtpSettingsService.test.ts',
   // smtpController mutates the same system_settings SMTP keys as smtpSettingsService
   // above (via PUT /api/settings/smtp) and resets them in beforeEach; running in
@@ -109,7 +109,6 @@ const SERIAL_FILES = [
   // parallel run failed automationController's logs test with "expected 0
   // to be 1"; the same file passed 23/23 in isolation) — same root cause as
   // automationService/auth-boundaries above, just a different trigger file.
-  // (MINCRM-629/630/631)
   'src/__tests__/automationController.test.ts',
   // auth-boundaries deletes deals/contacts/accounts which fires fireAutomationTrigger
   // globally. When automationService runs in parallel it leaves enabled rules alive
@@ -139,7 +138,6 @@ const SERIAL_FILES = [
   'src/__tests__/noteService.test.ts',
   // gdprService uses ALTER TABLE audit_log DISABLE TRIGGER in beforeEach/afterAll;
   // running in parallel with auditService races on the trigger's enabled/disabled state.
-  // (MINCRM-364)
   'src/__tests__/gdprService.test.ts',
   // activityService, auditService, and leadsService write to audit_log; when
   // noteService/gdprService disable the audit_log_no_modify trigger mid-run,
@@ -195,7 +193,7 @@ const SERIAL_FILES = [
   // concurrent login requests that pollute the counter mid-test.
   'src/__tests__/loginLockout.test.ts',
   // ssoSettingsService writes sso_* keys to system_settings; running in parallel
-  // with other settings-touching tests can cause key races. (MINCRM-399)
+  // with other settings-touching tests can cause key races.
   'src/__tests__/ssoSettingsService.test.ts',
   // ssoService and ssoController create users (sso-test-* / sso-ctrl-test-*) and write
   // audit log entries; running in parallel with passwordReset.test.ts can cause
@@ -205,7 +203,6 @@ const SERIAL_FILES = [
   // aiConfigService and aiConfigController both write ai_* keys to system_settings.
   // Running them in parallel causes beforeEach deletes to race with mid-test upserts
   // from the sibling file, producing stale model/dpa_acknowledged_by values.
-  // (MINCRM-457)
   'src/__tests__/aiConfigService.test.ts',
   'src/__tests__/aiConfigController.test.ts',
   // aiTokenBudgetService uses fire-and-forget recordTokenUsage() that writes via
@@ -216,7 +213,6 @@ const SERIAL_FILES = [
   // rlsEnforcement creates/tears down a `minicrm_app` connection pool and inserts
   // fixture rows into RLS-protected tables. Running it in serial prevents races
   // between its cleanup queries and concurrent tests that also create contacts/deals/etc.
-  // (MINCRM-518)
   'src/__tests__/rlsEnforcement.test.ts',
   // scimService creates SCIM teams and members; running in parallel with teamService
   // or teamController causes cross-file teams/team_memberships races.
@@ -227,7 +223,7 @@ const SERIAL_FILES = [
   // featureFlagService contains a 6-second TTL cap test that mutates feature_flags directly.
   // featureFlagController resets feature_flags in beforeEach. Running both in parallel causes
   // the TTL test's DB state to be clobbered mid-sleep, making mobile_access appear un-scheduled
-  // when the cache reloads after the TTL fires. (MINCRM-488, MINCRM-489)
+  // when the cache reloads after the TTL fires.
   'src/__tests__/featureFlagService.test.ts',
   'src/__tests__/featureFlagController.test.ts',
   // sequenceController's duplicate-enrollment test (expect 409) races with other tests'
@@ -237,13 +233,12 @@ const SERIAL_FILES = [
   // retentionService and aiRetentionController write ai_configuration.ai_session_retention_days
   // and read global ai_sessions/ai_messages counts; running in parallel with any test that
   // creates AI sessions (e.g. aiConfigController) would make the count/purge assertions flap.
-  // (MINCRM-462)
   'src/__tests__/retentionService.test.ts',
   'src/__tests__/aiRetentionController.test.ts',
   // piiFilter deletes and writes ai_field_exclusions (global table, no per-test scoping
   // key) and exercises piiFilter's in-memory admin-exclusion cache; running in parallel
   // with aiFieldExclusionService/aiFieldExclusionController (same table) would race on
-  // beforeEach cleanup vs. concurrent inserts. (MINCRM-461)
+  // beforeEach cleanup vs. concurrent inserts.
   'src/__tests__/piiFilter.test.ts',
   'src/__tests__/aiFieldExclusionService.test.ts',
   'src/__tests__/aiFieldExclusionController.test.ts',
@@ -251,101 +246,100 @@ const SERIAL_FILES = [
   // (the same global singleton row aiConfigService/aiConfigController mutate) and reads
   // ai_token_usage_daily; running in parallel with those files or with aiTokenBudgetService
   // (which also writes ai_token_usage_daily now) would race on cost-rate resets and usage
-  // aggregation totals. (MINCRM-459)
+  // aggregation totals.
   'src/__tests__/aiUsageDashboardService.test.ts',
   // dealHealthService toggles ai_configuration.enabled/api_key_encrypted (the same global
   // singleton row aiConfigService/aiConfigController/aiUsageDashboardService mutate); running
-  // in parallel would race on the enabled flag and cause spurious 503s in either suite. (MINCRM-442)
+  // in parallel would race on the enabled flag and cause spurious 503s in either suite.
   'src/__tests__/dealHealthService.test.ts',
   // stageAdvancementService toggles the same ai_configuration singleton row as
   // dealHealthService AND creates non-default pipelines/stages (same pipelines-table
-  // race as pipelineService/pipelineStageService/pipelineController/dealService). (MINCRM-443)
+  // race as pipelineService/pipelineStageService/pipelineController/dealService).
   'src/__tests__/stageAdvancementService.test.ts',
   // winLossAnalysisService toggles ai_configuration.enabled/win_loss_* thresholds (same
   // global singleton row) and truncates the global deal_win_loss_insights cache table on
-  // every run — parallel runs would race on both. (MINCRM-464)
+  // every run — parallel runs would race on both.
   'src/__tests__/winLossAnalysisService.test.ts',
   // winLossInsightController calls the global feature-flag cache-clear (__clearCacheForTest)
   // while toggling the ai_win_loss_insights row — same class of race as featureFlagService/
-  // featureFlagController above, since the cache is process-wide, not per-file. (MINCRM-464)
+  // featureFlagController above, since the cache is process-wide, not per-file.
   'src/__tests__/winLossInsightController.test.ts',
   // championBlockerService toggles ai_configuration.enabled/api_key_encrypted (same global
-  // singleton row as dealHealthService/stageAdvancementService/winLossAnalysisService). (MINCRM-466)
+  // singleton row as dealHealthService/stageAdvancementService/winLossAnalysisService).
   'src/__tests__/championBlockerService.test.ts',
   // championBlockerController reads the ai_champion_blocker_detection feature flag directly
   // (no ai_configuration mutation of its own, hence previously safe in the parallel project),
-  // but several MINCRM-465/472 test files now toggle that same flag off/on around
-  // createActivity() calls — must run serial to avoid racing those toggles. (MINCRM-466)
+  // but several test files now toggle that same flag off/on around
+  // createActivity() calls — must run serial to avoid racing those toggles.
   // Also flips org_visibility_settings.policy for 'contact'/'deal' directly via raw SQL —
   // same class of race as followUpTimingController et al. above.
   'src/__tests__/championBlockerController.test.ts',
   // churnExpansionService toggles the same ai_configuration singleton row as the other
-  // nightly-job test suites above. (MINCRM-469)
+  // nightly-job test suites above.
   'src/__tests__/churnExpansionService.test.ts',
   // objectionMatchingService toggles the same ai_configuration singleton row as the other
-  // on-demand AI test suites above. (MINCRM-471)
+  // on-demand AI test suites above.
   'src/__tests__/objectionMatchingService.test.ts',
-  // objectionMatchingController toggles the same ai_configuration singleton row. (MINCRM-471)
+  // objectionMatchingController toggles the same ai_configuration singleton row.
   // Also flips org_visibility_settings.policy for 'activity' directly via raw SQL — same
   // class of race as followUpTimingController et al. above.
   'src/__tests__/objectionMatchingController.test.ts',
   // proposalDraftService toggles the same ai_configuration singleton row as the other
-  // on-demand AI test suites above. (MINCRM-473)
+  // on-demand AI test suites above.
   'src/__tests__/proposalDraftService.test.ts',
-  // proposalDraftController toggles the same ai_configuration/ai_features rows. (MINCRM-473)
+  // proposalDraftController toggles the same ai_configuration/ai_features rows.
   'src/__tests__/proposalDraftController.test.ts',
   // activitySummaryService toggles the same ai_configuration singleton row as the other
-  // on-demand AI test suites above. (MINCRM-436)
+  // on-demand AI test suites above.
   'src/__tests__/activitySummaryService.test.ts',
   // emailDraftService toggles the same ai_configuration singleton row as the other
-  // on-demand AI test suites above. (MINCRM-437)
+  // on-demand AI test suites above.
   'src/__tests__/emailDraftService.test.ts',
   // taskSuggestionService toggles the same ai_configuration singleton row as the other
-  // on-demand AI test suites above. (MINCRM-438)
+  // on-demand AI test suites above.
   'src/__tests__/taskSuggestionService.test.ts',
   // contactEnrichmentService toggles the same ai_configuration singleton row as the other
-  // on-demand AI test suites above. (MINCRM-439)
+  // on-demand AI test suites above.
   'src/__tests__/contactEnrichmentService.test.ts',
   // duplicateExplanationService toggles the same ai_configuration singleton row as the other
-  // on-demand AI test suites above. (MINCRM-440)
+  // on-demand AI test suites above.
   'src/__tests__/duplicateExplanationService.test.ts',
   // leadScoreNarrativeService toggles the same ai_configuration singleton row as the other
-  // on-demand AI test suites above. (MINCRM-441)
+  // on-demand AI test suites above.
   'src/__tests__/leadScoreNarrativeService.test.ts',
   // sentimentService toggles the same ai_configuration singleton row as the other
   // background-job AI test suites above, and also flips the ai_sentiment_tracking
-  // feature_flags row. (MINCRM-472)
+  // feature_flags row.
   'src/__tests__/sentimentService.test.ts',
   // meetingBriefService toggles the same ai_configuration singleton row (including
   // web_search_enabled) as the other on-demand AI test suites above, and also flips
   // the ai_sentiment_tracking feature_flags row to avoid the createActivity() hook
-  // contamination described above. (MINCRM-465)
+  // contamination described above.
   'src/__tests__/meetingBriefService.test.ts',
   // meetingBriefController toggles the same ai_configuration/feature_flags rows via
-  // supertest requests exercising the real createActivity() hook chain. (MINCRM-465)
+  // supertest requests exercising the real createActivity() hook chain.
   'src/__tests__/meetingBriefController.test.ts',
   // warmIntroService toggles the same ai_configuration/feature_flags rows as the other
   // on-demand AI test suites above, exercising the real createActivity() hook chain
-  // for its rep-engagement fixtures. (MINCRM-468)
+  // for its rep-engagement fixtures.
   'src/__tests__/warmIntroService.test.ts',
   // dataHygieneService's runDataHygieneScan() and dataHygieneController's endpoints
   // scan ALL contacts/accounts/opportunities org-wide (no owner filter) to build
   // data_hygiene_findings — running either file in parallel with any other test file
   // that creates/deletes contacts/accounts/deals/users causes FK violations when the
   // scan tries to insert a finding row for an owner_id another file just deleted, or
-  // races on shared data_hygiene_scoring_config reads. (MINCRM-476)
+  // races on shared data_hygiene_scoring_config reads.
   'src/__tests__/dataHygieneService.test.ts',
   'src/__tests__/dataHygieneController.test.ts',
   // repCoachingService's generateRepCoachingInsights() and repCoachingController's
   // endpoints likewise aggregate ALL reps'/managers' deals and activities org-wide
   // (no owner filter) to compute team averages — same class of cross-file race as
-  // dataHygieneService above. (MINCRM-474)
+  // dataHygieneService above.
   'src/__tests__/repCoachingService.test.ts',
   'src/__tests__/repCoachingController.test.ts',
   // leadRoutingService's computeLeadRoutingSuggestion() and createLead's routing-decision
   // recompute query ALL active reps/managers org-wide as routing candidates — running in
   // parallel with any test file creating/deleting users races on the candidate pool.
-  // (MINCRM-475)
   'src/__tests__/leadRoutingService.test.ts',
   'src/__tests__/leadRoutingController.test.ts',
   // reportService's getLeadsSummaryReport({ ownerId: null }) runs an unscoped
@@ -392,7 +386,7 @@ const SERIAL_FILES = [
   // re-reads those vars live during a parallel test run (db.ts/coverageDb.ts
   // only read them once at import), so this is a latent risk rather than an
   // observed failure — serializing this file removes the risk entirely rather
-  // than relying on that fact staying true. (MINCRM-664)
+  // than relying on that fact staying true.
   'src/__tests__/migrate.test.ts',
   // tagCreationRestriction flips the global tags_restrict_creation
   // system_settings row to true mid-test (resetting to false in beforeEach);
@@ -413,16 +407,16 @@ const SERIAL_FILES = [
   // while toggling their own unrelated coverage_* flags, triggered this exact
   // failure in tagController — same root cause as tagCreationRestriction, just a
   // different trigger file). Those two files stopped touching the flag cache in
-  // MINCRM-685, when their routers moved off feature_flags onto boot-time env
+  //, when their routers moved off feature_flags onto boot-time env
   // vars, so they are no longer that trigger — but tagController stays serial:
   // the race is with ANY parallel file clearing the process-wide cache, and the
   // reason it was found here has no bearing on whether another file can do it
-  // tomorrow. (MINCRM-629/630/631, MINCRM-685)
+  // tomorrow.
   'src/__tests__/tagController.test.ts',
   // coverageMappingController.test.ts and coverageReportingController.test.ts
   // were serialized here because both called featureFlagService.__clearCacheForTest()
   // — a process-wide cache clear — while toggling their own coverage_* flags.
-  // MINCRM-685 moved those routers onto boot-time env vars and deleted the flag
+  // moved those routers onto boot-time env vars and deleted the flag
   // rows, so neither file touches the flag cache at all any more and the reason
   // for serializing them is gone. Removed rather than left in place: a stale
   // entry here costs real wall-clock on every run and, worse, reads to the next
@@ -433,7 +427,7 @@ const SERIAL_FILES = [
   // parallel file reading a real flag through the same service during that
   // window would get the stub's answer instead of the database's — the same
   // class of cross-file interference the two entries above are serialized for,
-  // reached by mocking rather than by cache invalidation. (MINCRM-694)
+  // reached by mocking rather than by cache invalidation.
   'src/__tests__/middleware.test.ts',
   // coverageDumpService.test.ts and coverageIngestionService.test.ts both build
   // an agent against COVERAGE_DUMPS_ROOT — a single process-external directory
@@ -451,7 +445,7 @@ const SERIAL_FILES = [
   // exist.
   //
   // NodeV8CoverageAgent.test.ts is deliberately NOT listed: it mkdtemp's its
-  // own root under os.tmpdir() and cannot collide. (MINCRM-700)
+  // own root under os.tmpdir() and cannot collide.
   'src/__tests__/coverageDumpService.test.ts',
   'src/__tests__/coverageIngestionService.test.ts',
 ];

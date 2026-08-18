@@ -1,6 +1,6 @@
 /**
  * Attachment controller — request/response shaping for attachment endpoints.
- * No business logic here; all work goes through attachmentService. (MINCRM-167)
+ * No business logic here; all work goes through attachmentService.
  */
 
 import type { Request, Response } from 'express';
@@ -197,7 +197,7 @@ export async function deleteAttachmentHandler(req: Request, res: Response): Prom
   res.status(204).send();
 }
 
-// ── Storage settings (MINCRM-169) ─────────────────────────────────────────────
+// ── Storage settings ─────────────────────────────────────────────
 
 /**
  * GET /api/settings/storage/status

@@ -1,9 +1,9 @@
 /**
  * Coverage/TIA session management routes — internal-only tooling, gated
  * entirely by the COVERAGE_SESSION_MANAGEMENT env var at boot, not a product
- * feature_flags row. (MINCRM-609..612, MINCRM-663, MINCRM-637)
+ * feature_flags row.
  *
- * MINCRM-663: this router used to also require the coverage_session_management
+ * this router used to also require the coverage_session_management
  * feature_flags row (requireFeatureEnabled) alongside authenticate/
  * coverageAccessGate on every route — see coverage.ts's own docblock for
  * the full rationale (same fix, same shape, applied to this router). Routes
@@ -11,13 +11,13 @@
  * process boot; an admin with no special env/build context gets a plain 404
  * on every path under this router, not a 403.
  *
- * MINCRM-637: coverageAccessGate replaces a bare requireRole('admin') —
+ * coverageAccessGate replaces a bare requireRole('admin') —
  * capability-based when COVERAGE_CAPABILITY_GATING=true, otherwise
  * identical to today's role check. As with coverage.ts, this router's own
  * registration gate means the swap has no observable effect unless
  * COVERAGE_SESSION_MANAGEMENT is also set.
  *
- * COVERAGE_DASHBOARD_NO_AUTH (MINCRM-636/637): drops authenticate +
+ * COVERAGE_DASHBOARD_NO_AUTH: drops authenticate +
  * coverageAccessGate for this router too, same as coverageReporting.ts —
  * the coverage-dashboard app's Sessions tab (manual-testing session
  * recorder: start/end a session, get a CRM correlation link) calls this

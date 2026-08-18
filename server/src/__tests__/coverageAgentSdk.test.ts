@@ -1,9 +1,9 @@
 /**
- * Coverage/TIA agent SDK tests. (MINCRM-636)
+ * Coverage/TIA agent SDK tests.
  *
  * Asserts coverageAgentRegistry accepts any object satisfying the
  * CoverageAgentPlugin interface — not just the concrete NodeV8CoverageAgent
- * class — which is the runtime consequence of MINCRM-636's "reference
+ * class — which is the runtime consequence of The reference
  * implementation, not a hardcoded singleton" SDK framing: a second
  * language's agent must be able to register without a type error.
  */
@@ -54,7 +54,7 @@ class TestDoubleCoverageAgent implements CoverageAgentPlugin {
   }
 }
 
-describe('coverageAgentRegistry (MINCRM-636 SDK widening)', () => {
+describe('coverageAgentRegistry', () => {
   it('accepts a CoverageAgentPlugin implementation that is not the concrete NodeV8CoverageAgent class', async () => {
     const testDouble = new TestDoubleCoverageAgent();
     registerCoverageAgent(testDouble);

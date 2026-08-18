@@ -1,5 +1,5 @@
 /**
- * MFA service — TOTP two-factor authentication. (MINCRM-392)
+ * MFA service — TOTP two-factor authentication.
  *
  * Secrets are stored AES-256-GCM encrypted (same pattern as file_storage_secret).
  * Recovery codes are bcrypt-hashed single-use codes; consuming one removes it from the array.
@@ -370,7 +370,7 @@ async function hashRecoveryCodes(codes: string[]): Promise<string[]> {
  * Generates the current TOTP code for a user's active or pending MFA secret.
  * Prefers the active secret; falls back to the pending secret if no active secret
  * exists (i.e. the user is mid-setup). Returns null if neither secret is set.
- * Used by the dev-only /mfa/dev/totp-code endpoint for E2E testing. (MINCRM-392)
+ * Used by the dev-only /mfa/dev/totp-code endpoint for E2E testing.
  */
 export async function generateCurrentTotpCode(userId: string): Promise<string | null> {
   const row = await pool.query<{ mfa_secret: string | null; mfa_pending_secret: string | null }>(

@@ -1,5 +1,5 @@
 /**
- * Data hygiene controller — request/response shaping only. (MINCRM-476)
+ * Data hygiene controller — request/response shaping only.
  * No business logic here; all DB access goes through dataHygieneService.
  */
 

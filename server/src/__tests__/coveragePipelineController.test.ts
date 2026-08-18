@@ -1,5 +1,5 @@
 /**
- * Integration tests for the coverage pipeline ingestion API. (MINCRM-614)
+ * Integration tests for the coverage pipeline ingestion API.
  * Covers: auth boundaries (401 unauthenticated, 403 non-admin role), Zod validation, 404
  * COVERAGE_DUMP_NOT_FOUND, and the ingest happy path via a real
  * browser-origin dump (ingested through the existing /coverage/dump
@@ -67,7 +67,7 @@ describe('coverage pipeline API — auth boundaries', () => {
   });
 
   // The former "403 FEATURE_DISABLED when the pipeline flag is off" case is
-  // gone with the coverage_pipeline_ingestion row (MINCRM-685). Its
+  // gone with the coverage_pipeline_ingestion row. Its
   // replacement lives in coverageRouteGating.test.ts, which asserts a 404 when
   // COVERAGE_PIPELINE_INGESTION is unset at boot — the route is not registered
   // at all rather than registered-and-refusing. It cannot live here: this file
@@ -76,7 +76,7 @@ describe('coverage pipeline API — auth boundaries', () => {
   // file is built around.
 });
 
-describe('coverage pipeline API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+describe('coverage pipeline API — COVERAGE_CAPABILITY_GATING=true', () => {
   const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
 
   beforeEach(async () => {

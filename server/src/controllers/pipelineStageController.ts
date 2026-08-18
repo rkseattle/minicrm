@@ -1,6 +1,6 @@
 /**
  * Pipeline stage controller — request/response shaping for pipeline stage
- * configuration endpoints (MINCRM-180).
+ * configuration endpoints.
  * No business logic here; all DB access goes through pipelineStageService.
  */
 
@@ -31,7 +31,7 @@ import logger from '../logger.js';
  * @param res - Express response.
  */
 export async function listPipelineStagesHandler(req: Request, res: Response): Promise<void> {
-  // Optional ?pipelineId= query param scopes the response to a specific pipeline (MINCRM-397)
+  // Optional ?pipelineId= query param scopes the response to a specific pipeline
   const pipelineId =
     typeof req.query['pipelineId'] === 'string' ? req.query['pipelineId'] : undefined;
   const stages = await listPipelineStages(pipelineId);
@@ -60,13 +60,13 @@ export async function createPipelineStageHandler(req: Request, res: Response): P
   try {
     // req.user is guaranteed by the authenticate middleware on this route
     const actor = { id: req.user!.id, name: req.user!.name };
-    // Accept pipeline_id from body or query string (MINCRM-397)
+    // Accept pipeline_id from body or query string
     const pipelineId =
       (typeof req.body['pipeline_id'] === 'string' ? req.body['pipeline_id'] : undefined) ??
       (typeof req.query['pipelineId'] === 'string' ? req.query['pipelineId'] : undefined);
     const stage = await createPipelineStage({ ...parsed.data, pipeline_id: pipelineId }, actor);
     res.status(201).json(toStageResponse(stage));
-    // Mark task 1 of the setup checklist done (MINCRM-379), fire-and-forget
+    // Mark task 1 of the setup checklist done, fire-and-forget
     void markPipelineStagesReviewed().catch((err: unknown) =>
       logger.warn({ err }, 'markPipelineStagesReviewed failed after create'),
     );
@@ -113,7 +113,7 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
       return;
     }
     res.status(200).json(toStageResponse(stage));
-    // Mark task 1 of the setup checklist done (MINCRM-379), fire-and-forget
+    // Mark task 1 of the setup checklist done, fire-and-forget
     void markPipelineStagesReviewed().catch((err: unknown) =>
       logger.warn({ err }, 'markPipelineStagesReviewed failed after update'),
     );
@@ -141,7 +141,7 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
 
 /**
  * PUT /api/settings/pipeline-stages/reorder
- * Atomically reorders all pipeline stages. Admin only (MINCRM-381).
+ * Atomically reorders all pipeline stages. Admin only.
  * Accepts { stages: [id1, id2, ...] } in desired order and writes all
  * sort_order values in a single transaction — no transient unique conflicts.
  *

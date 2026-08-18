@@ -11,7 +11,7 @@
  * Required environment variables:
  *   DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
  *
- * MINCRM-330
+ *
  */
 
 import 'dotenv/config';
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
   const dbPassword = process.env.DB_PASSWORD ?? 'password';
   const dbHost = process.env.DB_HOST ?? 'localhost';
   // No 5432 fallback: provisioning test databases on the dev instance recreates the
-  // shared-Postgres setup this separation removed. (MINCRM-684)
+  // shared-Postgres setup this separation removed.
   const dbPort = Number(assertTestDatabasePort('create-e2e-db'));
 
   // Connect to the postgres maintenance database to create the E2E DB if absent.
@@ -60,7 +60,7 @@ async function main(): Promise<void> {
 
   const databaseUrl = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${E2E_DB_NAME}`;
 
-  // Use the three-step fresh-bootstrap approach (MINCRM-528): step 1 runs only
+  // Use the three-step fresh-bootstrap approach: step 1 runs only
   // 000_baseline (prevents "relation already exists" on fresh databases); step 2
   // fake-marks the migrations 000_baseline was last regenerated to cover; step 3
   // runs any migrations added since then for real, so their schema changes apply.
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
     log: () => {},
   };
 
-  // Shares the same advisory lock key as runMigrations() (MINCRM-658), so this
+  // Shares the same advisory lock key as runMigrations(), so this
   // script cannot interleave with a concurrent server boot's migration run
   // against the same database.
   await withMigrationLock(databaseUrl, async () => {

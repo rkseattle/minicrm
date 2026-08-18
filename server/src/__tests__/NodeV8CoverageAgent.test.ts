@@ -1,5 +1,5 @@
 /**
- * Unit tests for NodeV8CoverageAgent. (MINCRM-604)
+ * Unit tests for NodeV8CoverageAgent.
  *
  * Uses a temp dumps-root injected via the constructor so this never writes
  * to the real server/coverage-dumps/ directory. Exercises the real V8
@@ -113,7 +113,7 @@ describe('NodeV8CoverageAgent', () => {
     await expect(readFile(join(dumpsRoot, dumpResultB.path), 'utf8')).resolves.toBeTruthy();
   });
 
-  it('reports its own AgentMetadata (MINCRM-636)', () => {
+  it('reports its own AgentMetadata', () => {
     expect(agent.metadata).toEqual({
       id: 'node-v8',
       language: 'Node.js (V8)',

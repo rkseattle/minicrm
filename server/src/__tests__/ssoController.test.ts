@@ -1,5 +1,5 @@
 /**
- * Integration tests for SSO controller endpoints. (MINCRM-399)
+ * Integration tests for SSO controller endpoints.
  *
  * Covers:
  *   - GET /api/v1/settings/sso/status — public status endpoint

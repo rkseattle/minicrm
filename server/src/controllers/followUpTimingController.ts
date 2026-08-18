@@ -1,5 +1,5 @@
 /**
- * Follow-up timing controller — request/response shaping only. (MINCRM-470)
+ * Follow-up timing controller — request/response shaping only.
  * No business logic here; all cached-read/recompute access goes through followUpTimingService.
  */
 

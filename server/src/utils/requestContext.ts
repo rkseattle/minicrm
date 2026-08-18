@@ -2,7 +2,6 @@
  * Request-scoped AsyncLocalStorage context.
  * Stores the authenticated user's ID and role for use by service-layer helpers
  * that need to set the `app.current_user_id` PostgreSQL session variable for RLS.
- * (MINCRM-518)
  *
  * Usage:
  *   - The `authenticate` middleware calls `runWithRequestContext(user.id, user.role, next)`

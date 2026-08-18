@@ -1,5 +1,5 @@
 /**
- * Contact enrichment controller — request/response shaping only. (MINCRM-439)
+ * Contact enrichment controller — request/response shaping only.
  * No business logic here; all AI orchestration goes through contactEnrichmentService.
  */
 

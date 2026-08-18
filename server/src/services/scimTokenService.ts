@@ -1,5 +1,5 @@
 /**
- * Service for SCIM bearer token management (MINCRM-541).
+ * Service for SCIM bearer token management.
  * Only one SCIM token is active at a time (rotate replaces the existing one).
  *
  * The raw token is a 32-byte cryptographically random hex string. Only the

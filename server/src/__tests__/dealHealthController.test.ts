@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for the AI deal health check endpoint. (MINCRM-442)
+ * HTTP contract tests for the AI deal health check endpoint.
  *
  * Covers:
  *  - POST /deals/:id/health-check: authenticated, visibility-enforced

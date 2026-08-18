@@ -1,5 +1,5 @@
 /**
- * Proposal draft controller — request/response shaping only. (MINCRM-473)
+ * Proposal draft controller — request/response shaping only.
  * No business logic or document generation here; all AI orchestration, DOCX
  * generation, and DB access goes through proposalDraftService.
  */

@@ -1,5 +1,5 @@
 /**
- * Unit tests for the duplicate-match scoring engine. (MINCRM-440 prerequisite)
+ * Unit tests for the duplicate-match scoring engine.
  * Pure function — no database, no mocking required.
  */
 

@@ -9,7 +9,6 @@
  *  - POST /admin/ai/dpa-acknowledgment validates body
  *  - POST /admin/ai/test-connection validates body and returns ok/message
  *
- * (MINCRM-457)
  */
 
 import 'dotenv/config';
@@ -333,7 +332,7 @@ describe('POST /admin/ai/test-connection', () => {
   });
 });
 
-// ── PATCH /admin/ai/cost-rates (MINCRM-459) ───────────────────────────────────
+// ── PATCH /admin/ai/cost-rates ───────────────────────────────────
 
 describe('PATCH /admin/ai/cost-rates', () => {
   it('persists both cost rates', async () => {

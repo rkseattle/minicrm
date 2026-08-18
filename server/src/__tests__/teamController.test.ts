@@ -1,5 +1,5 @@
 /**
- * Integration tests for the teams REST API controller. (MINCRM-537)
+ * Integration tests for the teams REST API controller.
  *
  * Covers HTTP-layer behaviour: status codes, error codes, and auth/role
  * enforcement. Business-logic correctness is covered by teamService.test.ts.

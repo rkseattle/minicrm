@@ -1,6 +1,6 @@
 /**
  * Deal health check service — on-demand AI assessment of a single deal's risk
- * signals. (MINCRM-442)
+ * signals.
  *
  * Gathers deal facts and recent activity, strips PII via applyPiiFilter, and
  * asks Claude to classify the deal as on_track / at_risk / stalled with a
@@ -246,7 +246,7 @@ export async function generateDealHealthCheck(
   }
   const anthropicClient = new Anthropic(clientOptions);
 
-  // PII-filter the gathered facts before they leave the server. (MINCRM-445)
+  // PII-filter the gathered facts before they leave the server.
   const { sanitised, strippedFields } = await applyPiiFilter(context, 'deal');
   if (strippedFields.length > 0) {
     logger.info(

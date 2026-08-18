@@ -1,5 +1,5 @@
 /**
- * Round-trip tests for the coverage-map serialization contract. (MINCRM-703)
+ * Round-trip tests for the coverage-map serialization contract.
  *
  * WHY THIS EXISTS
  * ---------------

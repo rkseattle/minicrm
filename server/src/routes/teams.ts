@@ -1,5 +1,5 @@
 /**
- * Team routes — CRUD and membership management for the teams feature. (MINCRM-537)
+ * Team routes — CRUD and membership management for the teams feature.
  * This file contains only @openapi JSDoc annotations + route declarations.
  * No business logic or database access belongs here.
  */

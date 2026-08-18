@@ -1,5 +1,5 @@
 /**
- * Classifies a contact's free-text job title into a seniority tier. (MINCRM-467)
+ * Classifies a contact's free-text job title into a seniority tier.
  *
  * contacts.title has no structured seniority field — this is keyword-based
  * classification against the title string. Pure, synchronous, no I/O, so it's

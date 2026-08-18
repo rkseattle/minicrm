@@ -53,7 +53,7 @@ function todayString(): string {
  * local shift moves the wall clock 24h but the instant 23h or 25h, so the
  * UTC-serialized day can come back unchanged — yielding TODAY where yesterday
  * was meant, and an overdue task that is not overdue. CI runs
- * TZ=Pacific/Auckland, which has two such transitions a year. (MINCRM-700)
+ * TZ=Pacific/Auckland, which has two such transitions a year.
  */
 function yesterdayString(): string {
   return utcDayOffset(new Date(), -1);
@@ -396,7 +396,7 @@ describe('getDashboardSummary — stage breakdown', () => {
   });
 });
 
-// ── Weighted pipeline value (MINCRM-179) ──────────────────────────────────────────
+// ── Weighted pipeline value ──────────────────────────────────────────
 
 describe('getDashboardSummary — weighted pipeline value', () => {
   it('returns weightedPipelineValue using stage default probability', async () => {
@@ -490,7 +490,7 @@ describe('getDashboardSummary — weighted pipeline value', () => {
   });
 });
 
-// ── Recent activities (MINCRM-185) ────────────────────────────────────────────
+// ── Recent activities ────────────────────────────────────────────
 
 describe('getDashboardSummary — recentActivities', () => {
   it('returns an empty array when there are no activities', async () => {

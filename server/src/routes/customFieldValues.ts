@@ -1,5 +1,5 @@
 /**
- * Custom field value routes — GET/PUT per-record values. (MINCRM-276)
+ * Custom field value routes — GET/PUT per-record values.
  */
 
 import { Router } from 'express';

@@ -1,5 +1,5 @@
 /**
- * In-app notification feed service. (MINCRM-469)
+ * In-app notification feed service.
  *
  * Minimal, generic notification primitive — insert a row, list a user's feed,
  * mark as read. Deliberately separate from notificationService.ts, which is

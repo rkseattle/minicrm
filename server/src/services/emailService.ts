@@ -1,7 +1,7 @@
 /**
  * Email service — sends transactional emails.
  *
- * Transport configuration priority (MINCRM-254):
+ * Transport configuration priority:
  *   1. Database-stored SMTP settings (via smtpSettingsService) when smtp_enabled = true
  *   2. SMTP_* environment variables when SMTP_HOST is set
  *   3. Console/log fallback — no email is delivered
@@ -9,7 +9,7 @@
  * This means a UI-configured deployment overrides env vars, and a containerised
  * deployment using env vars continues to work without a DB-stored config.
  *
- * MINCRM-156, MINCRM-161, MINCRM-162, MINCRM-254
+ *
  */
 
 import nodemailer from 'nodemailer';
@@ -55,7 +55,7 @@ function extractEmail(address: string): string {
 /**
  * Resolves the nodemailer transport for the current request.
  *
- * Priority order (MINCRM-254):
+ * Priority order:
  *   1. Database SMTP config (smtp_enabled = true and smtp_host set)
  *   2. SMTP_HOST environment variable
  *   3. null → console fallback

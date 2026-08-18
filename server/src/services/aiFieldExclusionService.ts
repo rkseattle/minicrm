@@ -1,6 +1,6 @@
 /**
  * AI field exclusion service — admin-configurable standard-field AI payload
- * exclusions, plus the merged "effective exclusion list" view. (MINCRM-461)
+ * exclusions, plus the merged "effective exclusion list" view.
  *
  * Three sources are merged into one effective view, but only one of them is
  * ever written by this service:

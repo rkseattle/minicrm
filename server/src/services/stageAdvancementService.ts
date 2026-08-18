@@ -1,6 +1,6 @@
 /**
  * Stage advancement suggestion service — passive, page-load AI check for
- * whether a deal looks ready to move to its next pipeline stage. (MINCRM-443)
+ * whether a deal looks ready to move to its next pipeline stage.
  *
  * Gathers deal/stage/activity facts and asks Claude for a yes/no readiness
  * signal with a short rationale, via a tool-forced structured call. No

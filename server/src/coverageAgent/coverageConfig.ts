@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA env configuration. (MINCRM-604, MINCRM-607)
+ * Coverage/TIA env configuration.
  *
  * Centralizes env-var parsing for the coverage instrumentation framework,
  * mirroring how server.ts validates JWT_SECRET/NODE_ENCRYPTION_KEY once at
@@ -71,7 +71,7 @@ function resolveGranularity(): CoverageGranularity {
  * client/ (e.g. every frontend Istanbul dump) then fails
  * resolveScriptPath's/symbolicateIstanbulCoverageMap's containment check
  * and falls back to an unrelativized, unportable absolute path (found via a
- * real local coverage-map generation run, MINCRM-636/637). CI sets
+ * real local coverage-map generation run). CI sets
  * COVERAGE_SOURCE_ROOT=github.workspace (see e2e-infra/action.yml) to fix
  * this, since both the backend and Vite there run under one shared
  * checkout.

@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA git-diff change detector. (MINCRM-623)
+ * Coverage/TIA git-diff change detector.
  *
  * Parses a `base..head` git diff into per-file changed line ranges, the raw
  * material changeUnitResolver.ts turns into changed code UNITS (structural
@@ -23,7 +23,7 @@ import logger from '../../logger.js';
 
 const execFileAsync = promisify(execFile);
 
-/** Config/resource file classes handled separately by the dependency-graph step (MINCRM-625), never resolved to code units here. */
+/** Config/resource file classes handled separately by the dependency-graph step, never resolved to code units here. */
 const NON_SOURCE_FILE_PATTERN = /\.(ya?ml|json|env)$|(^|\/)migrations\//i;
 
 /**
@@ -73,7 +73,7 @@ export interface FileDiff {
   /** Present only when status === 'renamed'. */
   oldFilePath: string | null;
   status: FileChangeStatus;
-  /** True for files the dependency-graph step (MINCRM-625) handles instead of unit resolution — config/resource/migration files. */
+  /** True for files the dependency-graph step handles instead of unit resolution — config/resource/migration files. */
   isNonSourceFile: boolean;
   /** Changed line ranges in the new version of the file. Empty for a pure rename with no content change, and always empty for a deleted file (there is no "new version"). */
   changedRanges: ChangedLineRange[];

@@ -1,5 +1,5 @@
 /**
- * Webhook routes — all endpoints require authentication and admin role. (MINCRM-279)
+ * Webhook routes — all endpoints require authentication and admin role.
  */
 
 import { Router } from 'express';

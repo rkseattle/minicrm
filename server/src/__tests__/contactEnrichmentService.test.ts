@@ -1,5 +1,5 @@
 /**
- * Integration tests for contactEnrichmentService. (MINCRM-439)
+ * Integration tests for contactEnrichmentService.
  *
  * Runs against a real PostgreSQL test database for account matching. The
  * Anthropic SDK is mocked so no real API calls are made and token usage

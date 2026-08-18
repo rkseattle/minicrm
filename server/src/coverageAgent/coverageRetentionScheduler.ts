@@ -1,7 +1,7 @@
 /**
- * Coverage/TIA retention pruning entry point. (MINCRM-637)
+ * Coverage/TIA retention pruning entry point.
  *
- * coverageModelService.pruneCoverageUnits has existed since MINCRM-616 but
+ * coverageModelService.pruneCoverageUnits has existed since a later change but
  * had zero production callers — this wires it (and coverageSessionService's
  * sibling pruneCoverageSessions) into server.ts's daily cron schedule (see
  * server.ts's own runCoverageRetentionPruning call site). Runs
@@ -10,7 +10,7 @@
  * ingestion paths, all of which can run with the backend V8 agent off.
  *
  * pruneCoverageSessions covers coverage_sessions (whose started_by column
- * is the "session metadata (possible PII)" MINCRM-637's own AC names) and,
+ * is the "session metadata (possible PII)" the AC names) and,
  * via ON DELETE CASCADE, coverage_session_dumps. Before this, only
  * coverage_units/coverage_test_links/coverage_ingested_dumps had any
  * retention at all — coverage_sessions had none (found via Greptile branch
@@ -35,7 +35,7 @@
  *
  * Tracks its own last-run outcome as module-level state, mirroring
  * coverageAgentRegistry.ts's own singleton pattern — this is the only
- * scheduled background job MINCRM-637 introduces, and it was otherwise
+ * scheduled background job introduced here, and it was otherwise
  * invisible to GET /health: a failed nightly prune only ever logged
  * `cron: coverage retention pruning failed`, with the health report
  * continuing to report status: 'ok' indefinitely (found via Greptile

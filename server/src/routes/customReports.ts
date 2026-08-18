@@ -1,5 +1,5 @@
 /**
- * Custom report routes. (MINCRM-402)
+ * Custom report routes.
  * All endpoints require authentication; no admin restriction (any user can create reports).
  */
 

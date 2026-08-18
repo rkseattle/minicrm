@@ -1,7 +1,6 @@
 /**
  * AI retention controller — request/response shaping for /api/v1/admin/ai/retention-*.
  * No business logic or database access here — delegates entirely to retentionService.
- * (MINCRM-462)
  */
 
 import type { Request, Response } from 'express';

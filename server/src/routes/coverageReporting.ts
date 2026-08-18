@@ -1,18 +1,18 @@
 /**
  * Coverage/TIA reporting query routes — internal-only tooling, gated entirely
  * by the COVERAGE_REPORTING_QUERY env var at boot, not a product feature_flags
- * row. (MINCRM-629/630/631, MINCRM-637, MINCRM-685)
+ * row.
  *
- * MINCRM-685: this router used to also require the coverage_reporting_query
+ * this router used to also require the coverage_reporting_query
  * feature_flags row, via buildCoverageAccessGate's flag step — see
  * routes/coverage.ts's own docblock for the full rationale (same fix, same
- * shape, applied here by the story that finished what MINCRM-663 started).
+ * shape, applied here by the story that finished what started).
  * The routes below are now registered ONLY when COVERAGE_REPORTING_QUERY is
  * 'true' at process boot; an admin with no special env context gets a plain
  * 404, not a 403 — there is nothing here to discover through the product UI
  * at all.
  *
- * COVERAGE_DASHBOARD_NO_AUTH (MINCRM-636/637) drops authenticate and
+ * COVERAGE_DASHBOARD_NO_AUTH drops authenticate and
  * coverageAccessGate for these read-only reporting routes. The standalone
  * coverage-dashboard app (coverage-dashboard/) is a pure internal engineering
  * tool with no customer-facing surface and no auth system of its own — today
@@ -23,7 +23,7 @@
  * security boundary.
  *
  * On that no-auth path the boot-time env var is now the SOLE gate, and that is
- * deliberate. MINCRM-694 had narrowed the flag check to
+ * deliberate. An earlier change had narrowed the flag check to
  * requireFeatureEnabledOrgWide rather than dropping it, because the flag's
  * org-wide `enabled` column was the last thing standing between an
  * unauthenticated request and the data (an earlier revision dropped it
@@ -219,7 +219,7 @@ function registerCoverageReportingRoutes(): void {
    *   get:
    *     tags: [Coverage]
    *     operationId: listIssueKeys
-   *     summary: List distinct issue keys with a recorded coverage session for a given build (MINCRM-636/637)
+   *     summary: List distinct issue keys with a recorded coverage session for a given build
    *     description: >
    *       Backs the coverage-dashboard app's issue-key picker. Unlike unit-key/
    *       test-ID search, this needs no search term — the set of issue keys

@@ -450,10 +450,10 @@ describe('globalSearch — special characters', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-207 — expanded field coverage
+// expanded field coverage
 // ---------------------------------------------------------------------------
 
-describe('globalSearch — contacts expanded fields (MINCRM-207)', () => {
+describe('globalSearch — contacts expanded fields', () => {
   it('returns a contact matching by phone number', async () => {
     await createContact({
       first_name: 'Phone',
@@ -547,7 +547,7 @@ describe('globalSearch — contacts expanded fields (MINCRM-207)', () => {
   });
 
   it('does not duplicate a contact that matches via multiple contact_addresses rows', async () => {
-    // Both address rows for the same contact match the query — DISTINCT ensures one result. (MINCRM-500)
+    // Both address rows for the same contact match the query — DISTINCT ensures one result.
     const contact = await createContact({
       first_name: 'NoDup',
       last_name: 'CityTest',
@@ -572,7 +572,7 @@ describe('globalSearch — contacts expanded fields (MINCRM-207)', () => {
   });
 });
 
-describe('globalSearch — accounts expanded fields (MINCRM-207)', () => {
+describe('globalSearch — accounts expanded fields', () => {
   it('returns an account matching by industry', async () => {
     await createAccount({
       name: 'IndustrySearchCo',
@@ -596,7 +596,7 @@ describe('globalSearch — accounts expanded fields (MINCRM-207)', () => {
   });
 });
 
-describe('globalSearch — deals expanded fields (MINCRM-207)', () => {
+describe('globalSearch — deals expanded fields', () => {
   it('returns a deal matching by loss_reason', async () => {
     const deal = await createDeal({
       name: 'LostToCompetitorDeal',
@@ -665,7 +665,7 @@ describe('globalSearch — deals expanded fields (MINCRM-207)', () => {
   });
 });
 
-describe('globalSearch — leads (MINCRM-207)', () => {
+describe('globalSearch — leads', () => {
   it('returns a lead matching by notes', async () => {
     await createLead({
       first_name: 'Notes',
@@ -733,7 +733,7 @@ describe('globalSearch — leads (MINCRM-207)', () => {
   });
 });
 
-describe('globalSearch — activities (MINCRM-207)', () => {
+describe('globalSearch — activities', () => {
   it('searching an activity subject returns the linked contact', async () => {
     const contact = await createContact({
       first_name: 'ActivityContact',
@@ -837,7 +837,7 @@ describe('globalSearch — activities (MINCRM-207)', () => {
   });
 });
 
-describe('globalSearch — tags (MINCRM-207)', () => {
+describe('globalSearch — tags', () => {
   it('searching a tag name returns contacts carrying that tag', async () => {
     const contact = await createContact({
       first_name: 'TagContact',
@@ -900,7 +900,7 @@ describe('globalSearch — tags (MINCRM-207)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-362 — notes body_text search
+// notes body_text search
 // ---------------------------------------------------------------------------
 
 /** Minimal Tiptap/ProseMirror doc JSON with the given plain text as a paragraph node.
@@ -912,7 +912,7 @@ function makeNoteDoc(text: string): string {
   });
 }
 
-describe('globalSearch — notes body_text (MINCRM-362)', () => {
+describe('globalSearch — notes body_text', () => {
   it('returns a contact that has a matching team note', async () => {
     const contact = await createContact({
       first_name: 'NoteSearch',

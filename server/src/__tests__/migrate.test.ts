@@ -1,5 +1,5 @@
 /**
- * Regression coverage for the migration advisory lock (MINCRM-658).
+ * Regression coverage for the migration advisory lock.
  *
  * Uses the real minicrm_test database (per project convention — no mocked DB).
  * Fixture migrations live in a temp directory created per test so this suite
@@ -139,7 +139,7 @@ describe('withMigrationLock', () => {
 
     try {
       // Two concurrent runs against the same fixture migration, each wrapped in
-      // the shared lock — this is the exact race from MINCRM-658 (two migration
+      // the shared lock — this is the exact race from that change (two migration
       // runners against the same database), just against a throwaway fixture
       // table instead of the real schema.
       await Promise.all([
@@ -170,7 +170,7 @@ describe('assertBaselineCoverageMatches', () => {
     // Simulates a stale server build (old migrate.ts, old constant) paired with
     // a rebuilt/newer baseline file, or vice versa — the exact bidirectional
     // drift a same-numbered-file-exists check alone cannot catch, since files
-    // are never deleted when the baseline is regenerated (MINCRM-658).
+    // are never deleted when the baseline is regenerated.
     expect(() =>
       assertBaselineCoverageMatches(152, 136, ['001_create_users.js', '152_add_x.js']),
     ).toThrow(
@@ -293,7 +293,7 @@ describe('runCoverageMigrations', () => {
     // this test reports — if it fails now, it failed for the reason it is testing.
     //
     // Note the sibling test at :81 sets a SHORT timeout for the opposite reason: there the
-    // rejection is the expected outcome, asserted with rejects.toThrow. (MINCRM-704)
+    // rejection is the expected outcome, asserted with rejects.toThrow.
     const originalLockTimeout = process.env.MIGRATION_LOCK_TIMEOUT_MS;
     process.env.MIGRATION_LOCK_TIMEOUT_MS = '120000';
     try {
@@ -323,7 +323,7 @@ describe('runCoverageMigrations', () => {
     // this test while the loser is still legitimately waiting on the lock. Paired with the
     // 120s lock timeout above: the lock wait must be able to outlive nothing here. Both
     // numbers exist only to take timing out of the picture; the assertion is about
-    // CREATE DATABASE. (MINCRM-704)
+    // CREATE DATABASE.
   }, 150_000);
 
   it('connects successfully when COVERAGE_DB_PASSWORD contains URL-reserved characters (Greptile PR feedback)', async () => {
@@ -381,7 +381,7 @@ describe('runCoverageMigrations', () => {
 
 describe('runMigrations', () => {
   // Regression coverage mirroring the identical fix/test for
-  // runCoverageMigrations() above (MINCRM-664, found via Greptile PR review):
+  // runCoverageMigrations() above:
   // databaseUrl was built via raw string interpolation of user/password
   // directly into postgres://user:pass@host/db — a character like @, :, /, %,
   // ?, or # in the password would change how the URL is parsed, even though a

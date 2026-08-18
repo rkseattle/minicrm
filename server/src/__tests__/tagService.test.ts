@@ -1,5 +1,5 @@
 /**
- * Integration tests for tagService (MINCRM-186).
+ * Integration tests for tagService.
  *
  * Runs against a real PostgreSQL test database (minicrm_test).
  * Tables are cleaned before each test to ensure isolation.
@@ -330,11 +330,11 @@ describe('tag cascade delete', () => {
   });
 });
 
-// ── Audit log coverage (MINCRM-382) ─────────────────────────────────────────────
+// ── Audit log coverage ─────────────────────────────────────────────
 
 const TAG_AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000004', name: 'Tag Audit Actor' };
 
-describe('audit log entries for tag attach/detach (MINCRM-382)', () => {
+describe('audit log entries for tag attach/detach', () => {
   beforeEach(async () => {
     await clearAuditLogFor(TAG_AUDIT_ACTOR.id);
   });

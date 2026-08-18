@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for AI token budget endpoints. (MINCRM-458)
+ * HTTP contract tests for AI token budget endpoints.
  *
  * Covers:
  *  - GET /admin/ai/token-budgets: admin-only, returns summary shape

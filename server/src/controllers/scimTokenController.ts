@@ -1,5 +1,5 @@
 /**
- * SCIM token controller — request/response shaping for MINCRM-541.
+ * SCIM token controller — request/response shaping for that work.
  * All endpoints are gated via requireCapability(IntegrationsManage) on the router.
  * No business logic or direct DB access here.
  */

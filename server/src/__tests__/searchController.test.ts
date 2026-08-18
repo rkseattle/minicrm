@@ -1,5 +1,5 @@
 /**
- * Integration tests for the search controller. (MINCRM-295)
+ * Integration tests for the search controller.
  * Covers: validation (query too short), 200 with results shape, 401 unauthenticated.
  */
 

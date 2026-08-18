@@ -1,7 +1,7 @@
 /**
  * Attachment service — all business logic and DB queries for file attachments.
  * Files are stored in S3-compatible object storage; this module manages the
- * metadata records in Postgres. (MINCRM-167)
+ * metadata records in Postgres.
  */
 
 import { v4 as uuidv4 } from 'uuid';

@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for meeting brief endpoints. (MINCRM-465)
+ * HTTP contract tests for meeting brief endpoints.
  *
  * Covers:
  *  - POST /activities/:id/brief: authenticated, flag-gated, ownership-enforced
@@ -86,7 +86,7 @@ beforeEach(async () => {
     [ciphertext, keyVersion],
   );
   // Avoid analyzeContactSignals/scoreActivitySentiment cross-contaminating mockCreate
-  // (both fire on createActivity() with a contact_id set). (MINCRM-465, MINCRM-472)
+  // (both fire on createActivity() with a contact_id set).
   await pool.query(
     `UPDATE feature_flags SET enabled = false
      WHERE flag_key IN ('ai_sentiment_tracking', 'ai_champion_blocker_detection')`,
@@ -133,10 +133,10 @@ async function createTestActivity(): Promise<string> {
   );
   // due_date must be present and today-or-future — the brief generation
   // endpoint enforces the same future-dated Call/Meeting eligibility gate the
-  // UI applies (see ActivityTimeline's BRIEF_ELIGIBLE_TYPES). (MINCRM-465 self-review)
+  // UI applies (see ActivityTimeline's BRIEF_ELIGIBLE_TYPES).
   // utcDayOffset, not local setDate(+1): a DST transition makes the local shift
   // land on the same UTC day, so "tomorrow" would not be in the future.
-  // CI runs TZ=Pacific/Auckland. (MINCRM-700)
+  // CI runs TZ=Pacific/Auckland.
   const tomorrowUtc = utcDayOffset(new Date(), 1);
   const activity = await createActivity(
     {

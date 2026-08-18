@@ -1,5 +1,5 @@
 /**
- * Currency service — all DB access for the currencies table. (MINCRM-251)
+ * Currency service — all DB access for the currencies table.
  *
  * Provides functions to read and update exchange rates.
  * All write operations use explicit transactions for atomicity.
@@ -70,7 +70,6 @@ export async function updateCurrencies(
     // last-known rate preserved in history (the FK was dropped in migration 101 so history
     // rows outlive the parent currencies row). Home-currency rows are excluded — their rate
     // is a definitional constant. No-op saves (same rate, same currencies) produce no rows.
-    // (MINCRM-526)
     //
     // The incoming rates are passed as a JSON array and unnested into a temporary set so
     // PostgreSQL can JOIN against them inside the INSERT … SELECT without a correlated

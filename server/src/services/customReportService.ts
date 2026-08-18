@@ -1,5 +1,5 @@
 /**
- * Custom report service — CRUD and query execution for saved custom reports. (MINCRM-402)
+ * Custom report service — CRUD and query execution for saved custom reports.
  * All database access for custom_reports goes through this module.
  */
 
@@ -612,7 +612,7 @@ function buildColumnNames(config: ReportConfig): string[] {
 
 // ── NLI report save ───────────────────────────────────────────────────────────
 
-/** Parameters captured from an NLI generateReport call for persistence. (MINCRM-424) */
+/** Parameters captured from an NLI generateReport call for persistence. */
 export interface NliReportSaveParams {
   name: string;
   report_type: 'win_loss' | 'activity_volume' | 'stage_trend' | 'leads_summary';
@@ -681,7 +681,7 @@ function buildNliReportConfig(reportType: NliReportSaveParams['report_type']): {
  * (group_by + count aggregate) that the Report Builder can run as-is — not just
  * an informational marker. The jsonb also carries an `nli_report_type` marker and
  * the original generation parameters for display context; the custom report
- * executor ignores these extra keys. (MINCRM-424)
+ * executor ignores these extra keys.
  */
 export async function saveNliReport(
   params: NliReportSaveParams,

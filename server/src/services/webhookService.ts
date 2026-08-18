@@ -5,7 +5,7 @@
  *  1. System subscriptions — admins subscribe endpoint URLs to specific event types;
  *     delivery is fire-and-forget with exponential-backoff retry (up to 5 attempts).
  *  2. Automation-triggered — `send_webhook` automation action; single attempt, no retry,
- *     subscription_id = null in delivery logs. (MINCRM-279)
+ *     subscription_id = null in delivery logs.
  *
  * Secret storage: signing secrets are stored AES-256-GCM encrypted (not bcrypt-hashed)
  * so the plaintext can be recovered at delivery time for HMAC-SHA256 signing.
@@ -95,7 +95,7 @@ export interface WebhookSubscriptionRow {
   events: string[];
   secret_hash: string;
   status: 'active' | 'failed' | 'disabled';
-  /** NULL when the creating user has been deleted (MINCRM-505) */
+  /** NULL when the creating user has been deleted */
   created_by: string | null;
   created_at: Date;
 }

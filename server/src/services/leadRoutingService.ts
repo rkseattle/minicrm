@@ -1,6 +1,6 @@
 /**
  * Lead routing suggestion service — deterministic weighted-factor scoring
- * that suggests which rep a new lead should be assigned to. (MINCRM-475)
+ * that suggests which rep a new lead should be assigned to.
  *
  * Two entry points matching the AC's "suggestion appears before the assignee
  * field is saved" flow:
@@ -45,7 +45,7 @@ import type {
 /**
  * Weights for each scoring factor — sum to 1.0, validated by a CHECK
  * constraint (migration 154). Exported for direct unit testing of
- * scoreCandidates/confidenceFor without a DB round-trip. (MINCRM-475)
+ * scoreCandidates/confidenceFor without a DB round-trip.
  */
 export interface RoutingWeights {
   territory_weight: number;
@@ -67,8 +67,7 @@ async function getRoutingWeights(): Promise<RoutingWeights> {
   // silently does string concatenation instead of addition the moment two
   // or more factors contribute — totalWeight ends up as a non-numeric
   // string like "00.2000.100", `totalWeight > 0` evaluates false (NaN > 0),
-  // and the whole score collapses to 0 regardless of the real inputs
-  // (MINCRM-475 / F-ROUTE3 CI flake root cause).
+  // and the whole score collapses to 0 regardless of the real inputs.
   const result = await pool.query<{
     territory_weight: string;
     industry_weight: string;
@@ -98,7 +97,7 @@ async function getRoutingWeights(): Promise<RoutingWeights> {
   };
 }
 
-/** Exported for direct unit testing of scoreCandidates without a DB round-trip. (MINCRM-475) */
+/** Exported for direct unit testing of scoreCandidates without a DB round-trip. */
 export interface CandidateRep {
   id: string;
   name: string;
@@ -181,7 +180,7 @@ async function gatherCandidates(
   });
 }
 
-/** Exported for direct unit testing of scoreCandidates without a DB round-trip. (MINCRM-475) */
+/** Exported for direct unit testing of scoreCandidates without a DB round-trip. */
 export interface ScoredCandidate {
   candidate: CandidateRep;
   score: number;
@@ -201,7 +200,7 @@ export interface ScoredCandidate {
  * Exported (alongside CandidateRep/ScoredCandidate/confidenceFor) for direct
  * unit testing against a fixed, hand-built candidate list — computeLeadRoutingSuggestion
  * queries ALL active reps/managers org-wide, so integration-testing "the winner is X"
- * would be contaminated by other fixtures in a shared test database. (MINCRM-475)
+ * would be contaminated by other fixtures in a shared test database.
  */
 export function scoreCandidates(
   profile: DraftLeadProfile,
@@ -319,7 +318,7 @@ export function scoreCandidates(
   });
 }
 
-/** Exported for direct unit testing without a DB round-trip. (MINCRM-475) */
+/** Exported for direct unit testing without a DB round-trip. */
 export function confidenceFor(
   scored: ScoredCandidate,
   candidateCount: number,

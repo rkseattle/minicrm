@@ -1,5 +1,5 @@
 /**
- * Row-Level Security enforcement tests. (MINCRM-518)
+ * Row-Level Security enforcement tests.
  *
  * Verifies that the PostgreSQL RLS policies enforced via `app_current_user_id()`
  * prevent cross-user data access at the database level, independent of any
@@ -80,7 +80,7 @@ let appPool: pg.Pool;
 // ── Setup & teardown ──────────────────────────────────────────────────────────
 
 beforeAll(async () => {
-  // No 5432 default — see globalSetup.ts. (MINCRM-684)
+  // No 5432 default — see globalSetup.ts.
   const DB_PORT = assertTestDatabasePort('rlsEnforcement.test');
   const { DB_HOST = 'localhost', DB_NAME } = process.env;
 

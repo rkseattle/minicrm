@@ -1,10 +1,10 @@
 /**
- * HTTP contract tests for AI usage dashboard endpoints. (MINCRM-459)
+ * HTTP contract tests for AI usage dashboard endpoints.
  *
  * Covers:
  *  - GET /admin/ai/usage/summary: admin-only, returns summary shape, validates date range
  *  - GET /admin/ai/usage/daily: admin-only, returns daily series shape
- *  - GET /admin/ai/usage/export and /export.pdf: admin-only, correct content type (MINCRM-601)
+ *  - GET /admin/ai/usage/export and /export.pdf: admin-only, correct content type
  *  - Role enforcement: reps receive 403 on all routes
  */
 
@@ -114,7 +114,7 @@ describe('GET /admin/ai/usage/summary', () => {
     // routes/ai.ts declares start/end as `format: date-time`, and before
     // boundary validation existed these reached `new Date(value)` directly, so
     // any parseable timestamp worked. Narrowing to date-only would have been a
-    // silent break for non-first-party API consumers. MINCRM-700.
+    // silent break for non-first-party API consumers..
     const res = await request(app)
       .get('/api/v1/admin/ai/usage/summary')
       .query({ start: '2026-01-01T00:00:00Z', end: '2026-01-31T23:59:59Z' })
@@ -225,7 +225,7 @@ describe('GET /admin/ai/usage/daily', () => {
     // must be UTC-midnight instants, not local-midnight ones. A local-time
     // constructor would emit a non-midnight UTC instant (e.g.
     // 2026-08-01T07:00:00.000Z from PDT), shifting the chart's day bucketing
-    // for every deployment whose process timezone isn't UTC. MINCRM-700.
+    // for every deployment whose process timezone isn't UTC..
     const res = await request(app)
       .get('/api/v1/admin/ai/usage/daily')
       .query({ preset: 'current_month' })
@@ -262,7 +262,7 @@ describe('GET /admin/ai/usage/export', () => {
   // The export handlers share resolveAiUsageExportData rather than the summary/
   // daily path, so the boundary validation needs its own coverage here — the
   // summary tests above exercise a different call path and would stay green if
-  // the export path stopped validating. MINCRM-700.
+  // the export path stopped validating..
   it('returns 400 for an unknown preset', async () => {
     const res = await request(app)
       .get('/api/v1/admin/ai/usage/export')
@@ -280,7 +280,7 @@ describe('GET /admin/ai/usage/export', () => {
   });
 });
 
-// ── GET /admin/ai/usage/export.pdf ────────────────────────────────────────── (MINCRM-601)
+// ── GET /admin/ai/usage/export.pdf ──────────────────────────────────────────
 
 describe('GET /admin/ai/usage/export.pdf', () => {
   it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {

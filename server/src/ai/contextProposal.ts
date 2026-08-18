@@ -11,7 +11,6 @@
  * adding a new tool (which would require a round-trip) or a new API field.
  * The server is the only consumer of the marker; the client receives the cleaned
  * content and the extracted proposal as separate fields on AiMessageResponse.
- * (MINCRM-429, MINCRM-430)
  */
 
 import type { AiContextProposal } from '@minicrm/shared/schemas/aiContextSchema.js';

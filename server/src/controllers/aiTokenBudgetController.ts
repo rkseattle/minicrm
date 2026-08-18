@@ -1,7 +1,6 @@
 /**
  * AI token budget controller — request/response shaping for token budget endpoints.
  * No business logic or database access here — delegates entirely to aiTokenBudgetService.
- * (MINCRM-458)
  */
 
 import type { Request, Response } from 'express';

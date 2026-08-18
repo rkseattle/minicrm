@@ -1,5 +1,5 @@
 /**
- * Notification feed controller — request/response shaping only. (MINCRM-469)
+ * Notification feed controller — request/response shaping only.
  * No business logic here; all DB access goes through notificationFeedService.
  */
 

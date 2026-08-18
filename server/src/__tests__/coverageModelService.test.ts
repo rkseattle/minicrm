@@ -1,5 +1,5 @@
 /**
- * Integration tests for coverageModelService. (MINCRM-616)
+ * Integration tests for coverageModelService.
  *
  * Runs against a real PostgreSQL test database. coverage_units is
  * truncated (by file_path prefix) before each test; coverage_ingested_dumps
@@ -302,7 +302,7 @@ describe('coverageModelService', () => {
       expect(stored).toHaveLength(1);
     });
 
-    it('deletes a coverage_test_links row whose matching coverage_units row was just pruned in the same transaction (MINCRM-637)', async () => {
+    it('deletes a coverage_test_links row whose matching coverage_units row was just pruned in the same transaction', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const unit = makeUnit();
       await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [unit]);
@@ -334,7 +334,7 @@ describe('coverageModelService', () => {
       expect(remainingLinks.rowCount).toBe(0);
     });
 
-    it("deletes an orphaned link even when the link's OWN last_seen_at is recent — scoped to which units were just pruned, not to the link's independent freshness (MINCRM-637)", async () => {
+    it("deletes an orphaned link even when the link's OWN last_seen_at is recent — scoped to which units were just pruned, not to the link's independent freshness", async () => {
       // Closes a real bug a later branch-review round found in an earlier
       // revision of this cleanup: coverage_units.last_seen_at is refreshed
       // ONLY by real V8 ingestion (upsertCoverageUnits), while
@@ -383,7 +383,7 @@ describe('coverageModelService', () => {
       expect(remainingLinks.rowCount).toBe(0);
     });
 
-    it('does not delete a coverage_test_links row that has no coverage_units row at all, regardless of the link being stale (MINCRM-637)', async () => {
+    it('does not delete a coverage_test_links row that has no coverage_units row at all, regardless of the link being stale', async () => {
       // Mirrors loadCoverageTestLinksForCommit's real shape: a committed
       // qa/coverage-map.jsonl load writes coverage_test_links rows with NO
       // corresponding coverage_units rows, ever — that's the normal, only
@@ -391,8 +391,7 @@ describe('coverageModelService', () => {
       // pre-push-tia.ts locally. This cleanup is scoped to "matches a unit
       // identity deleted in THIS prune" — a link with no unit at all was
       // never a match in the first place, so it's out of scope regardless
-      // of its own last_seen_at. Found via Greptile branch review of
-      // MINCRM-637.
+      // of its own last_seen_at. Found via Greptile branch review of.
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const unit = makeUnit();
       await coverageDb.query(
@@ -418,7 +417,7 @@ describe('coverageModelService', () => {
       expect(remainingLinks.rowCount).toBe(1);
     });
 
-    it('a re-load via loadCoverageTestLinksForCommit keeps a link matched to a still-live unit untouched, even at a huge age (MINCRM-637)', async () => {
+    it('a re-load via loadCoverageTestLinksForCommit keeps a link matched to a still-live unit untouched, even at a huge age', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const unit = makeUnit();
       const testId = 'spec:reload.spec.ts::renders';
@@ -511,10 +510,10 @@ describe('coverageModelService', () => {
       // to ~15s on a loaded machine"); this test is heavier still and the
       // parallel project has no raised default to inherit. Raising the ceiling
       // does not slow the passing case: a test that finishes in 5s finishes in
-      // 5s either way. (MINCRM-691)
+      // 5s either way.
     }, 90_000);
 
-    it('deletes coverage_ingested_dumps rows older than the retention window (MINCRM-637)', async () => {
+    it('deletes coverage_ingested_dumps rows older than the retention window', async () => {
       // coverage_ingested_dumps had zero retention pruning at all before
       // this — an unbounded idempotency-claim ledger that would eventually
       // slow ingestCoverageDump's own claim INSERT (found via Greptile

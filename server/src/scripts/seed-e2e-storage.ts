@@ -17,7 +17,7 @@
  *   E2E_STORAGE_ACCESS_KEY_ID
  *   E2E_STORAGE_SECRET_ACCESS_KEY
  *
- * MINCRM-278
+ *
  */
 
 import 'dotenv/config';

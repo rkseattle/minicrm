@@ -1,5 +1,5 @@
 /**
- * Integration tests for the coverage mapping query API. (MINCRM-621)
+ * Integration tests for the coverage mapping query API.
  * Covers: auth boundaries (401 unauthenticated, 403 non-admin role), Zod validation, and the
  * query happy path (both directions), including that confidence/freshness
  * is attached to results.
@@ -89,7 +89,7 @@ describe('coverage mapping API — auth boundaries', () => {
   });
 
   // The former "403 FEATURE_DISABLED when the flag is off" case is gone with
-  // the coverage_mapping_query row (MINCRM-685). Its replacement lives in
+  // the coverage_mapping_query row. Its replacement lives in
   // coverageRouteGating.test.ts, which asserts a 404 when COVERAGE_MAPPING_QUERY
   // is unset at boot — the routes are not registered at all rather than
   // registered-and-refusing. It cannot live here: this file imports app.js
@@ -97,7 +97,7 @@ describe('coverage mapping API — auth boundaries', () => {
   // vi.resetModules() + dynamic re-import discipline that file is built around.
 });
 
-describe('coverage mapping API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+describe('coverage mapping API — COVERAGE_CAPABILITY_GATING=true', () => {
   const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
 
   beforeEach(async () => {
@@ -133,7 +133,7 @@ describe('coverage mapping API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)'
   });
 });
 
-describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-694)', () => {
+describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true', () => {
   const originalNoAuth = process.env.COVERAGE_DASHBOARD_NO_AUTH;
   const originalNodeEnv = process.env.NODE_ENV;
 
@@ -160,9 +160,9 @@ describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-694)'
     expect(res.body.results).toEqual([]);
   });
 
-  // MINCRM-694's "STILL returns 403 FEATURE_DISABLED when the flag is off"
+  // The STILL returns 403 FEATURE_DISABLED when the flag is off"
   // case is retired here, and the invariant it pinned is DELIBERATELY DROPPED
-  // rather than relocated (MINCRM-685) — with COVERAGE_DASHBOARD_NO_AUTH on,
+  // rather than relocated — with COVERAGE_DASHBOARD_NO_AUTH on,
   // this router now has no per-request gate at all. See the equivalent comment
   // in coverageReportingController.test.ts for the full rationale; the short
   // version is that route registration (COVERAGE_MAPPING_QUERY at boot) is now
@@ -282,7 +282,7 @@ describe('coverage mapping API — query happy path', () => {
   });
 });
 
-describe('coverage mapping API — unit-key/test-ID typeahead search (MINCRM-636/637)', () => {
+describe('coverage mapping API — unit-key/test-ID typeahead search', () => {
   const commitSha = `${FILE_PREFIX}-search-${randomUUID()}`;
 
   beforeAll(async () => {

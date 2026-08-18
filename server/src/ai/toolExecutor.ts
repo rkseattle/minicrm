@@ -15,7 +15,6 @@
  *   safe in the NLI context because the AI cannot hold stale version numbers
  *   across turns — each update starts fresh.
  *
- * (MINCRM-422)
  */
 
 import logger from '../logger.js';
@@ -198,7 +197,7 @@ export async function executeToolCall(
       case 'requestMutationConfirmation': {
         // This tool does not call any service. It builds and returns an AiPendingAction
         // so the session service can store it on the assistant message for client rendering.
-        // The actual write tool is called only after the user confirms. (MINCRM-425, MINCRM-426)
+        // The actual write tool is called only after the user confirms.
 
         // Runtime validation: the Anthropic tool schema enforces types for well-behaved
         // models but a drifted or adversarial model could send unexpected shapes.
@@ -241,7 +240,7 @@ export async function executeToolCall(
 
         // isBulkDelete is only valid when isBulk=true AND operation='delete'.
         // Enforce both conditions server-side to prevent the bulk-delete double-confirm gate
-        // from rendering for create/update bulk operations. (MINCRM-426)
+        // from rendering for create/update bulk operations.
         const isBulkDelete =
           isBulk && rawOperation === 'delete'
             ? (toolInput.is_bulk_delete as boolean | undefined) // Anthropic schema enforces boolean
@@ -767,7 +766,7 @@ export async function executeToolCall(
         const cnEntityType = toolInput.entity_type as NoteEntityType;
         const cnEntityId = toolInput.entity_id as string;
         // Verify caller owns the parent record before creating a note on it.
-        // createNote only checks entity existence, not ownership. (MINCRM-422)
+        // createNote only checks entity existence, not ownership.
         await assertEntityAccess(cnEntityType, cnEntityId, ctx);
         return await createNote(
           cnEntityType,
@@ -821,7 +820,7 @@ export async function executeToolCall(
         // Verify write access to the target record before mutating its tags.
         await assertEntityAccess(tagEntityType, tagEntityId, ctx, true);
         // attachTag uses upsert-by-name semantics: creates the tag if it does not exist.
-        // Leads are now supported alongside contacts, accounts, and deals. (MINCRM-433)
+        // Leads are now supported alongside contacts, accounts, and deals.
         await attachTag(
           tagEntityType,
           tagEntityId,
@@ -836,14 +835,14 @@ export async function executeToolCall(
         const detachEntityId = toolInput.entity_id as string;
         // Verify write access to the target record before mutating its tags.
         await assertEntityAccess(detachEntityType, detachEntityId, ctx, true);
-        // Leads are now supported alongside contacts, accounts, and deals. (MINCRM-433)
+        // Leads are now supported alongside contacts, accounts, and deals.
         await detachTag(detachEntityType, detachEntityId, toolInput.tag_id as string, ctx.actor);
         return { detached: true };
       }
 
       case 'renameTag': {
         // renameTag executes atomically with an audit entry. The AI is instructed to
-        // call requestMutationConfirmation before invoking this tool. (MINCRM-433)
+        // call requestMutationConfirmation before invoking this tool.
         let renameResult: Awaited<ReturnType<typeof renameTagByName>>;
         try {
           renameResult = await renameTagByName(
@@ -889,7 +888,7 @@ export async function executeToolCall(
       case 'saveReport': {
         // Saves an NLI-generated analytic report to the Reports module under Custom Reports.
         // The config stores the NLI report parameters in the jsonb field so the Reports module
-        // can display context about the saved report. (MINCRM-424)
+        // can display context about the saved report.
         const rawDaysForSave = toolInput.days as number | undefined;
         const validDaysForSave = STAGE_TREND_DAYS_OPTIONS.includes(rawDaysForSave as 30 | 60 | 90)
           ? (rawDaysForSave as 30 | 60 | 90)
@@ -1037,7 +1036,7 @@ async function dispatchReport(
   switch (reportType) {
     case 'win_loss':
       // Inject report_type discriminator so NliResultBlock.extractReport can identify
-      // the shape without fragile property-sniffing. (MINCRM-424)
+      // the shape without fragile property-sniffing.
       return {
         report_type: 'win_loss',
         ...(await getWinLossReport({ startDate: dateFrom, endDate: dateTo, ownerId })),
@@ -1193,7 +1192,7 @@ function today(): string {
  * session. Stepping back from the current LOCAL instant would name a different
  * day than the database does whenever the process timezone isn't UTC, so a
  * report asked for "the last 30 days" would silently start a day off.
- * See docs/dev/dates-and-timezones.md. (MINCRM-700)
+ * See docs/dev/dates-and-timezones.md.
  */
 function thirtyDaysAgo(): string {
   return utcDayOffset(new Date(), -DEFAULT_REPORT_WINDOW_DAYS);

@@ -1,5 +1,5 @@
 /**
- * Regression test for MINCRM-663 and MINCRM-685: with every COVERAGE_* route
+ * Regression test for that work: with every COVERAGE_* route
  * gate unset (the production default — an admin with full CRM access and no
  * special env/build context), every path under /api/v1/admin/coverage/*
  * (control API), /sessions/* (session management), /mapping/*, /reporting/*,
@@ -8,7 +8,7 @@
  * routes/coverage.ts and routes/coverageSessions.ts's own docblocks for the
  * full rationale).
  *
- * MINCRM-685 extended this from two routers to five. The mapping/reporting/
+ * extended this from two routers to five. The mapping/reporting/
  * pipeline routers previously gated on feature_flags rows and returned 403
  * FEATURE_DISABLED when the row was off; those rows are gone, and the
  * flag-disabled assertions that used to live in the E2E specs
@@ -94,7 +94,7 @@ let appWithGatingDisabled: Application;
  * .env.test and puts all five vars straight back — undoing the deletions above
  * before the route modules evaluate. It is warm here because this file
  * statically imports `../db.js`, which imports dotenv at module load, long
- * before this function runs. That became load-bearing in MINCRM-685: the three
+ * before this function runs. That became load-bearing in a later change: the three
  * new vars are now ACTIVE in .env.test.example, so they are present in every
  * developer's .env.test, where before there was nothing for a cold dotenv to
  * restore. Keep the `pool` import (or an equivalent eager dotenv import) even
@@ -204,7 +204,7 @@ describe('coverage session management API — routes absent when COVERAGE_SESSIO
   });
 });
 
-describe('coverage mapping query API — routes absent when COVERAGE_MAPPING_QUERY is unset (MINCRM-685)', () => {
+describe('coverage mapping query API — routes absent when COVERAGE_MAPPING_QUERY is unset', () => {
   it('returns 404, not 403 FEATURE_DISABLED, on GET /mapping/tests-for-unit for an authenticated admin', async () => {
     const res = await request(appWithGatingDisabled)
       .get('/api/v1/admin/coverage/mapping/tests-for-unit')
@@ -224,7 +224,7 @@ describe('coverage mapping query API — routes absent when COVERAGE_MAPPING_QUE
   });
 });
 
-describe('coverage reporting query API — routes absent when COVERAGE_REPORTING_QUERY is unset (MINCRM-685)', () => {
+describe('coverage reporting query API — routes absent when COVERAGE_REPORTING_QUERY is unset', () => {
   it('returns 404, not 403 FEATURE_DISABLED, on GET /reporting/summary for an authenticated admin', async () => {
     const res = await request(appWithGatingDisabled)
       .get('/api/v1/admin/coverage/reporting/summary')
@@ -244,7 +244,7 @@ describe('coverage reporting query API — routes absent when COVERAGE_REPORTING
   });
 });
 
-describe('coverage pipeline API — routes absent when COVERAGE_PIPELINE_INGESTION is unset (MINCRM-685)', () => {
+describe('coverage pipeline API — routes absent when COVERAGE_PIPELINE_INGESTION is unset', () => {
   it('returns 404, not 403 FEATURE_DISABLED, on POST /pipeline/ingest for an authenticated admin', async () => {
     const res = await request(appWithGatingDisabled)
       .post('/api/v1/admin/coverage/pipeline/ingest')

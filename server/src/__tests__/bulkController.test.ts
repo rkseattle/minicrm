@@ -1,5 +1,5 @@
 /**
- * Integration tests for the bulk controller. (MINCRM-295)
+ * Integration tests for the bulk controller.
  *
  * Covers: bulk reassign, bulk delete, and bulk stage change for contacts,
  * accounts, and deals — including ownership enforcement and validation errors.

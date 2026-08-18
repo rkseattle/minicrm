@@ -1,14 +1,14 @@
 /**
- * Integration tests for auth middleware and cookie security (MINCRM-74, MINCRM-76, MINCRM-365).
+ * Integration tests for auth middleware and cookie security.
  *
- * MINCRM-74: Verifies that a deactivated user's JWT is rejected even if the
+ * Verifies that a deactivated user's JWT is rejected even if the
  *   token is still cryptographically valid, and that must_change_password is
  *   enforced on all routes except /api/auth/change-password.
  *
- * MINCRM-76: Verifies that the login response sets the expected cookie security
+ * Verifies that the login response sets the expected cookie security
  *   flags (httpOnly, sameSite) and that the maxAge matches the 30-minute idle policy.
  *
- * MINCRM-365: Verifies the sliding idle timeout (30-min JWT), login_at absolute cap
+ * Verifies the sliding idle timeout (30-min JWT), login_at absolute cap
  *   (8 hours), and the /refresh endpoint.
  *
  * Runs against a real PostgreSQL test database via supertest.
@@ -21,7 +21,7 @@ import { createUser, updateUserStatus } from '../services/userService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
-/** 30-minute idle expiry in milliseconds — must match authController constant (MINCRM-365) */
+/** 30-minute idle expiry in milliseconds — must match authController constant */
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 
 /** Tolerance window for maxAge assertions (5 seconds) */
@@ -90,9 +90,9 @@ afterAll(async () => {
   await pool.query("DELETE FROM users WHERE email LIKE 'auth-test-%'");
 });
 
-// ── MINCRM-74: deactivated user rejection ───────────────────────────────────
+// ── deactivated user rejection ───────────────────────────────────
 
-describe('MINCRM-74 — deactivated user mid-session', () => {
+describe('deactivated user mid-session', () => {
   it('returns 401 with USER_INACTIVE for a deactivated user on an authenticated route', async () => {
     const res = await request(app).get('/api/v1/contacts').set('Cookie', deactivatedCookie);
 
@@ -115,9 +115,9 @@ describe('MINCRM-74 — deactivated user mid-session', () => {
   });
 });
 
-// ── MINCRM-74: must_change_password enforcement ─────────────────────────────
+// ── must_change_password enforcement ─────────────────────────────
 
-describe('MINCRM-74 — must_change_password enforcement', () => {
+describe('must_change_password enforcement', () => {
   it('returns 403 PASSWORD_CHANGE_REQUIRED on non-change-password routes', async () => {
     const res = await request(app).get('/api/v1/contacts').set('Cookie', mustChangeCookie);
 
@@ -137,9 +137,9 @@ describe('MINCRM-74 — must_change_password enforcement', () => {
   });
 });
 
-// ── MINCRM-76: JWT cookie security flags ────────────────────────────────────
+// ── JWT cookie security flags ────────────────────────────────────
 
-describe('MINCRM-76 — JWT cookie security flags', () => {
+describe('JWT cookie security flags', () => {
   beforeAll(async () => {
     // Seed the login test user; each test will set a fresh bcrypt hash before logging in
     await pool.query("DELETE FROM users WHERE email = 'auth-test-login@example.com'");
@@ -188,7 +188,7 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
     expect(authCookie!.toLowerCase()).toContain('samesite=lax');
   });
 
-  it('sets Max-Age consistent with the 30-minute idle session policy (MINCRM-365)', async () => {
+  it('sets Max-Age consistent with the 30-minute idle session policy', async () => {
     const bcrypt = await import('bcryptjs');
     const hash = await bcrypt.default.hash('TestPass1', 12);
     await pool.query(
@@ -210,7 +210,7 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
     expect(Math.abs(maxAgeMs - THIRTY_MINUTES_MS)).toBeLessThan(MAX_AGE_TOLERANCE_MS);
   });
 
-  it('embeds login_at in the JWT payload (MINCRM-365)', async () => {
+  it('embeds login_at in the JWT payload', async () => {
     const bcrypt = await import('bcryptjs');
     const jwt = await import('jsonwebtoken');
     const hash = await bcrypt.default.hash('TestPass1', 12);
@@ -255,9 +255,9 @@ describe('MINCRM-76 — JWT cookie security flags', () => {
   });
 });
 
-// ── MINCRM-365: absolute session cap + /refresh endpoint ────────────────────
+// ── absolute session cap + /refresh endpoint ────────────────────
 
-describe('MINCRM-365 — absolute session cap via login_at', () => {
+describe('absolute session cap via login_at', () => {
   it('rejects a token where session age (iat - login_at) >= 8 hours', async () => {
     const jwt = await import('jsonwebtoken');
     const nowSeconds = Math.floor(Date.now() / 1000);
@@ -309,7 +309,7 @@ describe('MINCRM-365 — absolute session cap via login_at', () => {
     expect(res.status).toBe(200);
   });
 
-  it('allows a token with no login_at (pre-MINCRM-365 token)', async () => {
+  it('allows a token with no login_at (pre- token)', async () => {
     // Tokens issued before this feature was deployed have no login_at.
     // They must be accepted so existing sessions are not abruptly invalidated.
     const res = await request(app).get('/api/v1/auth/me').set('Cookie', activeCookie);
@@ -317,7 +317,7 @@ describe('MINCRM-365 — absolute session cap via login_at', () => {
   });
 });
 
-describe('MINCRM-365 — POST /api/v1/auth/refresh', () => {
+describe('POST /api/v1/auth/refresh', () => {
   it('issues a fresh JWT with the same login_at when session is valid', async () => {
     const jwt = await import('jsonwebtoken');
     const nowSeconds = Math.floor(Date.now() / 1000);

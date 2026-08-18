@@ -1,5 +1,5 @@
 /**
- * Task suggestion controller — request/response shaping only. (MINCRM-438)
+ * Task suggestion controller — request/response shaping only.
  * No business logic here; all AI orchestration goes through taskSuggestionService.
  */
 

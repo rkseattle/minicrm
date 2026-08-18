@@ -1,5 +1,5 @@
 /**
- * Integration tests for aiContextService. (MINCRM-427)
+ * Integration tests for aiContextService.
  *
  * Covers:
  *  - listContextEntries: empty list, populated list ordered by created_at

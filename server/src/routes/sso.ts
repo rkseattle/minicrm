@@ -1,5 +1,5 @@
 /**
- * SSO auth routes — SAML 2.0 / OIDC single sign-on. (MINCRM-399)
+ * SSO auth routes — SAML 2.0 / OIDC single sign-on.
  * Route definitions + @openapi JSDoc only — no logic, no service imports.
  *
  * Mounted at /api/v1/auth/sso in app.ts.

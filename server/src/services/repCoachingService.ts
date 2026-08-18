@@ -1,7 +1,7 @@
 /**
  * Rep coaching insights service — nightly job that computes per-rep coaching
  * insights from activity patterns and deal outcomes, compared against team
- * averages. (MINCRM-474)
+ * averages.
  *
  * generateRepCoachingInsights() is the cron entry point (server/src/server.ts).
  * Deterministic and SQL-driven, not an LLM call: every metric here is a

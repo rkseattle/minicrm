@@ -1,5 +1,5 @@
 /**
- * SSO service — SAML 2.0 / OIDC single sign-on. (MINCRM-399)
+ * SSO service — SAML 2.0 / OIDC single sign-on.
  *
  * Responsibilities:
  *   - Build SAML AuthnRequests and OIDC authorization URLs (initiation)
@@ -30,7 +30,7 @@ import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 
 /**
  * Denormalized role enum value written to users.role for all JIT-provisioned SSO users.
- * users.role is retained as a cache per MINCRM-542 design — the authoritative capability
+ * users.role is retained as a cache per the spec design — the authoritative capability
  * source is the custom_roles / user_custom_roles tables.
  */
 const SSO_JIT_ROLE = 'rep' as const;
@@ -212,15 +212,13 @@ export async function validateSamlResponse(samlResponse: string): Promise<SsoIde
   const subject =
     profile.nameID ??
     (profile['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] as
-      | string
-      | undefined);
+      string | undefined);
 
   if (!subject) throw new Error('SSO_MISSING_SUBJECT');
 
   const email =
     (profile['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] as
-      | string
-      | undefined) ??
+      string | undefined) ??
     profile.email ??
     (typeof profile.nameID === 'string' && profile.nameID.includes('@') ? profile.nameID : null);
 
@@ -464,14 +462,14 @@ export async function findOrProvisionSsoUser(
       `INSERT INTO users (email, name, role, status, must_change_password, sso_provider, sso_subject, created_at, updated_at)
        VALUES ($1, $2, $3, 'active', false, $4, $5, now(), now())
        RETURNING id, email, name, role, status, must_change_password, sso_provider, sso_subject`,
-      // SSO_JIT_ROLE is the denormalized cache value — kept in sync with MINCRM-542 design.
+      // SSO_JIT_ROLE is the denormalized cache value — kept in sync with that change design.
       [claims.email, claims.name, SSO_JIT_ROLE, provider, claims.subject],
     );
 
-    // newUserResult.rows[0] is guaranteed non-null — the INSERT above always returns one row. (MINCRM-540)
+    // newUserResult.rows[0] is guaranteed non-null — the INSERT above always returns one row.
     const newUser = newUserResult.rows[0]!;
 
-    // Look up the configured JIT default role and assign it via user_custom_roles. (MINCRM-540)
+    // Look up the configured JIT default role and assign it via user_custom_roles.
     const jitRoleSettingResult = await client.query<{ value: string }>(
       `SELECT value FROM system_settings WHERE key = $1 LIMIT 1`,
       [SSO_JIT_DEFAULT_ROLE_ID_KEY],
@@ -576,7 +574,7 @@ export async function unlinkAllSsoUsers(provider: SsoProtocol, actor: AuditActor
  * via password login.
  *
  * Admins are exempt from this check — they can always use password login as a
- * lockout escape hatch, per MINCRM-399 design decision.
+ * lockout escape hatch, per the spec design decision.
  */
 export function isSsoBoundUser(
   user: Pick<UserRow, 'sso_provider' | 'sso_subject' | 'role'>,

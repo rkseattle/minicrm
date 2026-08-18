@@ -1,5 +1,5 @@
 /**
- * Integration tests for the pipeline stage controller. (MINCRM-295)
+ * Integration tests for the pipeline stage controller.
  *
  * Covers: list, create, update (including fixed-stage protection and conflict
  * errors), and delete (including deals-in-stage protection).

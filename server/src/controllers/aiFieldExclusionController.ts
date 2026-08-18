@@ -1,7 +1,7 @@
 /**
  * AI field exclusion controller — request/response shaping for
  * /api/v1/admin/ai/field-exclusions. No business logic here — delegates
- * entirely to aiFieldExclusionService. (MINCRM-461)
+ * entirely to aiFieldExclusionService.
  */
 
 import type { Request, Response } from 'express';

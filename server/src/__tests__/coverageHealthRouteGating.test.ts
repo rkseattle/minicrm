@@ -1,5 +1,5 @@
 /**
- * Regression test for MINCRM-637: GET /api/v1/admin/coverage/health must
+ * Regression test for that work: GET /api/v1/admin/coverage/health must
  * stay reachable (subject only to auth/coverageAccessGate) even when
  * COVERAGE_INSTRUMENTATION is unset — unlike coverage.ts's OTHER routes
  * (reset/snapshot/dump/dumps/:dumpId), which live inside
@@ -55,7 +55,7 @@ beforeAll(async () => {
   });
   repCookie = makeAuthCookie({ id: rep.id, email: rep.email, name: rep.name, role: rep.role });
 
-  // Boot with a MIXED gate configuration, not all-off (MINCRM-685). This file
+  // Boot with a MIXED gate configuration, not all-off. This file
   // owns this worker's single app boot, and the health report's `routers` block
   // is a snapshot taken during it.
   //
@@ -134,7 +134,7 @@ describe('GET /api/v1/admin/coverage/health — reachable when COVERAGE_INSTRUME
 });
 
 /**
- * The report must agree with what actually registered (MINCRM-685).
+ * The report must agree with what actually registered.
  *
  * This is the guarantee no unit test can give: it needs an app instance whose
  * routers really did or did not register, and the health report read from the
@@ -145,7 +145,7 @@ describe('GET /api/v1/admin/coverage/health — reachable when COVERAGE_INSTRUME
  * those paths 404'd. An operator debugging "why is coverage not working" would
  * have been told everything was fine.
  */
-describe('GET /health — the routers block agrees with real registration (MINCRM-685)', () => {
+describe('GET /health — the routers block agrees with real registration', () => {
   // This app booted with COVERAGE_MAPPING_QUERY unset and the other two set,
   // so each field has a DIFFERENT expected value. That asymmetry is the whole
   // point: it is what makes a permuted key→env-var mapping in

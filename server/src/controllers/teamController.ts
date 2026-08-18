@@ -1,5 +1,5 @@
 /**
- * Team controller — request/response shaping for the teams API. (MINCRM-537)
+ * Team controller — request/response shaping for the teams API.
  * No business logic or database access belongs here.
  */
 

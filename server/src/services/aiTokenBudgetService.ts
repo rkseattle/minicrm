@@ -9,7 +9,6 @@
  *  - Budget resets automatically on the 1st of each month because each month gets
  *    its own row keyed by year_month ('YYYY-MM'). No cron job is needed.
  *
- * (MINCRM-458)
  */
 
 import type { PoolClient } from 'pg';
@@ -426,7 +425,7 @@ export async function setUserTokenBudget(
 /**
  * Records token usage for a user in the current calendar month, for budget
  * enforcement, and independently in ai_token_usage_daily for the usage/cost
- * dashboard (MINCRM-459). The two upserts are independent fire-and-forget
+ * dashboard. The two upserts are independent fire-and-forget
  * calls — a failure writing the daily/per-feature row must never affect the
  * monthly budget-enforcement row, and vice versa.
  *

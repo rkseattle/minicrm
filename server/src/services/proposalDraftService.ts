@@ -1,6 +1,6 @@
 /**
  * Proposal draft generation service — on-demand AI drafting of a first-pass
- * proposal document from a deal's context. (MINCRM-473)
+ * proposal document from a deal's context.
  *
  * Gathers deal facts, account name, contact names/titles, linked notes,
  * recent activity, and non-PII-excluded custom fields; strips PII via
@@ -265,7 +265,7 @@ export async function generateProposalDraft(
   }
   const anthropicClient = new Anthropic(clientOptions);
 
-  // PII-filter the gathered facts before they leave the server. (MINCRM-445)
+  // PII-filter the gathered facts before they leave the server.
   const { sanitised, strippedFields } = await applyPiiFilter(context, 'deal');
   if (strippedFields.length > 0) {
     logger.info(
@@ -300,7 +300,7 @@ export async function generateProposalDraft(
     throw err;
   }
 
-  // High-token operation — cost logged against the rep's budget. (MINCRM-458)
+  // High-token operation — cost logged against the rep's budget.
   recordTokenUsage(
     userId,
     response.usage.input_tokens,

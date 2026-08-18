@@ -1,7 +1,7 @@
 /**
  * Contact auto-enrich service — on-demand AI extraction of contact fields
  * from pasted freeform text (LinkedIn bio, email signature, vCard, business
- * card text). (MINCRM-439)
+ * card text).
  *
  * Follows the same "gather context, PII-filter, forced-tool Claude call,
  * record token usage" shape as dealHealthService.generateDealHealthCheck.
@@ -150,7 +150,7 @@ export async function enrichContactFromText(
 
   // The raw pasted text is user-authored freeform content, not a CRM record with named
   // fields — applyPiiFilter's field-name exclusion set does not apply to it. Defense in
-  // depth is still run for consistency with every other AI call site. (MINCRM-445)
+  // depth is still run for consistency with every other AI call site.
   const { sanitised, strippedFields } = await applyPiiFilter({ raw_text: rawText }, 'contact');
   if (strippedFields.length > 0) {
     logger.info(

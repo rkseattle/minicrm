@@ -252,7 +252,7 @@ router.patch('/me/language', authenticate, asyncHandler(setMyPreferredLanguage))
  *   get:
  *     tags: [Users]
  *     operationId: getMyNotificationPrefs
- *     summary: Get the authenticated user's email notification preferences (MINCRM-163)
+ *     summary: Get the authenticated user's email notification preferences
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -280,7 +280,7 @@ router.get('/me/notification-preferences', authenticate, asyncHandler(getMyNotif
  *   patch:
  *     tags: [Users]
  *     operationId: updateMyNotificationPrefs
- *     summary: Update the authenticated user's email notification preferences (MINCRM-163)
+ *     summary: Update the authenticated user's email notification preferences
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -473,7 +473,7 @@ router.get('/', asyncHandler(listUsers));
  *   get:
  *     tags: [Users]
  *     operationId: getNotificationRecipientCount
- *     summary: Count of active users with at least one notification enabled (admin only, MINCRM-163)
+ *     summary: Count of active users with at least one notification enabled (admin only)
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -770,7 +770,7 @@ router.patch('/:id/reactivate', asyncHandler(reactivateUser));
  *     description: >
  *       Activates or deactivates a user via { active: boolean }.
  *       Deactivating the currently authenticated user returns 409.
- *       invited users can be deactivated (sets status to inactive). (MINCRM-561)
+ *       invited users can be deactivated (sets status to inactive).
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -936,7 +936,7 @@ router.post('/:id/admin-set-password', asyncHandler(adminSetPassword));
  *   post:
  *     tags: [Users]
  *     operationId: resetUserOnboarding
- *     summary: Reset a user's onboarding checklist (admin only, MINCRM-410)
+ *     summary: Reset a user's onboarding checklist (admin only)
  *     description: >
  *       Resets onboarding_completed to false for the specified user, causing their
  *       setup checklist widget to reappear. Admin only.
@@ -974,7 +974,7 @@ router.post('/:id/reset-onboarding', asyncHandler(resetOnboardingHandler));
  *   post:
  *     tags: [Users]
  *     operationId: issueApiToken
- *     summary: Issue an API token for a service account user (admin only, MINCRM-536)
+ *     summary: Issue an API token for a service account user (admin only)
  *     description: >
  *       Generates a new long-lived API token for the specified service_account user.
  *       Any previously issued token is atomically revoked. The plaintext token is
@@ -1017,7 +1017,7 @@ router.post('/:id/api-token', asyncHandler(issueApiToken));
  *   delete:
  *     tags: [Users]
  *     operationId: revokeApiToken
- *     summary: Revoke a service account's API token (admin only, MINCRM-536)
+ *     summary: Revoke a service account's API token (admin only)
  *     description: >
  *       Immediately invalidates the API token for the specified service_account user.
  *       No grace period — the token stops working as soon as this request succeeds.
@@ -1052,7 +1052,7 @@ router.post('/:id/api-token', asyncHandler(issueApiToken));
  */
 router.delete('/:id/api-token', asyncHandler(revokeApiToken));
 
-// ── User custom role assignment (MINCRM-542) ───────────────────────────────────
+// ── User custom role assignment ───────────────────────────────────
 
 /**
  * @openapi
@@ -1060,7 +1060,7 @@ router.delete('/:id/api-token', asyncHandler(revokeApiToken));
  *   get:
  *     tags: [Users]
  *     operationId: listUserRoles
- *     summary: List custom roles assigned to a user (MINCRM-542)
+ *     summary: List custom roles assigned to a user
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -1092,7 +1092,7 @@ router.get(
  *   post:
  *     tags: [Users]
  *     operationId: assignUserRole
- *     summary: Assign a custom role to a user (MINCRM-542)
+ *     summary: Assign a custom role to a user
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -1137,7 +1137,7 @@ router.post(
  *   delete:
  *     tags: [Users]
  *     operationId: removeUserRole
- *     summary: Remove a custom role assignment from a user (MINCRM-542)
+ *     summary: Remove a custom role assignment from a user
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -1177,7 +1177,7 @@ router.delete(
  *   patch:
  *     tags: [Users]
  *     operationId: bulkPatchUsers
- *     summary: Bulk patch users — activate/deactivate or change role (MINCRM-562)
+ *     summary: Bulk patch users — activate/deactivate or change role
  *     description: >
  *       Applies a status or role change to each listed user individually.
  *       Requires admin role + bulk:operations + users:edit.
@@ -1233,7 +1233,7 @@ router.patch(
  *   delete:
  *     tags: [Users]
  *     operationId: bulkDeleteUsers
- *     summary: Bulk delete users (MINCRM-562)
+ *     summary: Bulk delete users
  *     description: >
  *       Deletes each listed user individually.
  *       Requires admin role + bulk:operations + users:delete.

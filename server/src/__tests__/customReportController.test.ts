@@ -2,7 +2,7 @@
  * Integration tests for customReportController — HTTP layer for custom reports.
  *
  * Covers request/response shaping, auth enforcement, visibility permissions,
- * validation error paths, and the ad-hoc /run and /export endpoints. (MINCRM-402)
+ * validation error paths, and the ad-hoc /run and /export endpoints.
  */
 
 import 'dotenv/config';
@@ -458,7 +458,7 @@ describe('GET /api/v1/reports/custom/:id/export', () => {
   });
 });
 
-// ── GET /:id/export.pdf ───────────────────────────────────────────────────── (MINCRM-601)
+// ── GET /:id/export.pdf ─────────────────────────────────────────────────────
 
 describe('GET /api/v1/reports/custom/:id/export.pdf', () => {
   it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {

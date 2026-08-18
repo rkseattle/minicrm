@@ -1,5 +1,5 @@
 /**
- * Server integration tests for the tag creation restriction setting (MINCRM-263).
+ * Server integration tests for the tag creation restriction setting.
  *
  * Covers:
  * - Rep blocked when tags_restrict_creation is true

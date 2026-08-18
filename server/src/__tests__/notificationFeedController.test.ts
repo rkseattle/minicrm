@@ -1,5 +1,5 @@
 /**
- * HTTP contract tests for the notification feed endpoints. (MINCRM-469)
+ * HTTP contract tests for the notification feed endpoints.
  */
 
 import 'dotenv/config';

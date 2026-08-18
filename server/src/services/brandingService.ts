@@ -1,5 +1,5 @@
 /**
- * Branding service — all database operations for custom branding configuration. (MINCRM-356)
+ * Branding service — all database operations for custom branding configuration.
  * Stores the branding config as a JSON string in the system_settings key/value table.
  */
 
@@ -17,7 +17,7 @@ const BRANDING_KEY = 'branding';
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
 // Branding is admin-configured and changes rarely but is read on every PDF export
-// (MINCRM-656) and every page load's web UI fetch — an in-memory TTL cache avoids
+// and every page load's web UI fetch — an in-memory TTL cache avoids
 // a system_settings round-trip on each read. Mirrors featureFlagService.ts's cache.
 
 /** TTL for the branding cache in milliseconds. Zero in E2E so DB resets take effect immediately. */
@@ -124,7 +124,7 @@ export async function getBranding(): Promise<BrandingConfig | null> {
 }
 
 /**
- * Persists (or merges) a branding configuration update. (MINCRM-356)
+ * Persists (or merges) a branding configuration update.
  * Merges the incoming fields onto the existing config so partial updates work.
  * Derives `primaryColorText` when `primaryColor` is present.
  *
@@ -174,7 +174,7 @@ export async function setBranding(
 }
 
 /**
- * Deletes the branding configuration, restoring default MiniCRM appearance. (MINCRM-356)
+ * Deletes the branding configuration, restoring default MiniCRM appearance.
  */
 export async function deleteBranding(): Promise<void> {
   await pool.query('DELETE FROM system_settings WHERE key = $1', [BRANDING_KEY]);

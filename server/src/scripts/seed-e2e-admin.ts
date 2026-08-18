@@ -15,7 +15,7 @@
  *   DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
  *   E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD
  *
- * MINCRM-131
+ *
  */
 
 import 'dotenv/config';

@@ -1,8 +1,8 @@
 /**
  * HTTP server entry point.
  * Imports the Express app and starts listening on the configured port.
- * Registers SIGTERM/SIGINT handlers for graceful shutdown (MINCRM-108).
- * Registers an unhandledRejection handler to surface fire-and-forget failures (MINCRM-122).
+ * Registers SIGTERM/SIGINT handlers for graceful shutdown.
+ * Registers an unhandledRejection handler to surface fire-and-forget failures.
  */
 
 import 'dotenv/config';
@@ -60,7 +60,7 @@ if (
   );
 }
 
-// MINCRM-301: Validate NODE_ENCRYPTION_KEY at startup so operators discover
+// Validate NODE_ENCRYPTION_KEY at startup so operators discover
 // missing configuration immediately rather than at first use of storage or SMTP.
 const encryptionKey = process.env.NODE_ENCRYPTION_KEY ?? '';
 if (encryptionKey.length !== ENCRYPTION_KEY_HEX_LENGTH || !/^[0-9a-fA-F]+$/.test(encryptionKey)) {
@@ -72,7 +72,7 @@ if (encryptionKey.length !== ENCRYPTION_KEY_HEX_LENGTH || !/^[0-9a-fA-F]+$/.test
   );
 }
 
-// MINCRM-396: Warn when SMTP_FROM is configured but DKIM signing is absent.
+// Warn when SMTP_FROM is configured but DKIM signing is absent.
 // Without DKIM, outbound mail from a custom domain is likely to land in spam.
 // This is a non-fatal advisory — the server continues to start normally.
 if (process.env.SMTP_FROM && !process.env.SMTP_DKIM_PRIVATE_KEY) {
@@ -83,7 +83,7 @@ if (process.env.SMTP_FROM && !process.env.SMTP_DKIM_PRIVATE_KEY) {
   );
 }
 
-// Log and report unhandled promise rejections (e.g. from fire-and-forget automation triggers — MINCRM-122)
+// Log and report unhandled promise rejections (e.g. from fire-and-forget automation triggers —)
 process.on('unhandledRejection', (reason) => {
   captureException(reason);
   logger.error({ reason }, 'Unhandled promise rejection');
@@ -117,12 +117,12 @@ const HEADERS_TIMEOUT_MS = 66_000;
 server.keepAliveTimeout = KEEP_ALIVE_TIMEOUT_MS;
 server.headersTimeout = HEADERS_TIMEOUT_MS;
 
-// Coverage/TIA instrumentation (MINCRM-604). Disabled unless
+// Coverage/TIA instrumentation. Disabled unless
 // COVERAGE_INSTRUMENTATION=true — an unset env var means start()/stop() are
 // never called and this has zero effect on a normal boot.
 const coverageConfig = resolveCoverageConfig();
 
-// Coverage/TIA policy (MINCRM-637) — resolved once here at boot, not inside
+// Coverage/TIA policy — resolved once here at boot, not inside
 // the retention cron's closure; re-resolving it on every daily tick forever
 // would violate coveragePolicyConfig.ts's own "resolve once, pass the
 // result down" contract — see coverageRetentionScheduler.ts's own docblock
@@ -148,7 +148,7 @@ if (coverageAgent) {
 
 // Disable Nagle's algorithm for all connections so that small streaming frames
 // (e.g. the ConnectRPC stream-ready sentinel) are delivered immediately rather
-// than being buffered until the TCP send buffer fills (MINCRM-554).
+// than being buffered until the TCP send buffer fills.
 server.on('connection', (socket) => {
   socket.setNoDelay(true);
 });
@@ -223,14 +223,14 @@ void (async () => {
     // an unprovisioned coverage database. Runs unconditionally (not gated
     // on COVERAGE_INSTRUMENTATION) since the session-management, mapping,
     // and reporting routers each have their own boot-time env var and can
-    // be enabled independently of the backend V8 agent itself (MINCRM-685;
+    // be enabled independently of the backend V8 agent itself (
     // see docs/dev/coverage.md's Coverage Database section).
     await runCoverageMigrations();
     await seedDefaultAdmin();
     await auditEventBus.start(pool);
     // Ensure audit_log partitions exist for the current month + 3 months ahead.
     // Runs at startup so partitions are guaranteed before any writes occur,
-    // regardless of when the monthly cron last fired. (MINCRM-521)
+    // regardless of when the monthly cron last fired.
     await ensureAuditLogPartitions();
   } catch (err) {
     logger.error({ err }, 'Startup initialization failed');
@@ -242,7 +242,7 @@ void (async () => {
   });
 })();
 
-// Daily overdue task digest — runs at 08:00 server time every day (MINCRM-161).
+// Daily overdue task digest — runs at 08:00 server time every day.
 // In test/CI environments the cron is skipped to avoid side effects.
 if (process.env.NODE_ENV !== 'test') {
   const overdueDigestCron = cron.schedule('0 8 * * *', () => {
@@ -255,7 +255,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => overdueDigestCron.stop());
   process.once('SIGINT', () => overdueDigestCron.stop());
 
-  // Sequence step advancement — runs every 15 minutes (MINCRM-403).
+  // Sequence step advancement — runs every 15 minutes.
   // Re-entrancy guard: if the previous run is still in progress, skip the tick.
   let sequenceCronRunning = false;
   const sequenceCron = cron.schedule('*/15 * * * *', () => {
@@ -274,7 +274,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => sequenceCron.stop());
   process.once('SIGINT', () => sequenceCron.stop());
 
-  // Log table retention purge — runs daily at 02:00 server time (MINCRM-522).
+  // Log table retention purge — runs daily at 02:00 server time.
   // Purges automation_rule_logs (>90d), webhook_delivery_logs (>30d),
   // and completed/failed import_jobs (>180d).
   const retentionCron = cron.schedule('0 2 * * *', () => {
@@ -286,7 +286,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => retentionCron.stop());
   process.once('SIGINT', () => retentionCron.stop());
 
-  // Win/loss pattern analysis — runs daily at 03:00 server time (MINCRM-464).
+  // Win/loss pattern analysis — runs daily at 03:00 server time.
   // No-ops below the admin-configured minimum closed-deal threshold or when AI is
   // not enabled; replaces the full deal_win_loss_insights table contents on each run.
   const winLossAnalysisCron = cron.schedule('0 3 * * *', () => {
@@ -298,7 +298,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => winLossAnalysisCron.stop());
   process.once('SIGINT', () => winLossAnalysisCron.stop());
 
-  // Churn/expansion signal detection — runs daily at 04:00 server time (MINCRM-469).
+  // Churn/expansion signal detection — runs daily at 04:00 server time.
   // Scans closed-won accounts with activity history; no-ops when AI is not enabled.
   const churnExpansionCron = cron.schedule('0 4 * * *', () => {
     logger.info('cron: running churn/expansion signal detection');
@@ -309,7 +309,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => churnExpansionCron.stop());
   process.once('SIGINT', () => churnExpansionCron.stop());
 
-  // Relationship health scoring — runs daily at 05:00 server time (MINCRM-467).
+  // Relationship health scoring — runs daily at 05:00 server time.
   // Deterministic/SQL-driven (no AI call) — scores every account with at least
   // one logged activity; the read path always serves the cached result.
   const relationshipHealthCron = cron.schedule('0 5 * * *', () => {
@@ -321,7 +321,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => relationshipHealthCron.stop());
   process.once('SIGINT', () => relationshipHealthCron.stop());
 
-  // Follow-up timing suggestions — runs daily at 05:30 server time (MINCRM-470).
+  // Follow-up timing suggestions — runs daily at 05:30 server time.
   // Recomputes the cached best-time-to-contact suggestion for every contact
   // whose interaction history changed since the last run.
   const followUpTimingCron = cron.schedule('30 5 * * *', () => {
@@ -333,7 +333,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => followUpTimingCron.stop());
   process.once('SIGINT', () => followUpTimingCron.stop());
 
-  // Rep coaching insights — runs daily at 06:00 server time (MINCRM-474).
+  // Rep coaching insights — runs daily at 06:00 server time.
   // Deterministic/SQL-driven (no AI call) — recomputes coaching insights for
   // every rep with at least min_closed_deals closed deals; the read path
   // always serves the cached result.
@@ -346,7 +346,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => repCoachingCron.stop());
   process.once('SIGINT', () => repCoachingCron.stop());
 
-  // Data hygiene assistant — runs daily at 06:30 server time (MINCRM-476).
+  // Data hygiene assistant — runs daily at 06:30 server time.
   // Unlike the other nightly jobs above, this one does real per-record network
   // I/O (MX lookups, website reachability checks), so a re-entrancy guard
   // prevents overlapping runs if a scan takes longer than 24 hours on a large
@@ -368,7 +368,7 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => dataHygieneCron.stop());
   process.once('SIGINT', () => dataHygieneCron.stop());
 
-  // audit_log partition maintenance — runs at midnight UTC on the 1st of each month (MINCRM-521).
+  // audit_log partition maintenance — runs at midnight UTC on the 1st of each month.
   // Pre-creates audit_log_y{YYYY}m{MM} partitions for the current month + 3 months ahead,
   // ensuring no writes ever land on audit_log_default due to a missing partition.
   // timezone: 'UTC' ensures the cron fires at 00:00 UTC regardless of server local time,
@@ -391,12 +391,12 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => auditPartitionCron.stop());
   process.once('SIGINT', () => auditPartitionCron.stop());
 
-  // Rollout stage advancement — checks every 60 seconds for flags with due stages (MINCRM-490).
+  // Rollout stage advancement — checks every 60 seconds for flags with due stages.
   startRolloutScheduler();
   process.once('SIGTERM', () => stopRolloutScheduler());
   process.once('SIGINT', () => stopRolloutScheduler());
 
-  // Coverage/TIA retention pruning — runs daily at 07:00 server time (MINCRM-637).
+  // Coverage/TIA retention pruning — runs daily at 07:00 server time.
   // Deletes coverage_units/coverage_test_links rows older than the resolved
   // policy's retention window. Runs regardless of COVERAGE_INSTRUMENTATION —
   // the coverage database is populated by the pipeline/mapping ingestion

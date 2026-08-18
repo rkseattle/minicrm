@@ -28,7 +28,7 @@ export function makeAuthCookie(payload: {
 }
 
 /**
- * Default backdate applied to a fixture user's `created_at`. See ensureUser. (MINCRM-704)
+ * Default backdate applied to a fixture user's `created_at`. See ensureUser.
  *
  * Callers that must win `getAdminUserId()`'s `ORDER BY created_at LIMIT 1` against another
  * backdated fixture pass an explicit, larger value instead — a shared constant is not
@@ -39,11 +39,11 @@ export function makeAuthCookie(payload: {
  * claimAdminResolution's COALESCE fallback below. Postgres resolves `'100 years'` to
  * 36525 days (leap-aware) while 3153600000 seconds is 100x365 days — a 25-day gap in
  * which a default-backdated fixture silently out-sorts a claim made against an empty
- * table. Same unit on both sides removes the class. (MINCRM-704)
+ * table. Same unit on both sides removes the class.
  */
 export const FIXTURE_CREATED_AT_BACKDATE = '3153600000 seconds';
 
-/** Shared tail of the remedies below. (MINCRM-704) */
+/** Shared tail of the remedies below. */
 const RESET_DATABASE_REMEDY =
   'Reset the database:\n' +
   '  docker exec minicrm-test-db psql -U minicrm -d postgres -c ' +
@@ -135,7 +135,7 @@ export async function assertResolvedAdminIs(
  * the previous run left behind.
  *
  * Idempotent, and safe to call from `beforeEach`. Returns the fixture's id so callers do
- * not need a second query. (MINCRM-704)
+ * not need a second query.
  *
  * @param user - The caller's own admin fixture.
  * @returns The fixture row's id.
@@ -156,7 +156,7 @@ export async function claimAdminResolution(user: {
               EXTRACT(EPOCH FROM (now() - MIN(created_at)))::bigint + 31536000,
               -- Strictly older than FIXTURE_CREATED_AT_BACKDATE (3153600000s), so a claim
               -- made against an empty table still wins once default-backdated fixtures
-              -- appear. Same unit on both sides. (MINCRM-704)
+              -- appear. Same unit on both sides.
               6307200000
             )::text AS backdate
        FROM users
@@ -179,7 +179,7 @@ export async function claimAdminResolution(user: {
  * `DELETE FROM users` to exercise `seedDefaultAdmin()` on an empty table. Serial
  * execution order is duration-derived, not fixed (vitest sorts failed-first, then
  * duration-descending), so no spec can rely on running before that wipe. An interrupted
- * run that skips `afterAll` leaves the same gap. (MINCRM-704)
+ * run that skips `afterAll` leaves the same gap.
  *
  * Uses `ON CONFLICT` rather than a read-then-create so the upsert is atomic.
  *
@@ -326,7 +326,7 @@ export async function clearAuditLogFor(actorId: string): Promise<void> {
  * concurrently running file cannot collide on, provided each file passes its
  * own actor. It is indexed (`audit_log_changed_by_id_index`, created in
  * `000_baseline.js` for fresh databases and re-established by migration 093's
- * partitioning). (MINCRM-693)
+ * partitioning).
  *
  * `queryable` is a `pool` or a checked-out client — pass a client to count rows
  * inside an uncommitted transaction, which no other connection can see.
@@ -346,7 +346,7 @@ export async function countAuditRowsFor(
 /**
  * Asserts that an actor-scoped audit count ignores a row written under a
  * different actor with the same record_type + record_name — i.e. that the actor
- * dimension, not the record name, is what isolates the assertion. (MINCRM-693)
+ * dimension, not the record name, is what isolates the assertion.
  *
  * Runs inside a transaction that is always rolled back, on a dedicated client:
  * audit_log's append-only trigger fires BEFORE DELETE OR UPDATE so an inserted

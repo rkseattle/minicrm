@@ -1,7 +1,7 @@
 /**
  * Import job service — CRUD helpers for the import_jobs table.
  * Used by the background runner in importController to track async CSV import progress.
- * MINCRM-255
+ *
  */
 
 import pool from '../db.js';
@@ -19,7 +19,7 @@ export interface ImportJobRow {
   skipped_count: number;
   failed_count: number;
   error_csv: string | null;
-  /** NULL when the creating user has been deleted (MINCRM-505) */
+  /** NULL when the creating user has been deleted */
   created_by: string | null;
   started_at: Date | null;
   completed_at: Date | null;

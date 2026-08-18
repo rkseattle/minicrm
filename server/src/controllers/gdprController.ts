@@ -1,6 +1,6 @@
 /**
  * GDPR controller — request/response shaping for GDPR erasure and export endpoints.
- * No business logic here; all work goes through gdprService. (MINCRM-364)
+ * No business logic here; all work goes through gdprService.
  */
 
 import type { Request, Response } from 'express';
