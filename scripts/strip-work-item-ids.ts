@@ -40,6 +40,28 @@ import {
 const PURE_PARENTHETICAL =
   /[ \t]*\((?:see\s+)?(?:MINCRM|LAR|MININT)-\d+(?:\s*[,/&]\s*(?:(?:MINCRM|LAR|MININT)-)?\d+)*\)/g;
 
+/** One or more IDs joined by separators — `MINCRM-NNN`, `MINCRM-NNN, MINCRM-NNN`, `MINCRM-NNN..3`. */
+const ID_RUN = String.raw`(?:MINCRM|LAR|MININT)-\d+(?!-ok)(?:\s*(?:,|\.\.|\/|&|and)\s*(?:(?:MINCRM|LAR|MININT)-)?\d+(?!-ok))*`;
+
+/**
+ * A label prefix: the comment opens with IDs and a separator, and the real
+ * description follows — `// MINCRM-NNN: /pipeline merged into /deals`. Dropping the
+ * prefix leaves the description, which is the part that explains anything.
+ */
+const LEADING_LABEL = new RegExp(
+  String.raw`(^|\n)([ \t]*(?:\/\/|\/\*+|\*|\{\/\*)[ \t]*)${ID_RUN}[ \t]*[:—-][ \t]*`,
+  'g',
+);
+
+/**
+ * A trailing citation: IDs hanging off the end of a sentence after a dash or comma,
+ * or occupying a line by themselves — `* Tests for CustomFieldsSection — MINCRM-NNN`.
+ */
+const TRAILING_CITATION = new RegExp(
+  String.raw`[ \t]*[—,-][ \t]*${ID_RUN}(?=[ \t]*(?:\*\/|\*\}|\n|$))`,
+  'g',
+);
+
 const SOURCE_EXTENSIONS = /\.(?:ts|tsx|js|jsx|mjs|cjs)$/;
 
 export interface CommentHit {
@@ -90,7 +112,10 @@ export function findHits(file: string, source: string): CommentHit[] {
     const found = workItemIds(comment.value);
     if (found.length === 0) continue;
 
-    const stripped = comment.value.replace(PURE_PARENTHETICAL, '');
+    const stripped = comment.value
+      .replace(PURE_PARENTHETICAL, '')
+      .replace(LEADING_LABEL, '$1$2')
+      .replace(TRAILING_CITATION, '');
     hits.push({
       file,
       line: comment.loc.start.line,
@@ -127,15 +152,14 @@ export function stripFile(file: string, source: string): string {
   const edits: Array<{ start: number; end: number; text: string }> = [];
   for (const comment of ast.comments ?? []) {
     if (isExempt(comment.value)) continue;
-    if (!PURE_PARENTHETICAL.test(comment.value)) {
-      PURE_PARENTHETICAL.lastIndex = 0;
-      continue;
-    }
-    PURE_PARENTHETICAL.lastIndex = 0;
+    if (workItemIds(comment.value).length === 0) continue;
 
     let [start, end] = comment.range;
     const original = source.slice(start, end);
-    let stripped = original.replace(PURE_PARENTHETICAL, '');
+    let stripped = original
+      .replace(PURE_PARENTHETICAL, '')
+      .replace(LEADING_LABEL, '$1$2')
+      .replace(TRAILING_CITATION, '');
     if (stripped === original) continue;
 
     // A parenthetical that opened a sentence takes its own trailing punctuation with
@@ -236,10 +260,10 @@ function selfTest(): void {
       expected: '/**\n * First para.\n *\n * Second para.\n */\nconst a = 1;',
     },
     {
-      name: 'judgment case left for the hand pass',
+      name: 'judgment case left for the hand pass — ID inside the sentence',
       file: 'a.ts',
-      input: '// MINCRM-51: /pipeline merged into /deals\nconst a = 1;',
-      expected: '// MINCRM-51: /pipeline merged into /deals\nconst a = 1;',
+      input: '// Implements MINCRM-284 in full.\nconst a = 1;',
+      expected: '// Implements MINCRM-284 in full.\nconst a = 1;',
     },
     // Must modify.
     {
@@ -265,6 +289,30 @@ function selfTest(): void {
       file: 'a.ts',
       input: 'const a = 1; // (MINCRM-1)',
       expected: 'const a = 1;',
+    },
+    {
+      name: 'leading label prefix dropped, description kept',
+      file: 'a.tsx',
+      input: '{/* MINCRM-51: /pipeline merged into /deals */}\nconst a = 1;',
+      expected: '{/* /pipeline merged into /deals */}\nconst a = 1;',
+    },
+    {
+      name: 'leading label with an em dash',
+      file: 'a.ts',
+      input: '// MINCRM-158, MINCRM-159 — bulk actions\nconst a = 1;',
+      expected: '// bulk actions\nconst a = 1;',
+    },
+    {
+      name: 'trailing citation dropped, sentence kept',
+      file: 'a.ts',
+      input: '/**\n * Tests for CustomFieldsSection — MINCRM-276\n */\nconst a = 1;',
+      expected: '/**\n * Tests for CustomFieldsSection\n */\nconst a = 1;',
+    },
+    {
+      name: 'an -ok marker is never treated as a label prefix',
+      file: 'a.ts',
+      input: '// MINCRM-686-ok: cleared in beforeEach\nconst a = 1;',
+      expected: '// MINCRM-686-ok: cleared in beforeEach\nconst a = 1;',
     },
     {
       name: 'sentence-leading parenthetical takes its trailing period',
