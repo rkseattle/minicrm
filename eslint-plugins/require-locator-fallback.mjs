@@ -16,7 +16,7 @@
  * This rule does NOT enforce the comment — it enforces the two-strategy
  * minimum. To opt out, use eslint-disable-next-line with a justification.
  *
- * MINCRM-313
+ *
  */
 
 /** @type {import('eslint').Rule.RuleModule} */

@@ -4,7 +4,7 @@
  * Migration 125: Add pii_excluded column to custom_field_definitions.
  *
  * When true, the field's value is stripped from AI tool call payloads before
- * they are sent to the AI provider (MINCRM-422, feeds MINCRM-445).
+ * they are sent to the AI provider.
  *
  * Defaults to FALSE so all existing fields remain included in AI tool calls
  * unless an admin explicitly opts them out.

@@ -2,7 +2,6 @@
  * Migration 019: create audit_log table.
  * Stores field-level change events for contacts, accounts, deals, users, and system settings.
  * Enforces append-only semantics via a DB trigger that blocks UPDATE and DELETE.
- * (MINCRM-170)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

@@ -1,5 +1,5 @@
 /**
- * Migration 032 — create tags system (MINCRM-186).
+ * Migration 032 — create tags system.
  * Adds a central tags table and junction tables for contacts, accounts, and deals.
  * Tags are stored lowercased and trimmed; the name column has a unique constraint.
  */

@@ -8,7 +8,7 @@
  * role_overrides JSONB column — the same mechanism used by 'reporting' and
  * 'csv_export'. All flags default to enabled for both roles.
  *
- * The nine AI sub-features (matching MINCRM-460 AC):
+ * The nine AI sub-features (matching the AC):
  *   ai_nli_page              — Natural Language Interface page
  *   ai_activity_summarizer   — Activity summarizer on record timelines
  *   ai_email_draft           — AI-assisted email draft in activities
@@ -21,9 +21,9 @@
  *
  * All are child flags of the master 'ai_features' toggle. A rep sees a sub-feature
  * only when: (1) ai_features is enabled AND (2) the sub-feature flag allows their role.
- * Admins always have access regardless of role_overrides per MINCRM-460 AC.
+ * Admins always have access regardless of role_overrides  AC.
  *
- * (MINCRM-460)
+ *
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

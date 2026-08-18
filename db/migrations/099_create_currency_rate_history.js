@@ -1,5 +1,5 @@
 /**
- * Migration 099: Create currency_rate_history table (MINCRM-526)
+ * Migration 099: Create currency_rate_history table
  *
  * Records a point-in-time snapshot of each exchange rate whenever it is updated,
  * enabling historical deal value reporting based on the rate that was in effect

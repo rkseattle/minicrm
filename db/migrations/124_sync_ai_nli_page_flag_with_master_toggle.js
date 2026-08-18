@@ -6,7 +6,7 @@
  * AI features have never been enabled. Align the flag with the actual master-toggle
  * state so the nav link only shows when AI is genuinely enabled.
  *
- * CORRECTION (MINCRM-697): an earlier version of this comment claimed
+ * CORRECTION: an earlier version of this comment claimed
  * "the setAiEnabled service function now keeps both values in sync going
  * forward." That is not what the code does, and the claim cost real debugging
  * time. setAiEnabled (server/src/services/aiConfigService.ts) writes

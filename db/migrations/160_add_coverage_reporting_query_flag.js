@@ -7,8 +7,8 @@
  * (/api/v1/admin/coverage/reporting/*) — read-only summary, trend, gap
  * analysis, per-issue traceability, and TIA value-metrics lookups over
  * coverage_build_summary and coverage_units/coverage_test_links
- * (MINCRM-629/630/631). Independent of coverage_mapping_query (migration
- * 159): the standalone coverage-dashboard app (MINCRM-628) is the only
+ * Independent of coverage_mapping_query (migration
+ * 159): the standalone coverage-dashboard app is the only
  * intended caller of this API, but the query API itself stays gated the
  * same way every other coverage/TIA control surface is — see
  * docs/dev/coverage.md's "Coverage Database" section.

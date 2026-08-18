@@ -5,7 +5,6 @@
  * rollout_percentage (0–100) controls what share of users see the flag as enabled.
  * rollout_stages (JSONB) holds the scheduled advancement schedule.
  * User bucketing is deterministic via stableHash(userId + flagKey) % 100.
- * (MINCRM-490)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

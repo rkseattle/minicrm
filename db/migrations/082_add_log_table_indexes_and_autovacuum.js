@@ -2,7 +2,7 @@
 
 /**
  * Migration 082: Add missing indexes for append-only log tables and tune
- * autovacuum for tables with burst write patterns. (MINCRM-522)
+ * autovacuum for tables with burst write patterns.
  *
  * Indexes added:
  *   automation_rule_logs_outcome_idx      — partial index (WHERE outcome = 'error') for filtering failed executions

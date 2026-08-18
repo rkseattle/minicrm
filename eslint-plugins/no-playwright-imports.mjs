@@ -31,7 +31,7 @@
  *   qa/e2e/framework/**              (framework internals wrap Playwright directly)
  *   qa/e2e/tests/framework/**        (framework self-tests need raw Playwright types)
  *
- * MINCRM-204
+ *
  */
 
 /** @type {import('eslint').Rule.RuleModule} */

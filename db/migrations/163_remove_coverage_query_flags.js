@@ -2,7 +2,7 @@
 
 /**
  * Migration 163: Remove the coverage_mapping_query, coverage_reporting_query,
- * and coverage_pipeline_ingestion feature_flags rows. (MINCRM-685)
+ * and coverage_pipeline_ingestion feature_flags rows.
  *
  * These three rows (seeded by migrations 158, 159 and 160) gated the
  * Coverage/TIA mapping query API (routes/coverageMapping.ts), reporting query
@@ -13,7 +13,7 @@
  * real product toggle; internal CI/dev test infrastructure had no business being
  * discoverable or enable-able through the product's own UI.
  *
- * This finishes what migration 161 (MINCRM-663) started. That migration removed
+ * This finishes what migration 161 started. That migration removed
  * coverage_instrumentation and coverage_session_management on exactly this
  * reasoning but left these three behind — the principle was applied to 2 of 5
  * flags. All three routers now gate their ENTIRE route registration on an env
@@ -29,7 +29,7 @@
  * `featureFlags.categories.developer_tools` — migration 158 introduced that
  * category but the key was never added to any locale file. Adding the key would
  * have entrenched a section that should not exist; deleting the rows removes it
- * with no i18n change at all. MINCRM-685 additionally dropped 'Developer Tools'
+ * with no i18n change at all. A later change additionally dropped 'Developer Tools'
  * from FEATURE_FLAG_CATEGORIES, which is the stronger of the two guards — that
  * page renders one section per entry in that array, so a row re-seeded with
  * this category would now render nowhere rather than in an unlabelled section.

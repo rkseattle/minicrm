@@ -1,5 +1,5 @@
 /**
- * Migration 107: Grant data CRUD capabilities to the service_account built-in role (MINCRM-542)
+ * Migration 107: Grant data CRUD capabilities to the service_account built-in role
  *
  * Service accounts are API-only principals that authenticate via bearer token.
  * They need full data CRUD access (contacts, accounts, deals, activities, leads)
@@ -11,7 +11,7 @@
  *
  * The requireCapability() middleware already enforces SERVICE_ACCOUNT_UI_BLOCKED for
  * any capability other than api:access that is attempted via a UI-style cookie session
- * (MINCRM-542), so granting these capabilities here only affects bearer-token paths
+ * so granting these capabilities here only affects bearer-token paths
  * where the service_account role is explicitly permitted.
  */
 

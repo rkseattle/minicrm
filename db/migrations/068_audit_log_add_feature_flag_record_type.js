@@ -1,6 +1,6 @@
 /**
  * Add 'feature_flag' to the audit_log.record_type CHECK constraint.
- * Required for writeAuditEntry calls from featureFlagService. (MINCRM-463)
+ * Required for writeAuditEntry calls from featureFlagService.
  */
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */

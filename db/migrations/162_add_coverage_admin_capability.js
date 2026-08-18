@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 162 — Add coverage:admin capability (MINCRM-637)
+ * Migration 162 — Add coverage:admin capability
  *
  * Inserts the coverage:admin capability into role_capabilities for the
  * built-in admin role only, following migration 114's (bulk:operations)

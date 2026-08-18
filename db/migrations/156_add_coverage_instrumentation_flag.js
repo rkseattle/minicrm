@@ -6,7 +6,7 @@
  * Gates the Coverage/TIA control API (/api/v1/admin/coverage/*), which lets
  * an authenticated admin drive the backend V8 coverage agent's
  * reset/snapshot/dump verbs and ingest frontend-collected dumps
- * (MINCRM-604, MINCRM-606). Off by default — this is CI/dev tooling, not a
+ * Off by default — this is CI/dev tooling, not a
  * user-facing feature, and must stay disabled on production deployments
  * unless a shared test environment explicitly opts in.
  *

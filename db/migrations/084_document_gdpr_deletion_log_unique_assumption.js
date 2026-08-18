@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 084: Document the unique constraint assumption on gdpr_deletion_log. (MINCRM-517)
+ * Migration 084: Document the unique constraint assumption on gdpr_deletion_log.
  *
  * Migration 050 creates a UNIQUE index on (record_type, record_id) in gdpr_deletion_log.
  * This implies that any given record can appear in the erasure log at most once. That is

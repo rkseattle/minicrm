@@ -5,7 +5,7 @@
  *
  * Stores a pending mutation action awaiting user confirmation on the assistant
  * message so the client can render a confirmation prompt before any write
- * operation is executed. (MINCRM-425, MINCRM-426)
+ * operation is executed.
  */
 
 exports.shorthands = undefined;

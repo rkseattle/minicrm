@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 152: AI smart follow-up timing suggestions. (MINCRM-470)
+ * Migration 152: AI smart follow-up timing suggestions.
  *
  * Adds:
  *   1. ai_followup_timing_suggestions feature flag (child of the AI category).

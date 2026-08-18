@@ -4,7 +4,6 @@
  * Migration 067: Create feature_flag_usage table for tracking per-user feature activity.
  * Used to show "X users active in last 30 days" warnings in the admin feature flag UI
  * before disabling a flag. One row per (flag_key, user_id) pair — upserted on each use.
- * (MINCRM-463)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

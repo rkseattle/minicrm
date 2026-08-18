@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 153: Deal stage history tracking + AI rep coaching insights. (MINCRM-474)
+ * Migration 153: Deal stage history tracking + AI rep coaching insights.
  *
  * Adds:
  *   1. deal_stage_history — append-only log of every real stage transition a

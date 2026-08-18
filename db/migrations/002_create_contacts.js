@@ -2,7 +2,7 @@
  * Migration 002: Create contacts table
  *
  * Stores person-level CRM records. Each contact is owned by a user.
- * account_id linking is deferred to a later migration (MINCRM-9) once
+ * account_id linking is deferred to a later migration once
  * the accounts table exists.
  */
 

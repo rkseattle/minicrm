@@ -1,5 +1,5 @@
 /**
- * Migration 039 — add onboarding_completed to system_settings (MINCRM-256)
+ * Migration 039 — add onboarding_completed to system_settings
  *
  * Inserts a default row so the setting is always readable without a missing-row
  * fallback path. Default is 'false' — fresh installs start with onboarding active.

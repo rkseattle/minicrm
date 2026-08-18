@@ -1,5 +1,5 @@
 /**
- * Migration 101: Drop FK from currency_rate_history.code to currencies (MINCRM-526)
+ * Migration 101: Drop FK from currency_rate_history.code to currencies
  *
  * currency_rate_history is an immutable audit log. The ON DELETE CASCADE defined in
  * migration 099 causes PostgreSQL to wipe every history row for a currency the moment

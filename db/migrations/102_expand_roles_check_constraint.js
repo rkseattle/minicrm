@@ -1,5 +1,5 @@
 /**
- * Migration 102 — Expand users.role CHECK constraint (MINCRM-533)
+ * Migration 102 — Expand users.role CHECK constraint
  *
  * Adds manager, viewer, and service_account to the allowed role values.
  * Widens the column from varchar(10) to varchar(20) to accommodate the

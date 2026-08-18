@@ -1,6 +1,6 @@
 /**
  * Migration 106 — Capability-based RBAC: custom_roles, role_capabilities,
- * user_custom_roles tables (MINCRM-542)
+ * user_custom_roles tables
  *
  * Introduces a fully DB-backed capability model:
  *   custom_roles       — named role definitions (built-in and admin-created)
@@ -8,7 +8,7 @@
  *   user_custom_roles  — assignment of roles to users (additive, union-based)
  *
  * Built-in roles (admin, manager, rep, viewer, service_account) are seeded with
- * is_builtin = true and the full capability matrix from the MINCRM-542 spec.
+ * is_builtin = true and the full capability matrix from the RBAC spec.
  * Future capabilities are seeded now so custom roles can be pre-configured before
  * the enforcing routes ship.
  *

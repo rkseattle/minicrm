@@ -1,6 +1,5 @@
 /**
  * Migration 027: Add LinkedIn and Twitter/X URL fields to contacts table.
- * (MINCRM-190)
  */
 
 exports.up = async (pgm) => {

@@ -1,5 +1,5 @@
 /**
- * Migration 100: Add metadata jsonb overflow column to activities (MINCRM-525)
+ * Migration 100: Add metadata jsonb overflow column to activities
  *
  * Establishes the extension point for new activity types that require type-specific
  * fields without widening the shared table with nullable typed columns.

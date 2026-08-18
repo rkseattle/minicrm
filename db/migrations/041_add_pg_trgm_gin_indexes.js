@@ -17,7 +17,6 @@
  * The down function drops the indexes but does NOT drop the pg_trgm extension;
  * other migrations or queries may depend on it, and extensions are DB-wide.
  *
- * (MINCRM-274)
  */
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */

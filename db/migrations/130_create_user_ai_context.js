@@ -7,7 +7,6 @@
  * Claude system prompt as a personalisation preamble. Entries are plain text
  * (e.g. key: "a while", value: "30+ days without activity") and are fully
  * user-controlled via the context panel and context proposal flow.
- * (MINCRM-427, MINCRM-428, MINCRM-429, MINCRM-430)
  */
 
 exports.shorthands = undefined;

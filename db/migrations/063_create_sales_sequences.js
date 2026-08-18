@@ -5,7 +5,6 @@
  * A sequence is a named ordered list of steps (send_email, log_call_reminder,
  * create_task) each with a configurable delay in days before the step fires.
  * Step 1 defaults to delay_days = 0 (fires immediately on enrollment).
- * (MINCRM-403)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

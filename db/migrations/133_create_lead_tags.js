@@ -1,5 +1,5 @@
 /**
- * Migration 133: Create lead_tags junction table (MINCRM-433)
+ * Migration 133: Create lead_tags junction table
  *
  * Adds tagging support for leads, mirroring the contact_tags / account_tags /
  * deal_tags pattern. Tags are shared from the global tags pool; this table is

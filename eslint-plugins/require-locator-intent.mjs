@@ -17,7 +17,7 @@
  *   page.locate([...], { intent: '' })            // intent empty string
  *   page.locate([...], { fallbackTimeout: 500 })  // intent absent
  *
- * MINCRM-309
+ *
  */
 
 /** @type {import('eslint').Rule.RuleModule} */

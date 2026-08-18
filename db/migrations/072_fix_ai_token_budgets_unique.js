@@ -14,7 +14,6 @@
  *   4. Clean up any duplicate org-default rows introduced during migration 070 tests,
  *      keeping only the row with the lowest created_at.
  *
- * (MINCRM-458)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

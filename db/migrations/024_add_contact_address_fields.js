@@ -1,6 +1,5 @@
 /**
  * Migration 024: Add mailing address fields to contacts table.
- * (MINCRM-182)
  */
 
 exports.up = async (pgm) => {

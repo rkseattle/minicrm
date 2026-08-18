@@ -1,7 +1,7 @@
 /**
- * Migration 110 — Seed sso_jit_default_role_id into system_settings (MINCRM-540)
+ * Migration 110 — Seed sso_jit_default_role_id into system_settings
  *
- * Phase 1 of MINCRM-540 adds the ability for admins to configure which custom
+ * Phase 1 adds the ability for admins to configure which custom
  * role is assigned to JIT-provisioned SSO users on first login. This migration
  * seeds the setting with the UUID of the built-in 'rep' role so that the
  * default behavior matches the hardcoded value that previously existed in code.

@@ -1,5 +1,5 @@
 /**
- * Migration 105 — Create org_visibility_settings table (MINCRM-538)
+ * Migration 105 — Create org_visibility_settings table
  *
  * Stores per-object-type data visibility policies that the service layer
  * enforces at query time. One row per object type; policies are:

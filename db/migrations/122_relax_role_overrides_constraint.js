@@ -5,7 +5,7 @@
  * names can be stored as override keys.
  *
  * The previous `is_valid_role_overrides` function hardcoded allowed keys to the
- * five built-in roles. With MINCRM-565 (custom-role feature flag overrides) keys
+ * five built-in roles. With custom roles (custom-role feature flag overrides) keys
  * can now be any non-empty string — the service layer validates them against the
  * live custom_roles table at write time.
  *
@@ -13,7 +13,7 @@
  *   - The value must be a JSON object (or NULL).
  *   - Every key must be a non-empty string.
  *   - Every value must be a boolean.
- * (MINCRM-565)
+ *
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

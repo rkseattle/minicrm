@@ -2,7 +2,7 @@
 
 /**
  * Migration 051: extend audit_log event_type CHECK constraint with gdpr_erasure.
- * Required by the GDPR erasure feature (MINCRM-364) which writes gdpr_erasure
+ * Required by the GDPR erasure feature which writes gdpr_erasure
  * audit events when personal data is erased under Art. 17.
  */
 

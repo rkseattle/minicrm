@@ -1,6 +1,5 @@
 /**
  * Migration 048 — Add optimistic locking version column to core CRM entities.
- * (MINCRM-349)
  *
  * Adds `version INTEGER NOT NULL DEFAULT 1` to contacts, accounts, deals,
  * leads, and activities. All existing rows receive version = 1. New rows

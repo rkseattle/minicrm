@@ -1,5 +1,5 @@
 /**
- * Migration 128: Add source column to audit_log (MINCRM-444)
+ * Migration 128: Add source column to audit_log
  *
  * Adds a nullable source column to track whether an audit entry was created
  * by a human via REST or by the AI assistant (NLI). NULL means human/REST.

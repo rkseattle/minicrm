@@ -2,7 +2,7 @@
 
 /**
  * Migration 055: extend audit_log event_type CHECK constraint with MFA events.
- * Required by the TOTP MFA feature (MINCRM-392) which writes mfa_enabled and
+ * Required by the TOTP MFA feature which writes mfa_enabled and
  * mfa_disabled audit events when a user enables or disables two-factor authentication.
  */
 

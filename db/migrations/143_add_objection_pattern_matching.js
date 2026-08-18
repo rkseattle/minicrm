@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 143: AI objection pattern matching from won deals. (MINCRM-471)
+ * Migration 143: AI objection pattern matching from won deals.
  *
  * Adds:
  *   1. ai_objection_pattern_matching feature flag (child of ai_features).

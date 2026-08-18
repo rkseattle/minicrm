@@ -1,5 +1,5 @@
 /**
- * Migration 109 — Grant delete capabilities to rep and manager built-in roles (MINCRM-542)
+ * Migration 109 — Grant delete capabilities to rep and manager built-in roles
  *
  * Before the capability RBAC refactor (migration 106), reps could delete their own
  * contacts, deals, and activities — the delete routes used blockViewer() + an

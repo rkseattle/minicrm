@@ -2,7 +2,7 @@
  * Migration 016: Add email notification preference columns to users
  *
  * Adds three boolean flags to control which email notifications a user receives.
- * All default to true so existing users are opted in by default. (MINCRM-163)
+ * All default to true so existing users are opted in by default.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

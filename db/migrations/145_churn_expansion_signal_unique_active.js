@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 145: prevent duplicate active churn/expansion signals per account. (MINCRM-469)
+ * Migration 145: prevent duplicate active churn/expansion signals per account.
  *
  * detectChurnExpansionSignals() reads the current active signal for an account
  * with a plain SELECT before opening its write transaction. Two overlapping

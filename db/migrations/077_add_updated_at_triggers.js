@@ -2,7 +2,7 @@
 
 /**
  * Migration 077: Add BEFORE UPDATE triggers to automatically set updated_at
- * on every table that exposes that column. (MINCRM-503)
+ * on every table that exposes that column.
  *
  * A single PL/pgSQL trigger function `set_updated_at()` is created once and
  * reused by a trigger on each table. The function sets NEW.updated_at to

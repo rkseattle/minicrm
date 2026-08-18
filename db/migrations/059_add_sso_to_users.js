@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 059: Add SSO identity columns to users table. (MINCRM-399)
+ * Migration 059: Add SSO identity columns to users table.
  *
  * sso_provider identifies which IdP protocol bound this user ('saml' | 'oidc').
  * sso_subject is the IdP-issued stable identifier (SAML nameID or OIDC sub claim).

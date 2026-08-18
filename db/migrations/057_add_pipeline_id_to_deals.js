@@ -1,5 +1,5 @@
 /**
- * Migration 057: Add pipeline_id FK to deals (MINCRM-397).
+ * Migration 057: Add pipeline_id FK to deals.
  *
  * Links each deal to a pipeline. All existing deals are backfilled to the
  * default pipeline. NULL is not permitted after backfill; the column is

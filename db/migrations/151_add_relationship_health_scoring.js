@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 151: AI relationship health scoring per account. (MINCRM-467)
+ * Migration 151: AI relationship health scoring per account.
  *
  * Adds:
  *   1. ai_relationship_health_score feature flag (child of the AI category).

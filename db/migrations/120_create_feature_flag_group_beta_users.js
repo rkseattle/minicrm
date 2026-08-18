@@ -4,8 +4,7 @@
  * Migration 120: Create feature_flag_group_beta_users table.
  * Group beta users bypass the group gate — if a user is in a group's beta list,
  * member flags proceed to their own flag-level evaluation even when the group is disabled.
- * Follows the same contract as feature_flag_beta_users (MINCRM-489).
- * (MINCRM-491)
+ * Follows the same contract as feature_flag_beta_users.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

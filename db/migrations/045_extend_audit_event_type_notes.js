@@ -1,6 +1,6 @@
 /**
  * Migration 045: extend audit_log event_type CHECK constraint with note events.
- * Required by the notes feature (MINCRM-352) which writes note_created,
+ * Required by the notes feature which writes note_created,
  * note_updated, note_deleted, and note_visibility_changed audit events.
  */
 

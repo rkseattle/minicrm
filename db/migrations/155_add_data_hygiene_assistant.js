@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 155: AI data hygiene assistant. (MINCRM-476)
+ * Migration 155: AI data hygiene assistant.
  *
  * Adds:
  *   1. ai_data_hygiene_assistant feature flag (child of the AI category).

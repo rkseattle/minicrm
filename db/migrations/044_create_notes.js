@@ -1,6 +1,6 @@
 /**
  * Migration 044: create notes table.
- * Adds a rich notes collection to the four core CRM entities. (MINCRM-352)
+ * Adds a rich notes collection to the four core CRM entities.
  */
 
 'use strict';

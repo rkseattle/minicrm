@@ -1,6 +1,6 @@
 /**
  * Migration 074: Fix ON DELETE behavior for import_jobs.created_by and
- * webhook_subscriptions.created_by. (MINCRM-505)
+ * webhook_subscriptions.created_by.
  *
  * import_jobs.created_by had ON DELETE CASCADE, which silently destroys import
  * history (including error_csv audit trails) when a user is deleted. Every other

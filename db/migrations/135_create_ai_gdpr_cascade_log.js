@@ -8,13 +8,12 @@
  * and remove matching user_ai_context entries.
  *
  * One row per cascade run per contact. A contact may have multiple rows if the
- * admin triggers a manual re-run via the API (MINCRM-446).
+ * admin triggers a manual re-run via the API.
  *
  * triggered_by is nullable — NULL indicates a cascade triggered automatically
  * by the GDPR erasure flow (system-initiated, no interactive actor).
  * When an admin triggers a manual re-run, triggered_by holds their user ID.
  *
- * (MINCRM-446)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

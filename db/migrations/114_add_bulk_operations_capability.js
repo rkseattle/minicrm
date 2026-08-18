@@ -1,5 +1,5 @@
 /**
- * Migration 114 — Add bulk:operations capability (MINCRM-562)
+ * Migration 114 — Add bulk:operations capability
  *
  * Inserts the bulk:operations capability into role_capabilities for the admin
  * and manager built-in roles. This capability gates all bulk selection UI and

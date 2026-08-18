@@ -1,6 +1,6 @@
 /**
  * Migration 028: add 'merged' to audit_log event_type CHECK constraint.
- * Required by the contact merge feature (MINCRM-187) which writes a 'merged'
+ * Required by the contact merge feature which writes a 'merged'
  * audit event when two contact records are consolidated.
  */
 

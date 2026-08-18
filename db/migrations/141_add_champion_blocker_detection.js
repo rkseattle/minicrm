@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 141: AI champion and blocker detection. (MINCRM-466)
+ * Migration 141: AI champion and blocker detection.
  *
  * Adds:
  *   1. ai_champion_blocker_detection feature flag (child of ai_features).

@@ -4,7 +4,6 @@
  * Migration 121: Add group_key FK to feature_flags.
  * A flag may belong to at most one group. When the group is deleted, the FK
  * is set to NULL (flag becomes ungrouped) rather than cascading the delete.
- * (MINCRM-491)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

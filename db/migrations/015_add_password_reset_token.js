@@ -2,7 +2,7 @@
  * Migration 015: Add password reset token columns to users
  *
  * Adds password_reset_token_hash and password_reset_expires_at to support
- * the forgot-password / reset-password flow (MINCRM-156, MINCRM-157).
+ * the forgot-password / reset-password flow.
  * Also adds password_changed_at so the auth middleware can invalidate JWTs
  * issued before a password reset (session invalidation on other devices).
  *

@@ -1,5 +1,5 @@
 /**
- * Migration 058: Add per-user onboarding columns to users table (MINCRM-410).
+ * Migration 058: Add per-user onboarding columns to users table.
  *
  * Moves checklist completion from system_settings (shared) to users (per-user),
  * enabling role-specific checklists and admin-initiated resets per user.

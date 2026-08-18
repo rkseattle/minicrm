@@ -2,7 +2,7 @@
 
 /**
  * Migration 054: Add TOTP two-factor authentication fields to users table
- * and the require_mfa system setting. (MINCRM-392)
+ * and the require_mfa system setting.
  *
  * mfa_secret is stored AES-256-GCM encrypted (same pattern as file_storage_secret).
  * mfa_recovery_codes stores an array of bcrypt hashes for single-use recovery codes.

@@ -60,7 +60,7 @@
  *    assertion), extract a locator getter or navigation helper and compose
  *    them in the behavior layer.
  *
- * MINCRM-401
+ *
  */
 
 /** @type {import('eslint').Rule.RuleModule} */
@@ -106,7 +106,7 @@ const noPageDirectInSpec = {
       'count',
       'doesNotExist',
       'isNotVisible',
-      // DOM waits (HealMethods added for MINCRM-401)
+      // DOM waits (HealMethods added for)
       'waitForPresent',
       'waitForAbsent',
       'waitForPainted',

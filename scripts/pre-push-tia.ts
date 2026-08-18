@@ -1,10 +1,10 @@
 /**
  * pre-push-tia.ts — Local pre-push hook body: run the TIA-selected subset
- * plus the always-run baseline before allowing a push. (MINCRM-641)
+ * plus the always-run baseline before allowing a push.
  *
  * Invoked by .husky/pre-push. Resolves the local diff (current branch vs.
  * main) to affected tests via server/src/scripts/select-tests.ts — the
- * SAME script MINCRM-633's CI select-mode job calls, so local and CI
+ * SAME script the CI select-mode job calls, so local and CI
  * selection can never diverge (both are one code path, not two hand-synced
  * implementations).
  *
@@ -19,9 +19,9 @@
  *     .claude/gates/e2e-run.md's own documented full-suite procedure.
  *     "Everything" means every @functional-tagged test, never literally
  *     every spec Playwright can discover (that included qa/e2e/framework/'s
- *     own self-tests until this was fixed — MINCRM-636/637).
+ *     own self-tests until this was fixed).
  *
- * After the run, server/src/scripts/verify-test-attestation.ts (MINCRM-642)
+ * After the run, server/src/scripts/verify-test-attestation.ts
  * — the SAME shared gate CI's own attestation step uses — verifies
  * results.xml is all-passing AND (for targeted mode) that every selected
  * spec file is attributed as having actually run, via session attribution
@@ -55,7 +55,7 @@ import {
   type ContainerCommitSha,
 } from '../qa/scripts/container-commit-sha.js';
 // Same arrangement, same reason: the resolution rule needs a test runner, which
-// root scripts/ does not have. See that module's docblock. (MINCRM-698)
+// root scripts/ does not have. See that module's docblock.
 import {
   resolveTestStackDbEnv,
   parseEnvFileContents,
@@ -67,7 +67,7 @@ import {
   type TestStackDbSource,
 } from '../qa/scripts/test-stack-db-env.js';
 // Same arrangement again: the decision of WHICH halves to run is a pure rule
-// that needs a test runner, and root scripts/ has none. (MINCRM-705)
+// that needs a test runner, and root scripts/ has none.
 import {
   planTargetedInvocations,
   NON_SERIAL_GREP_INVERT,
@@ -94,7 +94,7 @@ const BYPASS_LOG_PATH = resolve(REPO_ROOT, '.git', 'tia-prepush-bypass.log');
  * Snapshotting the pre-file environment keeps the guard's real contract — an
  * operator who deliberately EXPORTS DB_PORT=5432 is still refused outright,
  * which is the case it exists for — while a value that merely came from a file
- * this hook chose to load cannot trigger it. (MINCRM-698)
+ * this hook chose to load cannot trigger it.
  */
 const EXPORTED_DB_PORT = process.env.DB_PORT;
 const EXPORTED_DB_HOST = process.env.DB_HOST;
@@ -110,7 +110,7 @@ const EXPORTED_DB_PASSWORD = process.env.DB_PASSWORD;
  * host/port — the documented way to run the stack somewhere other than
  * localhost:5433 — still take effect, without root .env's dev port ever being
  * mistaken for one. Missing file or missing keys yield {}, so the resolver falls
- * through to its defaults. (MINCRM-698)
+ * through to its defaults.
  */
 function readE2eEnvFileDbSource(): TestStackDbSource {
   let contents: string;
@@ -130,7 +130,7 @@ function readE2eEnvFileDbSource(): TestStackDbSource {
 // so they have a test runner. This function is the only thing that mutates
 // process.env, and it delegates rather than reimplementing — an earlier version
 // of this fix kept a tested COPY of the rule here, which would have gone on
-// passing while this loop drifted away from it. (MINCRM-698)
+// passing while this loop drifted away from it.
 function loadEnvFile(path: string): void {
   let contents: string;
   try {
@@ -163,7 +163,7 @@ function loadEnvFile(path: string): void {
  * Root .env is loaded for its secrets, NOT its database coordinates: it names the DEV
  * database (DB_NAME=minicrm, COVERAGE_DB_NAME=minicrm_coverage) on port 5432. Every
  * subprocess below is given testStackDbEnv() explicitly so those values can never
- * reach a child. (MINCRM-684)
+ * reach a child.
  *
  * PRECEDENCE, and why it does not matter for DB coordinates. loadEnvFile is
  * first-write-wins, so root .env shadows qa/e2e/.env for any key both define.
@@ -178,7 +178,7 @@ function loadEnvFile(path: string): void {
  * not "fix" the shadowing by reordering these two loads or by making the second
  * one override — qa/e2e/.env would then leak its DB_NAME into this process, and
  * the guard's meaning would change from "an operator exported the dev port" to
- * "some file mentioned it". Fix the reader, not the loader. (MINCRM-698)
+ * "some file mentioned it". Fix the reader, not the loader.
  */
 function loadRootEnv(): void {
   loadEnvFile(resolve(REPO_ROOT, '.env'));
@@ -197,7 +197,7 @@ function loadRootEnv(): void {
  * deposit coverage into the _e2e database (docker-compose.test.yml), so pointing TIA at
  * the unit-test database would find zero mappings and silently degrade every push to a
  * full-suite run — defeating the point of test selection. .claude/gates/e2e-run.md's own
- * dump:coverage-map invocation passes the same value. (MINCRM-684)
+ * dump:coverage-map invocation passes the same value.
  */
 /**
  * Resolves once at first use, following scripts/e2e-setup.ts's resolve-then-reject
@@ -213,14 +213,13 @@ function loadRootEnv(): void {
  *
  * The rule itself lives in qa/scripts/test-stack-db-env.ts so it has a test
  * runner — root scripts/ has none. Only the reporting and the exit stay here.
- * (MINCRM-698)
  */
 function resolveTestStackDbEnvOrExit(): TestStackDbEnv {
   // qa/e2e/.env is re-read directly rather than consulted through process.env:
   // by now root .env has already been flattened in and would shadow it, which is
   // the whole defect. Reading the file names its values as coming from the TEST
   // stack's own config, so a developer's non-default host/port there still
-  // reaches every child. (MINCRM-698)
+  // reaches every child.
   const e2eEnvFile = readE2eEnvFileDbSource();
   try {
     return resolveTestStackDbEnv(
@@ -336,7 +335,7 @@ function runCreateCoverageDb(): void {
  * shared artifact, and silently continuing is exactly the swallow this ticket
  * removed one layer down: the developer would push having selected tests from
  * data they never noticed was unusable. The loader signals the difference with
- * a distinct exit code so the two can be told apart. (MINCRM-703)
+ * a distinct exit code so the two can be told apart.
  */
 /**
  * Exit code load-coverage-map.ts uses for a corrupt committed map, as opposed
@@ -426,7 +425,7 @@ function readContainerCommitSha(): ContainerCommitSha {
 
 /**
  * Warns when the running test stack was started against a different commit
- * than the one being pushed. (MINCRM-688)
+ * than the one being pushed.
  *
  * The container reads GIT_COMMIT_SHA once, at `docker compose up` time, and
  * tags every coverage DUMP with it (coverageConfig.ts). Nothing re-reads it
@@ -505,7 +504,7 @@ function warnIfTestStackShaIsStale(headSha: string): void {
 /**
  * Builds the environment for a Playwright child process.
  *
- * GIT_COMMIT_SHA is the point of this helper (MINCRM-688). The QA harness
+ * GIT_COMMIT_SHA is the point of this helper. The QA harness
  * resolves each coverage session's buildSha from it
  * (coverage-session-control-client.ts), and this script already resolves the
  * very same SHA for the attestation gate's --sha (runAttestation below). Those
@@ -534,13 +533,13 @@ const MERGED_JUNIT = 'e2e/test-results/results.xml';
  * Runs the TIA-selected spec files — as TWO invocations, non-serial then
  * serial, then merges their JUnit output for a single attestation.
  *
- * WHY TWO INVOCATIONS (MINCRM-705)
+ * WHY TWO INVOCATIONS
  * --------------------------------
  * This path used to be one `--grep-invert serial` call with no paired serial
  * run. If TIA selected a spec whose tests are all `@serial` — visibility.spec.ts
  * (9 of 9), and now onboarding.spec.ts (8 of 8) — every test was filtered out,
  * zero tests ran for that file, and the push proceeded. The full-suite fallback
- * had this fixed in MINCRM-636/637 (see its docblock below) and the fix was
+ * had this fixed earlier (see its docblock below) and the fix was
  * never generalized here; the docblock's claim that the targeted path "needs
  * neither this scoping nor this split" is right about the `--grep @functional`
  * SCOPING half and wrong about the serial/non-serial SPLIT half, whose purpose
@@ -593,7 +592,7 @@ function runPlaywright(specFiles: readonly string[], headSha: string): void {
   // case: only ~26 of ~130 functional specs have one) would fail the push even
   // though every selected test passed. Planning first keeps a non-zero exit
   // meaningful: a half that was expected to have work and still failed is a real
-  // failure. See qa/scripts/targeted-run-plan.ts. (MINCRM-705)
+  // failure. See qa/scripts/targeted-run-plan.ts.
   const invocations = planTargetedInvocations(specFiles.map((file) => resolve(REPO_ROOT, file)));
 
   if (invocations.length === 0) {
@@ -688,10 +687,10 @@ function runPlaywright(specFiles: readonly string[], headSha: string): void {
  * serial/non-serial SPLIT, whose purpose is to ensure serial tests execute
  * somewhere rather than being filtered into nothing. runPlaywright now performs
  * that split itself — see its docblock for why it attests once at the end
- * rather than after each half as this function does. (MINCRM-705)
+ * rather than after each half as this function does.
  *
  * Two real defects fixed here, found via a real local push that timed out
- * repeatedly under this fallback (MINCRM-636/637):
+ * repeatedly under this fallback:
  *
  * 1. The previous single `npm run test -- --grep-invert serial` call with
  *    no `--grep @functional` matched literally every spec Playwright can
@@ -786,14 +785,14 @@ interface AttestationResult {
 }
 
 /**
- * Runs the shared verify-test-attestation.ts gate (MINCRM-642) — same
+ * Runs the shared verify-test-attestation.ts gate — same
  * script CI's own attestation step invokes — against the just-produced
  * results.xml and (for targeted mode) the selection this run was supposed
  * to satisfy. Returns the parsed result rather than throwing on a FAILED
  * attestation (a non-zero exit code there means "attestation failed", a
  * legitimate outcome this caller needs to inspect, not a script crash).
  *
- * MINCRM-687 changed what that gate treats as a skip failure, and this hook
+ * changed what that gate treats as a skip failure, and this hook
  * is its other caller, so the effect here is worth stating explicitly.
  * Neither invocation below passes --project, so Playwright runs every
  * configured project and the results.xml carries one row per
@@ -865,7 +864,7 @@ function attestOrThrow(headSha: string, selection: SelectTestsResult | null): vo
 
 /**
  * Repo-root typecheck and dependency audit — the two CI jobs this hook could
- * previously let a developer discover from CI instead of locally. (MINCRM-668)
+ * previously let a developer discover from CI instead of locally.
  *
  * WHY THESE TWO, AND WHY HERE
  * ---------------------------
@@ -879,7 +878,7 @@ function attestOrThrow(headSha: string, selection: SelectTestsResult | null): vo
  *     cross-file type break, and runs no tsc at all.
  *   - Audit. Advisories are published against versions already in the
  *     lockfile, so a tree that was clean yesterday fails today with no repo
- *     change. MINCRM-703 is exactly this: a red CI audit job first seen in CI
+ *     change. This is exactly that case: a red CI audit job first seen in CI
  *     because the branch touched no package.json.
  *
  * Both are seconds against this hook's 20-60 minute E2E leg, and both run
@@ -919,7 +918,6 @@ function runStaticGates(): void {
   // non-zero both when it finds advisories and when it fails to run at all, so
   // a bare invocation reports green on a registry outage that produced no
   // verdict. The shared script fails closed on an unreadable report.
-  // (MINCRM-703, MINCRM-704)
   console.log('[pre-push-tia] Auditing dependencies (--audit-level=high)...');
   try {
     execFileSync(resolve(REPO_ROOT, 'scripts', 'npm-audit-gate.sh'), [], {
@@ -986,7 +984,7 @@ function main(): void {
 
   if (selection.specFiles.length === 0) {
     // An empty selection has two very different causes, and treating them alike
-    // let a push through on a suite that ran nothing (MINCRM-705):
+    // let a push through on a suite that ran nothing:
     //
     //   - TIA ran, resolved cleanly, and the diff genuinely affects no tests
     //     (a docs-only change). Legitimate — return, as before.

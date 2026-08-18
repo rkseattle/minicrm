@@ -2,7 +2,7 @@
  * Custom ESLint rule: no-page-forbidden-methods
  *
  * Enforces that E2E spec files do not call raw Playwright Page methods
- * directly on the `page` fixture. Since MINCRM-210, `page` is a PageFacade
+ * directly on the `page` fixture. Since, `page` is a PageFacade
  * (SafePage & HealMethods), so healing methods like click(), fill(), locate()
  * etc. are valid on `page`. Only raw Playwright locator/query methods that
  * bypass the healing layer remain forbidden.
@@ -16,7 +16,7 @@
  *   screenshot, setViewportSize, route, on, once, removeListener, close, pause,
  *   bringToFront, emulateMedia, setExtraHTTPHeaders, mainFrame, frames
  *
- * MINCRM-204, MINCRM-210
+ *
  */
 
 /** @type {import('eslint').Rule.RuleModule} */
@@ -45,7 +45,7 @@ const noPageForbiddenMethods = {
     // HealMethods (click, fill, check, uncheck, selectOption, hover, textContent,
     // getAttribute, locate, count, waitFor, doesNotExist, isNotVisible) are
     // allowed because page is now a PageFacade that routes them through
-    // the healing layer. (MINCRM-210)
+    // the healing layer.
     const FORBIDDEN_METHODS = new Set([
       'getByTestId',
       'getByRole',

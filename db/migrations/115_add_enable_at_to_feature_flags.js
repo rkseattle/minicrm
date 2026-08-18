@@ -4,7 +4,6 @@
  * Migration 115: Add enable_at scheduling column to feature_flags.
  * A flag with enable_at <= now() is treated as enabled at evaluation time,
  * regardless of the enabled column value. No background job is required.
- * (MINCRM-488)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

@@ -4,7 +4,7 @@
  * Migration 146: Seed the ai_lead_scoring feature flag.
  *
  * Gates the rule-based lead score display on the Lead detail page
- * (MINCRM-441 prerequisite). This is a deterministic scoring engine, not an
+ * (prerequisite). This is a deterministic scoring engine, not an
  * AI call — but it is gated as an AI sub-feature category flag alongside
  * ai_lead_score_narrative (seeded in migration 071), which explains the
  * score this flag exposes. Follows the same row shape and role-override

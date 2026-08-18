@@ -2,7 +2,7 @@
 
 /**
  * Migration 078: Add missing indexes for sequence scheduler, notes soft-delete,
- * and lead conversion queries. (MINCRM-508)
+ * and lead conversion queries.
  *
  * 1. sequence_enrollments_status_next_action_idx — partial index on next_action_at
  *    covering only active enrollments (WHERE status = 'active'). Every row inside

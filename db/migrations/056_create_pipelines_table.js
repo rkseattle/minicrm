@@ -1,5 +1,5 @@
 /**
- * Migration 056: Create pipelines table and add pipeline_id FK to pipeline_stages (MINCRM-397).
+ * Migration 056: Create pipelines table and add pipeline_id FK to pipeline_stages.
  *
  * Introduces multiple pipeline support. A default pipeline is seeded and all
  * existing pipeline_stages rows are linked to it. NULL pipeline_id is reserved

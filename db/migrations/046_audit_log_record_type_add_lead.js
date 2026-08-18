@@ -1,6 +1,6 @@
 /**
  * Migration 046: add 'lead' to audit_log record_type CHECK constraint.
- * Migration 044 added notes support for leads (MINCRM-352), which writes audit
+ * Migration 044 added notes support for leads, which writes audit
  * entries with record_type='lead', but the existing constraint only allowed
  * contact, account, deal, user, and system_settings.
  */

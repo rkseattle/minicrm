@@ -2,7 +2,7 @@
 
 /**
  * Migration 161: Remove the coverage_instrumentation and
- * coverage_session_management feature_flags rows. (MINCRM-663)
+ * coverage_session_management feature_flags rows.
  *
  * These two rows (seeded by migrations 156 and 157) gated the Coverage/TIA
  * control API (routes/coverage.ts) and session management API

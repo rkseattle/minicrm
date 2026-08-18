@@ -5,7 +5,7 @@
  *
  * Stores the structured outputs from Claude tool calls alongside the assistant
  * message so the client can render native CRM result cards instead of raw text.
- * Only set on assistant messages that involved tool calls. (MINCRM-423, MINCRM-431)
+ * Only set on assistant messages that involved tool calls.
  */
 
 exports.shorthands = undefined;

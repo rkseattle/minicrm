@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 093: Convert audit_log to a monthly range-partitioned table. (MINCRM-521)
+ * Migration 093: Convert audit_log to a monthly range-partitioned table.
  *
  * ## Why partitioning, why now
  *

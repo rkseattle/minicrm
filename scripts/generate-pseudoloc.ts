@@ -19,7 +19,7 @@
  *
  * Example: "Save Changes" → "[Ŝävë Ĉhäñĝëŝ~~~]"
  *
- * MINCRM-241
+ *
  */
 
 import { readFileSync, writeFileSync } from 'fs';

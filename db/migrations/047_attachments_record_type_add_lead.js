@@ -1,6 +1,6 @@
 /**
  * Migration 047: add 'lead' to attachments record_type CHECK constraint.
- * Notes on leads (MINCRM-352) allow image uploads, which are stored as
+ * Notes on leads allow image uploads, which are stored as
  * attachments. The existing constraint only allowed contact, account, and deal.
  */
 

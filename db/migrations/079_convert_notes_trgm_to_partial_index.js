@@ -2,7 +2,7 @@
 
 /**
  * Migration 079: Convert notes_body_text_trgm_idx to a partial GIN index
- * excluding soft-deleted rows. (MINCRM-515)
+ * excluding soft-deleted rows.
  *
  * Migration 049 created a full GIN trigram index on notes.body_text covering
  * all rows including soft-deleted ones (deleted_at IS NOT NULL). Every

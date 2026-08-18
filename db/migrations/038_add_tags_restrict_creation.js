@@ -1,5 +1,5 @@
 /**
- * Migration 038 — add tags_restrict_creation to system_settings (MINCRM-263).
+ * Migration 038 — add tags_restrict_creation to system_settings.
  * Inserts the setting row with a default of 'false' if it does not already exist.
  */
 
