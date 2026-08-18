@@ -1,12 +1,12 @@
 /**
- * Shared Zod schemas for pipeline stage configuration (MINCRM-180).
+ * Shared Zod schemas for pipeline stage configuration.
  * Imported by both server (request validation) and client (API response typing).
  */
 
 import { z } from 'zod';
 
 /**
- * Schema for the stage_exit_requirements jsonb column. (MINCRM-527)
+ * Schema for the stage_exit_requirements jsonb column.
  *
  * required_fields: deal fields that must be non-null before leaving this stage; blocks the transition.
  * warning_fields:  deal fields that ideally should be set; the transition is allowed but a warning is returned.
@@ -23,14 +23,14 @@ export type StageExitRequirements = z.infer<typeof stageExitRequirementsSchema>;
  */
 export const pipelineStageResponseSchema = z.object({
   id: z.string().uuid(),
-  /** UUID of the pipeline this stage belongs to (MINCRM-397) */
+  /** UUID of the pipeline this stage belongs to */
   pipeline_id: z.string().uuid(),
   name: z.string(),
   sort_order: z.number().int(),
   probability: z.number().int().min(0).max(100),
   is_terminal: z.boolean(),
   is_fixed: z.boolean(),
-  /** Configurable data quality gates for stage transitions (MINCRM-527) */
+  /** Configurable data quality gates for stage transitions */
   stage_exit_requirements: stageExitRequirementsSchema,
 });
 
@@ -67,7 +67,7 @@ export const updatePipelineStageSchema = z
       .optional(),
     sort_order: z.number().int().nonnegative().optional(),
     probability: z.number().int().min(0).max(100).optional(),
-    /** Configurable data quality gates for stage transitions (MINCRM-527) */
+    /** Configurable data quality gates for stage transitions */
     stage_exit_requirements: stageExitRequirementsSchema.optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
@@ -77,7 +77,7 @@ export const updatePipelineStageSchema = z
 export type UpdatePipelineStageInput = z.infer<typeof updatePipelineStageSchema>;
 
 /**
- * Request body for atomically reordering all pipeline stages (MINCRM-381).
+ * Request body for atomically reordering all pipeline stages.
  * The client sends the full ordered array of stage IDs; the server assigns
  * sort_order 1..N in that order within a single transaction.
  */

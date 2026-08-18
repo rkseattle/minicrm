@@ -1,5 +1,5 @@
 /**
- * Shared types and Zod schema for the AI call/note summarizer feature. (MINCRM-436)
+ * Shared types and Zod schema for the AI call/note summarizer feature.
  * Used by both client and server.
  */
 

@@ -6,7 +6,7 @@
 import { z } from 'zod';
 import { SUPPORTED_LOCALES } from './settingsSchema.js';
 
-/** Allowed user roles (MINCRM-533) */
+/** Allowed user roles */
 export const USER_ROLES = ['admin', 'rep', 'manager', 'viewer', 'service_account'] as const;
 
 /** Allowed user statuses */
@@ -42,11 +42,11 @@ export const inviteUserSchema = z.object({
   }),
 });
 
-/** Minimum password length (MINCRM-391) */
+/** Minimum password length */
 export const PASSWORD_MIN_LENGTH = 12;
 
 /**
- * Validates password complexity per NIST 800-63B aligned rules (MINCRM-391):
+ * Validates password complexity per NIST 800-63B aligned rules:
  * at least 12 characters, one letter, one number, and one special character.
  */
 export const passwordComplexitySchema = z
@@ -117,7 +117,7 @@ export const updatePreferredLanguageSchema = z.object({
 });
 
 /**
- * Schema for PATCH /api/users/me/notification-preferences request body. (MINCRM-163)
+ * Schema for PATCH /api/users/me/notification-preferences request body.
  */
 export const updateNotificationPrefsSchema = z.object({
   notify_overdue_tasks: z.boolean(),
@@ -140,14 +140,14 @@ export const userResponseSchema = z.object({
   notify_overdue_tasks: z.boolean().optional(),
   notify_assignments: z.boolean().optional(),
   notify_deal_stage_changes: z.boolean().optional(),
-  /** True when a service account has an active (non-revoked) API token (MINCRM-536) */
+  /** True when a service account has an active (non-revoked) API token */
   has_api_token: z.boolean().optional(),
   api_token_issued_at: z.string().or(z.date()).nullable().optional(),
   created_at: z.string().or(z.date()),
 });
 
 /**
- * Response shape for POST /api/v1/users/:id/api-token (MINCRM-536).
+ * Response shape for POST /api/v1/users/:id/api-token.
  * The plaintext token is shown exactly once — it is never stored.
  */
 export const issueApiTokenResponseSchema = z.object({
@@ -166,7 +166,7 @@ export const inviteUserResponseEnvelopeSchema = z.object({
   inviteToken: z.string().min(1),
 });
 
-// ── Role capabilities — re-exported from capabilitySchema (MINCRM-542) ──────────
+// ── Role capabilities — re-exported from capabilitySchema ──────────
 // The full Capability enum and RBAC schemas live in capabilitySchema.ts.
 // Importing from userSchema continues to work for existing call sites.
 export { Capability, CAPABILITY_VALUES, capabilitySchema } from './capabilitySchema.js';

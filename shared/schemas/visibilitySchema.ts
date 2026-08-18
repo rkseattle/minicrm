@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for org-level data visibility policy settings. (MINCRM-538)
+ * Shared Zod schemas for org-level data visibility policy settings.
  * Imported by both the server (validation + service layer) and the client (API types).
  */
 

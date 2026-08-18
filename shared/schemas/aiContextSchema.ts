@@ -1,7 +1,6 @@
 /**
  * Shared Zod schemas and TypeScript types for the user AI context feature.
  * Used by both client and server.
- * (MINCRM-427, MINCRM-428, MINCRM-429, MINCRM-430)
  */
 
 import { z } from 'zod';
@@ -40,7 +39,6 @@ export interface AiContextEntryResponse {
 /**
  * A context entry proposed by the AI for the user to accept or dismiss.
  * Extracted from the assistant message content by the server before storage.
- * (MINCRM-429, MINCRM-430)
  */
 export interface AiContextProposal {
   /** The key under which this preference should be stored (e.g. "a while"). */

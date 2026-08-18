@@ -1,7 +1,6 @@
 /**
  * Shared Zod schemas for lead-related validation.
  * Imported by both the server (request validation) and the client (form validation).
- * (MINCRM-173, MINCRM-174, MINCRM-175)
  */
 
 import { z } from 'zod';
@@ -11,7 +10,7 @@ import { LEAD_ROUTING_CONFIDENCE_LEVELS, LEAD_ROUTING_FACTOR_TYPES } from './lea
 export const LEAD_SOURCES = ['Web', 'Referral', 'Trade Show', 'Cold Outreach', 'Other'] as const;
 export type LeadSource = (typeof LEAD_SOURCES)[number];
 
-/** Valid lead status values (MINCRM-174) */
+/** Valid lead status values */
 export const LEAD_STATUSES = ['New', 'Contacted', 'Qualified', 'Disqualified'] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
@@ -35,18 +34,18 @@ export const createLeadSchema = z.object({
   lead_source: z.enum(LEAD_SOURCES).optional(),
   notes: z.string().trim().optional(),
   owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
-  /** Free-text sales territory, matched against the rep's own territory for routing suggestions (MINCRM-475) */
+  /** Free-text sales territory, matched against the rep's own territory for routing suggestions */
   territory: z.string().trim().optional(),
-  /** Free-text industry/vertical, matched against historical deal outcomes for routing suggestions (MINCRM-475) */
+  /** Free-text industry/vertical, matched against historical deal outcomes for routing suggestions */
   industry: z.string().trim().optional(),
-  /** Free-text company-size bucket, same convention as accounts.employee_range (MINCRM-475) */
+  /** Free-text company-size bucket, same convention as accounts.employee_range */
   employee_range: z.string().trim().optional(),
   /**
    * Echoes back the routing suggestion the manager saw (from a prior
    * computeLeadRoutingSuggestion() call), if any, so createLead can log
    * whether it was accepted or overridden. Not a persisted lead field —
    * consumed only by leadsController/leadsService, never written to a
-   * leads column. (MINCRM-475)
+   * leads column.
    */
   routing_suggestion: z
     .object({
@@ -69,7 +68,7 @@ export const updateLeadSchema = createLeadSchema
     status: z.enum(LEAD_STATUSES).optional(),
     disqualification_reason: z.string().trim().nullable().optional(),
     owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
-    /** Optimistic lock version — must match the current DB value (MINCRM-349) */
+    /** Optimistic lock version — must match the current DB value */
     version: z.number().int().positive('Version must be a positive integer'),
   })
   .partial()
@@ -81,7 +80,7 @@ export const updateLeadSchema = createLeadSchema
   });
 
 /**
- * Schema for the convert-lead request body (MINCRM-175).
+ * Schema for the convert-lead request body.
  */
 export const convertLeadSchema = z.object({
   contact: z.object({
@@ -132,7 +131,7 @@ export const leadResponseSchema = z.object({
   converted_deal_id: z.string().uuid().nullable(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: z.number().int(),
 });
 

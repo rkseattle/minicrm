@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI rep coaching insights feature. (MINCRM-474)
+ * Shared types for the AI rep coaching insights feature.
  * Used by both client and server.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI churn/expansion signal detection feature. (MINCRM-469)
+ * Shared types for the AI churn/expansion signal detection feature.
  * Used by both client and server.
  */
 

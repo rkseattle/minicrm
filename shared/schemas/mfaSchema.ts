@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for MFA (TOTP two-factor authentication). (MINCRM-392)
+ * Shared Zod schemas for MFA (TOTP two-factor authentication).
  * Imported by both the server (validation) and the client (form validation).
  */
 

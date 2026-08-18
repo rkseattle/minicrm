@@ -1,5 +1,5 @@
 /**
- * Shared types and Zod schema for the AI email draft generation feature. (MINCRM-437)
+ * Shared types and Zod schema for the AI email draft generation feature.
  * Used by both client and server.
  */
 

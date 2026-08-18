@@ -1,7 +1,6 @@
 /**
  * Shared Zod schemas and TypeScript types for the AI conversation feature.
  * Used by both client and server.
- * (MINCRM-420, MINCRM-421)
  */
 
 import { z } from 'zod';
@@ -22,7 +21,7 @@ export type SendAiMessageInput = z.infer<typeof sendAiMessageSchema>;
 
 /**
  * A single tool call result captured during the NLI agentic loop.
- * Stored alongside assistant messages to enable native CRM result rendering. (MINCRM-423, MINCRM-431)
+ * Stored alongside assistant messages to enable native CRM result rendering.
  */
 export interface AiToolResult {
   /** The tool that was called (e.g. 'searchContacts', 'getDeal') */
@@ -33,7 +32,7 @@ export interface AiToolResult {
   output: unknown;
 }
 
-/** The mutation operation type for a pending confirmation. (MINCRM-425, MINCRM-426) */
+/** The mutation operation type for a pending confirmation. */
 export type AiMutationOperation = 'create' | 'update' | 'delete';
 
 /**
@@ -41,7 +40,7 @@ export type AiMutationOperation = 'create' | 'update' | 'delete';
  *
  * Captured when Claude calls requestMutationConfirmation and stored on the
  * assistant message so the client can render a confirmation prompt before any
- * write operation is executed. (MINCRM-425, MINCRM-426)
+ * write operation is executed.
  */
 export interface AiPendingAction {
   /** The type of mutation operation: create, update, or delete. */
@@ -87,7 +86,7 @@ export interface AiMessageResponse {
   tool_results: AiToolResult[] | null;
   /** Pending mutation action awaiting user confirmation. Present only when Claude called requestMutationConfirmation. */
   pending_action: AiPendingAction | null;
-  /** AI-proposed context entry awaiting user accept/dismiss. Present when Claude detected an ambiguous term or correction. (MINCRM-429, MINCRM-430) */
+  /** AI-proposed context entry awaiting user accept/dismiss. Present when Claude detected an ambiguous term or correction. */
   context_proposal: AiContextProposal | null;
   created_at: string;
 }

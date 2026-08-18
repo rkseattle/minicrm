@@ -1,5 +1,5 @@
 /**
- * Shared Zod schema for the duplicate explanation request body. (MINCRM-440)
+ * Shared Zod schema for the duplicate explanation request body.
  *
  * record_b is either an existing record's UUID (record_b_id) or raw field
  * values for an unsaved record (record_b_fields) — the latter covers the

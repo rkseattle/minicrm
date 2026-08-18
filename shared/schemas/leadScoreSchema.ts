@@ -1,5 +1,5 @@
 /**
- * Shared types for the rule-based lead scoring engine. (MINCRM-441 prerequisite)
+ * Shared types for the rule-based lead scoring engine.
  * Used by both client and server. Pure data comparison — no AI call.
  */
 

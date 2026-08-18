@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI lead routing suggestion feature. (MINCRM-475)
+ * Shared types for the AI lead routing suggestion feature.
  * Used by both client and server.
  */
 

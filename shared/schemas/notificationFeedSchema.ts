@@ -1,5 +1,5 @@
 /**
- * Shared types for the minimal in-app notification feed. (MINCRM-469)
+ * Shared types for the minimal in-app notification feed.
  * Used by both client and server.
  */
 

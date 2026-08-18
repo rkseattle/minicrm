@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI deal health check feature. (MINCRM-442)
+ * Shared types for the AI deal health check feature.
  * Used by both client and server.
  */
 

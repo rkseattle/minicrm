@@ -1,7 +1,6 @@
 /**
  * Shared Zod schemas and types for the feature flag registry.
  * Imported by both the server (validation) and the client (form validation, display).
- * (MINCRM-463, MINCRM-490, MINCRM-492, MINCRM-565)
  */
 
 import { z } from 'zod';
@@ -10,21 +9,21 @@ import { z } from 'zod';
  * All valid feature flag keys — must match the seed rows in migrations 066, 071, 140, 147-149,
  * and 151-152.
  * AI sub-feature keys (ai_nli_page through ai_stage_advancement) were added in
- * migration 071 (MINCRM-460). ai_win_loss_insights was added in migration 140 (MINCRM-464).
+ * migration 071. ai_win_loss_insights was added in migration 140.
  * ai_meeting_brief, ai_warm_intro_path, and ai_sentiment_tracking were added in
- * migrations 147-149 (MINCRM-465, MINCRM-468, MINCRM-472). ai_relationship_health_score and
- * ai_followup_timing_suggestions were added in migrations 151-152 (MINCRM-467, MINCRM-470).
- * ai_rep_coaching_insights was added in migration 153 (MINCRM-474).
- * ai_lead_routing_suggestion was added in migration 154 (MINCRM-475).
- * ai_data_hygiene_assistant was added in migration 155 (MINCRM-476).
+ * migrations 147-149. ai_relationship_health_score and
+ * ai_followup_timing_suggestions were added in migrations 151-152.
+ * ai_rep_coaching_insights was added in migration 153.
+ * ai_lead_routing_suggestion was added in migration 154.
+ * ai_data_hygiene_assistant was added in migration 155.
  *
  * No coverage_* key belongs here. Migrations 156-160 seeded five of them for
- * Coverage/TIA tooling; migrations 161 (MINCRM-663) and 163 (MINCRM-685)
+ * Coverage/TIA tooling; migrations 161 and 163
  * deleted all five, because internal CI/dev test infrastructure has no business
  * being discoverable or toggleable through the product's own admin Settings
  * page. Each of those routers now gates its route registration on a boot-time
  * env var instead (server/src/coverageAgent/coverageBootGate.ts). Two of the keys
- * outlived their rows in this array until MINCRM-685 — GET /me/feature-flags
+ * outlived their rows in this array until they were removed — GET /me/feature-flags
  * resolved them against a table that no longer had them, reporting `false`
  * silently, which is why nobody noticed.
  */
@@ -47,7 +46,7 @@ export const FEATURE_FLAG_KEYS = [
   'ai_features',
   'mobile_access',
   'demo_data',
-  // AI sub-feature flags (MINCRM-460) — child flags of the 'ai_features' master toggle.
+  // AI sub-feature flags — child flags of the 'ai_features' master toggle.
   'ai_nli_page',
   'ai_activity_summarizer',
   'ai_email_draft',
@@ -79,7 +78,7 @@ export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];
  * UI grouping categories — must match the category values in migration 066.
  *
  * 'Developer Tools' was added by migration 156 for the Coverage/TIA flags and
- * removed by MINCRM-685 along with the last of them. It never had an i18n key
+ * removed along with the last of them. It never had an i18n key
  * in any locale, so FeatureFlagsSettings.tsx rendered the raw lookup path
  * `featureFlags.categories.developer_tools` as its heading — visible only
  * because those rows existed. Do not re-add it to hide internal tooling in;
@@ -97,13 +96,13 @@ export type FeatureFlagCategory = (typeof FEATURE_FLAG_CATEGORIES)[number];
 
 /**
  * Per-role override map — keys are arbitrary role name strings (built-in or custom),
- * values are explicit enable/disable overrides. (MINCRM-565)
+ * values are explicit enable/disable overrides.
  */
 export const roleOverridesSchema = z.record(z.string().min(1), z.boolean()).nullable();
 
 export type RoleOverrides = z.infer<typeof roleOverridesSchema>;
 
-// ── Rollout (MINCRM-490) ──────────────────────────────────────────────────────
+// ── Rollout ──────────────────────────────────────────────────────
 
 /** A single scheduled rollout advancement step. */
 export const rolloutStageSchema = z.object({
@@ -133,7 +132,7 @@ export const rolloutStagesSchema = z
   )
   .nullable();
 
-// ── User overrides (MINCRM-492) ────────────────────────────────────────────────
+// ── User overrides ────────────────────────────────────────────────
 
 /** Override directions for per-user feature flag overrides. */
 export const OVERRIDE_DIRECTIONS = ['force_enabled', 'force_disabled'] as const;
@@ -193,7 +192,7 @@ export const updateFeatureFlagSchema = z.object({
     .nullable()
     .optional(),
   rollout_stages: rolloutStagesSchema.optional(),
-  /** Assign flag to a group (string key) or unassign (null). (MINCRM-491) */
+  /** Assign flag to a group (string key) or unassign (null). */
   group_key: z
     .string()
     .min(1)
@@ -234,9 +233,9 @@ export interface FeatureFlagRow {
   role_overrides: RoleOverrides;
   /** ISO 8601 datetime; when set and <= now(), the flag is treated as enabled. */
   enable_at: string | null;
-  /** 0–100 percentage of users who see this flag as enabled via rollout bucketing. null = no rollout. (MINCRM-490) */
+  /** 0–100 percentage of users who see this flag as enabled via rollout bucketing. null = no rollout. */
   rollout_percentage: number | null;
-  /** Scheduled rollout advancement steps, ordered ascending by scheduled_at. (MINCRM-490) */
+  /** Scheduled rollout advancement steps, ordered ascending by scheduled_at. */
   rollout_stages: RolloutStage[] | null;
   updated_by: string | null;
   updated_by_name: string | null;
@@ -246,13 +245,13 @@ export interface FeatureFlagRow {
   active_user_count: number;
   /** Count of users explicitly enrolled in the beta for this flag. */
   beta_user_count: number;
-  /** Count of per-user forced overrides by direction. (MINCRM-492) */
+  /** Count of per-user forced overrides by direction. */
   override_count: OverrideCount;
-  /** Group this flag belongs to, or null if ungrouped. (MINCRM-491) */
+  /** Group this flag belongs to, or null if ungrouped. */
   group_key: string | null;
 }
 
-// ── Flag Groups (MINCRM-491) ──────────────────────────────────────────────────
+// ── Flag Groups ──────────────────────────────────────────────────
 
 /** Validation pattern for group_key values — lowercase alphanumeric with _ or -. */
 export const GROUP_KEY_PATTERN = /^[a-z0-9_-]+$/;

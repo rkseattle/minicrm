@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI smart follow-up timing suggestions feature. (MINCRM-470)
+ * Shared types for the AI smart follow-up timing suggestions feature.
  * Used by both client and server.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for the Coverage/TIA data pipeline. (MINCRM-614, MINCRM-615, MINCRM-616)
+ * Shared Zod schemas for the Coverage/TIA data pipeline.
  * Imported by the server (request validation + response typing) and, for the
  * ingestion trigger request, the QA E2E workspace (CI-triggered ingestion).
  */
@@ -42,7 +42,7 @@ export const coverageUnitSchema = z.object({
   unresolvedReason: z.string().nullable(),
   firstSeenAt: z.string(),
   lastSeenAt: z.string(),
-  /** Recency-decayed confidence, 0.0-1.0. See MINCRM-620/coverageReconciliationService. */
+  /** Recency-decayed confidence, 0.0-1.0. See coverageReconciliationService. */
   confidenceScore: z.number().min(0).max(1),
   /** When build-time reconciliation last validated this row, or null if never reconciled. */
   lastReconciledAt: z.string().nullable(),

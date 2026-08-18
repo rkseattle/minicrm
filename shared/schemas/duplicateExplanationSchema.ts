@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI duplicate detection explanation feature. (MINCRM-440)
+ * Shared types for the AI duplicate detection explanation feature.
  * Used by both client and server.
  */
 

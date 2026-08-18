@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas and TypeScript types for the teams feature. (MINCRM-537)
+ * Shared Zod schemas and TypeScript types for the teams feature.
  * Used by both client and server.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI win/loss pattern analysis feature. (MINCRM-464)
+ * Shared types for the AI win/loss pattern analysis feature.
  * Used by both client and server.
  */
 

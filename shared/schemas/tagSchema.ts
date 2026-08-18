@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for tag-related validation (MINCRM-186).
+ * Shared Zod schemas for tag-related validation.
  * Imported by both the server (request validation) and the client (form validation).
  */
 

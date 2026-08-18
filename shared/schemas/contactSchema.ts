@@ -27,14 +27,14 @@ export const createContactSchema = z.object({
   title: z.string().trim().optional(),
   department: z.string().trim().optional(),
   account_id: z.string().uuid('Account ID must be a valid UUID').nullable().optional(),
-  // Address fields — accepted on create and forwarded to contact_addresses (MINCRM-500)
+  // Address fields — accepted on create and forwarded to contact_addresses
   address_line1: z.string().trim().optional(),
   address_line2: z.string().trim().optional(),
   city: z.string().trim().optional(),
   state_region: z.string().trim().optional(),
   postal_code: z.string().trim().optional(),
   country: z.string().trim().optional(),
-  // Social profile URLs (MINCRM-190)
+  // Social profile URLs
   linkedin_url: z
     .string()
     .trim()
@@ -71,7 +71,7 @@ export const createContactSchema = z.object({
 export const updateContactSchema = createContactSchema
   .extend({
     owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
-    /** Optimistic lock version — must match the current DB value (MINCRM-349) */
+    /** Optimistic lock version — must match the current DB value */
     version: z.number().int().positive('Version must be a positive integer'),
   })
   .partial()
@@ -85,7 +85,7 @@ export const updateContactSchema = createContactSchema
 /**
  * Schema for the safe contact response shape returned to API consumers.
  */
-/** Address shape embedded in contact responses (sourced from contact_addresses, MINCRM-500) */
+/** Address shape embedded in contact responses (sourced from contact_addresses) */
 export const contactDefaultAddressSchema = z.object({
   id: z.string().uuid(),
   label: z.string().nullable(),
@@ -107,19 +107,19 @@ export const contactResponseSchema = z.object({
   department: z.string().nullable(),
   account_id: z.string().uuid().nullable(),
   owner_id: z.string().uuid(),
-  /** Set when the contact was created via lead conversion (MINCRM-175) */
+  /** Set when the contact was created via lead conversion */
   source_lead_id: z.string().uuid().nullable().optional(),
-  /** Default address from contact_addresses — null when no default row exists (MINCRM-500) */
+  /** Default address from contact_addresses — null when no default row exists */
   default_address: contactDefaultAddressSchema.nullable(),
-  // Social profile URLs (MINCRM-190)
+  // Social profile URLs
   linkedin_url: z.string().nullable(),
   twitter_x_url: z.string().nullable(),
   other_url: z.string().nullable(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: z.number().int(),
-  /** Tags attached to this contact — only present in list responses (MINCRM-186) */
+  /** Tags attached to this contact — only present in list responses */
   tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
 });
 

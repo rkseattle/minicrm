@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas and types for AI field exclusion configuration. (MINCRM-461)
+ * Shared Zod schemas and types for AI field exclusion configuration.
  * Imported by both server (request validation) and client (API response typing).
  */
 
