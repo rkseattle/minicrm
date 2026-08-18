@@ -4,7 +4,7 @@
  * be co-scheduled within one conflict-free group, and which fall back to
  * their own isolated single-file group when unregistered.
  *
- * MINCRM-661
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

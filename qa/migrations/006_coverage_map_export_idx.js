@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 006: index supporting the keyset-paginated coverage-map export. (MINCRM-703)
+ * Migration 006: index supporting the keyset-paginated coverage-map export.
  *
  * The map export streams coverage_test_links in pages, seeking on
  * (unit_key, COALESCE(branch_id,''), file_path, test_id) — the grouping key of

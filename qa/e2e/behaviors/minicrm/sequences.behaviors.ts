@@ -7,7 +7,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-403
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';

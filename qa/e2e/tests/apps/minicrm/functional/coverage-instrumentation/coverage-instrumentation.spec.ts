@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA control API functional tests. (MINCRM-604, MINCRM-605, MINCRM-606, MINCRM-663)
+ * Coverage/TIA control API functional tests.
  *
  * Verifies the instrumentation and control API work end to end against a
  * real running server — NOT coverage completeness or code/test mapping,
@@ -13,7 +13,7 @@
  *           asserted)
  *   COV-03  Browser-origin dump ingestion round-trips through GET /dumps/:dumpId
  *
- * MINCRM-663: this router's routes are now registered only when
+ * this router's routes are now registered only when
  * COVERAGE_INSTRUMENTATION='true' at process boot (no longer gated by a
  * coverage_instrumentation feature_flags row) — the CI/local E2E server has
  * this set (see docker-compose.dev.yml / ci.yml's e2e-serial job). COV-02
@@ -22,7 +22,7 @@
  * a boot-time env var; see coverageRouteGating.test.ts (server-side) for
  * the genuine "routes absent when the env var is unset" regression check.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No app-domain strings in framework layer

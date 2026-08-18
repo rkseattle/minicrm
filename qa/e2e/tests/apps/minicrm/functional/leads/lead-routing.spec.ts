@@ -1,5 +1,5 @@
 /**
- * F-ROUTE — AI intelligent lead routing suggestion (MINCRM-475)
+ * F-ROUTE — AI intelligent lead routing suggestion
  *
  * Functional regression tests for the pre-create routing suggestion panel on
  * the lead creation form: showing a suggested rep, accepting it (populates

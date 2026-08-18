@@ -13,15 +13,15 @@
  *   Slow network — contacts list loading state
  *   Isolation    — confirms no mock bleed between adjacent tests
  *
- * Framework conventions (MINCRM-42, MINCRM-321):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Test data created via restClient + TestDataManager (auto teardown)
  *   - No direct page.route() calls — only page.mockRoute()
  *
- * MINCRM-326
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - beforeEach creates a fresh UUID-suffixed rep; all contacts and deals are
  *     owned by that rep and torn down by TestDataManager after each test.
@@ -32,7 +32,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -211,7 +211,7 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
   restClient,
   testData,
 }) => {
-  // Bulk ops require admin — re-login as ephemeral admin to see checkboxes. (MINCRM-562)
+  // Bulk ops require admin — re-login as ephemeral admin to see checkboxes.
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
@@ -240,7 +240,7 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
   // Intercept the bulk contacts POST and return 500.
   // The bulk contacts endpoint is /api/v1/contacts/bulk — not /api/v1/bulk.
   // Track interceptions so the test fails fast if the mock URL is ever wrong
-  // and the real server handles the request instead (MINCRM-326 hardening).
+  // and the real server handles the request instead (hardening).
   let bulkIntercepted = 0;
   await page.mockRoute('**/api/v1/contacts/bulk', async (route) => {
     bulkIntercepted++;
@@ -261,7 +261,7 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
   await waitForContactsBulkError({ page }, 8_000);
 
   // Assert the mock was actually called — a count of 0 means the mock URL was
-  // wrong and the real server handled the request instead (MINCRM-326 hardening).
+  // wrong and the real server handled the request instead (hardening).
   expect(bulkIntercepted, 'contacts/bulk POST must have been intercepted exactly once').toBe(1);
 
   // Contact row must still be visible in the UI — the list must not have removed

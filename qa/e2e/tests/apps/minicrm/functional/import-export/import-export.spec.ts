@@ -13,14 +13,14 @@
  *   Export — Accounts (F11-EA) — export triggered
  *   Export — Deals (F11-ED)   — export triggered
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - Import is admin-only; export CSV button appears for both roles
  *     (reps export their own records only)
  *
- * MINCRM-200
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

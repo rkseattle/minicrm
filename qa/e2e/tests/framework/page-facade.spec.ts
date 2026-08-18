@@ -1,5 +1,5 @@
 /**
- * Tests for PageFacade and createPageFacade (MINCRM-209, MINCRM-235).
+ * Tests for PageFacade and createPageFacade.
  *
  * Verifies:
  * 1. Proxy routes heal method calls to the healPage object.
@@ -142,23 +142,23 @@ test.describe('createPageFacade', () => {
     void facade.getByTestId('something');
   });
 
-  // MINCRM-236: SafePage uses a Pick allowlist. A Playwright method not in
+  // SafePage uses a Pick allowlist. A Playwright method not in
   // AllowedPageMethods is automatically blocked — verified here by asserting
   // that locator(), addScriptTag(), and getByLabel() (valid Page methods but
   // not in the allowlist) are compile errors on SafePage / PageFacade.
-  test('SafePage positive-Pick blocks unlisted Playwright methods (MINCRM-236 regression guard)', () => {
+  test('SafePage positive-Pick blocks unlisted Playwright methods (regression guard)', () => {
     const page = mockPage([]);
     const facade: PageFacade = createPageFacade(page, 'pick allowlist test');
 
-    // Never-executed block — type-checked but not called at runtime. MINCRM-236
+    // Never-executed block — type-checked but not called at runtime.
     if (false as boolean) {
-      // @ts-expect-error — locator() is not in AllowedPageMethods (MINCRM-236)
+      // @ts-expect-error — locator() is not in AllowedPageMethods
       void facade.locator('.foo');
 
-      // @ts-expect-error — addScriptTag() is not in AllowedPageMethods (MINCRM-236)
+      // @ts-expect-error — addScriptTag() is not in AllowedPageMethods
       void facade.addScriptTag({ content: '' });
 
-      // @ts-expect-error — getByLabel() is not in AllowedPageMethods (MINCRM-236)
+      // @ts-expect-error — getByLabel() is not in AllowedPageMethods
       void facade.getByLabel('Email');
     }
 
@@ -167,7 +167,7 @@ test.describe('createPageFacade', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-235: newTab() and SafeContext
+// newTab() and SafeContext
 // ---------------------------------------------------------------------------
 
 test.describe('createPageFacade — newTab() and SafeContext', () => {
@@ -241,12 +241,12 @@ test.describe('createPageFacade — newTab() and SafeContext', () => {
     const ctx: SafeContext = facade.context();
     expect(ctx).toBeDefined();
 
-    // Never-executed block — type-checked but not called at runtime. MINCRM-235
+    // Never-executed block — type-checked but not called at runtime.
     if (false as boolean) {
-      // @ts-expect-error — newPage() is omitted from SafeContext (MINCRM-235)
+      // @ts-expect-error — newPage() is omitted from SafeContext
       void ctx.newPage();
 
-      // @ts-expect-error — newCDPSession() is omitted from SafeContext (MINCRM-235)
+      // @ts-expect-error — newCDPSession() is omitted from SafeContext
       void ctx.newCDPSession({} as unknown as Page);
     }
   });
@@ -255,9 +255,9 @@ test.describe('createPageFacade — newTab() and SafeContext', () => {
     const page = mockPage([]);
     const facade: PageFacade = createPageFacade(page, 'context newPage guard');
 
-    // Never-executed block — type-checked but not called at runtime. MINCRM-235
+    // Never-executed block — type-checked but not called at runtime.
     if (false as boolean) {
-      // @ts-expect-error — context() returns SafeContext which omits newPage() (MINCRM-235)
+      // @ts-expect-error — context() returns SafeContext which omits newPage()
       void facade.context().newPage();
     }
   });

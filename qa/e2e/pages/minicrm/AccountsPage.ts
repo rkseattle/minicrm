@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-139
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -285,7 +285,7 @@ export class AccountsPage {
         // Allow extra time for the accounts list to mount — the page navigates
         // with waitUntil:'load' so the search input may not be attached yet
         // when the probe fires. Without this, the fallback matches the global
-        // nav search bar instead. (MINCRM-418)
+        // nav search bar instead.
         fallbackTimeout: 5_000,
       },
     );

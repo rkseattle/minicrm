@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-130
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -190,7 +190,7 @@ export class ContactsPage {
    * Clicks the bulk-select checkbox for a specific contact and waits for the
    * bulk-action-bar to appear before returning. Without this wait, the bar may
    * not yet be in the DOM when the caller's next assertion runs, causing
-   * intermittent StrategyExhaustedError on testId("bulk-action-bar"). (MINCRM-211)
+   * intermittent StrategyExhaustedError on testId("bulk-action-bar").
    *
    * @param id - The contact UUID whose checkbox to click.
    */
@@ -198,7 +198,7 @@ export class ContactsPage {
     // Resolve first so we can scrollIntoViewIfNeeded before clicking.
     // On mobile viewports the sticky pagination bar can overlay lower rows and
     // block Playwright's pointer-intercept check — scrolling centers the checkbox
-    // in the viewport to avoid the overlap. (MINCRM-344)
+    // in the viewport to avoid the overlap.
     const checkbox = await this.page
       .locate(
         [
@@ -215,7 +215,7 @@ export class ContactsPage {
     // has run and the bar is CSS-visible. Checking only DOM presence (`!== null`)
     // is insufficient: on a loaded CI runner Playwright can resolve the bar during
     // a paint cycle before it has a rendered size, leaving bulk-reassign-button
-    // reporting not-visible. (MINCRM-404)
+    // reporting not-visible.
     await this.page.waitForPainted('[data-testid="bulk-action-bar"]', 5_000);
     const bar = await this.page
       .locate(
@@ -227,7 +227,7 @@ export class ContactsPage {
       )
       .resolve();
     // 5 s matches the waitForFunction guard above — prevents 30 s default consuming
-    // the full test budget on mobile where the bar may render more slowly. (MINCRM-298)
+    // the full test budget on mobile where the bar may render more slowly.
     await bar.waitFor({ state: 'visible', timeout: 5_000 });
   }
 
@@ -523,10 +523,10 @@ export class ContactsPage {
   /**
    * Clicks the Confirm button in the bulk-reassign modal and waits for the
    * PATCH /api/v1/contacts/bulk response before returning, so callers can
-   * immediately assert on selection-cleared state. (MINCRM-562)
+   * immediately assert on selection-cleared state.
    */
   async confirmBulkReassign(): Promise<void> {
-    // Register before click so the PATCH response is never missed. (MINCRM-562)
+    // Register before click so the PATCH response is never missed.
     const reassignDone = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/contacts/bulk') && response.request().method() === 'PATCH',
@@ -543,7 +543,7 @@ export class ContactsPage {
     // response lands before React processes the mutation callback, so a point-in-
     // time isNotVisible() check immediately after reassignDone races.
     // Use waitForFunction with a DOM query instead of locate().resolve() so this
-    // succeeds even if the bar has already been removed before we get here. (MINCRM-562)
+    // succeeds even if the bar has already been removed before we get here.
     await this.page
       .waitForFunction(
         `!document.querySelector('[data-testid="bulk-action-bar"]') || ` +
@@ -592,7 +592,7 @@ export class ContactsPage {
       .resolve();
     await el.waitFor({ state: 'visible', timeout: 8_000 });
     // Register the response listener before clicking so the DELETE is always
-    // captured and fully awaited before control returns. (MINCRM-418, MINCRM-562)
+    // captured and fully awaited before control returns.
     const deleteDone = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/contacts/bulk') &&
@@ -605,7 +605,7 @@ export class ContactsPage {
   /**
    * Waits until all of the given contact IDs are absent from the DOM.
    * Use after confirmBulkDelete() to ensure the delete has propagated to the
-   * rendered list before making API-level assertions. (MINCRM-418)
+   * rendered list before making API-level assertions.
    *
    * @param ids - Contact IDs whose row testIds must disappear.
    * @param timeout - Maximum ms to wait.
@@ -727,7 +727,7 @@ export class ContactsPage {
       .resolve(timeout);
   }
 
-  /** Returns a resolved locator for the "Enrich from text" button. (MINCRM-439) */
+  /** Returns a resolved locator for the "Enrich from text" button. */
   async enrichFromTextButtonLocator(timeout?: number) {
     return this.page
       .locate(
@@ -740,7 +740,7 @@ export class ContactsPage {
       .resolve(timeout);
   }
 
-  /** Clicks the "Enrich from text" button. (MINCRM-439) */
+  /** Clicks the "Enrich from text" button. */
   async clickEnrichFromText(timeout?: number): Promise<void> {
     const locator = await this.enrichFromTextButtonLocator(timeout);
     await locator.click();
@@ -803,7 +803,7 @@ export class ContactsPage {
     await locator.click();
   }
 
-  /** Returns a resolved locator for the "Explain" button in the duplicate warning. (MINCRM-440) */
+  /** Returns a resolved locator for the "Explain" button in the duplicate warning. */
   async duplicateExplainButtonLocator(timeout?: number) {
     return this.page
       .locate(

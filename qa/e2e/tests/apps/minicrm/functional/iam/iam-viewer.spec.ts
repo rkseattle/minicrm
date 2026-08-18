@@ -11,7 +11,7 @@
  * Test groups:
  *   Read Access       — viewer GET endpoints return 200
  *   Write Blocked     — viewer POST/PATCH/DELETE endpoints return 403
- *   Error Shape       — 403 response carries code AUTH_FORBIDDEN (MINCRM-542)
+ *   Error Shape       — 403 response carries code AUTH_FORBIDDEN
  *
  * Framework conventions:
  *   - All tests tagged @functional
@@ -19,7 +19,7 @@
  *   - Each test tears down its own fixtures via try/finally
  *   - restClient is re-authenticated as admin after every viewer call
  *
- * MINCRM-535
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -88,7 +88,7 @@ const TEST_PASSWORD = 'ViewerTest1!';
 
 /**
  * Creates an activated viewer user and returns a new RestClient authenticated as that viewer.
- * Teardown is registered internally; callers need no cleanup of their own. (MINCRM-668)
+ * Teardown is registered internally; callers need no cleanup of their own.
  *
  * @param adminClient - Admin-authenticated RestClient.
  * @param newContext - playwright.request.newContext bound from the test fixture.
@@ -111,8 +111,8 @@ async function createActivatedViewer(
   const { user, inviteToken } = inviteRes.body;
 
   // Register deactivation immediately: every step below can throw, and before
-  // MINCRM-668 a throw left this viewer behind with nothing to clean it up.
-  // adminClient is the fixture restClient, which outlives the test. (MINCRM-668)
+  // a throw left this viewer behind with nothing to clean it up.
+  // adminClient is the fixture restClient, which outlives the test.
   registerUserDeactivation(testData, adminClient, user.id, 'viewer');
 
   // Activate via invite token (must_change_password stays false)

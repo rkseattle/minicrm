@@ -1,5 +1,5 @@
 /**
- * Playwright globalTeardown — coverage reset safety net (MINCRM-605, MINCRM-607).
+ * Playwright globalTeardown — coverage reset safety net.
  *
  * Resets the backend V8 coverage agent's counters once after the run
  * completes, so a subsequent run (which may not itself call reset() before
@@ -8,7 +8,7 @@
  * server isn't reachable — this must never fail the E2E run over a
  * best-effort cleanup step.
  *
- * MINCRM-606
+ *
  */
 
 import {

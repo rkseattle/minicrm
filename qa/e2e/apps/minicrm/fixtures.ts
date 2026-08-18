@@ -5,8 +5,8 @@
  * - `testData` — a TestDataManager instance scoped per test, with teardown
  *   wired into a `finally` block so cleanup always runs, even on test failure.
  * - `ephemeralRep` — creates a unique rep user per test and returns credentials.
- *   Tests authenticate the browser via loginViaBrowser(). (MINCRM-415)
- * - `ephemeralAdmin` — same as ephemeralRep but with role='admin'. (MINCRM-415)
+ *   Tests authenticate the browser via loginViaBrowser().
+ * - `ephemeralAdmin` — same as ephemeralRep but with role='admin'.
  *
  * All MiniCRM test specs and behaviors must import `test` and `expect` from
  * here rather than from `@framework/fixtures` or `@playwright/test` directly.
@@ -21,14 +21,14 @@
  *   // testData.teardown() is called automatically after the test.
  * });
  *
- * // Per-test ephemeral user (MINCRM-415):
+ * // Per-test ephemeral user:
  * test('rep sees their own data', async ({ page, testData, restClient, ephemeralRep }) => {
  *   await loginViaBrowser(ephemeralRep.email, ephemeralRep.password, { page });
  *   // ... test as a unique rep, browser and restClient are isolated
  * });
  * ```
  *
- * MINCRM-129, MINCRM-415
+ *
  */
 
 import path from 'node:path';
@@ -64,7 +64,7 @@ import {
 import './locale.js';
 
 /**
- * Per-test frontend coverage granularity (MINCRM-605, MINCRM-607).
+ * Per-test frontend coverage granularity.
  * 'per-run' is handled by coverage-reporter.ts instead — pulling and
  * submitting per test there would double-count against the reporter's
  * single end-of-run dump.
@@ -75,7 +75,7 @@ const E2E_COVERAGE_PER_TEST = process.env['E2E_COVERAGE_GRANULARITY'] !== 'per-r
 // convention timing-reporter.ts uses for test-timing-baseline.json's keys
 // (path.relative(REPO_ROOT, ...)) — so a selected testId's testFile can feed
 // gen-shards.ts with no further path translation. __dirname is this file:
-// qa/e2e/apps/minicrm/. (MINCRM-660 groundwork)
+// qa/e2e/apps/minicrm/. (groundwork)
 const REPO_ROOT = path.resolve(__dirname, '../../../..');
 
 // File path substrings used to identify page-object frames in the V8 stack
@@ -106,7 +106,7 @@ export interface MinicrmFixtures {
    *
    * The user has onboarding suppressed and is deactivated in teardown.
    * Use loginViaBrowser(ephemeralRep.email, ephemeralRep.password, { page })
-   * to authenticate the browser as this user. (MINCRM-415)
+   * to authenticate the browser as this user.
    */
   ephemeralRep: EphemeralUserCredentials;
 
@@ -114,7 +114,7 @@ export interface MinicrmFixtures {
    * Credentials for a unique ephemeral admin user created for this test.
    *
    * Identical to ephemeralRep but with role='admin'. Use for tests that
-   * exercise admin-only functionality. (MINCRM-415)
+   * exercise admin-only functionality.
    */
   ephemeralAdmin: EphemeralUserCredentials;
 }
@@ -123,7 +123,7 @@ export interface MinicrmFixtures {
 // Extended test object
 // ---------------------------------------------------------------------------
 
-// isTokenNearingExpiry moved to @framework/auth/token-expiry.js (MINCRM-703),
+// isTokenNearingExpiry moved to @framework/auth/token-expiry.js,
 // where standalone scripts can reuse it without importing this module and
 // constructing the whole Playwright fixture graph as a side effect. Imported
 // above; no re-export here, so there is exactly one import path to it.
@@ -141,7 +141,7 @@ export interface MinicrmFixtures {
  * avoid. Persisting turns it back into once per token lifetime.
  *
  * Best-effort. A failed write means later tests refresh again — wasteful, not
- * wrong — so it must not fail the test that got a working session. (MINCRM-703)
+ * wrong — so it must not fail the test that got a working session.
  *
  * @param cookieName - Name of the session cookie to persist.
  * @param value - The freshly minted token value.
@@ -171,7 +171,6 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
   // hit the identical 401. The framework layer owns the WHEN (the expiry
   // check); this supplies the WHAT (which cookie, how to mint one), since
   // neither the cookie name nor the credentials may live in framework/.
-  // (MINCRM-703)
   // Plain value, not [value, { option: true }] — `option: true` belongs only on
   // the declaration in the framework fixture; downstream layers override the
   // option's value.
@@ -214,7 +213,7 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
     // locator for app content then fails as "all strategies exhausted", which
     // reads as selector drift rather than an expired session.
     //
-    // MINCRM-697: in tia-record-mode.yml (~1300 tests, unsharded, two projects)
+    // in tia-record-mode.yml (~1300 tests, unsharded, two projects)
     // the mobile-web AI specs first navigated ~1 hour in and did exactly that.
     // ci.yml's e2e-serial job never saw it — it is --project=desktop only and
     // finishes inside the 30-minute window.
@@ -251,7 +250,7 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
     // ingest script use, via a thin adapter: a PageFacade reads cookies from
     // its BrowserContext rather than exposing getCookie, but the decision — is
     // there a token, is it stale, refresh it, never fail the test over it — is
-    // identical, and three hand-written copies of it would drift. (MINCRM-703)
+    // identical, and three hand-written copies of it would drift.
     const browserSessionClient = {
       getCookie: async (name: string) => {
         const cookies = await facade
@@ -286,7 +285,7 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
     // in by the time this fixture's cleanup runs. A fresh newContext() here
     // guarantees sessionClient's own login always wins, regardless of what
     // the test did to its restClient. Session start/end must work
-    // regardless (MINCRM-609's "no per-test edits" requirement). Best-effort
+    // regardless. Best-effort
     // throughout: absent credentials, a disabled flag, or a down server must
     // never fail the test itself — coverage-session tracking is observability,
     // not a test dependency.
@@ -321,7 +320,7 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
       HealingRegistry.instance.flush();
       HealingRegistry.instance._reset();
 
-      // MINCRM-605/607: per-test frontend coverage pull+submit. No-ops
+      // per-test frontend coverage pull+submit. No-ops
       // when the served bundle wasn't built with COVERAGE=true (the
       // common case) or when E2E_COVERAGE_GRANULARITY=per-run (the
       // reporter handles that mode instead — see coverage-reporter.ts).
@@ -343,7 +342,7 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
           testInfo.title,
         ).catch(() => undefined);
 
-        // MINCRM-609/610/612: attribute the dump to this test's session (if
+        // attribute the dump to this test's session (if
         // one started) and close the session out. attempt tracks Playwright
         // retries — testInfo.retry is 0 on the first run, 1+ on each retry —
         // so a flaky test's attempts are distinguishable rather than
@@ -386,7 +385,7 @@ const testWithData = testWithPage.extend<Pick<MinicrmFixtures, 'testData'>>({
       // Teardown always runs — test failure does not skip cleanup. Individual
       // entries are caught inside teardown() and reported through its return
       // value, so this finally block itself never throws even though a callback
-      // may (registerAdminTeardown rethrows non-404s since MINCRM-668).
+      // may (registerAdminTeardown rethrows non-404s since a later change).
       const results = await manager.teardown(restClient);
       annotateCleanupFailures(testInfo, results);
     }

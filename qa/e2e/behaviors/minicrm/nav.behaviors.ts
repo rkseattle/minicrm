@@ -2,13 +2,13 @@
  * Navigation behaviors for MiniCRM.
  *
  * Behaviors encapsulate multi-step user journeys involving the navigation
- * layout system introduced in MINCRM-133. Callers never touch raw locators
+ * layout system introduced in. Callers never touch raw locators
  * or Page Objects directly.
  *
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-144
+ *
  */
 
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
@@ -17,7 +17,7 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import { NavPage } from '@pages/minicrm/NavPage.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 
-/** Navigation layout modes supported by MiniCRM (MINCRM-133). */
+/** Navigation layout modes supported by MiniCRM. */
 export type NavLayout = 'top' | 'left' | 'hamburger';
 
 // ---------------------------------------------------------------------------
@@ -135,7 +135,7 @@ export async function openHamburgerMenu(
   // navigation that re-mounted the component), clicking the toggle would close the
   // drawer instead of opening it, causing a StrategyExhaustedError on the
   // subsequent visibility wait. Polling for drawer absence confirms the component
-  // has settled into its closed state before we issue the open click. (MINCRM-404)
+  // has settled into its closed state before we issue the open click.
   await context.page.waitForFunction(
     `document.querySelector('[data-testid="nav-menu-toggle"]')?.offsetParent !== null &&
      !document.querySelector('[data-testid="nav-hamburger-drawer"]')`,
@@ -246,7 +246,7 @@ export interface NavigateViaNavLinkResult {
 /**
  * Clicks a navigation link identified by its data-testid and waits for navigation.
  *
- * The testid follows the convention `nav-{layout}-{destination}` per MINCRM-133.
+ * The testid follows the convention `nav-{layout}-{destination}` per the spec.
  * For the hamburger layout, this function automatically opens the menu first.
  *
  * @param layout - The active nav layout ('top', 'left', or 'hamburger').
@@ -451,7 +451,7 @@ export async function navigateViaMobileNavLink(
 
 // ---------------------------------------------------------------------------
 // Intent-bearing nav behaviors — replace get*Locator exports so spec files
-// express user-intent rather than holding raw DOM handle references. (MINCRM-564)
+// express user-intent rather than holding raw DOM handle references.
 // ---------------------------------------------------------------------------
 
 /** Fixture context accepted by nav behaviors. */
@@ -580,7 +580,7 @@ export async function expectMobileLanguageSelectVisible(
 /**
  * Returns a resolved locator for the desktop language select in the nav header.
  *
- * Intentionally kept as a raw-locator accessor (MINCRM-564 exception): this locator
+ * Intentionally kept as a raw-locator accessor (exception): this locator
  * is passed as an argument to selectLanguageAndWaitForPatch, which requires a
  * SafeLocator handle to drive both the select interaction and the waitForResponse
  * racing. Splitting it into separate behaviors would lose the ability to race the
@@ -592,7 +592,7 @@ export async function getDesktopLanguageSelectLocator(context: NavBehaviorContex
 }
 
 // ---------------------------------------------------------------------------
-// Page reload helper — keep page.reload() out of spec files. (MINCRM-418)
+// Page reload helper — keep page.reload() out of spec files.
 // ---------------------------------------------------------------------------
 
 /**
@@ -605,7 +605,7 @@ export async function reloadCurrentPage(context: NavBehaviorContext): Promise<vo
 }
 
 // ---------------------------------------------------------------------------
-// Browser history helpers — keep page.goBack/goForward out of spec files. (MINCRM-418)
+// Browser history helpers — keep page.goBack/goForward out of spec files.
 // ---------------------------------------------------------------------------
 
 /** Result returned by navigateBack / navigateForward. */
@@ -639,7 +639,7 @@ export async function navigateForward(
 }
 
 // ---------------------------------------------------------------------------
-// URL wait helpers — keep page.waitForURL() out of spec files. (MINCRM-418)
+// URL wait helpers — keep page.waitForURL() out of spec files.
 // ---------------------------------------------------------------------------
 
 /** Result returned by waitForRedirectToDashboard. */
@@ -688,7 +688,6 @@ export async function navigateToUrlAndWait(
 
 // ---------------------------------------------------------------------------
 // Nav-link visibility checks — keep page.isNotVisible() out of spec files.
-// (MINCRM-418)
 // ---------------------------------------------------------------------------
 
 /**
@@ -703,13 +702,13 @@ export async function isNavLinkHidden(
 }
 
 // ---------------------------------------------------------------------------
-// Nav link wait helper — keep page.waitFor() out of spec files. (MINCRM-418)
+// Nav link wait helper — keep page.waitFor() out of spec files.
 // ---------------------------------------------------------------------------
 
 /**
  * Waits for the browser to receive a successful GET /api/v1/settings/nav-layout
  * response. Use after navigating to a new page to confirm the nav-layout React
- * Query fetch has completed before asserting nav link visibility (MINCRM-554).
+ * Query fetch has completed before asserting nav link visibility.
  *
  * @param context - Behavior context with page.
  * @param timeout - Maximum ms to wait. Default 10 000.
@@ -794,7 +793,7 @@ export async function assertNavLinkIsVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Additional nav-specific DOM check helpers. (MINCRM-418)
+// Additional nav-specific DOM check helpers.
 // ---------------------------------------------------------------------------
 
 /**
@@ -838,7 +837,7 @@ export async function isMobileNavDrawerHidden(context: NavBehaviorContext): Prom
 }
 
 // ---------------------------------------------------------------------------
-// selectLanguageAndWaitForPatch() — language selector interaction. (MINCRM-418)
+// selectLanguageAndWaitForPatch() — language selector interaction.
 // ---------------------------------------------------------------------------
 
 /**
@@ -849,7 +848,7 @@ export async function isMobileNavDrawerHidden(context: NavBehaviorContext): Prom
  * The response listener is registered BEFORE selectOption fires to guarantee
  * the response is captured even when the mutation fires synchronously in the
  * React onChange handler (avoids the race where waitForResponse is set up after
- * the PATCH has already completed). (MINCRM-418)
+ * the PATCH has already completed).
  *
  * @param locale  - Locale code to select (e.g. 'es', 'de').
  * @param locator - Already-resolved locator for the language <select> element.

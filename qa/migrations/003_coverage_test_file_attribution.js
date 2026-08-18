@@ -2,14 +2,14 @@
 
 /**
  * Migration 003: test_file column on coverage_session_dumps and
- * coverage_test_links. (MINCRM-660 groundwork, pr-tia-8)
+ * coverage_test_links.
  *
- * testSelectionService.selectTestsForChangedUnits (MINCRM-624) resolves a
+ * testSelectionService.selectTestsForChangedUnits resolves a
  * diff to a SelectedTest[] keyed by testId — but the testId actually
  * recorded end-to-end today is Playwright's own opaque testInfo.testId (a
  * hash), stamped via qa/e2e/apps/minicrm/fixtures.ts's
  * recordCoverageSessionDump call. Neither coverage_session_dumps nor its
- * derived coverage_test_links row has ever carried the one thing MINCRM-660
+ * derived coverage_test_links row has ever carried the one thing
  * actually needs — the relative spec file path — so there was no way to go
  * from a selected testId back to "which .spec.ts file do I run" before this
  * migration. test_file closes that gap, captured the same way

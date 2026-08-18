@@ -8,7 +8,7 @@
  * Usage (from repo root):
  *   npx tsx qa/e2e/scripts/print-capacity-plan.ts
  *
- * MINCRM-662
+ *
  */
 
 import { getCapacityPlan } from '../framework/reporting/capacity.js';

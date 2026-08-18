@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-284, MINCRM-294, MINCRM-312
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -361,7 +361,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the Custom Reports tab button. (MINCRM-402)
+   * Returns a resolved locator for the Custom Reports tab button.
    */
   async customReportsTabLocator(timeout?: number) {
     return this.page
@@ -376,7 +376,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the custom report builder container. (MINCRM-402)
+   * Returns a resolved locator for the custom report builder container.
    */
   async customReportBuilderLocator(timeout?: number) {
     return this.page
@@ -391,7 +391,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the run-report button. (MINCRM-402)
+   * Returns a resolved locator for the run-report button.
    */
   async runReportButtonLocator(timeout?: number) {
     return this.page
@@ -406,7 +406,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the save-report button. (MINCRM-402)
+   * Returns a resolved locator for the save-report button.
    */
   async saveReportButtonLocator(timeout?: number) {
     return this.page
@@ -421,7 +421,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the save-report name input inside the dialog. (MINCRM-402)
+   * Returns a resolved locator for the save-report name input inside the dialog.
    */
   async saveReportNameInputLocator(timeout?: number) {
     return this.page
@@ -436,7 +436,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the save-report confirm button inside the dialog. (MINCRM-402)
+   * Returns a resolved locator for the save-report confirm button inside the dialog.
    */
   async saveReportConfirmLocator(timeout?: number) {
     return this.page
@@ -451,7 +451,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the results table. (MINCRM-402)
+   * Returns a resolved locator for the results table.
    * Returns null if not present (empty or not yet run).
    */
   async resultsTableLocator(timeout?: number) {
@@ -468,7 +468,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the results empty state. (MINCRM-402)
+   * Returns a resolved locator for the results empty state.
    * Returns null if not present.
    */
   async resultsEmptyLocator(timeout?: number) {
@@ -487,7 +487,7 @@ export class ReportsPage {
   /**
    * Waits for either the results table or the empty-state element to appear
    * in the DOM after clicking run, using a short-circuit DOM poll rather than
-   * the HealingLocator to avoid AI-tier latency on optional elements. (MINCRM-402)
+   * the HealingLocator to avoid AI-tier latency on optional elements.
    */
   async waitForResultsVisible(timeout = 30_000): Promise<boolean> {
     try {
@@ -503,7 +503,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the entity-type selector in the builder. (MINCRM-402)
+   * Returns a resolved locator for the entity-type selector in the builder.
    */
   async entityTypeSelectLocator(timeout?: number) {
     return this.page
@@ -518,7 +518,7 @@ export class ReportsPage {
   }
 
   /**
-   * Returns a resolved locator for the saved-reports list sidebar. (MINCRM-402)
+   * Returns a resolved locator for the saved-reports list sidebar.
    */
   async savedReportsListLocator(timeout?: number) {
     return this.page
@@ -534,7 +534,7 @@ export class ReportsPage {
 
   /**
    * Waits for a specific report name to appear in the saved-reports sidebar, then
-   * returns a resolved locator for its button. (MINCRM-402)
+   * returns a resolved locator for its button.
    *
    * Prefer this over positional locators so stale reports from prior test runs do
    * not cause false matches.
@@ -562,7 +562,7 @@ export class ReportsPage {
   }
 
   /**
-   * Waits for the save-report dialog to close. (MINCRM-402)
+   * Waits for the save-report dialog to close.
    */
   async waitForSaveDialogClosed(timeout = 10_000): Promise<void> {
     await this.page.waitForFunction(
@@ -573,7 +573,7 @@ export class ReportsPage {
   }
 
   /**
-   * Waits for the saved-reports list to contain at least one item. (MINCRM-402)
+   * Waits for the saved-reports list to contain at least one item.
    */
   async waitForSavedReportsListPopulated(timeout = 10_000): Promise<void> {
     await this.page.waitForFunction(
@@ -590,12 +590,12 @@ export class ReportsPage {
     return this.page.url();
   }
 
-  // ── Export buttons (MINCRM-601, MINCRM-652) ───────────────────────────────
+  // ── Export buttons ───────────────────────────────
   // Custom Report Builder and Activity Volume each have distinct testids
-  // (custom-reports-export-* / activity-volume-export-*) since MINCRM-652
+  // (custom-reports-export-* / activity-volume-export-*) since a later change
   // consolidated each view's export controls behind its own ExportMenu.
 
-  /** Opens the Activity Volume report's Export menu. (MINCRM-652) */
+  /** Opens the Activity Volume report's Export menu. */
   async openActivityVolumeExportMenu(): Promise<void> {
     await this.page.click(
       [
@@ -632,7 +632,7 @@ export class ReportsPage {
       .resolve(timeout);
   }
 
-  /** Opens the Custom Report Builder's Export menu. (MINCRM-652) */
+  /** Opens the Custom Report Builder's Export menu. */
   async openCustomReportExportMenu(): Promise<void> {
     await this.page.click(
       [

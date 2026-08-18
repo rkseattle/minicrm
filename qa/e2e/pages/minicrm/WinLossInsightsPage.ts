@@ -7,7 +7,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-464
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -101,7 +101,7 @@ export class WinLossInsightsPage {
       .resolve(timeout);
   }
 
-  /** Opens the Export menu, revealing the CSV/PDF items. (MINCRM-652) */
+  /** Opens the Export menu, revealing the CSV/PDF items. */
   async openExportMenu(): Promise<void> {
     await this.page.click(
       [

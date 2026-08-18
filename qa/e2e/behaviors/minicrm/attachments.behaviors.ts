@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-154, MINCRM-357
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -24,7 +24,7 @@ export interface AttachmentsBehaviorContext {
 }
 
 // ---------------------------------------------------------------------------
-// API data types (MINCRM-357)
+// API data types
 // ---------------------------------------------------------------------------
 
 /** Shape of an attachment returned by the API. */
@@ -39,7 +39,7 @@ export interface AttachmentRow {
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /**
@@ -93,7 +93,7 @@ export async function getAttachmentDownloadStatus(
 
 // ---------------------------------------------------------------------------
 // UI locator/visibility helpers — keep page.locate/isNotVisible out of spec
-// files. (MINCRM-418)
+// files.
 // ---------------------------------------------------------------------------
 
 /**

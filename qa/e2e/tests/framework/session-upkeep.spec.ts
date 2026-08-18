@@ -1,5 +1,5 @@
 /**
- * Session upkeep — unit specs (MINCRM-703).
+ * Session upkeep — unit specs.
  *
  * `applySessionUpkeep` decides whether a session needs refreshing before more
  * work is done on it. Three callers share it: the `page` fixture, the

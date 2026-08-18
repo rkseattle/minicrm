@@ -11,7 +11,7 @@
  *   GET  /api/v2/messages          — list all captured messages
  *   DELETE /api/v1/messages        — delete all captured messages
  *
- * MINCRM-306
+ *
  */
 
 // ── Types ─────────────────────────────────────────────────────────────────────

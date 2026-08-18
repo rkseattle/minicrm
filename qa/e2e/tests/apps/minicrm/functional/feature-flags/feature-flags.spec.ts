@@ -1,5 +1,5 @@
 /**
- * F-FF — Feature Flag Registry (MINCRM-463, MINCRM-477, MINCRM-490, MINCRM-491, MINCRM-492, MINCRM-565)
+ * F-FF — Feature Flag Registry
  *
  * Functional regression tests for the admin feature flag management UI,
  * API gate enforcement, and client-side flag isolation via withFlags().
@@ -14,25 +14,25 @@
  *   F-FF7  — AI tab is disabled when ai_features flag is intercepted as off
  *   F-FF8  — AI tab is enabled when ai_features flag is intercepted as on
  *   F-FF9  — Toggling ai_features off disables the AI tab without a page refresh
- *   F-FF14 — Rollout percentage badge appears in admin UI when rollout_percentage is set (MINCRM-490)
- *   F-FF15 — Rep bucketed out of rollout sees flag as disabled via /me (MINCRM-490)
- *   F-FF16 — Force-enabled override badge appears in admin UI (MINCRM-492)
- *   F-FF17 — Force-enabled user sees a globally-disabled flag as enabled via /me (MINCRM-492)
- *   F-FF18 — Admin creates a group and sees it in the groups section (MINCRM-491)
- *   F-FF19 — Disabling a group gate blocks member flags for non-beta users (MINCRM-491)
- *   F-FF20 — Re-enabling a group gate restores member flag visibility (MINCRM-491)
- *   F-FF21 — Role override on any flag: rep override on 'notes' overrides org-wide state (MINCRM-565)
- *   F-FF22 — Unknown role key in role_overrides returns 422 (MINCRM-565)
- *   F-FF23 — Custom role name appears as a checkbox in the admin UI role override panel (MINCRM-565)
- *   F-FF24 — Deleting a non-empty flag group: cancel leaves group intact; confirm cascade-deletes and clears group_key via REST (MINCRM-567)
- *   F-FF25 — Admin settings panels show disabled banner (not hidden) when flag is off (MINCRM-566)
+ *   F-FF14 — Rollout percentage badge appears in admin UI when rollout_percentage is set
+ *   F-FF15 — Rep bucketed out of rollout sees flag as disabled via /me
+ *   F-FF16 — Force-enabled override badge appears in admin UI
+ *   F-FF17 — Force-enabled user sees a globally-disabled flag as enabled via /me
+ *   F-FF18 — Admin creates a group and sees it in the groups section
+ *   F-FF19 — Disabling a group gate blocks member flags for non-beta users
+ *   F-FF20 — Re-enabling a group gate restores member flag visibility
+ *   F-FF21 — Role override on any flag: rep override on 'notes' overrides org-wide state
+ *   F-FF22 — Unknown role key in role_overrides returns 422
+ *   F-FF23 — Custom role name appears as a checkbox in the admin UI role override panel
+ *   F-FF24 — Deleting a non-empty flag group: cancel leaves group intact; confirm cascade-deletes and clears group_key via REST
+ *   F-FF25 — Admin settings panels show disabled banner (not hidden) when flag is off
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Behaviors imported from @behaviors/* only — never @pages/*
  *   - Feature flag UI state controlled via withFlags() route interception only
- *     (MINCRM-477) — never via PATCH /api/admin/feature-flags/:key in UI tests
+ * — never via PATCH /api/admin/feature-flags/:key in UI tests
  *   - Test data cleaned up via TestDataManager + direct REST resets
  */
 
@@ -300,7 +300,7 @@ test('@functional F-FF7: AI panel shows disabled banner in admin settings when a
   // On mobile the tab renders as a hidden <option> inside a <select> — toBeAttached
   // confirms presence in the DOM without requiring it to be visually visible.
   await expectAdminSettingsAiTabAttached({ page }, 5_000);
-  // The panel must show a disabled banner, not be hidden. (MINCRM-566)
+  // The panel must show a disabled banner, not be hidden.
   await expectAdminSettingsAiTabDisabled({ page }, 5_000);
 });
 
@@ -322,7 +322,7 @@ test('@functional F-FF8: AI panel shows no disabled banner in admin settings whe
 
   // On mobile the tab renders as a hidden <option> inside a <select>.
   await expectAdminSettingsAiTabAttached({ page }, 5_000);
-  // The panel must not show a disabled banner when the flag is on. (MINCRM-566)
+  // The panel must not show a disabled banner when the flag is on.
   await expectAdminSettingsAiTabEnabled({ page });
 });
 
@@ -357,12 +357,12 @@ test('@functional @serial F-FF9: toggling ai_features off shows the AI panel dis
 
   // Navigate to the AI tab and confirm the disabled banner appears without a page refresh.
   await navigateToAdminSettings({ page }, 'ai');
-  // The AI panel must show a disabled banner after the flag is toggled off. (MINCRM-566)
+  // The AI panel must show a disabled banner after the flag is toggled off.
   await expectAdminSettingsAiTabDisabled({ page }, 5_000);
 });
 
 // ---------------------------------------------------------------------------
-// F-FF10 — Scheduled enable_at shows Scheduled badge in admin UI (MINCRM-488)
+// F-FF10 — Scheduled enable_at shows Scheduled badge in admin UI
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF10: admin sets enable_at and the Scheduled badge appears; clearing it removes the badge', async ({
@@ -392,7 +392,7 @@ test('@functional @serial F-FF10: admin sets enable_at and the Scheduled badge a
 });
 
 // ---------------------------------------------------------------------------
-// F-FF11 — Scheduled flag auto-enables when enable_at passes (MINCRM-488)
+// F-FF11 — Scheduled flag auto-enables when enable_at passes
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF11: a scheduled flag is seen as enabled by an ordinary user once enable_at passes', async ({
@@ -424,7 +424,7 @@ test('@functional @serial F-FF11: a scheduled flag is seen as enabled by an ordi
 });
 
 // ---------------------------------------------------------------------------
-// F-FF12 — Beta-enrolled user sees a disabled flag as enabled (MINCRM-489)
+// F-FF12 — Beta-enrolled user sees a disabled flag as enabled
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF12: beta-enrolled rep sees a globally-disabled flag as enabled via /me', async ({
@@ -457,7 +457,7 @@ test('@functional @serial F-FF12: beta-enrolled rep sees a globally-disabled fla
 });
 
 // ---------------------------------------------------------------------------
-// F-FF13 — Beta user panel shows enrolled user in admin UI (MINCRM-489)
+// F-FF13 — Beta user panel shows enrolled user in admin UI
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF13: enrolled beta user appears in the admin feature flags beta panel', async ({
@@ -476,9 +476,9 @@ test('@functional @serial F-FF13: enrolled beta user appears in the admin featur
   await navigateToAdminSettings({ page }, 'flags');
   await expectFeatureFlagsListVisible({ page }, 10_000);
 
-  // The advanced panel is collapsed — expand it to reveal beta/override sub-panels. (MINCRM-490)
+  // The advanced panel is collapsed — expand it to reveal beta/override sub-panels.
   await expandAdvancedPanel('mobile_access', { page });
-  // The beta panel is collapsed (beta_user_count > 0) — expand it too. (MINCRM-489)
+  // The beta panel is collapsed (beta_user_count > 0) — expand it too.
   await expandBetaUsersPanel('mobile_access', { page });
 
   // The enrolled rep must appear in the beta panel for mobile_access.
@@ -490,7 +490,7 @@ test('@functional @serial F-FF13: enrolled beta user appears in the admin featur
 });
 
 // ---------------------------------------------------------------------------
-// F-FF14 — Rollout percentage badge appears in admin UI (MINCRM-490)
+// F-FF14 — Rollout percentage badge appears in admin UI
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF14: setting rollout_percentage shows a badge in the admin UI; clearing it removes the badge', async ({
@@ -532,7 +532,7 @@ test('@functional @serial F-FF14: setting rollout_percentage shows a badge in th
 });
 
 // ---------------------------------------------------------------------------
-// F-FF15 — Rep bucketed outside rollout sees flag as disabled via /me (MINCRM-490)
+// F-FF15 — Rep bucketed outside rollout sees flag as disabled via /me
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF15: a rep bucketed outside a 0% rollout sees the flag as disabled via /me', async ({
@@ -564,7 +564,7 @@ test('@functional @serial F-FF15: a rep bucketed outside a 0% rollout sees the f
 });
 
 // ---------------------------------------------------------------------------
-// F-FF16 — Force-enabled override badge appears in admin UI (MINCRM-492)
+// F-FF16 — Force-enabled override badge appears in admin UI
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF16: adding a force_enabled override shows the badge in admin UI; removing it hides the badge and row', async ({
@@ -594,7 +594,7 @@ test('@functional @serial F-FF16: adding a force_enabled override shows the badg
   // Badge showing forced-on count must appear.
   await expectOverrideCountBadgeVisible('mobile_access', 'force_enabled', { page }, 8_000);
 
-  // The advanced panel is collapsed — expand it to reveal the overrides panel. (MINCRM-492)
+  // The advanced panel is collapsed — expand it to reveal the overrides panel.
   await expandAdvancedPanel('mobile_access', { page });
 
   // The override row must be present inside the overrides panel.
@@ -615,7 +615,7 @@ test('@functional @serial F-FF16: adding a force_enabled override shows the badg
 });
 
 // ---------------------------------------------------------------------------
-// F-FF17 — Force-enabled user sees a globally-disabled flag as enabled (MINCRM-492)
+// F-FF17 — Force-enabled user sees a globally-disabled flag as enabled
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF17: a force_enabled override lets a rep see a globally-disabled flag as enabled via /me', async ({
@@ -653,7 +653,7 @@ test('@functional @serial F-FF17: a force_enabled override lets a rep see a glob
 });
 
 // ---------------------------------------------------------------------------
-// F-FF18 — Admin creates a flag group and sees it in the groups section (MINCRM-491)
+// F-FF18 — Admin creates a flag group and sees it in the groups section
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF18: admin can create a flag group and it appears in the groups section', async ({
@@ -680,7 +680,7 @@ test('@functional @serial F-FF18: admin can create a flag group and it appears i
 });
 
 // ---------------------------------------------------------------------------
-// F-FF19 — Disabling a group gate blocks member flags for non-beta users via /me (MINCRM-491)
+// F-FF19 — Disabling a group gate blocks member flags for non-beta users via /me
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF19: disabling a group gate makes member flags return false via /me for non-beta users', async ({
@@ -727,7 +727,7 @@ test('@functional @serial F-FF19: disabling a group gate makes member flags retu
 });
 
 // ---------------------------------------------------------------------------
-// F-FF20 — Re-enabling a group gate restores member flag visibility (MINCRM-491)
+// F-FF20 — Re-enabling a group gate restores member flag visibility
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-FF20: re-enabling a disabled group gate restores member flag visibility via /me', async ({
@@ -772,9 +772,9 @@ test('@functional @serial F-FF20: re-enabling a disabled group gate restores mem
 });
 
 // ---------------------------------------------------------------------------
-// F-FF21 — Role override on any flag: rep role override on 'notes' takes effect (MINCRM-565)
+// F-FF21 — Role override on any flag: rep role override on 'notes' takes effect
 //
-// Before MINCRM-565, only flags in ROLE_OVERRIDE_FLAG_KEYS supported role overrides
+// Previously, only flags in ROLE_OVERRIDE_FLAG_KEYS supported role overrides
 // and only the 5 built-in role names were valid keys. After this refactor, all flags
 // accept role overrides and the valid key set is the full custom_roles table
 // (built-in + custom). This test verifies a rep-targeted override on the 'notes'
@@ -820,7 +820,7 @@ test('@functional @serial F-FF21: rep role override on a previously-unrestricted
 });
 
 // ---------------------------------------------------------------------------
-// F-FF22 — PATCH with an unknown role key returns 422 FEATURE_FLAG_UNKNOWN_ROLE_KEY (MINCRM-565)
+// F-FF22 — PATCH with an unknown role key returns 422 FEATURE_FLAG_UNKNOWN_ROLE_KEY
 //
 // The service now validates role_overrides keys against the live custom_roles table.
 // An unrecognized key must be rejected with a 422 rather than silently stored.
@@ -853,7 +853,7 @@ test('@functional @serial F-FF22: PATCH role_overrides with an unknown role key 
 });
 
 // ---------------------------------------------------------------------------
-// F-FF23 — Custom role name appears in the admin UI role override panel (MINCRM-565)
+// F-FF23 — Custom role name appears in the admin UI role override panel
 //
 // The role override panel is now populated dynamically from GET /api/v1/custom-roles.
 // This test creates a custom role, navigates to the feature flags admin UI, and
@@ -891,7 +891,7 @@ test('@functional @serial F-FF23: custom role name renders as a checkbox in the 
 });
 
 // ---------------------------------------------------------------------------
-// F-FF24 — Deleting a non-empty flag group shows warning dialog and cascade-deletes (MINCRM-567)
+// F-FF24 — Deleting a non-empty flag group shows warning dialog and cascade-deletes
 //
 // When a group has member_count > 0, clicking "Delete group" must open a warning
 // dialog describing how many flags will be unassigned. Confirming deletes the group
@@ -944,8 +944,7 @@ test('@functional @serial F-FF24: deleting a non-empty flag group shows warning 
     await loginAsAdmin(restClient);
     const flags = await listFeatureFlags(restClient);
     const mobileFlag = flags.find((f) => f.flag_key === 'mobile_access') as
-      | ((typeof flags)[0] & { group_key: string | null })
-      | undefined;
+      ((typeof flags)[0] & { group_key: string | null }) | undefined;
     expect(mobileFlag?.group_key ?? null).toBeNull();
   } finally {
     // Cleanup: unassign mobile_access from any group and remove the group if it still exists.
@@ -958,7 +957,7 @@ test('@functional @serial F-FF24: deleting a non-empty flag group shows warning 
 });
 
 // ---------------------------------------------------------------------------
-// F-FF25 — Admin settings panels show disabled banner (not hidden) when flag off (MINCRM-566)
+// F-FF25 — Admin settings panels show disabled banner (not hidden) when flag off
 //
 // When the demo_data feature flag is off, the Demo Data panel in Admin → Data & Platform
 // must remain visible but show a disabled banner. When the flag is on, the banner is absent.

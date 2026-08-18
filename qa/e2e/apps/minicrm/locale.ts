@@ -72,16 +72,16 @@ const MINICRM_EN: LocaleMap = {
   'contacts.empty': 'No contacts yet. Add one to get started.',
   'contacts.searchPlaceholder': 'Search by name or email…',
 
-  // Activities — AI call/note summarizer (MINCRM-436)
+  // Activities — AI call/note summarizer
   'activities.summarize.action': 'Summarize',
 
-  // AI email draft generation (MINCRM-437)
+  // AI email draft generation
   'emailDraft.draftEmailButton': 'Draft Email',
   'emailDraft.panelTitle': 'Email Draft',
   'emailDraft.copyToClipboard': 'Copy to clipboard',
   'emailDraft.dismiss': 'Dismiss',
 
-  // AI contact auto-enrich from text (MINCRM-439)
+  // AI contact auto-enrich from text
   'contactEnrichment.action': 'Enrich from text',
 
   // Accounts
@@ -181,16 +181,16 @@ const MINICRM_ES: LocaleMap = {
   'contacts.empty': 'Aún no hay contactos. Agrega uno para empezar.',
   'contacts.searchPlaceholder': 'Buscar por nombre o correo…',
 
-  // Activities — AI call/note summarizer (MINCRM-436)
+  // Activities — AI call/note summarizer
   'activities.summarize.action': 'Resumir',
 
-  // AI email draft generation (MINCRM-437)
+  // AI email draft generation
   'emailDraft.draftEmailButton': 'Redactar correo',
   'emailDraft.panelTitle': 'Borrador de correo',
   'emailDraft.copyToClipboard': 'Copiar al portapapeles',
   'emailDraft.dismiss': 'Descartar',
 
-  // AI contact auto-enrich from text (MINCRM-439)
+  // AI contact auto-enrich from text
   'contactEnrichment.action': 'Enriquecer desde texto',
 
   // Accounts
@@ -290,16 +290,16 @@ const MINICRM_FR: LocaleMap = {
   'contacts.empty': "Aucun contact pour l'instant. Ajoutez-en un pour commencer.",
   'contacts.searchPlaceholder': 'Rechercher par nom ou e-mail…',
 
-  // Activities — AI call/note summarizer (MINCRM-436)
+  // Activities — AI call/note summarizer
   'activities.summarize.action': 'Résumer',
 
-  // AI email draft generation (MINCRM-437)
+  // AI email draft generation
   'emailDraft.draftEmailButton': 'Rédiger un e-mail',
   'emailDraft.panelTitle': "Brouillon d'e-mail",
   'emailDraft.copyToClipboard': 'Copier dans le presse-papiers',
   'emailDraft.dismiss': 'Ignorer',
 
-  // AI contact auto-enrich from text (MINCRM-439)
+  // AI contact auto-enrich from text
   'contactEnrichment.action': 'Enrichir à partir du texte',
 
   // Accounts
@@ -399,16 +399,16 @@ const MINICRM_DE: LocaleMap = {
   'contacts.empty': 'Noch keine Kontakte. Fügen Sie einen hinzu.',
   'contacts.searchPlaceholder': 'Nach Name oder E-Mail suchen…',
 
-  // Activities — AI call/note summarizer (MINCRM-436)
+  // Activities — AI call/note summarizer
   'activities.summarize.action': 'Zusammenfassen',
 
-  // AI email draft generation (MINCRM-437)
+  // AI email draft generation
   'emailDraft.draftEmailButton': 'E-Mail entwerfen',
   'emailDraft.panelTitle': 'E-Mail-Entwurf',
   'emailDraft.copyToClipboard': 'In die Zwischenablage kopieren',
   'emailDraft.dismiss': 'Verwerfen',
 
-  // AI contact auto-enrich from text (MINCRM-439)
+  // AI contact auto-enrich from text
   'contactEnrichment.action': 'Aus Text anreichern',
 
   // Accounts
@@ -508,16 +508,16 @@ const MINICRM_ZH_HANS: LocaleMap = {
   'contacts.empty': '暂无联系人，请添加。',
   'contacts.searchPlaceholder': '按姓名或电子邮件搜索…',
 
-  // Activities — AI call/note summarizer (MINCRM-436)
+  // Activities — AI call/note summarizer
   'activities.summarize.action': '生成摘要',
 
-  // AI email draft generation (MINCRM-437)
+  // AI email draft generation
   'emailDraft.draftEmailButton': '起草邮件',
   'emailDraft.panelTitle': '邮件草稿',
   'emailDraft.copyToClipboard': '复制到剪贴板',
   'emailDraft.dismiss': '关闭',
 
-  // AI contact auto-enrich from text (MINCRM-439)
+  // AI contact auto-enrich from text
   'contactEnrichment.action': '从文本提取信息',
 
   // Accounts

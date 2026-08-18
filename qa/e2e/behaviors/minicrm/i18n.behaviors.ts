@@ -7,7 +7,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-418
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -130,7 +130,7 @@ export async function reloadAndWait(context: I18nBehaviorContext): Promise<void>
 }
 
 // ---------------------------------------------------------------------------
-// Pseudolocalization DOM inspection helpers (MINCRM-418)
+// Pseudolocalization DOM inspection helpers
 // ---------------------------------------------------------------------------
 
 /** Shape of a hardcoded-string finding. */

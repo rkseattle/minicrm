@@ -1,5 +1,5 @@
 /**
- * Behaviors for the MiniCRM AI churn/expansion insights page (MINCRM-469).
+ * Behaviors for the MiniCRM AI churn/expansion insights page.
  *
  * Each behavior composes ChurnExpansionInsightsPage interactions into named,
  * intent-describing async functions. No assertions inside behaviors —

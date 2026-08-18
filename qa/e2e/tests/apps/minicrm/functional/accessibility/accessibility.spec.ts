@@ -2,7 +2,7 @@
  * A11Y — Accessibility Audit: Core Workflows (WCAG 2.1 Level AA)
  *
  * Audits MiniCRM's core user workflows for WCAG 2.1 Level AA violations using
- * axe-core via the framework's `page.auditAccessibility()` helper (MINCRM-320).
+ * axe-core via the framework's `page.auditAccessibility()` helper.
  *
  * Standard: WCAG 2.1 Level AA
  * Tool: axe-core (via @axe-core/playwright)
@@ -12,7 +12,7 @@
  *   - moderate + minor violations   → captured in output only; do not fail the suite
  *
  * Any critical or serious violation discovered during authoring must be filed as
- * a bug under MINCRM-28 rather than silently excluded here.
+ * a bug rather than silently excluded here.
  *
  * Test groups:
  *   Auth          — login page (empty + validation errors), forgot-password page
@@ -22,14 +22,14 @@
  *   Modals        — ConfirmDeleteModal (bulk delete), BulkReassignModal
  *   Admin         — user invite form
  *
- * Framework conventions (MINCRM-42, MINCRM-325):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators in spec file — all UI interactions via behaviors or page objects
  *   - All test data managed via testData fixture (auto teardown)
  *   - Tests must pass on both desktop and mobile-web Playwright projects without retry
  *
- * MINCRM-325
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -108,7 +108,7 @@ async function assertNoBlockingViolations(page: PageFacade) {
 // ---------------------------------------------------------------------------
 
 test.describe('Auth forms', () => {
-  // MINCRM-192: opt out of pre-auth storageState so login flows work correctly.
+  // opt out of pre-auth storageState so login flows work correctly.
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test('@functional A11Y-A1: login page — empty form', async ({ page }) => {
@@ -136,11 +136,11 @@ test.describe('Auth forms', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Authenticated tests — ephemeral rep per test (MINCRM-415)
+// Authenticated tests — ephemeral rep per test
 // ---------------------------------------------------------------------------
 
 // Authenticated tests must have their own browser session — the global
-// storageState is cleared by MINCRM-415 so each test creates an ephemeral rep
+// storageState is cleared later so each test creates an ephemeral rep
 // (or admin for admin-only tests) and logs in via browser.
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -259,7 +259,7 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
   restClient,
   testData,
 }) => {
-  // Bulk ops require admin — re-login as ephemeral admin to see checkboxes. (MINCRM-562)
+  // Bulk ops require admin — re-login as ephemeral admin to see checkboxes.
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
@@ -291,7 +291,7 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
   restClient,
   testData,
 }) => {
-  // Bulk ops require admin — re-login as ephemeral admin to see checkboxes. (MINCRM-562)
+  // Bulk ops require admin — re-login as ephemeral admin to see checkboxes.
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
@@ -319,7 +319,7 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
 });
 
 // ---------------------------------------------------------------------------
-// Admin flows — ephemeral admin session (MINCRM-415)
+// Admin flows — ephemeral admin session
 // ---------------------------------------------------------------------------
 
 test('@functional A11Y-ADM1: user invite form', async ({ page, restClient, testData }) => {

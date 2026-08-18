@@ -1,5 +1,5 @@
 /**
- * Unit tests for the coverage session control client (MINCRM-609..612).
+ * Unit tests for the coverage session control client.
  *
  * All tests mock the Playwright APIRequestContext so no server is required —
  * same pattern as rest-client.spec.ts and browser-coverage-agent.spec.ts.
@@ -31,10 +31,10 @@ import type { HarnessAdapterShape } from '@minicrm/shared/schemas/coverageHarnes
 // Import-safe for the same reason junitXml.ts is: coverageConfig.ts's only
 // transitive dependency is pino (via logger.ts) — no pg.Pool, no
 // dotenv/config — so importing it here opens no socket and rewrites no env
-// inside a Playwright worker. (MINCRM-688)
+// inside a Playwright worker.
 import { SAFE_PATH_SEGMENT_PATTERN } from '../../../../server/src/coverageAgent/coverageConfig.js';
 
-// Compile-time-only checkpoint (MINCRM-636): asserts
+// Compile-time-only checkpoint: asserts
 // coverage-session-control-client.ts's real exports satisfy the documented
 // HarnessAdapterShape<RestClient> contract (shared/schemas/
 // coverageHarnessAdapterSchema.ts). This file is outside

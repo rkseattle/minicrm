@@ -1,5 +1,5 @@
 /**
- * gRPC Audit Service — E2E functional tests (MINCRM-376)
+ * gRPC Audit Service — E2E functional tests
  *
  * These tests are the primary validation of the refactored GrpcClient's
  * .proto file loading and both unary and server-streaming RPC patterns.
@@ -157,7 +157,7 @@ test('@functional GRPC-5: StreamAuditEvents delivers live contact_created event 
 
   // Wait up to 12 s for the live event to arrive. streamAuditEvents now awaits
   // the HTTP 200 response + a 200 ms PG LISTEN settle before returning, so the
-  // subscription is active before this contact is created (MINCRM-554). The
+  // subscription is active before this contact is created. The
   // business SLA is 8 s; 12 s gives CI headroom under sequential test load.
   const received = await waitForCondition(() => {
     return receivedEvents.some((e) => e.action === 'created' && e.record_id === contact.id);
@@ -204,7 +204,7 @@ test('@functional GRPC-6: StreamAuditEvents with record_id filter delivers only 
 });
 
 // ── Test 7: GDPR masking on stream ───────────────────────────────────────────
-// Requires MINCRM-364 (GDPR erase endpoint) to be present in the server.
+// Requires the GDPR erase endpoint to be present in the server.
 
 test('@functional GRPC-7: StreamAuditEvents GDPR masking hides values for erased records', async ({
   restClient,

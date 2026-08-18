@@ -1,6 +1,6 @@
 /**
  * CoachingInsightsPage — Page Object for the MiniCRM AI rep coaching insights
- * page. (MINCRM-474)
+ * page.
  *
  * Encapsulates all UI interactions on `/insights/coaching`. Every element uses
  * a HealingLocator with at least 2 strategies.

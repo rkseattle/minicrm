@@ -1,5 +1,5 @@
 /**
- * F-OWN — "My Team" Owner Filter (MINCRM-545)
+ * F-OWN — "My Team" Owner Filter
  *
  * Functional regression tests for the three-way owner toggle (All / Mine / My Team)
  * on the Contacts list view. The spec exercises the full filter lifecycle:
@@ -13,7 +13,7 @@
  *   F-OWN5  — Clicking "My Team" toggle button sets ?owner=my_team in URL
  *   F-OWN6  — Clicking "All" toggle button after "My Team" clears the URL param
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Behaviors imported from @behaviors/* only — never @pages/*
@@ -22,7 +22,7 @@
  *   - Negative visibility assertions use the API (listContactsViaApi) rather
  *     than DOM checks — cleaner and no SafePage allowlist bypass needed
  *
- * MINCRM-545
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

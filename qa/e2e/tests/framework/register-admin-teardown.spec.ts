@@ -1,5 +1,5 @@
 /**
- * registerAdminTeardown — unit specs (MINCRM-686).
+ * registerAdminTeardown — unit specs.
  *
  * Covers the helper in qa/e2e/apps/minicrm/helpers.ts that registers a teardown
  * which re-authenticates as an admin before deleting.
@@ -104,10 +104,10 @@ test.describe('registerAdminTeardown', () => {
   test('authenticates as admin before issuing the DELETE', async () => {
     // The property every caller depends on. Specs that re-authenticate the
     // shared restClient as a rep would otherwise delete AS that rep and take a
-    // 403, leaving the record in the database. Since MINCRM-668 that 403 is
+    // 403, leaving the record in the database. Since a later change, that 403 is
     // reported rather than swallowed — the cases below assert it — but the
     // record still leaks, so re-authenticating first is what actually prevents
-    // the failure MINCRM-686 exists to close.
+    // the failure this guard exists to close.
     const { client, calls } = makeRecordingClient();
     const manager = new TestDataManager();
 
@@ -149,7 +149,7 @@ test.describe('registerAdminTeardown', () => {
     expect(deletes).toEqual(['DELETE /api/v1/deals/2', 'DELETE /api/v1/accounts/1']);
   });
 
-  // ── Swallow-vs-propagate boundary (MINCRM-668) ────────────────────────────
+  // ── Swallow-vs-propagate boundary ────────────────────────────
   // The helper used to `.catch(() => undefined)` every error, so a 403 or 500 —
   // precisely the cases where the record IS still in the database — was
   // reported as successful cleanup. Only a 404 means "already gone".

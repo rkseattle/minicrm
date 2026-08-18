@@ -1,7 +1,7 @@
 /**
  * F1-INV — Invite Set-Password Flow
  *
- * Functional tests for the invite / set-password UI. (MINCRM-262)
+ * Functional tests for the invite / set-password UI.
  *
  * Covers:
  *   - /set-password renders for an unauthenticated user with a valid invite token
@@ -11,7 +11,7 @@
  *   - Already-activated token shows the already-activated message
  *   - Protected routes still redirect unauthenticated users to login (no regression)
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators — all through behaviors
@@ -40,7 +40,7 @@ import { inviteUserViaApi } from '@behaviors/minicrm/users.behaviors.js';
 import { navigateToUrlAndWait } from '@behaviors/minicrm/nav.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
-// MINCRM-262: Set-password tests exercise an unauthenticated flow. Use an
+// Set-password tests exercise an unauthenticated flow. Use an
 // empty storageState to prevent the project-level admin session from loading.
 test.use({ storageState: { cookies: [], origins: [] } });
 

@@ -16,7 +16,7 @@
  * human review in CI artifacts regardless of pass/fail.
  *
  * The pseudo locale is applied client-side only (page.evaluate) — it is not in
- * SUPPORTED_LOCALES and does not require any API call. MINCRM-241
+ * SUPPORTED_LOCALES and does not require any API call.
  */
 
 import * as path from 'path';

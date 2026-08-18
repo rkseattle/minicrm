@@ -7,7 +7,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-110
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -163,7 +163,7 @@ export class UsersPage {
     // unscoped `role: button, name: /actions/i` fallback would resolve to
     // whichever such button happens to be the sole match at probe time —
     // silently opening a DIFFERENT user's actions menu with no error (see
-    // MINCRM-410 F-OB8 CI failure).
+    // F-OB8 CI failure).
     await this.page.click(
       [
         { type: 'testId', value: `user-actions-${userId}` },
@@ -280,7 +280,7 @@ export class UsersPage {
     // The shared E2E database can gain users from concurrently-running CI
     // shards between the first backward search and now, shifting which page
     // is actually "last" and pushing this user's row past where the first
-    // search looked (see MINCRM-410 F-OB8 CI failure). Re-read the total page
+    // search looked. Re-read the total page
     // count and search once more from the (possibly new) last page before
     // giving up — this is a full re-jump, not a resumption, since inserts
     // could have landed anywhere, not just past the original last page.

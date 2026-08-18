@@ -4,7 +4,7 @@
  * Encapsulates all locator resolution for the two-panel AI conversation layout:
  * session sidebar, message thread, context panel, and input controls.
  *
- * MINCRM-420, MINCRM-421
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -349,7 +349,7 @@ export class AiPage {
     await confirmBtn.click();
   }
 
-  // ── Mutation confirmation block locators (MINCRM-425, MINCRM-426) ─────────
+  // ── Mutation confirmation block locators ─────────
 
   /** Locates the standard mutation confirmation block. */
   async confirmationBlockLocator(timeout?: number) {
@@ -502,7 +502,7 @@ export class AiPage {
     await input.fill(text);
   }
 
-  // ── Context panel interactions (MINCRM-427, MINCRM-428) ───────────────────
+  // ── Context panel interactions ───────────────────
 
   /** Returns the context panel empty-state message. */
   async contextEmptyStateLocator(timeout?: number) {
@@ -670,7 +670,7 @@ export class AiPage {
       .resolve();
   }
 
-  // ── NLI result rendering (MINCRM-423, MINCRM-431, MINCRM-435) ─────────────
+  // ── NLI result rendering ─────────────
 
   /** Returns the native CRM result block rendered under an assistant turn. */
   async nliResultBlockLocator(timeout?: number) {
@@ -698,7 +698,7 @@ export class AiPage {
       .resolve();
   }
 
-  // ── Context proposal chip (MINCRM-429, MINCRM-430) ─────────────────────────
+  // ── Context proposal chip ─────────────────────────
 
   /** Returns the context proposal chip attached to a specific assistant message. */
   async contextProposalChipLocator(messageId: string) {

@@ -1,9 +1,9 @@
 /**
- * Settings functional tests — exchange rate configuration (MINCRM-251)
+ * Settings functional tests — exchange rate configuration
  *
  * Tests that an admin can configure exchange rates via the Admin Settings page.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators — all through page objects
@@ -32,7 +32,7 @@ import {
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
-// Setup — known-good system state before/after each test (MINCRM-358)
+// Setup — known-good system state before/after each test
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
@@ -67,14 +67,14 @@ test('admin can configure exchange rates and reload to confirm persistence @func
 
   // Set home currency to GBP first — this updates usedCurrencyCodes so that
   // USD and EUR are available in the add-currency dropdown (GBP is excluded
-  // from the rate rows since it is now the home currency). (MINCRM-418)
+  // from the rate rows since it is now the home currency).
   await selectAdminSettingsHomeCurrency('GBP', { page });
 
   // Wait for the exchange rate table to show GBP as the home currency before
   // proceeding. This confirms the React state update has flushed and the
   // refetchOnWindowFocus background re-fetch (staleTime:0) has settled.
   // Re-applying 'GBP' after the row is visible ensures the selection is stable
-  // before the add-currency form is opened. (MINCRM-418)
+  // before the add-currency form is opened.
   await expectAdminSettingsExchangeRateRowVisible('GBP', { page }, 5_000);
   await selectAdminSettingsHomeCurrency('GBP', { page });
 

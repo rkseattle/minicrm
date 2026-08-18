@@ -2,7 +2,7 @@
 /**
  * ingest-coverage-dumps.ts
  *
- * Post-run step for MINCRM-633's record mode: walks the server's coverage
+ * Post-run step for the record mode: walks the server's coverage
  * dump index (index.jsonl under COVERAGE_DUMPS_ROOT) and ingests every dump
  * produced during this run into coverage_units/coverage_test_links via
  * POST /api/v1/admin/coverage/pipeline/ingest — the same endpoint
@@ -80,7 +80,7 @@ async function main(): Promise<void> {
     // dump is touched, rather than surfacing the same error partway through a
     // run that has already reported progress.
     await loginAsAdmin(restClient);
-    // No feature flag to switch on first (MINCRM-685): the ingestion route is
+    // No feature flag to switch on first: the ingestion route is
     // gated by COVERAGE_PIPELINE_INGESTION at process boot, which the server
     // this script targets must already have set — .github/actions/e2e-infra's
     // coverage-instrumentation input supplies it for record-mode runs. A PATCH

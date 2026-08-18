@@ -16,7 +16,7 @@
  *   Account     — link, unlink, detail view shows account name with link
  *   Pagination  — navigate pages, sort stable across pages (AC2)
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
@@ -28,9 +28,9 @@
  *   - AC2: sort order is stable across pages
  *   - AC3: search is case-insensitive
  *
- * MINCRM-138
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - beforeEach creates a fresh UUID-suffixed rep; all records are owned by
  *     that rep and torn down by TestDataManager after each test.
@@ -41,7 +41,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -545,7 +545,7 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   });
 
   // Link the contact to the account via API (PATCH).
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await patchContactAccount(restClient, contact.id, account.id, contact.version);
 
   // Navigate to the contact detail page and confirm the account is shown.
@@ -585,7 +585,7 @@ test('@functional F2-A2: unlink contact from account → account_id is null in A
   expect(before.account_id, 'contact should be linked before unlink').toBe(account.id);
 
   // Unlink by patching account_id to null.
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await patchContactAccount(restClient, contact.id, null, contact.version);
 
   // Verify via API.
@@ -685,7 +685,7 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
 });
 
 // ---------------------------------------------------------------------------
-// Export tests (MINCRM-650)
+// Export tests
 // ---------------------------------------------------------------------------
 
 test('@functional F2-E1: clicking Export PDF on the contact detail page downloads a single-record PDF file', async ({

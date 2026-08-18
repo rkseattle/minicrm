@@ -1,10 +1,10 @@
 /**
- * createTestUser teardown registration — unit specs (MINCRM-668).
+ * createTestUser teardown registration — unit specs.
  *
  * Covers the guarantee that makes the helper safe: the deactivation entry is
  * registered as soon as the server reports a user id, BEFORE the response
  * envelope is validated and before set-password and onboarding run. Every one
- * of those steps can throw, and before MINCRM-668 a throw left the user row
+ * of those steps can throw, and before that fix a throw left the user row
  * behind with nothing to clean it up.
  *
  * WHY THIS LIVES UNDER tests/framework/

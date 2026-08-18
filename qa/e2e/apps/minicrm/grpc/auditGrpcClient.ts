@@ -1,10 +1,10 @@
 /**
- * Typed wrapper for the MiniCRM AuditService (MINCRM-376, MINCRM-377).
+ * Typed wrapper for the MiniCRM AuditService.
  *
  * Uses the Connect protocol (JSON over HTTP/1.1) to call the AuditService
  * endpoints served by ConnectRPC on the Express port (3002 in E2E). This
  * replaces the previous @grpc/grpc-js implementation that targeted a separate
- * port 50051 server (removed in MINCRM-377).
+ * port 50051 server (since removed).
  *
  * Unary calls (ListAuditEvents): POST with Content-Type: application/json.
  * Streaming calls (StreamAuditEvents): POST with Content-Type: application/connect+json
@@ -238,7 +238,6 @@ export async function streamAuditEvents(
   // ready to deliver live NOTIFYs. Rejects if the connection fails before the
   // sentinel is received. This eliminates the race between the caller creating
   // a resource (which fires a NOTIFY) and the server registering its listener
-  // (MINCRM-554).
   let resolveReady!: () => void;
   let rejectReady!: (err: unknown) => void;
   const readyPromise = new Promise<void>((resolve, reject) => {
@@ -335,7 +334,7 @@ export async function streamAuditEvents(
 
   // Block until the server's sentinel arrives, confirming the subscription is
   // active. The server yields the sentinel as its very first frame, so this
-  // resolves as soon as the HTTP response begins streaming (MINCRM-554).
+  // resolves as soon as the HTTP response begins streaming.
   await readyPromise;
 
   return (): void => {

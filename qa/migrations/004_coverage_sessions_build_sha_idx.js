@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 004: index on coverage_sessions.build_sha. (MINCRM-642)
+ * Migration 004: index on coverage_sessions.build_sha.
  *
  * findCoverageSessionDumpsByBuildSha (coverageSessionService.ts) joins
  * coverage_sessions to coverage_session_dumps filtered on

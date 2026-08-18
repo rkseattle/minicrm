@@ -1,5 +1,5 @@
 /**
- * Multiple pipeline support functional tests (MINCRM-397)
+ * Multiple pipeline support functional tests
  *
  * Acceptance criteria covered:
  *   F-P1: Admin can create a new pipeline via the settings UI
@@ -13,13 +13,13 @@
  * All pipelines created by this suite are cleaned up via TestDataManager or
  * the REST API in afterEach. The default pipeline is never deleted.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Spec imports only from @behaviors/*, @apps/*, @framework/*
  *   - Page interactions via behaviors; REST setup via restClient
  *
- * MINCRM-397
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -162,7 +162,7 @@ test(
     // throws, teardown is the only cleanup. registerAdminTeardown rather than a
     // plain register() because on the HAPPY path the record is already gone and
     // the DELETE 404s — a plain entry reports that as `success: false` and logs
-    // "teardown failed" on every green run. (MINCRM-686)
+    // "teardown failed" on every green run.
     registerAdminTeardown(
       testData,
       restClient,

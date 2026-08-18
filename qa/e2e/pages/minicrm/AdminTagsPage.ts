@@ -1,7 +1,7 @@
 /**
  * AdminTagsPage — Page Object for tag management within the Pipelines & Fields
- * settings tab (MINCRM-186). The standalone /admin/tags route was absorbed into
- * /admin/settings?tab=pipelines (MINCRM-563); /admin/tags now redirects there.
+ * settings tab. The standalone /admin/tags route was absorbed into
+ * /admin/settings?tab=pipelines; /admin/tags now redirects there.
  *
  * Encapsulates all UI interactions on the tags section of the Pipelines & Fields
  * tab. Every element uses a HealingLocator with at least 2 strategies.
@@ -9,7 +9,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-186, MINCRM-563
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -27,7 +27,7 @@ export class AdminTagsPage {
   private readonly page: PageFacade;
 
   /**
-   * The canonical URL path for tag management (MINCRM-563).
+   * The canonical URL path for tag management.
    * /admin/tags redirects here via a client-side Navigate component.
    */
   static readonly PATH = '/admin/settings?tab=pipelines';
@@ -66,7 +66,7 @@ export class AdminTagsPage {
    * expectAdminTagsPaginationVisible) then look for `pagination` before it
    * has ever mounted — this was the actual root cause of the F8-TG1b
    * StrategyExhaustedError on testId("pagination"), not locator resolution
-   * speed (MINCRM-666).
+   * speed.
    *
    * Fixed to wait for a POSITIVE presence signal that only exists once the
    * real (non-skeleton, non-loading) content has rendered — `admin-tags-list`
@@ -223,7 +223,7 @@ export class AdminTagsPage {
    * to exhaust its fallback window, HealingLocator falls through to this
    * role strategy and throws a strict-mode violation matching every
    * pipeline-stage delete button too (found via CI failure investigation,
-   * MINCRM-666 follow-up).
+   * follow-up).
    *
    * @param tagId - Tag UUID.
    */

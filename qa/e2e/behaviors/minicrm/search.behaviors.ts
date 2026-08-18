@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-145, MINCRM-168, MINCRM-192
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -310,7 +310,7 @@ export async function clearSearchQuery(context: SearchBehaviorContext): Promise<
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Shape of the global search API response. */

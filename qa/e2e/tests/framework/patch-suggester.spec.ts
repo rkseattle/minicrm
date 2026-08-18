@@ -7,11 +7,11 @@
  * 2. Deduplication when the same method heals twice in one run.
  * 3. An empty report produces the "No heal events" output.
  * 4. buildSuggestionsMarkdown formats suggestions into valid markdown.
- * 5. Trend-aware sorting: suggestions sorted by accumulated count descending. MINCRM-373
- * 6. Trend-aware instruction: count prefix in instruction when trends present. MINCRM-373
- * 7. No count prefix when accumulatedCount is 0 (no trends provided). MINCRM-373
+ * 5. Trend-aware sorting: suggestions sorted by accumulated count descending.
+ * 6. Trend-aware instruction: count prefix in instruction when trends present.
+ * 7. No count prefix when accumulatedCount is 0 (no trends provided).
  *
- * MINCRM-225, MINCRM-373
+ *
  */
 
 import { test, expect } from '@playwright/test';
@@ -270,10 +270,10 @@ test.describe('buildSuggestionsMarkdown', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-373: trend-aware suggestions — count sorting and instruction prefix
+// trend-aware suggestions — count sorting and instruction prefix
 // ---------------------------------------------------------------------------
 
-test.describe('generatePatchSuggestions — trend-aware (MINCRM-373)', () => {
+test.describe('generatePatchSuggestions — trend-aware', () => {
   function makeTrendEntry(count: number): HealTrendEntry {
     return {
       pageObject: 'P',

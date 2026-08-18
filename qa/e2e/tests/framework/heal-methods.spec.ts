@@ -1,17 +1,17 @@
 /**
- * Tests for the new HealMethods added in MINCRM-209:
+ * Tests for the new HealMethods added later:
  * waitFor, textContent, getAttribute, count, selectOption, check, uncheck, hover.
  *
  * Also verifies that doesNotExist and isNotVisible do NOT trigger healing
  * when the primary strategy fails.
  *
- * Tests for checkScreenshot and checkLocatorScreenshot added in MINCRM-319.
- * Tests for auditAccessibility added in MINCRM-320.
- * Tests for mockRoute/unmockRoute/unmockAllRoutes added in MINCRM-321.
+ * Tests for checkScreenshot and checkLocatorScreenshot added later.
+ * Tests for auditAccessibility added later.
+ * Tests for mockRoute/unmockRoute/unmockAllRoutes added later.
  *
  * All locator interactions use mock Page objects — no browser required.
  *
- * MINCRM-209, MINCRM-319, MINCRM-320, MINCRM-321
+ *
  */
 
 import { test, expect } from '@playwright/test';
@@ -46,7 +46,6 @@ function mockLocator(resolves: boolean, matchCount?: number): MockLocator {
   // category rather than the target. With the old blanket 3, every
   // primary-fails-fallback-resolves test looked ambiguous and failed. The
   // count() tests still pass 3 explicitly, where the number is the point.
-  // (MINCRM-695, MINCRM-696)
   const matches = matchCount ?? 1;
   const loc = {
     _resolves: resolves,
@@ -240,7 +239,7 @@ test.describe('healPage.count()', () => {
   // count() queries the primary (highest-priority) strategy directly via
   // Playwright's native count() and never falls back or throws — zero matches
   // is a legitimate answer (e.g. no assistant replies yet), not a healing
-  // scenario. See MINCRM-436/437 regression: routing count() through
+  // scenario. See the regression: routing count() through
   // HealingLocator.resolve() made it throw StrategyExhaustedError whenever the
   // count was legitimately zero.
   test('primary matches nothing — returns 0, no fallback probed, no heal event', async () => {
@@ -398,7 +397,7 @@ test.describe('healPage.hover()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// doesNotExist — two-strategy probe (MINCRM-230)
+// doesNotExist — two-strategy probe
 // ---------------------------------------------------------------------------
 
 test.describe('doesNotExist two-strategy probe', () => {
@@ -442,7 +441,7 @@ test.describe('doesNotExist two-strategy probe', () => {
     expect(HealingRegistry.instance.count).toBe(0);
   });
 
-  test('strategy 0 absent but strategy 1 present → returns false, no heal event (MINCRM-230)', async () => {
+  test('strategy 0 absent but strategy 1 present → returns false, no heal event', async () => {
     // Primary testId is stale → waitFor(detached) resolves immediately (0 matches).
     // Strategy 1 (role) still finds the element → waitFor(attached) resolves.
     // Must return false (element is actually present). No heal event recorded.
@@ -474,7 +473,7 @@ test.describe('doesNotExist two-strategy probe', () => {
 });
 
 // ---------------------------------------------------------------------------
-// isNotVisible — two-strategy probe (MINCRM-230)
+// isNotVisible — two-strategy probe
 // ---------------------------------------------------------------------------
 
 test.describe('isNotVisible two-strategy probe', () => {
@@ -517,7 +516,7 @@ test.describe('isNotVisible two-strategy probe', () => {
     expect(HealingRegistry.instance.count).toBe(0);
   });
 
-  test('strategy 0 hidden but strategy 1 visible → returns false, no heal event (MINCRM-230)', async () => {
+  test('strategy 0 hidden but strategy 1 visible → returns false, no heal event', async () => {
     // Primary testId is stale → waitFor(hidden) resolves immediately (0 matches).
     // Strategy 1 (role) still finds the element visible → waitFor(visible) resolves.
     // Must return false (element is actually visible). No heal event recorded.
@@ -549,7 +548,7 @@ test.describe('isNotVisible two-strategy probe', () => {
 });
 
 // ---------------------------------------------------------------------------
-// checkScreenshot — MINCRM-319
+// checkScreenshot
 // ---------------------------------------------------------------------------
 
 test.describe('healPage.checkScreenshot()', () => {
@@ -617,7 +616,7 @@ test.describe('healPage.checkScreenshot()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// checkLocatorScreenshot — MINCRM-319
+// checkLocatorScreenshot
 // ---------------------------------------------------------------------------
 
 test.describe('healPage.checkLocatorScreenshot()', () => {
@@ -656,7 +655,7 @@ test.describe('healPage.checkLocatorScreenshot()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// auditAccessibility — MINCRM-320
+// auditAccessibility
 // ---------------------------------------------------------------------------
 
 test.describe('healPage.auditAccessibility()', () => {
@@ -669,7 +668,7 @@ test.describe('healPage.auditAccessibility()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// applyAxeBuilderOptions — MINCRM-320
+// applyAxeBuilderOptions
 //
 // The option-forwarding logic is extracted into a pure helper so it can be
 // tested without a real browser or an ES-module monkey-patch (which would fail
@@ -760,7 +759,7 @@ test.describe('applyAxeBuilderOptions()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// mockRoute / unmockRoute / unmockAllRoutes — MINCRM-321
+// mockRoute / unmockRoute / unmockAllRoutes
 // ---------------------------------------------------------------------------
 
 /**
@@ -792,7 +791,7 @@ function mockPageWithRouting(): { page: Page; routeCalls: RouteCall[]; unrouteCa
   return { page, routeCalls, unrouteCalls };
 }
 
-test.describe('mockRoute / unmockRoute / unmockAllRoutes (MINCRM-321)', () => {
+test.describe('mockRoute / unmockRoute / unmockAllRoutes', () => {
   test('mockRoute registers the pattern on page.route()', async () => {
     const { page, routeCalls } = mockPageWithRouting();
     const hp = buildHealPage(page, 'mockRoute registration');

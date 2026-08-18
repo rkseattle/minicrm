@@ -1,5 +1,5 @@
 /**
- * F-AI-UD — AI Usage & Cost Dashboard (MINCRM-459)
+ * F-AI-UD — AI Usage & Cost Dashboard
  *
  * Covers the admin usage/cost dashboard page and the cost-rate admin setting.
  *
@@ -10,7 +10,7 @@
  *   F-AI-UD-4 — GET /admin/ai/usage/daily returns the expected shape
  *   F-AI-UD-5 — GET /admin/ai/usage/export returns a CSV with correct headers
  *   F-AI-UD-6 — PATCH /admin/ai/cost-rates persists both rates (mutates shared state)
- *   F-AI-UD-7 — Clicking Export PDF on the dashboard downloads a PDF file (MINCRM-601)
+ *   F-AI-UD-7 — Clicking Export PDF on the dashboard downloads a PDF file
  *
  * E2E limitations:
  *   - No real AI usage is generated in this environment (Anthropic calls are

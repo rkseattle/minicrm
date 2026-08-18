@@ -7,7 +7,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-110
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -506,7 +506,7 @@ export class ContactDetailPage {
     return this.page.url();
   }
 
-  // ── AI champion/blocker detection (MINCRM-466) ──────────────────────────────────
+  // ── AI champion/blocker detection ──────────────────────────────────
 
   /** Returns a resolved locator for the champion/blocker badge, scoped to a contact ID. */
   async championBlockerBadgeLocator(contactId: string) {
@@ -538,7 +538,7 @@ export class ContactDetailPage {
     return locator.isVisible().catch(() => false);
   }
 
-  // ── AI sentiment tracking (MINCRM-472) ──────────────────────────────────────────
+  // ── AI sentiment tracking ──────────────────────────────────────────
 
   /**
    * Returns true when the sentiment trend sparkline is currently visible, scoped
@@ -563,7 +563,7 @@ export class ContactDetailPage {
     return locator.isVisible().catch(() => false);
   }
 
-  // ── AI smart follow-up timing suggestions (MINCRM-470) ───────────────────────────
+  // ── AI smart follow-up timing suggestions ───────────────────────────
 
   /**
    * Returns true when the follow-up timing card is currently visible, scoped
@@ -588,7 +588,7 @@ export class ContactDetailPage {
     return locator.isVisible().catch(() => false);
   }
 
-  // ── AI warm introduction path mapping (MINCRM-468) ──────────────────────────────
+  // ── AI warm introduction path mapping ──────────────────────────────
 
   /** Returns a resolved locator for the "Find warm path" button, scoped to a contact ID. */
   async findWarmPathButtonLocator(contactId: string) {
@@ -650,7 +650,7 @@ export class ContactDetailPage {
       .resolve(timeout);
   }
 
-  /** Returns a resolved locator for the "Draft Email" button. (MINCRM-437) */
+  /** Returns a resolved locator for the "Draft Email" button. */
   async draftEmailButtonLocator(timeout?: number) {
     return this.page
       .locate(
@@ -663,7 +663,7 @@ export class ContactDetailPage {
       .resolve(timeout);
   }
 
-  /** Clicks the "Draft Email" button. (MINCRM-437) */
+  /** Clicks the "Draft Email" button. */
   async clickDraftEmail(timeout?: number): Promise<void> {
     const locator = await this.draftEmailButtonLocator(timeout);
     await locator.click();
@@ -673,7 +673,7 @@ export class ContactDetailPage {
    * Returns true when the "Draft Email" button is currently visible. Guards
    * presence first — locate().resolve() throws StrategyExhaustedError
    * immediately on an absent element rather than waiting for it, which is
-   * unsuitable for "may legitimately be absent" checks. (MINCRM-437)
+   * unsuitable for "may legitimately be absent" checks.
    */
   async isDraftEmailButtonVisible(): Promise<boolean> {
     const present = await this.page

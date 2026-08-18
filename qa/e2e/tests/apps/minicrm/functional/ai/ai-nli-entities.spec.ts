@@ -1,5 +1,5 @@
 /**
- * F-AI-NLI-ENT — NLI entity tools: notes, tags, reports (MINCRM-432, MINCRM-433, MINCRM-424)
+ * F-AI-NLI-ENT — NLI entity tools: notes, tags, reports
  *
  * Validates the UI layer for notes cross-entity search, tag operations, and
  * report generation/save intents sent through the AI conversation panel.
@@ -45,7 +45,7 @@ test.beforeEach(async ({ restClient }) => {
 });
 
 // beforeEach alone cleans the PREVIOUS test's sessions, so the last test in the
-// file would leave its own behind for the rest of the run. (MINCRM-686)
+// file would leave its own behind for the rest of the run.
 test.afterEach(async ({ restClient }) => {
   await deleteAllAiSessionsViaApi(restClient);
   // Restore AI defaults so the toggle does not outlive this file. See

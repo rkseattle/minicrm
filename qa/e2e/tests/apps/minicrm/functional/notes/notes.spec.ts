@@ -1,7 +1,7 @@
 /**
  * F14 — Rich Notes (CRUD, Visibility, Audit Trail)
  *
- * Functional regression tests for the rich notes feature introduced in MINCRM-352.
+ * Functional regression tests for the rich notes feature introduced in.
  * Notes can be attached to contacts, accounts, deals, and leads.
  *
  * Test groups:
@@ -11,20 +11,20 @@
  *   Visibility (F14-V) — create a private note as rep A; verify rep B sees only the masked placeholder
  *   Audit (F14-A)      — verify audit_log entries are written for create, update, delete
  *
- * Coverage gaps addressed (MINCRM-409):
+ * Coverage gaps addressed:
  *   F14-C3: Create a team note on a deal (not just contacts)
  *   F14-V2: Admin changes a note from private to team; both users can then see it
  *   F14-C4: Create a note via UI with rich-text content; body_text is stored
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - No raw locators in this file — UI interaction via behaviors/page objects only
  *
- * MINCRM-352
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - beforeEach creates a fresh UUID-suffixed rep; all contacts, accounts,
  *     deals, and notes are owned by that rep and torn down by TestDataManager.
@@ -39,7 +39,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -272,7 +272,7 @@ test('@functional F14-V1: Private note from rep A is masked for rep B', async ({
   restClient,
   testData,
 }) => {
-  // beforeEach leaves restClient as rep; re-auth as admin for createTestUser/deactivate (MINCRM-415)
+  // beforeEach leaves restClient as rep; re-auth as admin for createTestUser/deactivate
   await loginAsAdmin(restClient);
 
   const contact = await createTestContact(testData, restClient);
@@ -390,7 +390,7 @@ test('@functional F14-A2: Delete a note — note_deleted audit entry recorded', 
 });
 
 // ---------------------------------------------------------------------------
-// F14-C3 — Create a team note on a deal (MINCRM-409)
+// F14-C3 — Create a team note on a deal
 // ---------------------------------------------------------------------------
 
 test('@functional F14-C3: Create a team note on a deal — note appears in the API list', async ({
@@ -429,7 +429,7 @@ test('@functional F14-C3: Create a team note on a deal — note appears in the A
 });
 
 // ---------------------------------------------------------------------------
-// F14-V2 — Admin changes note visibility from private to team (MINCRM-409)
+// F14-V2 — Admin changes note visibility from private to team
 // ---------------------------------------------------------------------------
 
 test('@functional F14-V2: Admin changes note visibility from private to team; note is no longer masked for a second user', async ({
@@ -481,7 +481,7 @@ test('@functional F14-V2: Admin changes note visibility from private to team; no
 });
 
 // ---------------------------------------------------------------------------
-// F14-C4 — Rich-text note content is persisted (MINCRM-409)
+// F14-C4 — Rich-text note content is persisted
 // ---------------------------------------------------------------------------
 
 test('@functional F14-C4: Create a note via UI with rich-text body; body_text is stored and visible', async ({

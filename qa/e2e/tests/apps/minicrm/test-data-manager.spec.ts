@@ -12,7 +12,7 @@
  * No real server is required. RestClient is replaced with a lightweight stub
  * that records calls and can be configured to throw on specific paths.
  *
- * MINCRM-129
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -265,7 +265,7 @@ test.describe('AC3 — partial teardown failure', () => {
 });
 
 // ---------------------------------------------------------------------------
-// teardown — a 404 means the record is already gone (MINCRM-668)
+// teardown — a 404 means the record is already gone
 // ---------------------------------------------------------------------------
 
 test.describe('TestDataManager — 404 handling on teardown', () => {

@@ -11,7 +11,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-192
+ *
  */
 
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
@@ -409,7 +409,7 @@ export class GlobalSearchPage {
     try {
       // Use `within` to scope the spinner CSS strategy to the panel container
       // rather than calling .locator() on a resolved SafeLocator (forbidden —
-      // child locator factories escape the healing framework). MINCRM-234
+      // child locator factories escape the healing framework).
       const spinner = await this.page
         .locate(
           [

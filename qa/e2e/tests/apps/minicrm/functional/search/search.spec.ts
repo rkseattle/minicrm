@@ -11,7 +11,7 @@
  *   Result Nav       — clicking result links navigates to the correct detail page
  *   Edge Cases       — short queries, special characters, very long query
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional and @search
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All UI interactions via behaviors — no raw locators in this file
@@ -19,7 +19,7 @@
  *   - Result counts verified against restClient API queries (AC2)
  *   - Tests pass with --workers=4 (no shared mutable state)
  *
- * UI testids used (GlobalSearch.tsx, MINCRM-168):
+ * UI testids used (GlobalSearch.tsx):
  *   global-search-input        — the search input (NavHeader for all layouts on desktop and
  *                                left/hamburger mobile; NavTop mobile drawer for NavTop mobile)
  *   search-results-panel       — the results dropdown
@@ -29,9 +29,9 @@
  *   search-result-account-{id} — individual account result link
  *   search-result-deal-{id}    — individual deal result link
  *
- * MINCRM-145, MINCRM-192
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - Every test creates UUID-suffixed records in beforeEach (fresh rep per test).
  *   - No aggregate count assertions on the full table — all API cross-checks
@@ -41,7 +41,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -338,7 +338,7 @@ test('@functional @search F9-ES1: query with no matching records shows explicit 
 });
 
 // F9-ES2 ("empty state is not a blank area — it contains text") was removed in
-// MINCRM-409 because F9-ES1 already asserts on specific text content via
+// because F9-ES1 already asserts on specific text content via
 // result.emptyStateText, making ES2 fully redundant.
 
 // ---------------------------------------------------------------------------
@@ -491,7 +491,7 @@ test('@functional @search F9-EC3: query with special characters is handled grace
     const query = specialQueries[i] as string;
     // panelTimeout: 3 s — these are graceful-degradation checks; whether the
     // panel appears is not the assertion. The full 10 s default would exhaust
-    // the test timeout across two iterations under 2-worker load (MINCRM-554).
+    // the test timeout across two iterations under 2-worker load.
     const panelResult = await typeSearchQueryAndCheckPanel(query, { page }, 3_000);
     expect(
       panelResult.noErrorAlert,
@@ -500,7 +500,7 @@ test('@functional @search F9-EC3: query with special characters is handled grace
 
     // Also verify via API — must not return a 500 (4xx is acceptable for validation).
     // timeout: 10 s so a slow/hung response fails fast rather than burning the
-    // remaining test budget (MINCRM-554).
+    // remaining test budget.
     try {
       const apiResult = await restClient.get<GlobalSearchResult>(
         `/api/v1/search?q=${encodeURIComponent(query)}`,
@@ -531,12 +531,12 @@ test('@functional @search F9-EC4: very long query string is handled gracefully',
   // 500-character query — well beyond any realistic search term.
   const longQuery = 'a'.repeat(500);
   // panelTimeout: 3 s — graceful-degradation check; whether the panel appears
-  // for a 500-char query is not the assertion (MINCRM-554).
+  // for a 500-char query is not the assertion.
   const result = await typeSearchQueryAndCheckPanel(longQuery, { page }, 3_000);
   expect(result.noErrorAlert, 'no error alert for very long query').toBe(true);
 
   // API must also handle gracefully (4xx is fine — 500 is not).
-  // timeout: 10 s so a slow/hung response fails fast (MINCRM-554).
+  // timeout: 10 s so a slow/hung response fails fast.
   try {
     const apiResult = await restClient.get<GlobalSearchResult>(
       `/api/v1/search?q=${encodeURIComponent(longQuery)}`,
@@ -555,7 +555,7 @@ test('@functional @search F9-EC4: very long query string is handled gracefully',
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-207 — expanded field coverage E2E tests
+// expanded field coverage E2E tests
 // ---------------------------------------------------------------------------
 
 test('@functional @search F9-EX1: searching a contact phone number returns that contact (MINCRM-207)', async ({
@@ -613,7 +613,7 @@ test('@functional @search F9-EX2: searching a deal value returns that deal (MINC
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-362 — notes body_text search
+// notes body_text search
 // ---------------------------------------------------------------------------
 
 test('@functional @search F9-NT1: searching note body text returns the parent contact (MINCRM-362)', async ({

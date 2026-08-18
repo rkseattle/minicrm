@@ -1,7 +1,7 @@
 /**
  * MiniCRM setup helpers — canonical pattern for creating test entities.
  *
- * MINCRM-110
+ *
  *
  * Each helper:
  *   1. Creates the entity via RestClient.
@@ -15,7 +15,7 @@
  * New helpers for other entity types (deals, activities, accounts) follow the
  * exact same shape — see inline comments for the required steps.
  *
- * MINCRM-129, MINCRM-110
+ *
  */
 
 import type { Page, BrowserContext } from '@playwright/test';
@@ -50,7 +50,7 @@ import { loginAsAdmin, resolveAdminCredentials } from '@behaviors/minicrm/auth.b
  * and close_date are timezone-naive date columns the server resolves in UTC.
  *
  * Mirrors server/src/utils/utcDate.ts's utcDayOffset, which qa/ cannot import
- * (see docs/dev/dates-and-timezones.md). (MINCRM-700)
+ * (see docs/dev/dates-and-timezones.md).
  */
 export function utcDayOffset(dayOffset: number): string {
   const now = new Date();
@@ -79,7 +79,7 @@ export interface TestContact {
   department: string | null;
   account_id: string | null;
   owner_id: string;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
 }
 
@@ -111,7 +111,7 @@ export interface TestAccount {
   employee_range: string | null;
   revenue_range: string | null;
   owner_id: string;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
 }
 
@@ -142,13 +142,13 @@ export interface CreateAccountOverrides {
  * between every create — would therefore delete as that rep, and
  * `deleteContactHandler` answers 403 for a non-owner non-admin
  * (`contactController.ts:608-609`), so the record is never removed. Since
- * MINCRM-668 that 403 is reported rather than swallowed — teardown records
+ * that 403 is reported rather than swallowed — teardown records
  * `success: false` and the test is annotated — but the row still leaks, which
- * is the silent-failure mode MINCRM-686 exists to close.
+ * is the silent-failure mode this guard exists to close.
  *
  * Use this instead of `testData.register()` whenever the client may not be an
  * admin at teardown time. It mirrors `createTestRep`'s deactivation callback,
- * which re-authenticates for the same reason (MINCRM-415).
+ * which re-authenticates for the same reason.
  *
  * **Side effect:** this leaves `restClient` authenticated as the admin. Teardown
  * runs in reverse registration order, so every entry registered BEFORE this one
@@ -162,7 +162,6 @@ export interface CreateAccountOverrides {
  * gets a 404 rather than deleting it. Since a 404 is swallowed as "already
  * gone", a rep-owned session registered here would leak silently. `ai.spec.ts`
  * registers only admin-owned sessions, which is why it is correct today.
- * (MINCRM-668)
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - The fixture RestClient, in any auth state.
@@ -189,7 +188,7 @@ export function registerAdminTeardown(
     // TestDataManager records `success: false` and logs it. Those are exactly
     // the cases where the record IS still in the database, and a blanket catch
     // reported successful cleanup while the row leaked: the silent-failure mode
-    // MINCRM-686 exists to close, reintroduced one layer up. (MINCRM-668)
+    // this guard exists to close, reintroduced one layer up.
     //
     // `validationError === undefined` is belt-and-braces: RestClientError is
     // one class for two unrelated failures — an error status and a schema
@@ -220,7 +219,7 @@ export function registerAdminTeardown(
  * registration must survive envelope drift: the server has already committed
  * the row by the time the client validates, so a rename like `user` → `data`
  * must not cost us the id we need to clean it up. Returns undefined when no id
- * is discoverable, in which case there is nothing registrable. (MINCRM-668)
+ * is discoverable, in which case there is nothing registrable.
  *
  * @param body - The raw, unvalidated response body.
  * @returns The user id, or undefined if none could be found.
@@ -247,7 +246,7 @@ function findCreatedUserId(body: unknown): string | undefined {
  * Users cannot be hard-deleted, so cleanup is a PATCH rather than the DELETE a
  * plain `testData.register()` entry would issue. Re-authenticates as admin
  * first: tests routinely leave `restClient` authenticated as the user they just
- * created, and deactivation is admin-only. (MINCRM-415, MINCRM-668)
+ * created, and deactivation is admin-only.
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - The fixture RestClient, in any auth state. Must outlive
@@ -269,7 +268,7 @@ export function registerUserDeactivation(
       // Same 404 semantics as every other teardown path: a user that is already
       // gone is cleanup having happened. Unreachable while users are only ever
       // soft-deleted, but leaving this path as the one that treats 404 as
-      // failure is the asymmetry that lets the three drift apart. (MINCRM-668)
+      // failure is the asymmetry that lets the three drift apart.
       if (isAlreadyGone(err)) return;
       throw err;
     }
@@ -307,7 +306,7 @@ export async function createTestContact(
   if (overrides.title !== undefined) payload['title'] = overrides.title;
   if (overrides.department !== undefined) payload['department'] = overrides.department;
 
-  // Step 1: create via REST with response schema validation (MINCRM-229).
+  // Step 1: create via REST with response schema validation.
   // Server returns { contact: ContactRow } — validate the envelope + inner object.
   const response = await restClient.post<{ contact: TestContact }>('/api/v1/contacts', payload, {
     schema: contactResponseEnvelopeSchema,
@@ -346,7 +345,7 @@ export async function createTestAccount(
   if (overrides.employee_range !== undefined) payload['employee_range'] = overrides.employee_range;
   if (overrides.revenue_range !== undefined) payload['revenue_range'] = overrides.revenue_range;
 
-  // Step 1: create via REST with response schema validation (MINCRM-229).
+  // Step 1: create via REST with response schema validation.
   // Server returns { account: AccountRow } — validate the envelope + inner object.
   const response = await restClient.post<{ account: TestAccount }>('/api/v1/accounts', payload, {
     schema: accountResponseEnvelopeSchema,
@@ -381,7 +380,7 @@ export interface TestDeal {
   loss_reason: string | null;
   account_id: string;
   owner_id: string;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
 }
 
@@ -415,7 +414,7 @@ export async function createTestDeal(
   // Optional fields must be omitted when unset — the server Zod schema rejects
   // explicit null for value (expects number) and close_date (expects string).
   // value is a string in the overrides interface for caller convenience but the
-  // server Zod schema requires z.number(), so we coerce here. (MINCRM-189)
+  // server Zod schema requires z.number(), so we coerce here.
   const payload: Record<string, string | number> = {
     name: overrides.name ?? `Test Deal ${Date.now()}`,
     stage: overrides.stage ?? 'Prospecting',
@@ -425,7 +424,7 @@ export async function createTestDeal(
   if (overrides.currency !== undefined) payload['currency'] = overrides.currency;
   if (overrides.close_date !== undefined) payload['close_date'] = overrides.close_date;
 
-  // Server returns { deal: DealRow } — validate the envelope + inner object (MINCRM-229).
+  // Server returns { deal: DealRow } — validate the envelope + inner object.
   const response = await restClient.post<{ deal: TestDeal }>('/api/v1/deals', payload, {
     schema: dealResponseEnvelopeSchema,
   });
@@ -474,7 +473,7 @@ export async function createTestTag(
     name: overrides.name ?? `test-tag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   };
 
-  // Server returns { tag: TagRow } on 201 — validate the envelope (MINCRM-370).
+  // Server returns { tag: TagRow } on 201 — validate the envelope.
   const response = await restClient.post<{ tag: TestTag }>('/api/v1/tags', payload, {
     schema: tagResponseEnvelopeSchema,
   });
@@ -507,7 +506,7 @@ export interface TestActivity {
   account_id: string | null;
   deal_id: string | null;
   owner_id: string;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
 }
 
@@ -554,7 +553,7 @@ export async function createTestActivity(
   if (overrides.due_date !== undefined) payload['due_date'] = overrides.due_date;
   if (overrides.direction !== undefined) payload['direction'] = overrides.direction;
 
-  // Server returns { activity: ActivityRow } — validate the envelope (MINCRM-370).
+  // Server returns { activity: ActivityRow } — validate the envelope.
   const response = await restClient.post<{ activity: TestActivity }>(
     '/api/v1/activities',
     payload,
@@ -569,7 +568,7 @@ export async function createTestActivity(
 }
 
 // ---------------------------------------------------------------------------
-// Lead helper (MINCRM-400)
+// Lead helper
 // ---------------------------------------------------------------------------
 
 /** Minimal representation of a MiniCRM lead as returned by POST /api/v1/leads. */
@@ -579,7 +578,7 @@ export interface TestLead {
   last_name: string | null;
   email: string;
   status: string;
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: number;
 }
 
@@ -658,7 +657,7 @@ export interface CreateUserOverrides {
  *
  * `testData` is required rather than optional deliberately: an optional
  * parameter would leave the unregistered path reachable, and forgetting it at
- * one of the call sites is the defect this helper had. (MINCRM-668)
+ * one of the call sites is the defect this helper had.
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - The fixture RestClient, authenticated as admin. Must
@@ -677,7 +676,7 @@ export async function createTestUser(
   // just above the onboarding step, where throwing left an invited user behind
   // that nothing could clean up — the registered teardown calls loginAsAdmin,
   // which needs the same variable and would throw too. Failing here means no
-  // row is created, so there is nothing to leak. (MINCRM-668)
+  // row is created, so there is nothing to leak.
   resolveAdminCredentials('createTestUser');
 
   // crypto.randomUUID() is cryptographically random — collision-safe under high parallelism.
@@ -692,7 +691,7 @@ export async function createTestUser(
   // the user row before the client validates, so passing `schema` here would
   // throw on envelope drift with the row already created and no teardown
   // registered — leaking exactly the user this helper exists to clean up.
-  // api-contract.spec.ts CT-3 exercises that failure deliberately. (MINCRM-668)
+  // api-contract.spec.ts CT-3 exercises that failure deliberately.
   const response = await restClient.post<{ user: TestUser; inviteToken: string }>(
     '/api/v1/users/invite',
     payload,
@@ -708,7 +707,7 @@ export async function createTestUser(
     registerUserDeactivation(testData, restClient, createdId);
   }
 
-  // Now enforce the response contract (MINCRM-370). A failure here still tears
+  // Now enforce the response contract. A failure here still tears
   // the user down, because registration already happened. RestClientError
   // rather than a plain Error so callers keep the status, body, and structured
   // Zod detail that `parseResponse` would have given them.
@@ -732,7 +731,7 @@ export async function createTestUser(
   await restClient.post('/api/v1/users/set-password', { token: inviteToken, password });
 
   // Suppress the onboarding widget for this test user so it does not appear
-  // as a z-50 fixed overlay and intercept pointer events in other tests. (MINCRM-410)
+  // as a z-50 fixed overlay and intercept pointer events in other tests.
   await restClient.post('/api/v1/auth/login', { email: user.email, password });
   try {
     await restClient.put('/api/v1/settings/onboarding', { onboarding_completed: true });
@@ -748,7 +747,7 @@ export async function createTestUser(
 }
 
 // ---------------------------------------------------------------------------
-// Ephemeral user helpers (MINCRM-415)
+// Ephemeral user helpers
 // ---------------------------------------------------------------------------
 
 /** Credentials returned by createTestRep / createTestAdmin. */
@@ -773,7 +772,7 @@ export interface InviteUserParams {
  *
  * Every test that drives the browser as a non-admin user should call this
  * instead of createTestUser() so cleanup is guaranteed and the onboarding
- * widget never appears during the test. (MINCRM-415)
+ * widget never appears during the test.
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
@@ -794,7 +793,7 @@ export async function createTestRep(
 
   // Register before set-password and onboarding, not after: the row exists from
   // the moment the invite returns, and both steps below are network calls that
-  // can throw with the user already created. (MINCRM-668)
+  // can throw with the user already created.
   registerUserDeactivation(testData, restClient, user.id, 'rep');
 
   await setUserPassword(restClient, inviteToken, password);
@@ -809,7 +808,7 @@ export async function createTestRep(
  * Identical to createTestRep() but the user is invited with role='admin'.
  * Use this for tests that exercise admin-only functionality (user management,
  * pipeline stages, branding, webhooks, system settings) so the shared admin
- * account is never mutated. (MINCRM-415)
+ * account is never mutated.
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
@@ -830,7 +829,7 @@ export async function createTestAdmin(
 
   // Register before set-password and onboarding, not after: the row exists from
   // the moment the invite returns, and both steps below are network calls that
-  // can throw with the user already created. (MINCRM-668)
+  // can throw with the user already created.
   registerUserDeactivation(testData, restClient, user.id, 'admin');
 
   await setUserPassword(restClient, inviteToken, password);
@@ -858,12 +857,12 @@ export async function loginAndVerify(
 ): Promise<void> {
   await restClient.post('/api/v1/auth/login', { email, password });
   // Validate the /me response envelope so a session-shape regression fails here
-  // immediately rather than surfacing as a type error in downstream helpers (MINCRM-370).
+  // immediately rather than surfacing as a type error in downstream helpers.
   await restClient.get('/api/v1/auth/me', { schema: authMeResponseEnvelopeSchema });
 }
 
 // ---------------------------------------------------------------------------
-// Navigation helpers (MINCRM-205)
+// Navigation helpers
 // ---------------------------------------------------------------------------
 
 /** How long to wait for the feature-flag query that gates flag-dependent subtrees. */
@@ -871,7 +870,7 @@ const FLAG_QUERY_TIMEOUT_MS = 15_000;
 
 /**
  * Probe budget for the FIRST interaction with a control that renders only after
- * an async gate resolves. (MINCRM-703)
+ * an async gate resolves.
  *
  * The healing locator probes each strategy for 2s by default, which is right for
  * an element already on the page and wrong for the first click after a
@@ -916,7 +915,6 @@ export const FIRST_INTERACTION_TIMEOUT_MS = 15_000;
  * second navigation in the same test legitimately issues no new request — and
  * `domcontentloaded` alone is a correct floor for pages with no flag-gated
  * content. Never silently swallow a real failure; this only tolerates absence.
- * (MINCRM-700)
  */
 export async function gotoAndSettle(page: SafePage, url: string): Promise<void> {
   await navigateAndSettle(page, () => page.goto(url, { waitUntil: 'domcontentloaded' }));
@@ -925,7 +923,7 @@ export async function gotoAndSettle(page: SafePage, url: string): Promise<void> 
 /**
  * As `gotoAndSettle`, but for navigations that are not a `goto` — `reload`,
  * `goBack`, `goForward`. Same rationale; the caller supplies the action so the
- * flag listener can be armed before it starts. (MINCRM-700)
+ * flag listener can be armed before it starts.
  */
 export async function navigateAndSettle(
   page: SafePage,
@@ -943,7 +941,6 @@ export async function navigateAndSettle(
   // `requestfinished` fires when the page's own request completes, which for an
   // intercepted route is after fulfill() — so it observes the value the app
   // actually receives rather than the one the interceptor was about to rewrite.
-  // (MINCRM-700)
   const flagsSettled = page
     .waitForEvent('requestfinished', {
       predicate: (request) => request.url().includes('/api/v1/feature-flags/me'),
@@ -988,7 +985,7 @@ export async function navigateToAdminSettings(page: SafePage): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Feature flag route interception (MINCRM-477)
+// Feature flag route interception
 // ---------------------------------------------------------------------------
 
 /**
@@ -1035,10 +1032,10 @@ export async function withFlags(
       //    timeout with no diagnosable cause.
       //
       // abort() terminates the request so the query settles into an error state
-      // instead of hanging. Since MINCRM-695/696 an unresolved flag map means every
+      // instead of hanging. Since a later change, an unresolved flag map means every
       // feature reads as OFF, so a negative-direction assertion still gets the
       // right answer, and a positive-direction one fails fast and legibly rather
-      // than timing out. (MINCRM-695, MINCRM-696)
+      // than timing out.
       if (!route.request().frame().page().isClosed()) {
         await route.abort().catch(() => undefined);
       }

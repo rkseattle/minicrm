@@ -10,7 +10,7 @@
  *   0 — no stale testids found (unexercised testids are informational only)
  *   1 — one or more stale testids found (broken locators, CI-blocking)
  *
- * MINCRM-266
+ *
  */
 
 import fs from 'node:fs';

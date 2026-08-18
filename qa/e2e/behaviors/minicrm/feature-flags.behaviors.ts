@@ -4,7 +4,7 @@
  * Provides REST API helpers for reading and updating feature flags in E2E tests.
  * Behaviors do NOT contain assertions (no expect() calls).
  *
- * MINCRM-463
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -143,7 +143,7 @@ export async function getMyFeatureFlags(restClient: RestClient): Promise<Record<
 }
 
 // ---------------------------------------------------------------------------
-// Rollout REST behaviors (MINCRM-490)
+// Rollout REST behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -173,7 +173,7 @@ export async function updateFeatureFlagRollout(
 }
 
 // ---------------------------------------------------------------------------
-// User override REST behaviors (MINCRM-492)
+// User override REST behaviors
 // ---------------------------------------------------------------------------
 
 /** Shape of a per-user override entry returned from the API. */
@@ -245,7 +245,7 @@ export async function deleteUserOverride(
 }
 
 // ---------------------------------------------------------------------------
-// Flag group REST behaviors (MINCRM-491)
+// Flag group REST behaviors
 // ---------------------------------------------------------------------------
 
 /** Shape of a flag group row returned from the API. */

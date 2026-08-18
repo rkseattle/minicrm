@@ -1,12 +1,12 @@
 /**
- * F-CE — AI contact auto-enrich from pasted text (MINCRM-439)
+ * F-CE — AI contact auto-enrich from pasted text
  *
  * Functional regression test for the "Enrich from text" action on the
  * contact create form.
  *
  * Stub note:
  *   The E2E server runs with E2E=true, so enrichContactFromText bypasses the
- *   Anthropic SDK and returns a deterministic stub extraction. (MINCRM-439)
+ *   Anthropic SDK and returns a deterministic stub extraction.
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

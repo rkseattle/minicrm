@@ -16,7 +16,7 @@
  *    `testTitleContains` scope with contradictory resource sets (sanity
  *    check against typos/copy-paste errors).
  *
- * MINCRM-661
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -42,7 +42,7 @@ const FUNCTIONAL_TESTS_DIR = path.join(REPO_ROOT, 'qa/e2e/tests/apps/minicrm/fun
  *  @serial — several comment-only files are deliberately absent. */
 const KNOWN_COMMENT_ONLY_FILES = [
   'qa/e2e/tests/apps/minicrm/functional/insights/coaching.spec.ts',
-  // data-hygiene.spec.ts was here until MINCRM-705. Its comment claimed no
+  // data-hygiene.spec.ts was here until. Its comment claimed no
   // @serial was needed, reasoning about data_hygiene_scoring_config while
   // overlooking the setAiEnabled() call that writes the ai_configuration_enabled
   // singleton. F-HYGIENE3 is now genuinely tagged and registered.
@@ -78,7 +78,7 @@ test.describe('resource-registry — entries reference real files', () => {
   // Deduplicated by file: a file may legitimately hold several entries (a
   // file-wide one plus title-scoped ones), and this assertion is about the file,
   // not the entry — iterating entries would declare duplicate test titles, which
-  // Playwright rejects outright. (MINCRM-705)
+  // Playwright rejects outright.
   for (const file of [...new Set(RESOURCE_REGISTRY.map((e) => e.file))]) {
     test(`"${file}" exists on disk`, () => {
       const absPath = path.join(REPO_ROOT, file);
@@ -156,7 +156,7 @@ test.describe('resource-registry — completeness against files on disk', () => 
 });
 
 // ---------------------------------------------------------------------------
-// pipeline_stages_reviewed modeling (MINCRM-705)
+// pipeline_stages_reviewed modeling
 //
 // These pin the REGISTRY ENTRIES, not the graph builder. Asserting that two
 // files land in different conflict groups would be trivially true once they

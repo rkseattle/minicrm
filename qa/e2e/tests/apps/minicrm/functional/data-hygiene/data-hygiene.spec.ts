@@ -1,5 +1,5 @@
 /**
- * F-HYGIENE — AI data hygiene assistant (MINCRM-476)
+ * F-HYGIENE — AI data hygiene assistant
  *
  * Functional regression tests for the personal hygiene queue (/hygiene), the
  * org-wide admin queue (/admin/hygiene), dismissing a finding with a required
@@ -19,7 +19,7 @@
  *     scoring config while overlooking F-HYGIENE3's setAiEnabled() call, which
  *     writes the shared ai_configuration_enabled singleton that eleven other
  *     @serial specs conflict on. F-HYGIENE3 is now @serial and registered, and
- *     the afterEach below restores defaults. (MINCRM-705)
+ *     the afterEach below restores defaults.
  *   - contact_missing_contact_info is used as the deterministic finding
  *     signal: createTestContact() never sets a phone number, and the
  *     contact_missing_contact_info gatherer flags any contact missing either
@@ -59,7 +59,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 // run-now button is clickable, and previously never restored it — leaving
 // ai_configuration_enabled on for whatever ran next. That row is written by
 // eleven other @serial specs, so the leak was a live cross-file hazard rather
-// than untidiness. (MINCRM-358, MINCRM-705)
+// than untidiness.
 //
 // Scoped to F-HYGIENE3's own describe.serial block rather than the file, and
 // this is load-bearing: F-HYGIENE1 and F-HYGIENE2 are plain @functional and run

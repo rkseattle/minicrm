@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check-settings-mutations — MINCRM-358, MINCRM-552, MINCRM-705
+ * check-settings-mutations
  *
  * CI lint step enforcing two independent invariants about which spec files must
  * carry the `@serial` tag.
@@ -104,7 +104,7 @@ const SELF_SERIAL_ALLOWLIST = [
     block: 'Profile page — notification preferences',
     reason: 'caller-scoped',
     // The F10-PP tests create an ephemeral admin and re-authenticate restClient
-    // as that user (:57-64, MINCRM-415), so patchNotificationPreferences writes
+    // as that user (:57-64), so patchNotificationPreferences writes
     // the EPHEMERAL user's own row, not the shared settings singleton. The
     // file's other block (F10-AS) is correctly @serial-tagged and registered —
     // which is exactly why a file-level "@serial" grep passes this file while
@@ -173,7 +173,7 @@ const MUTATION_EXEMPT = [
     // but never CONCURRENTLY with anything that reads them:
     //   - ci.yml's e2e-functional excludes it via --grep-invert with the
     //     NON_SERIAL_GREP_INVERT expression (qa/scripts/targeted-run-plan.ts),
-    //     which local NON-SERIAL runs now share verbatim (MINCRM-706) — so that
+    //     which local NON-SERIAL runs now share verbatim — so that
     //     leg holds locally by construction, not just in CI. The SERIAL halves
     //     (local and CI alike) still rely on these tests being tagged @visual
     //     and not @functional, so retagging this file remains the thing that
@@ -315,7 +315,7 @@ export function deriveMutatingWrappers(source) {
     // depth walk then ends at that type's closing brace, so the real body is
     // never scanned. updateFeatureFlag, updateFeatureFlagRollout and
     // updateFlagGroup are all that shape, and all three were silently invisible
-    // to this guard until MINCRM-705's review caught it. The deleted bash
+    // to this guard until the review caught it. The deleted bash
     // version matched them by name, so missing them was a net regression.
     const parenStart = clean.indexOf('(', match.index);
     if (parenStart === -1) continue;
@@ -413,7 +413,7 @@ export function findSerialBlocks(source) {
   // test.describe.serial(...) OR OTHERWISE SELF-SERIALIZES", so missing this
   // form would leave the invariant half-enforced — pipeline-stages.spec.ts
   // self-serializes this way with a comment saying it "mutates shared global
-  // state (sort_order column)", untagged and unregistered. (MINCRM-705)
+  // state (sort_order column)", untagged and unregistered.
   if (/test\.describe\.configure\s*\(\s*\{[^}]*mode:\s*['"]serial['"]/.test(clean)) {
     blocks.push({ title: FILE_LEVEL_SERIAL_BLOCK, start: -1, end: clean.length });
   }

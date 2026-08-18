@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-110, MINCRM-357
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -248,7 +248,7 @@ export async function dragDealToStage(
     await boardPage.confirmCloseDeal();
 
     // Explicit timeout matches the appear-guard above — prevents undismissed modal
-    // from silently consuming the full 30s test budget on a slow CI runner. (MINCRM-298)
+    // from silently consuming the full 30s test budget on a slow CI runner.
     await modal?.waitFor({ state: 'hidden', timeout: 8_000 });
   }
 
@@ -256,7 +256,7 @@ export async function dragDealToStage(
   // implicitly waits for the React Query refetch triggered by the mutation's
   // onSettled to complete. 25s gives the refetch room to settle under CI concurrent
   // load. A reload cycle was tried previously but consumed too much of the 30s test
-  // budget even when every step succeeded. (MINCRM-313)
+  // budget even when every step succeeded.
   const cardInTargetSelector = `[data-testid="stage-column-${targetSlug}"] [data-testid="deal-card-${dealId}"]`;
   await context.page.waitForPresent(cardInTargetSelector, 25_000);
 
@@ -265,7 +265,7 @@ export async function dragDealToStage(
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Shape returned by GET /api/v1/deals/:id. */
@@ -279,7 +279,7 @@ export interface DealRow {
   loss_reason: string | null;
   account_id: string;
   owner_id: string;
-  /** Optimistic lock version (MINCRM-349). */
+  /** Optimistic lock version. */
   version: number;
 }
 
@@ -507,7 +507,7 @@ export async function expectDealCardVisible(
  * at a time; this function rewinds to stage 0 and then walks forward through
  * columns until the deal card is found, matching the scan strategy used by
  * PipelineBoardPage.scanMobileColumnSlug. Call this before interacting with any
- * deal card element to avoid HealingLocator exhaustion under load. (MINCRM-552)
+ * deal card element to avoid HealingLocator exhaustion under load.
  */
 export async function waitForDealCardOnBoard(
   dealId: string,
@@ -661,7 +661,7 @@ export async function navigateToDealDetail(
 ): Promise<void> {
   const detail = new DealDetailPage(context);
   // Settles the feature-flag query first — see navigateToAccountDetail in
-  // accounts.behaviors.ts for the full rationale. (MINCRM-700, MINCRM-703)
+  // accounts.behaviors.ts for the full rationale.
   await navigateAndSettle(context.page, () => detail.navigate(id));
 }
 
@@ -974,7 +974,7 @@ export async function waitForDealAttachmentsList(
 }
 
 // ---------------------------------------------------------------------------
-// Navigation helpers — keep page.waitForURL() out of spec files. (MINCRM-418)
+// Navigation helpers — keep page.waitForURL() out of spec files.
 // ---------------------------------------------------------------------------
 
 /**
@@ -990,7 +990,7 @@ export async function waitForDealsListUrl(
 }
 
 // ---------------------------------------------------------------------------
-// AI deal health check (MINCRM-442)
+// AI deal health check
 // ---------------------------------------------------------------------------
 
 /** Result returned by runDealHealthCheck. */
@@ -1003,7 +1003,7 @@ export interface RunDealHealthCheckResult {
  * Clicks the "Check health" action and waits for the health-check POST to
  * resolve. Registers the response wait before clicking so a fast server
  * response is never missed. Does not assert — callers branch on `status`
- * per the network-response-first pattern (MINCRM-418).
+ * per the network-response-first pattern.
  */
 export async function runDealHealthCheck(
   context: DealsBehaviorContext,
@@ -1080,7 +1080,7 @@ export async function isDealHealthHeadingVisible(context: DealsBehaviorContext):
 }
 
 // ---------------------------------------------------------------------------
-// AI stage advancement suggestion (MINCRM-443)
+// AI stage advancement suggestion
 // ---------------------------------------------------------------------------
 
 /**
@@ -1127,7 +1127,7 @@ export async function getSelectedDealFormStage(context: DealsBehaviorContext): P
 }
 
 // ---------------------------------------------------------------------------
-// AI objection pattern matching (MINCRM-471)
+// AI objection pattern matching
 // ---------------------------------------------------------------------------
 
 /** Returns true when the given activity's objection category badge is currently visible. */
@@ -1148,7 +1148,7 @@ export async function isObjectionCategoryBadgeVisible(
  * below is ever reached — so the declared 10s was never the real ceiling, it
  * was 2s x 2 strategies. That mattered here because the timeline is gated on
  * the `feature-flags/me` query, which has been measured at 2.9s under CI worker
- * contention: the element simply was not attached yet. (MINCRM-700)
+ * contention: the element simply was not attached yet.
  */
 export async function waitForActivityItem(
   context: DealsBehaviorContext,
@@ -1162,7 +1162,7 @@ export async function waitForActivityItem(
 }
 
 // ---------------------------------------------------------------------------
-// AI proposal draft generation (MINCRM-473)
+// AI proposal draft generation
 // ---------------------------------------------------------------------------
 
 /** Clicks the "Generate Proposal Draft" button. */
@@ -1214,7 +1214,7 @@ export async function waitForProposalDraftEditorClosed(
 }
 
 // ---------------------------------------------------------------------------
-// Deals list page — navigation and PDF/CSV export (MINCRM-601)
+// Deals list page — navigation and PDF/CSV export
 // ---------------------------------------------------------------------------
 
 /** Navigates directly to the deals list page. */
@@ -1250,11 +1250,11 @@ export async function clickDealsExportPdfAndAwaitResponse(
 /**
  * Clicks the deal detail page's "Export PDF" button and waits for the
  * underlying single-record export.pdf HTTP response, returning its status
- * and content-type. (MINCRM-650)
+ * and content-type.
  *
  * Resolves at FIRST_INTERACTION_TIMEOUT_MS for the reason documented on
  * clickAccountExportPdfAndAwaitResponse — the button is gated on `csv_export`,
- * so a 2s probe can expire before the flags query resolves. (MINCRM-703)
+ * so a 2s probe can expire before the flags query resolves.
  */
 export async function clickDealExportPdfAndAwaitResponse(
   id: string,

@@ -18,7 +18,7 @@
  *   npm run e2e:timing:hotspots
  *   npm run e2e:timing:hotspots -- --threshold-multiplier=3
  *
- * MINCRM-550
+ *
  */
 
 import fs from 'node:fs';
@@ -78,7 +78,7 @@ function countTopLevelDescribes(filePath: string): number {
   let count = 0;
   // Matches test.describe[.serial|.parallel]( at the start of a line (no indent).
   // test.describe.configure( is intentionally NOT matched — it is a file-scope
-  // parallelism directive added by MINCRM-550 and does not represent a describe
+  // parallelism directive added later and does not represent a describe
   // block that contributes to the test structure counted here.
   const DESCRIBE_RE = /^test\.describe(?:\.serial|\.parallel)?\s*\(/;
   for (const line of source.split('\n')) {

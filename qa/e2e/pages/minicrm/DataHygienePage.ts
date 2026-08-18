@@ -1,6 +1,5 @@
 /**
  * DataHygienePage — Page Object for the MiniCRM data hygiene assistant queue.
- * (MINCRM-476)
  *
  * Encapsulates all UI interactions on both `/hygiene` (personal queue) and
  * `/admin/hygiene` (org-wide admin queue) — the two routes render the same
@@ -54,7 +53,7 @@ export class DataHygienePage {
           // page returns a skeleton while its feature flag resolves
           // (DataHygienePage.tsx's featureFlagLoading branch), so the real
           // heading genuinely does not exist yet. The fallback was hiding that
-          // rather than recovering from it. (MINCRM-695, MINCRM-696)
+          // rather than recovering from it.
           { type: 'role', value: 'heading', options: { name: /data hygiene queue$/i } },
         ],
         { intent: 'data hygiene queue page main heading' },

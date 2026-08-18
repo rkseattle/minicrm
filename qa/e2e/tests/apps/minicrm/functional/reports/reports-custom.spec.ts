@@ -1,5 +1,5 @@
 /**
- * Custom report builder functional tests. (MINCRM-402)
+ * Custom report builder functional tests.
  *
  * Tests that:
  * - The Custom Reports tab is visible in the Reports navigation
@@ -8,7 +8,7 @@
  * - Saving a report adds it to the saved reports list
  * - A saved report is accessible from the saved list
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - data-testid selectors only — no CSS class or positional selectors
@@ -119,7 +119,7 @@ test('custom reports: clicking a saved report loads its config into the builder 
   expect(selectedValue).toBe('deal');
 });
 
-// ── Export PDF (MINCRM-601) ───────────────────────────────────────────────────
+// ── Export PDF ───────────────────────────────────────────────────
 
 test('custom reports: clicking Export PDF on a saved, run report downloads a PDF file @functional', async ({
   page,

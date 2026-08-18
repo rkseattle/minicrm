@@ -7,7 +7,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-186
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -70,7 +70,7 @@ export class TagInputWidget {
     // Register BEFORE typing so the response cannot land between the Enter
     // keypress and the listener being attached.
     //
-    // This replaces waitForLoadState('networkidle') (MINCRM-703). That resolves
+    // This replaces waitForLoadState('networkidle'). That resolves
     // on a heuristic — 500ms with no more than two in-flight requests — not on
     // this mutation completing, so under CI load it returned while the attach
     // POST was still open. The caller then read `badgeVisible` before React had
@@ -152,7 +152,7 @@ export class TagInputWidget {
     // Then wait for the server to actually confirm it. Without this the optimistic
     // removal alone could satisfy the caller, and a DELETE that later failed would
     // leave the tag attached while the test reported it detached. Replaces a
-    // trailing waitForLoadState('networkidle'). (MINCRM-703)
+    // trailing waitForLoadState('networkidle').
     await detachDone;
   }
 

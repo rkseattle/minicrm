@@ -1,5 +1,5 @@
 /**
- * F-COACH — AI rep coaching insights (MINCRM-474)
+ * F-COACH — AI rep coaching insights
  *
  * Functional regression tests for the manager/admin coaching insights page
  * (/insights/coaching) and the rep-facing "My Performance" dashboard section.

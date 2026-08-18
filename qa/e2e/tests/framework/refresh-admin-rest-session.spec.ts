@@ -1,5 +1,5 @@
 /**
- * refreshAdminRestSession — unit specs (MINCRM-703).
+ * refreshAdminRestSession — unit specs.
  *
  * Covers the REST counterpart to refreshAdminBrowserSession: the function a
  * long-running REST caller uses to slide its session forward before the

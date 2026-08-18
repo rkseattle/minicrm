@@ -9,16 +9,16 @@
  * Test groups:
  *   DnD Stage Transitions  — open-to-open drag, drag to terminal stages (F5-DND)
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - Tests pass with --workers=4 (no shared mutable state)
  *
- * MINCRM-300
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - beforeEach logs in as admin via restClient only; the browser session
  *     (rep) is created fresh per test inside the test body.
@@ -29,7 +29,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

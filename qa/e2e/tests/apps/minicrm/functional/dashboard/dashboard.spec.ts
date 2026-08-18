@@ -1,12 +1,12 @@
 /**
- * Dashboard functional tests (MINCRM-409).
+ * Dashboard functional tests.
  *
  * DB-1: Dashboard loads and the stat card grid and recent-activity feed are visible.
  * DB-2: After creating a deal via API the open pipeline value stat is > 0.
  * DB-3: After creating an overdue task the overdue-tasks stat is ≥ 1.
  * DB-4: After creating an activity it appears in the recent-activity feed.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No @pages/* imports

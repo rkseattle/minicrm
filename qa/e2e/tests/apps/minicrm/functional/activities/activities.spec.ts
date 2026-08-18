@@ -2,7 +2,7 @@
  * F5 — Activities & Tasks: creation, assignment, due-date state, filtering, completion
  *
  * Functional regression tests for all activity and task types, assignment,
- * due date states, filtering, and completion lifecycle. See MINCRM-42 for
+ * due date states, filtering, and completion lifecycle. See the framework docs for
  * shared framework conventions and acceptance criteria.
  *
  * Test groups:
@@ -18,20 +18,20 @@
  *                 task not overdue (F5-CP)
  *   Immutability — type cannot be changed after creation (F5-IM)
  *
- * Multi-client support (MINCRM-141):
+ * Multi-client support:
  *   Tests that require a second authenticated session create a second
  *   APIRequestContext via `playwright.request.newContext()`, wrap it in a
  *   RestClient, and authenticate it independently. This gives two fully
  *   isolated cookie jars operating in the same test.
  *
- * Additional AC (MINCRM-141):
+ * Additional AC:
  *   1. Overdue state verified via API response, not only UI indicator.
  *   2. Activity type is immutable after creation (PATCH with new type → 400).
  *   3. Filter combinations cross-referenced against restClient queries.
  *
- * MINCRM-141
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - beforeEach creates a fresh UUID-suffixed rep; all activities, contacts,
  *     and accounts are owned by that rep and torn down by TestDataManager.
@@ -42,7 +42,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -280,7 +280,7 @@ test('@functional F5-MY2: task created by rep A → appears in rep A my-tasks, N
   testData,
   playwright,
 }) => {
-  // beforeEach leaves restClient as rep; re-auth as admin for createTestUser/deactivate (MINCRM-415)
+  // beforeEach leaves restClient as rep; re-auth as admin for createTestUser/deactivate
   await loginAsAdmin(restClient);
 
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -332,7 +332,7 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
   testData,
   playwright,
 }) => {
-  // beforeEach leaves restClient as rep; re-auth as admin for createTestUser/deactivate (MINCRM-415)
+  // beforeEach leaves restClient as rep; re-auth as admin for createTestUser/deactivate
   await loginAsAdmin(restClient);
 
   // NOTE: The Jira ticket requests that reassigning a task moves it between
@@ -378,7 +378,7 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
 
     // owner_id is not in updateActivitySchema — the field is stripped and the
     // refine fires: "At least one field must be provided" → 400.
-    // MINCRM-349: include version so the failure is the intended refine, not a
+    // include version so the failure is the intended refine, not a
     // missing-version validation error.
     let caughtStatus: number | null = null;
     try {
@@ -534,7 +534,7 @@ test('@functional F5-DS4: completed task with past due date → not shown as ove
     contact_id: contact.id,
   });
 
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await patchActivity(restClient, activity.id, {
     status: 'complete',
     version: activity.version,
@@ -734,7 +734,7 @@ test('@functional F5-CP2: undo completion (PATCH status open) → task returns t
     contact_id: contact.id,
   });
 
-  // MINCRM-349: include version for optimistic locking. Use the updated version
+  // include version for optimistic locking. Use the updated version
   // from the first patch response for the second patch.
   const afterComplete = await patchActivity(restClient, activity.id, {
     status: 'complete',
@@ -770,7 +770,7 @@ test('@functional F5-CP3: completed task with past due date → not overdue (AC1
     contact_id: contact.id,
   });
 
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await patchActivity(restClient, activity.id, {
     status: 'complete',
     version: activity.version,
@@ -791,7 +791,7 @@ test('@functional F5-IM1: PATCH type on existing activity — documents current 
   restClient,
   testData,
 }) => {
-  // NOTE: MINCRM-141 AC2 states that activity type should be immutable after
+  // NOTE: AC2 states that activity type should be immutable after
   // creation. The current server implementation includes 'type' in
   // updateActivitySchema and ALLOWED_UPDATE_FIELDS, so PATCH type succeeds
   // with a 200. This test documents that current behaviour so a future change
@@ -811,7 +811,7 @@ test('@functional F5-IM1: PATCH type on existing activity — documents current 
   });
 
   // PATCH type from Task to Meeting — currently accepted (200).
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   // patchActivity throws on non-2xx; a successful return implies 200.
   const patched = await patchActivity(restClient, activity.id, {
     type: 'Meeting',
@@ -821,7 +821,7 @@ test('@functional F5-IM1: PATCH type on existing activity — documents current 
 });
 
 // ---------------------------------------------------------------------------
-// F5-P1 — Pagination: different entries on page 1 vs page 2 (MINCRM-409)
+// F5-P1 — Pagination: different entries on page 1 vs page 2
 // ---------------------------------------------------------------------------
 
 test('@functional F5-P1: activities paginate correctly — page 2 has different entries than page 1', async ({

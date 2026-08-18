@@ -4,7 +4,7 @@
  * Used on any entity detail page that embeds the NotesSection component:
  * contact, account, deal, and lead detail pages.
  *
- * MINCRM-352
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';

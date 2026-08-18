@@ -11,7 +11,7 @@
  *   Hamburger Menu — open/close mechanics, keyboard accessibility (mobile-web project only)
  *   Global UI — browser back/forward navigation
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
@@ -39,7 +39,7 @@
  *   drawer and are not visible. Top Nav layout tests therefore assert via page.goto
  *   for destination reachability and skip active-link class checks on mobile-web.
  *
- * MINCRM-144
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -200,7 +200,7 @@ async function activateHamburgerLayout(page: PageFacade, restClient: RestClient)
 }
 
 // ---------------------------------------------------------------------------
-// Shared setup — admin auth + known-good system state (MINCRM-358)
+// Shared setup — admin auth + known-good system state
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ page, restClient, testData }) => {
@@ -214,7 +214,7 @@ test.beforeEach(async ({ page, restClient, testData }) => {
 // state in a finally block via resetNavLayout(). A file-level afterEach calling
 // ensureSystemDefaults() fires between every test in the serial block and races
 // with parallel workers also calling ensureSystemDefaults(), resetting nav_layout
-// to 'top' while the next test's activateHamburgerLayout is running. (MINCRM-415)
+// to 'top' while the next test's activateHamburgerLayout is running.
 
 // ---------------------------------------------------------------------------
 // Layout-mutating tests — single outer serial block
@@ -235,7 +235,7 @@ test.describe.serial('Layout-mutating tests', () => {
       restClient,
     }) => {
       await setNavLayoutViaAPI('top', restClient);
-      // MINCRM-192: storageState loads cookies but does not navigate the page.
+      // storageState loads cookies but does not navigate the page.
       // Explicitly load the app root so the nav renders before link-click assertions.
       await navigateToDashboard(page);
 
@@ -428,7 +428,7 @@ test.describe.serial('Layout-mutating tests', () => {
         // startTransition — the browser URL changes before React commits the new
         // location to NavLink. Confirm the pipeline board is rendered before
         // re-opening the menu; this guarantees React has committed the /deals route
-        // so NavLink sees the correct active location on the next render. (MINCRM-404)
+        // so NavLink sees the correct active location on the next render.
         await pipelineBoardIsLoaded({ page });
 
         // Re-open the menu to inspect the active link class.
@@ -453,10 +453,10 @@ test.describe.serial('Layout-mutating tests', () => {
     });
   }); // end Hamburger Nav layout
 
-  // ── Admin section divider (MINCRM-261) — parametrized across all layouts ────
+  // ── Admin section divider — parametrized across all layouts ────
   //
   // F8-AD1 through F8-AD4 were four separate tests checking the same assertion
-  // in four nav layouts. Merged into one parametrized test in MINCRM-409.
+  // in four nav layouts. Merged into one parametrized test in.
 
   test.describe('Admin section divider', () => {
     type DividerVariant = {
@@ -598,7 +598,7 @@ test.describe.serial('Layout-mutating tests', () => {
     });
 
     // F8-LS2 and F8-LS3 were the same test with different layout inputs. Merged
-    // into one parametrized test in MINCRM-409.
+    // into one parametrized test in.
     const PERSISTENCE_VARIANTS: Array<{
       layout: 'left' | 'hamburger';
       label: string;
@@ -817,7 +817,7 @@ test.describe.serial('Layout-mutating tests', () => {
 }); // end Layout-mutating tests
 
 // ---------------------------------------------------------------------------
-// F8-AD1 — mobile drawer variant (MINCRM-668)
+// F8-AD1 — mobile drawer variant
 //
 // Lifted out of the Layout-mutating serial block and untagged. It was the one
 // DIVIDER_VARIANTS entry whose setup/teardown touch no restClient at all — it
@@ -1007,10 +1007,10 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   await expectContactNotFoundVisible({ page }, 15_000);
 });
 
-// MINCRM-192: F8-DL4 logs in as a rep via the UI — the browser must start
+// F8-DL4 logs in as a rep via the UI — the browser must start
 // unauthenticated so the login() behavior can navigate to /login correctly.
 test.describe('Rep deep-link redirect', () => {
-  // MINCRM-192: Use an empty storageState to prevent the project-level admin session
+  // Use an empty storageState to prevent the project-level admin session
   // from loading. `undefined` does not override the project config — an explicit empty
   // object is required to start each test with a fresh, unauthenticated browser context.
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -1075,7 +1075,7 @@ test('@functional F8-GU1: browser back and forward navigate correctly between vi
 });
 
 test('@functional F8-GU2: browser tab title is set on load', async ({ page }) => {
-  // MINCRM-192: storageState loads cookies but does not navigate. Load the app so the
+  // storageState loads cookies but does not navigate. Load the app so the
   // HTML shell (with <title>) is present before reading page.title().
   await navigateToDashboard(page);
 

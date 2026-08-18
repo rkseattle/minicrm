@@ -1,5 +1,5 @@
 /**
- * Visual regression tests for MiniCRM's most visually complex pages. (MINCRM-324, MINCRM-371)
+ * Visual regression tests for MiniCRM's most visually complex pages.
  *
  * Each test navigates to a page with representative seeded data, waits for
  * networkidle, masks dynamic timestamps, then calls page.checkScreenshot() so
@@ -11,12 +11,12 @@
  *     docker compose -f docker-compose.e2e.yml run --rm playwright \
  *       npx playwright test visual-regression --update-snapshots
  *   Commit the resulting files from qa/e2e/snapshots/ into source control.
- *   See MINCRM-319 for full OS requirement documentation.
+ *   See the framework docs for full OS requirement documentation.
  *
  * Pages covered:
  *   Core Layout
- *     V1 — Pipeline board, desktop viewport (sticky header + toolbar — MINCRM-346)
- *     V2 — Pipeline board, mobile viewport (Pixel 5) (sticky stage nav — MINCRM-346)
+ *     V1 — Pipeline board, desktop viewport (sticky header + toolbar —)
+ *     V2 — Pipeline board, mobile viewport (Pixel 5) (sticky stage nav —)
  *     V3 — Dashboard with seeded deals and activities
  *     V4 — Contact detail with activity timeline
  *     V5 — Win/Loss report with seeded won/lost deals
@@ -35,7 +35,7 @@
  *     V14 — Deal detail page
  *     V15 — Account detail page
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @visual (not @functional — visual tests require OS-matching baselines)
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Test data via restClient + TestDataManager (auto teardown)
@@ -44,15 +44,14 @@
  *     that deletes the pipeline_stages_reviewed system_settings row, which the
  *     onboarding spec's widget assertions depend on. The conclusion is right; the
  *     original reason given here was not — ensureSystemDefaults does not write
- *     onboarding_completed, which is a per-user column on `users`. MINCRM-705)
+ *     onboarding_completed, which is a per-user column on `users`.)
  *
  * Performance: A single ephemeral admin is created once per worker in beforeAll
  * and shared across all tests in that worker. Per-test admin creation (5 API calls
  * each) was the dominant setup cost; sharing reduces that to one call per worker.
  * Each test still does a fresh browser login so session state is fully isolated.
- * (MINCRM-416)
  *
- * MINCRM-324, MINCRM-371, MINCRM-409, MINCRM-415, MINCRM-416
+ *
  */
 
 import { test } from '@apps/minicrm/fixtures.js';
@@ -106,7 +105,7 @@ import {
 import type { EphemeralUserCredentials } from '@apps/minicrm/helpers.js';
 
 // Each test uses a unique browser login but shares one ephemeral admin per
-// worker — no shared storageState. (MINCRM-415, MINCRM-416)
+// worker — no shared storageState.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // Visual tests involve browser login, page load, canvas rendering, and pixel-
@@ -114,7 +113,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.setTimeout(60_000);
 
 // ---------------------------------------------------------------------------
-// Shared admin — created once per worker, reused across all tests. (MINCRM-416)
+// Shared admin — created once per worker, reused across all tests.
 //
 // Each test still calls loginViaBrowser() to get a fresh isolated browser
 // session; we only avoid the 5-API-call invite+password+onboarding setup on
@@ -127,20 +126,20 @@ let sharedAdmin: EphemeralUserCredentials;
 test.beforeAll(async ({ restClient }) => {
   await loginAsAdmin(restClient);
   // Create the shared admin directly — no testData needed since we own teardown
-  // in afterAll. testData is test-scoped and unavailable in beforeAll. (MINCRM-416)
+  // in afterAll. testData is test-scoped and unavailable in beforeAll.
   const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
   const email = `vr-admin-${uniqueSuffix}@example.com`;
   const name = `VR Admin ${uniqueSuffix}`;
   const password = 'BvtPassword1!';
   // MINCRM-686-ok: created in beforeAll, where the test-scoped testData fixture
-  // does not exist; torn down in afterAll instead. (MINCRM-416)
+  // does not exist; torn down in afterAll instead.
   const { user, inviteToken } = await inviteUserViaApi(restClient, { name, email, role: 'admin' });
 
   // Record the id BEFORE the two calls below, both of which are network calls
   // that can throw. afterAll gates on `sharedAdmin`, so assigning it last meant
   // a beforeAll failure left this admin with nothing to deactivate it — the
   // same register-after-the-throwable-step defect fixed elsewhere on this
-  // branch, in the one place that cannot use TestDataManager. (MINCRM-668)
+  // branch, in the one place that cannot use TestDataManager.
   sharedAdmin = { userId: user.id, email, password };
 
   await setUserPassword(restClient, inviteToken, password);
@@ -148,7 +147,7 @@ test.beforeAll(async ({ restClient }) => {
 });
 
 // afterAll receives its own restClient fixture — the one captured in beforeAll
-// cannot be reused across hook boundaries in Playwright. (MINCRM-416)
+// cannot be reused across hook boundaries in Playwright.
 test.afterAll(async ({ restClient }) => {
   if (sharedAdmin) {
     await loginAsAdmin(restClient);
@@ -640,7 +639,7 @@ test.describe('Key Pages', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       // Navigate to the dashboard AFTER setting the layout so React Query fetches
       // the new 'hamburger' value and renders the toggle. Using 'networkidle' ensures
-      // the nav-layout query completes before we look for nav-menu-toggle. (MINCRM-415)
+      // the nav-layout query completes before we look for nav-menu-toggle.
       await navigateToPath('/', { page });
 
       // Wait for the page to be interactive before opening the drawer

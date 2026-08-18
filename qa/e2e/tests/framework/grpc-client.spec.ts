@@ -1,7 +1,7 @@
 /**
  * CI tests for GrpcClient and grpcClient fixture.
  *
- * Verifies all Acceptance Criteria from MINCRM-128, MINCRM-233, MINCRM-366:
+ * Verifies all Acceptance Criteria:
  *
  * AC1 — grpcClient.call('Ping', { message: 'hello' }) returns a typed response.
  * AC2 — A non-OK gRPC status throws GrpcClientError with correct code + message.
@@ -11,17 +11,17 @@
  * AC6 — TLS and insecure modes are configurable via env var.
  * AC7 — All CI tests against the echo stub pass.
  *
- * MINCRM-233 Acceptance Criteria:
+ * Acceptance Criteria:
  * AC-233-1 — clientStream() sends a stream of requests and receives a single response.
  * AC-233-2 — bidiStream() sends a stream of requests and yields each echoed response.
  *
- * MINCRM-366 Acceptance Criteria:
+ * Acceptance Criteria:
  * All four call patterns use protobuf binary encoding via @grpc/proto-loader.
  * The echo stub uses echo.proto for real binary serialization.
  *
  * The echo stub is spun up/torn down per test group — no live service required.
  *
- * MINCRM-128, MINCRM-233, MINCRM-366
+ *
  */
 
 import { test, expect } from '@framework/fixtures';
@@ -438,7 +438,7 @@ test.describe('GrpcClient — error on unreachable server', () => {
 // AC-233-1 — clientStream() sends a stream of requests, receives one response
 // ---------------------------------------------------------------------------
 
-test.describe('GrpcClient — Collect client-streaming (MINCRM-233)', () => {
+test.describe('GrpcClient — Collect client-streaming', () => {
   let server: ProtoEchoServer;
   let makeClient: (options?: { tls?: boolean }) => GrpcClient;
 
@@ -514,7 +514,7 @@ test.describe('GrpcClient — Collect client-streaming (MINCRM-233)', () => {
 // AC-233-2 — bidiStream() sends a stream of requests, yields each response
 // ---------------------------------------------------------------------------
 
-test.describe('GrpcClient — Echo bidirectional-streaming (MINCRM-233)', () => {
+test.describe('GrpcClient — Echo bidirectional-streaming', () => {
   let server: ProtoEchoServer;
   let makeClient: (options?: { tls?: boolean }) => GrpcClient;
 

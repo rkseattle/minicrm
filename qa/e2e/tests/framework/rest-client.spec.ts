@@ -1,7 +1,7 @@
 /**
  * Unit tests for RestClient and auth strategies.
  *
- * Verifies all Acceptance Criteria from MINCRM-127:
+ * Verifies all Acceptance Criteria :
  *
  * AC1 — post<T>() returns ApiResponse<T> with typed body.
  * AC2 — A 404 response throws RestClientError with status 404 and the body.
@@ -10,7 +10,7 @@
  * AC5 — Workers receive independent instances (structural / fixture-scope).
  * AC6 — All unit tests pass in CI.
  *
- * MINCRM-229 Acceptance Criteria:
+ * Acceptance Criteria:
  * AC-229-1 — Successful schema validation passes the parsed body through.
  * AC-229-2 — Shape mismatch throws RestClientError with endpoint in the message.
  * AC-229-3 — Callers without a schema continue to use the bare cast.
@@ -18,7 +18,7 @@
  *
  * All tests mock the Playwright APIRequestContext so no server is required.
  *
- * MINCRM-127, MINCRM-229
+ *
  */
 
 import { test, expect } from '@framework/fixtures';
@@ -308,7 +308,7 @@ test.describe('Auth strategies', () => {
 
 // ---------------------------------------------------------------------------
 // Default headers — set on a client instance, applied to every subsequent
-// request until cleared (MINCRM-610)
+// request until cleared
 // ---------------------------------------------------------------------------
 
 test.describe('Default headers', () => {
@@ -492,10 +492,10 @@ test.describe('restClient fixture availability', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-229 — Optional Zod schema validation
+// Optional Zod schema validation
 // ---------------------------------------------------------------------------
 
-test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
+test.describe('RestClient Zod schema validation', () => {
   // AC-229-1: Successful schema validation passes the parsed body through.
   test('get() with matching schema returns validated body', async () => {
     const schema = z.object({ id: z.number(), name: z.string() });
@@ -569,7 +569,7 @@ test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
   // AC-229-3: Callers without a schema continue to use the bare cast — no behaviour change.
   test('get() without schema uses bare cast — no validation, no error on shape mismatch', async () => {
     // The response body is structurally wrong for the inferred type, but without
-    // a schema the bare cast succeeds silently (pre-MINCRM-229 behaviour preserved).
+    // a schema the bare cast succeeds silently (the earlier behaviour preserved).
     const badBody = { wrong: 'shape' };
     const ctx = mockContext(() => mockApiResponse(200, badBody));
     const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });

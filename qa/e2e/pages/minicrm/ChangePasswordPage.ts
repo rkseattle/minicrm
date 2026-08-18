@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-137
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';

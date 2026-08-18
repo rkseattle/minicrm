@@ -1,5 +1,5 @@
 /**
- * PagedListLayout — Empty-state viewport fill (MINCRM-404)
+ * PagedListLayout — Empty-state viewport fill
  *
  * Verifies that when a list page has zero records the list container fills
  * the available viewport height, the empty-state element is visible inside
@@ -7,18 +7,18 @@
  * floating in the middle of the page.
  *
  * Each page under test (Contacts, Accounts, Leads, My Tasks) uses the shared
- * PagedListLayout component introduced in MINCRM-404. Tests do NOT seed any
+ * PagedListLayout component introduced in. Tests do NOT seed any
  * records, relying on the ephemeral test database being clean per-test.
  *
  * Tests run at desktop (1280 × 720) and mobile (393 × 851) viewports to
  * exercise the responsive flex chain at multiple breakpoints.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators in this file — all through @behaviors/* imports
  *
- * MINCRM-404
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

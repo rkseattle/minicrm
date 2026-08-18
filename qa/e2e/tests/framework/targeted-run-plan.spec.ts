@@ -1,6 +1,6 @@
 /**
  * Pins qa/scripts/targeted-run-plan.ts — the rule deciding which Playwright
- * invocations the pre-push TIA targeted path runs. (MINCRM-705)
+ * invocations the pre-push TIA targeted path runs.
  *
  * WHAT THIS PINS, AND WHY IT EXISTS
  * ---------------------------------
@@ -165,7 +165,6 @@ test.describe('planTargetedInvocations', () => {
     // the gate document carry this same literal in a REAL command, not merely
     // in prose — is enforced by qa/scripts/check-grep-invert-parity.sh, which
     // runs in e2e-framework-purity. Neither check substitutes for the other.
-    // (MINCRM-706)
     expect(NON_SERIAL_GREP_INVERT).toBe('visual-regression|serial');
   });
 
@@ -202,7 +201,7 @@ test.describe('planTargetedInvocations', () => {
   //
   // A bare `@serial` in a title is SAFE and two remain above deliberately:
   // SERIAL_GREP requires BOTH tags, so `@serial` alone matches neither half.
-  // Only `@functional` needs avoiding. (MINCRM-706)
+  // Only `@functional` needs avoiding.
   test('no real functional-tagged title in the suite falls between the two halves', () => {
     // The inversion is BROADER than SERIAL_GREP (it also drops anything matching
     // visual-regression), so the halves are no longer exact complements — a

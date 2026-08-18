@@ -1,5 +1,5 @@
 /**
- * Reports page sub-navigation functional tests. (MINCRM-294)
+ * Reports page sub-navigation functional tests.
  *
  * Tests that the Reports page:
  * - Is reachable via the "Reports" nav link
@@ -9,7 +9,7 @@
  * - Old /reports/win-loss URL redirects to /reports
  * - SubPageNav tab switching renders the correct content
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - data-testid selectors only — no CSS class or positional selectors
@@ -76,7 +76,7 @@ test('reports nav: clicking Reports nav link lands on /reports @functional @seri
     await setNavLayoutViaAPI('left', restClient);
 
     // Await the nav-layout API response AFTER navigating so we know the browser
-    // has received the updated layout before asserting nav link visibility (MINCRM-554).
+    // has received the updated layout before asserting nav link visibility.
     const navLayoutReady = waitForNavLayoutFetched({ page }, 10_000);
     await navigateToPath('/', { page });
     await navLayoutReady;

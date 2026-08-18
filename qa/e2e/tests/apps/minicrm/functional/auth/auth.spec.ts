@@ -11,9 +11,9 @@
  *   Session  — expired/cleared session redirect, redirect-back URL (AC2), API-layer 401
  *   Logout   — cookie cleared → API 401, back-button after logout
  *   Password — forced change on first login, mismatched confirmation validation
- *   Lockout  — 10 consecutive failures → 429 ACCOUNT_TEMPORARILY_LOCKED (MINCRM-391)
+ *   Lockout  — 10 consecutive failures → 429 ACCOUNT_TEMPORARILY_LOCKED
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
@@ -22,15 +22,15 @@
  *
  * AC notes:
  *   - AC1: wrong-password and unknown-user errors must return the same message
- *   - AC2: redirect-back URL preserved through login (implemented in MINCRM-147)
+ *   - AC2: redirect-back URL preserved through login (implemented in)
  *   - AC3: session invalidation verified at the API layer via restClient
  *
  * Tagged @functional so the suite can be run in isolation:
  *   npx playwright test --grep @functional
  *
- * MINCRM-137
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   Evaluated for parallel mode but rejected. All tests create UUID-scoped users
  *   and make no system_settings writes, so intra-file isolation holds. However,
  *   tests hammer the rate-limited POST /api/v1/auth/login endpoint: the lockout
@@ -66,10 +66,10 @@ import {
 } from '@behaviors/minicrm/users.behaviors.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
-// MINCRM-192: Auth tests exercise the real login flow and must not load the
+// Auth tests exercise the real login flow and must not load the
 // pre-authenticated storageState — each test needs a fresh, unauthenticated
 // browser context so it can test login, logout, and session behaviour.
-// MINCRM-192: Use an empty storageState to prevent the project-level admin session
+// Use an empty storageState to prevent the project-level admin session
 // from loading. `undefined` does not override the project config — an explicit empty
 // object is required to start each test with a fresh, unauthenticated browser context.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -118,7 +118,7 @@ async function createUserWithForcedPasswordChange(
   await setUserPassword(restClient, inviteToken, activationPassword);
 
   // Suppress the onboarding widget so it does not intercept pointer events
-  // when tests navigate the UI as this user. (MINCRM-410)
+  // when tests navigate the UI as this user.
   await suppressUserOnboarding(restClient, user.email, activationPassword);
 
   // admin-set-password sets must_change_password=true so the user is forced
@@ -237,7 +237,7 @@ test('@functional F1-S2: cleared session → API returns 401 (AC3)', async ({ re
 });
 
 /**
- * F1-S4: session-expired banner visible when 401 interceptor redirects to /login (MINCRM-365).
+ * F1-S4: session-expired banner visible when 401 interceptor redirects to /login.
  *
  * When a mid-session API call returns 401, the Axios interceptor navigates to
  * /login?reason=session_expired. The login page must display a contextual notice
@@ -254,7 +254,7 @@ test('@functional F1-S4: session-expired banner visible on /login?reason=session
 
 /**
  * F1-S5: after session-expired redirect, logging in returns the user to the
- * originally requested path preserved in the ?next= query param. (MINCRM-365)
+ * originally requested path preserved in the ?next= query param.
  *
  * Uses loginFromCurrentPage instead of login so the ?next= query param is NOT
  * stripped by a re-navigation to bare /login before the form is submitted.
@@ -266,7 +266,7 @@ test('@functional F1-S5: login after session expiry returns user to ?next= path 
   // The query params must remain in the URL when the form is submitted.
   await navigateToLoginWithSessionExpired(PROTECTED_PATH, { page });
 
-  // Submit credentials without re-navigating (loginFromCurrentPage preserves the URL). (MINCRM-365)
+  // Submit credentials without re-navigating (loginFromCurrentPage preserves the URL).
   const loginResult = await loginFromCurrentPage(
     { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
     { page },
@@ -284,7 +284,7 @@ test('@functional F1-S5: login after session expiry returns user to ?next= path 
  *
  * ProtectedRoute passes the blocked location as React Router state when
  * redirecting to /login. LoginPage reads that state on success and returns
- * the user to their originally requested path. Implemented in MINCRM-147.
+ * the user to their originally requested path. Implemented in.
  */
 test('@functional F1-S3: redirect-back URL preserved through login flow (AC2)', async ({
   page,
@@ -423,7 +423,7 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
     ).not.toBeNull();
   } finally {
     // Restore the admin session; the user is deactivated by its registered
-    // teardown. (MINCRM-668)
+    // teardown.
     await loginAsAdmin(restClient).catch(() => null);
   }
 });
@@ -466,13 +466,13 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
     ).toBe('/change-password');
   } finally {
     // Restore the admin session; the user is deactivated by its registered
-    // teardown. (MINCRM-668)
+    // teardown.
     await loginAsAdmin(restClient).catch(() => null);
   }
 });
 
 // ---------------------------------------------------------------------------
-// Lockout tests (MINCRM-391)
+// Lockout tests
 // ---------------------------------------------------------------------------
 
 /**
@@ -524,7 +524,7 @@ test('@functional F1-LO1: 10 consecutive failed logins → 11th attempt returns 
     expect(lockedStatus, 'account must be locked after 10 failures').toBe(429);
   } finally {
     // Restore the admin session; the user is deactivated by its registered
-    // teardown. (MINCRM-668)
+    // teardown.
     await loginAsAdmin(restClient).catch(() => null);
   }
 });

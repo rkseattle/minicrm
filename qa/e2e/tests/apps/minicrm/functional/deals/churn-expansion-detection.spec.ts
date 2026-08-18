@@ -1,5 +1,5 @@
 /**
- * F7-CE — AI churn and expansion signal detection (MINCRM-469)
+ * F7-CE — AI churn and expansion signal detection
  *
  * Functional regression tests for the churn/expansion banner on the account
  * detail page, the in-app notification bell, and the /insights/churn-expansion page.
@@ -18,7 +18,7 @@
  *   signal are covered by the client component test suite (ChurnExpansionBanner.test.tsx,
  *   NotificationBell.test.tsx, ChurnExpansionInsightsPage.test.tsx), which
  *   mock the HTTP response directly — E2E cannot exercise it without real AI
- *   output. (MINCRM-469)
+ *   output.
  *
  * Framework conventions:
  *   - All tests tagged @functional

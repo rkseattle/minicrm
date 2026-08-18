@@ -1,5 +1,5 @@
 /**
- * F7-D — Deal CRUD functional tests (MINCRM-314)
+ * F7-D — Deal CRUD functional tests
  *
  * Covers the core deal lifecycle journeys through the UI:
  *   Create  — open new deal form, fill fields, submit, assert card on board
@@ -10,13 +10,13 @@
  * Each test seeds its own data via restClient and cleans up via TestDataManager.
  * UI actions use page.locate() healing locators throughout.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators — all through page.locate() healing locators
  *   - Test data managed via restClient + TestDataManager (auto teardown)
  *
- * MINCRM-314
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -281,7 +281,7 @@ test(
 );
 
 // ---------------------------------------------------------------------------
-// F7-D5 — Export deals list as PDF via the list page button (MINCRM-601)
+// F7-D5 — Export deals list as PDF via the list page button
 // ---------------------------------------------------------------------------
 
 test(
@@ -309,7 +309,7 @@ test(
 );
 
 // ---------------------------------------------------------------------------
-// F7-D6 — Export a single deal as PDF via the detail page button (MINCRM-650)
+// F7-D6 — Export a single deal as PDF via the detail page button
 // ---------------------------------------------------------------------------
 
 test(

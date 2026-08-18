@@ -1,5 +1,5 @@
 /**
- * F-CAPABILITIES — Capability-based RBAC (MINCRM-542, MINCRM-547)
+ * F-CAPABILITIES — Capability-based RBAC
  *
  * Verifies that:
  * 1. Custom role CRUD works end-to-end (create, read, update, delete)
@@ -9,14 +9,14 @@
  * 5. An admin can delete any contact (204)
  * 6. Custom role list endpoint requires settings:manage
  * 7. Assigning a custom role grants its capabilities to the user
- * 8. Built-in role cards show a View button that expands a read-only capability panel (MINCRM-547)
+ * 8. Built-in role cards show a View button that expands a read-only capability panel
  *
  * Framework conventions:
  *   - All tests tagged @functional
  *   - API tests: no browser UI navigation; user cleanup is registered with TestDataManager
  *   - Browser tests: import from @behaviors/* only, no @pages/* imports
  *
- * MINCRM-542, MINCRM-547
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -86,7 +86,7 @@ async function createActivatedRep(
   const { user, inviteToken } = inviteRes.body;
 
   // Register before the steps below, any of which can throw. adminClient is the
-  // fixture restClient, which outlives the test. (MINCRM-668)
+  // fixture restClient, which outlives the test.
   registerUserDeactivation(testData, adminClient, user.id, 'rep');
 
   await adminClient.post('/api/v1/users/set-password', {
@@ -255,7 +255,7 @@ test('@functional rep can delete their own contact (contacts:delete, MINCRM-542)
   // Registered even though the test deletes it below: registration covers the
   // path where the delete or its assertion throws first. Teardown runs as the
   // fixture admin, so a plain register() reaches a rep-owned contact, and the
-  // happy-path 404 counts as successful cleanup. (MINCRM-668)
+  // happy-path 404 counts as successful cleanup.
   testData.register('contact', contactId, `/api/v1/contacts/${contactId}`);
 
   const deleteRes = await repClient.delete(`/api/v1/contacts/${contactId}`);
@@ -310,7 +310,7 @@ test('@functional admin can delete any contact', async ({ testData, restClient }
     email: `cap-admindel-${suffix}@example.com`,
   });
   const contactId = contactRes.body.contact.id;
-  // See the note in the rep-delete test above. (MINCRM-668)
+  // See the note in the rep-delete test above.
   testData.register('contact', contactId, `/api/v1/contacts/${contactId}`);
 
   const deleteRes = await restClient.delete(`/api/v1/contacts/${contactId}`);
@@ -395,7 +395,7 @@ test('@functional assigning a custom role grants its capabilities to the user', 
   await repContext.dispose();
 });
 
-// ── Built-in role View button (MINCRM-547) ────────────────────────────────────
+// ── Built-in role View button ────────────────────────────────────
 
 test('@functional built-in role View button expands read-only capability panel', async ({
   page,

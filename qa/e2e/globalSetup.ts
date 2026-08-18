@@ -11,7 +11,7 @@
  *
  * The `.auth/` directory is gitignored and claudeignored — never committed.
  *
- * MINCRM-192, MINCRM-221, MINCRM-559
+ *
  */
 
 import type { FullConfig } from '@playwright/test';
@@ -40,7 +40,7 @@ const STALE_DATA_ABORT_THRESHOLD = 2000;
  * user it creates, and `reset-e2e-data.ts` leaves exactly one row, so the
  * steady-state floor is ~1 plus whatever a run currently holds open. 100 is
  * loose enough that a large parallel run never trips it and tight enough that
- * a broken teardown does so within a session. (MINCRM-668)
+ * a broken teardown does so within a session.
  */
 const STALE_ACTIVE_USER_WARN_THRESHOLD = 100;
 
@@ -50,8 +50,8 @@ const STALE_ACTIVE_USER_WARN_THRESHOLD = 100;
  * Exported so a framework spec can assert its shape without a database. Two
  * properties are load-bearing and neither is obvious from the call site: the
  * total is unfiltered (deactivated rows still cost pagination, which is the
- * MINCRM-544 failure), and the active count is a FILTER on the same scan rather
- * than a second query. (MINCRM-668)
+ * failure), and the active count is a FILTER on the same scan rather
+ * than a second query.
  */
 export const STALE_DATA_COUNT_SQL =
   "SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status <> 'inactive') AS active FROM users";
@@ -126,7 +126,7 @@ export const FLAGS_TAKING_A_VALUE = new Set([
  * A distinct type rather than a message prefix: the guard previously re-threw
  * on `err.message.startsWith('[globalSetup]')`, which both let any unrelated
  * error with that prefix escape and, far worse, silently swallowed every real
- * connection failure. (MINCRM-699)
+ * connection failure.
  */
 export class StaleDataAbortError extends Error {
   constructor(userCount: number) {
@@ -190,7 +190,7 @@ function isFrameworkOnlyRun(config: FullConfig): boolean {
  * The first two entries are the interpreter and the binary, so scanning starts
  * after them; from there the first bare `test` that is not a flag's value is the
  * subcommand. Skipping flag values is what stops `--grep test` from being read as
- * the subcommand. (MINCRM-699)
+ * the subcommand.
  */
 function findSubcommandIndex(args: readonly string[]): number {
   const FIRST_ARGUMENT_INDEX = 2; // [node, playwright, <subcommand>, ...]
@@ -241,12 +241,12 @@ export function selectsOnlyFrameworkSpecs(argv: readonly string[]): boolean {
 }
 
 /**
- * MINCRM-559: Check for accumulated test data in the local E2E database.
+ * Check for accumulated test data in the local E2E database.
  *
  * Skipped in CI where the database is always freshly seeded. Locally, users
  * accumulate for two reasons, and the first is a defect rather than a cost of
  * skipping a reset: a teardown path that does not survive test failure. Until
- * MINCRM-668 the user-creation helpers cleaned up in `finally` blocks that an
+ * the user-creation helpers cleaned up in `finally` blocks that an
  * earlier failing assertion threw straight past, and `registerAdminTeardown`
  * swallowed every delete error including the ones meaning the row was still
  * there — so a failing run leaked silently while reporting success. Cleanup is
@@ -258,10 +258,10 @@ export function selectsOnlyFrameworkSpecs(argv: readonly string[]): boolean {
  *
  * Coordinates come from resolveRuntimeTestStackDb, the same chain every other
  * test-stack consumer uses, rather than from a separately composed
- * E2E_DATABASE_URL that could disagree with it. (MINCRM-699)
+ * E2E_DATABASE_URL that could disagree with it.
  *
  * FAILS CLOSED. An unreachable database aborts the run instead of warning and
- * continuing: this guard caught 2049 stale users during MINCRM-691's push gate,
+ * continuing: this guard caught 2049 stale users during the push gate,
  * and a guard that silently stops guarding is worse than no guard because it is
  * trusted. The only skips are the two that mean "this run does not use the E2E
  * database" — CI, and a framework-only selection.
@@ -289,9 +289,9 @@ export async function assertStaleDataGuard(
   try {
     await client.connect();
     // TWO counts, because they answer different questions and one query cannot
-    // serve both. (MINCRM-668)
+    // serve both.
     //
-    // total — the abort/warn signal, unchanged. MINCRM-544 was a PAGINATION
+    // total — the abort/warn signal, unchanged. That was a PAGINATION
     // failure, and `listUsers` (userService.ts:294-300) counts and pages over
     // every row with no status filter, so a deactivated user costs exactly what
     // an active one does. Counting only active users here would let 50k
@@ -355,7 +355,7 @@ export async function assertStaleDataGuard(
  *   run (no database) from one that needs the E2E stack. Auth is env-driven.
  */
 export default async function globalSetup(config: FullConfig): Promise<void> {
-  // MINCRM-559: Abort or warn early if the local E2E database has accumulated
+  // Abort or warn early if the local E2E database has accumulated
   // too many users from prior test sessions. Runs before anything else so
   // cascading failures from stale data are caught before any worker starts.
   await assertStaleDataGuard(config);
@@ -384,7 +384,7 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   // target they never use.
   //
   // No default outside CI. A silent fallback to :3001 points the suite at the DEV server
-  // and, through it, the dev database — the leak class MINCRM-684 exists to close. Every
+  // and, through it, the dev database — the leak class this guard exists to close. Every
   // documented local invocation sources qa/e2e/.env (which sets :3002). CI sets
   // E2E_API_URL explicitly in every job, so the fallback is kept for that path only.
   const E2E_API_URL =
@@ -411,7 +411,7 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   }
 
   // Cookie name is env-driven so the test stack can use its own and avoid clobbering
-  // the dev stack's session in the shared localhost cookie jar. (MINCRM-684)
+  // the dev stack's session in the shared localhost cookie jar.
   const authCookieName = process.env['AUTH_COOKIE_NAME'] ?? 'minicrm_token';
 
   // Extract the auth cookie value from the Set-Cookie header.

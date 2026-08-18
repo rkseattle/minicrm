@@ -1,5 +1,5 @@
 /**
- * F-AI-CTX — AI context panel (MINCRM-427, MINCRM-428, MINCRM-429, MINCRM-430)
+ * F-AI-CTX — AI context panel
  *
  * Tests the "My Context" sidebar panel on the AI page, which lets users save
  * key/value preferences that are injected into every AI session's system prompt.
@@ -10,7 +10,7 @@
  *   cannot be exercised end-to-end (no real Anthropic call is ever made in
  *   E2E). The %%CONTEXT_PROPOSAL%% accept/dismiss protocol itself IS covered
  *   end-to-end via the __E2E_STUB__:CONTEXT_PROPOSAL trigger — see
- *   ai-context-proposal.spec.ts (MINCRM-435). This file covers CRUD on the
+ *   ai-context-proposal.spec.ts. This file covers CRUD on the
  *   context panel only. Additional coverage:
  *     - server/src/__tests__/aiContextService.test.ts (service logic)
  *     - server/src/__tests__/contextProposal.test.ts (proposal extraction)
@@ -24,10 +24,9 @@
  *   F-AI-CTX-3 — Adding a context entry via the UI saves and displays it
  *   F-AI-CTX-4 — A context entry created via API appears in the panel after reload
  *   F-AI-CTX-5 — Cancelling the add form discards the entry
- *   F-AI-CTX-6 — Editing a context entry via the panel updates it (MINCRM-435)
- *   F-AI-CTX-7 — Deleting a context entry via the panel removes it (MINCRM-435)
+ *   F-AI-CTX-6 — Editing a context entry via the panel updates it
+ *   F-AI-CTX-7 — Deleting a context entry via the panel removes it
  *
- * (MINCRM-427, MINCRM-428, MINCRM-435)
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

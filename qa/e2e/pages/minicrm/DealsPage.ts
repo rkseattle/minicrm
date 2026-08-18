@@ -7,7 +7,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-601
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -33,7 +33,7 @@ export class DealsPage {
     await this.page.goto(DealsPage.PATH);
   }
 
-  /** Returns a resolved locator for the Export menu trigger button. (MINCRM-652) */
+  /** Returns a resolved locator for the Export menu trigger button. */
   async exportMenuTriggerLocator(timeout?: number) {
     return this.page
       .locate(
@@ -46,7 +46,7 @@ export class DealsPage {
       .resolve(timeout);
   }
 
-  /** Opens the Export menu, revealing the CSV/PDF/Export All items. (MINCRM-652) */
+  /** Opens the Export menu, revealing the CSV/PDF/Export All items. */
   async openExportMenu(): Promise<void> {
     const trigger = await this.exportMenuTriggerLocator();
     await trigger.click();

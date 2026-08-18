@@ -1,5 +1,5 @@
 /**
- * Webhook subscription functional tests. (MINCRM-279)
+ * Webhook subscription functional tests.
  *
  * Tests:
  *   WH-01  Admin sees the Webhooks section in Settings → Integrations
@@ -9,7 +9,7 @@
  *   WH-05  Delete subscription → removed from list
  *   WH-06  Create contact via API → delivery log for contact.created appears (polling)
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All test data managed via restClient + testData.register (auto teardown)
@@ -253,7 +253,7 @@ test('@functional WH-06: create contact via API → contact.created log appears 
   // Poll until a delivery log entry for contact.created appears.
   // maxMs must exceed DELIVERY_TIMEOUT_MS (10 s) + dispatch overhead: the log is
   // written after attemptDelivery() returns (success or timeout), so 8 s is too
-  // tight when httpbin.org is slow under CI load (MINCRM-554).
+  // tight when httpbin.org is slow under CI load.
   const log = await pollForWebhookDelivery(restClient, sub.id, 'contact.created', {
     maxMs: 20_000,
   });

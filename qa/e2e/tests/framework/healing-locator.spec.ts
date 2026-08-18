@@ -6,9 +6,9 @@
  * 2. Primary fails, first valid fallback resolves — heal event logged.
  * 3. All strategies exhausted — StrategyExhaustedError thrown with all strategy names.
  * 4. Strategy priority order is enforced regardless of input order.
- * 5. `within` scopes the lookup to a container element (MINCRM-204).
+ * 5. `within` scopes the lookup to a container element.
  *
- * MINCRM-124, MINCRM-204
+ *
  */
 
 import { test, expect } from '@playwright/test';
@@ -38,7 +38,7 @@ function mockLocator(resolves: boolean, matchCount = 1): Locator {
     // count() is consulted for fallback strategies, which must uniquely identify
     // their target — a fallback matching several elements has found a category,
     // not the element. Defaults to 1 so existing single-match cases are
-    // unaffected. (MINCRM-695, MINCRM-696)
+    // unaffected.
     count: () => Promise.resolve(matchCount),
   } as unknown as Locator;
   return locator;
@@ -162,7 +162,6 @@ test.describe('HealingLocator', () => {
   // This is the shape that broke CI: an unscoped `role: 'list'` fallback beside a
   // precise testId primary stayed accidentally unique only while the page
   // rendered sparsely, then matched two lists once a sibling appeared.
-  // (MINCRM-695, MINCRM-696)
   test('rejects a fallback that matches multiple elements', async () => {
     let callIndex = 0;
     const page = {
@@ -191,7 +190,7 @@ test.describe('HealingLocator', () => {
 
   // The primary is deliberately exempt: a shared test id across a dual-render
   // mobile/desktop layout legitimately matches twice, and those are copies of
-  // the same element rather than different ones. (MINCRM-695, MINCRM-696)
+  // the same element rather than different ones.
   test('accepts a primary that matches multiple elements', async () => {
     const page = {
       getByTestId: () => mockLocator(true, 2),
@@ -362,7 +361,7 @@ test.describe('HealingLocator', () => {
     expect(hl.intent).toBe('The submit button for the login form');
   });
 
-  test('pageObject and method are recorded in heal event when provided (MINCRM-225)', async () => {
+  test('pageObject and method are recorded in heal event when provided', async () => {
     const os = await import('node:os');
     const path = await import('node:path');
     const fs = await import('node:fs');
@@ -399,7 +398,7 @@ test.describe('HealingLocator', () => {
     delete process.env['PW_WORKER_INDEX'];
   });
 
-  test('pageObject and method are absent from heal event when not provided (MINCRM-225)', async () => {
+  test('pageObject and method are absent from heal event when not provided', async () => {
     const os = await import('node:os');
     const path = await import('node:path');
     const fs = await import('node:fs');
@@ -473,7 +472,7 @@ test.describe('HealingLocator', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // `within` scoping (MINCRM-204)
+  // `within` scoping
   // ---------------------------------------------------------------------------
 
   test('within: scoped testId resolves element inside container', async () => {
@@ -569,7 +568,7 @@ test.describe('HealingLocator', () => {
   });
 });
 
-// ── per-call probe timeout (MINCRM-703) ──────────────────────────────────────
+// ── per-call probe timeout ──────────────────────────────────────
 
 test.describe('resolve(testName, timeout)', () => {
   /**

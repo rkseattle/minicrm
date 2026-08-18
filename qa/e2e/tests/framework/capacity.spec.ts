@@ -10,7 +10,7 @@
  * 6. getCapacityPlan() — wires detectCpuCount() into computeCapacityPlan()
  * 7. computeCapacityPlan() — 2 shards x 4 workers at today's real 4-vCPU runner
  *
- * MINCRM-662, MINCRM-706
+ *
  */
 
 import { test, expect } from '@playwright/test';
@@ -37,7 +37,7 @@ test.describe('computeCapacityPlan — pinned formula inputs', () => {
   test('4 vCPUs is the WORKERS_CAP plateau boundary: 2 shards x 4 workers', () => {
     // 4 is where workers saturate WORKERS_CAP, so every larger runner yields
     // this same plan (see the plateau assertion below). Pinned because nothing
-    // covered this branch of the formula before MINCRM-706 — every existing
+    // covered this branch of the formula before that change — every existing
     // case sat at 2 vCPUs or at 64 — which is how the surrounding docs went on
     // claiming 4 shards x 2 workers long after the probe stopped emitting them.
     expect(computeCapacityPlan(4)).toEqual({ shards: 2, workers: 4, source: 'capacity-probe' });
@@ -60,7 +60,7 @@ test.describe('computeCapacityPlan — pinned formula inputs', () => {
     }
   });
 
-  test('a 2-vCPU input reproduces the pre-MINCRM-662 constants', () => {
+  test('a 2-vCPU input reproduces the earlier constants', () => {
     // A formula input, NOT a description of any runner this pipeline uses.
     // Kept because it pins the derivation at a second known point, and because
     // it is the shape FALLBACK_PLAN encodes for detection failure.

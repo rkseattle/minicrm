@@ -7,7 +7,7 @@
  *
  * Behaviors do NOT contain assertions (no expect() calls).
  *
- * MINCRM-357
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -17,7 +17,7 @@ import { SetupChecklistPage } from '@pages/minicrm/SetupChecklistPage.js';
 import { AutomationPage } from '@pages/minicrm/AutomationPage.js';
 
 // ---------------------------------------------------------------------------
-// Webhooks (MINCRM-279)
+// Webhooks
 // ---------------------------------------------------------------------------
 
 /** Shape of a webhook subscription. */
@@ -132,7 +132,7 @@ export async function pollForWebhookDelivery(
 }
 
 // ---------------------------------------------------------------------------
-// Automation rules (MINCRM-253)
+// Automation rules
 // ---------------------------------------------------------------------------
 
 /** Shape of an automation rule returned by the API. */
@@ -172,7 +172,7 @@ export async function createAutomationRule(
 }
 
 // ---------------------------------------------------------------------------
-// Custom fields (MINCRM-267)
+// Custom fields
 // ---------------------------------------------------------------------------
 
 /** Shape of a custom field definition. */
@@ -241,7 +241,7 @@ export async function setContactCustomFields(
 }
 
 // ---------------------------------------------------------------------------
-// Currency settings (MINCRM-282)
+// Currency settings
 // ---------------------------------------------------------------------------
 
 /** Parameters for configuring currency settings. */
@@ -267,7 +267,7 @@ export async function setCurrencySettings(
 }
 
 // ---------------------------------------------------------------------------
-// Language / i18n settings (MINCRM-340)
+// Language / i18n settings
 // ---------------------------------------------------------------------------
 
 /**
@@ -307,7 +307,7 @@ export async function setNavLayout(restClient: RestClient, layout: string): Prom
 }
 
 // ---------------------------------------------------------------------------
-// Onboarding settings (MINCRM-256)
+// Onboarding settings
 // ---------------------------------------------------------------------------
 
 /**
@@ -324,7 +324,7 @@ export async function setOnboardingCompleted(
 }
 
 /**
- * Resets a target user's onboarding checklist via the admin API (MINCRM-410).
+ * Resets a target user's onboarding checklist via the admin API.
  *
  * Sets onboarding_completed=false on the target user so the checklist widget
  * reappears on their next login.
@@ -356,7 +356,7 @@ export async function getOnboardingStatus(
 
 /**
  * Clears the pipeline_stages_reviewed flag so the onboarding widget's first task
- * is incomplete, preventing allDone=true auto-dismiss during F-OB1. (MINCRM-410)
+ * is incomplete, preventing allDone=true auto-dismiss during F-OB1.
  *
  * Must be called by an admin-authenticated restClient.
  */
@@ -366,7 +366,7 @@ export async function resetPipelineStagesReviewed(restClient: RestClient): Promi
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap SetupChecklistPage / AutomationPage locators
-// so spec files never import @pages/* directly. (MINCRM-367, MINCRM-379)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /** Fixture context for setup checklist and automation UI behaviors. */
@@ -439,7 +439,7 @@ export async function expectAutomationPaginationVisible(
 
 // ---------------------------------------------------------------------------
 // Onboarding visibility helpers — keep page.goto/waitFor/isNotVisible out of
-// spec files. (MINCRM-418)
+// spec files.
 // ---------------------------------------------------------------------------
 
 /** Context for setup/onboarding UI behaviors. */
@@ -524,7 +524,7 @@ export async function getSetupChecklistTaskListHtml(
 }
 
 // ---------------------------------------------------------------------------
-// Custom fields locator helpers — keep page.locate out of spec files. (MINCRM-418)
+// Custom fields locator helpers — keep page.locate out of spec files.
 // ---------------------------------------------------------------------------
 
 /** Context for custom fields UI behaviors. */
@@ -582,7 +582,7 @@ export async function fillCustomFieldInput(
   const locator = await context.page
     .locate([{ type: 'testId', value: `custom-field-input-${definitionId}` }])
     .resolve();
-  // Scroll into view — on mobile the section can be below the fold (MINCRM-554)
+  // Scroll into view — on mobile the section can be below the fold
   await expect(locator).toBeVisible({ timeout: 5_000 });
   await locator.scrollIntoViewIfNeeded();
   await locator.fill(value);

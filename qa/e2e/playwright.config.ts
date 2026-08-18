@@ -3,11 +3,11 @@ import path from 'node:path';
 
 const IS_CI = Boolean(process.env.CI);
 
-// MINCRM-123: E2E_BASE_URL is the frontend origin Playwright navigates to.
+// E2E_BASE_URL is the frontend origin Playwright navigates to.
 // E2E_API_URL is the backend API origin used by RestClient and globalSetup.
 // Set these to the deployed frontend/API URLs in staging/production.
 //
-// No local default (MINCRM-684). `npm run e2e:client` serves the test stack's UI on
+// No local default. `npm run e2e:client` serves the test stack's UI on
 // 5175; a silent :5173 fallback would navigate the browser to the DEV frontend, whose
 // Vite proxies to the dev API on :3001 — so browser traffic would mutate the dev
 // database while globalSetup authenticated against the test API.
@@ -23,32 +23,32 @@ const IS_CI = Boolean(process.env.CI);
 // on 5173, so the fallback is kept for that path only.
 const BASE_URL = process.env.E2E_BASE_URL ?? (IS_CI ? 'http://localhost:5173' : undefined);
 
-// MINCRM-135: Anchor output paths to __dirname (qa/e2e/) so they are
+// Anchor output paths to __dirname (qa/e2e/) so they are
 // predictable regardless of the working directory when npx playwright runs.
 const E2E_DIR = __dirname;
 
-// MINCRM-192: Pre-authenticated admin session written by globalSetup.
+// Pre-authenticated admin session written by globalSetup.
 // Auth-specific specs opt out via test.use({ storageState: undefined }).
 const ADMIN_STORAGE_STATE = path.join(E2E_DIR, '.auth', 'admin.json');
 
 export default defineConfig({
   testDir: './tests',
 
-  // MINCRM-192: Run globalSetup once before all workers to save the admin session.
+  // Run globalSetup once before all workers to save the admin session.
   globalSetup: './globalSetup.ts',
 
-  // MINCRM-605/607: Coverage reset safety net — best-effort, no-ops when
+  // Coverage reset safety net — best-effort, no-ops when
   // coverage instrumentation is not configured.
   globalTeardown: './globalTeardown.ts',
 
   // Point to qa/tsconfig.json so Playwright's transform resolves @framework/* path aliases.
-  // MINCRM-126
+  //
   tsconfig: path.resolve(__dirname, '../tsconfig.json'),
 
   // Anchor test artifact output (traces, screenshots, videos) to qa/e2e/test-results/
   outputDir: path.join(E2E_DIR, 'test-results'),
 
-  // MINCRM-319: Visual regression snapshot storage.
+  // Visual regression snapshot storage.
   // Snapshots are stored under qa/e2e/snapshots/<test-file>/<browser>/ so they
   // are versioned alongside the tests that own them and stay separate from
   // transient test-results/ artifacts.
@@ -58,18 +58,18 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: IS_CI,
 
-  // MINCRM-554: Retries are disabled unconditionally. Prerequisites MINCRM-551
-  // (networkidle replacement) and MINCRM-552 (@serial tagging) are merged, so the
+  // Retries are disabled unconditionally. Prerequisites
+  // (networkidle replacement) and @serial tagging are merged, so the
   // root causes of pre-existing flakiness are gone. Keeping retries > 0 would mask
   // any new non-determinism by letting tests pass on retry and accumulate as "flaky"
   // below the gate threshold rather than failing visibly and being fixed promptly.
   retries: 0,
 
   // In CI, default to 4 workers; override via PW_WORKERS env var for future tuning.
-  // MINCRM-217: sharded runs pass an explicit --workers=N on the CLI (computed by the
-  // capacity-probe job, MINCRM-662) which takes precedence over this value; this value
+  // sharded runs pass an explicit --workers=N on the CLI (computed by the
+  // capacity-probe job) which takes precedence over this value; this value
   // only drives non-sharded local CI invocations via the config.
-  // MINCRM-557: cap local runs at 2 workers. NOT a parity choice — CI runs MORE
+  // cap local runs at 2 workers. NOT a parity choice — CI runs MORE
   // workers per shard than this (4 on today's runners), not fewer. The cap exists
   // because a local run is unsharded: every spec file is visible to every worker,
   // with no LPT partitioning to keep them off each other's shared state. Raising it
@@ -85,33 +85,33 @@ export default defineConfig({
 
   reporter: [
     ['html', { open: 'never', outputFolder: path.join(E2E_DIR, 'playwright-report') }],
-    // HealingReporter — merges per-worker heal logs at run end (S2, MINCRM-124)
+    // HealingReporter — merges per-worker heal logs at run end (S2)
     ['./framework/healing/healing-reporter.ts'],
-    // MINCRM-369: PerfReporter — merges per-worker perf samples into perf-report.json.
+    // PerfReporter — merges per-worker perf samples into perf-report.json.
     ['./framework/performance/perf-reporter.ts'],
     ...(IS_CI ? [['github'] as const] : []),
-    // MINCRM-135: JUnit XML output anchored to qa/e2e/test-results/ via absolute path.
+    // JUnit XML output anchored to qa/e2e/test-results/ via absolute path.
     ['junit', { outputFile: path.join(E2E_DIR, 'test-results', 'results.xml') }],
-    // MINCRM-332: Step summary reporter writes rich pass/fail/skip markdown to
+    // Step summary reporter writes rich pass/fail/skip markdown to
     // $GITHUB_STEP_SUMMARY in CI; no-ops locally when that env var is unset.
     ...(IS_CI ? [['./framework/reporting/step-summary-reporter.ts'] as const] : []),
-    // MINCRM-549: Timing reporter — appends per-test duration records to
+    // Timing reporter — appends per-test duration records to
     // test-timing.jsonl (gitignored). Always-on so local runs accumulate history
     // used by the LPT shard assignment pipeline.
     ['./framework/reporting/timing-reporter.ts'],
-    // MINCRM-661's resource-touch reporter was removed in MINCRM-705. It looked
+    // the resource-touch reporter was since removed. It looked
     // each test's reads/writes up in RESOURCE_REGISTRY and wrote them back out,
     // so the log was the registry with run IDs attached — it could show that a
     // test had not run, but never that a registry entry was WRONG, which was its
     // stated purpose. Nothing consumed it: the conflict-graph scripts read the
     // static registry directly. What actually guards the registry is
     // resource-registry.spec.ts's bidirectional completeness tests.
-    // MINCRM-605/607: Coverage reporter — dumps final backend coverage when
+    // Coverage reporter — dumps final backend coverage when
     // E2E_COVERAGE_GRANULARITY=per-run. Unconditional (not IS_CI-gated) so
     // local COVERAGE=true runs also produce dumps for manual exploratory use.
     // No-ops immediately unless that env var is set to 'per-run'.
     ['./framework/reporting/coverage-reporter.ts'],
-    // MINCRM-217: blob reporter for sharded CI runs only; MINCRM-218 aggregation job
+    // blob reporter for sharded CI runs only; the aggregation job
     // uses `playwright merge-reports` to combine blob outputs across all shards.
     ...(process.env['SHARD_INDEX']
       ? [['blob', { outputDir: path.join(E2E_DIR, 'blob-report') }] as const]
@@ -125,8 +125,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
 
-    // MINCRM-134: Retain traces only for failing tests in CI. With retries=0
-    // (MINCRM-554), 'on-first-retry' would never fire (no retry exists), and 'on'
+    // Retain traces only for failing tests in CI. With retries=0
+    // 'on-first-retry' would never fire (no retry exists), and 'on'
     // captures traces for every passing test too, bloating artifact storage.
     // 'retain-on-failure' records during the run but discards passing-test traces.
     // Set PLAYWRIGHT_TRACE=on to force traces locally without editing this file.
@@ -140,14 +140,14 @@ export default defineConfig({
   // Global timeouts (ms).
   // 60 s per test: createTestRep (5 API calls) + loginViaBrowser + actual test work
   // needs headroom beyond the previous 30 s under local parallelism (4 workers at
-  // the time this was measured; MINCRM-557 later capped local runs at 2). (MINCRM-415)
+  // the time this was measured; a later change capped local runs at 2).
   timeout: 60_000,
-  // MINCRM-554: Cap the entire run at 20 minutes. A healthy suite finishes in
+  // Cap the entire run at 20 minutes. A healthy suite finishes in
   // ~15 minutes; exceeding this signals a hung test rather than a slow one. CI shards
   // also respect this limit but are expected to complete well within 20 minutes per shard.
   //
   // PW_GLOBAL_TIMEOUT_MS overrides this — needed by pre-push-tia.ts's local
-  // full-suite fallback (MINCRM-636/637), which runs the ENTIRE @functional
+  // full-suite fallback, which runs the ENTIRE @functional
   // suite unsharded against one test-server process, unlike CI's own sharded
   // multi-project matrix this 20-minute figure is calibrated against (shard and
   // worker counts come from the capacity probe, so they vary with runner size —
@@ -172,7 +172,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
-        // MINCRM-192: Load pre-authenticated admin session for all tests.
+        // Load pre-authenticated admin session for all tests.
         // Auth-specific specs opt out via test.use({ storageState: undefined }).
         storageState: ADMIN_STORAGE_STATE,
       },
@@ -181,12 +181,12 @@ export default defineConfig({
       name: 'mobile-web',
       use: {
         ...devices['Pixel 5'],
-        // MINCRM-192: Load pre-authenticated admin session for all tests.
+        // Load pre-authenticated admin session for all tests.
         // Auth-specific specs opt out via test.use({ storageState: undefined }).
         storageState: ADMIN_STORAGE_STATE,
       },
     },
-    // MINCRM-369: Dedicated performance project. Runs only tests tagged @perf.
+    // Dedicated performance project. Runs only tests tagged @perf.
     // Kept separate from functional tests so perf failures are unambiguous and
     // do not slow down the main functional suite.
     // Run with: npm run test:perf --workspace=minicrm-qa

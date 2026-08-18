@@ -2,13 +2,13 @@
  * ConflictBannerWidget — Page Object for the FieldMergeModal conflict resolution UI.
  *
  * Surfaces when a PATCH returns 409 OPTIMISTIC_LOCK_CONFLICT and the client
- * opens the three-way merge dialog (MINCRM-351). Named "ConflictBannerWidget"
- * per the MINCRM-350 spec even though the underlying component is FieldMergeModal.
+ * opens the three-way merge dialog. Named "ConflictBannerWidget"
+ * per the spec even though the underlying component is FieldMergeModal.
  *
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-350
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';

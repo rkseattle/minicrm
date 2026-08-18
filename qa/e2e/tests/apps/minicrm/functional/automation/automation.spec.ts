@@ -11,17 +11,17 @@
  *   deal_stage_changed → create_task (F13-DS)
  *
  * Polling strategy:
- *   fireAutomationTrigger is fire-and-forget (void call in service layer — MINCRM-122).
+ *   fireAutomationTrigger is fire-and-forget (void call in service layer —).
  *   Tests poll GET /api/activities with exponential backoff (200ms → 400ms → 800ms…)
  *   up to MAX_POLL_MS. A clear failure message is emitted when the timeout is exceeded.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - Automation rules deleted in teardown via testData.register
  *
- * MINCRM-202
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -210,7 +210,7 @@ test('@functional F13-DS1: deal_stage_changed trigger fires create_task when dea
   });
 
   // Advance to Proposal — this fires the trigger.
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await patchDealStage(restClient, deal.id, 'Proposal', deal.version);
 
   // Poll until the task appears
@@ -255,7 +255,7 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
   });
 
   // Move to Qualification — not the trigger stage.
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await patchDealStage(restClient, deal.id, 'Qualification', deal.version);
 
   // Wait briefly and confirm no task was created
@@ -270,7 +270,7 @@ test('@functional F13-DS2: deal_stage_changed trigger does not fire when deal mo
 });
 
 // ---------------------------------------------------------------------------
-// Pagination always visible (MINCRM-345)
+// Pagination always visible
 // ---------------------------------------------------------------------------
 
 test('@functional F13-PAG1: Automation rules page — pagination controls always visible', async ({

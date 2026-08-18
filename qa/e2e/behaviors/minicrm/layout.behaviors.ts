@@ -7,7 +7,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-404
+ *
  */
 
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
@@ -108,7 +108,7 @@ export async function assertEmptyStateContainerFills(
 
 // ---------------------------------------------------------------------------
 // Generic page navigation helpers — keep page.goto() out of spec files for
-// pages that don't have a dedicated behavior module. (MINCRM-418)
+// pages that don't have a dedicated behavior module.
 // ---------------------------------------------------------------------------
 
 /**
@@ -186,7 +186,7 @@ export async function navigateToPath(path: string, context: LayoutBehaviorContex
 
 // ---------------------------------------------------------------------------
 // Locator helpers for visual-regression spec — keep page.locate() out of spec
-// files for one-off ready-check locators. (MINCRM-418)
+// files for one-off ready-check locators.
 // ---------------------------------------------------------------------------
 
 /** Waits for the dashboard stat cards to become visible — page-ready anchor. */
@@ -274,7 +274,7 @@ export async function waitForAccountNameHeading(context: LayoutBehaviorContext):
 }
 
 // ---------------------------------------------------------------------------
-// Visual-regression timestamp mask helper (MINCRM-418)
+// Visual-regression timestamp mask helper
 // ---------------------------------------------------------------------------
 
 /** Silently resolves a locator; returns null when not found (StrategyExhaustedError). */
@@ -349,7 +349,7 @@ export async function resolveTimestampMasks(
 }
 
 // ---------------------------------------------------------------------------
-// Dashboard-specific locator helpers (MINCRM-418)
+// Dashboard-specific locator helpers
 // ---------------------------------------------------------------------------
 
 /** Asserts the recent activity feed section is visible on the dashboard, with an optional timeout (ms). */

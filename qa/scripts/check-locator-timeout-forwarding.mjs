@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check-locator-timeout-forwarding — MINCRM-703
+ * check-locator-timeout-forwarding
  *
  * Fails when a Page Object method accepts a `timeout` but does not forward it to
  * locator RESOLUTION — either by calling `.resolve()` with no argument, or by

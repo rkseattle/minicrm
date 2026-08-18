@@ -1,5 +1,5 @@
 /**
- * F7-CB — AI champion and blocker detection (MINCRM-466)
+ * F7-CB — AI champion and blocker detection
  *
  * Functional regression tests for the passive champion/blocker classification
  * badge on the contact detail page.
@@ -16,7 +16,7 @@
  *   rendering path for non-neutral classifications is covered by the client
  *   component test suite (ContactDetailPage.test.tsx, ChampionBlockerBadge.test.tsx),
  *   which mock the HTTP response directly — E2E cannot exercise it without
- *   real AI output. (MINCRM-466)
+ *   real AI output.
  *
  * Framework conventions:
  *   - All tests tagged @functional

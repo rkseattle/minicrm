@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-344
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -308,7 +308,7 @@ export class NavPage {
     // while user is null (loading). networkidle on page.goto does not guarantee
     // React has committed the auth state. Wait for the Users nav link (the first
     // admin-only link, which triggers the divider render) to appear in the DOM
-    // before resolving the divider locator. (MINCRM-457)
+    // before resolving the divider locator.
     const usersTestId = layout === 'top-mobile' ? 'nav-top-users-mobile' : `nav-${layout}-users`;
     await this.page
       .locate(

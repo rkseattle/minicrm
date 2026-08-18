@@ -1,12 +1,12 @@
 /**
- * F-TS — AI follow-up task suggestions after activity logging (MINCRM-438)
+ * F-TS — AI follow-up task suggestions after activity logging
  *
  * Functional regression tests for the task-suggestion panel shown once,
  * immediately after saving a Call/Meeting/Email activity.
  *
  * Stub note:
  *   The E2E server runs with E2E=true, so generateTaskSuggestions bypasses the
- *   Anthropic SDK and returns a deterministic stub suggestion. (MINCRM-438)
+ *   Anthropic SDK and returns a deterministic stub suggestion.
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

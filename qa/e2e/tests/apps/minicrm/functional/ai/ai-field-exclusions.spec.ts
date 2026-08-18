@@ -1,5 +1,5 @@
 /**
- * F-AI-FE — AI Data Minimization / Field Exclusions (MINCRM-461)
+ * F-AI-FE — AI Data Minimization / Field Exclusions
  *
  * Covers admin-configurable AI field exclusion toggles and their effect on the
  * always-excluded (locked) defaults.
@@ -54,7 +54,6 @@ test.describe('AI data minimization UI', () => {
     // F-AI-FE-2 enables the AI master toggle, which also flips the ai_features
     // feature flag server-side (aiConfigService.ts:507-515). Resetting only the
     // field exclusion left both on for the next sequential conflict group.
-    // (MINCRM-705)
     await restoreAiDefaultsAfterTest(restClient);
   });
 

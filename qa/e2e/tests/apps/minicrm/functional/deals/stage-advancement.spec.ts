@@ -1,5 +1,5 @@
 /**
- * F7-SA — AI stage advancement suggestion (MINCRM-443)
+ * F7-SA — AI stage advancement suggestion
  *
  * Functional regression tests for the passive "Ready to advance?" indicator
  * on the deal detail page.
@@ -16,7 +16,7 @@
  *   rendering path (indicator visible, pre-set stage on click) is covered by
  *   the client component test suite (DealDetailPage.test.tsx), which mocks
  *   the HTTP response directly — E2E cannot exercise it without real AI
- *   output. (MINCRM-443)
+ *   output.
  *
  * Framework conventions:
  *   - All tests tagged @functional

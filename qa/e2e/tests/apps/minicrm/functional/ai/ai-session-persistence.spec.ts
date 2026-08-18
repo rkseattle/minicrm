@@ -1,5 +1,5 @@
 /**
- * F-AI-PERSIST — AI session persistence across reload (MINCRM-420, MINCRM-421, MINCRM-435)
+ * F-AI-PERSIST — AI session persistence across reload
  *
  * Verifies that a session's message history survives a full page reload —
  * i.e. it is genuinely persisted server-side, not just held in client-side
@@ -11,7 +11,6 @@
  *   F-AI-PERSIST1 — Message history is retained after a full page reload
  *   F-AI-PERSIST2 — The active session is retained after a full page reload
  *
- * (MINCRM-420, MINCRM-421, MINCRM-435)
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -39,7 +38,7 @@ test.beforeEach(async ({ restClient }) => {
 });
 
 // beforeEach alone cleans the PREVIOUS test's sessions, so the last test in the
-// file would leave its own behind for the rest of the run. (MINCRM-686)
+// file would leave its own behind for the rest of the run.
 test.afterEach(async ({ restClient }) => {
   await deleteAllAiSessionsViaApi(restClient);
   // Restore AI defaults so the toggle does not outlive this file. See

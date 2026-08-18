@@ -1,6 +1,5 @@
 /**
  * Unit tests for the pre-push hook's test-stack database resolution.
- * (MINCRM-698)
  *
  * The defect these pin: the hook loads root .env (dev coordinates, DB_PORT=5432)
  * and then qa/e2e/.env (test coordinates, 5433) under a first-write-wins rule,
@@ -33,7 +32,7 @@ import {
   TEST_DB_PASSWORD,
 } from '../../../scripts/test-stack-db-env.js';
 // Imported at its real home, not through the qa re-export, so this pins the
-// shared module both guards actually run. (MINCRM-699)
+// shared module both guards actually run.
 import {
   normalizeDbPort,
   isDevDatabasePort,
@@ -103,7 +102,7 @@ test.describe('resolveTestStackDbEnv', () => {
 
   // The guard's real contract, preserved: a deliberate export of the dev port is
   // still refused outright. This is the case that stopped a test run truncating
-  // the dev database (MINCRM-684) and must not be weakened by the fix.
+  // the dev database and must not be weakened by the fix.
   test('refuses an explicitly exported dev port', () => {
     expect(() => resolveTestStackDbEnv({ DB_PORT: DEV_DB_PORT })).toThrow(DevDatabaseRefusedError);
   });
@@ -111,7 +110,6 @@ test.describe('resolveTestStackDbEnv', () => {
   // Same normalization hole as the runtime resolver, and worse here: this function
   // composes DB_PORT for every spawned child, including the destructive seed and
   // truncate scripts. '05432' is !== '5432' as a string but connects as 5432.
-  // (MINCRM-699)
   for (const spelling of ['05432', '005432']) {
     test(`refuses a leading-zero spelling of the exported dev port (${spelling})`, () => {
       expect(() => resolveTestStackDbEnv({ DB_PORT: spelling })).toThrow(DevDatabaseRefusedError);
@@ -246,7 +244,7 @@ test.describe('parseEnvFileContents', () => {
 // avoid root .env's dev port, which also discarded a developer's legitimate
 // non-default test-stack coordinates in qa/e2e/.env and pinned everyone to
 // localhost:5433. Source matters as much as value — root .env is excluded from
-// the chain entirely; qa/e2e/.env is authoritative. (MINCRM-698)
+// the chain entirely; qa/e2e/.env is authoritative.
 test.describe('resolveTestStackDbEnv — precedence', () => {
   test('uses qa/e2e/.env coordinates when nothing is exported', () => {
     const env = resolveTestStackDbEnv({}, { DB_PORT: '15433', DB_HOST: 'test-stack.internal' });
@@ -314,7 +312,7 @@ test.describe('pickDbCoordinates', () => {
 // resolver rather than left to each caller. pre-push-tia.ts previously handed
 // children a corrected host/port while DB_USER/DB_PASSWORD still fell through
 // from root .env's DEV values — latent only because both stacks currently share
-// minicrm/password. (MINCRM-698, PR #369 review)
+// minicrm/password. (PR review)
 test.describe('resolveTestStackDbEnv — credentials', () => {
   test('defaults to the test-stack credentials', () => {
     const env = resolveTestStackDbEnv({});
@@ -358,7 +356,7 @@ test.describe('pickDbCoordinates — credentials', () => {
   });
 });
 
-// The runtime half of the chain (MINCRM-699). resolveTestStackDbEnv PRODUCES the
+// The runtime half of the chain. resolveTestStackDbEnv PRODUCES the
 // environment for spawned children; this CONSUMES the one that arrived, so a
 // Playwright child reaches the stack its parent resolved rather than a separately
 // composed E2E_DATABASE_URL that could disagree with it.

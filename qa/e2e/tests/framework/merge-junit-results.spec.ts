@@ -1,5 +1,5 @@
 /**
- * Unit tests for merge-junit-results.ts and junit-xml.ts. (MINCRM-689)
+ * Unit tests for merge-junit-results.ts and junit-xml.ts.
  *
  * The two defects under test both fail SILENTLY in CI — a truncated merge
  * reports success, and an attribute-less root reads as "0 tests" to every
@@ -19,7 +19,7 @@
  *    blocks happen to contain `</testsuite>`, so the truncation hazard itself is
  *    exercised only by the synthetic TRUNCATING_* fixtures below. The real
  *    artifact pins the document SHAPE; the synthetic ones pin the defect.
- *  - `frozen oracle` pins the OLD regex so MINCRM-689's AC 4 ("a regression
+ *  - `frozen oracle` pins the OLD regex so the AC 4 ("a regression
  *    test covers the truncation case; it fails against the current
  *    implementation") stays falsifiable after the inline heredocs are deleted.
  */
@@ -40,7 +40,7 @@ import { redactEmbeddedPayloads } from '../../../scripts/junit-xml.js';
 // which builds a pg.Pool and loads dotenv/config at module load — verified to
 // open two live sockets and rewrite DB_NAME/AUTH_COOKIE_NAME from a
 // cwd-relative .env inside the Playwright worker. junitXml.ts is the pure,
-// DB-free half, split out for exactly this import. (MINCRM-689)
+// DB-free half, split out for exactly this import.
 import {
   hasParseDisagreement,
   parseJUnitResults,
@@ -131,7 +131,7 @@ test.describe('merge-junit-results — AC 1: truncation on embedded payloads', (
   });
 
   test('frozen oracle: the old regex DROPS a testcase on the same input (AC 4)', () => {
-    // Pins MINCRM-689's AC 4. The inline heredocs this replaces are deleted in
+    // Pins the AC 4. The inline heredocs this replaces are deleted in
     // the following commits, so without this the "fails against the current
     // implementation" requirement becomes unfalsifiable. Frozen on purpose —
     // this is not live code and must not be refactored to call the new module.

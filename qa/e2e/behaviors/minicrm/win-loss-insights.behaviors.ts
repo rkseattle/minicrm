@@ -1,5 +1,5 @@
 /**
- * Behaviors for the MiniCRM AI win/loss pattern insights page (MINCRM-464).
+ * Behaviors for the MiniCRM AI win/loss pattern insights page.
  *
  * Each behavior composes WinLossInsightsPage interactions into named,
  * intent-describing async functions. No assertions inside behaviors —
@@ -54,7 +54,7 @@ export async function isWinPatternsHeadingVisible(
 
 /**
  * Returns true when the Export CSV button is currently enabled. Opens the
- * Export menu first, since the item isn't in the DOM until then. (MINCRM-652)
+ * Export menu first, since the item isn't in the DOM until then.
  */
 export async function isWinLossExportCsvEnabled(
   context: WinLossInsightsBehaviorContext,
@@ -68,13 +68,13 @@ export async function isWinLossExportCsvEnabled(
 /**
  * Clicks the win/loss insights "Export PDF" button and waits for the
  * underlying export.pdf HTTP response, returning its status and content-type
- * so the spec can assert a real download was triggered. (MINCRM-601)
+ * so the spec can assert a real download was triggered.
  *
  * Resolves at FIRST_INTERACTION_TIMEOUT_MS like the four single-record export
  * helpers. This one has no spec caller today and the page early-returns on
  * `!featureEnabled`, so it is latent rather than live — but it is the identical
  * shape, and leaving the one unfixed instance of a defect class is how this bug
- * survived MINCRM-703's first pass. (MINCRM-703)
+ * survived the first pass.
  */
 export async function clickWinLossExportPdfAndAwaitResponse(
   context: WinLossInsightsBehaviorContext,

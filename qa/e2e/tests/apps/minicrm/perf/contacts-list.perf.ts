@@ -1,7 +1,7 @@
 /**
  * P1 — Contacts List Page: Performance PoC
  *
- * Proof-of-concept for MINCRM-369. Captures and asserts on:
+ * Proof-of-concept for. Captures and asserts on:
  *   - LCP, CLS, TTFB, INP (Web Vitals via PerformanceObserver injected before load)
  *   - API TTFB for GET /api/contacts (via Playwright response.timing())
  *
@@ -11,7 +11,7 @@
  * Thresholds are conservative CI-appropriate values (see perf-thresholds.ts).
  * Override via env vars (PERF_THRESHOLD_LCP_MS, etc.) without code changes.
  *
- * MINCRM-369
+ *
  */
 
 import { mergeTests, expect } from '@playwright/test';

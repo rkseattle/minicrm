@@ -1,5 +1,5 @@
 /**
- * F-AI — AI Provider and Model Configuration (MINCRM-457, MINCRM-653)
+ * F-AI — AI Provider and Model Configuration
  *
  * Functional regression tests for the admin AI settings page, covering the
  * master toggle confirmation dialog, DPA acknowledgment lifecycle, access
@@ -22,11 +22,11 @@
  *   F-AI13  — Session retention (Data Retention section) can be saved
  *   F-AI14  — Field exclusion (Data Minimization section) can be toggled
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional @serial — resetAiSettings() mutates the
  *     shared ai_features master toggle via the real admin API, which would
  *     otherwise leak a disabled state into any other spec sharing this
- *     worker (see MINCRM-473 CI investigation).
+ *     worker.
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Behaviors imported from @behaviors/* only — never @pages/*
  *   - AI settings state reset via resetAiSettings() in afterEach
@@ -312,7 +312,7 @@ test('@functional @serial F-AI9: rep receives 403 when accessing the AI config e
 });
 
 // ---------------------------------------------------------------------------
-// F-AI10 — Sub-navigation switches between sections (MINCRM-653)
+// F-AI10 — Sub-navigation switches between sections
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-AI10: sub-navigation switches between General, Usage & Budgets, Data Retention, and Data Minimization', async ({
@@ -346,7 +346,7 @@ test('@functional @serial F-AI10: sub-navigation switches between General, Usage
 });
 
 // ---------------------------------------------------------------------------
-// F-AI11 — Deep-linking via ?section= lands directly on the section (MINCRM-653)
+// F-AI11 — Deep-linking via ?section= lands directly on the section
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-AI11: deep-linking via ?tab=ai&section= lands directly on the target section', async ({
@@ -362,7 +362,7 @@ test('@functional @serial F-AI11: deep-linking via ?tab=ai&section= lands direct
 });
 
 // ---------------------------------------------------------------------------
-// F-AI12 — Master toggle remains visible on every section (MINCRM-653)
+// F-AI12 — Master toggle remains visible on every section
 // ---------------------------------------------------------------------------
 
 test('@functional @serial F-AI12: master toggle remains visible and interactive on every sub-section', async ({

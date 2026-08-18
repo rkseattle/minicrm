@@ -1,5 +1,5 @@
 /**
- * Argument parsing for the two shard-generation scripts. (MINCRM-696)
+ * Argument parsing for the two shard-generation scripts.
  *
  * Both take a `--selected-files=<path>` whose value is a filesystem path, and
  * both previously read it with `.split('=')[1]` — which truncates at the first
@@ -76,7 +76,7 @@ test.describe('gen-shards parseGenShardsArgs', () => {
     expect(parseGenShardsArgs(argv('--workers=abc')).error).toContain('positive integer');
   });
 
-  // parseInt's partial parse, the defect MINCRM-696 is titled for. parseInt('8x')
+  // parseInt's partial parse, the defect this is titled for. parseInt('8x')
   // → 8 and parseInt('2.9') → 2 both pass a range check, so a typo'd worker count
   // silently shards differently than asked rather than erroring.
   for (const value of ['8x', '2.9', '-2', ' 4', '']) {
@@ -136,7 +136,7 @@ test.describe('gen-shard-config parseGenShardConfigArgs', () => {
   // The highest-consequence case in this file. parseInt('2x') → 2 passes every
   // range check and produces a REAL config for shard 2 — so the specs in the
   // shard actually asked for never run, and nothing reports it. CI invokes this
-  // script in a loop, one call per shard index. (MINCRM-696)
+  // script in a loop, one call per shard index.
   const NON_INTEGER_CASES: ReadonlyArray<[label: string, index: string, total: string]> = [
     ['a partially-numeric index', '2x', '4'],
     ['a fractional index', '1.9', '4'],

@@ -9,7 +9,7 @@
  *
  * Seeded from a direct audit of every file matching `@serial` under
  * qa/e2e/tests/apps/minicrm/functional/ (2026-07-23; re-audited 2026-07-31 for
- * MINCRM-685). Some files match the string `@serial` only inside a comment,
+ * Some files match the string `@serial` only inside a comment,
  * with no test actually tagged, and are intentionally excluded — see
  * KNOWN_COMMENT_ONLY_FILES in resource-registry.spec.ts, which is the list that
  * is actually consulted. Do not maintain a second copy of it here.
@@ -19,7 +19,7 @@
  * that's the case, `testTitleContains` narrows an entry to the matching
  * test(s) only; entries without `testTitleContains` apply to the whole file.
  *
- * MINCRM-661
+ *
  */
 
 import type { FileResourceTouch } from '../../framework/reporting/conflict-graph.js';
@@ -39,18 +39,18 @@ export type ResourceKey =
   | 'settings.email_notifications_enabled'
   // Reset by ensureSystemDefaults() and by nothing else today. Modeled so the
   // composite key below expands to the helper's complete write set rather than
-  // a near-complete one. (MINCRM-705)
+  // a near-complete one.
   | 'settings.tags_restrict_creation'
   // Org-wide MFA enforcement. Leaving it on blocks every later loginAsAdmin(),
   // which mfa.spec.ts's own resetMfaRequired() comment already warned about —
   // the file restored the row correctly but was never tagged, so it ran in the
   // parallel matrix. Found by the direct-REST-call detection restored in
-  // MINCRM-705; the wrapper derivation alone could not see it, because this
+  // the wrapper derivation alone could not see it, because this
   // spec mutates the endpoint inline rather than through a behavior helper.
   | 'settings.mfa_required'
   // The system_settings row backing the onboarding checklist's first task.
   // Written directly by resetPipelineStagesReviewed() and indirectly by
-  // ensureSystemDefaults(). (MINCRM-705)
+  // ensureSystemDefaults().
   | 'settings.pipeline_stages_reviewed'
   // Every row ensureSystemDefaults() resets, as ONE key. That helper writes TEN
   // shared settings — default_language, nav_layout, email_notifications,
@@ -69,7 +69,6 @@ export type ResourceKey =
   // Callers additionally declare the SPECIFIC key they deliberately mutate
   // (settings.branding for branding.spec.ts, and so on), so a file that only
   // resets is still distinguishable from one that sets a non-default value.
-  // (MINCRM-705)
   | 'settings.ensure_system_defaults'
   // NOT a system_settings row: onboarding_completed is a column on the `users`
   // table, written per-caller (server settingsService.setOnboardingCompleted).
@@ -77,7 +76,7 @@ export type ResourceKey =
   // account, and only onboarding.spec.ts ever sets it FALSE — which is what
   // makes it hazardous, since a concurrent spec logging in as admin then gets
   // the checklist overlay. Writes scoped to an ephemeral user (the iam/ specs,
-  // suppressUserOnboarding) do NOT touch this key. (MINCRM-705)
+  // suppressUserOnboarding) do NOT touch this key.
   | 'users.admin_onboarding_completed'
   // The pipeline_stages table itself — names, membership and the sort_order
   // column, mutated via PUT /api/v1/settings/pipeline-stages/reorder and the
@@ -92,7 +91,7 @@ export type ResourceKey =
   // actually isolates pipeline-stages.spec.ts is its @serial tag moving it to
   // the single-worker e2e-serial job. The key is here so the resource is named
   // rather than implicit, and so a future @serial spec touching these rows
-  // conflicts correctly. (MINCRM-705)
+  // conflicts correctly.
   | 'pipeline_stages'
   | 'feature_flags.notes'
   | 'feature_flags.tags'
@@ -128,14 +127,14 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/settings/settings.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
-    // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
+    // pipeline_stages_reviewed, so every test here writes that row.
     reads: ['settings.currencies', 'settings.ensure_system_defaults'],
     writes: ['settings.currencies', 'settings.ensure_system_defaults'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/branding/branding.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
-    // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
+    // pipeline_stages_reviewed, so every test here writes that row.
     reads: ['settings.branding', 'settings.ensure_system_defaults'],
     writes: ['settings.branding', 'settings.ensure_system_defaults'],
   },
@@ -168,7 +167,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/navigation/navigation.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
-    // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
+    // pipeline_stages_reviewed, so every test here writes that row.
     reads: ['settings.nav_layout', 'settings.ensure_system_defaults'],
     writes: ['settings.nav_layout', 'settings.ensure_system_defaults'],
   },
@@ -191,16 +190,16 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // and ai_configuration.enabled=false. F7-DH4 then failed with
     // "HealingLocator: all strategies exhausted" on run-deal-health-check-button
     // — reproduced with just those two files, and passing with either alone.
-    // The comment at the top of this file records that MINCRM-705's composite
+    // The comment at the top of this file records that the composite
     // key was introduced precisely because the old modelling "put data-hygiene
     // beside deal-health-check ... with a live cross-file race"; this entry is
-    // the half that was still missing. (MINCRM-668)
+    // the half that was still missing.
     file: 'qa/e2e/tests/apps/minicrm/functional/deals/deal-health-check.spec.ts',
     // feature_flags.ai_features as well as the settings key: setAiEnabled writes
     // BOTH in one server transaction (aiConfigService.ts). Every other
     // setAiEnabled caller in this registry declares the pair; omitting it here
     // drew no edge to feature-flags.spec.ts, which is the same undeclared-cascade
-    // defect MINCRM-705 fixed across eleven entries.
+    // defect fixed across eleven entries.
     reads: ['settings.ai_configuration_enabled', 'feature_flags.ai_features'],
     writes: ['settings.ai_configuration_enabled', 'feature_flags.ai_features'],
   },
@@ -217,7 +216,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/sso/sso.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
-    // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
+    // pipeline_stages_reviewed, so every test here writes that row.
     reads: ['settings.sso', 'settings.ensure_system_defaults'],
     writes: ['settings.sso', 'settings.ensure_system_defaults'],
   },
@@ -230,7 +229,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
       // Undeclared, the graph drew no edge to feature-flags.spec.ts and the
-      // two could be co-scheduled at workers:2. (MINCRM-705)
+      // two could be co-scheduled at workers:2.
       'feature_flags.ai_features',
     ],
   },
@@ -243,7 +242,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
       // Undeclared, the graph drew no edge to feature-flags.spec.ts and the
-      // two could be co-scheduled at workers:2. (MINCRM-705)
+      // two could be co-scheduled at workers:2.
       'feature_flags.ai_features',
     ],
   },
@@ -256,7 +255,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
       // Undeclared, the graph drew no edge to feature-flags.spec.ts and the
-      // two could be co-scheduled at workers:2. (MINCRM-705)
+      // two could be co-scheduled at workers:2.
       'feature_flags.ai_features',
     ],
   },
@@ -269,7 +268,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
       // Undeclared, the graph drew no edge to feature-flags.spec.ts and the
-      // two could be co-scheduled at workers:2. (MINCRM-705)
+      // two could be co-scheduled at workers:2.
       'feature_flags.ai_features',
     ],
   },
@@ -291,7 +290,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
       // Undeclared, the graph drew no edge to feature-flags.spec.ts and the
-      // two could be co-scheduled at workers:2. (MINCRM-705)
+      // two could be co-scheduled at workers:2.
       'feature_flags.ai_features',
     ],
   },
@@ -304,7 +303,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // setAiEnabled() cascades to the ai_features flag in the same server-side
       // transaction (aiConfigService.ts:507-515). The spec's own comment at :73
       // already described this cascade while the entry omitted it — exactly the
-      // registry-vs-reality drift this ticket exists to close. (MINCRM-705)
+      // registry-vs-reality drift this ticket exists to close.
       'feature_flags.ai_features',
     ],
   },
@@ -317,7 +316,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
       // Undeclared, the graph drew no edge to feature-flags.spec.ts and the
-      // two could be co-scheduled at workers:2. (MINCRM-705)
+      // two could be co-scheduled at workers:2.
       'feature_flags.ai_features',
     ],
   },
@@ -330,7 +329,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
       // Undeclared, the graph drew no edge to feature-flags.spec.ts and the
-      // two could be co-scheduled at workers:2. (MINCRM-705)
+      // two could be co-scheduled at workers:2.
       'feature_flags.ai_features',
     ],
   },
@@ -343,7 +342,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
       // Undeclared, the graph drew no edge to feature-flags.spec.ts and the
-      // two could be co-scheduled at workers:2. (MINCRM-705)
+      // two could be co-scheduled at workers:2.
       'feature_flags.ai_features',
     ],
   },
@@ -356,14 +355,14 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
       // Undeclared, the graph drew no edge to feature-flags.spec.ts and the
-      // two could be co-scheduled at workers:2. (MINCRM-705)
+      // two could be co-scheduled at workers:2.
       'feature_flags.ai_features',
     ],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/i18n/i18n.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
-    // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
+    // pipeline_stages_reviewed, so every test here writes that row.
     reads: ['settings.default_language', 'settings.ensure_system_defaults'],
     writes: ['settings.default_language', 'settings.ensure_system_defaults'],
   },
@@ -375,7 +374,6 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // own hooks (:190, :202), not at file level — the F10-PP block has its own
     // beforeEach and never calls it. Promoting this to a file-wide entry would
     // move the whole file into the workers:1 partition on a false premise.
-    // (MINCRM-705)
     reads: ['settings.email_notifications_enabled', 'settings.ensure_system_defaults'],
     writes: ['settings.email_notifications_enabled', 'settings.ensure_system_defaults'],
   },
@@ -391,14 +389,14 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // every test writes pipeline_stages_reviewed — not just the one the entry
     // above is scoped to. Without a file-wide entry hasFileWideRegistryEntry()
     // returns false and the file stays eligible for MAX_GROUP_WORKERS, able to
-    // race itself on the row. (MINCRM-705)
+    // race itself on the row.
     file: 'qa/e2e/tests/apps/minicrm/functional/reports/reports-nav.spec.ts',
     reads: ['settings.ensure_system_defaults'],
     writes: ['settings.ensure_system_defaults'],
   },
   {
     // Only F8-A1 touches the org-wide row; F8-S1/LS1/LS2/D1 are per-user MFA
-    // enrolment and stay plain @functional. (MINCRM-705)
+    // enrolment and stay plain @functional.
     file: 'qa/e2e/tests/apps/minicrm/functional/auth/mfa.spec.ts',
     testTitleContains: 'F8-A1',
     reads: ['settings.mfa_required'],
@@ -410,7 +408,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // but it carried no @serial tag, so it ran in the parallel shard matrix
     // while reordering rows that pipelines.spec.ts and
     // stage-exit-requirements.spec.ts also read. describe.configure orders
-    // tests within the file and gives no cross-file protection. (MINCRM-705)
+    // tests within the file and gives no cross-file protection.
     file: 'qa/e2e/tests/apps/minicrm/functional/pipeline-stages/pipeline-stages.spec.ts',
     reads: ['pipeline_stages', 'settings.ensure_system_defaults'],
     writes: [
@@ -421,7 +419,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // void markPipelineStagesReviewed() (pipelineStageController.ts:70,117)
       // — upserting the same system_settings row the eight ensureSystemDefaults
       // callers delete. Undeclared, the graph drew no edge and the generator
-      // co-scheduled this file with branding.spec.ts. (MINCRM-705)
+      // co-scheduled this file with branding.spec.ts.
       'settings.ensure_system_defaults',
     ],
   },
@@ -430,7 +428,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // pipeline_stages_reviewed system_settings row (via ensureSystemDefaults and
     // resetPipelineStagesReviewed), and the seeded admin's own
     // users.onboarding_completed — which it alone ever sets FALSE.
-    // File-wide: all eight tests touch the flag. (MINCRM-705)
+    // File-wide: all eight tests touch the flag.
     file: 'qa/e2e/tests/apps/minicrm/functional/onboarding/onboarding.spec.ts',
     reads: ['settings.ensure_system_defaults', 'users.admin_onboarding_completed'],
     writes: ['settings.ensure_system_defaults', 'users.admin_onboarding_completed'],
@@ -440,13 +438,13 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // sub-panel's run-now button clickable, writing the ai_configuration_enabled
     // singleton that eleven other @serial specs conflict on. The file's own
     // header comment argued no @serial was needed, reasoning only about
-    // data_hygiene_scoring_config and overlooking this. (MINCRM-705)
+    // data_hygiene_scoring_config and overlooking this.
     // Both keys on ONE title-scoped entry: F-HYGIENE3 writes
     // ai_configuration_enabled via setAiEnabled(), and its own
     // describe.serial-scoped afterEach calls ensureSystemDefaults(), which
     // DELETEs pipeline_stages_reviewed. Deliberately NOT file-wide —
     // F-HYGIENE1/2 are plain @functional and run in the parallel matrix, so a
-    // file-wide claim would misdescribe what they touch. (MINCRM-705)
+    // file-wide claim would misdescribe what they touch.
     file: 'qa/e2e/tests/apps/minicrm/functional/data-hygiene/data-hygiene.spec.ts',
     testTitleContains: 'F-HYGIENE3',
     reads: ['settings.ai_configuration_enabled', 'settings.ensure_system_defaults'],
@@ -456,7 +454,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // Same setAiEnabled() cascade as the ai/ specs. This entry matters most:
       // the generator places data-hygiene.spec.ts in a group at workers=2, so a
       // missing edge to feature-flags.spec.ts is genuinely concurrent, not just
-      // sequential leakage. (MINCRM-705)
+      // sequential leakage.
       'feature_flags.ai_features',
     ],
   },

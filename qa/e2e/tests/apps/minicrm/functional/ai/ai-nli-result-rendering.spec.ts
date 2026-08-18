@@ -1,5 +1,5 @@
 /**
- * F-AI-RESULT — AI NLI read-query result rendering (MINCRM-423, MINCRM-431, MINCRM-435)
+ * F-AI-RESULT — AI NLI read-query result rendering
  *
  * Verifies the read-query happy path: a prompt that resolves to a read tool
  * call renders the result as a native CRM-styled component in the thread,
@@ -42,7 +42,7 @@ test.beforeEach(async ({ restClient }) => {
 });
 
 // beforeEach alone cleans the PREVIOUS test's sessions, so the last test in the
-// file would leave its own behind for the rest of the run. (MINCRM-686)
+// file would leave its own behind for the rest of the run.
 test.afterEach(async ({ restClient }) => {
   await deleteAllAiSessionsViaApi(restClient);
   // Restore AI defaults so the toggle does not outlive this file. See

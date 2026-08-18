@@ -1,12 +1,12 @@
 /**
- * isTokenNearingExpiry — unit specs (MINCRM-697).
+ * isTokenNearingExpiry — unit specs.
  *
  * Covers the predicate in qa/e2e/apps/minicrm/fixtures.ts that decides whether
  * the shared admin cookie is refreshed before a test runs.
  *
  * WHY THIS MATTERS
  * ----------------
- * This function is the whole of the MINCRM-697 fix's trigger condition. Return
+ * This function is the whole of that fix's trigger condition. Return
  * false when it should return true and the seven AI specs fail again with
  * `HealingLocator: all strategies exhausted` — a message that reads as selector
  * drift and cost substantial debugging time to trace back to an expired session.
@@ -48,7 +48,7 @@ function makeToken(claims: Record<string, unknown>): string {
  *
  * Imported rather than re-declared: a local copy here would drift from the
  * value the production code actually plans its refresh cadence around, and
- * these specs would keep passing while doing so. (MINCRM-703)
+ * these specs would keep passing while doing so.
  */
 const TOKEN_LIFETIME_SECONDS = EXPECTED_TOKEN_LIFETIME_SECONDS;
 

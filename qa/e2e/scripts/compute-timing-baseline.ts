@@ -18,7 +18,7 @@
  *   # or directly:
  *   npx tsx qa/e2e/scripts/compute-timing-baseline.ts
  *
- * MINCRM-549
+ *
  */
 
 import path from 'node:path';

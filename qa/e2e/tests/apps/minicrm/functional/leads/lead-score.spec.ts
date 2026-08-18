@@ -1,12 +1,12 @@
 /**
- * F-LS — Lead scoring and AI narrative explanation (MINCRM-441 + prerequisite)
+ * F-LS — Lead scoring and AI narrative explanation
  *
  * Functional regression tests for the rule-based lead score badge and the
  * "Why this score?" AI narrative action on the Lead detail page.
  *
  * Stub note:
  *   The E2E server runs with E2E=true, so generateLeadScoreNarrative bypasses
- *   the Anthropic SDK and returns a deterministic stub narrative. (MINCRM-441)
+ *   the Anthropic SDK and returns a deterministic stub narrative.
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

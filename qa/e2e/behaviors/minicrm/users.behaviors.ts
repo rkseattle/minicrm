@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-110, MINCRM-357
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -145,7 +145,7 @@ export async function userIsVisibleInList(
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Shape of a user row returned by GET /api/v1/users. */
@@ -297,7 +297,7 @@ export async function changeUserRole(
 }
 
 // ---------------------------------------------------------------------------
-// suppressUserOnboarding() (MINCRM-410)
+// suppressUserOnboarding()
 // ---------------------------------------------------------------------------
 
 /**
@@ -305,7 +305,7 @@ export async function changeUserRole(
  * appear when tests log in as that user.
  *
  * New users start with onboarding_completed=false (migration 058 default) — the
- * widget is the whole point of MINCRM-410. Tests that create ephemeral users and
+ * widget is the whole point of. Tests that create ephemeral users and
  * navigate the UI as them must call this after activation to prevent the fixed
  * z-50 overlay from intercepting pointer events on other elements.
  *
@@ -331,7 +331,7 @@ export async function suppressUserOnboarding(
 }
 
 // ---------------------------------------------------------------------------
-// resetOnboardingViaUI() (MINCRM-410)
+// resetOnboardingViaUI()
 // ---------------------------------------------------------------------------
 
 /** Result returned by resetOnboardingViaUI. */

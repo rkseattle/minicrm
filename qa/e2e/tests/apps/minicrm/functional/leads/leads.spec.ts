@@ -1,7 +1,7 @@
 /**
  * F9 — Leads Module (Lead CRUD, Status Lifecycle, Conversion)
  *
- * Functional regression tests for the Leads entity introduced in MINCRM-173/174/175.
+ * Functional regression tests for the Leads entity introduced in.
  * Covers create, read/list, update, delete, status lifecycle, disqualification,
  * and atomic lead conversion to contact + account + deal.
  *
@@ -13,16 +13,16 @@
  *   Status (F9-S)    — inline status update, status history recorded
  *   Convert (F9-V)   — atomic conversion creates contact, account, and deal; converted badge shown
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All UI interactions via behaviors — no raw locators in this file
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - Tests pass with --workers=4 (no shared mutable state)
  *
- * MINCRM-173, MINCRM-174, MINCRM-175, MINCRM-192
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   Evaluated for parallel mode but rejected. beforeEach calls
  *   setSystemDefaultLanguage(restClient, 'en') which writes to the shared
  *   default_language system_settings row. Concurrent workers running i18n.spec.ts
@@ -201,7 +201,7 @@ test('@functional F9-S2: disqualified leads hidden by default, shown with toggle
   testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
   // Disqualify via API.
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await disqualifyLead(restClient, leadId, created.version, 'Not a fit');
 
   // Should not be visible by default
@@ -351,7 +351,7 @@ test('@functional F9-D1: deleting a lead removes it from the list', async ({
 });
 
 // ---------------------------------------------------------------------------
-// Export tests (F9-E) (MINCRM-650)
+// Export tests (F9-E)
 // ---------------------------------------------------------------------------
 
 test('@functional F9-E1: clicking Export PDF on the lead detail page downloads a single-record PDF file', async ({

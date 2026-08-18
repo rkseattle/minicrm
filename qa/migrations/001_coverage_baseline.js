@@ -33,7 +33,7 @@
  * rows lived in the product database because they gated WHO may call the
  * coverage control APIs — an authorization concern belonging with the
  * product's own users/feature_flags tables rather than with coverage data.
- * MINCRM-663 and MINCRM-685 removed all of them: each coverage router now
+ * removed all of them: each coverage router now
  * gates its route registration on a boot-time env var instead, so there is no
  * coverage-related feature_flags row in either database. Access control on the
  * routes that do register is still a product concern (authenticate plus

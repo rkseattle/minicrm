@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA pipeline ingestion functional tests. (MINCRM-614, MINCRM-615, MINCRM-616)
+ * Coverage/TIA pipeline ingestion functional tests.
  *
  * Verifies the ingestion endpoint works end to end against a real running
  * server — NOT symbolication accuracy or storage-model correctness in
@@ -14,12 +14,12 @@
  *            result the first time, then 200 alreadyIngested=true on retry
  *   COVP-03  Ingesting an unknown dumpId returns 404 COVERAGE_DUMP_NOT_FOUND
  *
- * Mutates no feature flag (MINCRM-685). This spec used to toggle
+ * Mutates no feature flag. This spec used to toggle
  * coverage_pipeline_ingestion over the REST API and assert a
  * 403 FEATURE_DISABLED path in COVP-02. That row is gone: the router now
  * gates its entire route registration on the COVERAGE_PIPELINE_INGESTION env
  * var at process boot, exactly as POST /admin/coverage/dump has gated on
- * COVERAGE_INSTRUMENTATION since MINCRM-663. A boot-time env var cannot be
+ * COVERAGE_INSTRUMENTATION since a later change. A boot-time env var cannot be
  * flipped mid-run by an E2E spec, so COVP-02's intent moved to
  * server/src/__tests__/coverageRouteGating.test.ts, which re-imports the app
  * module with the var unset and asserts a 404 — routes absent rather than
@@ -28,7 +28,7 @@
  * CI sets both env vars 'true' for every job that runs this spec, so nothing
  * here needs to arrange access at all.
  *
- * NOT @serial (MINCRM-685). The tag was justified by this file mutating the
+ * NOT @serial. The tag was justified by this file mutating the
  * shared coverage_pipeline_ingestion feature_flags row over REST; that row is
  * gone, and an audit of all 25 @serial specs confirmed nothing else here needs
  * the isolation.
@@ -46,7 +46,7 @@
  * the e2e-serial job to the sharded e2e-functional job; it does not make these
  * tests run concurrently with each other.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No app-domain strings in framework layer
@@ -113,7 +113,7 @@ test('@functional COVP-01: ingesting a browser-origin dump succeeds, then retry 
   expect(secondIngest.body.result['alreadyIngested']).toBe(true);
 });
 
-// COVP-02 removed (MINCRM-685): it asserted 403 FEATURE_DISABLED with the
+// COVP-02 removed: it asserted 403 FEATURE_DISABLED with the
 // coverage_pipeline_ingestion row toggled off. The row no longer exists and the
 // gate is now COVERAGE_PIPELINE_INGESTION at process boot, which no E2E spec can
 // flip. The equivalent assertion — 404, routes never registered — lives in

@@ -1,14 +1,14 @@
 /**
- * Unit tests for globalSetup's stale-data guard. (MINCRM-699)
+ * Unit tests for globalSetup's stale-data guard.
  *
  * The defect these pin: the guard built its client from E2E_DATABASE_URL — a
  * second, independent source of the test-stack coordinates, unreconciled with
- * the precedence chain MINCRM-698 established. A developer who moved their test
+ * the precedence chain established here. A developer who moved their test
  * stack and updated DB_HOST/DB_PORT but not the URL got the two disagreeing, and
  * the failure was SILENT: the catch re-threw only errors whose message began
  * with '[globalSetup]', so a URL pointing at nothing degraded to "guard skipped"
  * rather than a loud failure. The guard stopped guarding with no signal — and it
- * is the guard that caught 2049 stale users during MINCRM-691's push gate.
+ * is the guard that caught 2049 stale users during the push gate.
  *
  * Importing globalSetup.ts is safe from a spec: its module scope is only
  * constants, and importing the named export does not invoke the default export
@@ -371,12 +371,12 @@ test.describe('StaleDataAbortError', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The stale-data count query (MINCRM-668)
+// The stale-data count query
 // ---------------------------------------------------------------------------
 
 test.describe('STALE_DATA_COUNT_SQL', () => {
   test('counts TOTAL rows unfiltered, because pagination pays for inactive rows too', () => {
-    // MINCRM-544 was a pagination failure, and listUsers (userService.ts:294)
+    // was a pagination failure, and listUsers (userService.ts:294)
     // counts and pages every row with no status filter — a deactivated user
     // costs exactly what an active one does. Filtering the total would let 50k
     // deactivated rows accumulate with the guard reporting near zero, blinding
