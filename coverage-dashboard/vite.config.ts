@@ -1,6 +1,5 @@
 /**
  * Vite configuration for the standalone Coverage/TIA reporting dashboard.
- * (MINCRM-628/629)
  *
  * No istanbul coverage-instrumentation plugin here, unlike client/vite.config.ts
  * — this app is itself a coverage/TIA reporting TOOL, not an instrumented
@@ -17,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Commit SHA inlined for SessionRecorderPage to tag manually recorded coverage
- * sessions with. (MINCRM-688)
+ * sessions with.
  *
  * Resolved in this config because a browser bundle has no other way to learn
  * it: unlike the server (which can shell out) or the E2E harness (which
@@ -81,7 +80,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       /** @shared resolves to the shared package at the repo root — schemas
-       * only, per this app's "no shared codebase" constraint (MINCRM-628) */
+       * only, per this app's "no shared codebase" constraint */
       '@shared': path.resolve(__dirname, '../shared'),
       /** @ resolves to ./src for clean internal imports */
       '@': path.resolve(__dirname, './src'),
@@ -115,8 +114,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: '0.0.0.0',
     // 5174, not 5173 — the minicrm-client dev server already owns 5173, and
-    // this app is deployed/run independently alongside it (MINCRM-628's
-    // "own repo/build/deploy" AC), not as a route within minicrm-client.
+    // this app is deployed and run independently alongside it, with its own
+    // repo, build and deploy, not as a route within minicrm-client.
     port: 5174,
     proxy: {
       '/api': {

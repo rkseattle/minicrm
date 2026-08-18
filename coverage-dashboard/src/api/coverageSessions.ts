@@ -1,8 +1,8 @@
 /**
- * Coverage/TIA session API module. (MINCRM-609..612, MINCRM-663)
+ * Coverage/TIA session API module.
  * Wraps the session control endpoints — the manual-testing session recorder
  * moved here from minicrm-client's CoverageSessionRecorderPage.tsx, which is
- * deleted entirely as part of MINCRM-663 (internal CI/dev tooling has no
+ * deleted entirely (internal CI/dev tooling has no
  * business being reachable through the product's own admin UI). Reimplemented
  * rather than imported: this app shares no code with minicrm-client beyond
  * @shared/schemas types. Endpoints require authentication, admin role, and

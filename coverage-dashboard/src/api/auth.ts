@@ -3,9 +3,9 @@
  * auth (POST /auth/login sets the same httpOnly minicrm_token cookie the
  * CRM client itself relies on) rather than inventing a separate auth
  * mechanism. The reporting query API this dashboard consumes is gated by
- * `authenticate -> coverageAccessGate` (MINCRM-637 replaced the bare
+ * `authenticate -> coverageAccessGate` (which replaced the bare
  * `requireRole('admin')` check), and its router registers only when
- * COVERAGE_REPORTING_QUERY is set at server boot — MINCRM-685 removed the
+ * COVERAGE_REPORTING_QUERY is set at server boot — a later change removed the
  * per-request `requireFeatureEnabled` step along with the feature_flags row it
  * read. An unconfigured server therefore answers 404, not 403.
  */

@@ -1,5 +1,5 @@
 /**
- * Manual-testing coverage session recorder. (MINCRM-609..612, MINCRM-663)
+ * Manual-testing coverage session recorder.
  * Moved here from minicrm-client's CoverageSessionRecorderPage.tsx, which is
  * deleted entirely — internal CI/dev tooling has no business being
  * reachable through the product's own admin UI.
@@ -87,7 +87,6 @@ export const SAFE_BUILD_SHA_PATTERN = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
 
 /**
  * Resolves the build SHA a manually recorded session is tagged with.
- * (MINCRM-688)
  *
  * `||`, not `??`: an EMPTY VITE_BUILD_SHA is what an unset or misconfigured
  * build-time substitution actually produces, and under `??` that empty string
@@ -194,7 +193,7 @@ export default function SessionRecorderPage() {
       )}
 
       {/*
-        MINCRM-688: a session tagged 'unknown' records fine but can never be
+        A session tagged 'unknown' records fine but can never be
         matched to a real commit, so any coverage attributed to it is
         unusable for build-level reporting. Surfaced here, before check-in,
         because this is a human-initiated flow — a console warning (what the

@@ -1,5 +1,5 @@
 /**
- * MINCRM-630: gap analysis — dead zones (never-exercised code), changed-but-
+ * Gap analysis — dead zones (never-exercised code), changed-but-
  * untested code for a base..head range, never-taken branches distinguished
  * from function-level dead zones, exportable gap list.
  */

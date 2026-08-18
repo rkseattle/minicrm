@@ -2,7 +2,7 @@
  * Dropdown of recent builds (commit SHA + date + overall coverage %),
  * backed by the trend endpoint's own data — every page with a commit-SHA
  * field also needs this, since a bare free-text input requires a caller to
- * already know a real SHA off the top of their head. (MINCRM-636/637)
+ * already know a real SHA off the top of their head.
  *
  * Deliberately NOT the only way to pick a commit SHA: an older build past
  * the trend window's 30-build cap has no entry here, so the free-text

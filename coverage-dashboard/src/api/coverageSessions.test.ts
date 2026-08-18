@@ -1,5 +1,5 @@
 /**
- * Tests for listAllActiveCoverageSessions's pagination-exhaustion logic. (MINCRM-663)
+ * Tests for listAllActiveCoverageSessions's pagination-exhaustion logic.
  *
  * Verifies:
  * - Fetches every page until a short page is returned

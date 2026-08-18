@@ -4,7 +4,7 @@
  * every reporting endpoint this app calls independently enforces its own
  * server-side gate (coverageAccessGate: coverage:admin capability when
  * COVERAGE_CAPABILITY_GATING=true, requireRole('admin') otherwise — see
- * docs/dev/coverage.md's Access Control section, MINCRM-637).
+ * docs/dev/coverage.md's Access Control section).
  *
  * KNOWN GAP (accepted, not fixed here): this check stays role-based
  * (`user?.role !== 'admin'`) even under capability mode. A non-admin-role
@@ -15,7 +15,7 @@
  * every reporting endpoint's own server-side gate is unaffected by what this
  * component does.
  *
- * VITE_COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636/637) skips the role check
+ * VITE_COVERAGE_DASHBOARD_NO_AUTH=true skips the role check
  * entirely: useAuth() reports isAuthenticated=true with user=null in this
  * mode (no /auth/me call was ever made), so `user?.role !== 'admin'` would
  * otherwise always be true and redirect to /access-denied — there is no

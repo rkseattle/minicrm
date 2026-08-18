@@ -1,6 +1,5 @@
 /**
  * React application entry point for the standalone Coverage/TIA dashboard.
- * (MINCRM-628/629)
  */
 
 import { StrictMode } from 'react';

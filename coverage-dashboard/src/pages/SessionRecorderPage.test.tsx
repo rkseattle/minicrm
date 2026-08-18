@@ -1,5 +1,5 @@
 /**
- * Tests for SessionRecorderPage. (MINCRM-609..612, MINCRM-663)
+ * Tests for SessionRecorderPage.
  *
  * Rewritten for the server-as-source-of-truth redesign (found via Greptile PR
  * review — "Navigation orphans active sessions"): there is no local
@@ -238,7 +238,7 @@ describe('SessionRecorderPage', () => {
     });
   });
 
-  // MINCRM-688: VITE_BUILD_SHA used to be read with `??`, so an EMPTY value
+  // VITE_BUILD_SHA used to be read with `??`, so an EMPTY value
   // was sent verbatim as buildSha. coverageSessionSchema requires min(1), so
   // the request 400s and the user is told to "try again" — advice that cannot
   // work, since the retry sends the same empty value. These cover the three
