@@ -15,6 +15,7 @@
  *         tsx scripts/check-comments-only-diff.ts --self-test
  */
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve as resolvePath } from 'node:path';
 import { parse } from '@typescript-eslint/typescript-estree';
@@ -74,6 +75,15 @@ function fileAt(ref: string, file: string): string | null {
       maxBuffer: 64 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'ignore'],
     });
+  } catch {
+    return null;
+  }
+}
+
+/** Current on-disk contents, or null when the file no longer exists. */
+function readWorktreeFile(file: string): string | null {
+  try {
+    return readFileSync(file, 'utf8');
   } catch {
     return null;
   }
@@ -199,7 +209,13 @@ function main(): void {
   if (arg === '--self-test') return selfTest();
 
   const baseRef = arg ?? 'main';
-  const changed = execFileSync('git', ['diff', '--name-only', `${baseRef}...HEAD`], {
+
+  // `--worktree` compares the uncommitted tree against the base, which is when a
+  // comment pass most needs checking: before the commit exists. Otherwise compare
+  // two committed refs, which is what CI and a PR review want.
+  const againstWorktree = process.argv.includes('--worktree');
+  const range = againstWorktree ? [baseRef] : [`${baseRef}...HEAD`];
+  const changed = execFileSync('git', ['diff', '--name-only', ...range], {
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   })
@@ -207,7 +223,13 @@ function main(): void {
     .filter((file) => SOURCE_EXTENSIONS.test(file));
 
   const findings = changed
-    .map((file) => compareFiles(file, fileAt(baseRef, file), fileAt('HEAD', file)))
+    .map((file) =>
+      compareFiles(
+        file,
+        fileAt(baseRef, file),
+        againstWorktree ? readWorktreeFile(file) : fileAt('HEAD', file),
+      ),
+    )
     .filter((finding): finding is Finding => finding !== null);
 
   if (findings.length === 0) {

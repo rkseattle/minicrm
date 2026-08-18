@@ -310,7 +310,14 @@ function selfTest(): void {
 function main(): void {
   const mode = process.argv[2] ?? '--report';
   if (mode === '--self-test') return selfTest();
-  const files = listSourceFiles();
+
+  // Optional path prefixes after the mode scope the run to one workspace, so the
+  // removal can land as per-workspace commits. With none given every tracked source
+  // file is considered, which is what --verify must always do.
+  const prefixes = process.argv.slice(3);
+  const files = listSourceFiles().filter(
+    (file) => prefixes.length === 0 || prefixes.some((prefix) => file.startsWith(prefix)),
+  );
 
   if (mode === '--write') {
     let changed = 0;
