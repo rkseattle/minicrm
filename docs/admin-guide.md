@@ -457,7 +457,7 @@ Every flag change is written to the audit log with the name of the admin who mad
 change, the previous value, and the new value. You can review this history in
 **Admin Settings → Data → Audit Log**.
 
-### Scheduled enablement (MINCRM-488)
+### Scheduled enablement
 
 You can schedule a disabled flag to automatically enable at a specific date and time — no
 manual action required at the scheduled moment.
@@ -484,7 +484,7 @@ When a flag has a scheduled enable time:
 > time exists, the cache is shortened to expire exactly when `enable_at` arrives, so the
 > flag activates within one server-side cache cycle (at most a few seconds late).
 
-### Flag groups (MINCRM-491)
+### Flag groups
 
 Flag groups let you cluster related feature flags under a single on/off gate. When a
 group is disabled, all member flags are blocked for every user who is not in the
@@ -524,7 +524,7 @@ Assign a flag to a group by setting `group_key` on the flag via the API
 Removing a flag from a group sets `group_key` to `null`; the flag then evaluates
 independently.
 
-### Beta users (MINCRM-489)
+### Beta users
 
 Each flag has a **Beta Users** panel that lets you grant individual users access to a
 _disabled_ feature. Beta enrollment bypasses the org-wide disabled state — the enrolled
@@ -674,7 +674,7 @@ the API key (logged as `[redacted]`), and acknowledging or clearing the DPA.
   if you want this section available, following the same not-yet-UI-exposed precedent as
   `champion_blocker_deal_value_threshold` and `churn_expansion_confidence_threshold`.
 
-### AI PII data minimization (MINCRM-445, MINCRM-461)
+### AI PII data minimization
 
 MiniCRM applies a server-side data minimization pass to every tool call result before it
 is transmitted to the AI provider. This means sensitive fields are never included in the
@@ -697,7 +697,7 @@ They are shown as locked entries in the Data Minimization section and cannot be 
 These fields are never transmitted to the AI provider even if they appear in search results
 or entity payloads.
 
-#### Admin-configurable standard fields (MINCRM-461)
+#### Admin-configurable standard fields
 
 Beyond the always-excluded defaults, admins can exclude additional standard (non-custom)
 fields per entity type — for example, `department` on contacts or `loss_reason` on deals.
@@ -741,7 +741,7 @@ as structured audit log entries.
 
 ---
 
-### AI session retention (MINCRM-447, MINCRM-462)
+### AI session retention
 
 AI conversation sessions and messages are automatically purged after a configurable
 retention window. This is separate from the AI configuration described above and lives in
@@ -789,7 +789,7 @@ Users can see their current retention window on the AI Assistant page itself
 
 ---
 
-### AI deal-intelligence thresholds (MINCRM-464, MINCRM-466, MINCRM-469)
+### AI deal-intelligence thresholds
 
 Several of the AI deal-intelligence features introduced alongside win/loss insights,
 champion/blocker detection, and churn/expansion detection read admin-tunable threshold
@@ -823,7 +823,7 @@ in place until the next successful run.
 
 ---
 
-### AI relationship health scoring configuration (MINCRM-467)
+### AI relationship health scoring configuration
 
 The weights and thresholds behind
 [relationship health scoring](accounts.md#ai-relationship-health-scoring) are
@@ -1033,7 +1033,7 @@ without disabling AI entirely.
 Reps will no longer see that feature on their next page load. Their existing data is not
 affected.
 
-### AI Natural-Language Interface (NLI) — RBAC-filtered tool set (MINCRM-434)
+### AI Natural-Language Interface (NLI) — RBAC-filtered tool set
 
 The NLI tool set presented to Claude is filtered server-side based on the authenticated
 user's effective capabilities. Claude never receives tool definitions for operations the
@@ -1071,7 +1071,7 @@ an admin-only tool), the server emits a structured `warn` log entry with the too
 user ID, and role under the tag `NLI permission denied`. These entries are available in
 the server log for security review.
 
-### AI mutation audit trail (MINCRM-444)
+### AI mutation audit trail
 
 Every record created, updated, or deleted through the NLI is written to the **Audit Log**
 with the same fidelity as a manual change. The audit entry carries a `source` field that
@@ -1109,7 +1109,6 @@ activities, and notes.
 ## 13. Data Visibility Scoping
 
 Controls which records each role can see when listing contacts, deals, and activities.
-(MINCRM-534, MINCRM-538)
 
 ### How it works
 
@@ -1273,10 +1272,12 @@ Templates are managed via the REST API (admin only). A future release will add a
 
 ```bash
 # List templates
+
 curl https://<your-crm>/api/v1/email-templates \
   -b "token=<admin-jwt>"
 
 # Create a template
+
 curl -X POST https://<your-crm>/api/v1/email-templates \
   -H "Content-Type: application/json" \
   -b "token=<admin-jwt>" \
@@ -1289,12 +1290,14 @@ curl -X POST https://<your-crm>/api/v1/email-templates \
   }'
 
 # Update a template
+
 curl -X PATCH https://<your-crm>/api/v1/email-templates/<id> \
   -H "Content-Type: application/json" \
   -b "token=<admin-jwt>" \
   -d '{"enabled": false}'
 
 # Delete a template
+
 curl -X DELETE https://<your-crm>/api/v1/email-templates/<id> \
   -b "token=<admin-jwt>"
 ```

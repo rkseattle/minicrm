@@ -1239,7 +1239,7 @@
     "triggerContactCreated": "se crea un contacto",
     "actionCreateTask": "crear tarea «{{subject}}»",
     "actionSendNotification": "enviar una notificación (solo registro en servidor)",
-    "sendNotificationHint": "Actualmente solo registra la notificación en el servidor. El envío por correo y en la aplicación se habilitará en una actualización futura (MINCRM-5).",
+    "sendNotificationHint": "Actualmente solo registra la notificación en el servidor. El envío por correo y en la aplicación se habilitará en una actualización futura.",
     "when": "Cuando",
     "then": "Entonces",
     "enableRule": "Activar regla {{name}}",

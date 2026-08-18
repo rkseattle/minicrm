@@ -1204,7 +1204,7 @@
     "triggerContactCreated": "a contact is created",
     "actionCreateTask": "create task \"{{subject}}\"",
     "actionSendNotification": "send a notification (server log only)",
-    "sendNotificationHint": "Currently logs the notification to the server. Email and in-app delivery will be enabled in a future update (MINCRM-5).",
+    "sendNotificationHint": "Currently logs the notification to the server. Email and in-app delivery will be enabled in a future update.",
     "when": "When",
     "then": "Then",
     "enableRule": "Enable rule {{name}}",
