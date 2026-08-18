@@ -138,6 +138,12 @@ export function stripFile(file: string, source: string): string {
     let stripped = original.replace(PURE_PARENTHETICAL, '');
     if (stripped === original) continue;
 
+    // A parenthetical that opened a sentence takes its own trailing punctuation with
+    // it, so `// (MINCRM-NNN). Deliberately not exposed…` does not strip down to
+    // `//. Deliberately not exposed…`. Only punctuation directly after a comment
+    // marker qualifies — mid-sentence punctuation belongs to the surrounding prose.
+    stripped = stripped.replace(/(^|\n)(\s*(?:\/\/|\*))\s*[.,;:]\s+/g, '$1$2 ');
+
     // A line comment left with nothing to say goes entirely, along with the
     // whitespace before it. Own-line cases would otherwise leave a blank line and
     // trailing ones (`const a = 1; // (MINCRM-NNN)`) a dangling `//`, which the
@@ -259,6 +265,20 @@ function selfTest(): void {
       file: 'a.ts',
       input: 'const a = 1; // (MINCRM-1)',
       expected: 'const a = 1;',
+    },
+    {
+      name: 'sentence-leading parenthetical takes its trailing period',
+      file: 'a.ts',
+      input:
+        '// Coverage tooling admin access\n// (MINCRM-637). Deliberately not exposed in the picker.\nconst a = 1;',
+      expected:
+        '// Coverage tooling admin access\n// Deliberately not exposed in the picker.\nconst a = 1;',
+    },
+    {
+      name: 'mid-sentence punctuation is left alone',
+      file: 'a.ts',
+      input: '// Backs the query API (MINCRM-629), which the dashboard reads.\nconst a = 1;',
+      expected: '// Backs the query API, which the dashboard reads.\nconst a = 1;',
     },
     {
       name: 'unrelated ID sharing an -ok comment is stripped, marker kept',
