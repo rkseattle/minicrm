@@ -187,6 +187,15 @@ Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations
   `check-e2e-beforeall.sh`, and `@openapi` blocks, which are served API contract text.
   Prose in Markdown — this file, gates, ADRs, dev docs — may cite a ticket as a decision
   record; that is a different use than annotating a line of code.
+- **The same rule applies to catalog comments** — `COMMENT ON` strings and the `comment:`
+  option in migrations. They are not source comments (they become live database metadata,
+  surfaced by `psql \d+` and any DB tooling), so ESLint never sees them and
+  `strip-work-item-ids.ts --verify` cannot either: a `COMMENT ON` string is a string token,
+  not a comment token. But a reader meets them with no more ability to resolve a Jira key,
+  so the reason belongs inline and the ID in the commit. Fix them with a **corrective
+  migration** — never by editing a migration that may already have run — preserving the
+  description verbatim and restoring it exactly in `down`. `qa/migrations/007` is the
+  worked example. `db/migrations/`'s remaining catalog IDs are MINCRM-728's.
 - **Service functions must declare explicit return types.**
 - **No `console.log` in `server/src/`** outside tests. Use `logger.info/warn/error`.
 - **No magic numbers or strings.** Use named constants.
