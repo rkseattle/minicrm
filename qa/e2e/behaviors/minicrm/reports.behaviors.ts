@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-357
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -17,7 +17,7 @@ import type { PageFacade } from '@framework/fixtures/index.js';
 import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
 
 // ---------------------------------------------------------------------------
-// API data types (MINCRM-357)
+// API data types
 // ---------------------------------------------------------------------------
 
 /** Shape of the win-loss report API response. */
@@ -31,7 +31,7 @@ export interface WinLossReport {
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /**
@@ -55,7 +55,7 @@ export async function getWinLossReport(
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap ReportsPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /** Fixture context for reports UI behaviors. */
@@ -247,7 +247,7 @@ export async function isReportsStageTrendEmptyVisible(
 
 /**
  * Waits until the stage trend report has left its loading state AND painted one
- * of its terminal states — table, empty, or error. (MINCRM-703)
+ * of its terminal states — table, empty, or error.
  *
  * WHY THIS EXISTS
  * ---------------
@@ -431,7 +431,7 @@ export async function getReportsWinRateText(
 }
 
 // ---------------------------------------------------------------------------
-// Navigation helpers — keep direct page.goto() out of spec files. (MINCRM-418)
+// Navigation helpers — keep direct page.goto() out of spec files.
 // ---------------------------------------------------------------------------
 
 /**
@@ -457,7 +457,7 @@ export async function reloadPage(context: ReportsBehaviorContext): Promise<void>
   );
 }
 
-// ── Custom Reports behaviors (MINCRM-402) ────────────────────────────────────
+// ── Custom Reports behaviors ────────────────────────────────────
 
 /**
  * Navigates to the Custom Reports tab on the reports page.
@@ -614,14 +614,14 @@ export async function navigateToReportsPage(context: ReportsBehaviorContext): Pr
 }
 
 // ---------------------------------------------------------------------------
-// Export — Custom Report Builder / Activity Volume (MINCRM-601)
+// Export — Custom Report Builder / Activity Volume
 // ---------------------------------------------------------------------------
 
 /**
  * Clicks the Activity Volume report's "Export PDF" button (a real button
  * that fetches via blob+axios) and waits for the underlying export.pdf HTTP
  * response, returning its status and content-type so the spec can assert a
- * real download was triggered. Opens the Export menu first (MINCRM-652).
+ * real download was triggered. Opens the Export menu first.
  */
 export async function clickReportExportPdfAndAwaitResponse(
   context: ReportsBehaviorContext,
@@ -648,7 +648,7 @@ export async function clickReportExportPdfAndAwaitResponse(
  * since Chromium routes `download`-attribute anchor clicks through its
  * download manager instead of the page's normal navigation/fetch lifecycle
  * (page.waitForResponse does not reliably observe it). Opens the Export
- * menu first (MINCRM-652).
+ * menu first.
  */
 export async function clickCustomReportExportPdfAndAwaitDownload(
   context: ReportsBehaviorContext,

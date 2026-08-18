@@ -4,7 +4,7 @@
  * Verifies the engine design: no pre-loaded strings, RangeError on unregistered
  * locale, and correct registration and resolution behaviour.
  *
- * MINCRM-327
+ *
  */
 
 import { test, expect } from '@framework/fixtures';

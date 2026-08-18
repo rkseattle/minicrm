@@ -2,14 +2,13 @@
  * F1-PR — Password Reset Flow
  *
  * Functional tests for the forgot-password / reset-password flows.
- * (MINCRM-156, MINCRM-157)
  *
  * Test groups:
  *   ForgotPassword — form renders, success message shown, no user enumeration
  *   ResetPassword  — invalid token, mismatch validation, successful reset + auto-login,
  *                    session invalidation on other devices
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators in this file — all through behaviors
@@ -44,10 +43,10 @@ import {
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
-// MINCRM-192: Password-reset tests exercise unauthenticated flows (forgot-password,
+// Password-reset tests exercise unauthenticated flows (forgot-password,
 // reset link, auto-login on reset). They must not load the pre-authenticated
 // storageState — each test needs a fresh, unauthenticated browser context.
-// MINCRM-192: Use an empty storageState to prevent the project-level admin session
+// Use an empty storageState to prevent the project-level admin session
 // from loading. `undefined` does not override the project config — an explicit empty
 // object is required to start each test with a fresh, unauthenticated browser context.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -89,7 +88,7 @@ async function createActiveTestUser(
   await setUserPassword(restClient, inviteToken, initialPassword);
 
   // Suppress the onboarding widget so it does not intercept pointer events
-  // when tests navigate the UI as this user. (MINCRM-410)
+  // when tests navigate the UI as this user.
   await suppressUserOnboarding(restClient, user.email, initialPassword);
 
   return { userId: user.id, email: user.email };
@@ -164,7 +163,7 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
     );
   } finally {
     // Restore the admin session; the user is deactivated by its registered
-    // teardown. (MINCRM-668)
+    // teardown.
     await loginAsAdmin(restClient).catch(() => null);
   }
 });
@@ -214,7 +213,7 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
     expect(replayResult.errorMessage, 'replay error should be present').not.toBeNull();
   } finally {
     // Restore the admin session; the user is deactivated by its registered
-    // teardown. (MINCRM-668)
+    // teardown.
     await loginAsAdmin(restClient).catch(() => null);
   }
 });
@@ -266,7 +265,7 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
     );
   } finally {
     // Restore the admin session; the user is deactivated by its registered
-    // teardown. (MINCRM-668)
+    // teardown.
     await loginAsAdmin(restClient).catch(() => null);
   }
 });

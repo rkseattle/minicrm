@@ -1,5 +1,5 @@
 /**
- * Stage exit requirements functional tests (MINCRM-499, MINCRM-527)
+ * Stage exit requirements functional tests
  *
  * Covers:
  *   SEQ-1: Moving a deal to "Closed Won" without close_date → API returns 400
@@ -7,7 +7,7 @@
  *   SEQ-2: Moving a deal to "Closed Won" WITH close_date → succeeds
  *   SEQ-3: Admin can view and update stage_exit_requirements in Customisation settings
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Test data managed via restClient + TestDataManager (auto teardown)

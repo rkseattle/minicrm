@@ -1,5 +1,5 @@
 /**
- * F7-WL — AI win/loss pattern insights (MINCRM-464)
+ * F7-WL — AI win/loss pattern insights
  *
  * Functional regression tests for the /insights/win-loss page.
  *
@@ -15,7 +15,7 @@
  *   only — the actual pattern rendering with real narration is covered by
  *   the client component test suite, which mocks the HTTP response directly).
  *   These tests exercise the insufficient-data path, which every fresh test
- *   environment starts in. (MINCRM-464)
+ *   environment starts in.
  *
  * Framework conventions:
  *   - All tests tagged @functional

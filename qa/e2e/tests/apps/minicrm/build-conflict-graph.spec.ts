@@ -5,7 +5,7 @@
  * every file the registry declares appears in the graph, known conflicting
  * pairs land in different groups).
  *
- * MINCRM-661
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -77,7 +77,7 @@ test.describe('conflict-graph pipeline with real resource-registry data', () => 
     // branding/visibility used to be this example and no longer is — branding
     // calls ensureSystemDefaults, which resets the visibility row (see the
     // composite key). That edge is correct, so the example moved rather than the
-    // assertion being weakened. (MINCRM-705)
+    // assertion being weakened.
     const touches = collapseRegistryToFileTouches();
     const graph = buildConflictGraph(touches);
     const featureFlags = 'qa/e2e/tests/apps/minicrm/functional/feature-flags/feature-flags.spec.ts';
@@ -90,7 +90,7 @@ test.describe('conflict-graph pipeline with real resource-registry data', () => 
     // ensureSystemDefaults, which PUTs the visibility policy back to 'org';
     // visibility.spec.ts owns that row. Modeling only pipeline_stages_reviewed
     // left this edge undrawn and put two such pairs in workers=2 groups with a
-    // live cross-file race. (MINCRM-705)
+    // live cross-file race.
     const touches = collapseRegistryToFileTouches();
     const graph = buildConflictGraph(touches);
     const branding = 'qa/e2e/tests/apps/minicrm/functional/branding/branding.spec.ts';
@@ -99,7 +99,7 @@ test.describe('conflict-graph pipeline with real resource-registry data', () => 
   });
 
   test('branding.spec.ts and sso.spec.ts DO conflict (both reset pipeline_stages_reviewed)', () => {
-    // This pair was the "disjoint resources" case until MINCRM-705. Both files
+    // This pair was the "disjoint resources" case until. Both files
     // call ensureSystemDefaults() in their hooks, which DELETEs the
     // pipeline_stages_reviewed system_settings row — so they always did conflict
     // and the registry simply did not model the row. Kept as a regression pin:
@@ -118,7 +118,6 @@ test.describe('conflict-graph pipeline with real resource-registry data', () => 
     // from its file-level ensureSystemDefaults hooks). The graph reasons about
     // whole files, so both keys must survive the collapse — if the union dropped
     // either, the file would be co-scheduled with something it races.
-    // (MINCRM-705)
     const touches = collapseRegistryToFileTouches();
     const reportsNav = touches.find(
       (t) => t.file === 'qa/e2e/tests/apps/minicrm/functional/reports/reports-nav.spec.ts',

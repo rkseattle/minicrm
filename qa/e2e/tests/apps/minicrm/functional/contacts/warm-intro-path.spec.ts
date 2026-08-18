@@ -1,5 +1,5 @@
 /**
- * F7-WI — AI warm introduction path mapping (MINCRM-468)
+ * F7-WI — AI warm introduction path mapping
  *
  * Functional regression tests for the "Find warm path" action on the
  * contact detail page.

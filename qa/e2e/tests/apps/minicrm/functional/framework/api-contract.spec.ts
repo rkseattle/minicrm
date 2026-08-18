@@ -1,6 +1,6 @@
 /**
- * API Contract PoC — MINCRM-370
- * Framework BVT absorbed from bvt-framework.spec.ts — MINCRM-409
+ * API Contract PoC
+ * Framework BVT absorbed from bvt-framework.spec.ts
  *
  * Purpose: demonstrate that Zod schema validation in restClient helpers catches
  * plausible API regressions before any domain assertion is reached.
@@ -20,7 +20,7 @@
  *   - no raw locators
  *   - all test data managed via helpers / TestDataManager
  *
- * MINCRM-370
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -99,7 +99,7 @@ test(
 
     // Schema validation inside createTestUser catches any rename of `user`→`data`,
     // missing `inviteToken`, or role/status enum change. The user is deactivated
-    // by its registered teardown, so no finally block is needed. (MINCRM-668)
+    // by its registered teardown, so no finally block is needed.
     const user = await createTestUser(testData, restClient, { role: 'rep' });
 
     expect(user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
@@ -185,11 +185,11 @@ test(
 //
 // Validates that every layer of the E2E framework stack works together:
 //   TestDataManager, restClient, behavior abstraction, HealingLocator,
-//   fixture wiring, and CI artifact generation. (MINCRM-131, MINCRM-193, MINCRM-409)
+//   fixture wiring, and CI artifact generation.
 // ---------------------------------------------------------------------------
 
 test.describe('BVT — MiniCRM E2E framework integration', () => {
-  // MINCRM-192: Use an empty storageState to prevent the project-level admin session
+  // Use an empty storageState to prevent the project-level admin session
   // from loading. `undefined` does not override the project config — an explicit empty
   // object is required to start each test with a fresh, unauthenticated browser context.
   test.use({ storageState: { cookies: [], origins: [] } });

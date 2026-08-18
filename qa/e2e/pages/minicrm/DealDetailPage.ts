@@ -7,7 +7,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-314
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -448,7 +448,7 @@ export class DealDetailPage {
     return this.page.url();
   }
 
-  // ── AI deal health check (MINCRM-442) ──────────────────────────────────────────
+  // ── AI deal health check ──────────────────────────────────────────
 
   /**
    * Returns a resolved locator for the deal health section heading.
@@ -561,7 +561,7 @@ export class DealDetailPage {
       .resolve(timeout);
   }
 
-  // ── AI stage advancement suggestion (MINCRM-443) ───────────────────────────────
+  // ── AI stage advancement suggestion ───────────────────────────────
 
   /**
    * Returns a resolved locator for the "Ready to advance?" indicator button.
@@ -585,7 +585,7 @@ export class DealDetailPage {
     );
   }
 
-  // ── AI objection pattern matching (MINCRM-471) ──────────────────────────────────
+  // ── AI objection pattern matching ──────────────────────────────────
 
   /** Returns a resolved locator for a specific activity's objection category badge. */
   async objectionCategoryBadgeLocator(activityId: string) {
@@ -617,7 +617,7 @@ export class DealDetailPage {
    * `GET /api/v1/activities` never fires — until that request resolves. Under CI
    * worker contention it has been measured at 2.9s, which exhausts both default
    * probes before the element is ever attached. Matches ContactDetailPage's
-   * `fallbackTimeout: timeout` precedent. (MINCRM-700)
+   * `fallbackTimeout: timeout` precedent.
    */
   async activityItemLocator(activityId: string, fallbackTimeout?: number) {
     return this.page
@@ -631,7 +631,7 @@ export class DealDetailPage {
       .resolve();
   }
 
-  // ── AI proposal draft generation (MINCRM-473) ───────────────────────────────────
+  // ── AI proposal draft generation ───────────────────────────────────
 
   /** Returns a resolved locator for the "Generate Proposal Draft" button. */
   async generateProposalDraftButtonLocator(timeout?: number) {

@@ -14,7 +14,7 @@
  * 10. buildTrendKey() uses Unknown/unknown defaults for absent pageObject/method.
  * 11. Full cross-run simulation: three consecutive onEnd() calls accumulate correctly.
  *
- * MINCRM-373
+ *
  */
 
 import { test, expect } from '@playwright/test';
@@ -314,10 +314,10 @@ test.describe('quarantineCandidates', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC #2: three-run simulation — quarantine eligibility after 3 heals (MINCRM-373)
+// AC #2: three-run simulation — quarantine eligibility after 3 heals
 // ---------------------------------------------------------------------------
 
-test.describe('cross-run simulation — quarantine eligibility (MINCRM-373 AC #2)', () => {
+test.describe('cross-run simulation — quarantine eligibility', () => {
   test('locator healed 3 times across simulated runs appears in quarantine candidates', () => {
     const event = makeHealEvent({
       pageObject: 'AccountsPage',

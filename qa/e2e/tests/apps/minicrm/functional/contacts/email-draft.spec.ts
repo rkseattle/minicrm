@@ -1,5 +1,5 @@
 /**
- * F-ED — AI email draft generation from contact context (MINCRM-437)
+ * F-ED — AI email draft generation from contact context
  *
  * Functional regression tests for the on-demand "Draft Email" action on the
  * contact detail page.
@@ -14,7 +14,7 @@
  * Stub note:
  *   The E2E server runs with E2E=true, so generateEmailDraft bypasses the
  *   Anthropic SDK and returns a deterministic stub draft. No real tokens
- *   are consumed. (MINCRM-437)
+ *   are consumed.
  *
  * Framework conventions:
  *   - All tests tagged @functional

@@ -1,5 +1,5 @@
 /**
- * EmailDraftPanelPage — Page Object for the AI email draft sidebar panel. (MINCRM-437)
+ * EmailDraftPanelPage — Page Object for the AI email draft sidebar panel.
  *
  * The panel is opened from either the Contact detail page or the Activity
  * timeline's "Draft Email" action; its own locators are shared regardless of

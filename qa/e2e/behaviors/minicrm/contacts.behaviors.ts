@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-130, MINCRM-110, MINCRM-138, MINCRM-357
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -29,7 +29,7 @@ import { EmailDraftPanelPage } from '@pages/minicrm/EmailDraftPanelPage.js';
 // in the Node-targeted qa tsconfig (lib: ["ES2022"]).
 // ---------------------------------------------------------------------------
 
-/** Reads the current clipboard text via the browser's Clipboard API. (MINCRM-437) */
+/** Reads the current clipboard text via the browser's Clipboard API. */
 const READ_CLIPBOARD_TEXT = new Function(`
   return navigator.clipboard.readText();
 `) as () => Promise<string>;
@@ -337,7 +337,7 @@ export async function createContactViaUI(
   // wait for the DOM to settle into the blocked-submission state (form still
   // open). networkidle previously stood in for both cases, but it resolves
   // on a network-quiet heuristic rather than the actual mutation outcome,
-  // which raced React's post-submit re-render under CI load (MINCRM-650
+  // which raced React's post-submit re-render under CI load
   // follow-up).
   const expectsNetworkRequest =
     fields.first_name.length > 0 && fields.last_name.length > 0 && fields.email.length > 0;
@@ -754,7 +754,7 @@ export async function bulkDeleteContacts(
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Shape returned by GET /api/v1/contacts/:id. */
@@ -764,7 +764,7 @@ export interface ContactRow {
   last_name: string;
   email: string;
   account_id: string | null;
-  /** Optimistic lock version (MINCRM-349). */
+  /** Optimistic lock version. */
   version: number;
 }
 
@@ -929,7 +929,7 @@ export async function patchContact(
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap ContactDetailPage / ContactsPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /**
@@ -961,7 +961,7 @@ export async function getContactAccountLink(context: ContactsBehaviorContext) {
  * loading placeholder itself appears, not after it resolves to the real
  * value. That let a caller's subsequent `.textContent()` read still land on
  * the "…" placeholder once the element mounted moments later (found via
- * Greptile PR review, MINCRM-623..627).
+ * Greptile PR review).
  *
  * @param context - Behavior context with page.
  * @param timeout - Maximum ms to wait.
@@ -1152,7 +1152,7 @@ export async function clickContactEdit(context: ContactsBehaviorContext): Promis
 export async function saveContact(context: ContactsBehaviorContext): Promise<void> {
   const detailPage = new ContactDetailPage(context);
   // Register listener before clicking so the PATCH is always captured even if
-  // the server responds before the next await resolves. (MINCRM-418)
+  // the server responds before the next await resolves.
   // No status filter — callers such as concurrency tests deliberately trigger
   // 409 responses and must handle the outcome themselves after this returns.
   const patchDone = context.page.waitForResponse(
@@ -1215,7 +1215,7 @@ export async function waitForContactAttachmentsList(
   // still in flight, or a server saturated by concurrent shards — exhausts
   // during resolution and raises StrategyExhaustedError before the generous
   // waitFor budget below is ever consulted. That reads as selector drift when
-  // it is really "not rendered yet". (MINCRM-703)
+  // it is really "not rendered yet".
   const locator = await new ContactDetailPage(context).attachmentsListLocator(timeout);
   await locator?.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
@@ -1249,7 +1249,7 @@ export async function confirmContactAttachmentDelete(
 }
 
 // ---------------------------------------------------------------------------
-// ContactsPage thin-wrapper behaviors (MINCRM-367)
+// ContactsPage thin-wrapper behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -1357,7 +1357,7 @@ export async function navigateToContactDetail(
 ): Promise<void> {
   const detailPage = new ContactDetailPage(context);
   // Settles the feature-flag query first — see navigateToAccountDetail for the
-  // full rationale. (MINCRM-700, MINCRM-703)
+  // full rationale.
   await navigateAndSettle(context.page, () => detailPage.navigate(contactId));
 }
 
@@ -1391,7 +1391,7 @@ export async function navigateToContactsOwnedByMe(context: ContactsBehaviorConte
 
 // ---------------------------------------------------------------------------
 // Visibility check helpers — keep page.isNotVisible() / doesNotExist() out of
-// spec files. (MINCRM-418)
+// spec files.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1423,7 +1423,6 @@ export async function isLoadingIndicatorGone(context: ContactsBehaviorContext): 
 
 // ---------------------------------------------------------------------------
 // GDPR erasure flow — keep page.waitFor/click/fill out of spec files.
-// (MINCRM-418)
 // ---------------------------------------------------------------------------
 
 /** Result returned by performGdprErasure. */
@@ -1462,7 +1461,7 @@ export async function performGdprErasure(
 
   // gdpr-erase-modal-overlay (the fixed backdrop div) is listed first because
   // mobile Chrome's UA stylesheet can affect <dialog> element visibility
-  // detection even when the element is rendered (MINCRM-554).
+  // detection even when the element is rendered.
   await context.page.waitFor(
     [
       { type: 'testId', value: 'gdpr-erase-modal-overlay' },
@@ -1566,7 +1565,7 @@ export async function getContactEmailFieldText(context: ContactsBehaviorContext)
 }
 
 // ---------------------------------------------------------------------------
-// Owner-filter UI behaviors (MINCRM-545)
+// Owner-filter UI behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -1633,7 +1632,7 @@ export function getContactsPageUrl(context: ContactsBehaviorContext): string {
 }
 
 // ---------------------------------------------------------------------------
-// AI champion/blocker detection (MINCRM-466)
+// AI champion/blocker detection
 // ---------------------------------------------------------------------------
 
 /** Returns true when the champion/blocker badge is currently visible for a contact. */
@@ -1646,7 +1645,7 @@ export async function isChampionBlockerBadgeVisible(
 }
 
 // ---------------------------------------------------------------------------
-// AI sentiment tracking (MINCRM-472)
+// AI sentiment tracking
 // ---------------------------------------------------------------------------
 
 /** Returns true when the sentiment trend sparkline is currently visible for a contact. */
@@ -1659,7 +1658,7 @@ export async function isSentimentTrendVisible(
 }
 
 // ---------------------------------------------------------------------------
-// AI smart follow-up timing suggestions (MINCRM-470)
+// AI smart follow-up timing suggestions
 // ---------------------------------------------------------------------------
 
 /** Returns true when the follow-up timing card is currently visible for a contact. */
@@ -1672,7 +1671,7 @@ export async function isFollowUpTimingCardVisible(
 }
 
 // ---------------------------------------------------------------------------
-// AI warm introduction path mapping (MINCRM-468)
+// AI warm introduction path mapping
 // ---------------------------------------------------------------------------
 
 /** Clicks the "Find warm path" button for a contact. */
@@ -1715,7 +1714,7 @@ export async function expectWarmPathEmptyMessageVisible(
 }
 
 // ---------------------------------------------------------------------------
-// AI email draft generation (MINCRM-437)
+// AI email draft generation
 // ---------------------------------------------------------------------------
 
 /** Result returned by draftEmailFromContactDetail. */
@@ -1729,8 +1728,7 @@ export interface DraftEmailResult {
  * the email-draft POST to resolve. Registers the response wait before
  * clicking so a fast server response is never missed. Does not assert —
  * callers branch on `status` per the network-response-first pattern
- * (MINCRM-418).
- */
+ * */
 export async function draftEmailFromContactDetail(
   context: ContactsBehaviorContext,
 ): Promise<DraftEmailResult> {
@@ -1809,7 +1807,7 @@ export async function isEmailDraftPanelVisible(context: ContactsBehaviorContext)
 }
 
 // ---------------------------------------------------------------------------
-// AI contact auto-enrich from pasted text (MINCRM-439)
+// AI contact auto-enrich from pasted text
 // ---------------------------------------------------------------------------
 
 /**
@@ -1843,7 +1841,7 @@ export async function getContactFormFirstName(context: ContactsBehaviorContext):
 }
 
 // ---------------------------------------------------------------------------
-// AI duplicate detection explanation (MINCRM-440)
+// AI duplicate detection explanation
 // ---------------------------------------------------------------------------
 
 /** Result returned by explainContactDuplicate. */
@@ -1856,7 +1854,7 @@ export interface ExplainDuplicateResult {
  * Clicks the "Explain" button in the duplicate warning banner and waits for
  * the explain POST to resolve. Registers the response wait before clicking
  * so a fast server response is never missed. Does not assert — callers
- * branch on `status` per the network-response-first pattern (MINCRM-418).
+ * branch on `status` per the network-response-first pattern.
  */
 export async function explainContactDuplicate(
   context: ContactsBehaviorContext,
@@ -1885,14 +1883,14 @@ export async function getContactDuplicateExplanationText(
 /**
  * Clicks the contact detail page's "Export PDF" button and waits for the
  * underlying single-record export.pdf HTTP response, returning its status
- * and content-type. (MINCRM-650)
+ * and content-type.
  *
  * Resolves at FIRST_INTERACTION_TIMEOUT_MS for the reason documented on
  * clickAccountExportPdfAndAwaitResponse: the button is gated on `csv_export`,
  * so a 2s probe can expire before the flags query resolves. Here the 2s budget
  * did not hard-fail but AI-healed to a `text: "Export PDF"` match, which is
  * worse than a clean failure — it spends judge tokens and can bind a different
- * element while hiding the race. (MINCRM-703)
+ * element while hiding the race.
  */
 export async function clickContactExportPdfAndAwaitResponse(
   id: string,

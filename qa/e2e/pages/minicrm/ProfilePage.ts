@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-161, MINCRM-162, MINCRM-192
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -278,12 +278,12 @@ export class ProfilePage {
     // force:true bypasses the setup-checklist-widget fixed overlay that can
     // intercept pointer events at the bottom-end corner on smaller viewports.
     // The button is confirmed visible and enabled by resolve(); the only blocker
-    // is the fixed overlay. (MINCRM-404)
+    // is the fixed overlay.
     await el.click({ force: true });
   }
 
   // ---------------------------------------------------------------------------
-  // MFA section (MINCRM-392)
+  // MFA section
   // ---------------------------------------------------------------------------
 
   /**

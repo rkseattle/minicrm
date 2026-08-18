@@ -1,5 +1,5 @@
 /**
- * Unit tests for the browser coverage agent (MINCRM-605, MINCRM-606).
+ * Unit tests for the browser coverage agent.
  *
  * pullBrowserCoverage mocks SafePage.evaluate directly — no real browser
  * is needed since the function under test is a thin wrapper around a

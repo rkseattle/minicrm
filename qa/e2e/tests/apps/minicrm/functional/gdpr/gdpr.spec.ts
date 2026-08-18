@@ -1,5 +1,5 @@
 /**
- * GDPR functional tests (MINCRM-409).
+ * GDPR functional tests.
  *
  * Covers three distinct aspects of the GDPR Art. 17 implementation:
  *
@@ -15,7 +15,7 @@
  *           old_value and new_value on pre-erasure update entries are replaced
  *           with "[GDPR deleted]".
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No @pages/* imports

@@ -16,14 +16,14 @@
  * specs verify the UI flows using tokens retrieved via API; these specs verify
  * the email delivery path end-to-end.
  *
- * Framework conventions (MINCRM-42, MINCRM-306):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Mailhog messages cleared before each test to prevent cross-test contamination
  *   - All test data managed via TestDataManager registration
  *   - Tests must pass with --workers=4 (no shared mutable state)
  *
- * MINCRM-306
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

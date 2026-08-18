@@ -14,7 +14,7 @@
  *                  inactive status visible in list
  *   Reactivation — user can log in again, role and records unchanged
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
@@ -30,7 +30,7 @@
  * GET /api/users/:id does not exist. Role verification uses GET /api/users (list)
  * and filters by user ID.
  *
- * MINCRM-142
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -85,7 +85,7 @@ const ACTIVATED_USER_PASSWORD = 'F6TestPass1!';
  *
  * Teardown is registered by `createTestUser` itself and is the only cleanup
  * path: the user is deactivated after the test even on failure, and call sites
- * need no `finally` block of their own. (MINCRM-668)
+ * need no `finally` block of their own.
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
@@ -112,7 +112,7 @@ async function createActivatedUser(
  * forces must_change_password=true. Returns the user row and temp password.
  *
  * Teardown is registered internally, so callers need no `finally` block for
- * the user. (MINCRM-668)
+ * the user.
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
@@ -138,7 +138,7 @@ async function createUserWithForcedPasswordChange(
   await setUserPassword(restClient, inviteToken, activationPassword);
 
   // Suppress the onboarding widget so it does not intercept pointer events
-  // when tests navigate the UI as this user. (MINCRM-410)
+  // when tests navigate the UI as this user.
   await suppressUserOnboarding(restClient, user.email, activationPassword);
 
   // admin-set-password sets must_change_password=true.
@@ -288,11 +288,11 @@ test('@functional F6-RA2: admin changes role post-invite → change persisted, n
 
 // ---------------------------------------------------------------------------
 // First login tests
-// MINCRM-192: These tests log in via the UI as a newly-created test user to
+// These tests log in via the UI as a newly-created test user to
 // exercise the forced-password-change flow. The browser must start unauthenticated.
 // ---------------------------------------------------------------------------
 test.describe('First login tests', () => {
-  // MINCRM-192: Use an empty storageState to prevent the project-level admin session
+  // Use an empty storageState to prevent the project-level admin session
   // from loading. `undefined` does not override the project config — an explicit empty
   // object is required to start each test with a fresh, unauthenticated browser context.
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -320,7 +320,7 @@ test.describe('First login tests', () => {
       ).toBe('/change-password');
     } finally {
       // Restore the admin session; the user is deactivated by its registered
-      // teardown. (MINCRM-668)
+      // teardown.
       await loginAsAdmin(restClient).catch(() => null);
     }
   });
@@ -363,7 +363,7 @@ test.describe('First login tests', () => {
       expect(retryResult.errorMessage, 'error message should be present').not.toBeNull();
     } finally {
       // Restore the admin session; the user is deactivated by its registered
-      // teardown. (MINCRM-668)
+      // teardown.
       await loginAsAdmin(restClient).catch(() => null);
     }
   });
@@ -402,7 +402,7 @@ test.describe('First login tests', () => {
       ).toBe('/change-password');
     } finally {
       // Restore the admin session; the user is deactivated by its registered
-      // teardown. (MINCRM-668)
+      // teardown.
       await loginAsAdmin(restClient).catch(() => null);
     }
   });

@@ -1,5 +1,5 @@
 /**
- * Pure parser for the test stack's recorded GIT_COMMIT_SHA. (MINCRM-688)
+ * Pure parser for the test stack's recorded GIT_COMMIT_SHA.
  *
  * Split out of scripts/pre-push-tia.ts so the parsing has a test runner:
  * root `scripts/` is covered by tsconfig.scripts.json for typecheck ONLY —

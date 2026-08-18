@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 005: index on coverage_test_links.last_seen_at. (MINCRM-637)
+ * Migration 005: index on coverage_test_links.last_seen_at.
  *
  * pruneCoverageUnits' orphan-link cleanup (coverageModelService.ts) filters
  * coverage_test_links on `l.last_seen_at < now() - (retentionDays * interval

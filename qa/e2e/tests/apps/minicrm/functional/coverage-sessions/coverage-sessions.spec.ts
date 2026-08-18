@@ -1,6 +1,5 @@
 /**
- * Coverage/TIA session management functional tests. (MINCRM-609, MINCRM-610,
- * MINCRM-611, MINCRM-612, MINCRM-663)
+ * Coverage/TIA session management functional tests.
  *
  * Verifies the session control API end to end against a real running
  * server — session lifecycle (start/end/list/get), dump attribution, and
@@ -15,7 +14,7 @@
  *   CVS-04  Recording a dump attributes it to the session; a duplicate dumpId
  *           is rejected with 409
  *
- * MINCRM-663: this router's routes are now registered only when
+ * this router's routes are now registered only when
  * COVERAGE_SESSION_MANAGEMENT='true' at process boot (no longer gated by a
  * coverage_session_management feature_flags row) — the CI/local E2E server
  * has this set (see docker-compose.dev.yml / ci.yml's e2e-serial job), so
@@ -32,7 +31,7 @@
  * /admin/coverage-sessions no longer exists as a route at all now that
  * CoverageSessionRecorderPage.tsx is deleted from minicrm-client.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No app-domain strings in framework layer
@@ -173,7 +172,7 @@ test('@functional CVS-04: recording a dump attributes it to the session; a dupli
 
 // ---------------------------------------------------------------------------
 // CVS-05 — the manual-testing session recorder no longer exists in the CRM
-// client itself (MINCRM-663 regression check)
+// client itself ($2)
 // ---------------------------------------------------------------------------
 
 test('@functional CVS-05: /admin/coverage-sessions no longer exists as a route in the CRM client', async ({

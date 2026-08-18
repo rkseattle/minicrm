@@ -12,7 +12,7 @@
  *   Rep Forbidden (API) — all admin-only endpoints return 403 when called as rep (AC1)
  *   Error Handling  — forbidden API responses carry structured error body
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
@@ -24,9 +24,9 @@
  *   - AC2: each test covers exactly one role boundary (no chained role checks)
  *   - AC3: separate named user fixtures for admin and rep prevent session bleed
  *
- * MINCRM-143
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - Every test creates isolated users (admin + rep) with UUID-scoped names and
  *     emails; records are cleaned up by TestDataManager.
@@ -36,7 +36,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -57,12 +57,12 @@ import {
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 
-// MINCRM-192: Permissions tests log in via the UI as dynamically-created rep users,
+// Permissions tests log in via the UI as dynamically-created rep users,
 // not as admin. Browser contexts in this spec must start unauthenticated so the
 // login() behavior can navigate to /login and authenticate as the correct role.
 // API-only tests in this spec (F7-AA*, F7-FA*) are unaffected by storageState but
 // the file-level override keeps behaviour consistent across the entire spec.
-// MINCRM-192: Use an empty storageState to prevent the project-level admin session
+// Use an empty storageState to prevent the project-level admin session
 // from loading. `undefined` does not override the project config — an explicit empty
 // object is required to start each test with a fresh, unauthenticated browser context.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -107,7 +107,7 @@ const TEST_USER_PASSWORD = 'F7TestPass1!';
  *
  * Teardown is registered by `createTestUser` itself and is the only cleanup
  * path: the user is deactivated after the test even on failure, and call sites
- * need no `finally` block of their own. (MINCRM-668)
+ * need no `finally` block of their own.
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
@@ -390,7 +390,7 @@ test('@functional F7-FU4: rep navigating directly to /reports can access the rep
   try {
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
-    // /reports/win-loss now redirects to /reports?view=win-loss (MINCRM-294). The redirect
+    // /reports/win-loss now redirects to /reports?view=win-loss. The redirect
     // is client-side (<Navigate>) behind a lazy-loaded chunk + feature-flag fetch, so
     // networkidle can settle before it commits — wait for the URL itself, not just network idle.
     await navigateToUrlAndWait('/reports/win-loss', { page });

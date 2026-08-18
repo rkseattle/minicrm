@@ -1,5 +1,5 @@
 /**
- * F16-RH — AI relationship health scoring per account (MINCRM-467)
+ * F16-RH — AI relationship health scoring per account
  *
  * Functional regression tests for the passive relationship health badge on
  * the account detail page.

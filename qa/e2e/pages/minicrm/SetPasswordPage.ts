@@ -4,7 +4,7 @@
  * Encapsulates all UI interactions on `/set-password`. Every element uses
  * a HealingLocator with at least 2 strategies.
  *
- * MINCRM-262
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';

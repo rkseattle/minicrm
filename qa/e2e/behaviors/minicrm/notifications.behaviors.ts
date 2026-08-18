@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-161, MINCRM-162, MINCRM-163, MINCRM-192
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -289,7 +289,7 @@ export async function toggleAdminEmailNotifications(
 
   // Register the response listener before clicking so the PATCH is always
   // captured — avoids the race where the mutation fires before waitForResponse
-  // is registered if the toggle click resolves synchronously. (MINCRM-418)
+  // is registered if the toggle click resolves synchronously.
   const patchDone = context.page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/settings/email-notifications') &&
@@ -302,7 +302,6 @@ export async function toggleAdminEmailNotifications(
   // Wait for the success message — it is set in React's onSuccess callback,
   // which fires after invalidateQueries. This confirms the UI has processed
   // the mutation before the caller reads isEnabled or queries the API.
-  // (MINCRM-389, MINCRM-418)
   await adminSettings.waitForEmailNotifSuccessVisible();
 
   const saved = await adminSettings.successMessageIsVisible();
@@ -313,7 +312,7 @@ export async function toggleAdminEmailNotifications(
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Notification preference payload for PATCH /api/v1/users/me/notification-preferences. */

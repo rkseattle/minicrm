@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-139, MINCRM-357
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -220,7 +220,7 @@ export async function createAccountViaUI(
   // We do NOT race with networkidle or a fixed timer. On slow CI mobile runners
   // even 100ms networkidle can fire while a POST is still in-flight, causing
   // the race to resolve before React re-renders the button and yielding a false
-  // `created: false` result (MINCRM-139).
+  // `created: false` result.
   const buttonVisible = await accountsPage.waitForNewAccountButton();
 
   const finalUrl = context.page.url();
@@ -366,7 +366,7 @@ export async function searchAccounts(
   // Wait for the DOM to reflect the search result before reading counts.
   // waitForResponse (inside search()) signals the response arrived, but React
   // re-renders asynchronously. Poll until the empty-state element appears OR
-  // the row count stabilises at a non-zero value (max 5 s). (MINCRM-418)
+  // the row count stabilises at a non-zero value (max 5 s).
   await context.page
     .waitForFunction(
       `document.querySelector('[data-testid="accounts-empty-state"]') !== null || document.querySelectorAll('[data-testid^="account-link-"]').length > 0`,
@@ -410,7 +410,7 @@ export async function cancelAccountEdit(
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Shape returned by GET /api/v1/accounts/:id. */
@@ -422,7 +422,7 @@ export interface AccountRow {
   employee_range: string | null;
   revenue_range: string | null;
   owner_id: string;
-  /** Optimistic lock version (MINCRM-349). */
+  /** Optimistic lock version. */
   version: number;
 }
 
@@ -544,7 +544,7 @@ export async function createAccountViaApi(
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap AccountDetailPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /**
@@ -639,7 +639,6 @@ export async function navigateToAccountsOwnedByMe(context: AccountsBehaviorConte
 
 // ---------------------------------------------------------------------------
 // Visibility check helpers — keep page.doesNotExist() out of spec files.
-// (MINCRM-418)
 // ---------------------------------------------------------------------------
 
 /**
@@ -670,7 +669,7 @@ export async function isLinkedContactAbsent(
 }
 
 // ---------------------------------------------------------------------------
-// Concurrency / conflict-resolution helpers (MINCRM-400)
+// Concurrency / conflict-resolution helpers
 // Mirrors the pattern used in contacts.behaviors.ts for F-CC2-style UI tests.
 // ---------------------------------------------------------------------------
 
@@ -688,7 +687,6 @@ export async function navigateToAccountDetail(
   // closed, leaving every flag-gated control absent from the DOM rather than
   // merely hidden. navigateToAccount() in helpers.ts has always settled; these
   // *Detail behaviors did not, which is why only the export tests raced.
-  // (MINCRM-700, MINCRM-703)
   await navigateAndSettle(context.page, () => detailPage.navigate(accountId));
 }
 
@@ -733,7 +731,7 @@ export async function isAccountDetailLoaded(context: AccountsBehaviorContext): P
 }
 
 // ---------------------------------------------------------------------------
-// AI churn/expansion signal banner (MINCRM-469)
+// AI churn/expansion signal banner
 // ---------------------------------------------------------------------------
 
 /** Returns true when the churn-risk banner is currently visible. */
@@ -751,7 +749,7 @@ export async function isExpansionSignalBannerVisible(
 }
 
 // ---------------------------------------------------------------------------
-// AI relationship health scoring (MINCRM-467)
+// AI relationship health scoring
 // ---------------------------------------------------------------------------
 
 /** Returns true when the relationship health badge is currently visible for an account. */
@@ -766,7 +764,7 @@ export async function isAccountHealthBadgeVisible(
 /**
  * Clicks the account detail page's "Export PDF" button and waits for the
  * underlying single-record export.pdf HTTP response, returning its status
- * and content-type. (MINCRM-650)
+ * and content-type.
  *
  * Resolves at FIRST_INTERACTION_TIMEOUT_MS, not the healing locator's 2s
  * default: the button renders only under `csvExportEnabled`, and useFeatureFlag
@@ -774,7 +772,6 @@ export async function isAccountHealthBadgeVisible(
  * genuinely absent from the DOM. That query has been measured at ~3s under CI's
  * four concurrent workers, so a 2s probe gives up before the button can exist
  * and reports StrategyExhaustedError — indistinguishable from selector drift.
- * (MINCRM-703)
  */
 export async function clickAccountExportPdfAndAwaitResponse(
   id: string,

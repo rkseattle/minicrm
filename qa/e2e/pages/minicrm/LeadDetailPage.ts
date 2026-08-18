@@ -7,7 +7,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-192
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -261,7 +261,7 @@ export class LeadDetailPage {
   }
 
   // ---------------------------------------------------------------------------
-  // AI lead scoring (MINCRM-441 prerequisite + MINCRM-441)
+  // AI lead scoring
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the lead score badge. */

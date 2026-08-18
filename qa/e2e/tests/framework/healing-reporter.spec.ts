@@ -5,17 +5,17 @@
  * 1. WORKER_FILE_PATTERN matches legacy format (healing-0.json).
  * 2. WORKER_FILE_PATTERN matches shard-aware format (healing-shard3-worker1.json).
  * 3. WORKER_FILE_PATTERN does not match unrelated filenames.
- * 4. estimatedTokenCost is correctly summed from AI heal events. MINCRM-227
- * 5. aiHealCount counts only wasAiHeal events. MINCRM-227
- * 6. Threshold warning is emitted when aiHealCount exceeds 50. MINCRM-227
- * 7. No warning emitted when aiHealCount equals the threshold (strictly greater than). MINCRM-227
- * 8. heal-trends.json is created on first run with heal events. MINCRM-373
- * 9. heal-trends.json accumulates counts across simulated repeated onEnd() calls. MINCRM-373
- * 10. HEAL_QUARANTINE_THRESHOLD env var overrides default of 3. MINCRM-373
- * 11. _checkQuarantine logs warning listing eligible locators. MINCRM-373
- * 12. _checkQuarantine does not log when no candidates. MINCRM-373
+ * 4. estimatedTokenCost is correctly summed from AI heal events.
+ * 5. aiHealCount counts only wasAiHeal events.
+ * 6. Threshold warning is emitted when aiHealCount exceeds 50.
+ * 7. No warning emitted when aiHealCount equals the threshold (strictly greater than).
+ * 8. heal-trends.json is created on first run with heal events.
+ * 9. heal-trends.json accumulates counts across simulated repeated onEnd() calls.
+ * 10. HEAL_QUARANTINE_THRESHOLD env var overrides default of 3.
+ * 11. _checkQuarantine logs warning listing eligible locators.
+ * 12. _checkQuarantine does not log when no candidates.
  *
- * MINCRM-216, MINCRM-227, MINCRM-373
+ *
  */
 
 import { test, expect } from '@playwright/test';
@@ -36,7 +36,7 @@ import {
 //
 // Since WORKER_FILE_PATTERN is not exported from healing-reporter.ts, we
 // reconstruct the same regex here and keep it in sync via a comment reference.
-// The pattern under test: /^healing-(shard\d+-worker\d+|\d+)\.json$/  MINCRM-216
+// The pattern under test: /^healing-(shard\d+-worker\d+|\d+)\.json$/
 const WORKER_FILE_PATTERN = /^healing-(shard\d+-worker\d+|\d+)\.json$/;
 
 test.describe('HealingReporter — WORKER_FILE_PATTERN', () => {
@@ -78,7 +78,7 @@ test.describe('HealingReporter — WORKER_FILE_PATTERN', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-227: token cost aggregation and threshold warning
+// token cost aggregation and threshold warning
 // ---------------------------------------------------------------------------
 
 /** Builds a minimal HealEvent for test use. */
@@ -118,7 +118,7 @@ function setupReporterRun(
   };
 }
 
-test.describe('HealingReporter — token cost aggregation (MINCRM-227)', () => {
+test.describe('HealingReporter — token cost aggregation', () => {
   test('estimatedTokenCost sums tokenCost from AI heal events only', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reporter-tokens-test-'));
     const events: HealEvent[] = [
@@ -178,7 +178,7 @@ test.describe('HealingReporter — token cost aggregation (MINCRM-227)', () => {
   });
 });
 
-test.describe('HealingReporter — threshold warning (MINCRM-227)', () => {
+test.describe('HealingReporter — threshold warning', () => {
   test.afterEach(() => {
     delete process.env['AI_HEAL_COST_WARNING_THRESHOLD'];
   });
@@ -260,10 +260,10 @@ test.describe('HealingReporter — threshold warning (MINCRM-227)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-373: heal-trends.json accumulation across runs
+// heal-trends.json accumulation across runs
 // ---------------------------------------------------------------------------
 
-test.describe('HealingReporter — heal-trends.json accumulation (MINCRM-373)', () => {
+test.describe('HealingReporter — heal-trends.json accumulation', () => {
   test.afterEach(() => {
     delete process.env['HEAL_QUARANTINE_THRESHOLD'];
   });
@@ -342,10 +342,10 @@ test.describe('HealingReporter — heal-trends.json accumulation (MINCRM-373)', 
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-373: _checkQuarantine
+// _checkQuarantine
 // ---------------------------------------------------------------------------
 
-test.describe('HealingReporter — _checkQuarantine (MINCRM-373)', () => {
+test.describe('HealingReporter — _checkQuarantine', () => {
   test.afterEach(() => {
     delete process.env['HEAL_QUARANTINE_THRESHOLD'];
   });

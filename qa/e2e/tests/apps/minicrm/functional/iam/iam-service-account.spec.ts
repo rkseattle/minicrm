@@ -16,7 +16,7 @@
  *   - Each test manages its own fixtures with try/finally teardown
  *   - restClient is always re-authenticated as admin after per-test operations
  *
- * MINCRM-536
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -76,7 +76,7 @@ interface IssueTokenResponse {
  * Creates an activated service account user.
  * Activation uses POST /users/set-password with the invite token, which sets
  * status='active' and must_change_password=false — the clean activation path.
- * Teardown is registered internally; callers need no cleanup of their own. (MINCRM-668)
+ * Teardown is registered internally; callers need no cleanup of their own.
  */
 async function createServiceAccount(
   testData: TestDataManager,
@@ -90,7 +90,7 @@ async function createServiceAccount(
   });
 
   // Register before set-password below, which can throw. adminClient is the
-  // fixture restClient, which outlives the test. (MINCRM-668)
+  // fixture restClient, which outlives the test.
   registerUserDeactivation(testData, adminClient, res.body.user.id, 'service-account');
   // Activate with invite token (must_change_password stays false, status becomes 'active')
   await adminClient.post('/api/v1/users/set-password', {
@@ -290,7 +290,7 @@ test('@functional F-SA-B3: service account can create a contact with Bearer toke
   // Register BEFORE asserting the status. The contact is owned by the SA, which
   // this test deactivates, and deactivation does not cascade-delete contacts —
   // so an assertion failure between the create and the register would leak the
-  // row. Ordering matches the rule the rest of this branch enforces. (MINCRM-668)
+  // row. Ordering matches the rule the rest of this branch enforces.
   const contactId = (res.body as { contact?: { id?: string } }).contact?.id;
   if (contactId) {
     registerAdminTeardown(

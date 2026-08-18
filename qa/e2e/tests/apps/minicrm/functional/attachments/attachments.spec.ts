@@ -2,7 +2,7 @@
  * F10 — File Attachments (Upload, Download, Delete, Authorization)
  *
  * Functional regression tests for the file attachment feature introduced in
- * MINCRM-154, MINCRM-167, MINCRM-169. Covers the full value chain:
+ * Covers the full value chain:
  * UI upload → API → storage → presigned URL → download link.
  *
  * Test groups:
@@ -11,13 +11,13 @@
  *   Delete (F10-X)  — delete removes row; 404 via API
  *   Auth (F10-A)    — rep cannot delete another user's attachment
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - No raw locators in this file — UI interaction via page objects only
  *
- * MINCRM-199, MINCRM-278
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -249,7 +249,7 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
   // it could be probed before the row existed and fail with
   // StrategyExhaustedError rather than a legible "upload did not appear".
   // F10-X1 below already waits this way after ITS upload; this test did not,
-  // which is the whole difference. (MINCRM-695, MINCRM-696)
+  // which is the whole difference.
   await waitForContactAttachmentsList({ page }, 10_000);
 
   const href = await waitForAttachmentDownloadLinkAndGetHref({ page }, 10_000);

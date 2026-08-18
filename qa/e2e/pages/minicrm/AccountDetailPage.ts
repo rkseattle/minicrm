@@ -7,7 +7,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-139
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -259,7 +259,7 @@ export class AccountDetailPage {
     return this.page.url();
   }
 
-  // ── AI churn/expansion signal banner (MINCRM-469) ───────────────────────────────
+  // ── AI churn/expansion signal banner ───────────────────────────────
 
   /** Returns a resolved locator for the churn-risk banner. */
   async churnRiskBannerLocator(timeout?: number) {
@@ -319,7 +319,7 @@ export class AccountDetailPage {
     return locator.isVisible().catch(() => false);
   }
 
-  // ── AI relationship health scoring (MINCRM-467) ─────────────────────────────────
+  // ── AI relationship health scoring ─────────────────────────────────
 
   /**
    * Returns true when the relationship health badge is currently visible,

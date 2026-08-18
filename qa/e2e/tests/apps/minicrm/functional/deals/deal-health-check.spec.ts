@@ -1,5 +1,5 @@
 /**
- * F7-DH — AI deal health check (MINCRM-442)
+ * F7-DH — AI deal health check
  *
  * Functional regression tests for the on-demand "Check health" panel on the
  * deal detail page.
@@ -13,7 +13,7 @@
  * Stub note:
  *   The E2E server runs with E2E=true, so generateDealHealthCheck bypasses the
  *   Anthropic SDK and returns a deterministic stub assessment. No real tokens
- *   are consumed. (MINCRM-442)
+ *   are consumed.
  *
  * Framework conventions:
  *   - All tests tagged @functional
@@ -67,7 +67,7 @@ test.beforeEach(async ({ restClient, testData, page }) => {
   // data-hygiene.spec.ts does, does not apply: there only one test needed the
   // toggle, here all four do. Leaving the hooks at file scope with three plain
   // @functional tests would put shared-settings writes in the parallel shard
-  // matrix. (MINCRM-668)
+  // matrix.
   await setAiEnabled(restClient, true);
 
   const rep = await createTestRep(testData, restClient);

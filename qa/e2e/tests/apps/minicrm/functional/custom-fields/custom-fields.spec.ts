@@ -1,18 +1,18 @@
 /**
- * Custom Fields functional tests (MINCRM-276, MINCRM-409).
+ * Custom Fields functional tests.
  *
- * Original acceptance criteria (MINCRM-276):
+ * Original acceptance criteria:
  *   1. Admin creates a text custom field for contacts via the Admin Settings UI
  *   2. Rep navigates to a contact, sets a value, saves, reloads, confirms persistence
  *   3. Admin deletes the definition and confirms it no longer appears on the detail page
  *
- * Coverage gaps addressed (MINCRM-409):
+ * Coverage gaps addressed:
  *   CF-4: Select custom field for deals appears in the deal edit form
  *   CF-5: Text custom field for accounts appears in the account edit form
  *   CF-6: Text custom field for leads appears in the lead edit form
  *   CF-7: CSV export of contacts includes the custom field column header
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators — all through page objects (dynamic UUID-keyed elements use
@@ -154,7 +154,7 @@ test('CF-2: rep sets a custom field value on a contact, saves, reloads, confirms
     `/api/v1/custom-fields/definitions/${definitionId}`,
   );
 
-  // Create a rep user to act as the browser session subject. (MINCRM-386)
+  // Create a rep user to act as the browser session subject.
   const repPassword = 'RepPassword1!';
   const rep = await createTestUser(testData, restClient, { role: 'rep', password: repPassword });
 
@@ -180,10 +180,10 @@ test('CF-2: rep sets a custom field value on a contact, saves, reloads, confirms
   await expect(editGrid).toBeVisible({ timeout: 5_000 });
 
   // Fill in the custom field value — fillCustomFieldInput scrolls into view, fills,
-  // presses Tab to flush React state, and confirms the value (MINCRM-554, MINCRM-415)
+  // presses Tab to flush React state, and confirms the value
   await fillCustomFieldInput(definitionId, 'Test Value 123', { page });
 
-  // Save the contact and wait for the page to return to read mode. (MINCRM-418)
+  // Save the contact and wait for the page to return to read mode.
   await saveContact({ page });
   await waitForContactDetailReadMode({ page });
 
@@ -271,7 +271,7 @@ test('CF-3: admin deletes a custom field definition; it disappears from the cont
 });
 
 // ---------------------------------------------------------------------------
-// CF-4 — Select custom field appears in the deal edit form (MINCRM-409)
+// CF-4 — Select custom field appears in the deal edit form
 // ---------------------------------------------------------------------------
 
 test('CF-4: select custom field for deals renders as a select input in the deal edit form @functional', async ({
@@ -311,7 +311,7 @@ test('CF-4: select custom field for deals renders as a select input in the deal 
 });
 
 // ---------------------------------------------------------------------------
-// CF-5 — Text custom field appears in the account edit form (MINCRM-409)
+// CF-5 — Text custom field appears in the account edit form
 // ---------------------------------------------------------------------------
 
 test('CF-5: text custom field for accounts renders in the account edit form @functional', async ({
@@ -345,7 +345,7 @@ test('CF-5: text custom field for accounts renders in the account edit form @fun
 });
 
 // ---------------------------------------------------------------------------
-// CF-6 — Text custom field appears in a second deal's edit form (MINCRM-409)
+// CF-6 — Text custom field appears in a second deal's edit form
 //
 // Note: custom fields only support entity_types contact, account, and deal —
 // 'lead' is not in the ENTITY_TYPES allowlist. This test verifies the custom
@@ -389,7 +389,7 @@ test('CF-6: second text custom field for deals renders in the deal edit form @fu
 });
 
 // ---------------------------------------------------------------------------
-// CF-7 — CSV export includes the custom field column header (MINCRM-409)
+// CF-7 — CSV export includes the custom field column header
 // ---------------------------------------------------------------------------
 
 test('CF-7: contacts CSV export includes the custom field column header @functional', async ({

@@ -1,7 +1,7 @@
 /**
  * F-SENDEMAIL — Send Email from Contact Detail Page
  *
- * Functional E2E tests for MINCRM-275: outbound email composition from
+ * Functional E2E tests for: outbound email composition from
  * ContactDetailPage. Tests cover the send flow (with activity logging) and
  * confirm the Send Email button only appears when the contact has an email.
  *
@@ -10,7 +10,7 @@
  * That path is covered by server unit tests (contactController: 400 NO_EMAIL).
  * The E2E spec covers the happy path and the button-visible condition.
  *
- * MINCRM-275
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

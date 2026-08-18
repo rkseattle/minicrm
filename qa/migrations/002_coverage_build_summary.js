@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 002: Coverage/TIA build summary rollup table. (MINCRM-629/630/631)
+ * Migration 002: Coverage/TIA build summary rollup table.
  *
  * One row per commit_sha, maintained incrementally by
  * coverageModelService.upsertCoverageUnits' onUnitsUpserted callback

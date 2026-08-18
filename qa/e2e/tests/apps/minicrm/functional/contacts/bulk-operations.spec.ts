@@ -1,20 +1,20 @@
 /**
  * F2-Bulk — Bulk Operations on the Contacts list
  *
- * Covers the bulk-action flows introduced in MINCRM-188:
+ * Covers the bulk-action flows introduced in a later change:
  *   - Select multiple contacts → bulk reassign → verify new owner via API
  *   - Select multiple contacts → bulk delete → verify 404 via API
  *
- * Bulk operations require admin (or manager) role — updated in MINCRM-562 to
+ * Bulk operations require admin (or manager) role — updated in a later change to
  * restrict the UI to users with the bulk:operations capability.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls — all through behaviors
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *
- * MINCRM-188, MINCRM-562
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -50,7 +50,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 test.beforeEach(async ({ restClient, testData, page }) => {
   // Bulk operations require admin (or manager) role — log in as an ephemeral
-  // admin so the checkbox column and bulk-action-bar are visible. (MINCRM-562)
+  // admin so the checkbox column and bulk-action-bar are visible.
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
@@ -105,7 +105,7 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   // Bulk action bar should disappear after success.
   // page.isNotVisible() is used here because resolve() throws
   // StrategyExhaustedError when the element is absent — it cannot be used for
-  // not.toBeVisible() assertions. (MINCRM-211)
+  // not.toBeVisible() assertions.
   expect(await isBulkActionBarHidden({ page })).toBe(true);
 
   // Verify via API that both contacts now have the new owner.

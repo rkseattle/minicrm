@@ -13,7 +13,7 @@
  * 9. partitionIntoConflictFreeGroups — conflicting files never land in the same group
  * 10. partitionIntoConflictFreeGroups — a fully-connected conflict clique gets one file per group
  *
- * MINCRM-661
+ *
  */
 
 import { test, expect } from '@playwright/test';

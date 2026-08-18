@@ -1,5 +1,5 @@
 /**
- * F-OB — Setup checklist widget (MINCRM-379, MINCRM-410)
+ * F-OB — Setup checklist widget
  *
  * Verifies:
  *   OB1 — Widget is visible for admin when is_first_run is true
@@ -8,20 +8,20 @@
  *   OB4 — Widget collapses to pill when collapse chevron is clicked
  *   OB5 — Collapsed/expanded state persists across navigation
  *   OB6 — All five tasks are shown in the widget
- *   OB7 — Rep user sees four-task checklist when onboarding is incomplete (MINCRM-410)
- *   OB8 — Admin can reset another user's onboarding from the Users page (MINCRM-410)
+ *   OB7 — Rep user sees four-task checklist when onboarding is incomplete
+ *   OB8 — Admin can reset another user's onboarding from the Users page
  *
  * Each test resets the onboarding flag via the API before running.
  * The globalSetup marks onboarding completed to suppress the widget for all
  * other E2E tests; this spec overrides that per-test via the admin restClient.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators — all interaction via page.locate / page.click
  *   - Tests start unauthenticated (storageState override) so login() controls session
  *
- * MINCRM-379, MINCRM-410
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -55,7 +55,7 @@ import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // ---------------------------------------------------------------------------
-// Known-good system state before each test (MINCRM-358)
+// Known-good system state before each test
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {
@@ -81,7 +81,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F-OB] E2E_ADMIN_PASSWORD is not set');
 // write the pipeline_stages_reviewed system_settings row via
 // ensureSystemDefaults/resetPipelineStagesReviewed. describe.serial orders
 // tests within this file; the @serial TAG is what keeps other files off both
-// resources. (MINCRM-705)
+// resources.
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
@@ -93,20 +93,20 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
   }) => {
     await loginAsAdmin(restClient);
     // Restore true in finally so parallel workers never observe false on the
-    // shared admin account after this test completes. (MINCRM-415)
+    // shared admin account after this test completes.
     try {
       await setOnboardingCompleted(restClient, false);
       // Ensure pipeline_stages_reviewed is false so at least one admin task is
       // incomplete. If allDone=true the widget auto-dismisses after 3 s before we
       // can assert it's visible. This races with other workers that save pipeline
-      // stages (setting the flag), so reset it here — not just in beforeEach. (MINCRM-410)
+      // stages (setting the flag), so reset it here — not just in beforeEach.
       await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
       // Assert the widget is visible as soon as the page loads — do NOT wait for
       // dashboard-heading first. The widget is mounted immediately on render; if we
       // wait for the heading and allDone=true the 3 s auto-dismiss may have already
       // fired before we look. The 10 s timeout gives enough time for the initial
-      // React render without extending past the auto-dismiss window. (MINCRM-410)
+      // React render without extending past the auto-dismiss window.
       await expectSetupChecklistWidgetVisible({ page }, 10_000);
     } finally {
       await loginAsAdmin(restClient);
@@ -134,7 +134,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
   }) => {
     await loginAsAdmin(restClient);
     // Restore true in finally so parallel workers never observe false on the
-    // shared admin account after this test completes. (MINCRM-415)
+    // shared admin account after this test completes.
     try {
       await setOnboardingCompleted(restClient, false);
       await resetPipelineStagesReviewed(restClient);
@@ -163,7 +163,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
   }) => {
     await loginAsAdmin(restClient);
     // Restore true in finally so parallel workers never observe false on the
-    // shared admin account after this test completes. (MINCRM-415)
+    // shared admin account after this test completes.
     try {
       await setOnboardingCompleted(restClient, false);
       await resetPipelineStagesReviewed(restClient);
@@ -183,7 +183,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
   test('@functional @serial F-OB5: task list shows five tasks', async ({ page, restClient }) => {
     await loginAsAdmin(restClient);
     // Restore true in finally so parallel workers never observe false on the
-    // shared admin account after this test completes. (MINCRM-415)
+    // shared admin account after this test completes.
     try {
       await setOnboardingCompleted(restClient, false);
       await resetPipelineStagesReviewed(restClient);
@@ -203,9 +203,9 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     }
   });
   // ---------------------------------------------------------------------------
-  // Per-user onboarding tests (MINCRM-410)
+  // Per-user onboarding tests
   // These tests create ephemeral rep users, registered for deactivation via
-  // registerUserDeactivation (MINCRM-668).
+  // registerUserDeactivation.
   // Kept inside the same describe.serial as the setup-checklist widget tests
   // to prevent cross-block races on the shared admin onboarding_completed flag.
   // ---------------------------------------------------------------------------
@@ -278,7 +278,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       // Switch back to admin for both the REST client and the browser session.
       // test.use({ storageState: { cookies: [], origins: [] } }) at the top of this
       // file clears the pre-auth storageState, so the page fixture is unauthenticated.
-      // We must log in via the browser before navigating to /users. (MINCRM-410)
+      // We must log in via the browser before navigating to /users.
       await loginAsAdmin(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
@@ -334,4 +334,4 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       await loginAsAdmin(restClient);
     }
   });
-}); // end describe.serial — onboarding (MINCRM-379, MINCRM-410)
+}); // end describe.serial — onboarding

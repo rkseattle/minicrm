@@ -1,8 +1,8 @@
 /**
- * F-CC — Concurrency tests for optimistic locking behaviour (MINCRM-350)
+ * F-CC — Concurrency tests for optimistic locking behaviour
  *
- * Validates that the optimistic locking implementation (MINCRM-349) and the
- * conflict resolution UI (MINCRM-351) behave correctly when two users edit
+ * Validates that the optimistic locking implementation and the
+ * conflict resolution UI behave correctly when two users edit
  * the same record simultaneously.
  *
  * ## Approach
@@ -25,17 +25,17 @@
  *   F-CC7  Accept "theirs" in conflict modal → subsequent edit saves cleanly
  *   F-CC8  Accept "mine" in conflict modal → subsequent edit saves cleanly
  *   F-CC9  Activity — version increments on update; stale version returns 409
- *           (absorbed from optimistic-locking.spec.ts OL4 — MINCRM-409)
+ *           (absorbed from optimistic-locking.spec.ts OL4 —)
  *   F-CC10 Account UI conflict: FieldMergeModal appears on stale account save
  *   F-CC11 Lead UI conflict: FieldMergeModal appears on stale lead save
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Test data managed via restClient + TestDataManager (auto teardown)
  *   - test.describe.serial: tests run sequentially within this file
  *
- * MINCRM-350, MINCRM-400
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -461,10 +461,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       const uniqueSuffix = `cc6-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
       // Bulk ops require admin — create an ephemeral admin for the browser session.
-      // (MINCRM-562)
       const admin = await createTestAdmin(testData, restClient);
 
-      // Create the reassignment target while still admin-authed (MINCRM-415)
+      // Create the reassignment target while still admin-authed
       const newOwner = await createTestUser(testData, restClient, {
         name: `CC6 Owner ${uniqueSuffix}`,
         email: `cc6-owner-${uniqueSuffix}@example.com`,
@@ -671,7 +670,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     },
   );
 
-  // F-CC9 is the activity API test below — see MINCRM-409.
+  // F-CC9 is the activity API test below — see.
 
   test(
     'F-CC9: activity — version increments on update; stale version returns 409 (MINCRM-409)',

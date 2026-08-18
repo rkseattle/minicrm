@@ -1,5 +1,5 @@
 /**
- * Behaviors for the MiniCRM AI usage/cost dashboard page (MINCRM-459).
+ * Behaviors for the MiniCRM AI usage/cost dashboard page.
  *
  * Each behavior composes AiUsageDashboardPage interactions into named,
  * intent-describing async functions. No assertions inside behaviors —
@@ -50,7 +50,7 @@ export async function selectAiUsageRangePreset(
 /**
  * Clicks the AI usage dashboard "Export PDF" button and waits for the
  * underlying export.pdf HTTP response, returning its status and content-type
- * so the spec can assert a real download was triggered. (MINCRM-601)
+ * so the spec can assert a real download was triggered.
  */
 export async function clickAiUsageExportPdfAndAwaitResponse(
   context: AiUsageDashboardBehaviorContext,

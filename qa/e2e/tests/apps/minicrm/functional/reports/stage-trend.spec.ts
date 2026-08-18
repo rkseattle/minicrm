@@ -1,21 +1,21 @@
 /**
- * Stage trend report functional tests (MINCRM-284).
+ * Stage trend report functional tests.
  *
  * Tests that an authenticated user can view the stage trend report page,
  * reach it via the reports nav link, interact with the date range filter, and see
  * the expected UI elements after the report loads.
  *
- * Navigation tests (nav link, direct URL, redirect) were removed in MINCRM-409
+ * Navigation tests (nav link, direct URL, redirect) were since removed
  * because they duplicate coverage in reports-nav.spec.ts.
  * This file now covers only filter interaction and data rendering.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - data-testid selectors only — no CSS class or positional selectors
  *   - No raw Page Object calls in spec — use behaviors or page objects
  *
- * Parallelism (MINCRM-550):
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - beforeEach creates a fresh UUID-suffixed admin via TestDataManager; no
  *     shared user records between tests.
@@ -25,7 +25,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -87,7 +87,7 @@ test('stage trend report: table or empty state visible after load @functional', 
   ).toBe(true);
 });
 
-// QUARANTINED (MINCRM-703) — unblocks the coverage map; does NOT fix this test.
+// QUARANTINED — unblocks the coverage map; does NOT fix this test.
 //
 // This was the only test failing the record-mode attestation gate (1317/1318
 // pass). That gate is fail-closed, so export and commit skipped and no coverage

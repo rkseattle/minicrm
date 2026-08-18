@@ -1,5 +1,5 @@
 /**
- * Behaviors for the MiniCRM data hygiene assistant queue (MINCRM-476).
+ * Behaviors for the MiniCRM data hygiene assistant queue.
  *
  * Each behavior composes DataHygienePage interactions into named,
  * intent-describing async functions. No assertions inside behaviors —

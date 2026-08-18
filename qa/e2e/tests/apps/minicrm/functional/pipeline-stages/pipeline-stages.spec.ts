@@ -1,16 +1,16 @@
 /**
- * Pipeline Stage functional tests (MINCRM-381, MINCRM-409).
+ * Pipeline Stage functional tests.
  *
- * Reorder regression coverage (MINCRM-381): clicking the up/down arrows
+ * Reorder regression coverage: clicking the up/down arrows
  * previously returned 409 STAGE_SORT_ORDER_CONFLICT because the client sent two
  * sequential PATCH requests rather than a single atomic PUT /reorder.
  *
- * CRUD coverage (MINCRM-409):
+ * CRUD coverage:
  *   PS-1: Admin adds a new custom stage via UI; stage appears in the API list.
  *   PS-2: Admin renames an existing (non-fixed) stage via UI; new name in API.
  *   PS-4: Admin deletes a custom stage (no associated deals); stage removed from API.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators — all through behavior wrappers
@@ -24,7 +24,6 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 // mode orders tests WITHIN this file; the @serial TAG is what moves the file to
 // the single-worker e2e-serial job so it cannot race pipelines.spec.ts or
 // stage-exit-requirements.spec.ts, which read the same table. Both are needed.
-// (MINCRM-705)
 test.describe.configure({ mode: 'serial' });
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -123,7 +122,7 @@ test('@functional @serial MINCRM-381-1: move-up reorders stage atomically — no
 
   // Capture the reorder response directly to validate the server-committed order
   // without a networkidle delay that a concurrent worker's afterEach restore could
-  // win against (MINCRM-387).
+  // win against.
   const reorderResult = await clickMoveUpAndWaitForReorder(secondStageId, { page });
   const reorderBody = { stages: reorderResult.stages } as StageListResponse;
   expect(reorderBody.stages[0].id, 'reorder response: moved stage should be first').toBe(
@@ -155,7 +154,6 @@ test('@functional @serial MINCRM-381-2: move-down reorders stage atomically — 
 
   // Capture the reorder response directly — avoids the race where a concurrent
   // worker's afterEach restore could overwrite the DB before fetchStages runs
-  // (MINCRM-387).
   const reorderResult = await clickMoveDownAndWaitForReorder(firstStageId, { page });
   const reorderBody = { stages: reorderResult.stages } as StageListResponse;
   expect(reorderBody.stages[0].id, 'reorder response: second stage should be first').toBe(
@@ -188,7 +186,7 @@ test('@functional @serial MINCRM-381-3: move-up button is disabled for the first
 });
 
 // ---------------------------------------------------------------------------
-// PS-1 — Add a new pipeline stage via UI (MINCRM-409)
+// PS-1 — Add a new pipeline stage via UI
 // ---------------------------------------------------------------------------
 
 test('@functional @serial PS-1: admin adds a new pipeline stage; stage appears in API list', async ({
@@ -213,7 +211,7 @@ test('@functional @serial PS-1: admin adds a new pipeline stage; stage appears i
 
     // Verify the stage now appears in the API list.
     // Assign createdStageId before asserting so the finally block can always
-    // delete the stage even if the assertion fails. (MINCRM-544 env-cleanup fix)
+    // delete the stage even if the assertion fails. ($2)
     const stages = await fetchStages(restClient);
     const created = stages.find((s) => s.name === stageName);
     createdStageId = created?.id;
@@ -229,7 +227,7 @@ test('@functional @serial PS-1: admin adds a new pipeline stage; stage appears i
 });
 
 // ---------------------------------------------------------------------------
-// PS-2 — Rename an existing non-fixed pipeline stage via UI (MINCRM-409)
+// PS-2 — Rename an existing non-fixed pipeline stage via UI
 // ---------------------------------------------------------------------------
 
 test('@functional @serial PS-2: admin renames a non-fixed pipeline stage; updated name appears in API', async ({
@@ -277,7 +275,7 @@ test('@functional @serial PS-2: admin renames a non-fixed pipeline stage; update
 
 // ---------------------------------------------------------------------------
 // PS-4 — Delete a custom (non-fixed) pipeline stage with no associated deals
-//        via UI (MINCRM-409)
+//        via UI
 // ---------------------------------------------------------------------------
 
 test('@functional @serial PS-4: admin deletes a custom pipeline stage; stage no longer appears in API', async ({
@@ -305,7 +303,6 @@ test('@functional @serial PS-4: admin deletes a custom pipeline stage; stage no 
   // on desktop the list may be long enough to push the new stage off-screen.
   // Then retry the click once if the dialog doesn't appear within 3 s — a React
   // re-render between resolve() and click() can silently swallow the first click.
-  // (MINCRM-554)
   await clickPipelineStageDeleteButton(stageId, { page });
 
   const dialogVisible = await waitForDeleteStageDialog('visible', { page }, 3_000).then(

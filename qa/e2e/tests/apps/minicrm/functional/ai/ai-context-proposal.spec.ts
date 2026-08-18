@@ -1,5 +1,5 @@
 /**
- * F-AI-PROPOSAL — AI ambiguous-query context proposal flow (MINCRM-429, MINCRM-430, MINCRM-435)
+ * F-AI-PROPOSAL — AI ambiguous-query context proposal flow
  *
  * Tests the ambiguous-query → context-proposal protocol: when the AI detects
  * an ambiguous term or correction worth remembering, it surfaces its
@@ -7,7 +7,7 @@
  * user can accept it (saved to their context panel) or dismiss it (never
  * saved, and not re-proposed again within the same session).
  *
- * Stub note (MINCRM-435):
+ * Stub note:
  *   The E2E server runs with E2E=true, so no real model call is made. The
  *   __E2E_STUB__:CONTEXT_PROPOSAL trigger (see shared/schemas/aiE2eStub.ts)
  *   deterministically returns the real %%CONTEXT_PROPOSAL%% marker text, so
@@ -22,7 +22,6 @@
  *   F-AI-PROP2 — Accepting a proposal saves it to the context panel
  *   F-AI-PROP3 — Dismissing a proposal does not save it, and it is not re-proposed in the same session
  *
- * (MINCRM-429, MINCRM-430, MINCRM-435)
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -62,7 +61,7 @@ test.afterEach(async ({ restClient }) => {
   // test's records, so the last test in the file would leave its session behind
   // for the rest of the run, where it sorts to the top of
   // `ORDER BY updated_at DESC` and becomes the session a later spec's page
-  // auto-selects. (MINCRM-686)
+  // auto-selects.
   await deleteAllAiSessionsViaApi(restClient);
   await deleteAllContextEntriesViaApi(restClient);
   // Restore AI defaults so the toggle does not outlive this file. See

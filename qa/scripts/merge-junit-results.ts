@@ -1,6 +1,6 @@
 /**
  * Merges per-shard / per-conflict-group Playwright JUnit XML files into one
- * self-describing <testsuites> document. (MINCRM-689)
+ * self-describing <testsuites> document.
  *
  *   npx tsx qa/scripts/merge-junit-results.ts \
  *     --output qa/e2e/test-results/results.xml \
@@ -211,7 +211,7 @@ function sumTotals(regions: readonly SuiteRegion[]): JUnitTotals {
 /**
  * Merges the given JUnit documents into one.
  *
- * Only the four counts named by MINCRM-689's acceptance criteria are emitted on
+ * Only the four counts named by the acceptance criteria are emitted on
  * the root. `time`, `id` and `name` are deliberately omitted: the reporter's
  * root `time` is wall-clock (`result.duration / 1e3`) while each suite's `time`
  * is its summed test durations, so a summed root `time` would exceed wall clock

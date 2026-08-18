@@ -1,5 +1,5 @@
 /**
- * F-TEAMS — Team management API (MINCRM-539)
+ * F-TEAMS — Team management API
  *
  * Verifies that:
  * 1. Admin can create, update, and delete teams
@@ -14,7 +14,7 @@
  *   - API-only; no browser UI navigation
  *   - Each test tears down its own fixtures in try/finally
  *
- * MINCRM-539
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -80,7 +80,7 @@ async function createActivatedRep(
   const { user, inviteToken } = inviteRes.body;
 
   // Register before the steps below, any of which can throw. adminClient is the
-  // fixture restClient, which outlives the test. (MINCRM-668)
+  // fixture restClient, which outlives the test.
   registerUserDeactivation(testData, adminClient, user.id, 'rep');
 
   await adminClient.post('/api/v1/users/set-password', {

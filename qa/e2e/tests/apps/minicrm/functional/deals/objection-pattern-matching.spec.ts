@@ -1,5 +1,5 @@
 /**
- * F7-OB — AI objection pattern matching from won deals (MINCRM-471)
+ * F7-OB — AI objection pattern matching from won deals
  *
  * Functional regression tests for the objection category badge on the
  * activity timeline (embedded in the deal detail page).
@@ -15,7 +15,7 @@
  *   precedent-panel paths for a real classification are covered by the
  *   client component test suite (ObjectionInsights.test.tsx), which mocks
  *   the HTTP response directly — E2E cannot exercise it without real AI
- *   output. (MINCRM-471)
+ *   output.
  *
  * Framework conventions:
  *   - All tests tagged @functional

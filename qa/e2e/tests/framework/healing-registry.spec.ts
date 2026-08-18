@@ -7,7 +7,7 @@
  * 3. flush() creates the output directory if it does not exist.
  * 4. count resets to 0 after _reset().
  *
- * MINCRM-124
+ *
  */
 
 import { test, expect } from '@playwright/test';
@@ -27,7 +27,6 @@ test.describe('HealingRegistry', () => {
   // well as before keeps each test's fixtures inside that test — the tests below
   // that chdir into a temp dir for flush() are contained either way, but the
   // recorded EVENT is not, and a later flush by any other spec would carry it.
-  // (MINCRM-699)
   test.afterEach(() => {
     HealingRegistry.instance._reset();
   });
@@ -189,7 +188,7 @@ test.describe('HealingRegistry', () => {
     expect(HealingRegistry.instance.count).toBe(0);
   });
 
-  // MINCRM-216: shard-aware file naming
+  // shard-aware file naming
   test('flush() uses shard-aware filename when SHARD_INDEX is set', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'healing-shard-test-'));
     process.env['PW_WORKER_INDEX'] = '3';

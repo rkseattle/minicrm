@@ -1,5 +1,5 @@
 /**
- * F-AS — AI call/note summarizer on the Activity form (MINCRM-436)
+ * F-AS — AI call/note summarizer on the Activity form
  *
  * Functional regression tests for the "Summarize" action on the activity
  * create form, embedded via ActivityTimeline on the contact detail page.
@@ -14,7 +14,7 @@
  * Stub note:
  *   The E2E server runs with E2E=true, so summarizeActivityText bypasses the
  *   Anthropic SDK and returns a deterministic stub summary. No real tokens
- *   are consumed. (MINCRM-436)
+ *   are consumed.
  *
  * Framework conventions:
  *   - All tests tagged @functional

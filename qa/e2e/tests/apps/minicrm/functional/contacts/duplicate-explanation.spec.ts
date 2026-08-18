@@ -1,12 +1,12 @@
 /**
- * F-DE — AI duplicate detection explanation (MINCRM-440)
+ * F-DE — AI duplicate detection explanation
  *
  * Functional regression test for the "Explain" action on the contact
  * duplicate-email warning banner.
  *
  * Stub note:
  *   The E2E server runs with E2E=true, so explainDuplicateMatch bypasses the
- *   Anthropic SDK and returns a deterministic stub explanation. (MINCRM-440)
+ *   Anthropic SDK and returns a deterministic stub explanation.
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

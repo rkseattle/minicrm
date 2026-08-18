@@ -1,5 +1,5 @@
 /**
- * F-MB — AI pre-meeting brief generation (MINCRM-465)
+ * F-MB — AI pre-meeting brief generation
  *
  * Functional regression tests for the "Generate Brief" action on the
  * activity timeline and the resulting brief panel.
@@ -12,7 +12,7 @@
  *
  * Stub note:
  *   The E2E server runs with E2E=true, so generateMeetingBrief bypasses the
- *   Anthropic SDK and returns a deterministic E2E_STUB_BRIEF. (MINCRM-465)
+ *   Anthropic SDK and returns a deterministic E2E_STUB_BRIEF.
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

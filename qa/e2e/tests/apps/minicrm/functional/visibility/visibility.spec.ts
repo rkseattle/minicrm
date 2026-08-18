@@ -1,5 +1,5 @@
 /**
- * F-VIS — Data Visibility Scoping (MINCRM-534, MINCRM-538)
+ * F-VIS — Data Visibility Scoping
  *
  * Functional regression tests for the org-level visibility policy configuration
  * and its enforcement across contacts for admin, manager, and rep roles.
@@ -15,12 +15,12 @@
  *   F-VIS8  — Rep cannot access the PUT /settings/visibility endpoint (403)
  *   F-VIS9  — Rep with private account policy cannot read an account owned by another rep
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional @serial
  *   - @serial causes CI to run this file in a dedicated single-worker job (e2e-serial)
  *     isolated from the parallel sharded runners — prevents concurrent shard
  *     beforeEach/afterEach resets from racing with tests that mutate global visibility
- *     policy. See MINCRM-549 and ci.yml e2e-serial job.
+ *     policy. See ci.yml e2e-serial job.
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Behaviors imported from @behaviors/* only — never @pages/*
  *   - System settings mutated here are reset in afterEach via resetVisibilitySettings
@@ -238,7 +238,7 @@ test('@functional @serial F-VIS5: manager sees only contacts owned by their team
     role: 'manager',
   });
   // Register before the steps below, both of which are network calls that
-  // can throw with the user already created. (MINCRM-668)
+  // can throw with the user already created.
   registerUserDeactivation(testData, restClient, managerUser.id, 'manager-vis5');
 
   await setUserPassword(restClient, managerToken, managerPassword);
@@ -253,7 +253,7 @@ test('@functional @serial F-VIS5: manager sees only contacts owned by their team
     role: 'rep',
   });
   // Register before the steps below, both of which are network calls that
-  // can throw with the user already created. (MINCRM-668)
+  // can throw with the user already created.
   registerUserDeactivation(testData, restClient, memberUser.id, 'member-vis5');
 
   await setUserPassword(restClient, memberToken, memberPassword);
@@ -339,7 +339,7 @@ test('@functional @serial F-VIS6: manager can reassign a contact to a member of 
     role: 'manager',
   });
   // Register before the steps below, both of which are network calls that
-  // can throw with the user already created. (MINCRM-668)
+  // can throw with the user already created.
   registerUserDeactivation(testData, restClient, managerUser.id, 'manager-vis6');
 
   await setUserPassword(restClient, managerToken, managerPassword);
@@ -353,7 +353,7 @@ test('@functional @serial F-VIS6: manager can reassign a contact to a member of 
     role: 'rep',
   });
   // Register before the steps below, both of which are network calls that
-  // can throw with the user already created. (MINCRM-668)
+  // can throw with the user already created.
   registerUserDeactivation(testData, restClient, memberUser.id, 'member-vis6');
 
   await setUserPassword(restClient, memberToken, memberPassword);
@@ -414,7 +414,7 @@ test('@functional @serial F-VIS7: manager gets 403 when reassigning a contact to
     role: 'manager',
   });
   // Register before the steps below, both of which are network calls that
-  // can throw with the user already created. (MINCRM-668)
+  // can throw with the user already created.
   registerUserDeactivation(testData, restClient, managerUser.id, 'manager-vis7');
 
   await setUserPassword(restClient, managerToken, managerPassword);

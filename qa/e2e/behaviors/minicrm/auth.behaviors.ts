@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-130, MINCRM-110, MINCRM-137, MINCRM-357
+ *
  */
 
 import { request as playwrightRequest } from '@playwright/test';
@@ -41,7 +41,7 @@ export interface AuthBehaviorContext {
  * Name of the session auth cookie.
  *
  * Env-driven so the test stack can use its own name and avoid clobbering the dev
- * stack's session in the shared localhost cookie jar (MINCRM-684). Must agree
+ * stack's session in the shared localhost cookie jar. Must agree
  * with the server's own default in server/src/middleware/auth.ts.
  */
 export function resolveAuthCookieName(): string {
@@ -52,7 +52,7 @@ export function resolveAuthCookieName(): string {
  * Resolves the API origin for out-of-band auth calls.
  *
  * No default outside CI: a silent :3001 fallback points at the DEV server and
- * its database, the leak class MINCRM-684 closed.
+ * its database — the leak class this closes.
  *
  * @param caller - Name used in the error message when the variable is unset.
  * @returns The API base URL.
@@ -230,7 +230,7 @@ export async function login(
  * Submits login credentials on the currently-displayed login page WITHOUT
  * navigating to /login first. Use this when the test has already navigated to
  * a specific login URL (e.g. /login?reason=session_expired&next=/contacts) and
- * must not lose the query params. (MINCRM-365)
+ * must not lose the query params.
  *
  * @param credentials - Email and password to submit.
  * @param context - Playwright fixture context.
@@ -667,7 +667,7 @@ export async function setPassword(
 }
 
 // ---------------------------------------------------------------------------
-// sessionExpiredBannerVisible() (MINCRM-365)
+// sessionExpiredBannerVisible()
 // ---------------------------------------------------------------------------
 
 /**
@@ -683,7 +683,7 @@ export async function sessionExpiredBannerVisible(context: AuthBehaviorContext):
 }
 
 // ---------------------------------------------------------------------------
-// navigateToLoginWithSessionExpired() (MINCRM-365)
+// navigateToLoginWithSessionExpired()
 // ---------------------------------------------------------------------------
 
 /**
@@ -701,7 +701,6 @@ export async function navigateToLoginWithSessionExpired(
   // login route, which never issues GET /api/v1/feature-flags/me, so waiting on
   // that response would simply burn the full timeout on every call. The page has
   // no flag-gated subtrees, so networkidle is an adequate signal here.
-  // (MINCRM-700)
   const encoded = encodeURIComponent(next);
   await context.page.goto(`/login?reason=session_expired&next=${encoded}`, {
     waitUntil: 'networkidle',
@@ -709,7 +708,7 @@ export async function navigateToLoginWithSessionExpired(
 }
 
 // ---------------------------------------------------------------------------
-// Additional API helpers (MINCRM-357)
+// Additional API helpers
 // ---------------------------------------------------------------------------
 
 /**
@@ -748,7 +747,7 @@ export async function getDevResetToken(restClient: RestClient, email: string): P
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap SetPasswordPage / LoginPage / ForgotPasswordPage
-// so spec files never import @pages/* directly. (MINCRM-367)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /**
@@ -822,7 +821,7 @@ export async function navigateToForgotPasswordPage(context: AuthBehaviorContext)
 }
 
 // ---------------------------------------------------------------------------
-// getDevJwt() (MINCRM-376)
+// getDevJwt()
 // ---------------------------------------------------------------------------
 
 /**
@@ -841,7 +840,7 @@ export async function getDevJwt(restClient: RestClient): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// MFA behaviors (MINCRM-392)
+// MFA behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -982,7 +981,7 @@ export async function disableMfaViaApi(restClient: RestClient, password: string)
 }
 
 // ---------------------------------------------------------------------------
-// Browser login helpers (MINCRM-392)
+// Browser login helpers
 // ---------------------------------------------------------------------------
 
 /**
@@ -1005,7 +1004,7 @@ export async function loginViaBrowser(
   await loginPage.submit();
   // Do not swallow the timeout — a failure here means the server rejected the
   // credentials or is unreachable. Propagating gives a clear error rather than
-  // a confusing downstream timeout 30 s later. (MINCRM-415)
+  // a confusing downstream timeout 30 s later.
   await context.page.waitForURL((url) => new URL(url).pathname !== '/login', {
     timeout: 15_000,
   });
@@ -1025,7 +1024,7 @@ export async function loginViaBrowser(
  * Every locator for app content then fails as "all strategies exhausted", which
  * reads as a drifted selector rather than an expired session.
  *
- * That is the MINCRM-697 root cause: in `tia-record-mode.yml` (~1300 tests,
+ * That is the root cause: in `tia-record-mode.yml` (~1300 tests,
  * unsharded, two projects) the mobile-web AI specs ran ~1 hour after login and
  * rendered the login page. `ci.yml`'s `e2e-serial` job never saw it — it is
  * `--project=desktop` only and finishes inside the 30-minute window.
@@ -1038,7 +1037,7 @@ export async function loginViaBrowser(
  * bootstrap to whichever AI test happened to be running. That would poison the
  * coverage map this ticket exists to produce and make an edit to authController
  * select all seven AI specs. Injecting the cookie touches no instrumented
- * client code. (MINCRM-697)
+ * client code.
  *
  * @param context - Playwright fixture context.
  */
@@ -1053,11 +1052,11 @@ export async function refreshAdminBrowserSession(context: AuthBehaviorContext): 
   // under a second in isolation. Disposing our own context keeps the browser
   // context's teardown exactly as fast as it was before. This mirrors the
   // isolated `newContext()` the coverage-session client already uses in
-  // apps/minicrm/fixtures.ts, and for the same class of reason. (MINCRM-697)
+  // apps/minicrm/fixtures.ts, and for the same class of reason.
   //
   // The minting itself lives in mintAdminSessionCookie so this and any other
   // caller needing an out-of-band admin cookie share one implementation of the
-  // login, the API-URL guard, and the set-cookie extraction. (MINCRM-703)
+  // login, the API-URL guard, and the set-cookie extraction.
   const value = await mintAdminSessionCookie();
   const cookieName = resolveAuthCookieName();
   const apiUrl = resolveE2eApiUrl('refreshAdminBrowserSession');
@@ -1102,7 +1101,7 @@ export async function refreshAdminBrowserSession(context: AuthBehaviorContext): 
  * code would leave it dead precisely when the proactive check has missed —
  * clock skew, or one unusually slow iteration. Any 401 means the session is
  * unusable, and a fresh login is the right answer to all of them; a genuinely
- * revoked admin then fails loudly at login rather than looping. (MINCRM-703)
+ * revoked admin then fails loudly at login rather than looping.
  *
  * @param restClient - The client whose underlying context holds the session
  *   cookie. The refreshed cookie lands in that same context.
@@ -1322,12 +1321,12 @@ export async function loginWithRecoveryCode(
 }
 
 // ---------------------------------------------------------------------------
-// MFA settings helpers — keep page.goto/locate out of spec files. (MINCRM-418)
+// MFA settings helpers — keep page.goto/locate out of spec files.
 // ---------------------------------------------------------------------------
 
 /**
  * Navigates to the admin settings Security & Identity tab and waits for network
- * idle. MFA enforcement was moved from the General tab to Security (MINCRM-563).
+ * idle. MFA enforcement was moved from the General tab to Security.
  */
 export async function navigateToAdminSettingsGeneralPage(
   context: AuthBehaviorContext,

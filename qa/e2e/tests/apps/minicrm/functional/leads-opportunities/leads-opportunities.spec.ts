@@ -3,7 +3,7 @@
  *
  * Functional regression tests for contact (lead) creation, deal (opportunity)
  * creation and lifecycle, pipeline stage management, and value tracking.
- * See MINCRM-42 for shared framework conventions and acceptance criteria.
+ * See the framework docs for shared framework conventions and acceptance criteria.
  *
  * In MiniCRM, "Leads" map to Contacts and "Opportunities" map to Deals.
  * There is no separate lead entity — a contact is the entry point for the
@@ -17,22 +17,22 @@
  *                          reopen (F4-OP)
  *   Opportunity Value  — currency display, pipeline roll-up via API (F4-OV)
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - Tests pass with --workers=4 (no shared mutable state)
  *
- * Additional AC (MINCRM-140):
+ * Additional AC:
  *   - Pipeline roll-up value is verified against a restClient API assertion,
  *     not only UI display (F4-OV2, F4-OV3)
  *   - Stage progression: free movement is permitted in MiniCRM (any stage to
  *     any stage), verified by regression test F4-OP2
  *
- * MINCRM-140
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - beforeEach creates a fresh UUID-suffixed rep; all records are owned by
  *     that rep and torn down by TestDataManager after each test.
@@ -41,7 +41,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -438,7 +438,7 @@ test('@functional F4-OV3: closed-won deal is excluded from open pipeline list vi
   const uniquePrefix = `F4OV3-${Date.now()}`;
 
   // Create a deal and immediately close it as Won via API.
-  // MINCRM-349: capture version from the create response for optimistic locking.
+  // capture version from the create response for optimistic locking.
   // value is passed as a number because the Zod schema requires it numeric.
   // createDealViaApi accepts value as number | string.
   const createdDeal = await createDealViaApi(restClient, {
@@ -481,7 +481,7 @@ test('@functional F4-OV4: closed-lost deal is excluded from open pipeline list v
 
   const uniquePrefix = `F4OV4-${Date.now()}`;
 
-  // MINCRM-349: capture version from the create response for optimistic locking.
+  // capture version from the create response for optimistic locking.
   // value is passed as a number because the Zod schema requires it numeric.
   // createDealViaApi accepts value as number | string.
   const createdDeal = await createDealViaApi(restClient, {

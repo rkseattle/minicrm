@@ -4,7 +4,7 @@
  * Import from here rather than individual files so that reorganizing
  * Page Objects internally does not break callers.
  *
- * MINCRM-130, MINCRM-110
+ *
  */
 
 export { LoginPage } from './LoginPage.js';

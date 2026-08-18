@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-173, MINCRM-174, MINCRM-175, MINCRM-192, MINCRM-357
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -460,7 +460,7 @@ export async function leadRowIsHidden(
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Shape returned by GET /api/v1/leads/:id. */
@@ -474,7 +474,7 @@ export interface LeadRow {
   converted_contact_id: string | null;
   converted_account_id: string | null;
   converted_deal_id: string | null;
-  /** Optimistic lock version (MINCRM-349). */
+  /** Optimistic lock version. */
   version: number;
 }
 
@@ -623,7 +623,7 @@ export async function navigateToLeadsOwnedByMe(context: LeadsBehaviorContext): P
 }
 
 // ---------------------------------------------------------------------------
-// Concurrency / conflict-resolution helpers (MINCRM-400)
+// Concurrency / conflict-resolution helpers
 // Mirrors the pattern used in contacts.behaviors.ts for F-CC2-style UI tests.
 // ---------------------------------------------------------------------------
 
@@ -653,7 +653,7 @@ export async function navigateToLeadDetail(
 ): Promise<void> {
   const detailPage = new LeadDetailPage(context);
   // Settles the feature-flag query first — see navigateToAccountDetail in
-  // accounts.behaviors.ts for the full rationale. (MINCRM-700, MINCRM-703)
+  // accounts.behaviors.ts for the full rationale.
   await navigateAndSettle(context.page, () => detailPage.navigate(leadId));
 }
 
@@ -706,7 +706,7 @@ export async function isLeadDetailLoaded(context: LeadsBehaviorContext): Promise
 }
 
 // ---------------------------------------------------------------------------
-// AI lead scoring (MINCRM-441 prerequisite + MINCRM-441)
+// AI lead scoring
 // ---------------------------------------------------------------------------
 
 /** Returns the text of the lead score badge. */
@@ -726,7 +726,7 @@ export interface RequestLeadScoreNarrativeResult {
  * Clicks the "Why this score?" button and waits for the score-narrative POST
  * to resolve. Registers the response wait before clicking so a fast server
  * response is never missed. Does not assert — callers branch on `status`
- * per the network-response-first pattern (MINCRM-418).
+ * per the network-response-first pattern.
  */
 export async function requestLeadScoreNarrative(
   context: LeadsBehaviorContext,
@@ -753,11 +753,11 @@ export async function getLeadScoreNarrativeText(context: LeadsBehaviorContext): 
 /**
  * Clicks the lead detail page's "Export PDF" button and waits for the
  * underlying single-record export.pdf HTTP response, returning its status
- * and content-type. (MINCRM-650)
+ * and content-type.
  *
  * Resolves at FIRST_INTERACTION_TIMEOUT_MS for the reason documented on
  * clickAccountExportPdfAndAwaitResponse — the button is gated on `csv_export`,
- * so a 2s probe can expire before the flags query resolves. (MINCRM-703)
+ * so a 2s probe can expire before the flags query resolves.
  */
 export async function clickLeadExportPdfAndAwaitResponse(
   id: string,
@@ -779,7 +779,7 @@ export async function clickLeadExportPdfAndAwaitResponse(
 }
 
 // ---------------------------------------------------------------------------
-// AI routing suggestion (MINCRM-475)
+// AI routing suggestion
 // ---------------------------------------------------------------------------
 
 /** Draft profile fields that feed the routing suggestion — at least one must be set. */
@@ -836,7 +836,7 @@ export async function getRoutingSuggestionPanelText(
 
 /**
  * Clicks the routing suggestion panel's Apply button, which populates the
- * owner selector with the suggested rep (MINCRM-475). Purely a client-side
+ * owner selector with the suggested rep. Purely a client-side
  * state update — no network request to await.
  */
 export async function applyRoutingSuggestion(context: LeadsBehaviorContext): Promise<void> {

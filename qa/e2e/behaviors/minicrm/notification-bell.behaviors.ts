@@ -1,5 +1,5 @@
 /**
- * Behaviors for the MiniCRM in-app notification bell (MINCRM-469).
+ * Behaviors for the MiniCRM in-app notification bell.
  *
  * Each behavior composes NotificationBellPage interactions into named,
  * intent-describing async functions. No assertions inside behaviors —

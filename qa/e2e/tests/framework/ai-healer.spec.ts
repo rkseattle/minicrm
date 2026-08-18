@@ -10,7 +10,7 @@
  * 3. Sub-0.75 confidence response → clean test failure (StrategyExhaustedError).
  * 4. AI healing is skipped entirely when AI_HEALING env var is absent.
  *
- * MINCRM-125
+ *
  */
 
 import { test, expect } from '@playwright/test';
@@ -312,10 +312,10 @@ test.describe('AiHealer integration into HealingLocator', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-372: PointerTracker and proximity-based DOM scoping unit tests
+// PointerTracker and proximity-based DOM scoping unit tests
 // ---------------------------------------------------------------------------
 
-test.describe('PointerTracker proximity-based DOM scoping (MINCRM-372)', () => {
+test.describe('PointerTracker proximity-based DOM scoping', () => {
   test.beforeEach(() => {
     HealingRegistry.instance._reset();
   });
@@ -529,7 +529,7 @@ test.describe('PointerTracker proximity-based DOM scoping (MINCRM-372)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-222: parseResponse unit tests
+// parseResponse unit tests
 // ---------------------------------------------------------------------------
 
 test.describe('parseResponse', () => {
@@ -563,7 +563,7 @@ test.describe('parseResponse', () => {
   test('parses a markdown-fenced response without triggering the truncation warning', () => {
     // Models sometimes wrap their JSON in fences despite instructions. The truncation
     // check must run after fence-stripping so a fenced-but-complete response is not
-    // incorrectly rejected with a "truncated" warning. (MINCRM-222 review fix)
+    // incorrectly rejected with a "truncated" warning. ($2)
     const warnings: string[] = [];
     const originalWarn = console.warn;
     console.warn = (...args: unknown[]) => {
@@ -588,7 +588,7 @@ test.describe('parseResponse', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-223: truncateDomSnapshot unit tests
+// truncateDomSnapshot unit tests
 // ---------------------------------------------------------------------------
 
 test.describe('truncateDomSnapshot', () => {
@@ -642,7 +642,7 @@ test.describe('truncateDomSnapshot', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-224: withRetry unit tests
+// withRetry unit tests
 // ---------------------------------------------------------------------------
 
 /**

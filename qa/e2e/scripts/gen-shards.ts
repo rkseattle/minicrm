@@ -24,7 +24,7 @@
  *   npm run e2e:timing:shards -- --workers=4
  *   npm run e2e:timing:shards -- --workers=2 --selected-files=/tmp/tia-selection.json
  *
- * MINCRM-549
+ *
  */
 
 import path from 'node:path';
@@ -50,7 +50,7 @@ const FUNCTIONAL_TESTS_DIR = path.join(E2E_DIR, 'tests/apps/minicrm/functional')
  * Takes argv as a parameter and returns errors rather than reading
  * `process.argv` and calling `process.exit` inline — the latter is untestable
  * by construction, which is why the `=`-preserving split below went unpinned
- * for as long as it did. `main()` does the exiting. (MINCRM-696)
+ * for as long as it did. `main()` does the exiting.
  */
 export function parseGenShardsArgs(
   argv: readonly string[],
@@ -58,7 +58,7 @@ export function parseGenShardsArgs(
   // /^\d+$/ before Number, not isNaN after parseInt. parseInt('8x') → 8 and
   // parseInt('2.9') → 2, both of which pass the range check below — so a typo'd
   // worker count silently shards differently than asked. Same reject-don't-coerce
-  // rule as gen-shard-config.ts's --shard-index. (MINCRM-696)
+  // rule as gen-shard-config.ts's --shard-index.
   const workersArg = argv.find((a) => a.startsWith('--workers='));
   const workersRaw = workersArg?.split('=').slice(1).join('=');
   const workersValid = workersRaw === undefined || /^\d+$/.test(workersRaw);
@@ -67,14 +67,14 @@ export function parseGenShardsArgs(
   // .slice(1).join('=') rather than [1], so a path containing '=' survives —
   // POSIX paths admit it freely. A truncated path is unreadable, and the caller
   // below then warns and widens to the full suite: the safe direction, but still
-  // not what the operator asked for. (MINCRM-696)
+  // not what the operator asked for.
   const selectedFilesPath = selectedFilesArg?.split('=').slice(1).join('=');
 
   // Discriminated union, matching gen-shard-config.ts's parser: on the error
   // arm the invalid value is UNREACHABLE rather than merely accompanied by an
   // error string. A flat `{ workers, error }` would hand a caller that ignored
   // `error` a NaN or a 2.9 to shard on — re-enabling one call frame away the
-  // exact silent-coercion this validation exists to prevent. (MINCRM-696)
+  // exact silent-coercion this validation exists to prevent.
   if (!workersValid || workers < 1) {
     return {
       error: `[gen-shards] Invalid --workers value; must be a positive integer, got "${workersRaw}".`,
@@ -168,7 +168,7 @@ function main(): void {
 // CJS where import.meta is a syntax error).
 // Without it, importing this module to unit-test parseGenShardsArgs RUNS the
 // whole script — it discovers specs, reads the timing baseline and writes to
-// stdout at import time. (MINCRM-696)
+// stdout at import time.
 if (process.argv[1] && path.resolve(process.argv[1]).endsWith('gen-shards.ts')) {
   main();
 }

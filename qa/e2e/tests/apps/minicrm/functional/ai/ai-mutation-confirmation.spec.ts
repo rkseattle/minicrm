@@ -1,5 +1,5 @@
 /**
- * F-AI-CONFIRM — AI mutation confirmation flow (MINCRM-425, MINCRM-426, MINCRM-435)
+ * F-AI-CONFIRM — AI mutation confirmation flow
  *
  * Tests the two-turn mutation confirmation protocol:
  *   1. User requests a write operation (create / update / delete).
@@ -7,7 +7,7 @@
  *   3. User clicks Confirm → AI receives "Yes, go ahead." and executes the write.
  *      User clicks Cancel → AI receives "No, cancel that." and aborts.
  *
- * Stub note (MINCRM-435):
+ * Stub note:
  *   The E2E server runs with E2E=true, so no real model call is made. The
  *   __E2E_STUB__:MUTATION_* / __E2E_STUB__:RBAC_DENIED-style triggers (see
  *   shared/schemas/aiE2eStub.ts) deterministically populate pending_action
@@ -37,7 +37,6 @@
  *   F-AI-C7 — A bulk pending_action renders count and sample in the confirmation block
  *   F-AI-C8 — A bulk-delete pending_action requires typing the count before Confirm is enabled
  *
- * (MINCRM-425, MINCRM-426, MINCRM-435)
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -75,7 +74,7 @@ test.beforeEach(async ({ restClient }) => {
 });
 
 // beforeEach alone cleans the PREVIOUS test's sessions, so the last test in the
-// file would leave its own behind for the rest of the run. (MINCRM-686)
+// file would leave its own behind for the rest of the run.
 test.afterEach(async ({ restClient }) => {
   await deleteAllAiSessionsViaApi(restClient);
   // Restore AI defaults so the toggle does not outlive this file. See

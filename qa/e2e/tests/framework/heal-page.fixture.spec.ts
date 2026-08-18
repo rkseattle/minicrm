@@ -1,7 +1,7 @@
 /**
  * Tests for the healPage fixture and locale t() helper.
  *
- * Verifies all Acceptance Criteria from MINCRM-126:
+ * Verifies all Acceptance Criteria :
  *
  * AC1 — healPage.click() and healPage.fill() resolve via HealingLocator and
  *        record heal events correctly.
@@ -12,7 +12,7 @@
  *
  * All locator interactions use mock Page objects so no browser is required.
  *
- * MINCRM-126
+ *
  */
 
 // AC3: import test and expect from @framework/fixtures, never from @playwright/test
@@ -217,7 +217,7 @@ test.describe.serial('healPage fixture teardown', () => {
   // returned, so there is no point inside a test where it could be wrapped.
   // describe.serial plus the afterAll restore keeps process.cwd() — which is
   // process-wide, and Playwright runs several spec files per worker — correct for
-  // anything that runs after. (MINCRM-699)
+  // anything that runs after.
   let tmpDir: string;
   let originalCwd: string;
 
@@ -269,7 +269,7 @@ test.describe.serial('healPage fixture teardown', () => {
   }) => {
     // Patch flush to intercept the call the fixture teardown will make, still
     // delegating to the real one so this exercises the genuine write path. The
-    // describe-level chdir above keeps that write inside a temp dir. (MINCRM-699)
+    // describe-level chdir above keeps that write inside a temp dir.
     let flushed = false;
     const originalFlush = HealingRegistry.instance.flush.bind(HealingRegistry.instance);
     HealingRegistry.instance.flush = () => {

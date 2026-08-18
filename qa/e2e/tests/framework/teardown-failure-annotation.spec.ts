@@ -1,5 +1,5 @@
 /**
- * annotateCleanupFailures — unit specs (MINCRM-668).
+ * annotateCleanupFailures — unit specs.
  *
  * `TestDataManager.teardown()` catches per entry and returns a
  * `TeardownResult[]`. The `testData` fixture used to discard that array, so a

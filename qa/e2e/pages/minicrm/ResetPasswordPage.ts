@@ -4,7 +4,7 @@
  * Encapsulates all UI interactions on `/reset-password`. Every element uses
  * a HealingLocator with at least 2 strategies.
  *
- * MINCRM-157
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';

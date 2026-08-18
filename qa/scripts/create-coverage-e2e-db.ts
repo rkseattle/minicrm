@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   const dbPassword = process.env.DB_PASSWORD ?? 'password';
   const dbHost = process.env.DB_HOST ?? 'localhost';
   // No 5432 fallback: provisioning the coverage database on the dev Postgres recreates
-  // the shared-instance setup MINCRM-684 removed.
+  // the shared-instance setup that was removed.
   //
   // Delegates to the shared resolver in this same workspace rather than inlining a
   // third hand-synced copy of the rule. An earlier revision inlined it, on the
@@ -45,7 +45,7 @@ async function main(): Promise<void> {
   // The hand-synced copy is exactly how a defect survived here: the raw-string
   // comparison it carried accepted `05432`, which Number()s to 5432, so this
   // script would CREATE DATABASE on the dev Postgres. normalizeDbPort compares the
-  // normalized number. (MINCRM-699)
+  // normalized number.
   const rawDbPort = process.env.DB_PORT;
   if (!rawDbPort) {
     throw new Error(

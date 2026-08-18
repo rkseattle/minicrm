@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA mapping query functional tests. (MINCRM-618, MINCRM-621)
+ * Coverage/TIA mapping query functional tests.
  *
  * Verifies the mapping query endpoints work end to end against a real
  * running server — NOT the underlying query correctness in detail, which
@@ -15,13 +15,13 @@
  *            confidence attached
  *   COVM-03  Querying a unit no test covers returns an empty results array
  *
- * Mutates no feature flag (MINCRM-685). This spec used to toggle
+ * Mutates no feature flag. This spec used to toggle
  * coverage_pipeline_ingestion and coverage_mapping_query over the REST API and
  * assert a 403 FEATURE_DISABLED path in COVM-02. Those rows are gone: each
  * router now gates its entire route registration on its own env var at process
  * boot (COVERAGE_MAPPING_QUERY / COVERAGE_PIPELINE_INGESTION), exactly as the
  * dump and session-control routes have gated on COVERAGE_INSTRUMENTATION /
- * COVERAGE_SESSION_MANAGEMENT since MINCRM-663. A boot-time env var cannot be
+ * COVERAGE_SESSION_MANAGEMENT since a later change. A boot-time env var cannot be
  * flipped mid-run by an E2E spec, so COVM-02's intent moved to
  * server/src/__tests__/coverageRouteGating.test.ts, which re-imports the app
  * module with the var unset and asserts a 404 — routes absent rather than
@@ -30,7 +30,7 @@
  * CI sets all four env vars 'true' for every job that runs this spec, so
  * nothing here needs to arrange access at all.
  *
- * NOT @serial (MINCRM-685). The tag was justified by this file mutating shared
+ * NOT @serial. The tag was justified by this file mutating shared
  * feature_flags rows over REST; those rows are gone, and an audit of all 25
  * @serial specs confirmed nothing else here needs the isolation.
  *
@@ -53,7 +53,7 @@
  * file from the e2e-serial job to the sharded e2e-functional job; it does not
  * make these tests run concurrently with each other.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No app-domain strings in framework layer
@@ -95,7 +95,7 @@ test('@functional COVM-01: an ingested dump with test attribution is queryable b
 
   // Deliberately NOT sending CORRELATION_ID_HEADER on this call: the
   // dumpCoverageHandler auto-attributes any correlated dump to its session
-  // as a side effect (MINCRM-610's "agent partitions by correlation ID"
+  // as a side effect (the "agent partitions by correlation ID"
   // path), but that auto-attribution carries no testId/testName. This spec
   // needs the dump attributed WITH test identity, via the explicit
   // recordCoverageSessionDump call below — sending the header here too would
@@ -150,7 +150,7 @@ test('@functional COVM-01: an ingested dump with test attribution is queryable b
   // test -> units first, to discover the REAL unitKey ingestion actually
   // produced (a frontend dump with no real source file on disk resolves via
   // coverageSymbolicationService.ts's legacy name@line fallback key, not
-  // MINCRM-619's structural key — asserting a hardcoded guess here would be
+  // the structural key — asserting a hardcoded guess here would be
   // testing this spec's own assumption, not the query API). This direction
   // alone is an unambiguous, non-degradable assertion: testId scoping is
   // exact, so a non-empty result here proves the full dump -> session ->
@@ -161,7 +161,7 @@ test('@functional COVM-01: an ingested dump with test attribution is queryable b
   expect(
     typeof unitsForTest[0].confidenceScore === 'number' || unitsForTest[0].confidenceScore === null,
   ).toBe(true);
-  // MINCRM-660 groundwork: testFile must survive the full dump -> session ->
+  // Groundwork: testFile must survive the full dump -> session ->
   // ingest -> query round trip so a selected testId can be resolved back to
   // the spec file that produced it.
   expect(unitsForTest[0].testFile).toBe(testFile);
@@ -178,7 +178,7 @@ test('@functional COVM-01: an ingested dump with test attribution is queryable b
   expect(testsForUnit.map((result) => result.testId)).toContain(testId);
 });
 
-// COVM-02 removed (MINCRM-685): it asserted 403 FEATURE_DISABLED with the
+// COVM-02 removed: it asserted 403 FEATURE_DISABLED with the
 // coverage_mapping_query row toggled off. The row no longer exists and the gate
 // is now COVERAGE_MAPPING_QUERY at process boot, which no E2E spec can flip. The
 // equivalent assertion — 404, routes never registered — lives in

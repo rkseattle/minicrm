@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA health endpoint functional test. (MINCRM-637)
+ * Coverage/TIA health endpoint functional test.
  *
  * Verifies GET /api/v1/admin/coverage/health works end to end against a
  * real running server — NOT the underlying health-check logic in detail,
@@ -11,7 +11,7 @@
  *
  * Nothing to toggle here: this route registers unconditionally, outside its
  * router's boot gate, so an operator can still ask why coverage is not working
- * in exactly the deployment where everything is switched off. Since MINCRM-685
+ * in exactly the deployment where everything is switched off. Since
  * the report's `routers` block is what answers that — it reflects the
  * COVERAGE_* env vars each router registers on, replacing a `featureFlags`
  * block whose rows migration 163 deleted. Nothing in this spec mutates shared
@@ -20,7 +20,7 @@
  * Tests:
  *   COVH-01  An authenticated admin gets a 200 or 503 with the expected report shape
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No app-domain strings in framework layer

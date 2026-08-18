@@ -9,13 +9,13 @@
  *   Audit Log (F12-AL) — entry appears after tracked action; filters; expandable rows; rep blocked
  *   Lead Conversion (F12-V) — API verification of contact + account + deal created atomically
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *   - UI interaction via healPage.locate / click / fill with data-testid strategies only
  *
- * MINCRM-201, MINCRM-377
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -84,7 +84,7 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   });
 
   // Update a field so an 'updated' entry is written
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await patchContact(restClient, contact.id, {
     first_name: 'F12AL1Updated',
     version: contact.version,
@@ -156,7 +156,7 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   });
 
   // Update to generate change entries (one row per changed field in the audit log)
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await patchContact(restClient, contact.id, {
     first_name: 'F12AL3Updated',
     version: contact.version,

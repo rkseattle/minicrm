@@ -1,5 +1,5 @@
 /**
- * Behaviors for the MiniCRM audit log page (MINCRM-201, MINCRM-344).
+ * Behaviors for the MiniCRM audit log page.
  *
  * Each behavior composes AuditLogPage interactions into named, intent-describing
  * async functions. No assertions inside behaviors — return typed result objects
@@ -53,7 +53,7 @@ export async function filterAuditLog(
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Shape of a single audit log entry. */
@@ -73,7 +73,7 @@ export interface AuditLogEntry {
 
 /**
  * Fetches audit log entries via gRPC (ConnectRPC), optionally filtered by
- * record type and/or record ID. REST endpoint was removed in MINCRM-377.
+ * record type and/or record ID. REST endpoint was since removed.
  *
  * @param restClient - Authenticated RestClient (used to obtain a dev JWT).
  * @param grpcClient - Framework GrpcClient instance.
@@ -113,7 +113,7 @@ export async function getAuditLog(
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap AuditLogPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /**
@@ -171,7 +171,7 @@ export async function collapseAuditLogFilters(context: AuditLogBehaviorContext):
 }
 
 // ---------------------------------------------------------------------------
-// Locator helpers — keep page.locate() out of spec files. (MINCRM-418)
+// Locator helpers — keep page.locate() out of spec files.
 // ---------------------------------------------------------------------------
 
 /**

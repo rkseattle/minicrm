@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-110, MINCRM-357
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -18,7 +18,7 @@ import { ActivityTimelinePage } from '@pages/minicrm/ActivityTimelinePage.js';
 import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
-// API data types (MINCRM-357)
+// API data types
 // ---------------------------------------------------------------------------
 
 /** Shape returned by GET /api/v1/activities/:id. */
@@ -65,7 +65,7 @@ export interface CreateActivityParams {
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /**
@@ -152,7 +152,7 @@ export async function patchActivity(
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap MyTasksPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /** Fixture context accepted by activity locator behaviors. */
@@ -185,7 +185,6 @@ export async function expectOverdueTaskBadgeVisible(
 
 // ---------------------------------------------------------------------------
 // Visibility check helpers — keep page.isNotVisible() out of spec files.
-// (MINCRM-418)
 // ---------------------------------------------------------------------------
 
 /**
@@ -199,7 +198,7 @@ export async function isOverdueTaskBadgeHidden(
 }
 
 // ---------------------------------------------------------------------------
-// AI call/note summarizer (MINCRM-436)
+// AI call/note summarizer
 // ---------------------------------------------------------------------------
 
 /** Result returned by summarizeActivityNotes. */
@@ -212,7 +211,7 @@ export interface SummarizeActivityNotesResult {
  * Opens the activity create form, opens the AI summarizer, pastes the given
  * text, and submits it for summarization. Waits for the summarize POST to
  * resolve before returning. Does not assert — callers branch on `status`
- * per the network-response-first pattern (MINCRM-418).
+ * per the network-response-first pattern.
  */
 export async function summarizeActivityNotes(
   rawText: string,
@@ -313,7 +312,7 @@ export async function openActivityFormWithType(
 }
 
 // ---------------------------------------------------------------------------
-// AI follow-up task suggestions (MINCRM-438)
+// AI follow-up task suggestions
 // ---------------------------------------------------------------------------
 
 /** Returns true when the task-suggestion panel is currently visible. */
@@ -343,7 +342,7 @@ export async function logActivity(
 }
 
 // ---------------------------------------------------------------------------
-// AI pre-meeting brief generation (MINCRM-465)
+// AI pre-meeting brief generation
 // ---------------------------------------------------------------------------
 
 /** Returns true when the "Generate Brief" button is currently visible for an activity. */

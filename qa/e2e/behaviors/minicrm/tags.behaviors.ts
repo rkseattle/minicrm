@@ -1,5 +1,5 @@
 /**
- * Tags behaviors for MiniCRM (MINCRM-186).
+ * Tags behaviors for MiniCRM.
  *
  * Behaviors are named, reusable async functions that encapsulate multi-step
  * user journeys. They compose Page Objects internally — callers never touch
@@ -8,7 +8,7 @@
  * Behaviors do NOT contain assertions (no expect() calls). They return typed
  * result objects that test specs assert against.
  *
- * MINCRM-186
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -19,7 +19,7 @@ import { TagInputWidget } from '@pages/minicrm/TagInputWidget.js';
 /**
  * Budget for the badge to render after the attach POST has already returned.
  * This is React re-render latency only, not a network wait — the mutation is
- * confirmed before this is consulted. (MINCRM-703)
+ * confirmed before this is consulted.
  */
 const BADGE_RENDER_TIMEOUT_MS = 10_000;
 
@@ -188,7 +188,7 @@ export async function attachTagViaUI(
   // tag; this budget covers only React re-rendering the badge afterwards.
   // A bare probe returns false the instant the element is missing, which turns
   // a render lag into `expected true, received false` with no diagnostic —
-  // how F8-TG4 failed in CI. (MINCRM-703)
+  // how F8-TG4 failed in CI.
   const badgeVisible = await widget.isBadgeVisible(tagId, BADGE_RENDER_TIMEOUT_MS);
   const finalUrl = widget.url();
   return { badgeVisible, finalUrl };
@@ -235,7 +235,7 @@ export async function detachTagViaUI(
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Shape of a tag returned by GET /api/v1/tags/:id. */
@@ -314,7 +314,7 @@ export async function getDealTags(restClient: RestClient, dealId: string): Promi
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap AdminTagsPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /** Asserts the pagination container on the admin tags page is visible, with an optional timeout (ms). */

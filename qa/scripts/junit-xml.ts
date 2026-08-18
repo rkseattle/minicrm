@@ -1,5 +1,5 @@
 /**
- * Shared primitives for scanning Playwright JUnit XML. (MINCRM-689)
+ * Shared primitives for scanning Playwright JUnit XML.
  *
  * WHY THIS EXISTS
  * ---------------

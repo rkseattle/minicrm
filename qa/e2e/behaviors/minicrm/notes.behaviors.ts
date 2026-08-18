@@ -1,5 +1,5 @@
 /**
- * Notes behaviors for MiniCRM. (MINCRM-352)
+ * Notes behaviors for MiniCRM.
  *
  * Behaviors are named, reusable async functions that encapsulate multi-step
  * user journeys. They compose Page Objects internally — callers never touch
@@ -214,7 +214,7 @@ export async function maskedNoteCardIsVisible(
 }
 
 // ---------------------------------------------------------------------------
-// API data-fetch helpers (MINCRM-357)
+// API data-fetch helpers
 // ---------------------------------------------------------------------------
 
 /** Shape of a note returned by GET /api/v1/contact/:id/notes/:noteId. */
@@ -359,7 +359,7 @@ export async function getRecordAuditLog(
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap NotesPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /** Waits for the notes section container to become visible on an entity detail page. */

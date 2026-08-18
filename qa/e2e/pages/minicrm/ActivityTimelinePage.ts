@@ -2,7 +2,7 @@
  * ActivityTimelinePage — Page Object for the reusable activity timeline/form
  * embedded on contact, account, and deal detail pages.
  *
- * Covers the "Log activity" flow and the AI call/note summarizer (MINCRM-436).
+ * Covers the "Log activity" flow and the AI call/note summarizer.
  * Every element uses a HealingLocator with at least 2 strategies.
  *
  * Page Objects interact with UI only — no business logic, no API calls,
@@ -245,7 +245,7 @@ export class ActivityTimelinePage {
     await locator.click();
   }
 
-  /** Returns a resolved locator for the task-suggestion panel. (MINCRM-438) */
+  /** Returns a resolved locator for the task-suggestion panel. */
   async taskSuggestionPanelLocator(timeout?: number) {
     return this.page
       .locate(
@@ -258,7 +258,7 @@ export class ActivityTimelinePage {
       .resolve(timeout);
   }
 
-  /** Returns true when the task-suggestion panel is currently visible. (MINCRM-438) */
+  /** Returns true when the task-suggestion panel is currently visible. */
   async isTaskSuggestionPanelVisible(): Promise<boolean> {
     return this.isElementCurrentlyVisible('[data-testid="task-suggestion-panel"]', () =>
       this.taskSuggestionPanelLocator(),
@@ -278,7 +278,7 @@ export class ActivityTimelinePage {
       .resolve();
   }
 
-  /** Accepts the task suggestion at the given index. (MINCRM-438) */
+  /** Accepts the task suggestion at the given index. */
   async acceptTaskSuggestion(index: number): Promise<void> {
     const locator = await this.acceptTaskSuggestionButtonLocator(index);
     await locator.click();
@@ -312,7 +312,7 @@ export class ActivityTimelinePage {
 
   /**
    * Logs an activity via the create form: opens it, sets type/direction/subject,
-   * and submits. Direction is only set for Call/Email types. (MINCRM-438)
+   * and submits. Direction is only set for Call/Email types.
    */
   async logActivity(params: { type: string; direction?: string; subject: string }): Promise<void> {
     await this.clickAddActivity();
@@ -326,7 +326,7 @@ export class ActivityTimelinePage {
     await this.clickFormSubmit();
   }
 
-  // ── AI pre-meeting brief generation (MINCRM-465) ─────────────────────────────
+  // ── AI pre-meeting brief generation ─────────────────────────────
 
   /** Returns a resolved locator for the "Generate Brief" button, scoped to an activity ID. */
   async generateBriefButtonLocator(activityId: string) {

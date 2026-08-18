@@ -1,5 +1,5 @@
 /**
- * Behaviors for the MiniCRM AI rep coaching insights page (MINCRM-474).
+ * Behaviors for the MiniCRM AI rep coaching insights page.
  *
  * Each behavior composes CoachingInsightsPage interactions into named,
  * intent-describing async functions. No assertions inside behaviors —

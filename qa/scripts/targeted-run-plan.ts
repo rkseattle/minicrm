@@ -1,12 +1,12 @@
 /**
  * Decides which Playwright invocations the pre-push TIA targeted path should
- * run for a given selection of spec files. (MINCRM-705)
+ * run for a given selection of spec files.
  *
  * WHY THIS EXISTS
  * ---------------
  * The targeted path runs the selection twice — once excluding `@serial` tests
  * and once matching only them — so a spec whose tests are ALL `@serial` is no
- * longer filtered into nothing (the defect MINCRM-705 fixes). But Playwright
+ * longer filtered into nothing (the defect this fixes). But Playwright
  * exits 1 with "No tests found" when a `--grep`/`--grep-invert` matches nothing,
  * and it does so while still writing a well-formed `<testsuites tests="0">`
  * report. Running both halves unconditionally therefore fails the push whenever
@@ -48,7 +48,6 @@ export const SERIAL_GREP = '@functional.*@serial|@serial.*@functional';
  * The expression the NON-SERIAL half inverts. Character-identical to the
  * `--grep-invert` value CI's e2e-functional job passes (ci.yml), and it must
  * stay that way: the whole point is that local and CI exclude the same set.
- * (MINCRM-706)
  *
  * WHY A LITERAL AND NOT `visual-regression|${SERIAL_GREP}`
  * -------------------------------------------------------
@@ -135,7 +134,7 @@ const NON_SERIAL_GREP_INVERT_PATTERN = new RegExp(NON_SERIAL_GREP_INVERT);
 const TEST_DIR_PREFIX = 'qa/e2e/tests/';
 
 /**
- * Would the NON-SERIAL invocation actually select this test? (MINCRM-706)
+ * Would the NON-SERIAL invocation actually select this test?
  *
  * Not simply `!isSerialTitle(title)`. That was correct while the two halves were
  * exact complements of one expression, but the non-serial half now inverts

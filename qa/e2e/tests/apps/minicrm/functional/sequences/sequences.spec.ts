@@ -1,5 +1,5 @@
 /**
- * F14 — Sales Sequences / Email Cadences (MINCRM-403)
+ * F14 — Sales Sequences / Email Cadences
  *
  * Functional regression tests for the sales sequence pipeline:
  *   - CRUD: create sequence, add steps, update, delete
@@ -25,7 +25,7 @@
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *
- * MINCRM-403
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

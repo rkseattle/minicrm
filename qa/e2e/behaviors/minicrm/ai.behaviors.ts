@@ -1,5 +1,5 @@
 /**
- * AI Assistant behaviors for MiniCRM. (MINCRM-420, MINCRM-421)
+ * AI Assistant behaviors for MiniCRM.
  *
  * Behaviors are named, reusable async functions that encapsulate multi-step
  * user journeys on the /ai page. They compose AiPage Page Object internally —
@@ -267,7 +267,7 @@ export async function sendAiMessageViaUI(
 
   // Register before clicking Send so a fast server response isn't missed.
   // The client commits the assistant reply straight from this POST response
-  // into the query cache (MINCRM-602) — there is no follow-up GET refetch to
+  // into the query cache — there is no follow-up GET refetch to
   // disambiguate against, so a plain POST-to-this-URL filter is sufficient.
   const replyReceived = context.page.waitForResponse(
     (res) =>
@@ -288,7 +288,7 @@ export async function sendAiMessageViaUI(
 
   // Wait for a new assistant reply bubble to appear. The API returning 200 means
   // the server committed the reply and the client has synchronously written it
-  // into the query cache (MINCRM-602), but the React re-render itself still takes
+  // into the query cache, but the React re-render itself still takes
   // a tick — especially on loaded CI runners. Waiting here prevents callers from
   // needing their own separate waitForAiThreadText(stubText) after each send,
   // which has an 8s default that is too tight under CI load.
@@ -356,7 +356,7 @@ export async function getAssistantMessageText(context: AiBehaviorContext): Promi
  * deleteAllAiSessionsViaApi lists sessions once and deletes what that snapshot
  * returned — would otherwise race the commit and silently leave the session
  * behind, where it sorts to the top of `ORDER BY updated_at DESC` and becomes
- * the session a later spec's page auto-selects. (MINCRM-686)
+ * the session a later spec's page auto-selects.
  *
  * @param context - Playwright fixture context.
  * @returns The created session's id.
@@ -390,7 +390,7 @@ export async function clickNewSessionButton(context: AiBehaviorContext): Promise
   if (!sessionId) {
     // Throw rather than returning '' — a silent empty id would skip the
     // caller's teardown registration and leave the session behind while the
-    // test still passed, which is the exact silent-leak mode MINCRM-686 closes.
+    // test still passed, which is the exact silent-leak mode this closes.
     throw new Error(
       '[clickNewSessionButton] create response carried no session id; ' +
         'the endpoint response shape changed and teardown registration would silently no-op',
@@ -595,7 +595,7 @@ export async function sendAiMessageViaApi(
 }
 
 // ---------------------------------------------------------------------------
-// E2E stub scenario behaviors (MINCRM-435)
+// E2E stub scenario behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -688,7 +688,7 @@ export async function getAiSessionMessagesViaApi(
 }
 
 // ---------------------------------------------------------------------------
-// Confirmation block behaviors (MINCRM-425, MINCRM-426)
+// Confirmation block behaviors
 // ---------------------------------------------------------------------------
 
 export interface ConfirmationBlockResult {
@@ -757,7 +757,7 @@ export async function typeBulkDeleteConfirmText(
   await aiPage.typeBulkDeleteConfirmText(text);
 }
 
-// ── AI context panel behaviors (MINCRM-427, MINCRM-428) ──────────────────────
+// ── AI context panel behaviors ──────────────────────
 
 export interface AddContextEntryResult {
   /** Whether the add form was submitted. */
@@ -949,7 +949,7 @@ export async function getContextEntriesViaApi(
 }
 
 // ---------------------------------------------------------------------------
-// NLI result rendering (MINCRM-423, MINCRM-431, MINCRM-435)
+// NLI result rendering
 // ---------------------------------------------------------------------------
 
 /**
@@ -976,7 +976,7 @@ export async function isNliContactCardVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Context proposal chip (MINCRM-429, MINCRM-430, MINCRM-435)
+// Context proposal chip
 // ---------------------------------------------------------------------------
 
 /**

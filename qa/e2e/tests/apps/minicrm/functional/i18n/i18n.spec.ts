@@ -12,7 +12,7 @@
  * browser session of an ephemeral admin it creates and tears down, so no shared
  * row is written. Its finally must still restore the framework locale — that is
  * worker-scoped module state, not per-test, and the serial block's afterAll no
- * longer covers it. (MINCRM-668)
+ * longer covers it.
  *
  *   F9-L1 — Admin sets system default to 'es'; UI shows Spanish nav label.
  *   F9-L2 — Admin sets system default to 'fr'; change persists across two reloads.
@@ -35,7 +35,7 @@
  *   - All language assertions use nav labels — stable, high-confidence strings
  *     that are unlikely to change during refactors.
  *
- * MINCRM-239
+ *
  */
 
 import { test } from '@apps/minicrm/fixtures.js';
@@ -90,7 +90,7 @@ async function resetLanguage(restClient: RestClient, tag: string): Promise<void>
 }
 
 // ---------------------------------------------------------------------------
-// Shared setup — admin auth + known-good system state before/after each test (MINCRM-358)
+// Shared setup — admin auth + known-good system state before/after each test
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
   // Scoped to this block, not the file. ensureSystemDefaults writes four shared
   // settings rows, so running it for F9-L5 — which sits outside this block and
   // mutates nothing shared — would put shared writes in the parallel matrix and
-  // undo the point of untagging it. (MINCRM-668)
+  // undo the point of untagging it.
   test.beforeEach(async ({ restClient }) => {
     await loginAsAdmin(restClient);
     await ensureSystemDefaults(restClient);
@@ -224,7 +224,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     } finally {
       setLocale('en');
       // Re-authenticate as admin; the rep is deactivated by createTestUser's
-      // registered teardown. (MINCRM-668)
+      // registered teardown.
       await loginAsAdmin(restClient).catch(() => null);
     }
   });
@@ -296,7 +296,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     } finally {
       setLocale('en');
       // Re-authenticate as admin; the rep is deactivated by createTestUser's
-      // registered teardown. (MINCRM-668)
+      // registered teardown.
       await loginAsAdmin(restClient).catch(() => null);
       await resetLanguage(restClient, 'F9-L3');
     }
@@ -392,7 +392,7 @@ test('@functional F9-L5: mobile nav language selector changes UI language', asyn
   // system default here was incidental setup that earned the @serial tag, and
   // that tag put the test in a job matrix it could never run in: e2e-functional
   // filters @serial out, e2e-serial runs --project=desktop only, and this test
-  // skips itself off mobile. It executed in NO CI job. (MINCRM-668)
+  // skips itself off mobile. It executed in NO CI job.
   //
   // Authenticates itself rather than relying on a file-level hook: the
   // ensureSystemDefaults beforeEach is scoped to the serial block above,
@@ -429,7 +429,7 @@ test('@functional F9-L5: mobile nav language selector changes UI language', asyn
     // ~19 page objects use t() for text locator strategies, so it surfaces as
     // "HealingLocator: all strategies exhausted" in an unrelated spec. The
     // serial block's afterAll used to cover this; moving the test out of that
-    // block moved the responsibility here. (MINCRM-668)
+    // block moved the responsibility here.
     setLocale('en');
 
     // Nothing else to restore. The language PATCH went to the EPHEMERAL admin

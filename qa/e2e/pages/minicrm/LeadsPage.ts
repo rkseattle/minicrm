@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-192
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -401,7 +401,7 @@ export class LeadsPage {
 
   /**
    * Fills the lead territory field. Part of the routing suggestion profile
-   * (MINCRM-475) alongside industry and employee range.
+   * alongside industry and employee range.
    *
    * @param value - Territory to enter.
    */
@@ -418,7 +418,7 @@ export class LeadsPage {
 
   /**
    * Fills the lead industry field. Part of the routing suggestion profile
-   * (MINCRM-475) alongside territory and employee range.
+   * alongside territory and employee range.
    *
    * @param value - Industry to enter.
    */
@@ -435,7 +435,7 @@ export class LeadsPage {
 
   /**
    * Fills the lead employee range field. Part of the routing suggestion
-   * profile (MINCRM-475) alongside territory and industry.
+   * profile alongside territory and industry.
    *
    * @param value - Employee range to enter.
    */
@@ -467,7 +467,7 @@ export class LeadsPage {
   }
 
   // ---------------------------------------------------------------------------
-  // AI routing suggestion panel (MINCRM-475)
+  // AI routing suggestion panel
   // ---------------------------------------------------------------------------
 
   /**

@@ -14,7 +14,7 @@
  *                 unlinked, cancel confirmation modal
  *   Association — linked contacts list on account detail page
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
@@ -26,9 +26,9 @@
  *   - AC2: sort order is stable across pages
  *   - AC3: deleting an account unlinks associated contacts (contacts are NOT deleted)
  *
- * MINCRM-139
  *
- * Parallelism (MINCRM-550):
+ *
+ * Parallelism:
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - beforeEach creates a fresh UUID-suffixed rep; all accounts and contacts are
  *     owned by that rep and torn down by TestDataManager after each test.
@@ -37,7 +37,7 @@
  */
 
 // Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+// Safety-audited: all data is UUID-scoped, no shared state.
 test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -416,7 +416,7 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
   });
 
   // Unlink the contact by patching account_id to null via REST.
-  // MINCRM-349: include version for optimistic locking.
+  // include version for optimistic locking.
   await patchContactAccount(restClient, contact.id, null, contact.version);
 
   await navigateToAccount(page, account.id);
@@ -470,7 +470,7 @@ test('@functional F3-P1: sort order is stable across pages (AC2)', async ({
 });
 
 // ---------------------------------------------------------------------------
-// Export tests (MINCRM-650)
+// Export tests
 // ---------------------------------------------------------------------------
 
 test('@functional F3-E1: clicking Export PDF on the account detail page downloads a single-record PDF file', async ({

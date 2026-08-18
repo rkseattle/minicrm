@@ -1,6 +1,6 @@
 /**
  * Settings behaviors for MiniCRM — system-wide defaults enforcement and
- * AdminSettings page action/assertion behaviors (MINCRM-358, MINCRM-367, MINCRM-564).
+ * AdminSettings page action/assertion behaviors.
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -37,7 +37,7 @@ export { AdminSettingsTab };
 
 /**
  * Navigates to the Admin Settings page, optionally deep-linking to a tab and,
- * for the 'ai' tab, a sub-section (MINCRM-653).
+ * for the 'ai' tab, a sub-section.
  */
 export async function navigateToAdminSettings(
   context: AdminSettingsBehaviorContext,
@@ -50,7 +50,7 @@ export async function navigateToAdminSettings(
 
 // ---------------------------------------------------------------------------
 // Action/assertion behaviors — all write operations go through page methods
-// or the HealingLocator API; no raw locators exposed to spec files. (MINCRM-564)
+// or the HealingLocator API; no raw locators exposed to spec files.
 // ---------------------------------------------------------------------------
 
 /** Clicks the webhook event checkbox for the given event name. */
@@ -134,7 +134,7 @@ export async function submitAdminSettingsAddField(
 }
 
 // ---------------------------------------------------------------------------
-// SSO configuration (MINCRM-399)
+// SSO configuration
 // ---------------------------------------------------------------------------
 /** Asserts the SSO save button is not disabled, then clicks it. */
 export async function clickSsoSaveButton(context: AdminSettingsBehaviorContext): Promise<void> {
@@ -185,7 +185,7 @@ export async function clickSsoDisableConfirmButton(
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Direct navigation helpers — keep page.goto() out of spec files. (MINCRM-418)
+// Direct navigation helpers — keep page.goto() out of spec files.
 // ---------------------------------------------------------------------------
 
 /**
@@ -201,7 +201,7 @@ export async function navigateToUrl(
 
 /**
  * Navigates directly to the Admin Settings pipelines tab (shorthand).
- * Formerly navigated to the 'customisation' tab; renamed to 'pipelines' (MINCRM-563).
+ * Formerly navigated to the 'customisation' tab; renamed to 'pipelines'.
  */
 export async function navigateToAdminSettingsCustomisation(
   context: AdminSettingsBehaviorContext,
@@ -211,7 +211,7 @@ export async function navigateToAdminSettingsCustomisation(
 
 /**
  * Navigates directly to the Admin Settings workspace tab (shorthand).
- * Formerly navigated to the 'general' tab; renamed to 'workspace' (MINCRM-563).
+ * Formerly navigated to the 'general' tab; renamed to 'workspace'.
  */
 export async function navigateToAdminSettingsGeneral(
   context: AdminSettingsBehaviorContext,
@@ -221,7 +221,7 @@ export async function navigateToAdminSettingsGeneral(
 
 // ---------------------------------------------------------------------------
 // Pipeline stage reorder with response capture — keeps waitForResponse out of
-// spec files. (MINCRM-418)
+// spec files.
 // ---------------------------------------------------------------------------
 
 /** Shape of a single stage in the pipeline-stages reorder API response. */
@@ -283,7 +283,6 @@ export async function clickMoveDownAndWaitForReorder(
 
 // ---------------------------------------------------------------------------
 // Pipeline stage form interactions — keep page.click/fill/waitFor out of specs.
-// (MINCRM-418)
 // ---------------------------------------------------------------------------
 
 /**
@@ -428,12 +427,12 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
       .catch(() => undefined),
     restClient.delete('/api/v1/settings/branding').catch(() => undefined),
     // Reset pipeline_stages_reviewed so the onboarding widget's first task
-    // is always incomplete, preventing allDone=true auto-dismiss in F-OB1. (MINCRM-410)
+    // is always incomplete, preventing allDone=true auto-dismiss in F-OB1.
     restClient.delete('/api/v1/settings/pipeline-stages-reviewed').catch(() => undefined),
-    // Clear any SSO configuration left over from SSO tests (MINCRM-399)
+    // Clear any SSO configuration left over from SSO tests
     restClient.delete('/api/v1/settings/sso').catch(() => undefined),
     // Reset org-wide MFA enforcement; mfa.spec.ts F8-A1 can leave this true if
-    // the test body exits before its UI-based restore step runs. (MINCRM-544)
+    // the test body exits before its UI-based restore step runs.
     restClient
       .patch('/api/v1/settings/mfa-required', { mfa_required: false })
       .catch(() => undefined),
@@ -448,7 +447,6 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
 
 // ---------------------------------------------------------------------------
 // SSO login page helpers — keep page.goto/locate/reload out of spec files.
-// (MINCRM-418)
 // ---------------------------------------------------------------------------
 
 /**
@@ -458,7 +456,7 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
  * Deliberately NOT routed through gotoAndSettle: the login route is
  * unauthenticated and never issues GET /api/v1/feature-flags/me, so waiting on
  * that response would burn the full timeout on every call. There are no
- * flag-gated subtrees here, so networkidle is an adequate signal. (MINCRM-700)
+ * flag-gated subtrees here, so networkidle is an adequate signal.
  */
 export async function navigateToLoginPageForSso(
   context: AdminSettingsBehaviorContext,
@@ -467,12 +465,12 @@ export async function navigateToLoginPageForSso(
 }
 
 // ---------------------------------------------------------------------------
-// Webhooks navigation helpers — keep page.goto out of spec files. (MINCRM-418)
+// Webhooks navigation helpers — keep page.goto out of spec files.
 // ---------------------------------------------------------------------------
 
 /**
  * Navigates to the admin settings integrations tab and waits for network idle.
- * The integrations tab retains its key; SSO/SCIM moved to security tab (MINCRM-563).
+ * The integrations tab retains its key; SSO/SCIM moved to security tab.
  */
 export async function navigateToAdminSettingsIntegrations(
   context: AdminSettingsBehaviorContext,
@@ -481,7 +479,7 @@ export async function navigateToAdminSettingsIntegrations(
 }
 
 // ---------------------------------------------------------------------------
-// Currency settings navigation helpers (MINCRM-418)
+// Currency settings navigation helpers
 // ---------------------------------------------------------------------------
 
 /**
@@ -490,7 +488,6 @@ export async function navigateToAdminSettingsIntegrations(
  * initial fetch has completed before the caller interacts with the form —
  * without it, a background refetch can overwrite React state set by
  * selectOption() if the cached response resolves before the network fetch.
- * (MINCRM-418)
  */
 export async function navigateToAdminSettingsCurrency(
   context: AdminSettingsBehaviorContext,
@@ -500,7 +497,7 @@ export async function navigateToAdminSettingsCurrency(
   // the initial response; each refetch re-runs the useEffect that sets homeCurrency,
   // overwriting any selectOption() call made in between. waitUntil:'networkidle'
   // after the first response ensures both the initial fetch and any background
-  // refetch have landed before the caller interacts with the form. (MINCRM-418)
+  // refetch have landed before the caller interacts with the form.
   await gotoAndSettle(context.page, '/admin/settings?tab=workspace');
   // Settle any pending re-renders after the network quietens.
   await context.page.waitForFunction(
@@ -512,11 +509,10 @@ export async function navigateToAdminSettingsCurrency(
 
 // ---------------------------------------------------------------------------
 // Pipeline management UI behaviors — keep page.locate() out of spec files.
-// (MINCRM-418)
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Stage exit requirements UI behaviors (MINCRM-527)
+// Stage exit requirements UI behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -549,11 +545,11 @@ export async function waitForStageExitRequirementsUpdated(
 }
 
 // ---------------------------------------------------------------------------
-// Feature flag UI behaviors (MINCRM-463)
+// Feature flag UI behaviors
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// AI Settings behaviors (MINCRM-457)
+// AI Settings behaviors
 // ---------------------------------------------------------------------------
 
 /** Shape of the AI configuration returned by the admin AI config endpoint. */
@@ -606,7 +602,7 @@ export async function setAiEnabled(
 /**
  * Restores the AI master toggle to disabled after a test that enabled it.
  *
- * WHY THIS EXISTS (MINCRM-705)
+ * WHY THIS EXISTS
  * ----------------------------
  * A spec that calls setAiEnabled(restClient, true) writes the shared
  * ai_configuration_enabled row AND cascades to the ai_features feature flag,
@@ -626,7 +622,7 @@ export async function setAiEnabled(
  * aiSettings.spec.ts and ai-data-lifecycle.spec.ts declare and conflict on — so
  * calling the broader helper would have eight specs writing a row none of their
  * registry entries name. That is precisely the registry-vs-reality drift
- * MINCRM-705 exists to close, and doing it while closing it would be its own
+ * this guard exists to close, and doing it while closing it would be its own
  * defect. This touches only the toggle the callers actually enable.
  *
  * The rationale lives here rather than being restated in every afterEach.
@@ -675,7 +671,7 @@ const DEFAULT_AI_OUTPUT_COST_PER_MILLION_CENTS = 1500;
 /**
  * Resets the AI cost estimation rates (ai_input/output_cost_per_million_cents)
  * back to their seeded defaults. Safe to call in afterEach for specs that
- * mutate /admin/ai/cost-rates (MINCRM-459).
+ * mutate /admin/ai/cost-rates.
  *
  * @param restClient - Admin-authenticated RestClient.
  */
@@ -690,7 +686,7 @@ export async function resetAiCostRates(restClient: RestClient): Promise<void> {
 
 /**
  * Resets a single standard-field AI exclusion override back to excluded=false
- * (the seeded default for every standard field — MINCRM-461). Safe to call in
+ * (the seeded default for every standard field —). Safe to call in
  * afterEach for specs that mutate /admin/ai/field-exclusions.
  *
  * @param restClient - Admin-authenticated RestClient.
@@ -712,7 +708,7 @@ export async function resetAiFieldExclusion(
 }
 
 // ---------------------------------------------------------------------------
-// Visibility Settings behaviors (MINCRM-538)
+// Visibility Settings behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -732,12 +728,12 @@ export async function resetVisibilitySettings(restClient: RestClient): Promise<v
 }
 
 // ---------------------------------------------------------------------------
-// Roles tab — built-in role View button (MINCRM-547)
+// Roles tab — built-in role View button
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Intent-bearing action/assertion behaviors — replace locator-accessor
-// wrappers with explicit, single-operation functions (MINCRM-564)
+// wrappers with explicit, single-operation functions
 // ---------------------------------------------------------------------------
 
 /** Asserts that the admin settings page heading is visible. */
@@ -1101,7 +1097,7 @@ export async function expectSsoLoginButtonNotVisible(
   const { expect } = await import('@playwright/test');
   // Re-locate after page state change; the element may be absent from the DOM
   // or hidden. If the locator strategy exhausts all fallbacks (button not in DOM),
-  // catch the error and consider the assertion trivially satisfied. (MINCRM-564)
+  // catch the error and consider the assertion trivially satisfied.
   const locator = await context.page
     .locate(
       [
@@ -1533,7 +1529,7 @@ export async function expectVisibilitySaveSuccessVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Pipeline stage move-up / move-down assertions (MINCRM-564)
+// Pipeline stage move-up / move-down assertions
 // Replaces getPipelineStageMoveUpLocator / getPipelineStageMoveDownLocator
 // ---------------------------------------------------------------------------
 
@@ -1573,7 +1569,7 @@ export async function expectPipelineStageMoveDownEnabled(
 /**
  * Clicks the delete button for a pipeline stage, scrolling it into view first.
  * The caller is responsible for retrying the click if the confirmation dialog
- * does not appear in time (MINCRM-564).
+ * does not appear in time.
  */
 export async function clickPipelineStageDeleteButton(
   stageId: string,
@@ -1590,7 +1586,7 @@ export async function clickPipelineStageDeleteButton(
 }
 
 // ---------------------------------------------------------------------------
-// Feature flag toggle intent-bearing behaviors (MINCRM-564)
+// Feature flag toggle intent-bearing behaviors
 // Replaces getFeatureFlagToggleLocator / getFeatureFlagConfirmDialogLocator /
 // getAdminSettingsAiTabLocator
 // ---------------------------------------------------------------------------
@@ -1712,7 +1708,7 @@ export async function expectAdminSettingsAiTabAttached(
 /** Asserts that the AI Features tab is disabled. */
 /**
  * Asserts that the AI panel shows a disabled banner (feature flag is off).
- * The tab itself is always navigation-accessible; the panel content is visually disabled. (MINCRM-566)
+ * The tab itself is always navigation-accessible; the panel content is visually disabled.
  */
 export async function expectAdminSettingsAiTabDisabled(
   context: AdminSettingsBehaviorContext,
@@ -1748,7 +1744,7 @@ export async function expectAdminSettingsAiTabEnabled(
 }
 
 // ---------------------------------------------------------------------------
-// AI Settings intent-bearing behaviors (MINCRM-564)
+// AI Settings intent-bearing behaviors
 // Replaces getAiSettingsPanelLocator, getAiMasterToggleLocator, etc.
 // ---------------------------------------------------------------------------
 
@@ -1763,7 +1759,7 @@ export async function expectAiSettingsPanelVisible(
 }
 
 /**
- * Clicks the given AI settings sub-navigation tab. (MINCRM-653)
+ * Clicks the given AI settings sub-navigation tab.
  *
  * @param section - Sub-section key, e.g. 'general', 'usage-budgets',
  *   'data-retention', 'data-minimization'.
@@ -1776,7 +1772,7 @@ export async function clickAiSettingsSubNavTab(
   await locator.click();
 }
 
-/** Asserts that the given AI settings sub-section panel is visible. (MINCRM-653) */
+/** Asserts that the given AI settings sub-section panel is visible. */
 export async function expectAiSettingsSubPanelVisible(
   section: string,
   context: AdminSettingsBehaviorContext,
@@ -1972,7 +1968,7 @@ export async function clickAiTestConnectionButton(
 }
 
 // ---------------------------------------------------------------------------
-// Pipeline delete confirmation and board selector behaviors (MINCRM-564)
+// Pipeline delete confirmation and board selector behaviors
 // Replaces getPipelineDeleteConfirmLocator / getPipelineBoardSelectorLocator
 // ---------------------------------------------------------------------------
 
@@ -2062,7 +2058,7 @@ export async function expectPipelineBoardSelectorVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Built-in role View button intent-bearing behaviors (MINCRM-564)
+// Built-in role View button intent-bearing behaviors
 // Replaces getRoleViewButtonLocator / getRoleCapabilityPanelLocator
 // ---------------------------------------------------------------------------
 
@@ -2109,7 +2105,7 @@ export async function expectRoleCapabilityPanelNotVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Webhook row intent-bearing behaviors (MINCRM-564)
+// Webhook row intent-bearing behaviors
 // Replaces getAdminSettingsWebhookRowLocator
 // ---------------------------------------------------------------------------
 
@@ -2158,7 +2154,7 @@ export async function expectAdminSettingsWebhookRowNotVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Currency section visibility behavior (MINCRM-564)
+// Currency section visibility behavior
 // Replaces getAdminSettingsCurrencySectionLocator
 // ---------------------------------------------------------------------------
 
@@ -2173,7 +2169,7 @@ export async function expectAdminSettingsCurrencySectionVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Feature flag scheduled enable_at behaviors (MINCRM-488)
+// Feature flag scheduled enable_at behaviors
 // ---------------------------------------------------------------------------
 
 /** Asserts that the Scheduled badge is visible for the given flag key. */
@@ -2205,7 +2201,7 @@ export async function expectFeatureFlagOffBadgeNotVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   // The Off badge is conditionally rendered — when a flag is scheduled it is removed
-  // from the DOM entirely. isNotVisible() handles both "absent" and "hidden". (MINCRM-488)
+  // from the DOM entirely. isNotVisible() handles both "absent" and "hidden".
   const notVisible = await context.page.isNotVisible([
     { type: 'testId', value: `feature-flag-badge-off-${flagKey}` },
   ]);
@@ -2237,7 +2233,7 @@ export async function expectFeatureFlagScheduledBadgeNotVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   // The Scheduled badge is conditionally rendered — after clearing enable_at it is
-  // removed from the DOM entirely. isNotVisible() handles both "absent" and "hidden". (MINCRM-488)
+  // removed from the DOM entirely. isNotVisible() handles both "absent" and "hidden".
   const notVisible = await context.page.isNotVisible(
     [{ type: 'testId', value: `feature-flag-badge-scheduled-${flagKey}` }],
     timeout,
@@ -2246,13 +2242,13 @@ export async function expectFeatureFlagScheduledBadgeNotVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Feature flag advanced panel behaviors (MINCRM-490, MINCRM-492)
+// Feature flag advanced panel behaviors
 // ---------------------------------------------------------------------------
 
 /**
  * Expands the advanced settings panel (rollout, beta users, user overrides) for a flag.
  * All three sub-panels are hidden behind this single toggle; call before any
- * expectBetaUserRow*, expectOverrideRow*, or rollout-stage assertions. (MINCRM-490, MINCRM-492)
+ * expectBetaUserRow*, expectOverrideRow*, or rollout-stage assertions.
  */
 export async function expandAdvancedPanel(
   flagKey: string,
@@ -2273,13 +2269,13 @@ export async function expandAdvancedPanel(
   await locator.click();
 }
 
-// Feature flag beta user behaviors (MINCRM-489)
+// Feature flag beta user behaviors
 // ---------------------------------------------------------------------------
 
 /**
  * Expands the collapsed beta users panel for the given flag key.
  * When beta_user_count > 0 the panel is hidden behind a "N beta users" button.
- * This click reveals it; call before any expectBetaUserRow* assertion. (MINCRM-489)
+ * This click reveals it; call before any expectBetaUserRow* assertion.
  */
 export async function expandBetaUsersPanel(
   flagKey: string,
@@ -2354,7 +2350,7 @@ export async function expectBetaUserRowNotVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   // Beta user rows are conditionally rendered — after removing enrollment the row is
-  // unmounted. isNotVisible() handles both "absent from DOM" and "hidden". (MINCRM-489)
+  // unmounted. isNotVisible() handles both "absent from DOM" and "hidden".
   const notVisible = await context.page.isNotVisible(
     [{ type: 'testId', value: `beta-user-row-${flagKey}-${userId}` }],
     timeout,
@@ -2363,7 +2359,7 @@ export async function expectBetaUserRowNotVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Feature flag rollout behaviors (MINCRM-490)
+// Feature flag rollout behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -2433,7 +2429,7 @@ export async function setRolloutPercentageInput(
 }
 
 // ---------------------------------------------------------------------------
-// Feature flag user overrides behaviors (MINCRM-492)
+// Feature flag user overrides behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -2570,7 +2566,7 @@ export async function clickOverrideRemove(
 }
 
 // ---------------------------------------------------------------------------
-// Flag group UI behaviors (MINCRM-491)
+// Flag group UI behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -2658,7 +2654,7 @@ export async function clickFlagGroupToggle(
 /**
  * Asserts that a role override checkbox is visible in the role override panel for the
  * given flag key and role name. Used to verify that dynamically loaded roles (built-in
- * or custom) appear in the panel. (MINCRM-565)
+ * or custom) appear in the panel.
  */
 export async function expectRoleOverrideCheckboxVisible(
   flagKey: string,
@@ -2683,7 +2679,7 @@ export async function expectRoleOverrideCheckboxVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Flag group delete dialog behaviors (MINCRM-567)
+// Flag group delete dialog behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -2812,7 +2808,7 @@ export async function expectDeleteGroupDialogNotVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Admin settings panel disabled-banner behaviors (MINCRM-566)
+// Admin settings panel disabled-banner behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -2856,7 +2852,7 @@ export async function expectAdminSettingsSectionDisabledBannerAbsent(
 }
 
 // ---------------------------------------------------------------------------
-// AI session retention behaviors (MINCRM-447)
+// AI session retention behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -2899,7 +2895,7 @@ export async function getAiSessionRetentionSaveSuccess(context: AdminSettingsBeh
 }
 
 // ---------------------------------------------------------------------------
-// AI retention stats + manual purge behaviors (MINCRM-462)
+// AI retention stats + manual purge behaviors
 // ---------------------------------------------------------------------------
 
 /** Returns the AI retention stats summary locator (session/message counts). */
@@ -2923,7 +2919,7 @@ export async function getAiPurgeAccepted(context: AdminSettingsBehaviorContext) 
 }
 
 // ---------------------------------------------------------------------------
-// AI data minimization / field exclusion behaviors (MINCRM-461)
+// AI data minimization / field exclusion behaviors
 // ---------------------------------------------------------------------------
 
 /** Returns the always-excluded fields list container locator. */
@@ -2952,7 +2948,7 @@ export async function getAiFieldExclusionToggle(
 /**
  * Clicks the data hygiene sub-section's manual "run now" button and waits for
  * the underlying POST /api/v1/admin/ai/data-hygiene/run response, returning
- * its status so the spec can assert a real scan was triggered. (MINCRM-476)
+ * its status so the spec can assert a real scan was triggered.
  */
 export async function clickDataHygieneRunNowAndAwaitResponse(
   context: AdminSettingsBehaviorContext,
@@ -2967,7 +2963,7 @@ export async function clickDataHygieneRunNowAndAwaitResponse(
   return { status: response.status() };
 }
 
-/** Asserts that the data hygiene "run accepted" confirmation message is visible. (MINCRM-476) */
+/** Asserts that the data hygiene "run accepted" confirmation message is visible. */
 export async function expectDataHygieneRunAcceptedVisible(
   context: AdminSettingsBehaviorContext,
   timeout?: number,

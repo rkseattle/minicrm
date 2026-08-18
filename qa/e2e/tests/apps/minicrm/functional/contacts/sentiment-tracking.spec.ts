@@ -1,5 +1,5 @@
 /**
- * F7-ST — AI sentiment tracking (MINCRM-472)
+ * F7-ST — AI sentiment tracking
  *
  * Functional regression tests for the passive sentiment trend sparkline on
  * the contact detail page.
@@ -15,7 +15,7 @@
  *   rendering path for scored data is covered by the client component test
  *   suite (ContactDetailPage.test.tsx, SentimentSparkline.test.tsx), which
  *   mock the HTTP response directly — E2E cannot exercise it without real
- *   AI output. (MINCRM-472)
+ *   AI output.
  *
  * Framework conventions:
  *   - All tests tagged @functional

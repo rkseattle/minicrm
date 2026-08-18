@@ -1,11 +1,11 @@
 /**
- * F-AI-PERM — AI NLI unauthorized operation error (MINCRM-434, MINCRM-435)
+ * F-AI-PERM — AI NLI unauthorized operation error
  *
  * Verifies that when the AI attempts a tool call an authenticated user is
  * not permitted to make, the resulting permission error is surfaced to the
  * user as plain language — not a raw HTTP status or stack trace.
  *
- * Stub note (MINCRM-435):
+ * Stub note:
  *   The E2E server runs with E2E=true, so no real model call is made and no
  *   real tool is ever invoked in E2E mode — RBAC checks inside toolExecutor
  *   (ADMIN_ONLY_TOOL_NAMES, ownership checks) can never run through a normal
@@ -13,16 +13,15 @@
  *   shared/schemas/aiE2eStub.ts) throws a statusCode:403 error shaped
  *   exactly like a real admin-only-tool denial from toolExecutor.ts, so this
  *   spec exercises the real HTTP error-mapping path end-to-end:
- *   aiSessionController's 403 handling (added in MINCRM-435 — previously a
+ *   aiSessionController's 403 handling (added later — previously a
  *   thrown 403 fell through to the global error handler as an uncaught 500)
  *   and AiPage's resolveApiError()-based error rendering (also added in
- *   MINCRM-435 — previously always rendered the same generic message
+ *   previously always rendered the same generic message
  *   regardless of status code).
  *
  * Test groups:
  *   F-AI-PERM1 — Unauthorized tool call surfaces a plain-language permission error
  *
- * (MINCRM-434, MINCRM-435)
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -51,7 +50,7 @@ test.beforeEach(async ({ restClient }) => {
 // (AiPage.tsx's handleSend). Those rows are owned by the rep, not the admin, so
 // no admin-side sweep can see them — and because the browser creates them, no
 // create*ViaApi call site exists for check-e2e-cleanup.sh to flag. Clean up as
-// the rep, then restore admin auth for the next test's beforeEach. (MINCRM-686)
+// the rep, then restore admin auth for the next test's beforeEach.
 test.afterEach(async ({ restClient, ephemeralRep }) => {
   await loginAndVerify(restClient, ephemeralRep.email, ephemeralRep.password);
   await deleteAllAiSessionsViaApi(restClient);

@@ -1,5 +1,5 @@
 /**
- * F8-MC — Multi-currency deal support (MINCRM-189)
+ * F8-MC — Multi-currency deal support
  *
  * Functional regression tests for ISO 4217 currency selection on deals.
  * Covers:
@@ -9,13 +9,13 @@
  *                mixed-currency note when deals in a stage have different currencies
  *   Settings   — admin can change the default currency; new deals pick it up
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators — all through behaviors or Page Object calls where needed
  *   - Test data managed via restClient + TestDataManager (auto teardown)
  *
- * MINCRM-189
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -101,7 +101,7 @@ test(
     });
 
     // PATCH only the name — currency should remain GBP
-    // MINCRM-349: include version for optimistic locking.
+    // include version for optimistic locking.
     await patchDeal(restClient, deal.id, {
       name: `MC3-Deal Updated ${test.info().title}`,
       version: deal.version,
@@ -132,7 +132,7 @@ test(
       account_id: account.id,
     });
 
-    // MINCRM-349: include version for optimistic locking.
+    // include version for optimistic locking.
     await patchDeal(restClient, deal.id, { currency: 'CAD', version: deal.version });
 
     const fetched = await getDealById(restClient, deal.id);
@@ -159,7 +159,7 @@ test(
       account_id: account.id,
     });
 
-    // MINCRM-349: include version for optimistic locking. Both calls expect 400
+    // include version for optimistic locking. Both calls expect 400
     // (invalid currency code), so the version is not incremented between them.
     await expect(
       restClient.patch(`/api/v1/deals/${deal.id}`, { currency: 'XYZ', version: deal.version }),

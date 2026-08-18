@@ -1,5 +1,5 @@
 /**
- * F-AI — AI Assistant (MINCRM-420, MINCRM-421)
+ * F-AI — AI Assistant
  *
  * Functional regression tests for the AI conversation page: layout, empty
  * state, multi-session management, send/receive messages (E2E stub), and
@@ -20,7 +20,7 @@
  * Stub note:
  *   The E2E server runs with E2E=true, so sendMessage bypasses the Anthropic
  *   SDK and returns the deterministic stub "[E2E stub response]". No real tokens
- *   are consumed. (MINCRM-421)
+ *   are consumed.
  *
  * Framework conventions:
  *   - All tests tagged @functional
@@ -81,14 +81,13 @@ test.beforeEach(async ({ restClient }) => {
   // this file alphabetically" and leaves the toggle disabled — an ordering the
   // conflict-graph scheduler stopped providing (the two files are in different
   // groups). This file now owns both halves: enable here, restore in afterEach.
-  // (MINCRM-705)
   await setAiEnabled(restClient, true);
   await deleteAllAiSessionsViaApi(restClient);
 });
 
 // beforeEach alone cleans the PREVIOUS test's sessions, so the last test in the
 // file would leave its own behind for the rest of the run. Mirrors
-// ai-context.spec.ts, which pairs both hooks. (MINCRM-686)
+// ai-context.spec.ts, which pairs both hooks.
 test.afterEach(async ({ restClient }) => {
   // Re-authenticate first: F-AI10 switches restClient to an ephemeral rep and
   // only restores admin near the end, so an assertion failing in between would
@@ -96,7 +95,7 @@ test.afterEach(async ({ restClient }) => {
   // meant to clear survives — and an unnamed surviving session sorts to the top
   // of `ORDER BY updated_at DESC`, becoming the one a later spec's page
   // auto-selects. deleteAllAiSessionsViaApi only ever sees the authenticated
-  // user's own sessions. (MINCRM-686)
+  // user's own sessions.
   await loginAsAdmin(restClient);
   await deleteAllAiSessionsViaApi(restClient);
   // Restore AI defaults so the toggle does not outlive this file. See
@@ -188,14 +187,14 @@ test(
     // afterEach sweep: this row is created by the browser, so it is invisible to
     // check-e2e-cleanup.sh, and an unnamed empty session that survives sorts to
     // the top of `ORDER BY updated_at DESC` — where a later spec's page
-    // auto-selects it and reads an empty thread. (MINCRM-686)
+    // auto-selects it and reads an empty thread.
     const newSessionId = await clickNewSessionButton({ page });
     // The afterEach sweep above runs BEFORE fixture teardown and already deletes
     // this session, so the registered DELETE 404s on every green run — which
-    // counts as successful cleanup for either entry kind since MINCRM-668.
+    // counts as successful cleanup for either entry kind since a later change.
     // registerAdminTeardown is used because the session is admin-owned and this
     // spec re-authenticates restClient; registration earns its place by covering
-    // the path where the sweep does not run. (MINCRM-686, MINCRM-668)
+    // the path where the sweep does not run.
     registerAdminTeardown(
       testData,
       restClient,

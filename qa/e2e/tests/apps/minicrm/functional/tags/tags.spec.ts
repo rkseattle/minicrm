@@ -1,5 +1,5 @@
 /**
- * F8-TG — Tags / label system (MINCRM-186)
+ * F8-TG — Tags / label system
  *
  * Functional E2E coverage for the global tag management and entity-level
  * tag attachment workflows.
@@ -9,13 +9,13 @@
  *   Entity tagging       — attach/detach a tag on a contact via the TagInput widget
  *   Cross-entity         — tag persists on a deal via API verification
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All UI interactions go through behaviors → Page Objects → HealingLocator
  *   - No raw locators in this file
  *   - Test data managed via createTestTag / createTestContact helpers (auto-teardown)
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *
- * MINCRM-186
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -80,13 +80,13 @@ test(
     const result = await navigateToAdminTags({ page });
 
     expect(result.loaded).toBe(true);
-    // Tags section is now embedded in the Pipelines & Fields tab (MINCRM-563)
+    // Tags section is now embedded in the Pipelines & Fields tab
     expect(result.finalUrl).toContain('/admin/settings');
   },
 );
 
 // ---------------------------------------------------------------------------
-// F8-TG1b — Pagination controls always visible on admin tags page (MINCRM-345)
+// F8-TG1b — Pagination controls always visible on admin tags page
 // ---------------------------------------------------------------------------
 
 test(
@@ -104,7 +104,7 @@ test(
     await createTestTag(testData, restClient, { name: `tg1b-pagination-${Date.now()}` });
 
     const navResult = await navigateToAdminTags({ page });
-    // Root cause of the prior "testId(pagination) exhausted" flake (MINCRM-666):
+    // Root cause of the prior "testId(pagination) exhausted" flake:
     // AdminTagsPage.isLoaded() used to return a false positive while the page
     // was still on the feature-flag-loading skeleton (no admin-tags-loading,
     // no admin-tags-list, no pagination in the DOM yet) — this assertion is

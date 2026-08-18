@@ -1,5 +1,5 @@
 /**
- * F16-FT — AI smart follow-up timing suggestions (MINCRM-470)
+ * F16-FT — AI smart follow-up timing suggestions
  *
  * Functional regression tests for the passive follow-up timing card on the
  * contact detail page.

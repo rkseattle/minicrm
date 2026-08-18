@@ -12,7 +12,7 @@
  *   Disable  — disable MFA via profile page (password confirmation)
  *   Admin    — admin can toggle org-wide MFA enforcement setting
  *
- * MINCRM-392
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -157,7 +157,7 @@ test('@functional F8-D1: disable MFA via profile page — password confirmed →
     expect(result.disabled, 'enable button should be visible after disabling MFA').toBe(true);
   } finally {
     // Restore the admin session for subsequent tests. The user itself is
-    // deactivated by createTestUser's registered teardown. (MINCRM-668)
+    // deactivated by createTestUser's registered teardown.
     await loginAsAdmin(restClient);
   }
 });
@@ -170,7 +170,7 @@ test('@functional F8-D1: disable MFA via profile page — password confirmed →
 // test body exits. UI-based "restore to initiallyChecked" is not reliable: if
 // require_mfa was already true (from a prior dirty run), the test would toggle
 // false → true and leave the setting dirty, blocking every other test suite
-// that calls loginAsAdmin(). (MINCRM-544 env-cleanup fix)
+// that calls loginAsAdmin(). ($2)
 async function resetMfaRequired(restClient: RestClient): Promise<void> {
   try {
     await loginAsAdmin(restClient);

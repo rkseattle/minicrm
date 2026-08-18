@@ -5,7 +5,7 @@
  * Builds a conflict graph from the resource registry and prints it as JSON
  * (file -> array of conflicting files) for the LPT shard-assignment scripts
  * to consume, replacing the blanket @serial grep-invert with conflict-aware
- * grouping (MINCRM-661).
+ * grouping.
  *
  * Resource touches are collapsed to file granularity here — entries scoped
  * to a specific test via `testTitleContains` are unioned into their file's
@@ -15,7 +15,7 @@
  * Usage (from repo root):
  *   npx tsx qa/e2e/scripts/build-conflict-graph.ts
  *
- * MINCRM-661
+ *
  */
 
 import {

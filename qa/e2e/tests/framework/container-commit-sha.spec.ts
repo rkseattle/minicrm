@@ -1,5 +1,5 @@
 /**
- * Unit tests for qa/scripts/container-commit-sha.ts. (MINCRM-688)
+ * Unit tests for qa/scripts/container-commit-sha.ts.
  *
  * This is the parse half of scripts/pre-push-tia.ts's stale-test-stack check.
  * Every fixture below is real `docker inspect` output shape — the exact format

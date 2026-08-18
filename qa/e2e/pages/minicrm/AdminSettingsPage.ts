@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-163, MINCRM-192, MINCRM-259
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -23,7 +23,7 @@ export interface AdminSettingsPageContext {
   page: PageFacade;
 }
 
-/** Valid tab keys for the Admin Settings page (MINCRM-259, MINCRM-563). */
+/** Valid tab keys for the Admin Settings page. */
 export type AdminSettingsTab =
   | 'workspace'
   | 'branding'
@@ -76,7 +76,7 @@ export class AdminSettingsPage {
    * @param tab - Optional tab to land on. Defaults to 'general'.
    * @param section - Optional sub-section within the tab (currently only the
    *   'ai' tab has sub-sections, e.g. 'usage-budgets'). Ignored if `tab` is
-   *   omitted. (MINCRM-653)
+   *   omitted.
    */
   async navigate(tab?: AdminSettingsTab, section?: string): Promise<void> {
     const params = new URLSearchParams();
@@ -834,7 +834,7 @@ export class AdminSettingsPage {
   }
 
   // ---------------------------------------------------------------------------
-  // Branding interactions (MINCRM-356)
+  // Branding interactions
   // ---------------------------------------------------------------------------
 
   /**
@@ -976,7 +976,7 @@ export class AdminSettingsPage {
   }
 
   // ---------------------------------------------------------------------------
-  // Pipeline stages — customisation tab (MINCRM-381)
+  // Pipeline stages — customisation tab
   // ---------------------------------------------------------------------------
 
   /**
@@ -1043,7 +1043,7 @@ export class AdminSettingsPage {
       .resolve(timeout);
   }
 
-  // ── SSO locators (MINCRM-399) ─────────────────────────────────────────────
+  // ── SSO locators ─────────────────────────────────────────────
 
   /** Returns a resolved locator for the SSO section panel. */
   async ssoSectionLocator(timeout?: number) {
@@ -1168,7 +1168,7 @@ export class AdminSettingsPage {
   }
 
   // ---------------------------------------------------------------------------
-  // AI Settings locators (MINCRM-457)
+  // AI Settings locators
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the AI settings panel container. */
@@ -1183,7 +1183,6 @@ export class AdminSettingsPage {
 
   /**
    * Returns a resolved locator for an AI settings sub-navigation tab.
-   * (MINCRM-653)
    *
    * @param section - Sub-section key, e.g. 'general', 'usage-budgets',
    *   'data-retention', 'data-minimization'.
@@ -1202,7 +1201,7 @@ export class AdminSettingsPage {
 
   /**
    * Returns a resolved locator for the currently active AI settings
-   * sub-section panel. (MINCRM-653)
+   * sub-section panel.
    *
    * @param section - Sub-section key matching the active tab.
    */
@@ -1417,7 +1416,7 @@ export class AdminSettingsPage {
   }
 
   // ---------------------------------------------------------------------------
-  // Visibility Settings locators (MINCRM-538)
+  // Visibility Settings locators
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the visibility settings panel container. */
@@ -1496,7 +1495,7 @@ export class AdminSettingsPage {
   }
 
   // ---------------------------------------------------------------------------
-  // Roles tab (MINCRM-547)
+  // Roles tab
   // ---------------------------------------------------------------------------
 
   /**
@@ -1568,7 +1567,7 @@ export class AdminSettingsPage {
   }
 
   // ---------------------------------------------------------------------------
-  // AI session retention section (MINCRM-447)
+  // AI session retention section
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the AI session retention days input. */
@@ -1627,7 +1626,7 @@ export class AdminSettingsPage {
   }
 
   // ---------------------------------------------------------------------------
-  // AI retention stats + manual purge (MINCRM-462)
+  // AI retention stats + manual purge
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the retention stats summary text. */
@@ -1673,7 +1672,7 @@ export class AdminSettingsPage {
   }
 
   // ---------------------------------------------------------------------------
-  // AI data minimization / field exclusions (MINCRM-461)
+  // AI data minimization / field exclusions
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the always-excluded fields list container. */
@@ -1710,7 +1709,7 @@ export class AdminSettingsPage {
       .resolve();
   }
 
-  /** Clicks the data hygiene sub-section's manual "run now" button. (MINCRM-476) */
+  /** Clicks the data hygiene sub-section's manual "run now" button. */
   async clickDataHygieneRunNowButton(): Promise<void> {
     await this.page.click(
       [
@@ -1721,7 +1720,7 @@ export class AdminSettingsPage {
     );
   }
 
-  /** Returns a resolved locator for the data hygiene "run accepted" confirmation message. (MINCRM-476) */
+  /** Returns a resolved locator for the data hygiene "run accepted" confirmation message. */
   async dataHygieneRunAcceptedLocator(timeout?: number) {
     return this.page
       .locate(

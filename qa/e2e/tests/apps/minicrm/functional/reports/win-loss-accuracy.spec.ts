@@ -1,5 +1,5 @@
 /**
- * F10-WL — Win/Loss report accuracy (MINCRM-312)
+ * F10-WL — Win/Loss report accuracy
  *
  * Verifies that the Win/Loss report displays accurate counts, values, and win
  * rate for a controlled set of seeded deals, and that the date filter correctly
@@ -8,13 +8,13 @@
  * Tests also assert the underlying API endpoint returns the same numbers as
  * the UI, providing a data-integrity check alongside the UX assertion.
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators — all through page objects
  *   - Test data managed via restClient + TestDataManager (auto teardown)
  *
- * MINCRM-312
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

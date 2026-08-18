@@ -1,6 +1,5 @@
 /**
  * Single source of truth for the MiniCRM API origin used by app-layer E2E code.
- * (MINCRM-684)
  *
  * Lives in apps/minicrm/ rather than framework/: the port is a MiniCRM deployment
  * detail, and framework/ must stay free of application-domain references (CLAUDE.md,

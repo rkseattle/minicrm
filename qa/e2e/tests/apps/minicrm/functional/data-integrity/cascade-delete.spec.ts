@@ -1,5 +1,5 @@
 /**
- * F11-CD — Cascade delete verification (MINCRM-316)
+ * F11-CD — Cascade delete verification
  *
  * Verifies that database ON DELETE CASCADE and ON DELETE SET NULL rules fire
  * correctly when parent records are deleted. Assertions are made via the REST
@@ -12,13 +12,13 @@
  *                    → deals SET NULL on account_id (deals survive)
  *   Deal delete      → activities CASCADE deleted; deal_contacts CASCADE deleted
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators — all through page.locate() healing locators
  *   - Test data managed via restClient + TestDataManager (auto teardown)
  *
- * MINCRM-316
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';

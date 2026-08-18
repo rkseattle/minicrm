@@ -5,7 +5,7 @@
  * test-utility functions that simulate the background API write that causes a
  * version mismatch, and assertion helpers for the resulting conflict UI.
  *
- * MINCRM-350
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -105,7 +105,7 @@ export async function assertConflictModal(context: {
 
 // ---------------------------------------------------------------------------
 // Locator-accessor behaviors — wrap ConflictBannerWidget
-// so spec files never import @pages/* directly. (MINCRM-367)
+// so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
 /** Fixture context for concurrency UI behaviors. */

@@ -2,9 +2,9 @@
  * F10 — Notification Preferences & Email Notification Global Settings
  *
  * Functional regression tests for email notification features:
- *   - Profile page: user notification preference toggles (MINCRM-161, MINCRM-162)
- *   - Admin Settings: global email notification kill switch (MINCRM-163)
- *   - Recipient count display in admin settings (MINCRM-163)
+ *   - Profile page: user notification preference toggles
+ *   - Admin Settings: global email notification kill switch
+ *   - Recipient count display in admin settings
  *
  * Test groups:
  *   Profile Page     — page renders, all three checkboxes present, save and persist,
@@ -12,7 +12,7 @@
  *   Admin Settings   — email notifications section renders, toggle enabled/disabled,
  *                      recipient count displayed
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - All UI interactions via behaviors — no raw locators in this file
@@ -24,7 +24,7 @@
  *   - AC2: Admin kill switch is reflected in GET /api/settings/email-notifications
  *   - AC3: Recipient count reflects active users with that preference enabled
  *
- * MINCRM-161, MINCRM-162, MINCRM-163, MINCRM-192
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -57,7 +57,7 @@ test.describe.serial('Profile page — notification preferences', () => {
     await loginAsAdmin(restClient);
     const admin = await createTestAdmin(testData, restClient);
     // Re-authenticate restClient as the ephemeral admin so patchNotificationPreferences
-    // patches the same user that the browser is logged in as (MINCRM-415).
+    // patches the same user that the browser is logged in as.
     await restClient.post('/api/v1/auth/login', {
       email: admin.email,
       password: admin.password,
@@ -84,7 +84,7 @@ test.describe.serial('Profile page — notification preferences', () => {
     restClient,
   }) => {
     // Reset preferences to all-true via API before reading — each test uses a fresh
-    // ephemeral admin (MINCRM-415) so defaults should already be true, but we reset
+    // ephemeral admin so defaults should already be true, but we reset
     // explicitly for clarity in case default values change.
     await patchNotificationPreferences(restClient, {
       notify_overdue_tasks: true,
@@ -190,7 +190,7 @@ test.describe.serial('Admin Settings — global email notifications', () => {
     await ensureSystemDefaults(restClient);
     const admin = await createTestAdmin(testData, restClient);
     // Re-authenticate restClient as the ephemeral admin so settings mutations
-    // are made in the same session as the browser user (MINCRM-415).
+    // are made in the same session as the browser user.
     await restClient.post('/api/v1/auth/login', {
       email: admin.email,
       password: admin.password,

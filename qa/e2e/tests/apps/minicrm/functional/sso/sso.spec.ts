@@ -1,5 +1,5 @@
 /**
- * SSO functional tests — SAML 2.0 / OIDC single sign-on. (MINCRM-399)
+ * SSO functional tests — SAML 2.0 / OIDC single sign-on.
  *
  * Scope:
  *   - Admin can configure OIDC SSO via Settings → Integrations
@@ -20,7 +20,7 @@
  *   - No raw locators — all through behaviors
  *   - Test data cleaned up via ensureSystemDefaults() in afterEach
  *
- * MINCRM-399
+ *
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -78,7 +78,7 @@ test('admin can configure OIDC SSO and see the enabled badge @functional @serial
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  // Navigate to Settings → Security & Identity tab (SSO moved from Integrations, MINCRM-563)
+  // Navigate to Settings → Security & Identity tab (SSO moved from Integrations)
   await navigateToAdminSettings({ page }, 'security');
 
   // Wait for the SSO section to load
@@ -133,7 +133,7 @@ test('admin can disable SSO via the confirmation flow @functional @serial', asyn
   // Navigate to Settings → Security & Identity tab first, then configure SSO via API
   // and reload. Setting SSO before login risks another parallel worker's
   // ensureSystemDefaults() wiping the config during the login round-trip.
-  // (SSO moved from Integrations to Security & Identity, MINCRM-563)
+  // (SSO moved from Integrations to Security & Identity)
   await navigateToAdminSettings({ page }, 'security');
 
   await restClient.put('/api/v1/settings/sso', {

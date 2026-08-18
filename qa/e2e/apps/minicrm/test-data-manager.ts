@@ -14,7 +14,7 @@
  * and passed to setup helpers. Not safe for concurrent use within a single
  * test.
  *
- * MINCRM-129
+ *
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -54,7 +54,7 @@ interface CustomEntry {
    * Async teardown callback. Throwing is how it reports failure: `teardown()`
    * catches per entry, records `success: false`, logs, and continues with the
    * remaining entries. Swallow only the errors that mean cleanup already
-   * happened — anything else hides a leaked record. (MINCRM-668)
+   * happened — anything else hides a leaked record.
    */
   fn: () => Promise<void>;
 }
@@ -120,7 +120,7 @@ export class TestDataManager {
    * recorded as `success: false`, logged, and do not abort subsequent cleanup
    * steps. A callback that swallows its own errors reports successful cleanup
    * while the record leaks — swallow only what means the record is already
-   * gone. (MINCRM-668)
+   * gone.
    *
    * @param label - Human-readable label for log output (e.g. 'user-deactivate').
    * @param fn - Async teardown callback.
@@ -146,7 +146,7 @@ export class TestDataManager {
    * whether the test deleted it itself or a cascade removed it with its parent,
    * and that is cleanup having happened rather than cleanup having failed.
    * Any other error is a genuine failure — the row is still there — and is
-   * reported as `success: false` so the fixture can annotate it. (MINCRM-668)
+   * reported as `success: false` so the fixture can annotate it.
    *
    * After teardown completes (successfully or not), the internal registry is
    * cleared so that a second call is a safe no-op.
@@ -187,7 +187,6 @@ export class TestDataManager {
           // delete-through-the-UI test (contacts F2-D1, accounts F3-D1/D2),
           // and a warning that fires when nothing is wrong is one readers
           // learn to skip. Same 404 semantics registerAdminTeardown uses.
-          // (MINCRM-668)
           if (isAlreadyGone(err)) {
             results.push({ entityType: entry.entityType, id: entry.id, success: true });
             continue;

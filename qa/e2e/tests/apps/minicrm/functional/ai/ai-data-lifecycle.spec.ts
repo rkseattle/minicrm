@@ -1,5 +1,5 @@
 /**
- * F-AI-DL — AI Data Lifecycle (MINCRM-446, MINCRM-447)
+ * F-AI-DL — AI Data Lifecycle
  *
  * Covers the AI session retention policy and GDPR right-to-erasure cascade.
  *
@@ -14,10 +14,10 @@
  *   F-AI-DL-8  — POST /contacts/:id/ai-cascade returns 409 before GDPR erasure
  *   F-AI-DL-9  — After GDPR erasure, POST /contacts/:id/ai-cascade returns 202
  *   F-AI-DL-10 — After manual cascade, GET /contacts/:id/ai-cascade returns log entry
- *   F-AI-DL-11 — AI settings panel shows session/message retention stats (MINCRM-462)
- *   F-AI-DL-12 — Admin can manually trigger a purge and see an accepted state (MINCRM-462)
- *   F-AI-DL-13 — POST /admin/ai/retention/purge returns 202 and writes an audit entry (MINCRM-462)
- *   F-AI-DL-14 — GET /admin/ai/retention-stats returns session/message counts (MINCRM-462)
+ *   F-AI-DL-11 — AI settings panel shows session/message retention stats
+ *   F-AI-DL-12 — Admin can manually trigger a purge and see an accepted state
+ *   F-AI-DL-13 — POST /admin/ai/retention/purge returns 202 and writes an audit entry
+ *   F-AI-DL-14 — GET /admin/ai/retention-stats returns session/message counts
  *
  * E2E limitations:
  *   - The nightly purge (retentionService) is NOT triggered here; purge logic
@@ -311,7 +311,7 @@ test.describe('GDPR AI cascade', () => {
 });
 
 // ---------------------------------------------------------------------------
-// F-AI-DL-11 and F-AI-DL-12 — Manual purge + retention stats UI (MINCRM-462)
+// F-AI-DL-11 and F-AI-DL-12 — Manual purge + retention stats UI
 // ---------------------------------------------------------------------------
 
 test.describe('AI session retention stats and manual purge UI', () => {
@@ -359,7 +359,7 @@ test.describe('AI session retention stats and manual purge UI', () => {
 });
 
 // ---------------------------------------------------------------------------
-// F-AI-DL-13 and F-AI-DL-14 — Manual purge + retention stats API (MINCRM-462)
+// F-AI-DL-13 and F-AI-DL-14 — Manual purge + retention stats API
 // ---------------------------------------------------------------------------
 
 test.describe('AI session retention stats and manual purge API', () => {

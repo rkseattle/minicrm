@@ -1,5 +1,5 @@
 /**
- * F7-PD — AI proposal draft generation from a deal (MINCRM-473)
+ * F7-PD — AI proposal draft generation from a deal
  *
  * Functional regression tests for the "Generate Proposal Draft" button on
  * the deal detail page and the resulting full-screen editor.
@@ -15,7 +15,7 @@
  *   generate → editor → dismiss flow is exercised end-to-end. Rich-text
  *   editing, regeneration, and export (clipboard/markdown/DOCX) are covered
  *   by the client component test suite (ProposalDraftEditor.test.tsx),
- *   which mocks the HTTP response directly. (MINCRM-473)
+ *   which mocks the HTTP response directly.
  *
  * Framework conventions:
  *   - All tests tagged @functional

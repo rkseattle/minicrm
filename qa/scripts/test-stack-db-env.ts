@@ -1,6 +1,6 @@
 /**
  * Pure resolver for the test-stack database coordinates the pre-push TIA hook
- * hands to every subprocess it spawns. (MINCRM-698)
+ * hands to every subprocess it spawns.
  *
  * Split out of scripts/pre-push-tia.ts for the same reason as
  * container-commit-sha.ts: root `scripts/` is covered by tsconfig.scripts.json
@@ -21,7 +21,6 @@
 // The port rule itself lives in shared/ so the server-side guard on the
 // destructive scripts runs the SAME code rather than a hand-synced copy — see
 // that module's docblock for why shared/ is the only home both can reach.
-// (MINCRM-699)
 import {
   TEST_DB_PORT,
   DEV_DB_PORT,
@@ -91,7 +90,7 @@ export class DevDatabaseRefusedError extends Error {
  *   1. `exported` — the real environment, captured BEFORE any .env load. An
  *      operator who deliberately exports coordinates means it, including when
  *      they export the dev port, which is still refused outright. That refusal
- *      is what stopped a test run truncating the dev database (MINCRM-684).
+ *      is what stopped a test run truncating the dev database.
  *   2. `fromE2eEnvFile` — qa/e2e/.env, the file that describes the TEST stack.
  *      Authoritative for these keys: a developer running the stack on a
  *      non-default host/port configures it there, and that must reach every
@@ -121,7 +120,7 @@ export function resolveTestStackDbEnv(
 
   // Normalize BEFORE comparing: a raw string check passes `05432`, which every
   // spawned child then connects to as port 5432 — the dev database, reached by
-  // the destructive seed and truncate scripts. (MINCRM-699)
+  // the destructive seed and truncate scripts.
   //
   // No !CI carve-out here, unlike resolveRuntimeTestStackDb: this function
   // produces the environment for the pre-push hook's children, which only ever
@@ -143,7 +142,7 @@ export function resolveTestStackDbEnv(
     // host/port while DB_USER/DB_PASSWORD still fell through from root .env's
     // DEV values. Latent only because both stacks currently use
     // minicrm/password — a test stack with its own credentials could not run
-    // Playwright, selection or attestation at all. (MINCRM-698, PR #369 review)
+    // Playwright, selection or attestation at all. (PR review)
     DB_USER: exported.DB_USER ?? fromE2eEnvFile.DB_USER ?? TEST_DB_USER,
     DB_PASSWORD: exported.DB_PASSWORD ?? fromE2eEnvFile.DB_PASSWORD ?? TEST_DB_PASSWORD,
   };
@@ -156,7 +155,7 @@ export function resolveTestStackDbEnv(
  * than a connection string on purpose: a composed URL has to escape `@ : / % ? #`
  * in the password or it reparses into different coordinates (server/src/migrate.ts
  * documents that hazard at its own composition sites), and a second representation
- * of the same fact is what MINCRM-699 exists to remove.
+ * of the same fact is what this module exists to remove.
  */
 export interface TestStackDbConnection {
   host: string;
@@ -168,7 +167,7 @@ export interface TestStackDbConnection {
 
 /**
  * Resolves the coordinates a Playwright child should use to reach the test
- * database, from the environment its parent already composed. (MINCRM-699)
+ * database, from the environment its parent already composed.
  *
  * This is the RUNTIME half of the chain. resolveTestStackDbEnv PRODUCES the
  * environment for spawned children; this CONSUMES the one that arrived. It takes
@@ -177,7 +176,7 @@ export interface TestStackDbConnection {
  *
  * Reading process.env here is safe in a way it is NOT safe in the pre-push hook.
  * The hook flattens root .env (dev coordinates) into process.env before resolving,
- * which is the MINCRM-698 defect. qa/e2e/globalSetup.ts loads no .env files at all,
+ * which is the defect this guards. qa/e2e/globalSetup.ts loads no .env files at all,
  * so on every documented path the DB_* values it sees were composed by something
  * that had already run the chain:
  *   - the documented local invocation, which exports qa/e2e/.env;
@@ -240,7 +239,7 @@ export function resolveRuntimeTestStackDb(env: Readonly<NodeJS.ProcessEnv>): Tes
  * they resolve, root .env has been flattened in and its DEV values shadow the
  * test ones. Going back to the file is what names these values as belonging to
  * the TEST stack. Absent keys are omitted rather than set to undefined, so the
- * resolver's `??` chain falls through cleanly. (MINCRM-698)
+ * resolver's `??` chain falls through cleanly.
  */
 export function pickDbCoordinates(
   parsed: Readonly<Record<string, string | undefined>>,
@@ -264,7 +263,7 @@ export function pickDbCoordinates(
  * loop, so the tests asserted against the copy and would have stayed green while
  * the loop that actually runs drifted away from them. loadEnvFile now calls this
  * and does nothing but the process.env mutation, which is the one part a unit
- * test cannot exercise without leaking global state. (MINCRM-698)
+ * test cannot exercise without leaking global state.
  */
 export function parseEnvFileContents(contents: string): Record<string, string> {
   const parsed: Record<string, string> = {};
@@ -290,7 +289,7 @@ export function parseEnvFileContents(contents: string): Record<string, string> {
  * `loadEnvFile(qa/e2e)`, each skipping keys already set. Exported so the
  * PRECEDENCE — root .env shadowing qa/e2e/.env, which is why the dev-port guard
  * cannot read process.env — is pinned by a test rather than only asserted in a
- * comment. (MINCRM-698, AC 4/5)
+ * comment.
  */
 export function applyFirstWriteWins(
   files: ReadonlyArray<Readonly<Record<string, string>>>,

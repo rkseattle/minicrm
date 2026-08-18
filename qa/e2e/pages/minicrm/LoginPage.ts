@@ -8,7 +8,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-130
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -157,7 +157,7 @@ export class LoginPage {
 
   /**
    * Returns true when the session-expired banner is visible on the login page.
-   * The banner appears when the page is reached via ?reason=session_expired. (MINCRM-365)
+   * The banner appears when the page is reached via ?reason=session_expired.
    */
   async sessionExpiredBannerVisible(): Promise<boolean> {
     const locator = this.page.locate(

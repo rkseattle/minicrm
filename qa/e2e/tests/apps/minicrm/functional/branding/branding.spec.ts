@@ -1,5 +1,5 @@
 /**
- * F-BR — Custom Branding Configuration (MINCRM-356)
+ * F-BR — Custom Branding Configuration
  *
  * Functional regression tests for the custom branding admin UI.
  * Covers the key AC items:
@@ -9,7 +9,7 @@
  *   - Admin can reset branding to defaults
  *   - GET /api/settings/branding is accessible without auth (public endpoint)
  *
- * Framework conventions (MINCRM-42):
+ * Framework conventions:
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw Playwright locators — all through AdminSettingsPage page object

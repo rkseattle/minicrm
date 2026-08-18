@@ -9,7 +9,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-110, MINCRM-310, MINCRM-311, MINCRM-315
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -42,7 +42,7 @@ export class PipelineBoardPage {
    * Waiting for the board element (rather than just networkidle) prevents
    * scanMobileColumnSlug from starting its prev-button rewind before React has
    * mounted the board, which caused the rewind to silently no-op and leave the
-   * view on whatever stage was last active. (MINCRM-415)
+   * view on whatever stage was last active.
    */
   async navigate(): Promise<void> {
     // waitUntil:'networkidle' ensures deal/stage API calls complete before the
@@ -109,7 +109,7 @@ export class PipelineBoardPage {
    * a text change is the most reliable signal that the column has advanced.
    * The predicate is passed as a string so the TypeScript compiler (which has
    * no DOM lib) does not flag `document` as an unknown name; the string is
-   * evaluated inside the browser context by Playwright at runtime. MINCRM-310
+   * evaluated inside the browser context by Playwright at runtime.
    */
   private async waitForMobileStageChange(prevHeading: string): Promise<void> {
     const predicate = `(() => {
@@ -122,7 +122,7 @@ export class PipelineBoardPage {
   /**
    * Polls `scan` up to `timeoutMs` at `intervalMs` cadence, returning the first
    * non-null result immediately. Returns null only when the window elapses without
-   * a hit. This is the zero-overhead retry path for MINCRM-311: on the happy path
+   * a hit. This is the zero-overhead retry path for: on the happy path
    * `scan` resolves on the first call and the loop never sleeps.
    */
   private async pollUntilFound(
@@ -182,7 +182,7 @@ export class PipelineBoardPage {
   private async scanMobileColumnSlug(dealId: string): Promise<string | null> {
     // Rewind to stage 0 (Prospecting) by clicking prev until disabled.
     // Stage navigation is pure React state — no network calls. Wait for the
-    // pipeline-mobile-stage-name heading text to change. MINCRM-310
+    // pipeline-mobile-stage-name heading text to change.
     for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
       try {
         const prevBtn = await this.page
@@ -268,7 +268,7 @@ export class PipelineBoardPage {
    * briefly unmounted during a React Query cache invalidation/re-render does not
    * produce a spurious null. Returns immediately on the first successful scan;
    * returns null only after the 5-second window elapses without a hit.
-   * MINCRM-311
+   *
    *
    * @param dealId - Deal UUID to locate.
    * @returns The column slug (e.g. 'prospecting', 'closed-won') or null.
@@ -600,7 +600,7 @@ export class PipelineBoardPage {
    *
    * On mobile, navigate() restores the last active stage rather than starting at
    * stage 0. Call this before asserting that a new deal (always in Prospecting)
-   * is visible on the board. (MINCRM-552)
+   * is visible on the board.
    */
   async rewindToMobileStage0(): Promise<void> {
     if (!this.isMobileView()) return;

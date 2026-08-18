@@ -9,11 +9,11 @@
  * 5. onEnd() — appends markdown to summaryPath when set
  * 6. onEnd() — no file I/O when summaryPath is null (local run)
  * 7. onBegin() — reads slowThreshold from config.reportSlowTests
- * 8. generateSummary() — Quarantine Candidates section when candidates exist. MINCRM-373
- * 9. generateSummary() — no Quarantine Candidates section when none exist. MINCRM-373
- * 10. HEAL_QUARANTINE_THRESHOLD env var controls section visibility. MINCRM-373
+ * 8. generateSummary() — Quarantine Candidates section when candidates exist.
+ * 9. generateSummary() — no Quarantine Candidates section when none exist.
+ * 10. HEAL_QUARANTINE_THRESHOLD env var controls section visibility.
  *
- * MINCRM-332, MINCRM-373
+ *
  */
 
 import { test, expect } from '@playwright/test';
@@ -308,7 +308,7 @@ test.describe('StepSummaryReporter — generateSummary bullet sections', () => {
   test('reports a cleanup failure from a test that PASSED', () => {
     // The case with no other surface: a green run that left a record behind.
     // A failing test is already in the Failed Tests section; this one would be
-    // invisible without the annotation. (MINCRM-668)
+    // invisible without the annotation.
     const reporter = new StepSummaryReporter();
     reporter.onTestEnd(
       makeTestCase({
@@ -615,10 +615,10 @@ test.describe('StepSummaryReporter — reporter interface methods', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINCRM-373: Quarantine Candidates section in GitHub Step Summary
+// Quarantine Candidates section in GitHub Step Summary
 // ---------------------------------------------------------------------------
 
-test.describe('StepSummaryReporter — Quarantine Candidates section (MINCRM-373)', () => {
+test.describe('StepSummaryReporter — Quarantine Candidates section', () => {
   /**
    * Writes a minimal heal-trends.json directly at the path setTrendsFileForTesting
    * points to, and returns that path.

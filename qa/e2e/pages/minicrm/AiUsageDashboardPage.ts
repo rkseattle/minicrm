@@ -7,7 +7,7 @@
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-459
+ *
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -75,7 +75,7 @@ export class AiUsageDashboardPage {
     ]);
   }
 
-  /** Opens the Export menu, revealing the CSV/PDF items. (MINCRM-652) */
+  /** Opens the Export menu, revealing the CSV/PDF items. */
   async openExportMenu(): Promise<void> {
     await this.page.click(
       [
@@ -97,7 +97,7 @@ export class AiUsageDashboardPage {
     );
   }
 
-  /** Clicks the Export PDF button. (MINCRM-601) */
+  /** Clicks the Export PDF button. */
   async clickExportPdf(): Promise<void> {
     await this.page.click(
       [
