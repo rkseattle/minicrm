@@ -1,6 +1,6 @@
 /**
  * Dropdown of every issue key with a recorded coverage session for a given
- * commit (MINCRM-636/637). Unlike unit keys/test IDs, this needs no
+ * commit. Unlike unit keys/test IDs, this needs no
  * typeahead: the set of issue keys touched by one build is small (bounded
  * by manual-testing sessions checked in against it), so listing all of
  * them is cheap and a plain dropdown is the right UI — see

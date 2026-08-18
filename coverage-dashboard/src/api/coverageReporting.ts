@@ -1,8 +1,8 @@
 /**
- * Coverage/TIA reporting query API client. (MINCRM-629/630/631)
+ * Coverage/TIA reporting query API client.
  * Thin typed wrapper over GET /admin/coverage/reporting/* — the only
- * reporting data source this app is allowed to use (MINCRM-628's "reads
- * from the mapping/coverage store via its query API only" AC).
+ * reporting data source this app is allowed to use: the mapping/coverage
+ * store is reachable through its query API only.
  */
 
 import apiClient from './axiosInstance.js';

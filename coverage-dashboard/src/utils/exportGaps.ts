@@ -1,6 +1,6 @@
 /**
- * Client-side CSV/JSON export for gap-analysis lists (MINCRM-630's
- * "exportable list of gap methods/branches" AC). Generated entirely in the
+ * Client-side CSV/JSON export for gap-analysis lists — an exportable list of
+ * gap methods and branches. Generated entirely in the
  * browser from already-fetched data — no new backend endpoint, since the
  * reporting query API's /gaps response already carries everything a
  * downstream tool or spreadsheet would need.

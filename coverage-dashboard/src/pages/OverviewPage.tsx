@@ -1,5 +1,5 @@
 /**
- * MINCRM-629: overall + per-tier coverage, per-build view, trend over time,
+ * Overall + per-tier coverage, per-build view, trend over time,
  * filter by test type (automated E2E vs manual).
  */
 

@@ -1,6 +1,6 @@
 /**
- * Coverage/TIA mapping query API client. (MINCRM-621, consumed here for
- * MINCRM-631's "drill-down from a test to its covered code and back" AC)
+ * Coverage/TIA mapping query API client. Consumed here to drill down from a
+ * test to its covered code and back.
  * Thin typed wrapper over GET /admin/coverage/mapping/*.
  */
 

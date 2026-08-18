@@ -1,6 +1,6 @@
 /**
  * Generic typeahead search input — backs the unit-key and test-ID pickers
- * (MINCRM-636/637). Unlike RecentBuildSelect (a plain dropdown over a
+ * Unlike RecentBuildSelect (a plain dropdown over a
  * small, already-fetched list), unit keys/test IDs have no "list
  * everything" endpoint at all: a single commit's coverage_units/
  * coverage_test_links can run into the hundreds of thousands of rows, so

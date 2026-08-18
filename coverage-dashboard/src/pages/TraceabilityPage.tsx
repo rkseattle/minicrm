@@ -1,5 +1,5 @@
 /**
- * MINCRM-631: per-issue traceability + TIA value metrics — map coverage to
+ * Per-issue traceability + TIA value metrics — map coverage to
  * MiniCRM issue keys, report TIA selection value metrics over a commit
  * range, and drill down from a test to its covered code (and back).
  */

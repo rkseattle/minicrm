@@ -32,7 +32,7 @@ describe('CoverageTrendChart', () => {
   it('separates the API/frontend trailing labels vertically when both series have the same value', () => {
     // Regression test: with equal API/frontend coverage percentages, both
     // trailing direct-labels land at the same y-position and render on top
-    // of each other, illegible (found via manual smoke test — MINCRM-629).
+    // of each other, illegible (found via manual smoke test).
     render(
       <CoverageTrendChart
         summaries={[
