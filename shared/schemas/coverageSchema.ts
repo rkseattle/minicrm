@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for the Coverage/TIA control API. (MINCRM-606)
+ * Shared Zod schemas for the Coverage/TIA control API.
  * Imported by both the server (request validation) and the QA E2E workspace
  * (typed reference client).
  */

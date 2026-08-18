@@ -1,5 +1,5 @@
 /**
- * The dev-port refusal rule, in one place. (MINCRM-699)
+ * The dev-port refusal rule, in one place.
  *
  * WHY THIS LIVES IN shared/ RATHER THAN IN EITHER GUARD
  *
@@ -27,7 +27,7 @@
  * this replaces — put a silent bypass in front of the scripts that truncate
  * databases. `05432` passes `/^\d+$/`, is `!== '5432'`, and `Number()`s back to
  * 5432, so a raw-string comparison sent the destructive scripts at the DEV
- * database. That is exactly the leak MINCRM-684 was opened for. A rule that must
+ * database. That is exactly the leak this rule exists to prevent. A rule that must
  * not drift belongs in one file, not in a comment asking two files to agree.
  *
  * No `zod` import, no Node built-ins, no I/O — a pure function, so it stays

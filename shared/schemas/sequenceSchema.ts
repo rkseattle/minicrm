@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for sales sequences (MINCRM-403).
+ * Shared Zod schemas for sales sequences.
  * Imported by both the server (request validation) and the client (form validation).
  */
 

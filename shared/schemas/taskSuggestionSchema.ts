@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI follow-up task suggestion feature. (MINCRM-438)
+ * Shared types for the AI follow-up task suggestion feature.
  * Used by both client and server.
  */
 

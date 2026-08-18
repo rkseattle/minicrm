@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for custom report definitions (MINCRM-402).
+ * Shared Zod schemas for custom report definitions.
  * Imported by both server (request validation) and client (API response typing).
  */
 

@@ -1,6 +1,6 @@
 /**
  * Shared Zod schemas and types for AI usage/cost dashboard and cost rate
- * configuration. (MINCRM-459)
+ * configuration.
  * Imported by both server (request validation) and client (API response typing).
  */
 
@@ -43,7 +43,7 @@ export type UsageDateRangePreset = z.infer<typeof usageDateRangePresetSchema>;
  * Deliberately permissive on the date-time form rather than date-only: before
  * boundary validation existed, these params reached `new Date(value)` directly,
  * so every parseable timestamp was accepted. Narrowing to date-only here would
- * have been a silent breaking change for existing API consumers. (MINCRM-700)
+ * have been a silent breaking change for existing API consumers.
  */
 const usageDateParamSchema = z
   .string()

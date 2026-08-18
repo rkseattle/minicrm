@@ -2,7 +2,7 @@
  * Shared Zod schemas for deal-related validation.
  * Imported by both the server (request validation) and the client (form validation).
  *
- * Pipeline stages are now stored in the pipeline_stages DB table (MINCRM-180).
+ * Pipeline stages are now stored in the pipeline_stages DB table.
  * PIPELINE_STAGES is kept as the seed/fallback set for bootstrapping; runtime
  * validation uses the live stage list fetched from the API.
  */
@@ -36,16 +36,16 @@ export const createDealSchema = z.object({
     .string({ required_error: 'Deal name is required' })
     .min(1, 'Deal name is required')
     .trim(),
-  /** UUID of the pipeline this deal belongs to (MINCRM-397). Defaults to the default pipeline. */
+  /** UUID of the pipeline this deal belongs to. Defaults to the default pipeline. */
   pipeline_id: z.string().uuid('Pipeline must be a valid UUID').optional(),
   /**
    * Stage is validated as a non-empty string at the schema level.
    * The server additionally validates the value against the live pipeline_stages
-   * table (MINCRM-180). The client validates against the cached stage list.
+   * table. The client validates against the cached stage list.
    */
   stage: z.string({ required_error: 'Stage is required' }).min(1, 'Stage is required'),
   value: z.number().nonnegative('Value must be 0 or greater').optional(),
-  /** ISO 4217 currency code for the deal value. Defaults to the system default currency. (MINCRM-189) */
+  /** ISO 4217 currency code for the deal value. Defaults to the system default currency. */
   currency: z.enum(SUPPORTED_CURRENCIES).optional(),
   close_date: z
     .string()
@@ -55,7 +55,6 @@ export const createDealSchema = z.object({
   /**
    * Optional per-deal probability override (0–100).
    * When omitted, the deal inherits its probability from the pipeline stage default.
-   * (MINCRM-179)
    */
   probability: z
     .number()
@@ -78,7 +77,7 @@ export const updateDealSchema = createDealSchema
   .extend({
     owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
     loss_reason: z.string().trim().nullable().optional(),
-    /** Moves the deal to a different pipeline; stage must also be provided and valid in the new pipeline (MINCRM-408) */
+    /** Moves the deal to a different pipeline; stage must also be provided and valid in the new pipeline */
     pipeline_id: z.string().uuid('Pipeline must be a valid UUID').optional(),
   })
   .partial()
@@ -102,7 +101,7 @@ export const updateDealSchema = createDealSchema
       .optional(),
   })
   .extend({
-    /** Optimistic lock version — must match the current DB value (MINCRM-349) */
+    /** Optimistic lock version — must match the current DB value */
     version: z.number().int().positive('Version must be a positive integer'),
   })
   .refine((data) => Object.keys(data).filter((k) => k !== 'version').length > 0, {
@@ -128,38 +127,36 @@ export const updateDealSchema = createDealSchema
  */
 export const dealResponseSchema = z.object({
   id: z.string().uuid(),
-  /** UUID of the pipeline this deal belongs to (MINCRM-397) */
+  /** UUID of the pipeline this deal belongs to */
   pipeline_id: z.string().uuid(),
-  /** FK to pipeline_stages.id — the authoritative stage reference (MINCRM-499) */
+  /** FK to pipeline_stages.id — the authoritative stage reference */
   pipeline_stage_id: z.string().uuid(),
   name: z.string(),
-  /** @deprecated Stage name kept for transition period; use pipeline_stage_id (MINCRM-499) */
+  /** @deprecated Stage name kept for transition period; use pipeline_stage_id */
   stage: z.string(),
   value: z.string().nullable(), // pg returns numeric as string
-  /** ISO 4217 currency code for the deal value (MINCRM-189) */
+  /** ISO 4217 currency code for the deal value */
   currency: z.string(),
   close_date: z.string().nullable(),
   loss_reason: z.string().nullable(),
   account_id: z.string().uuid().nullable(),
   owner_id: z.string().uuid(),
-  /** Set when the deal was created via lead conversion (MINCRM-175) */
+  /** Set when the deal was created via lead conversion */
   source_lead_id: z.string().uuid().nullable().optional(),
   /**
    * Resolved probability for this deal (0–100).
    * Equals the deal's manual override when set; otherwise the current stage default.
-   * (MINCRM-179)
    */
   effective_probability: z.number().int(),
   /**
    * True when the deal's probability has been manually overridden from the stage default.
-   * (MINCRM-179)
    */
   probability_is_overridden: z.boolean(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: z.number().int(),
-  /** Tags attached to this deal — only present in list responses (MINCRM-186) */
+  /** Tags attached to this deal — only present in list responses */
   tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
 });
 

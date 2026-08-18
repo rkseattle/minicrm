@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for custom field definitions and values (MINCRM-276).
+ * Shared Zod schemas for custom field definitions and values.
  * Imported by both server (request validation) and client (API response typing).
  */
 
@@ -21,7 +21,7 @@ export const customFieldDefinitionResponseSchema = z.object({
   field_type: z.enum(FIELD_TYPES),
   options: z.array(z.string()).nullable(),
   sort_order: z.number().int(),
-  /** Excludes this field's value from AI payloads via the data minimization layer. (MINCRM-461) */
+  /** Excludes this field's value from AI payloads via the data minimization layer. */
   pii_excluded: z.boolean(),
   created_at: z.string(),
 });

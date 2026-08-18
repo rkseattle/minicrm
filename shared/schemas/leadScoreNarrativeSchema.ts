@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI lead score narrative feature. (MINCRM-441)
+ * Shared types for the AI lead score narrative feature.
  * Used by both client and server.
  */
 

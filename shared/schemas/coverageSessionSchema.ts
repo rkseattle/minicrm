@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for Coverage/TIA session management. (MINCRM-609..612)
+ * Shared Zod schemas for Coverage/TIA session management.
  * Imported by the server (request validation + response typing), the client
  * (manual-testing session recorder control panel), and the QA E2E workspace
  * (typed reference client + fixture-layer hooks).
@@ -42,7 +42,6 @@ export const recordCoverageSessionDumpRequestSchema = z.object({
   // tests/apps/minicrm/functional/deals/deal-creation.spec.ts) — same
   // convention as test-timing-baseline.json's own keys, so downstream
   // consumers (gen-shards.ts) can use it with no path translation.
-  // (MINCRM-660 groundwork)
   testFile: z.string().min(1).optional(),
   attempt: z.number().int().positive().default(1),
 });

@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI warm introduction path mapping feature. (MINCRM-468)
+ * Shared types for the AI warm introduction path mapping feature.
  * Used by both client and server.
  */
 

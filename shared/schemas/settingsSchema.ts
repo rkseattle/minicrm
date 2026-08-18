@@ -8,11 +8,11 @@ import { z } from 'zod';
 /** All language codes supported by the application */
 export const SUPPORTED_LOCALES = ['en', 'zh-Hans', 'es', 'fr', 'de'] as const;
 
-/** All navigation layout options supported by the application (MINCRM-133) */
+/** All navigation layout options supported by the application */
 export const NAV_LAYOUTS = ['top', 'left', 'hamburger'] as const;
 
 /**
- * Rich list of all currencies supported for deal values with display metadata. (MINCRM-251)
+ * Rich list of all currencies supported for deal values with display metadata.
  * Used to populate currency pickers and seed the currencies table.
  */
 export const SUPPORTED_CURRENCY_LIST = [
@@ -44,7 +44,7 @@ export const SUPPORTED_CURRENCY_LIST = [
 ] as const;
 
 /**
- * Plain array of ISO 4217 currency codes supported for deal values. (MINCRM-189)
+ * Plain array of ISO 4217 currency codes supported for deal values.
  * Kept for backward compatibility with SupportedCurrency type and setDefaultCurrencySchema.
  */
 export const SUPPORTED_CURRENCIES = SUPPORTED_CURRENCY_LIST.map(
@@ -95,7 +95,7 @@ export const defaultLanguageResponseSchema = z.object({
 });
 
 /**
- * Schema for the PATCH /api/settings/default-currency request body. (MINCRM-189)
+ * Schema for the PATCH /api/settings/default-currency request body.
  */
 export const setDefaultCurrencySchema = z.object({
   currency: z.enum(SUPPORTED_CURRENCIES, {
@@ -111,7 +111,7 @@ export const defaultCurrencyResponseSchema = z.object({
   currency: z.enum(SUPPORTED_CURRENCIES),
 });
 
-// ── Default timezone (MINCRM-470) ─────────────────────────────────────────────
+// ── Default timezone ─────────────────────────────────────────────
 
 /**
  * Validates a timezone string against the runtime's own tz database, rather
@@ -130,7 +130,7 @@ function isValidIanaTimezone(value: string): boolean {
 }
 
 /**
- * Schema for the PATCH /api/settings/default-timezone request body. (MINCRM-470)
+ * Schema for the PATCH /api/settings/default-timezone request body.
  */
 export const setDefaultTimezoneSchema = z.object({
   timezone: z
@@ -177,7 +177,7 @@ export type DefaultCurrencyResponse = z.infer<typeof defaultCurrencyResponseSche
 export type SetNavLayoutInput = z.infer<typeof setNavLayoutSchema>;
 export type NavLayoutResponse = z.infer<typeof navLayoutResponseSchema>;
 
-// ── SSO schemas (MINCRM-399) ──────────────────────────────────────────────────
+// ── SSO schemas ──────────────────────────────────────────────────
 
 /** Supported SSO protocols */
 export const SSO_PROTOCOLS = ['saml', 'oidc'] as const;
@@ -228,7 +228,7 @@ export interface SsoStatusResponse {
   protocol: SsoProtocol | null;
 }
 
-// ── AI configuration schemas (MINCRM-457) ─────────────────────────────────────
+// ── AI configuration schemas ─────────────────────────────────────
 
 /** Supported AI providers. Extend this list when adding new providers. */
 export const AI_PROVIDERS = ['anthropic'] as const;
@@ -287,9 +287,9 @@ export interface AiConfigResponse {
   provider_dpa_url: string;
   /** Days to retain ai_sessions/ai_messages before nightly purge. Minimum 30. */
   ai_session_retention_days: number;
-  /** Admin-configured cost rate in cents per 1,000,000 input tokens. (MINCRM-459) */
+  /** Admin-configured cost rate in cents per 1,000,000 input tokens. */
   ai_input_cost_per_million_cents: number;
-  /** Admin-configured cost rate in cents per 1,000,000 output tokens. (MINCRM-459) */
+  /** Admin-configured cost rate in cents per 1,000,000 output tokens. */
   ai_output_cost_per_million_cents: number;
 }
 
@@ -371,7 +371,7 @@ export const setAiSessionRetentionSchema = z.object({
 
 export type SetAiSessionRetentionInput = z.infer<typeof setAiSessionRetentionSchema>;
 
-/** Schema for PATCH /api/v1/admin/ai/coaching-config request body. (MINCRM-474) */
+/** Schema for PATCH /api/v1/admin/ai/coaching-config request body. */
 export const setRepCoachingConfigSchema = z.object({
   min_closed_deals: z
     .number({ required_error: 'min_closed_deals is required' })
@@ -396,7 +396,7 @@ export const setRepCoachingConfigSchema = z.object({
 
 export type SetRepCoachingConfigInput = z.infer<typeof setRepCoachingConfigSchema>;
 
-/** Response shape for GET /api/v1/admin/ai/coaching-config. (MINCRM-474) */
+/** Response shape for GET /api/v1/admin/ai/coaching-config. */
 export interface RepCoachingConfigResponse {
   min_closed_deals: number;
   stage_time_outlier_ratio: number;
@@ -410,7 +410,7 @@ export interface RepCoachingConfigResponse {
 /**
  * Response shape for GET /api/v1/admin/ai/retention-stats.
  * Counts of AI session data currently stored, shown alongside the configured
- * retention window so admins can gauge the impact of a purge before triggering one. (MINCRM-462)
+ * retention window so admins can gauge the impact of a purge before triggering one.
  */
 export interface AiRetentionStatsResponse {
   session_count: number;
@@ -420,7 +420,7 @@ export interface AiRetentionStatsResponse {
 /**
  * Response shape for GET /api/v1/ai/retention-window.
  * Thin, user-facing view of the retention window — deliberately excludes the
- * rest of AiConfigResponse's admin-only fields. (MINCRM-462)
+ * rest of AiConfigResponse's admin-only fields.
  */
 export interface AiRetentionWindowResponse {
   ai_session_retention_days: number;
@@ -472,7 +472,7 @@ export interface TestAiConnectionResponse {
   message: string;
 }
 
-// ── Exchange rate schemas (MINCRM-251) ─────────────────────────────────────────
+// ── Exchange rate schemas ─────────────────────────────────────────
 
 /**
  * Shape of a single row in the currencies table as returned by the API.
@@ -529,7 +529,7 @@ export interface CurrencyConfig {
   }>;
 }
 
-// ── AI token budget schemas (MINCRM-458) ──────────────────────────────────────
+// ── AI token budget schemas ──────────────────────────────────────
 
 /**
  * Budget threshold status for a user relative to their monthly token limit.

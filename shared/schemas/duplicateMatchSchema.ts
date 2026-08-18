@@ -1,5 +1,5 @@
 /**
- * Shared types for the multi-signal duplicate-match scoring engine. (MINCRM-440 prerequisite)
+ * Shared types for the multi-signal duplicate-match scoring engine.
  * Used by both client and server. Pure data-comparison — no AI call.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI data hygiene assistant feature. (MINCRM-476)
+ * Shared types for the AI data hygiene assistant feature.
  * Used by both client and server.
  */
 

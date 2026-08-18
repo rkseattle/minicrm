@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA harness adapter SDK contract. (MINCRM-636)
+ * Coverage/TIA harness adapter SDK contract.
  *
  * A HarnessAdapter is the shape a test-harness integration (Playwright
  * today; a future framework's own reference client) uses to tag coverage
@@ -35,8 +35,8 @@ import type {
 } from './coverageSessionSchema.js';
 
 /**
- * Documents the harness-adapter contract MINCRM-636's "harness adapter
- * contract for tagging sessions" AC calls for, as real function signatures
+ * Documents the harness-adapter contract for tagging sessions as real
+ * function signatures
  * — not prose — so a new harness integration's own client can be
  * type-checked against this shape directly (`satisfies HarnessAdapterShape<MyClient>`),
  * and so drift between this doc and the real Playwright client's exports is

@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for pipeline management (MINCRM-397).
+ * Shared Zod schemas for pipeline management.
  * Imported by both server (request validation) and client (API response typing).
  */
 

@@ -1,5 +1,5 @@
 /**
- * Capability-based RBAC — capability enum and Zod schemas (MINCRM-542)
+ * Capability-based RBAC — capability enum and Zod schemas
  *
  * The Capability enum is the single source of truth for all valid capability
  * strings in the system. The database stores which roles have which capabilities;
@@ -16,7 +16,7 @@
 
 import { z } from 'zod';
 
-/** All discrete capability strings in the system (MINCRM-542). */
+/** All discrete capability strings in the system. */
 export enum Capability {
   // Contacts
   ContactsView = 'contacts:view',
@@ -72,7 +72,7 @@ export enum Capability {
   ForecastingView = 'forecasting:view',
   ForecastingEdit = 'forecasting:edit',
 
-  // Bulk operations gate — required for all bulk endpoints and bulk selection UI (MINCRM-562)
+  // Bulk operations gate — required for all bulk endpoints and bulk selection UI
   BulkOperations = 'bulk:operations',
 
   // Bulk Data
@@ -100,9 +100,9 @@ export enum Capability {
   ApiAccess = 'api:access',
 
   // Coverage/TIA framework — internal CI/dev tooling admin access
-  // (MINCRM-637). Deliberately NOT exposed in RolesSettings.tsx's
+  // Deliberately NOT exposed in RolesSettings.tsx's
   // CAPABILITY_GROUPS picker — assignable only via direct API/migration,
-  // matching MINCRM-663's precedent of keeping internal coverage tooling
+  // matching the precedent of keeping internal coverage tooling
   // out of the customer-facing admin UI. See docs/dev/coverage.md.
   CoverageAdmin = 'coverage:admin',
 }

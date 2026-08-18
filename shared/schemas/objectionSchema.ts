@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI objection pattern matching feature. (MINCRM-471)
+ * Shared types for the AI objection pattern matching feature.
  * Used by both client and server.
  */
 

@@ -6,7 +6,7 @@
 import { z } from 'zod';
 import { ACCOUNT_HEALTH_STATES } from './accountHealthScoreSchema.js';
 
-/** Valid values for the account_type field (MINCRM-183) */
+/** Valid values for the account_type field */
 export const ACCOUNT_TYPE_VALUES = [
   'Prospect',
   'Customer',
@@ -32,9 +32,9 @@ export const createAccountSchema = z.object({
   revenue_range: z.string().trim().optional(),
   /** UUIDs of contacts to link to this account */
   contact_ids: z.array(z.string().uuid('Each contact ID must be a valid UUID')).optional(),
-  /** Account classification type (MINCRM-183) */
+  /** Account classification type */
   account_type: z.enum(ACCOUNT_TYPE_VALUES).nullable().optional(),
-  /** UUID of the parent account (MINCRM-184) */
+  /** UUID of the parent account */
   parent_account_id: z.string().uuid('Parent account must be a valid UUID').nullable().optional(),
 });
 
@@ -46,7 +46,7 @@ export const createAccountSchema = z.object({
 export const updateAccountSchema = createAccountSchema
   .extend({
     owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
-    /** Optimistic lock version — must match the current DB value (MINCRM-349) */
+    /** Optimistic lock version — must match the current DB value */
     version: z.number().int().positive('Version must be a positive integer'),
   })
   .partial()
@@ -68,17 +68,17 @@ export const accountResponseSchema = z.object({
   employee_range: z.string().nullable(),
   revenue_range: z.string().nullable(),
   owner_id: z.string().uuid(),
-  /** Account classification type (MINCRM-183) */
+  /** Account classification type */
   account_type: z.enum(ACCOUNT_TYPE_VALUES).nullable().optional(),
-  /** UUID of the parent account (MINCRM-184) */
+  /** UUID of the parent account */
   parent_account_id: z.string().uuid().nullable().optional(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: z.number().int(),
-  /** Tags attached to this account — only present in list responses (MINCRM-186) */
+  /** Tags attached to this account — only present in list responses */
   tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
-  /** Cached relationship health badge — only present in list responses; null if not yet computed (MINCRM-467) */
+  /** Cached relationship health badge — only present in list responses; null if not yet computed */
   health_score: z
     .object({
       score: z.number(),

@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas for the Coverage/TIA mapping query API. (MINCRM-621)
+ * Shared Zod schemas for the Coverage/TIA mapping query API.
  * Imported by the server (request validation + response typing) and the QA
  * E2E workspace (reference client).
  */
@@ -25,7 +25,7 @@ export type FindUnitsForTestRequest = z.infer<typeof findUnitsForTestRequestSche
  * A single mapping result row — deliberately NOT the same shape as
  * coverageMappingService's own CoverageTestLink DB type, even though the
  * fields largely overlap. This is the documented, versioned wire contract
- * (MINCRM-621's "documented, versioned interface" AC); coverage_test_links'
+ * — a documented, versioned interface; coverage_test_links'
  * own column set is an implementation detail free to change independently
  * as long as this response shape is preserved.
  */
@@ -36,7 +36,7 @@ export const coverageMappingResultSchema = z.object({
   filePath: z.string(),
   testId: z.string(),
   testName: z.string().nullable(),
-  /** Spec file path (relative to repo root) that produced this test_id, or null if the attributing session never captured one. (MINCRM-660 groundwork) */
+  /** Spec file path (relative to repo root) that produced this test_id, or null if the attributing session never captured one. */
   testFile: z.string().nullable(),
   hitCount: z.number().int(),
   firstSeenAt: z.string(),
@@ -61,7 +61,7 @@ export const findUnitsForTestResponseSchema = z.object({
 
 export type FindUnitsForTestResponse = z.infer<typeof findUnitsForTestResponseSchema>;
 
-// ── Typeahead search (MINCRM-636/637) — backs the coverage-dashboard app's
+// ── Typeahead search — backs the coverage-dashboard app's
 // unit-key/test-ID pickers, since neither field is something a caller can
 // plausibly type from memory. Both always require a non-empty search term
 // (never "list everything") — a single commit's coverage_units/

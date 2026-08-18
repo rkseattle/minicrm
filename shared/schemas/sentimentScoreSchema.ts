@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI sentiment tracking feature. (MINCRM-472)
+ * Shared types for the AI sentiment tracking feature.
  * Used by both client and server.
  */
 

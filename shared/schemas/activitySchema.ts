@@ -68,7 +68,7 @@ export const updateActivitySchema = z
     status: z.enum(ACTIVITY_STATUSES).optional(),
     direction: z.enum(ACTIVITY_DIRECTIONS).nullable().optional(),
     outcome: z.string().trim().nullable().optional(),
-    /** Optimistic lock version — must match the current DB value (MINCRM-349) */
+    /** Optimistic lock version — must match the current DB value */
     version: z.number().int().positive('Version must be a positive integer'),
   })
   .refine((data) => Object.keys(data).filter((k) => k !== 'version').length > 0, {
@@ -105,7 +105,7 @@ export const activityResponseSchema = z.object({
   owner_name: z.string(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
-  /** Optimistic lock version (MINCRM-349) */
+  /** Optimistic lock version */
   version: z.number().int(),
 });
 

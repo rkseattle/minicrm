@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI relationship health scoring feature. (MINCRM-467)
+ * Shared types for the AI relationship health scoring feature.
  * Used by both client and server.
  */
 
@@ -100,13 +100,11 @@ export const setAccountHealthScoringConfigSchema = z
         path: ['frequency_weight'],
       });
     }
-    if (
-      !(
-        val.strong_threshold > val.healthy_threshold &&
-        val.healthy_threshold > val.cooling_threshold &&
-        val.cooling_threshold > val.at_risk_threshold
-      )
-    ) {
+    if (!(
+      val.strong_threshold > val.healthy_threshold &&
+      val.healthy_threshold > val.cooling_threshold &&
+      val.cooling_threshold > val.at_risk_threshold
+    )) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Thresholds must be strictly descending: strong > healthy > cooling > at_risk',

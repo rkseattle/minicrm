@@ -14,7 +14,7 @@
  * Consumed by server/src/services/aiSessionService.ts (produces the payloads)
  * and qa/e2e/behaviors/minicrm/ai.behaviors.ts (requests scenarios, asserts
  * against the fixed fixture values). Never referenced outside E2E=true code
- * paths and E2E test code. (MINCRM-435)
+ * paths and E2E test code.
  */
 
 export const E2E_STUB_PREFIX = '__E2E_STUB__:';

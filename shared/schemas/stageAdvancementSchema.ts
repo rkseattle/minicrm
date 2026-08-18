@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI stage advancement suggestion feature. (MINCRM-443)
+ * Shared types for the AI stage advancement suggestion feature.
  * Used by both client and server.
  */
 
@@ -18,5 +18,4 @@ export interface StageAdvancementNoSuggestion {
 }
 
 export type StageAdvancementCheckResponse =
-  | StageAdvancementSuggestion
-  | StageAdvancementNoSuggestion;
+  StageAdvancementSuggestion | StageAdvancementNoSuggestion;

@@ -1,5 +1,5 @@
 /**
- * Shared types for the AI champion/blocker detection feature. (MINCRM-466)
+ * Shared types for the AI champion/blocker detection feature.
  * Used by both client and server.
  */
 

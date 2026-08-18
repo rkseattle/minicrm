@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas and constants for custom branding configuration. (MINCRM-356)
+ * Shared Zod schemas and constants for custom branding configuration.
  * Imported by both the server (validation) and the client (form validation + CSS injection).
  */
 

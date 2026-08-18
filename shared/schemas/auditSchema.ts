@@ -1,6 +1,6 @@
 /**
  * Shared Zod schemas for the audit log.
- * Used by both server (input validation) and client (type inference). (MINCRM-170)
+ * Used by both server (input validation) and client (type inference).
  */
 
 import { z } from 'zod';
@@ -15,14 +15,14 @@ export const AUDIT_RECORD_TYPES = [
   'user',
   'system_settings',
   'custom_report',
-  /** Sales sequence definitions and enrollments (MINCRM-403) */
+  /** Sales sequence definitions and enrollments */
   'sequence',
   'sequence_enrollment',
-  /** Feature flag registry entries (MINCRM-463) */
+  /** Feature flag registry entries */
   'feature_flag',
-  /** AI provider/model configuration (MINCRM-457) */
+  /** AI provider/model configuration */
   'ai_settings',
-  /** AI data minimization field exclusion toggles (MINCRM-461) */
+  /** AI data minimization field exclusion toggles */
   'ai_field_exclusion',
 ] as const;
 

@@ -1,6 +1,6 @@
 /**
  * Shared Zod schemas for the Coverage/TIA reporting query API.
- * (MINCRM-629/630/631) Imported by the server (request validation +
+ * Imported by the server (request validation +
  * response typing) and the standalone coverage-dashboard app.
  */
 
@@ -9,7 +9,7 @@ import { z } from 'zod';
 const MAX_TREND_LIMIT = 500;
 const MAX_GAP_LIMIT = 5000;
 
-// ── Summary & trend (MINCRM-629) ────────────────────────────────────────────
+// ── Summary & trend ────────────────────────────────────────────
 
 export const getCoverageSummaryRequestSchema = z.object({
   commitSha: z.string().min(1, 'commitSha is required'),
@@ -47,7 +47,7 @@ export const getCoverageTrendResponseSchema = z.object({
 
 export type GetCoverageTrendResponse = z.infer<typeof getCoverageTrendResponseSchema>;
 
-// ── Gap analysis (MINCRM-630) ──────────────────────────────────────────────
+// ── Gap analysis ──────────────────────────────────────────────
 
 export const getGapsRequestSchema = z.object({
   commitSha: z.string().min(1, 'commitSha is required'),
@@ -86,7 +86,7 @@ export const getGapsResponseSchema = z.object({
 
 export type GetGapsResponse = z.infer<typeof getGapsResponseSchema>;
 
-// ── Per-issue traceability & TIA value metrics (MINCRM-631) ────────────────
+// ── Per-issue traceability & TIA value metrics ────────────────
 
 export const getIssueCoverageRequestSchema = z.object({
   commitSha: z.string().min(1, 'commitSha is required'),

@@ -1,5 +1,5 @@
 /**
- * Shared types and Zod schema for the AI contact auto-enrich feature. (MINCRM-439)
+ * Shared types and Zod schema for the AI contact auto-enrich feature.
  * Used by both client and server.
  */
 

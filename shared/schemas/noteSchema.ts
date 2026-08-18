@@ -1,5 +1,5 @@
 /**
- * Shared Zod schemas and TypeScript types for the notes feature. (MINCRM-352)
+ * Shared Zod schemas and TypeScript types for the notes feature.
  * Used by both client and server.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Shared types and Zod schema for AI proposal draft generation. (MINCRM-473)
+ * Shared types and Zod schema for AI proposal draft generation.
  * Used by both client and server.
  */
 
