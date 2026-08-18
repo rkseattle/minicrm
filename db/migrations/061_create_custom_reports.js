@@ -4,7 +4,7 @@
  * Migration 061: Create custom_reports table.
  * Stores user-defined report definitions (entity type, selected fields, filter
  * conditions, grouping, sort, aggregates) as a JSONB config blob. Reports are
- * executed on demand — no cached results table. (MINCRM-402)
+ * executed on demand — no cached results table.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

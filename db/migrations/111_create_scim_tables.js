@@ -1,5 +1,5 @@
 /**
- * Migration 111 — Create SCIM provisioning tables (MINCRM-541)
+ * Migration 111 — Create SCIM provisioning tables
  *
  * Adds two tables to support SCIM 2.0 provisioning:
  *

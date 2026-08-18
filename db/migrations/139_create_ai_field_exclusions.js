@@ -13,7 +13,6 @@
  * exclusion already has its own column (custom_field_definitions.pii_excluded,
  * migration 125) and is not duplicated here.
  *
- * (MINCRM-461)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

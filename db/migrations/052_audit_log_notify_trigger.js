@@ -3,7 +3,7 @@
 /**
  * Migration 052: add AFTER INSERT trigger on audit_log that fires pg_notify
  * on the 'audit_events' channel so connected LISTEN clients receive new rows
- * in real time without polling. (MINCRM-375)
+ * in real time without polling.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

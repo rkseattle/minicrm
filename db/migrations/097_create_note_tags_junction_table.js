@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 097: Replace notes.tags text[] with a note_tags junction table. (MINCRM-506)
+ * Migration 097: Replace notes.tags text[] with a note_tags junction table.
  *
  * The notes table stored tags as a free-text array, bypassing the governed tag system
  * (tags table + junction tables) used by contacts, accounts, and deals. Note tags

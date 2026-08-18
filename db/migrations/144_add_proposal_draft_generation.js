@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 144: AI proposal draft generation from a deal. (MINCRM-473)
+ * Migration 144: AI proposal draft generation from a deal.
  *
  * Adds the ai_proposal_draft_generation feature flag (child of ai_features).
  * No persistence table — the ticket states the draft is not saved

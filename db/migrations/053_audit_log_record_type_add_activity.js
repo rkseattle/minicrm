@@ -2,7 +2,7 @@
 
 /**
  * Migration 053: add 'activity' to audit_log record_type CHECK constraint.
- * Required by MINCRM-382 which adds audit entries for activity CRUD operations.
+ * Required by the change that adds audit entries for activity CRUD operations.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

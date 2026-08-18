@@ -1,6 +1,5 @@
 /**
  * Migration 095: Add pipeline_stage_id FK to deals, backfill from stage name, enforce NOT NULL.
- * (MINCRM-499)
  *
  * Background: deals.stage has been a bare varchar(50) since migration 021 dropped the
  * CHECK constraint when pipeline stages became dynamic. This leaves stage integrity

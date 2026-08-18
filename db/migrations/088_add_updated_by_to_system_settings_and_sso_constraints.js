@@ -2,7 +2,7 @@
 
 /**
  * Migration 088: Add updated_by to system_settings and CHECK constraints to
- * users.sso_subject. (MINCRM-520)
+ * users.sso_subject.
  *
  * Issue 1 — system_settings.updated_by:
  *   Settings with security implications (require_mfa, tags_restrict_creation, etc.)

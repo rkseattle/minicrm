@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 147: AI pre-meeting brief generation. (MINCRM-465)
+ * Migration 147: AI pre-meeting brief generation.
  *
  * Adds:
  *   1. ai_meeting_brief feature flag (child of the AI category).

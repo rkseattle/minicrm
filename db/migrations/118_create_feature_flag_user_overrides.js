@@ -5,7 +5,6 @@
  * Allows admins to force a flag on (force_enabled) or off (force_disabled)
  * for a specific user, unconditionally overriding all other targeting rules.
  * Overrides are evaluated first in the isFlagEnabledForUser resolution chain.
- * (MINCRM-492)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

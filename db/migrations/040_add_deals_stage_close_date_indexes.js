@@ -25,7 +25,6 @@
  * The two single-column indexes are retained alongside the composite because PostgreSQL
  * can use them independently for queries that filter on only one of the two columns.
  *
- * (MINCRM-274)
  */
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */

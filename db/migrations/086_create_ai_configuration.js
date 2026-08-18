@@ -2,7 +2,7 @@
 
 /**
  * Migration 086: Create ai_configuration table and migrate AI settings out of
- * the system_settings KV blob into a typed, singleton config table. (MINCRM-502)
+ * the system_settings KV blob into a typed, singleton config table.
  *
  * Replaces the 12 AI-related rows that were seeded into system_settings by
  * migration 069. Each column has a well-typed DEFAULT so the row is always

@@ -1,5 +1,5 @@
 /**
- * Migration 098: Add action_config_snapshot to automation_rule_logs (MINCRM-509)
+ * Migration 098: Add action_config_snapshot to automation_rule_logs
  *
  * Snapshots the rule's action_config at execution time so historical log entries
  * remain accurate even after the rule is subsequently edited.

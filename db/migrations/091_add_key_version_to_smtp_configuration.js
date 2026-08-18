@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 091: Add pass_key_version to smtp_configuration. (MINCRM-519)
+ * Migration 091: Add pass_key_version to smtp_configuration.
  *
  * Mirrors migration 090 for the SMTP password column. Existing ciphertexts
  * are backfilled with key_version = 1.

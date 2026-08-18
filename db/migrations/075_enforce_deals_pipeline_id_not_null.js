@@ -1,5 +1,5 @@
 /**
- * Migration 075: Enforce NOT NULL on deals.pipeline_id. (MINCRM-504)
+ * Migration 075: Enforce NOT NULL on deals.pipeline_id.
  *
  * Migration 057 added pipeline_id as nullable to avoid requiring a DEFAULT during
  * the initial backfill, with the explicit intent that a follow-up migration would

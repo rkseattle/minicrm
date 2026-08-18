@@ -1,5 +1,5 @@
 /**
- * Migration 021: Create pipeline_stages table (MINCRM-180)
+ * Migration 021: Create pipeline_stages table
  *
  * Moves pipeline stage definitions from a hardcoded Zod enum to a database table
  * so admins can add, rename, reorder, and delete custom stages.
@@ -36,7 +36,7 @@ exports.up = (pgm) => {
       type: 'integer',
       notNull: true,
     },
-    /** Default probability (0–100) for deals in this stage, used by MINCRM-179 */
+    /** Default probability (0–100) for deals in this stage, used by the pipeline */
     probability: {
       type: 'integer',
       notNull: true,

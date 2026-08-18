@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 142: AI churn and expansion signal detection. (MINCRM-469)
+ * Migration 142: AI churn and expansion signal detection.
  *
  * Adds:
  *   1. ai_churn_expansion_detection feature flag (child of ai_features).

@@ -5,7 +5,7 @@
  * Controls who can see and mutate a report:
  *   private          — only the creator and admins
  *   public_read_only — all authenticated users can view; only creator/admins can edit/delete
- *   public           — all authenticated users have full CRUD (MINCRM-402)
+ *   public           — all authenticated users have full CRUD
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

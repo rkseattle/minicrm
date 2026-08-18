@@ -10,7 +10,7 @@
  * Valid:    // Kept under MAX_SAFE_INTEGER so pg can bind it
  *
  * Two exemptions:
- *   - `-ok:` suppression markers (MINCRM-686-ok, MINCRM-368-ok). The exact spelling
+ *   - `-ok:` suppression markers. The exact spelling
  *     is matched by qa/scripts/check-e2e-cleanup.sh and check-e2e-beforeall.sh, so
  *     the token is an API rather than a reference for the reader.
  *   - `@openapi` blocks, which swagger.ts compiles into the served API document.

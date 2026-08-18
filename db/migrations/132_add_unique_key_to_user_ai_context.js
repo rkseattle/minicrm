@@ -7,7 +7,6 @@
  *
  * Duplicate entries are not expected in practice (the UI enforces a single
  * add-form flow), but the constraint makes this a DB-level invariant.
- * (MINCRM-427)
  */
 
 exports.shorthands = undefined;

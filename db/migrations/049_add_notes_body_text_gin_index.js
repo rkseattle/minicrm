@@ -11,7 +11,6 @@
  * the index only needs to cover non-null values; a partial index would be a
  * minor optimisation but a full index is simpler and consistent with 041.
  *
- * (MINCRM-362)
  */
 
 'use strict';

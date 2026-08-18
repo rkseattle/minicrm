@@ -10,7 +10,6 @@
  *
  * Cascade delete: deleting a session removes all its messages. Deleting a user
  * removes all their sessions (and by cascade, their messages).
- * (MINCRM-421)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

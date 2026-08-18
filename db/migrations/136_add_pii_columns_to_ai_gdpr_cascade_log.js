@@ -10,7 +10,6 @@
  * Both columns are nullable because rows inserted by the first cascade (before
  * this migration) will not have the values backfilled.
  *
- * (MINCRM-446)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

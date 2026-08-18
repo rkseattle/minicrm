@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 080: Add created_at to junction tables. (MINCRM-513)
+ * Migration 080: Add created_at to junction tables.
  *
  * Four junction tables have no timestamp columns, preventing any answer to
  * "when was this tag applied?" or "when was this contact linked to this deal?":

@@ -3,7 +3,7 @@
 /**
  * Migration 085: Document the polymorphic FK pattern on tables that use
  * (record_type, record_id) or (entity_type, entity_id) without a real FK
- * constraint. (MINCRM-510)
+ * constraint.
  *
  * Five tables store a reference to one of several parent entity types using a
  * type discriminator column plus a UUID. Because PostgreSQL FK constraints can

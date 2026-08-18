@@ -1,5 +1,5 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–152 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492, MINCRM-447, MINCRM-446, MINCRM-459, MINCRM-461, MINCRM-464, MINCRM-466, MINCRM-469, MINCRM-471, MINCRM-473, MINCRM-441, MINCRM-465, MINCRM-468, MINCRM-472, MINCRM-467, MINCRM-470, MINCRM-658)
+ * Migration 000: Schema baseline — squash of migrations 001–152
  *
  * PURPOSE
  * -------
@@ -56,7 +56,7 @@ exports.shorthands = undefined;
  * Number of migrations (001-N) this file was last regenerated to cover.
  * server/src/migrate.ts's countBaselineCoveredMigrations() asserts its own
  * BASELINE_COVERED_MIGRATION_COUNT constant equals this value at runtime
- * (MINCRM-658) — this file is the single source of truth for what baseline
+ * — this file is the single source of truth for what baseline
  * actually covers, so the two can never silently drift apart (e.g. a stale
  * server build's migrate.ts paired with a rebuilt/newer baseline file, or
  * vice versa). Update this alongside BASELINE_COVERED_MIGRATION_COUNT
@@ -143,7 +143,7 @@ exports.up = (pgm) => {
   // Validates that feature_flags.role_overrides has the correct structural shape.
   // Keys must be non-empty strings; values must be booleans.
   // Role name validity is enforced at the service layer against the live custom_roles table.
-  // (Updated by migration 122 — MINCRM-565)
+  // (Updated by migration 122)
   pgm.sql(`
     CREATE OR REPLACE FUNCTION public.is_valid_role_overrides(overrides jsonb) RETURNS boolean
       LANGUAGE plpgsql IMMUTABLE
@@ -269,7 +269,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // system_settings — key-value configuration store (MINCRM-520)
+  // system_settings — key-value configuration store
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.system_settings (
       key        text NOT NULL,
@@ -308,7 +308,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // pipeline_stages — admin-configurable stages per pipeline (MINCRM-180)
+  // pipeline_stages — admin-configurable stages per pipeline
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.pipeline_stages (
       id                     uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -405,7 +405,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // contact_addresses — structured address rows (one-to-many, MINCRM-500)
+  // contact_addresses — structured address rows (one-to-many)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.contact_addresses (
       id             uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -492,7 +492,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // email_templates — reusable email templates for sequences and activities (MINCRM-422, MINCRM-437)
+  // email_templates — reusable email templates for sequences and activities
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.email_templates (
       id          uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -510,7 +510,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // automation_rule_logs — execution history for automation rules (MINCRM-516)
+  // automation_rule_logs — execution history for automation rules
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.automation_rule_logs (
       id                     uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -526,7 +526,7 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`COMMENT ON COLUMN public.automation_rule_logs.triggering_record_type IS 'Entity type that caused the automation rule to fire. Valid values: ''deal'', ''contact''. Enforced at the service layer via AutomationTriggerContext in server/src/services/automationService.ts. Not a CHECK constraint — see migration 083 for rationale (mirrors the audit_log approach from migration 076).'`);
 
-  // attachments — file metadata for CRM entity records (polymorphic, MINCRM-510)
+  // attachments — file metadata for CRM entity records (polymorphic)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.attachments (
       id          uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -545,7 +545,7 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`COMMENT ON TABLE public.attachments IS 'File attachment metadata for CRM entity records. record_type + record_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid record_type values: ''contact'', ''account'', ''deal'', ''lead'' (extended in migration 047). Orphan cleanup is the application''s responsibility: rows whose record_id no longer exists in the referenced entity table should be deleted when the parent is removed. The physical file (storage_key) must be deleted from object storage before or alongside the row. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510)'`);
 
-  // audit_log — append-only, monthly range-partitioned (MINCRM-521)
+  // audit_log — append-only, monthly range-partitioned
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.audit_log (
       id             uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -610,7 +610,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // notes — rich notes with soft-delete and polymorphic entity reference (MINCRM-510)
+  // notes — rich notes with soft-delete and polymorphic entity reference
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.notes (
       id          uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -633,7 +633,7 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`COMMENT ON TABLE public.notes IS 'Rich notes attached to CRM entity records, with soft-delete support. entity_type + entity_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid entity_type values: ''contact'', ''account'', ''deal'', ''lead''. Soft-deleted rows (deleted_at IS NOT NULL) are excluded from application queries but remain in the table; the partial GIN index on body_text also excludes them. Hard orphan cleanup (rows whose entity_id no longer exists) is the application''s responsibility. Soft-deleted orphans are harmless but may be purged by a periodic maintenance query. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510)'`);
 
-  // note_tags — junction table linking notes to the shared tags registry (MINCRM-506)
+  // note_tags — junction table linking notes to the shared tags registry
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.note_tags (
       note_id uuid NOT NULL,
@@ -643,7 +643,7 @@ exports.up = (pgm) => {
   `);
 
   // custom_field_definitions — admin-defined EAV schema (ADR-002)
-  // pii_excluded added by migration 125 (MINCRM-422)
+  // pii_excluded added by migration 125
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.custom_field_definitions (
       id           uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -662,7 +662,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // custom_field_values — EAV values (polymorphic record_id, MINCRM-510)
+  // custom_field_values — EAV values (polymorphic record_id)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.custom_field_values (
       id            uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -692,7 +692,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // webhook_delivery_logs — per-delivery attempt records (MINCRM-522, 30-day retention)
+  // webhook_delivery_logs — per-delivery attempt records
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.webhook_delivery_logs (
       id              uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -708,7 +708,7 @@ exports.up = (pgm) => {
     ) WITH (autovacuum_vacuum_scale_factor='0.05')
   `);
 
-  // import_jobs — CSV import tracking (MINCRM-522, 180-day retention for complete/failed)
+  // import_jobs — CSV import tracking
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.import_jobs (
       id             uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -729,7 +729,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // gdpr_deletion_log — Art. 17 erasure tracking (MINCRM-517, retained indefinitely)
+  // gdpr_deletion_log — Art. 17 erasure tracking
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.gdpr_deletion_log (
       id           uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -785,7 +785,7 @@ exports.up = (pgm) => {
       CONSTRAINT deal_tags_pkey PRIMARY KEY (deal_id, tag_id)
     )
   `);
-  // lead_tags — junction table linking leads to the shared tags registry (MINCRM-433)
+  // lead_tags — junction table linking leads to the shared tags registry
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.lead_tags (
       lead_id    uuid NOT NULL,
@@ -888,7 +888,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // feature_flags — feature gating with per-role overrides (MINCRM-511)
+  // feature_flags — feature gating with per-role overrides
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.feature_flags (
       flag_key           character varying(100) NOT NULL,
@@ -923,7 +923,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // feature_flag_beta_users — user-level targeting for feature flags (MINCRM-489)
+  // feature_flag_beta_users — user-level targeting for feature flags
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.feature_flag_beta_users (
       id        uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -937,7 +937,7 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`CREATE INDEX IF NOT EXISTS feature_flag_beta_users_flag_key_index ON public.feature_flag_beta_users USING btree (flag_key)`);
 
-  // feature_flag_user_overrides — absolute per-user force-on / force-off overrides (MINCRM-492)
+  // feature_flag_user_overrides — absolute per-user force-on / force-off overrides
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.feature_flag_user_overrides (
       id        uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -954,7 +954,7 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`CREATE INDEX IF NOT EXISTS feature_flag_user_overrides_flag_key_index ON public.feature_flag_user_overrides USING btree (flag_key)`);
 
-  // ai_configuration — singleton AI provider config (MINCRM-519 key versioning)
+  // ai_configuration — singleton AI provider config (key versioning)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.ai_configuration (
       singleton                        boolean DEFAULT true NOT NULL,
@@ -1009,7 +1009,7 @@ exports.up = (pgm) => {
   pgm.sql(`COMMENT ON COLUMN public.ai_configuration.churn_expansion_confidence_threshold IS 'Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469)'`);
   pgm.sql(`COMMENT ON COLUMN public.ai_configuration.web_search_enabled IS 'Admin toggle for the optional news-hook section of AI meeting briefs. (MINCRM-465)'`);
 
-  // smtp_configuration — singleton SMTP config (MINCRM-519 key versioning)
+  // smtp_configuration — singleton SMTP config (key versioning)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.smtp_configuration (
       singleton         boolean DEFAULT true NOT NULL,
@@ -1050,7 +1050,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // ai_sessions — multi-session AI conversation persistence (MINCRM-421)
+  // ai_sessions — multi-session AI conversation persistence
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.ai_sessions (
       id         uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1062,7 +1062,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // ai_messages — ordered message log for each ai_session (MINCRM-421, MINCRM-423, MINCRM-431, MINCRM-425, MINCRM-429, MINCRM-430)
+  // ai_messages — ordered message log for each ai_session
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.ai_messages (
       id                uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1078,7 +1078,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // user_ai_context — per-user key/value preferences injected into Claude system prompt (MINCRM-427)
+  // user_ai_context — per-user key/value preferences injected into Claude system prompt
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.user_ai_context (
       id         uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1092,7 +1092,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // ai_gdpr_cascade_log — audit log for GDPR AI data cascade runs (MINCRM-446)
+  // ai_gdpr_cascade_log — audit log for GDPR AI data cascade runs
   // Must be after users table (triggered_by FK). contact_id has no FK because the
   // contact row is typically already deleted when this table is queried.
   pgm.sql(`
@@ -1115,7 +1115,7 @@ exports.up = (pgm) => {
   pgm.sql(`COMMENT ON TABLE public.ai_gdpr_cascade_log IS 'Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446)'`);
   pgm.sql(`COMMENT ON COLUMN public.ai_gdpr_cascade_log.triggered_by IS 'NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run.'`);
 
-  // currency_rate_history — immutable rate audit log (MINCRM-526)
+  // currency_rate_history — immutable rate audit log
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.currency_rate_history (
       id              uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1285,7 +1285,7 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS automation_rules_trigger_type_index ON public.automation_rules USING btree (trigger_type)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS automation_rules_is_demo_index ON public.automation_rules USING btree (is_demo)`);
 
-  // automation_rule_logs (MINCRM-082 autovacuum tuning)
+  // automation_rule_logs (autovacuum tuning)
   pgm.sql(`CREATE INDEX IF NOT EXISTS automation_rule_logs_rule_id_triggered_at_index ON public.automation_rule_logs USING btree (rule_id, triggered_at)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS automation_rule_logs_triggered_at_idx ON public.automation_rule_logs USING btree (triggered_at)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS automation_rule_logs_outcome_idx ON public.automation_rule_logs USING btree (outcome) WHERE (outcome = 'error'::public.automation_log_outcome)`);
@@ -1344,7 +1344,7 @@ exports.up = (pgm) => {
   // custom_field_values
   pgm.sql(`CREATE INDEX IF NOT EXISTS custom_field_values_record_id_index ON public.custom_field_values USING btree (record_id)`);
 
-  // webhook_delivery_logs (MINCRM-082 autovacuum tuning)
+  // webhook_delivery_logs (autovacuum tuning)
   pgm.sql(`CREATE INDEX IF NOT EXISTS webhook_delivery_logs_subscription_id_index ON public.webhook_delivery_logs USING btree (subscription_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS webhook_delivery_logs_event_id_index ON public.webhook_delivery_logs USING btree (event_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS webhook_delivery_logs_delivered_at_idx ON public.webhook_delivery_logs USING btree (delivered_at)`);
@@ -1352,7 +1352,7 @@ exports.up = (pgm) => {
   // import_jobs
   pgm.sql(`CREATE INDEX IF NOT EXISTS import_jobs_status_idx ON public.import_jobs USING btree (status)`);
 
-  // gdpr_deletion_log (MINCRM-517 unique constraint assumption)
+  // gdpr_deletion_log (unique constraint assumption)
   pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS gdpr_deletion_log_record_idx ON public.gdpr_deletion_log USING btree (record_type, record_id)`);
 
   // lead_status_history
@@ -1388,23 +1388,23 @@ exports.up = (pgm) => {
   // ai_token_usage
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_token_usage_year_month_index ON public.ai_token_usage USING btree (year_month)`);
 
-  // ai_sessions / ai_messages (MINCRM-421)
+  // ai_sessions / ai_messages
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_sessions_user_id_idx ON public.ai_sessions USING btree (user_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_sessions_user_id_updated_at_idx ON public.ai_sessions USING btree (user_id, updated_at)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_messages_session_id_idx ON public.ai_messages USING btree (session_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_messages_session_id_created_at_idx ON public.ai_messages USING btree (session_id, created_at)`);
 
-  // user_ai_context (MINCRM-427)
+  // user_ai_context
   pgm.sql(`CREATE INDEX IF NOT EXISTS user_ai_context_user_id_idx ON public.user_ai_context USING btree (user_id)`);
 
-  // ai_gdpr_cascade_log (MINCRM-446)
+  // ai_gdpr_cascade_log
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_gdpr_cascade_log_contact_id_idx ON public.ai_gdpr_cascade_log USING btree (contact_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_gdpr_cascade_log_triggered_at_idx ON public.ai_gdpr_cascade_log USING btree (triggered_at)`);
 
   // currency_rate_history
   pgm.sql(`CREATE INDEX IF NOT EXISTS currency_rate_history_code_effective_from_idx ON public.currency_rate_history USING btree (code, effective_from DESC)`);
 
-  // teams (migration 103 — MINCRM-537)
+  // teams (migration 103)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.teams (
       id             uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1421,7 +1421,7 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS teams_name_lower_idx ON public.teams (lower(name))`);
 
-  // team_memberships (migration 103 — MINCRM-537)
+  // team_memberships (migration 103)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.team_memberships (
       team_id uuid NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
@@ -1623,8 +1623,8 @@ exports.up = (pgm) => {
     END
     $$
   `);
-  // org_visibility_settings (migration 105 — MINCRM-538; object_type widened to
-  // include 'account' by migration 150 — MINCRM-472)
+  // org_visibility_settings (migration 105 —; object_type widened to
+  // include 'account' by migration 150)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.org_visibility_settings (
       object_type  text        NOT NULL,
@@ -1657,7 +1657,7 @@ exports.up = (pgm) => {
   pgm.sql(`GRANT SELECT ON TABLE public.users TO minicrm_app`);
   pgm.sql(`GRANT EXECUTE ON FUNCTION public.app_current_user_id() TO minicrm_app`);
 
-  // custom_roles / role_capabilities / user_custom_roles (migration 106 — MINCRM-542)
+  // custom_roles / role_capabilities / user_custom_roles (migration 106)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.custom_roles (
       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1712,7 +1712,7 @@ exports.up = (pgm) => {
     ON CONFLICT (name) DO NOTHING
   `);
 
-  // sso_jit_default_role_id — must be after custom_roles is seeded above (migration 110 — MINCRM-540)
+  // sso_jit_default_role_id — must be after custom_roles is seeded above (migration 110)
   pgm.sql(`
     INSERT INTO public.system_settings (key, value, updated_at)
     SELECT 'sso_jit_default_role_id', r.id::text, now()
@@ -1788,7 +1788,7 @@ exports.up = (pgm) => {
     ON CONFLICT (user_id, role_id) DO NOTHING
   `);
 
-  // scim_tokens (migration 111 — MINCRM-541)
+  // scim_tokens (migration 111)
   // Must be after users table; placed here (after custom_roles) for grouping consistency.
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.scim_tokens (
@@ -1802,7 +1802,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // scim_group_role_mappings (migration 111 — MINCRM-541)
+  // scim_group_role_mappings (migration 111)
   // FK to custom_roles — must be after custom_roles is created above.
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.scim_group_role_mappings (
@@ -1816,7 +1816,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // feature_flag_groups (migration 119 — MINCRM-491)
+  // feature_flag_groups (migration 119)
   // Gate layer above individual flags — disabling a group blocks all member flags for
   // non-beta users. Must be after users table.
   pgm.sql(`
@@ -1832,7 +1832,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // feature_flag_group_beta_users (migration 120 — MINCRM-491)
+  // feature_flag_group_beta_users (migration 120)
   // Users in a group's beta list bypass the group gate even when the group is disabled.
   // Must be after feature_flag_groups and users tables.
   pgm.sql(`
@@ -1845,7 +1845,7 @@ exports.up = (pgm) => {
     )
   `);
 
-  // group_key column on feature_flags (migration 121 — MINCRM-491)
+  // group_key column on feature_flags (migration 121)
   // A flag may belong to at most one group. ON DELETE SET NULL so deleting a group
   // ungroups its flags without data loss. Must be after feature_flag_groups.
   pgm.sql(`
@@ -1861,7 +1861,7 @@ exports.up = (pgm) => {
   // the individual migration files this section squashes.
   // -------------------------------------------------------------------------
 
-  // ai_token_usage_daily (migration 138 — MINCRM-459)
+  // ai_token_usage_daily (migration 138)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.ai_token_usage_daily (
       id             uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1879,7 +1879,7 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_token_usage_daily_usage_date_idx ON public.ai_token_usage_daily USING btree (usage_date)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_token_usage_daily_feature_idx ON public.ai_token_usage_daily USING btree (feature)`);
 
-  // ai_field_exclusions (migration 139 — MINCRM-461)
+  // ai_field_exclusions (migration 139)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.ai_field_exclusions (
       id           uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1895,7 +1895,7 @@ exports.up = (pgm) => {
   pgm.sql(`COMMENT ON TABLE public.ai_field_exclusions IS 'Admin-configurable AI payload exclusion toggles for standard entity fields. Immutable defaults live in code (ALWAYS_EXCLUDED_FIELDS), not here. (MINCRM-461)'`);
   pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS ai_field_exclusions_entity_field_idx ON public.ai_field_exclusions USING btree (entity_type, field_name)`);
 
-  // deal_win_loss_insights (migration 140 — MINCRM-464)
+  // deal_win_loss_insights (migration 140)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.deal_win_loss_insights (
       id                uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1915,7 +1915,7 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS deal_win_loss_insights_generated_at_idx ON public.deal_win_loss_insights USING btree (generated_at)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS deal_win_loss_insights_is_win_pattern_idx ON public.deal_win_loss_insights USING btree (is_win_pattern)`);
 
-  // contact_champion_blocker_signals (migration 141 — MINCRM-466)
+  // contact_champion_blocker_signals (migration 141)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.contact_champion_blocker_signals (
       id                    uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1943,7 +1943,7 @@ exports.up = (pgm) => {
   pgm.sql(`COMMENT ON TABLE public.contact_champion_blocker_signals IS 'Per-contact AI champion/blocker classification (MINCRM-466). One row per contact — replaced/updated after each new activity, not appended.'`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS contact_champion_blocker_signals_status_idx ON public.contact_champion_blocker_signals USING btree (status)`);
 
-  // account_churn_expansion_signals + notifications (migration 142 — MINCRM-469)
+  // account_churn_expansion_signals + notifications (migration 142)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.account_churn_expansion_signals (
       id                    uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -1964,7 +1964,7 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS account_churn_expansion_signals_account_id_idx ON public.account_churn_expansion_signals USING btree (account_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS account_churn_expansion_signals_active_idx ON public.account_churn_expansion_signals USING btree (signal_type) WHERE cleared_at IS NULL`);
 
-  // Prevents duplicate active churn/expansion signals per account (migration 145 — MINCRM-469)
+  // Prevents duplicate active churn/expansion signals per account (migration 145)
   pgm.sql(`
     CREATE UNIQUE INDEX IF NOT EXISTS account_churn_expansion_signals_one_active_per_type
       ON public.account_churn_expansion_signals USING btree (account_id, signal_type)
@@ -1989,7 +1989,7 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS notifications_user_id_created_at_idx ON public.notifications USING btree (user_id, created_at DESC)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS notifications_user_id_unread_idx ON public.notifications USING btree (user_id) WHERE read_at IS NULL`);
 
-  // activity_objection_signals (migration 143 — MINCRM-471)
+  // activity_objection_signals (migration 143)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.activity_objection_signals (
       id            uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -2005,7 +2005,7 @@ exports.up = (pgm) => {
   pgm.sql(`COMMENT ON TABLE public.activity_objection_signals IS 'AI objection classification per activity (MINCRM-471). One row per classified activity — classification runs on-demand, not pre-computed, so this table is populated lazily as reps view objection-logged activities.'`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS activity_objection_signals_category_idx ON public.activity_objection_signals USING btree (category)`);
 
-  // activity_meeting_briefs (migration 147 — MINCRM-465)
+  // activity_meeting_briefs (migration 147)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.activity_meeting_briefs (
       id             uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -2019,7 +2019,7 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`COMMENT ON TABLE public.activity_meeting_briefs IS 'Most recently generated AI pre-meeting brief per activity (MINCRM-465). One row per activity — replaced on regenerate, not appended.'`);
 
-  // activity_sentiment_scores (migration 149 — MINCRM-472)
+  // activity_sentiment_scores (migration 149)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.activity_sentiment_scores (
       id                      uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -2039,7 +2039,7 @@ exports.up = (pgm) => {
   pgm.sql(`COMMENT ON TABLE public.activity_sentiment_scores IS 'Per-activity AI sentiment classification (MINCRM-472). One row per activity, scored asynchronously after save.'`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS activity_sentiment_scores_activity_id_idx ON public.activity_sentiment_scores USING btree (activity_id)`);
 
-  // account_health_scoring_config / account_health_scores / account_health_score_history (migration 151 — MINCRM-467)
+  // account_health_scoring_config / account_health_scores / account_health_score_history (migration 151)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.account_health_scoring_config (
       id                              boolean NOT NULL DEFAULT true,
@@ -2114,7 +2114,7 @@ exports.up = (pgm) => {
   pgm.sql(`COMMENT ON TABLE public.account_health_score_history IS 'Append-only per-run history of account health scores (MINCRM-467), feeding the 6-month trend sparkline on the Account detail view. One row inserted per account per nightly run.'`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS account_health_score_history_account_id_computed_at_idx ON public.account_health_score_history USING btree (account_id, computed_at DESC)`);
 
-  // contact_followup_timing_suggestions (migration 152 — MINCRM-470)
+  // contact_followup_timing_suggestions (migration 152)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.contact_followup_timing_suggestions (
       contact_id       uuid NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,

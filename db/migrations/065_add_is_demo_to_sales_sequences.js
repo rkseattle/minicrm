@@ -2,7 +2,7 @@
 
 /**
  * Migration 065: Add is_demo flag to sales_sequences so demo sequences can be
- * identified and removed by the demo teardown routine. (MINCRM-403)
+ * identified and removed by the demo teardown routine.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

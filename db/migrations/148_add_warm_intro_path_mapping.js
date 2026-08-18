@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 148: AI warm introduction path mapping. (MINCRM-468)
+ * Migration 148: AI warm introduction path mapping.
  *
  * Adds only the ai_warm_intro_path feature flag. No new table: warm-path
  * results are read-only suggestions computed at request time from existing

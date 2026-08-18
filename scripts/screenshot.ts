@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   const saved: string[] = [];
 
   try {
-    // Login via the UI (same approach as globalSetup.ts). MINCRM-219
+    // Login via the UI (same approach as globalSetup.ts).
     await page.goto(`${BASE_URL}/login`);
     await page.getByLabel(/email/i).fill(ADMIN_EMAIL);
     await page.getByLabel(/password/i).fill(ADMIN_PASSWORD as string);

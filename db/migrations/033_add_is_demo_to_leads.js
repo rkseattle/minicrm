@@ -1,7 +1,7 @@
 /**
  * Migration 033: Add is_demo flag to leads and automation_rules tables.
  * Consistent with migration 013's pattern for contacts/accounts/deals/activities.
- * Required before demo leads and automation rules can be seeded and cleanly removed. (MINCRM-206)
+ * Required before demo leads and automation rules can be seeded and cleanly removed.
  */
 
 'use strict';

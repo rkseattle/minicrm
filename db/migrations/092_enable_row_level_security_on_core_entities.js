@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 092: Enable PostgreSQL Row-Level Security on core CRM entity tables. (MINCRM-518)
+ * Migration 092: Enable PostgreSQL Row-Level Security on core CRM entity tables.
  *
  * Adds defense-in-depth ownership enforcement at the DB engine level. Even if application
  * code contains a logic bug, direct DB access, or a future reporting tool, the RLS policy

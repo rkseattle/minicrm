@@ -1,7 +1,7 @@
 /**
  * Migration 043: Create webhook_subscriptions and webhook_delivery_logs tables.
  * Enables outbound webhooks — both system-level subscriptions and automation-triggered
- * deliveries. (MINCRM-279)
+ * deliveries.
  *
  * secret_hash stores AES-256-GCM encrypted plaintext (not bcrypt) so the server
  * can recover the signing key for HMAC-SHA256 payload signatures at delivery time.

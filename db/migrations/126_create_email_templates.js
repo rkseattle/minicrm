@@ -11,7 +11,6 @@
  * stored as varchar with a CHECK so new categories can be added without DDL
  * by updating the constraint in a future migration.
  *
- * (MINCRM-422, MINCRM-437)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

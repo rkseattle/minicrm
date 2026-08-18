@@ -2,7 +2,7 @@
 
 /**
  * Migration 081: Add updated_at to custom_field_definitions and import_jobs,
- * and attach the set_updated_at() trigger to both tables. (MINCRM-514)
+ * and attach the set_updated_at() trigger to both tables.
  *
  * custom_field_definitions has only created_at — field definitions can be
  * renamed or reordered with no record of when the last change occurred.

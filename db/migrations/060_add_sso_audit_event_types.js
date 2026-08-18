@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 060: Extend audit_log event_type CHECK constraint with SSO events. (MINCRM-399)
+ * Migration 060: Extend audit_log event_type CHECK constraint with SSO events.
  *
  * sso_login     — user authenticated via an external IdP (SAML / OIDC)
  * sso_provisioned — new user account created automatically on first SSO login (JIT)

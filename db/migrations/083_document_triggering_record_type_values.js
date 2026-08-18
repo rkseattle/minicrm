@@ -2,10 +2,10 @@
 
 /**
  * Migration 083: Document valid values for automation_rule_logs.triggering_record_type
- * via a column comment. (MINCRM-516)
+ * via a column comment.
  *
  * The column is a bare varchar(50) with no CHECK constraint. Following the
- * precedent established by MINCRM-501 (migration 076) for audit_log, we do NOT
+ * the established precedent (migration 076) for audit_log, we do NOT
  * add a DB-level CHECK constraint here. The reasoning is identical: valid values
  * evolve as new trigger entity types are added; each addition would require a new
  * migration solely to amend the constraint, creating unnecessary migration churn

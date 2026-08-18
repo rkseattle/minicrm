@@ -2,7 +2,7 @@
 
 /**
  * Migration 076: Drop CHECK constraints on audit_log.event_type and
- * audit_log.record_type. (MINCRM-501)
+ * audit_log.record_type.
  *
  * These constraints have been re-created by every migration that introduced a
  * new audit event or record type, creating unnecessary migration churn and a

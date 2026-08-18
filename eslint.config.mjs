@@ -129,7 +129,7 @@ const clientTestConfig = {
 };
 
 // ── Coverage dashboard (React + JSX accessibility, no i18n — English-only) ────
-// Standalone app (MINCRM-628/629) — same React/a11y/data-testid conventions as
+// Standalone app — same React/a11y/data-testid conventions as
 // client/, but i18next/no-literal-string is intentionally omitted: this is an
 // internal developer/QA tool with no i18n system of its own (see coverage-
 // dashboard's own README).
@@ -230,8 +230,8 @@ const testConfig = {
 // Locator, etc.) from @playwright/test. All element interactions must go through
 // healPage.locate / click / fill. test/expect must come from app fixtures.
 //
-// Also enforces the two-strategy minimum (MINCRM-313) and intent strings
-// (MINCRM-309) on every page.locate() call in spec and behavior files.
+// Also enforces the two-strategy minimum and intent strings
+// on every page.locate() call in spec and behavior files.
 //
 // Framework internals (qa/e2e/framework/**) and framework self-tests
 // (qa/e2e/tests/framework/**) are intentionally excluded — they wrap Playwright
@@ -272,7 +272,7 @@ const e2eSpecConfig = {
 //
 // Allowed in specs: setViewportSize, mockRoute, unmockRoute, unmockAllRoutes,
 // waitForTimeout, waitForLoadState, on, once, removeListener, pause.
-// Everything else that belongs in a behavior is forbidden. (MINCRM-401)
+// Everything else that belongs in a behavior is forbidden.
 //
 // Currently set to 'warn' because existing spec files have pre-existing
 // violations that will be cleaned up incrementally. Escalate to 'error'
@@ -290,7 +290,7 @@ const e2eSpecDirectPageConfig = {
 
 // ── E2E page object files — enforce intent strings and fallback strategies ───
 // Page objects under qa/e2e/pages/ must supply a non-empty `intent` string and
-// at least two strategies on every page.locate() call. (MINCRM-309, MINCRM-313)
+// at least two strategies on every page.locate() call.
 //
 // Framework layer and apps/ helpers are excluded — they are not page objects
 // and have different constraints.

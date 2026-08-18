@@ -2,7 +2,7 @@
  * Migration 017: Create overdue_task_notifications table
  *
  * Tracks which tasks have already triggered an overdue email so we
- * don't spam the user with the same overdue task on every daily run. (MINCRM-161)
+ * don't spam the user with the same overdue task on every daily run.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

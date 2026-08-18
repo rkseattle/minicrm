@@ -3,7 +3,7 @@
 /**
  * Migration 089: Add CHECK constraint on feature_flags.role_overrides to enforce
  * valid key names at the DB layer, and document the transitional status of the
- * column. (MINCRM-511)
+ * column.
  *
  * The valid shape is: null, or a JSON object whose keys are exclusively valid
  * role names ('admin', 'rep') and whose values are booleans.
@@ -12,7 +12,7 @@
  * key validation via a dedicated immutable function that iterates jsonb keys
  * and returns false on any unknown key. The CHECK calls this function.
  *
- * role_overrides is a transitional column: MINCRM-487 will introduce first-class
+ * role_overrides is a transitional column: a later epic introduces first-class
  * user-level override tables. Once that epic is live, role_overrides will be
  * dropped. See featureFlagSchema.ts for documentation.
  */

@@ -1,6 +1,6 @@
 /**
  * remove-demo.ts — Thin CLI wrapper for removing demo data.
- * All removal logic lives in demoService.ts. (MINCRM-206)
+ * All removal logic lives in demoService.ts.
  *
  * Usage:
  *   npm run remove:demo

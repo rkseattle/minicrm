@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 090: Add api_key_key_version to ai_configuration. (MINCRM-519)
+ * Migration 090: Add api_key_key_version to ai_configuration.
  *
  * Encryption key versioning allows the application key to be rotated without a
  * maintenance window. The application maintains a versioned keyring; encryption

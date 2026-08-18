@@ -1,5 +1,5 @@
 /**
- * Migration 035: Create currencies table (MINCRM-251)
+ * Migration 035: Create currencies table
  *
  * Introduces a currencies table to store exchange rates relative to the home currency.
  * The home currency row always has is_home = true and rate_to_home = 1.000000.

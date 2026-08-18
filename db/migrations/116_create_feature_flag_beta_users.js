@@ -4,7 +4,6 @@
  * Migration 116: Create feature_flag_beta_users table.
  * Enables user-level targeting for feature flags — a user enrolled in the beta
  * for a disabled flag will see it as enabled, regardless of org-wide state.
- * (MINCRM-489)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

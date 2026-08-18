@@ -23,7 +23,6 @@
  *   ai_dpa_acknowledged_for_provider  ''
  *   ai_custom_dpa_url             ''
  *
- * (MINCRM-457)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

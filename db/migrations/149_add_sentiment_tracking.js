@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 149: AI sentiment tracking over time. (MINCRM-472)
+ * Migration 149: AI sentiment tracking over time.
  *
  * Adds:
  *   1. ai_sentiment_tracking feature flag (child of the AI category).

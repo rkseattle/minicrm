@@ -1,5 +1,5 @@
 /**
- * Migration 113 — Add scim_external_id to users (MINCRM-541)
+ * Migration 113 — Add scim_external_id to users
  *
  * Adds a nullable scim_external_id TEXT UNIQUE column to users so that the
  * SCIM /Users endpoint can scope its list to SCIM-provisioned users only,

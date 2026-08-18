@@ -1,5 +1,5 @@
 /**
- * Migration 112 — Add scim_group_id to teams (MINCRM-541)
+ * Migration 112 — Add scim_group_id to teams
  *
  * Adds a nullable scim_group_id TEXT UNIQUE column to the teams table so that
  * SCIM-provisioned teams can be looked up by their external IdP group ID.

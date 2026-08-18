@@ -1,5 +1,5 @@
 /**
- * Migration 036: Add SMTP configuration rows to system_settings (MINCRM-254)
+ * Migration 036: Add SMTP configuration rows to system_settings
  *
  * Stores SMTP configuration as key-value rows in the existing system_settings
  * table, matching the pattern used by storage and other settings. The password

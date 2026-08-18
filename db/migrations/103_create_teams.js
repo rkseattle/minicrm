@@ -1,5 +1,5 @@
 /**
- * Migration 103 — Create teams and team_memberships tables (MINCRM-537)
+ * Migration 103 — Create teams and team_memberships tables
  *
  * teams: hierarchical unit for data scoping, manager visibility, lead routing,
  * and IdP group mapping. parent_team_id enables arbitrary nesting depth; circular

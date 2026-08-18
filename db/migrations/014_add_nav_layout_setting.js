@@ -3,7 +3,6 @@
  *
  * Seeds the default navigation layout setting ('top') so the app has a
  * value to read on first boot without requiring a separate bootstrap step.
- * (MINCRM-133)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

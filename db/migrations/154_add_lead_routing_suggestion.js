@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 154: AI intelligent lead routing suggestion. (MINCRM-475)
+ * Migration 154: AI intelligent lead routing suggestion.
  *
  * Adds:
  *   1. ai_lead_routing_suggestion feature flag (child of the AI category).

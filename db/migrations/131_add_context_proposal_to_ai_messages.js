@@ -7,7 +7,6 @@
  * extracts the structured proposal from Claude's response text, strips the
  * marker from the stored content, and persists the proposal here so the
  * client can render an inline accept/dismiss chip without re-parsing text.
- * (MINCRM-429, MINCRM-430)
  */
 
 exports.shorthands = undefined;

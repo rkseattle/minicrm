@@ -2,7 +2,7 @@
  * Migration 018: create attachments table.
  * Stores metadata for files attached to contacts, accounts, or deals.
  * The actual file bytes live in S3-compatible object storage; only the
- * storage_key reference is kept here. (MINCRM-167)
+ * storage_key reference is kept here.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

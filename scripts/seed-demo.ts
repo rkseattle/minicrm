@@ -1,6 +1,6 @@
 /**
  * seed-demo.ts — Thin CLI wrapper for seeding demo data.
- * All fixture data and insert logic live in demoService.ts. (MINCRM-206)
+ * All fixture data and insert logic live in demoService.ts.
  *
  * Usage:
  *   npm run seed:demo               # insert demo data (idempotent — skips if already seeded)

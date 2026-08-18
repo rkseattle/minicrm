@@ -6,7 +6,7 @@
  * Effective probability = COALESCE(d.probability, ps.probability).
  *
  * Stage default probabilities are already stored on the pipeline_stages table
- * (migration 021). (MINCRM-179)
+ * (migration 021).
  */
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */

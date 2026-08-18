@@ -6,7 +6,7 @@
  * Gates the Coverage/TIA mapping query API
  * (/api/v1/admin/coverage/mapping/*) — read-only lookups over
  * coverage_test_links (which tests cover a given unit, and vice versa),
- * scoped by commit SHA (MINCRM-621). Independent of
+ * scoped by commit SHA. Independent of
  * coverage_pipeline_ingestion (migration 158): a server can have ingested
  * coverage_test_links data while the query API itself stays off, e.g.
  * during rollout.

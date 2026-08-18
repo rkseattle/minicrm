@@ -1,6 +1,6 @@
 /**
  * Migration 094: Migrate flat address columns from contacts to contact_addresses,
- * then drop the deprecated columns. (MINCRM-500)
+ * then drop the deprecated columns.
  *
  * Background: Migration 024 added six flat address columns to contacts. Migration 030
  * introduced contact_addresses for multi-address support and marked the flat columns

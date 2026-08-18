@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Migration 140: AI win/loss pattern analysis. (MINCRM-464)
+ * Migration 140: AI win/loss pattern analysis.
  *
  * Adds:
  *   1. ai_win_loss_insights feature flag (child of ai_features, same seeding

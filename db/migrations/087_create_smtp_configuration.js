@@ -2,7 +2,7 @@
 
 /**
  * Migration 087: Create smtp_configuration table and migrate SMTP settings out of
- * the system_settings KV blob into a typed, singleton config table. (MINCRM-502)
+ * the system_settings KV blob into a typed, singleton config table.
  *
  * Replaces the 5 SMTP-related rows seeded into system_settings by migration 036.
  *

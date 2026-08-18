@@ -1,7 +1,6 @@
 /**
  * Migration 026: Add self-referential parent_account_id FK to accounts table.
  * SET NULL on parent delete so subsidiaries are not deleted when a parent is removed.
- * (MINCRM-184)
  */
 
 exports.up = async (pgm) => {

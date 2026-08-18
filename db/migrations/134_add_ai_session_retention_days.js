@@ -10,7 +10,6 @@
  * user_ai_context entries are explicitly excluded from this retention policy
  * (they are persistent personalisation data, not conversation transcripts).
  *
- * (MINCRM-447)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

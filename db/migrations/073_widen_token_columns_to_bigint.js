@@ -11,7 +11,6 @@
  *
  * All three columns are widened to bigint (int8, max ~9.2 × 10^18).
  *
- * (MINCRM-458)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

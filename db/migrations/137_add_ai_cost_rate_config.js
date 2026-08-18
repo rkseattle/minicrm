@@ -11,7 +11,6 @@
  * Defaults approximate a Claude Sonnet-class rate; admins should confirm/adjust
  * for their actual provider agreement.
  *
- * (MINCRM-459)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

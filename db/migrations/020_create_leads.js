@@ -1,7 +1,6 @@
 /**
  * Migration 020: create leads and lead_status_history tables.
  * Adds a dedicated leads entity for unqualified prospects.
- * (MINCRM-173, MINCRM-174, MINCRM-175)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
@@ -44,14 +43,14 @@ exports.up = (pgm) => {
       notNull: false,
       check: "lead_source IN ('Web', 'Referral', 'Trade Show', 'Cold Outreach', 'Other')",
     },
-    /** MINCRM-174: lifecycle status */
+    /** lifecycle status */
     status: {
       type: 'text',
       notNull: true,
       default: pgm.func("'New'"),
       check: "status IN ('New', 'Contacted', 'Qualified', 'Disqualified')",
     },
-    /** MINCRM-174: optional free-text reason when status = Disqualified */
+    /** optional free-text reason when status = Disqualified */
     disqualification_reason: {
       type: 'text',
       notNull: false,
@@ -66,7 +65,7 @@ exports.up = (pgm) => {
       references: 'users',
       onDelete: 'RESTRICT',
     },
-    /** MINCRM-175: set when the lead is converted; lead is never deleted */
+    /** set when the lead is converted; lead is never deleted */
     converted_at: {
       type: 'timestamptz',
       notNull: false,
@@ -107,7 +106,7 @@ exports.up = (pgm) => {
   pgm.createIndex('leads', 'created_at');
 
   // ── lead_status_history ────────────────────────────────────────────────────
-  // Records each status change for the activity timeline (MINCRM-174)
+  // Records each status change for the activity timeline
 
   pgm.createTable('lead_status_history', {
     id: {
@@ -147,7 +146,7 @@ exports.up = (pgm) => {
   pgm.createIndex('lead_status_history', 'lead_id');
 
   // ── Back-reference columns on contacts and deals ──────────────────────────
-  // Allows contact/deal detail pages to show "Converted from lead …" (MINCRM-175)
+  // Allows contact/deal detail pages to show "Converted from lead …"
 
   pgm.addColumns('contacts', {
     source_lead_id: {

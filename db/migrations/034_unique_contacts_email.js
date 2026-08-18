@@ -1,5 +1,5 @@
 /**
- * Migration 034 — Add UNIQUE constraint to contacts.email (MINCRM-247)
+ * Migration 034 — Add UNIQUE constraint to contacts.email
  *
  * Precondition: no duplicate email values may exist in the contacts table.
  * The migration will fail if duplicates are present. Verify before applying:

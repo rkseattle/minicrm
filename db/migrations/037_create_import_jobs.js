@@ -1,5 +1,5 @@
 /**
- * Migration 037: Create import_jobs table for async CSV import (MINCRM-255)
+ * Migration 037: Create import_jobs table for async CSV import
  *
  * Stores the state of background CSV import jobs so the client can poll for
  * progress and retrieve the final result without holding open the HTTP connection.

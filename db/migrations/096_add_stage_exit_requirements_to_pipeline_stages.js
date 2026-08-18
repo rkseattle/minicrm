@@ -1,5 +1,5 @@
 /**
- * Migration 096: Add stage_exit_requirements jsonb column to pipeline_stages. (MINCRM-527)
+ * Migration 096: Add stage_exit_requirements jsonb column to pipeline_stages.
  *
  * This column allows each pipeline stage to declare which deal fields must be present
  * (required_fields) or should ideally be present (warning_fields) before a deal can

@@ -14,7 +14,6 @@
  *   for historical reporting). Admins are tracked in org totals but are exempt from
  *   per-user limit enforcement.
  *
- * (MINCRM-458)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

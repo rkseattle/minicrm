@@ -1,5 +1,5 @@
 /**
- * Migration 108 — Grant create capabilities to the manager built-in role (MINCRM-542)
+ * Migration 108 — Grant create capabilities to the manager built-in role
  *
  * Migration 106 omitted contacts:create, deals:create, and activities:create for the
  * manager role. In practice managers need to create CRM records — they manage pipelines

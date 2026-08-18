@@ -1,7 +1,6 @@
 /**
  * Migration 025: Add account_type column to accounts table.
  * Nullable varchar with a CHECK constraint limiting values to the defined enum.
- * (MINCRM-183)
  */
 
 const VALID_TYPES = ['Prospect', 'Customer', 'Partner', 'Vendor', 'Competitor', 'Other'];

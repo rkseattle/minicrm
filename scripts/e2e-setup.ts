@@ -5,17 +5,17 @@
  *   docker compose -f docker-compose.test.yml up -d
  *
  * Steps:
- *   1. Create minicrm_e2e database and run migrations (MINCRM-330)
- *   2. Seed E2E admin user into minicrm_e2e (MINCRM-330)
+ *   1. Create minicrm_e2e database and run migrations
+ *   2. Seed E2E admin user into minicrm_e2e
  *   3. Wait for MinIO readiness (polls /minio/health/live, 30 s timeout)
  *   4. Create the test bucket idempotently via mc inside the MinIO container
  *   5. Seed MinIO storage config into system_settings (delegates to seed:e2e-storage)
- *   6. [STUB — activate with MINCRM-306] Seed Mailhog SMTP config into system_settings
+ *   6. [STUB — activate ] Seed Mailhog SMTP config into system_settings
  *
  * Usage:
  *   npm run e2e:setup
  *
- * MINCRM-317, MINCRM-318, MINCRM-330
+ *
  */
 
 import { execSync } from 'child_process';
@@ -23,7 +23,7 @@ import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 // Shared with scripts/pre-push-tia.ts so the two dev-port guards cannot drift,
-// and so the rule has a test runner (root scripts/ has none). (MINCRM-698)
+// and so the rule has a test runner (root scripts/ has none).
 import {
   resolveTestStackDbEnv,
   parseEnvFileContents,
@@ -51,7 +51,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  *
  * The guard's real contract is preserved: an operator who deliberately EXPORTS
  * DB_PORT=5432 is still refused, which is the case that exists to stop this
- * script truncating the dev database (MINCRM-684). (MINCRM-698)
+ * script truncating the dev database.
  */
 const EXPORTED_DB_PORT = process.env.DB_PORT;
 const EXPORTED_DB_HOST = process.env.DB_HOST;
@@ -62,7 +62,7 @@ const EXPORTED_DB_PASSWORD = process.env.DB_PASSWORD;
  * Reads the DB coordinates AND credentials straight out of qa/e2e/.env, bypassing process.env —
  * root .env is loaded below for NODE_ENCRYPTION_KEY and its DEV coordinates
  * would otherwise shadow the test stack's. This is what keeps a developer's
- * non-default test-stack host/port working. (MINCRM-698)
+ * non-default test-stack host/port working.
  */
 function readE2eEnvFileDbSource(): TestStackDbSource {
   try {
@@ -96,7 +96,7 @@ const E2E_DB_NAME = 'minicrm_e2e';
 
 // Host-side MinIO port. The test stack publishes MinIO on 9002 (docker-compose.test.yml)
 // so it cannot collide with anything already bound to 9000. Container-side stays 9000 —
-// see MINIO_SERVER_ENDPOINT below. (MINCRM-684)
+// see MINIO_SERVER_ENDPOINT below.
 const MINIO_HEALTH_URL = 'http://localhost:9002/minio/health/live';
 const MINIO_IMAGE = 'minio/minio:latest';
 const MINIO_BUCKET = 'minicrm-test-bucket';
@@ -129,7 +129,7 @@ const READINESS_POLL_INTERVAL_MS = 1_000;
  * Defaults DB_PORT to the TEST stack (5433), never 5432. With a 5432 fallback, every
  * child here would connect to the dev database, and resetE2eData() runs TRUNCATE
  * audit_log CASCADE plus mass DELETEs. That is precisely how the dev database was
- * wiped (MINCRM-684).
+ * wiped.
  *
  * Explicitly rejects an EXPORTED DB_PORT=5432 rather than silently proceeding: a
  * caller that exports it has almost certainly sourced the dev .env by mistake, and
@@ -140,7 +140,7 @@ const READINESS_POLL_INTERVAL_MS = 1_000;
  * earlier version read process.env and so could not tell a deliberate export from
  * root .env's own DB_PORT=5432, which this script loads for NODE_ENCRYPTION_KEY.
  * That refused every bare `npm run e2e:setup`. The docblock also asserted "neither
- * .env nor qa/e2e/.env sets DB_PORT" — both set it today. (MINCRM-698)
+ * .env nor qa/e2e/.env sets DB_PORT" — both set it today.
  *
  * The port/guard rule itself lives in qa/scripts/test-stack-db-env.ts, shared with
  * pre-push-tia.ts, so the two cannot drift and the rule has a test runner.
@@ -230,7 +230,7 @@ function ensureCoverageE2eDatabase(): void {
 // Without this step, test users accumulate across runs (50k+ users observed),
 // causing user-list pagination to time out and cascade failures across many
 // test suites. Runs before seedE2eAdmin so the admin row is always present
-// after the reset. (MINCRM-544)
+// after the reset.
 
 function resetE2eData(): void {
   const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -329,7 +329,7 @@ function createMinioBucket(): void {
 
   // Scoped to the test Compose project, not just the image: an `ancestor=` filter alone
   // matches every running MinIO on the machine and returns them newline-joined, which
-  // would interpolate into a malformed `docker exec`. (MINCRM-684)
+  // would interpolate into a malformed `docker exec`.
   const containerId = execSync(
     `docker ps --filter "label=com.docker.compose.project=${TEST_COMPOSE_PROJECT}" ` +
       `--filter "ancestor=${MINIO_IMAGE}" --format "{{.ID}}"`,
@@ -386,7 +386,7 @@ function seedStorageConfig(): void {
 }
 
 // ── Step 6: Seed Mailhog SMTP config into smtp_configuration ──────────────────
-// MINCRM-306: Configures the E2E server to send transactional email to Mailhog
+// Configures the E2E server to send transactional email to Mailhog
 // on port 1025. E2E tests can then assert on delivery via the Mailhog HTTP API.
 
 function seedSmtpConfig(): void {
@@ -411,14 +411,14 @@ function seedSmtpConfig(): void {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  ensureE2eDatabase(); // MINCRM-330: create + migrate minicrm_e2e
+  ensureE2eDatabase(); // create + migrate minicrm_e2e
   ensureCoverageE2eDatabase(); // create + migrate minicrm_coverage_e2e (separate DB, see coverageDb.ts)
-  resetE2eData(); // MINCRM-544: truncate accumulated test data before seeding
-  seedE2eAdmin(); // MINCRM-330: re-seed admin after reset
+  resetE2eData(); // truncate accumulated test data before seeding
+  seedE2eAdmin(); // re-seed admin after reset
   await waitForMinio();
   createMinioBucket();
   seedStorageConfig();
-  seedSmtpConfig(); // MINCRM-306: seed Mailhog SMTP config
+  seedSmtpConfig(); // seed Mailhog SMTP config
 
   console.log('[e2e:setup] Done. Local E2E infrastructure is ready.');
 }

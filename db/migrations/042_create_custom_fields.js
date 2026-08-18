@@ -1,6 +1,6 @@
 /**
  * Migration 042: Create custom_field_definitions and custom_field_values tables.
- * Enables per-deployment custom fields for contacts, accounts, and deals. (MINCRM-276)
+ * Enables per-deployment custom fields for contacts, accounts, and deals.
  *
  * The CASCADE on custom_field_values.definition_id means deleting a definition
  * automatically removes all its values across all records without requiring

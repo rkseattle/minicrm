@@ -1,5 +1,5 @@
 /**
- * Migration 104 — Add API token columns to users (MINCRM-536)
+ * Migration 104 — Add API token columns to users
  *
  * Service account users authenticate via a long-lived static token supplied in
  * the Authorization: Bearer header instead of a session cookie. The token is

@@ -5,8 +5,8 @@
  * Groups act as a gate layer above individual flags: if a group is disabled
  * and the requesting user is not in the group's beta list, no member flag can
  * resolve as enabled regardless of its own state.
- * Supports the same enable_at lazy-evaluation scheduling as MINCRM-488.
- * (MINCRM-491)
+ * Supports the same enable_at lazy-evaluation scheduling as.
+ *
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

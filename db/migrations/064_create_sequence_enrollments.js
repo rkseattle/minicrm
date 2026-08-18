@@ -4,7 +4,7 @@
  * Migration 064: Create sequence_enrollments and sequence_enrollment_logs tables.
  * An enrollment tracks one contact's progress through a sales sequence.
  * A partial unique index prevents duplicate active enrollments for the same
- * (sequence, contact) pair. (MINCRM-403)
+ * (sequence, contact) pair.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

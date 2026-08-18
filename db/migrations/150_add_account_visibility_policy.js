@@ -1,5 +1,5 @@
 /**
- * Migration 150 — Add 'account' to org_visibility_settings (MINCRM-472)
+ * Migration 150 — Add 'account' to org_visibility_settings
  *
  * Corrective migration on top of 105_create_org_visibility_settings: widens the
  * object_type CHECK constraint to also allow 'account', and seeds a default

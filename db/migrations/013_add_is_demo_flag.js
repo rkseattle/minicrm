@@ -3,7 +3,6 @@
  *
  * Demo records are identified by is_demo = true. This allows the seed-demo and
  * remove-demo scripts to insert and purge demo data without touching real records.
- * (MINCRM-102)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

@@ -13,7 +13,6 @@
  * usage without a migration; the server validates against a small in-code
  * allow-list instead.
  *
- * (MINCRM-459)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */

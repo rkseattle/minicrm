@@ -3,7 +3,6 @@
 /**
  * Migration 066: Create feature_flags table and seed all org-wide feature flags.
  * Flags are seeded at install time; new flags are added via migration only.
- * (MINCRM-463)
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
