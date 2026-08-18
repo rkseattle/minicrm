@@ -1,5 +1,5 @@
 /**
- * Tests for ErrorBoundary component (MINCRM-112).
+ * Tests for ErrorBoundary component.
  */
 
 import { screen } from '@testing-library/react';

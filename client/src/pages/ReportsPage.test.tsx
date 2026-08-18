@@ -1,5 +1,5 @@
 /**
- * Tests for ReportsPage — the adaptive sub-navigation shell. (MINCRM-294)
+ * Tests for ReportsPage — the adaptive sub-navigation shell.
  *
  * Covers:
  * - Default view (win-loss) when no URL param or localStorage

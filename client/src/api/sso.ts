@@ -1,5 +1,5 @@
 /**
- * SSO API module. (MINCRM-399)
+ * SSO API module.
  * Wraps the SSO configuration and status endpoints.
  */
 

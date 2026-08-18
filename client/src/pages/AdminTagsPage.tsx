@@ -1,7 +1,7 @@
 /**
- * Admin Tags page — manage all tags in the system (MINCRM-186).
+ * Admin Tags page — manage all tags in the system.
  * Lists every tag, allows renaming and deleting. Admin only.
- * Includes the restrict-tag-creation toggle (MINCRM-263).
+ * Includes the restrict-tag-creation toggle.
  */
 
 import { useState, useRef } from 'react';
@@ -67,7 +67,7 @@ export default function AdminTagsPage() {
     createMutation.mutate(trimmed);
   }
 
-  // ── Restrict-creation toggle (MINCRM-263) ─────────────────────────────────────
+  // ── Restrict-creation toggle ─────────────────────────────────────
 
   const { data: restrictData } = useQuery({
     queryKey: TAGS_RESTRICT_CREATION_QUERY_KEY,

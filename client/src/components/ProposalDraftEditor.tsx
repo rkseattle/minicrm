@@ -1,5 +1,5 @@
 /**
- * ProposalDraftEditor component. (MINCRM-473)
+ * ProposalDraftEditor component.
  *
  * Full-screen editor panel for an AI-generated proposal draft. Renders over
  * the full viewport (no existing modal precedent fits — every other modal in

@@ -1,9 +1,9 @@
 /**
- * TagInput — interactive tag editor for record detail pages (MINCRM-186).
+ * TagInput — interactive tag editor for record detail pages.
  * Supports typing to create or search existing tags, Enter/comma to confirm,
  * and × to remove attached tags.
  * Respects tags_restrict_creation setting: reps cannot create new tags inline
- * when restriction is enabled (MINCRM-263).
+ * when restriction is enabled.
  */
 
 import { useState, useRef, useEffect, useId } from 'react';
@@ -63,7 +63,7 @@ export default function TagInput({
   const { data: restrictData } = useQuery({
     queryKey: TAGS_RESTRICT_CREATION_QUERY_KEY,
     queryFn: getTagsRestrictCreation,
-    // Override global staleTime: 0 — restriction setting is stable while a form is being completed. (MINCRM-348)
+    // Override global staleTime: 0 — restriction setting is stable while a form is being completed.
     staleTime: 60_000,
   });
 
@@ -76,7 +76,7 @@ export default function TagInput({
       const { listAllTags } = await import('@/api/tags.js');
       return listAllTags();
     },
-    // Override global staleTime: 0 — tag suggestions are stable while a form is being completed. (MINCRM-348)
+    // Override global staleTime: 0 — tag suggestions are stable while a form is being completed.
     staleTime: 60_000,
   });
 

@@ -1,5 +1,5 @@
 /**
- * Pipeline stages API module (MINCRM-180).
+ * Pipeline stages API module.
  * Wraps the /api/settings/pipeline-stages endpoints.
  * GET is public; POST/PATCH/DELETE require admin auth.
  */
@@ -13,7 +13,7 @@ import type {
 } from '@shared/schemas/pipelineStageSchema.js';
 
 /**
- * Returns a React Query cache key scoped to a specific pipeline (MINCRM-397).
+ * Returns a React Query cache key scoped to a specific pipeline.
  * When pipelineId is undefined the key represents the default pipeline's stages.
  */
 export function pipelineStagesQueryKey(pipelineId?: string) {
@@ -83,7 +83,7 @@ export async function deletePipelineStage(id: string): Promise<{ id: string }> {
 }
 
 /**
- * Atomically reorders all pipeline stages. Admin only (MINCRM-381).
+ * Atomically reorders all pipeline stages. Admin only.
  * Sends the full ordered array of stage IDs; the server assigns sort_order 1..N
  * in a single transaction, eliminating transient unique-constraint conflicts.
  *

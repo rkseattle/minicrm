@@ -1,7 +1,6 @@
 /**
  * SequencesPage component.
  * Admin-only page for creating, enabling/disabling, and deleting sales sequences.
- * Implements MINCRM-403.
  */
 
 import { useState } from 'react';

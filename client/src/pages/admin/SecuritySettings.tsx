@@ -1,7 +1,7 @@
 /**
  * SecuritySettings — MFA enforcement, SSO, and SCIM provisioning.
  * Creates a dedicated Security & Identity tab consolidating auth/provisioning
- * concerns previously scattered across General and Integrations (MINCRM-563).
+ * concerns previously scattered across General and Integrations.
  */
 
 import MfaSettings from '@/pages/admin/MfaSettings.js';

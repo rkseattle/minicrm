@@ -2,7 +2,6 @@
  * LeadsPage component.
  * Lists all lead records with status badges, filter toggles, and an inline create form.
  * Supports inline status updates from the list view.
- * (MINCRM-173, MINCRM-174)
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -47,7 +46,7 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 /** React Query cache key for the leads list */
 export const LEADS_QUERY_KEY = ['leads'] as const;
 
-/** Tailwind badge classes by status (MINCRM-174) */
+/** Tailwind badge classes by status */
 const STATUS_BADGE: Record<string, string> = {
   New: 'bg-blue-100 text-blue-800',
   Contacted: 'bg-yellow-100 text-yellow-800',
@@ -64,7 +63,7 @@ export default function LeadsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const { canWrite } = usePermissions();
-  // bulk:operations capability is seeded for admin and manager roles (MINCRM-562)
+  // bulk:operations capability is seeded for admin and manager roles
   const canBulkOp = user?.role === 'admin' || user?.role === 'manager';
 
   const [showForm, setShowForm] = useState(false);
@@ -85,7 +84,7 @@ export default function LeadsPage() {
     ownerParam === 'me' ? 'me' : ownerParam === 'my_team' ? 'my_team' : 'all';
 
   /**
-   * Updates the ?owner query param and resets to page 1. (MINCRM-545)
+   * Updates the ?owner query param and resets to page 1.
    *
    * @param value - New owner filter value
    */
@@ -115,7 +114,7 @@ export default function LeadsPage() {
   // Inline status editing
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
 
-  // Bulk selection state (MINCRM-562)
+  // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -147,7 +146,7 @@ export default function LeadsPage() {
   const leads: LeadResponse[] = data?.data ?? [];
   const total = data?.total ?? 0;
 
-  // Clear selection whenever filters or page change (MINCRM-562); call through
+  // Clear selection whenever filters or page change; call through
   // a named fn to satisfy react-hooks/set-state-in-effect
   useEffect(() => {
     function reset() {
@@ -279,7 +278,7 @@ export default function LeadsPage() {
       updateLead(id, { status: status as LeadResponse['status'], version }),
     onSuccess: (_data, variables) => {
       // Update the cached lead list optimistically so the badge reflects the
-      // new status immediately without waiting for a full refetch (MINCRM-388).
+      // new status immediately without waiting for a full refetch.
       queryClient.setQueriesData<{ data: LeadResponse[]; total: number }>(
         { queryKey: LEADS_QUERY_KEY },
         (old) => {
@@ -460,7 +459,7 @@ export default function LeadsPage() {
           </p>
         )}
 
-        {/* Bulk action bar (MINCRM-562) */}
+        {/* Bulk action bar */}
         {canBulkOp && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}
@@ -490,7 +489,7 @@ export default function LeadsPage() {
           />
         )}
 
-        {/* Bulk modals (MINCRM-562) */}
+        {/* Bulk modals */}
         <BulkReassignModal
           isOpen={showBulkReassign}
           selectedCount={selectedIds.size}
@@ -527,7 +526,7 @@ export default function LeadsPage() {
           <PagedListLayout
             toolbar={
               <div className="flex flex-wrap items-center gap-3">
-                {/* Owner toggle (MINCRM-545) */}
+                {/* Owner toggle */}
                 <OwnerToggle
                   value={ownerFilter}
                   onChange={setOwnerFilter}

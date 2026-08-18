@@ -1,5 +1,5 @@
 /**
- * Tests for ForgotPasswordPage (MINCRM-156).
+ * Tests for ForgotPasswordPage.
  * Covers: form render, successful submission shows success message,
  * button loading state, server error display.
  */

@@ -1,8 +1,8 @@
 /**
  * GeneralSettings — Default language and navigation layout settings.
- * MFA enforcement moved to MfaSettings (MINCRM-563).
- * Setup checklist reset moved to SetupChecklistSettings (MINCRM-563).
- * Extracted from AdminSettingsPage.tsx (MINCRM-259).
+ * MFA enforcement moved to MfaSettings.
+ * Setup checklist reset moved to SetupChecklistSettings.
+ * Extracted from AdminSettingsPage.tsx.
  */
 
 import { useState } from 'react';

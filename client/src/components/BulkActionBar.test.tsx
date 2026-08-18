@@ -1,6 +1,5 @@
 /**
  * Tests for the BulkActionBar component.
- * (MINCRM-188)
  */
 
 import { screen, fireEvent } from '@testing-library/react';

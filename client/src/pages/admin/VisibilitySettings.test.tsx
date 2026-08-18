@@ -1,6 +1,5 @@
 /**
  * Tests for VisibilitySettings — per-object data visibility policy admin panel.
- * (MINCRM-538)
  *
  * Verifies:
  * - Loading state renders while query is in flight

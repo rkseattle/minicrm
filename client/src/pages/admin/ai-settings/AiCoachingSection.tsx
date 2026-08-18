@@ -1,8 +1,8 @@
 /**
  * AiCoachingSection — rep coaching insight thresholds + manual "run now".
- * One of the sub-sections behind the AI panel's sub-navigation (MINCRM-653).
+ * One of the sub-sections behind the AI panel's sub-navigation.
  * Follows AiDataRetentionSection's pattern: threshold inputs + save button,
- * plus a manual trigger that reuses the exact nightly-job function. (MINCRM-474)
+ * plus a manual trigger that reuses the exact nightly-job function.
  *
  * Split into a data-fetching wrapper (this component) and a presentational
  * form (AiCoachingThresholdsForm) that only mounts once config data exists —

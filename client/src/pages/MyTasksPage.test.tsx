@@ -1,5 +1,5 @@
 /**
- * Tests for MyTasksPage component. MINCRM-238
+ * Tests for MyTasksPage component.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
@@ -453,7 +453,7 @@ describe('MyTasksPage', () => {
     });
   });
 
-  describe('bulk selection (MINCRM-562)', () => {
+  describe('bulk selection', () => {
     it('does not show the bulk action bar before any rows are selected', async () => {
       renderWithProviders(<MyTasksPage />);
       await waitFor(() => {

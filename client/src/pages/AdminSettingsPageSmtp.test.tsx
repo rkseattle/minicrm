@@ -1,5 +1,5 @@
 /**
- * Tests for the SMTP configuration section of AdminSettingsPage. (MINCRM-254)
+ * Tests for the SMTP configuration section of AdminSettingsPage.
  *
  * Covers: loading state, form rendering, password masking pattern,
  * save success/error, and test email inline result.

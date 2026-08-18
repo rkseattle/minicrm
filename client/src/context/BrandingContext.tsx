@@ -1,6 +1,6 @@
 /**
  * BrandingContext — provides the active branding config to the component tree
- * and applies CSS custom properties + Google Font loading. (MINCRM-356)
+ * and applies CSS custom properties + Google Font loading.
  *
  * Fetch is done with a long staleTime (1 hour) since branding changes are rare
  * and admin-only. The style injection runs outside React's render cycle so

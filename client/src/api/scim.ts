@@ -1,6 +1,6 @@
 /**
  * SCIM provisioning API module — wraps token management and group-role mapping
- * endpoints introduced in MINCRM-541.
+ * endpoints.
  */
 
 import apiClient from './axiosInstance.js';

@@ -356,7 +356,7 @@ describe('ContactsPage', () => {
     expect(lastForceParam).toBe('true');
   });
 
-  // MINCRM-440: AI duplicate detection explanation
+  // AI duplicate detection explanation
   it('shows an AI explanation when the Explain button is clicked in the duplicate warning', async () => {
     const duplicateContact = CONTACT_1;
     server.use(

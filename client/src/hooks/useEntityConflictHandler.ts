@@ -1,7 +1,7 @@
 /**
  * useEntityConflictHandler — encapsulates the three-way optimistic-locking
  * conflict state and OPTIMISTIC_LOCK_CONFLICT error handling shared across
- * all four entity detail pages. (MINCRM-406)
+ * all four entity detail pages.
  */
 
 import { useState } from 'react';

@@ -1,5 +1,5 @@
 /**
- * Tests for NliResultBlock dispatcher. (MINCRM-431)
+ * Tests for NliResultBlock dispatcher.
  *
  * Covers:
  *  - Loading state renders skeleton (nli-result-loading)

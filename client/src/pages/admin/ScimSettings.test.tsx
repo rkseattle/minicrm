@@ -1,6 +1,5 @@
 /**
  * Tests for ScimSettings — SCIM token management and group-role mapping panel.
- * (MINCRM-541)
  *
  * Verifies:
  * - Loading state while token/mapping data is fetching

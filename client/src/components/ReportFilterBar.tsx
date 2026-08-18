@@ -1,5 +1,5 @@
 /**
- * ReportFilterBar — shared filter bar for date-preset report pages. (MINCRM-407)
+ * ReportFilterBar — shared filter bar for date-preset report pages.
  *
  * Renders: view toggle (admin only), date preset selector, custom date range
  * inputs (when preset === 'custom'), owner filter dropdown (admin + team view),
@@ -53,7 +53,7 @@ export default function ReportFilterBar({
 
   return (
     <>
-      {/* My View / Team View toggle — admin only (MINCRM-264) */}
+      {/* My View / Team View toggle — admin only */}
       {isAdmin && (
         <div
           className="mb-4 inline-flex rounded-md border border-gray-300 overflow-hidden"

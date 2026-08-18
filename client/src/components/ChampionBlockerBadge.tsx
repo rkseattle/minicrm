@@ -1,5 +1,5 @@
 /**
- * ChampionBlockerBadge component. (MINCRM-466)
+ * ChampionBlockerBadge component.
  * Renders the 5-state AI champion/blocker classification as a colored badge
  * with a click-to-reveal "Why?" panel showing the 1-2 most recent contributing
  * signals. Always labeled as AI-inferred, never presented as fact.

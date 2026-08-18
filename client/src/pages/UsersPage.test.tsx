@@ -2,7 +2,7 @@
  * Tests for the UsersPage component.
  * Covers: loading state, user list rendering, empty state, invite form,
  * UserActionsMenu open/close and action behaviour, SetPasswordForm validation,
- * and invite/set-password error states. (MINCRM-303)
+ * and invite/set-password error states.
  */
 
 import { screen, waitFor, within } from '@testing-library/react';
@@ -464,7 +464,7 @@ describe('UsersPage', () => {
     });
   });
 
-  describe('API token management — service accounts (MINCRM-536)', () => {
+  describe('API token management — service accounts', () => {
     const SA_USER = {
       id: '00000000-0000-0000-0000-000000000099',
       email: 'sa@example.com',
@@ -593,7 +593,7 @@ describe('UsersPage', () => {
     });
   });
 
-  describe('Reset onboarding (MINCRM-410)', () => {
+  describe('Reset onboarding', () => {
     async function openMenuForRep(user: ReturnType<typeof userEvent.setup>) {
       await waitFor(() => {
         expect(screen.getByTestId(`user-actions-${REP_USER.id}`)).toBeInTheDocument();

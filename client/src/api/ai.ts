@@ -1,7 +1,6 @@
 /**
  * AI configuration and token budget API module.
  * Wraps admin AI configuration and token budget endpoints.
- * (MINCRM-457, MINCRM-458)
  */
 
 import apiClient from './axiosInstance.js';
@@ -97,7 +96,7 @@ export async function setAiSessionRetention(
   return response.data;
 }
 
-// ── Token budget API (MINCRM-458) ─────────────────────────────────────────────
+// ── Token budget API ─────────────────────────────────────────────
 
 /** React Query cache key for the admin AI token budgets summary */
 export const AI_TOKEN_BUDGETS_QUERY_KEY = ['admin', 'ai', 'token-budgets'] as const;
@@ -152,7 +151,7 @@ export async function getMyTokenBudgetStatus(): Promise<AiTokenBudgetStatusRespo
   return response.data;
 }
 
-// ── Retention API (MINCRM-462) ────────────────────────────────────────────────
+// ── Retention API ────────────────────────────────────────────────
 
 /** React Query cache key for AI session retention stats */
 export const AI_RETENTION_STATS_QUERY_KEY = ['admin', 'ai', 'retention-stats'] as const;
@@ -187,7 +186,7 @@ export async function getMyRetentionWindow(): Promise<AiRetentionWindowResponse>
   return response.data;
 }
 
-// ── Field exclusion API (MINCRM-461) ──────────────────────────────────────────
+// ── Field exclusion API ──────────────────────────────────────────
 
 /** React Query cache key for the effective AI field exclusion list */
 export const AI_FIELD_EXCLUSIONS_QUERY_KEY = ['admin', 'ai', 'field-exclusions'] as const;
@@ -217,7 +216,7 @@ export async function setFieldExclusion(
   return response.data;
 }
 
-// ── Usage dashboard API (MINCRM-459) ──────────────────────────────────────────
+// ── Usage dashboard API ──────────────────────────────────────────
 
 /** Date range query params shared by usage summary/daily/export endpoints. */
 export type UsageDateRangeQuery = { preset: UsageDateRangePreset } | { start: string; end: string };
@@ -267,7 +266,7 @@ export async function exportAiUsageCsv(range: UsageDateRangeQuery): Promise<void
 }
 
 /**
- * Downloads AI usage data as a PDF file for the given date range. Admin only. (MINCRM-601)
+ * Downloads AI usage data as a PDF file for the given date range. Admin only.
  */
 export async function exportAiUsagePdf(range: UsageDateRangeQuery): Promise<void> {
   const response = await apiClient.get<Blob>('/admin/ai/usage/export.pdf', {

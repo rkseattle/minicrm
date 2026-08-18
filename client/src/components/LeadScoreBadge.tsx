@@ -1,5 +1,5 @@
 /**
- * LeadScoreBadge component. (MINCRM-441)
+ * LeadScoreBadge component.
  * Displays the lead's rule-based quality score and a "Why this score?" action
  * that fetches and shows an AI narrative explanation inline below the score.
  * Not persisted — both the score and the narrative are recomputed on demand.

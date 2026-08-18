@@ -1,6 +1,5 @@
 /**
  * Tests for the LeadDetailPage component.
- * (MINCRM-173, MINCRM-174, MINCRM-175)
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -87,7 +86,7 @@ describe('LeadDetailPage', () => {
     });
   });
 
-  // MINCRM-441 prerequisite: rule-based lead scoring
+  // rule-based lead scoring
   it('renders the computed lead score badge', async () => {
     renderWithProviders(<LeadDetailPage />, {
       initialEntries: [`/leads/${LEAD_1.id}`],
@@ -317,7 +316,7 @@ describe('LeadDetailPage', () => {
     });
   });
 
-  // ── Edit save / error (MINCRM-295) ─────────────────────────────────────────
+  // ── Edit save / error ─────────────────────────────────────────
 
   describe('edit save flow', () => {
     it('saves the edit form and hides it on success', async () => {
@@ -387,7 +386,7 @@ describe('LeadDetailPage', () => {
     });
   });
 
-  // ── Delete flow (MINCRM-295) ────────────────────────────────────────────────
+  // ── Delete flow ────────────────────────────────────────────────
 
   describe('delete flow', () => {
     it('opens the confirm-delete modal when Delete is clicked', async () => {
@@ -462,7 +461,7 @@ describe('LeadDetailPage', () => {
     });
   });
 
-  // ── Convert modal confirmation (MINCRM-295) ────────────────────────────────
+  // ── Convert modal confirmation ────────────────────────────────
 
   describe('convert lead flow', () => {
     it('calls the convert endpoint and shows converted badges on success', async () => {
@@ -516,7 +515,7 @@ describe('LeadDetailPage', () => {
     });
   });
 
-  // ── Disqualification reason display (MINCRM-295) ───────────────────────────
+  // ── Disqualification reason display ───────────────────────────
 
   describe('disqualified lead', () => {
     it('shows the disqualification reason when the lead is disqualified', async () => {

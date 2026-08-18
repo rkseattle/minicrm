@@ -1,6 +1,6 @@
 /**
  * Tests for DataAndPlatformSettings — demo data management and setup
- * checklist reset composite tab (MINCRM-563).
+ * checklist reset composite tab.
  *
  * Smoke tests verify key sections from each absorbed component are present.
  * Full interaction coverage lives in DataSettings.test.tsx and

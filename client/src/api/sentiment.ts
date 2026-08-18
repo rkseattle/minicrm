@@ -1,5 +1,5 @@
 /**
- * Sentiment tracking API module. (MINCRM-472)
+ * Sentiment tracking API module.
  * Wraps the contact/account sentiment trend endpoints and the per-activity
  * "flag as inaccurate" action. Requires authentication and the
  * ai_sentiment_tracking feature flag.

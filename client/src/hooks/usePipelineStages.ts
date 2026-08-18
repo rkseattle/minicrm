@@ -1,5 +1,5 @@
 /**
- * Hook that returns the live pipeline stages list for a specific pipeline (MINCRM-180, MINCRM-397).
+ * Hook that returns the live pipeline stages list for a specific pipeline.
  *
  * Stages are cached by React Query and revalidated when the window regains focus.
  * When pipelineId is omitted the default pipeline's stages are returned.
@@ -32,7 +32,7 @@ const SEED_STAGES: PipelineStageResponse[] = PIPELINE_STAGES.map((name, index) =
               : 0,
   is_terminal: name === 'Closed Won' || name === 'Closed Lost',
   is_fixed: name === 'Closed Won' || name === 'Closed Lost',
-  // Seed fallback — real requirements come from the API response. (MINCRM-527)
+  // Seed fallback — real requirements come from the API response.
   stage_exit_requirements:
     name === 'Closed Won' || name === 'Closed Lost'
       ? { required_fields: ['close_date'], warning_fields: [] }
@@ -63,7 +63,7 @@ export function usePipelineStages(pipelineId?: string): UsePipelineStagesResult 
   const { data, isLoading, isError } = useQuery({
     queryKey: pipelineStagesQueryKey(pipelineId),
     queryFn: () => listPipelineStages(pipelineId),
-    // Override global staleTime: 0 — pipeline stage definitions change rarely (admin-only). (MINCRM-348)
+    // Override global staleTime: 0 — pipeline stage definitions change rarely (admin-only).
     staleTime: 5 * 60 * 1000,
   });
 

@@ -1,5 +1,5 @@
 /**
- * Tests for the TaskSuggestionPanel component. (MINCRM-438)
+ * Tests for the TaskSuggestionPanel component.
  */
 
 import { screen } from '@testing-library/react';

@@ -1,7 +1,7 @@
 /**
  * LeadDetailPage component.
  * Displays all fields and status history for a single lead.
- * Supports editing, deletion, inline status update, and lead conversion. (MINCRM-173, 174, 175)
+ * Supports editing, deletion, inline status update, and lead conversion.
  */
 
 import { useState } from 'react';
@@ -62,7 +62,7 @@ export default function LeadDetailPage() {
 
   const leadQueryKey = ['leads', id] as const;
 
-  // Three-way merge conflict state (MINCRM-351, MINCRM-406)
+  // Three-way merge conflict state
   const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
     useEntityConflictHandler<LeadFormValues>({
       entityCacheKey: 'lead',
@@ -101,14 +101,14 @@ export default function LeadDetailPage() {
         territory: values.territory || undefined,
         industry: values.industry || undefined,
         employee_range: values.employee_range || undefined,
-        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits
         version:
           version ??
           queryClient.getQueryData<{ lead: { version: number } }>(leadQueryKey)?.lead.version ??
           1,
       }),
     onSuccess: (data) => {
-      // Seed the cache immediately so the version is correct before any subsequent edit (MINCRM-351)
+      // Seed the cache immediately so the version is correct before any subsequent edit
       queryClient.setQueryData(leadQueryKey, data);
       void queryClient.invalidateQueries({ queryKey: leadQueryKey });
       void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
@@ -426,7 +426,7 @@ export default function LeadDetailPage() {
               </div>
             </dl>
 
-            {/* Converted links (MINCRM-175) */}
+            {/* Converted links */}
             {isConverted && (
               <div className="mt-6 border-t border-gray-100 pt-4">
                 <p className="mb-2 text-xs font-medium uppercase text-gray-500">
@@ -481,7 +481,7 @@ export default function LeadDetailPage() {
               void queryClient.invalidateQueries({ queryKey: leadQueryKey });
             }}
           >
-            {/* Status history timeline (MINCRM-174) */}
+            {/* Status history timeline */}
             {history.length > 0 && (
               <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <h2 className="mb-4 text-sm font-semibold uppercase text-gray-500">

@@ -1,5 +1,5 @@
 /**
- * SetPasswordPage component. (MINCRM-262)
+ * SetPasswordPage component.
  *
  * Renders the account-activation form for newly invited users. Reads the
  * invite token from the `?token=` query param and lets the user choose a

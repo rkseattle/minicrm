@@ -2,7 +2,6 @@
  * NavLayoutContext — provides the active navigation layout to the whole app.
  * The layout is fetched from the server once and cached via React Query.
  * Any component can read the layout; only the admin settings page updates it.
- * (MINCRM-133)
  */
 
 import { createContext, useContext } from 'react';
@@ -34,7 +33,7 @@ export function NavLayoutProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
   // Nav layout is admin-only and changes rarely — override the global staleTime: 0
-  // to avoid refetching on every window-focus event. (MINCRM-133, MINCRM-348)
+  // to avoid refetching on every window-focus event.
   const { data } = useQuery({
     queryKey: NAV_LAYOUT_QUERY_KEY,
     queryFn: getNavLayout,

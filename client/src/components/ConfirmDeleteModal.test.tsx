@@ -1,5 +1,5 @@
 /**
- * Tests for the ConfirmDeleteModal component (MINCRM-107).
+ * Tests for the ConfirmDeleteModal component.
  */
 
 import { screen, fireEvent } from '@testing-library/react';

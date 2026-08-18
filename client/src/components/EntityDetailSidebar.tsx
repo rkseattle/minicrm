@@ -1,7 +1,7 @@
 /**
  * EntityDetailSidebar — shared sidebar sections for entity detail pages.
  * Renders tags, activity timeline, attachments, notes, change history,
- * and optionally GDPR & privacy controls. (MINCRM-405)
+ * and optionally GDPR & privacy controls.
  *
  * Each section is guarded by isEditing so nothing renders while the edit
  * form is open. The children slot accepts entity-specific sections
@@ -27,9 +27,7 @@ type ChangeHistoryEntityType = 'contact' | 'account' | 'deal';
 
 // ActivityTimeline accepts individual id props; derive the right one from entityType.
 type ActivityTimelineEntityProp =
-  | { contactId: string }
-  | { accountId: string }
-  | { dealId: string };
+  { contactId: string } | { accountId: string } | { dealId: string };
 
 function resolveTimelineProp(
   entityType: SupportedEntityType,
@@ -87,7 +85,7 @@ export default function EntityDetailSidebar({
 
   return (
     <>
-      {/* Tags (MINCRM-186) — not supported for lead */}
+      {/* Tags — not supported for lead */}
       {showTags && tagsLoading && (
         <div className="mt-8 h-20 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
       )}
@@ -120,10 +118,10 @@ export default function EntityDetailSidebar({
         <ActivityTimeline {...timelineProp} />
       )}
 
-      {/* Attachments (MINCRM-167) */}
+      {/* Attachments */}
       {showAttachments && <AttachmentsSection recordType={entityType} recordId={entityId} />}
 
-      {/* Notes (MINCRM-352) */}
+      {/* Notes */}
       {notesLoading && (
         <div className="mt-8 h-24 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
       )}
@@ -131,12 +129,12 @@ export default function EntityDetailSidebar({
         <NotesSection entityType={entityType} entityId={entityId} />
       )}
 
-      {/* Change history (MINCRM-171) — not supported for lead */}
+      {/* Change history — not supported for lead */}
       {showChangeHistory && (
         <ChangeHistory recordType={entityType as ChangeHistoryEntityType} recordId={entityId} />
       )}
 
-      {/* GDPR & Privacy (MINCRM-364) — admin only */}
+      {/* GDPR & Privacy — admin only */}
       {showGdpr && user?.role === 'admin' && onGdprErased && (
         <GdprPrivacySection
           recordType={entityType as 'contact' | 'lead'}

@@ -1,5 +1,5 @@
 /**
- * Tests for the AccountHealthSparkline component. (MINCRM-467)
+ * Tests for the AccountHealthSparkline component.
  */
 
 import { render, screen } from '@testing-library/react';

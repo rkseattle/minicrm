@@ -1,5 +1,5 @@
 /**
- * FollowUpTimingCard component. (MINCRM-470)
+ * FollowUpTimingCard component.
  *
  * Displays the AI-suggested best day/time to follow up with a contact
  * ("Best time to reach Sarah: Tuesday mornings") and a "Schedule follow-up"

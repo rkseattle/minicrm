@@ -1,8 +1,7 @@
 /**
  * AiDataRetentionSection — session retention window + manual purge.
- * One of the sub-sections behind the AI panel's sub-navigation (MINCRM-653).
+ * One of the sub-sections behind the AI panel's sub-navigation.
  * Extracted from AiSettings.tsx without behavior changes.
- * (MINCRM-447, MINCRM-462)
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -98,7 +97,7 @@ export function AiDataRetentionSection({ retentionDays }: { retentionDays: numbe
   const [saveError, setSaveError] = useState('');
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Retention stats + manual purge (MINCRM-462) ─────────────────────────────
+  // ── Retention stats + manual purge ─────────────────────────────
   const {
     data: statsData,
     isLoading: statsLoading,
@@ -253,7 +252,7 @@ export function AiDataRetentionSection({ retentionDays }: { retentionDays: numbe
         </p>
       )}
 
-      {/* Retention stats + manual purge (MINCRM-462) */}
+      {/* Retention stats + manual purge */}
       <div className="mt-6 border-t border-gray-100 pt-4">
         {statsLoading && (
           <div

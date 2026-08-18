@@ -1,5 +1,5 @@
 /**
- * TaskSuggestionPanel component. (MINCRM-438)
+ * TaskSuggestionPanel component.
  *
  * Non-blocking panel shown once, immediately after an activity is saved,
  * with 1-3 AI-suggested follow-up tasks. Each suggestion can be accepted

@@ -89,7 +89,7 @@ export default function AccountsPage() {
   const { page, limit, setPage, handleLimitChange } = usePagination();
 
   /**
-   * Updates the ?owner query param and resets to page 1. (MINCRM-55)
+   * Updates the ?owner query param and resets to page 1.
    *
    * @param value - New owner filter value
    */
@@ -248,7 +248,7 @@ export default function AccountsPage() {
     !!accountTypeFilter ||
     selectedTagIds.length > 0;
 
-  // ── Bulk selection state (MINCRM-188) ─────────────────────────────────────
+  // ── Bulk selection state ─────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -489,14 +489,14 @@ export default function AccountsPage() {
           </div>
         )}
 
-        {/* Bulk error message (MINCRM-188) */}
+        {/* Bulk error message */}
         {bulkError && (
           <p role="alert" className="mb-2 text-sm text-red-600" data-testid="bulk-error-message">
             {bulkError}
           </p>
         )}
 
-        {/* Bulk action bar (MINCRM-188) */}
+        {/* Bulk action bar */}
         {canWrite && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}
@@ -578,7 +578,7 @@ export default function AccountsPage() {
                   }}
                   className="w-full sm:w-auto"
                 />
-                {/* Account type filter (MINCRM-183) */}
+                {/* Account type filter */}
                 <Select
                   id="accounts-type-filter"
                   data-testid="accounts-type-filter"
@@ -601,7 +601,7 @@ export default function AccountsPage() {
                   onChange={setOwnerFilter}
                   testIdPrefix="accounts-owner-filter"
                 />
-                {/* Relationship health filter (MINCRM-467) */}
+                {/* Relationship health filter */}
                 {relationshipHealthEnabled && (
                   <label className="inline-flex items-center gap-1.5 text-sm text-gray-700 whitespace-nowrap">
                     <input
@@ -617,7 +617,7 @@ export default function AccountsPage() {
                     {t('relationshipHealth.listFilterLabel')}
                   </label>
                 )}
-                {/* Tag filter (MINCRM-186) */}
+                {/* Tag filter */}
                 {tagsData && tagsData.tags.length > 0 && (
                   <select
                     aria-label={t('tags.sectionTitle')}
@@ -713,7 +713,7 @@ export default function AccountsPage() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10 bg-gray-50">
                   <tr className="border-b border-gray-200">
-                    {/* Bulk select-all checkbox (MINCRM-188) */}
+                    {/* Bulk select-all checkbox */}
                     <th className="w-10 ps-4 py-3">
                       <input
                         type="checkbox"
@@ -784,7 +784,7 @@ export default function AccountsPage() {
                       data-selected={selectedIds.has(account.id) || undefined}
                       className={`group hover:bg-gray-50 transition-colors${selectedIds.has(account.id) ? ' bg-primary-50' : ''}`}
                     >
-                      {/* Row checkbox (MINCRM-188) */}
+                      {/* Row checkbox */}
                       <td className="w-10 ps-4 py-3">
                         <input
                           type="checkbox"

@@ -1,5 +1,5 @@
 /**
- * Tests for MfaRecoveryCodesModal. (MINCRM-392)
+ * Tests for MfaRecoveryCodesModal.
  * Covers: closed state, recovery code list display, copy-all, and done callback.
  */
 

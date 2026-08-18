@@ -1,5 +1,5 @@
 /**
- * ActivityBriefPage component. (MINCRM-465)
+ * ActivityBriefPage component.
  *
  * Standalone, authenticated view of the most recently generated AI
  * pre-meeting brief for an activity — the "shareable link" a rep can open

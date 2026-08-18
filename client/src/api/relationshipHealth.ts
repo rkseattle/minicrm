@@ -1,5 +1,5 @@
 /**
- * Relationship health scoring API module. (MINCRM-467)
+ * Relationship health scoring API module.
  * Wraps the account health score/history endpoints and the admin-editable
  * scoring config. Requires authentication and the ai_relationship_health_score
  * feature flag (config endpoints additionally require the admin role).

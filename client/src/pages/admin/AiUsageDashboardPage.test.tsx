@@ -1,5 +1,5 @@
 /**
- * Tests for AiUsageDashboardPage. (MINCRM-459)
+ * Tests for AiUsageDashboardPage.
  *
  * Covers:
  *  - Loading state
@@ -212,7 +212,7 @@ describe('AiUsageDashboardPage — date range selector', () => {
     //    derived synchronously and the queries carry no `enabled` gate, so the
     //    render that first shows these inputs also fires the request — a
     //    mount-time capture on a dashboard left open for days would silently
-    //    fetch and export the wrong period. (MINCRM-700)
+    //    fetch and export the wrong period.
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date('2026-08-31T23:30:00.000Z'));

@@ -1,5 +1,5 @@
 /**
- * Win/loss pattern insights API module. (MINCRM-464)
+ * Win/loss pattern insights API module.
  * Wraps the cached AI win/loss analysis endpoints. Requires authentication and
  * the ai_win_loss_insights feature flag to be enabled.
  */

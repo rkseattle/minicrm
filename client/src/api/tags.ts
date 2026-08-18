@@ -1,5 +1,5 @@
 /**
- * Tags API module (MINCRM-186).
+ * Tags API module.
  * Wraps global tag CRUD and entity-scoped attach/detach endpoints.
  * All endpoints require authentication.
  */

@@ -27,7 +27,7 @@ export interface DuplicateContactInfo {
 
 /** Parameters for filtering and paginating the contacts list */
 export interface ListContactsParams {
-  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  /** 'me' = current user only; 'my_team' = all team co-members */
   owner?: 'me' | 'my_team';
   /** When provided, only contacts linked to this account UUID are returned */
   accountId?: string;
@@ -43,7 +43,7 @@ export interface ListContactsParams {
   page?: number;
   /** Records per page */
   limit?: number;
-  /** Tag IDs to filter by (any-match). MINCRM-186. */
+  /** Tag IDs to filter by (any-match). */
   tags?: string[];
 }
 
@@ -144,7 +144,6 @@ export interface ExportContactsParams {
 /**
  * Downloads all matching contacts as a CSV file.
  * Triggers a browser file-save dialog.
- * (MINCRM-164)
  *
  * @param params - Optional filter parameters
  */
@@ -167,7 +166,7 @@ export async function exportContactsCsv(params: ExportContactsParams = {}): Prom
 
 /**
  * Downloads all matching contacts as a paginated PDF table.
- * Triggers a browser file-save dialog. Same filters as exportContactsCsv() (MINCRM-601).
+ * Triggers a browser file-save dialog. Same filters as exportContactsCsv().
  *
  * @param params - Optional filter parameters
  */
@@ -190,7 +189,7 @@ export async function exportContactsPdf(params: ExportContactsParams = {}): Prom
 
 /**
  * Downloads a single contact as a one-record summary PDF.
- * Triggers a browser file-save dialog. (MINCRM-650)
+ * Triggers a browser file-save dialog.
  *
  * @param id - Contact UUID
  */
@@ -207,7 +206,7 @@ export async function exportContactPdf(id: string): Promise<void> {
 /** Per-field source choice for contact merge */
 export type MergeFieldChoice = 'winner' | 'loser';
 
-/** Parameters for merging two contact records (MINCRM-187) */
+/** Parameters for merging two contact records */
 export interface MergeContactsParams {
   /** UUID of the contact to merge into (will survive) */
   winnerId: string;
@@ -216,7 +215,7 @@ export interface MergeContactsParams {
   /**
    * For each field, which contact's value to keep.
    * Address fields are not merged by field-choice — the loser's contact_addresses rows
-   * are re-linked to the winner so both address histories are preserved. (MINCRM-500)
+   * are re-linked to the winner so both address histories are preserved.
    */
   fieldChoices: Partial<
     Record<
@@ -237,7 +236,7 @@ export interface MergeContactsParams {
 
 /**
  * Merges two contact records. The winner survives; the loser is deleted.
- * Returns the updated winner contact. (MINCRM-187)
+ * Returns the updated winner contact.
  *
  * @param params - Merge parameters including field choices
  */
@@ -358,7 +357,7 @@ export async function setDefaultContactAddress(
   return response.data;
 }
 
-/** Response from the send-email endpoint (MINCRM-275) */
+/** Response from the send-email endpoint */
 export interface SendContactEmailResponse {
   delivered: boolean;
   activityId: string | null;

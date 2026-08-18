@@ -1,5 +1,5 @@
 /**
- * SentimentSparkline component. (MINCRM-472)
+ * SentimentSparkline component.
  * Renders a trend badge (Warming/Stable/Cooling) plus a hand-rolled SVG
  * sparkline of recent sentiment points. Renders nothing when there is
  * insufficient data (fewer than 2 non-flagged scores), per the ticket's

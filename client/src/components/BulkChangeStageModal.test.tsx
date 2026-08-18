@@ -1,5 +1,5 @@
 /**
- * Tests for BulkChangeStageModal (MINCRM-188).
+ * Tests for BulkChangeStageModal.
  */
 
 import { screen, fireEvent } from '@testing-library/react';

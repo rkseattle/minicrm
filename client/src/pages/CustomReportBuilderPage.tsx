@@ -1,5 +1,5 @@
 /**
- * CustomReportBuilderPage — build, run, save, and export custom reports. (MINCRM-402)
+ * CustomReportBuilderPage — build, run, save, and export custom reports.
  *
  * Layout:
  *   Left panel  — saved reports list + "New report" button

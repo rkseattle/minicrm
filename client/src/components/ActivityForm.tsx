@@ -26,14 +26,14 @@ export interface ActivityFormValues {
   direction: ActivityDirection | '';
   outcome: string;
   /**
-   * AI-suggested follow-up tasks the user accepted while summarizing (MINCRM-436).
+   * AI-suggested follow-up tasks the user accepted while summarizing.
    * Deferred to the parent so tasks are only created after this activity itself
    * saves successfully — never fired eagerly from inside the form.
    */
   acceptedSuggestedTasks: SuggestedFollowUpTask[];
 }
 
-/** Activity types the AI summarizer supports (MINCRM-436) */
+/** Activity types the AI summarizer supports */
 const SUMMARIZABLE_TYPES: ReadonlySet<ActivityType> = new Set(['Call', 'Meeting', 'Note']);
 
 export interface ActivityFormProps {

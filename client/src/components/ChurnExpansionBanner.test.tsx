@@ -1,5 +1,5 @@
 /**
- * Tests for the ChurnExpansionBanner component. (MINCRM-469)
+ * Tests for the ChurnExpansionBanner component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

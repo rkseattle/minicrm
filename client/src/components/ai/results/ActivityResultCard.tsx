@@ -1,5 +1,5 @@
 /**
- * Renders a single activity as a timeline item in the NLI result block. (MINCRM-431)
+ * Renders a single activity as a timeline item in the NLI result block.
  */
 import { useTranslation } from 'react-i18next';
 

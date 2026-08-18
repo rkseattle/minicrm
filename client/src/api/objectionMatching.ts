@@ -1,5 +1,5 @@
 /**
- * Objection pattern matching API module. (MINCRM-471)
+ * Objection pattern matching API module.
  * Requires authentication and the ai_objection_pattern_matching feature flag.
  */
 

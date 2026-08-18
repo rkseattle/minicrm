@@ -1,12 +1,12 @@
 /**
- * Manual-testing coverage session correlation relay. (MINCRM-609..612, MINCRM-663)
+ * Manual-testing coverage session correlation relay.
  *
  * The manual-testing session recorder now lives in the standalone
  * coverage-dashboard app (SessionRecorderPage.tsx), a separate origin/JS
  * runtime from this CRM client — setting x-coverage-correlation-id on the
  * dashboard's own axios instance has no effect on requests this app makes,
  * since the two apps share no in-memory state. Before the recorder moved
- * out of this client (MINCRM-663), it WAS this client's own page, so its
+ * out of this client, it WAS this client's own page, so its
  * axios instance WAS the one carrying the header; that implicit coupling
  * broke the moment the page moved to a different app (found via Greptile
  * PR review — "CRM requests lose session attribution").

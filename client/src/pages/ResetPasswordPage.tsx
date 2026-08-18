@@ -1,5 +1,5 @@
 /**
- * ResetPasswordPage component. (MINCRM-157)
+ * ResetPasswordPage component.
  *
  * Reads the reset token from the `?token=` query param and shows a form with
  * two fields: new password and confirm password. On success the server sets a

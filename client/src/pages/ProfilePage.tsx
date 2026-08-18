@@ -2,8 +2,8 @@
  * ProfilePage component.
  * Allows authenticated users to manage their personal preferences:
  *   - Preferred language
- *   - Email notification preferences (MINCRM-163)
- *   - Two-factor authentication (MINCRM-392)
+ *   - Email notification preferences
+ *   - Two-factor authentication
  *
  * Accessible at /profile for all authenticated users.
  */
@@ -31,14 +31,14 @@ import MfaRecoveryCodesModal from '@/components/MfaRecoveryCodesModal.js';
 import MfaDisableModal from '@/components/MfaDisableModal.js';
 
 /**
- * Profile settings page — language preference, email notification toggles, and MFA. (MINCRM-392)
+ * Profile settings page — language preference, email notification toggles, and MFA.
  */
 export default function ProfilePage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
 
-  // True when the user was redirected here because org-wide MFA is required. (MINCRM-392)
+  // True when the user was redirected here because org-wide MFA is required.
   const mfaSetupRequired = searchParams.get('mfa_setup_required') === '1';
 
   // ── MFA section state ────────────────────────────────────────────────────────

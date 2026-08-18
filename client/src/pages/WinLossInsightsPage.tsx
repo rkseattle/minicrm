@@ -1,5 +1,5 @@
 /**
- * WinLossInsightsPage component. (MINCRM-464)
+ * WinLossInsightsPage component.
  * Displays cached AI-generated win/loss pattern insights and loss reason
  * trends from the most recent nightly analysis run. Never triggers a
  * synchronous AI call — always reads the cached result.

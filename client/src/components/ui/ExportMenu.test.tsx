@@ -1,6 +1,6 @@
 /**
  * Tests for ExportMenu — single "Export" trigger that reveals a dropdown of
- * export actions. (MINCRM-652)
+ * export actions.
  *
  * Verifies:
  * - Trigger renders with correct aria attributes; menu closed by default

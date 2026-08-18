@@ -3,7 +3,7 @@
  *
  * Renders: brand, search, user name, language selector, logout, and an
  * optional hamburger toggle button. The language and logout mutations are
- * handled internally so callers don't duplicate that logic. (MINCRM-133)
+ * handled internally so callers don't duplicate that logic.
  */
 
 import { useRef } from 'react';

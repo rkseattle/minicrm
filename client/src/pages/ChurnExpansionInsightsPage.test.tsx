@@ -1,5 +1,5 @@
 /**
- * Tests for the ChurnExpansionInsightsPage component. (MINCRM-469)
+ * Tests for the ChurnExpansionInsightsPage component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

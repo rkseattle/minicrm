@@ -175,7 +175,7 @@ describe('DealDetailPage', () => {
     expect(screen.getByText(`${CONTACT_1.first_name} ${CONTACT_1.last_name}`)).toBeInTheDocument();
   });
 
-  // ── AI deal health check (MINCRM-442) ──────────────────────────────────────────
+  // ── AI deal health check ──────────────────────────────────────────
 
   it('shows the deal health panel with an empty state before a check is run', async () => {
     renderDealDetail();
@@ -249,7 +249,7 @@ describe('DealDetailPage', () => {
     expect(screen.queryByTestId('deal-health-heading')).not.toBeInTheDocument();
   });
 
-  // ── AI stage advancement suggestion (MINCRM-443) ───────────────────────────────
+  // ── AI stage advancement suggestion ───────────────────────────────
 
   it('shows no indicator when the stage advancement check returns not ready', async () => {
     renderDealDetail();
@@ -323,7 +323,7 @@ describe('DealDetailPage', () => {
     expect(screen.queryByTestId('stage-advancement-indicator')).not.toBeInTheDocument();
   });
 
-  // ── AI champion/blocker stakeholder map (MINCRM-466) ────────────────────────────
+  // ── AI champion/blocker stakeholder map ────────────────────────────
 
   it('does not show the stakeholder map when no contacts are linked', async () => {
     renderDealDetail();
@@ -574,7 +574,7 @@ describe('DealDetailPage', () => {
     expect(patchSpy).not.toHaveBeenCalled();
   });
 
-  it('invalidates win/loss cache on stage update (MINCRM-104)', async () => {
+  it('invalidates win/loss cache on stage update', async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
     });
@@ -612,7 +612,7 @@ describe('DealDetailPage', () => {
     });
   });
 
-  it('invalidates win/loss cache on close deal (MINCRM-104)', async () => {
+  it('invalidates win/loss cache on close deal', async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
     });
@@ -676,7 +676,7 @@ describe('DealDetailPage', () => {
     expect(screen.getByTestId('delete-deal-button')).toBeInTheDocument();
   });
 
-  it('invalidates win/loss cache on deal delete (MINCRM-104)', async () => {
+  it('invalidates win/loss cache on deal delete', async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
     });
@@ -711,7 +711,7 @@ describe('DealDetailPage', () => {
     });
   });
 
-  it('shows error message when contacts fetch fails (MINCRM-117)', async () => {
+  it('shows error message when contacts fetch fails', async () => {
     server.use(
       http.get('/api/v1/contacts', () =>
         HttpResponse.json(
@@ -726,7 +726,7 @@ describe('DealDetailPage', () => {
     });
   });
 
-  it('hides link contact form when contacts fetch fails (MINCRM-117)', async () => {
+  it('hides link contact form when contacts fetch fails', async () => {
     server.use(
       http.get('/api/v1/contacts', () =>
         HttpResponse.json(

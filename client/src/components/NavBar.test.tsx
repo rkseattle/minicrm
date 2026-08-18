@@ -1,5 +1,5 @@
 /**
- * Tests for the NavBar dispatcher component. (MINCRM-133)
+ * Tests for the NavBar dispatcher component.
  *
  * NavBar reads the active layout from NavLayoutContext and renders the
  * appropriate layout component. These tests verify that the dispatch logic

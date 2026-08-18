@@ -1,5 +1,5 @@
 /**
- * ConnectRPC client for AuditService (MINCRM-377).
+ * ConnectRPC client for AuditService.
  *
  * Uses the Connect protocol (JSON over HTTP/1.1) so that the Vite dev-server
  * proxy can forward requests without binary-framing issues. The httpOnly session

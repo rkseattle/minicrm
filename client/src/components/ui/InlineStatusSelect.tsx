@@ -1,7 +1,7 @@
 /**
  * InlineStatusSelect — inline status <select> for the user table.
  * Fires PATCH /users/:id/status on change with optimistic update and rollback toast.
- * Invited users show a read-only badge with tooltip (MINCRM-561).
+ * Invited users show a read-only badge with tooltip.
  */
 
 import { useState, useCallback } from 'react';
@@ -26,7 +26,7 @@ export interface InlineStatusSelectProps {
 /**
  * Renders an inline status <select> (Active / Inactive) for active or inactive users.
  * Shows a read-only "Invited" badge with tooltip for invited users.
- * Blocks self-deactivation with a confirmation dialog (MINCRM-561).
+ * Blocks self-deactivation with a confirmation dialog.
  */
 export function InlineStatusSelect({
   user,

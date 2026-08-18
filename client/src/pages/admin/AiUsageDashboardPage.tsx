@@ -1,5 +1,5 @@
 /**
- * AiUsageDashboardPage — admin AI usage/cost visibility dashboard. (MINCRM-459)
+ * AiUsageDashboardPage — admin AI usage/cost visibility dashboard.
  *
  * Shows current-range token totals, estimated cost, trend vs. the prior
  * equivalent-length period, per-user and per-feature breakdowns, a daily
@@ -79,7 +79,7 @@ export default function AiUsageDashboardPage() {
   // also fires the request: a mount-time capture would fetch a stale period
   // immediately, with a structurally valid start <= end that the server accepts
   // and renders as real cost figures. An ops dashboard left open for days is the
-  // normal use of this page. (MINCRM-700)
+  // normal use of this page.
   const [customStart, setCustomStart] = useState<string | null>(null);
   const [customEnd, setCustomEnd] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -202,7 +202,7 @@ export default function AiUsageDashboardPage() {
           </p>
         )}
 
-        {/* Disclaimer about self-reported cost estimation (MINCRM-459 descope) */}
+        {/* Disclaimer about self-reported cost estimation */}
         <p
           className="mb-6 text-xs text-gray-500 bg-gray-100 border border-gray-200 rounded px-3 py-2"
           data-testid="ai-usage-disclaimer"

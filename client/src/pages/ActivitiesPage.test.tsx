@@ -3,7 +3,6 @@
  * Covers: page heading, loading state, error state, empty state, activity table rendering,
  * URL param filtering (type, date range, owner scoping for reps vs admins).
  *
- * Implements MINCRM-181, MINCRM-185.
  */
 
 import { describe, it, expect } from 'vitest';

@@ -1,5 +1,5 @@
 /**
- * FieldMergeModal — three-way merge UI for optimistic locking conflict resolution. (MINCRM-351)
+ * FieldMergeModal — three-way merge UI for optimistic locking conflict resolution.
  *
  * When a PATCH returns 409 OPTIMISTIC_LOCK_CONFLICT, the user is shown a field-by-field
  * comparison of base (what they loaded), theirs (what the other user saved), and mine

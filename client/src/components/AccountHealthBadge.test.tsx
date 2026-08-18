@@ -1,5 +1,5 @@
 /**
- * Tests for the AccountHealthBadge component. (MINCRM-467)
+ * Tests for the AccountHealthBadge component.
  */
 
 import { render, screen } from '@testing-library/react';

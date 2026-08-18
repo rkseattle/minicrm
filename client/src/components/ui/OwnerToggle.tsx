@@ -1,6 +1,6 @@
 /**
  * OwnerToggle — segmented "All / Mine / My Team" button control for list view owner filtering.
- * Satisfies MINCRM-55 (All/Mine) and MINCRM-545 (My Team).
+ * Provides All/Mine and My Team.
  */
 
 import { useTranslation } from 'react-i18next';

@@ -1,5 +1,5 @@
 /**
- * Tests for the ContactEnrichmentModal component. (MINCRM-439)
+ * Tests for the ContactEnrichmentModal component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

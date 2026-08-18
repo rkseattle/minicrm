@@ -1,7 +1,7 @@
 /**
  * PipelinesAndFieldsSettings — Pipeline configuration, custom fields, and
  * tag management. Consolidates CustomisationSettings and the tags section
- * (previously AdminTagsPage) into a single Pipelines & Fields tab (MINCRM-563).
+ * (previously AdminTagsPage) into a single Pipelines & Fields tab.
  */
 
 import { useState, useRef } from 'react';
@@ -64,7 +64,7 @@ function TagManagementSection() {
     createMutation.mutate(trimmed);
   }
 
-  // ── Restrict-creation toggle (MINCRM-263) ────────────────────────────────────
+  // ── Restrict-creation toggle ────────────────────────────────────
   const { data: restrictData } = useQuery({
     queryKey: TAGS_RESTRICT_CREATION_QUERY_KEY,
     queryFn: getTagsRestrictCreation,

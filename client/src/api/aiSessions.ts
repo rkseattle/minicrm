@@ -2,7 +2,6 @@
  * AI sessions API module.
  * Wraps the multi-session conversation endpoints. All endpoints require authentication
  * and the ai_nli_page feature flag to be enabled.
- * (MINCRM-420, MINCRM-421)
  */
 
 import apiClient from './axiosInstance.js';

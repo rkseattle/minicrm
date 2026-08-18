@@ -1,5 +1,5 @@
 /**
- * Meeting brief API module. (MINCRM-465)
+ * Meeting brief API module.
  * Wraps the pre-meeting brief generate/fetch endpoints. Requires authentication
  * and the ai_meeting_brief feature flag.
  */

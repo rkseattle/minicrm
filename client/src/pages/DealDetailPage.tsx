@@ -71,7 +71,7 @@ const HEALTH_STATUS_VARIANT: Record<DealHealthStatus, 'success' | 'warning' | 'e
 };
 
 /**
- * Formats a deal value using the deal's own currency and the active locale. (MINCRM-189)
+ * Formats a deal value using the deal's own currency and the active locale.
  *
  * @param value - Numeric string from the API, or null
  * @param currency - ISO 4217 currency code stored on the deal
@@ -142,7 +142,7 @@ export default function DealDetailPage() {
 
   const dealQueryKey = ['deals', id] as const;
 
-  // Three-way merge conflict state (MINCRM-351, MINCRM-406)
+  // Three-way merge conflict state
   const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
     useEntityConflictHandler<DealFormValues>({
       entityCacheKey: 'deal',
@@ -155,7 +155,7 @@ export default function DealDetailPage() {
     enabled: Boolean(id),
   });
 
-  // Passive, page-load stage advancement check (MINCRM-443). The service itself
+  // Passive, page-load stage advancement check. The service itself
   // returns { ready: false } for terminal-stage or no-next-stage deals, so no
   // client-side stage filtering is needed beyond waiting for the deal to load.
   const { data: stageAdvancement } = useQuery({
@@ -164,7 +164,7 @@ export default function DealDetailPage() {
     enabled: Boolean(id) && stageAdvancementEnabled && Boolean(data?.deal),
   });
 
-  // AI champion/blocker stakeholder map (MINCRM-466) — one query serves both the per-contact
+  // AI champion/blocker stakeholder map — one query serves both the per-contact
   // badges in the linked-contacts list and the stakeholder map panel below.
   const { data: stakeholderMap } = useQuery({
     queryKey: dealStakeholderMapQueryKey(id ?? ''),
@@ -206,7 +206,7 @@ export default function DealDetailPage() {
       updateDeal(id!, {
         name: values.name,
         stage: values.stage as DealResponse['stage'],
-        // Include pipeline_id only when it differs from the current deal's pipeline (MINCRM-408)
+        // Include pipeline_id only when it differs from the current deal's pipeline
         pipeline_id:
           values.pipeline_id && values.pipeline_id !== deal?.pipeline_id
             ? values.pipeline_id
@@ -218,14 +218,14 @@ export default function DealDetailPage() {
         owner_id: values.owner_id || undefined,
         // null clears the override; undefined leaves it unchanged
         probability: values.probability !== '' ? parseInt(values.probability, 10) : null,
-        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits
         version:
           version ??
           queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ??
           1,
       }),
     onSuccess: async (data) => {
-      // Seed the cache immediately so the version is correct before any subsequent edit (MINCRM-351)
+      // Seed the cache immediately so the version is correct before any subsequent edit
       queryClient.setQueryData(dealQueryKey, data);
       if (customFieldValues.length > 0) {
         await putCustomFieldValues('deal', id!, customFieldValues);
@@ -304,14 +304,14 @@ export default function DealDetailPage() {
         account_id: formValues.account_id || null,
         owner_id: formValues.owner_id || undefined,
         probability: formValues.probability !== '' ? parseInt(formValues.probability, 10) : null,
-        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits
         version:
           version ??
           queryClient.getQueryData<{ deal: { version: number } }>(dealQueryKey)?.deal.version ??
           1,
       }),
     onSuccess: (data) => {
-      // Seed the cache immediately so the version is correct before any subsequent edit (MINCRM-351)
+      // Seed the cache immediately so the version is correct before any subsequent edit
       queryClient.setQueryData(dealQueryKey, data);
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
@@ -404,7 +404,7 @@ export default function DealDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Back link — MINCRM-113, MINCRM-115 */}
+        {/* Back link */}
         <Link
           to="/deals"
           data-testid="back-to-deals"
@@ -488,7 +488,7 @@ export default function DealDetailPage() {
           )}
         </div>
 
-        {/* Converted from lead banner (MINCRM-175) */}
+        {/* Converted from lead banner */}
         {!isEditing && deal.source_lead_id && (
           <div
             className="mb-4 rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800"
@@ -500,7 +500,7 @@ export default function DealDetailPage() {
           </div>
         )}
 
-        {/* AI stage advancement suggestion (MINCRM-443) — passive, page-load indicator.
+        {/* AI stage advancement suggestion — passive, page-load indicator.
             No indicator is rendered for { ready: false } (terminal stage, no next stage,
             or the AI was not confident) per the ticket's AC. */}
         {!isEditing && stageAdvancementEnabled && stageAdvancement?.ready && (
@@ -613,7 +613,7 @@ export default function DealDetailPage() {
                 value={resolveAccountName(deal.account_id)}
                 testId="detail-account"
               />
-              {/* Probability — show override indicator when manually set (MINCRM-179) */}
+              {/* Probability — show override indicator when manually set */}
               <DetailRow
                 label={t('deals.probabilityLabel')}
                 value={
@@ -645,7 +645,7 @@ export default function DealDetailPage() {
 
             {id && <CustomFieldsSection entityType="deal" recordId={id} isEditing={false} />}
 
-            {/* AI deal health check (MINCRM-442) */}
+            {/* AI deal health check */}
             {id && dealHealthCheckEnabled && (
               <section className="mt-8" aria-labelledby="deal-health-heading">
                 <h2
@@ -718,7 +718,7 @@ export default function DealDetailPage() {
               </section>
             )}
 
-            {/* AI proposal draft generation (MINCRM-473) */}
+            {/* AI proposal draft generation */}
             {id && proposalDraftEnabled && (
               <section className="mt-8" aria-labelledby="proposal-draft-heading">
                 <h2
@@ -773,7 +773,7 @@ export default function DealDetailPage() {
                 entityQueryKey={DEALS_QUERY_KEY}
                 isEditing={isEditing}
               >
-                {/* AI stakeholder map (MINCRM-466) */}
+                {/* AI stakeholder map */}
                 {championBlockerEnabled && stakeholderMap && stakeholderMap.contacts.length > 0 && (
                   <section className="mt-8" aria-labelledby="stakeholder-map-heading">
                     <h2
@@ -888,7 +888,7 @@ export default function DealDetailPage() {
                     </p>
                   )}
 
-                  {/* Contacts fetch error — MINCRM-117 */}
+                  {/* Contacts fetch error */}
                   {isContactsError && (
                     <p
                       role="alert"
@@ -947,7 +947,7 @@ export default function DealDetailPage() {
         )}
       </main>
 
-      {/* Delete confirmation modal — MINCRM-107 */}
+      {/* Delete confirmation modal */}
       <ConfirmDeleteModal
         isOpen={isConfirmDeleteOpen}
         message={t('deals.confirmDelete')}

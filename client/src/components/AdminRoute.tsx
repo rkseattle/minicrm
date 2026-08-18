@@ -22,7 +22,7 @@ export default function AdminRoute() {
   }
 
   if (!isAuthenticated) {
-    // MINCRM-147: preserve the intended destination so LoginPage can redirect
+    // Preserve the intended destination so LoginPage can redirect
     // back after successful authentication.
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

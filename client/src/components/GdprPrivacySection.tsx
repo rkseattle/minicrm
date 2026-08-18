@@ -1,7 +1,7 @@
 /**
  * GdprPrivacySection component.
  * Displays GDPR & Privacy controls on contact and lead detail pages.
- * Visible to admin users only. (MINCRM-364)
+ * Visible to admin users only.
  */
 
 import { useState } from 'react';

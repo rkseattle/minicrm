@@ -1,5 +1,5 @@
 /**
- * Tests for CustomFieldsSection — MINCRM-276
+ * Tests for CustomFieldsSection
  *
  * Covers:
  *  - Returns null when no definitions exist (read mode)

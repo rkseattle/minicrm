@@ -1,5 +1,5 @@
 /**
- * ChurnExpansionBanner component. (MINCRM-469)
+ * ChurnExpansionBanner component.
  * Shows the active AI churn-risk or expansion signal for an account as a
  * top-of-page banner, following the TokenBudgetWarningBanner pattern:
  * self-contained, own query, renders nothing when there's nothing to show.

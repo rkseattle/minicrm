@@ -1,6 +1,6 @@
 /**
  * GDPR API module.
- * Wraps the GDPR erasure, export, and status endpoints. (MINCRM-364)
+ * Wraps the GDPR erasure, export, and status endpoints.
  */
 
 import apiClient from './axiosInstance.js';

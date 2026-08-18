@@ -152,7 +152,7 @@ describe('CloseDealModal', () => {
     expect(screen.getByTestId('close-deal-error')).toHaveTextContent('Something went wrong');
   });
 
-  it('date input has max attribute set to today to prevent future date selection (MINCRM-121)', () => {
+  it('date input has max attribute set to today to prevent future date selection', () => {
     renderWithProviders(
       <CloseDealModal
         isOpen={true}

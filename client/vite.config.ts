@@ -13,7 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [
     react(),
-    // Coverage/TIA frontend instrumentation (MINCRM-605). Only added when
+    // Coverage/TIA frontend instrumentation. Only added when
     // COVERAGE=true — an unset env var means this plugin is never in the
     // array, so a normal `vite build`/`vite dev` is byte-identical to
     // today. Sourcemapped to original .tsx via Vite's own sourcemap chain,
@@ -104,7 +104,7 @@ export default defineConfig({
   // loads normally and every login fails later against a stack whose database has no
   // matching user. E2E stays on 5173 because CI hardcodes localhost:5173 in its
   // readiness gates and E2E_BASE_URL — moving it locally would diverge from CI, which is
-  // a worse trade than the ambiguity. (MINCRM-684)
+  // a worse trade than the ambiguity.
   server: {
     host: '0.0.0.0',
     port: 5173,
@@ -114,7 +114,6 @@ export default defineConfig({
     // unset, this is an empty array and behaviour is exactly as before. CI only ever
     // uses localhost:5173, so it is unaffected. Remember to add the same origin to
     // CORS_ORIGIN — the server allowlists origins explicitly, with no wildcard.
-    // (MINCRM-684)
     allowedHosts: (process.env.DEV_ALLOWED_HOSTS ?? '')
       .split(',')
       .map((host) => host.trim())

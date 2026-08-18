@@ -1,5 +1,5 @@
 /**
- * MFA API module — TOTP two-factor authentication. (MINCRM-392)
+ * MFA API module — TOTP two-factor authentication.
  */
 
 import type { UserResponse } from '@shared/schemas/userSchema.js';

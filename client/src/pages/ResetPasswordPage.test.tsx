@@ -1,5 +1,5 @@
 /**
- * Tests for ResetPasswordPage (MINCRM-157).
+ * Tests for ResetPasswordPage.
  * Covers: missing token state, form field render, password mismatch validation,
  * complexity validation, successful reset redirects to home, token-invalid error
  * with re-request link, and loading state.

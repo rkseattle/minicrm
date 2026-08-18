@@ -1,6 +1,6 @@
 /**
  * useReportFilters — shared date range, view toggle, and owner filter state
- * for report pages that use the date-preset/team-view pattern. (MINCRM-407)
+ * for report pages that use the date-preset/team-view pattern.
  *
  * Used by WinLossReportPage and ActivityVolumeReportPage.
  * StageTrendReportPage uses a different filter pattern (days: 30|60|90)
@@ -39,7 +39,7 @@ export type ViewMode = 'team' | 'my';
  * `toISOString()` names a different day than the server does for any viewer not
  * in UTC. It was worst for viewers ahead of UTC: `new Date(y, m + 1, 0)` at
  * local midnight serialized into the *following* month, so "this month" reported
- * a range ending a month late. (MINCRM-700)
+ * a range ending a month late.
  *
  * `now` is threaded through rather than read per-helper so every boundary in one
  * render resolves from a single instant. See docs/dev/dates-and-timezones.md.
@@ -119,7 +119,7 @@ export function useReportFilters(initialPreset: DatePreset = 'currentMonth'): Re
   // per day, and it re-arms itself off the new day's boundary. `visibilitychange`
   // covers the case where the tab was backgrounded — browsers throttle or defer
   // long timers in hidden tabs, so the timer alone cannot be trusted to fire on
-  // time. (MINCRM-700)
+  // time.
   const [utcDay, setUtcDay] = useState<string>(() => todayIso());
 
   useEffect(() => {
@@ -171,7 +171,7 @@ export function useReportFilters(initialPreset: DatePreset = 'currentMonth'): Re
   // reintroduce the very freeze this comment describes, because state does not
   // change on a plain rerender. Verified by test: anchoring to `utcDay` fails
   // "re-resolves across UTC midnight on a plain rerender".
-  // (MINCRM-700, Greptile P1s on #371)
+  //
   void utcDay;
   const { start: resolvedStart, end: resolvedEnd } = resolvePresetDates(
     preset,

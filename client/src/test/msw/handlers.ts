@@ -161,7 +161,7 @@ export const WIN_LOSS_REPORT: WinLossReportResponse = {
   ],
   mixedCurrencies: false,
   currency: 'USD',
-  // MINCRM-253 — no rates configured in test fixture
+  // no rates configured in test fixture
   convertedWonValue: null,
   convertedLostValue: null,
   homeCurrency: 'USD',
@@ -210,7 +210,7 @@ export const DASHBOARD_SUMMARY: DashboardSummaryResponse = {
     },
   ],
   recentActivities: [RECENT_ACTIVITY_1],
-  // MINCRM-253 — no rates configured in test fixture
+  // no rates configured in test fixture
   convertedPipelineValue: null,
   convertedWeightedPipelineValue: null,
   homeCurrency: 'USD',
@@ -240,7 +240,7 @@ export const ACTIVITY_VOLUME_REPORT: ActivityVolumeReportResponse = {
   totals: { Note: 4, Call: 7, Email: 2, Meeting: 1, Task: 5, total: 19 },
 };
 
-/** Reusable fixture: stage trend report response (MINCRM-284) */
+/** Reusable fixture: stage trend report response */
 export const STAGE_TREND_REPORT: StageTrendReportResponse = {
   stages: ['Prospecting', 'Qualification', 'Proposal'],
   dataPoints: [
@@ -362,7 +362,7 @@ export const DEAL_1: DealResponse = {
   version: 1,
 };
 
-/** Reusable fixture: a lead record (MINCRM-173) */
+/** Reusable fixture: a lead record */
 export const LEAD_1: LeadResponse = {
   id: '00000000-0000-0000-0000-000000000801',
   first_name: 'Carol',
@@ -545,7 +545,7 @@ export const ENROLLMENT_1: EnrollmentResponse = {
   unenrolled_at: null,
 };
 
-/** Reusable fixture: feature flags list (MINCRM-463) */
+/** Reusable fixture: feature flags list */
 export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
   {
     flag_key: 'notes',
@@ -604,7 +604,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     override_count: { force_enabled: 0, force_disabled: 0 },
     group_key: null,
   },
-  // AI sub-feature flags (MINCRM-460) — all support role overrides
+  // AI sub-feature flags — all support role overrides
   {
     flag_key: 'ai_nli_page',
     label: 'NLI Page',
@@ -892,17 +892,17 @@ export const handlers = [
     });
   }),
 
-  /** Custom roles: GET /api/v1/users/:id/roles — list roles assigned to a user (MINCRM-560) */
+  /** Custom roles: GET /api/v1/users/:id/roles — list roles assigned to a user */
   http.get('/api/v1/users/:id/roles', () => {
     return HttpResponse.json({ data: [] });
   }),
 
-  /** Custom roles: POST /api/v1/users/:id/roles — assign a role to a user (MINCRM-560) */
+  /** Custom roles: POST /api/v1/users/:id/roles — assign a role to a user */
   http.post('/api/v1/users/:id/roles', () => {
     return HttpResponse.json({ success: true });
   }),
 
-  /** Custom roles: DELETE /api/v1/users/:id/roles/:roleId — remove a role from a user (MINCRM-560) */
+  /** Custom roles: DELETE /api/v1/users/:id/roles/:roleId — remove a role from a user */
   http.delete('/api/v1/users/:id/roles/:roleId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
@@ -1169,7 +1169,7 @@ export const handlers = [
   }),
 
   /**
-   * Deals: GET /api/deals/:id/stage-advancement (MINCRM-443)
+   * Deals: GET /api/deals/:id/stage-advancement
    * Fired passively on every DealDetailPage mount when the ai_stage_advancement flag is
    * enabled (the default in tests) — defaults to { ready: false } so no indicator renders
    * unless a test explicitly overrides this handler.
@@ -1188,27 +1188,27 @@ export const handlers = [
     return HttpResponse.json(WIN_LOSS_REPORT);
   }),
 
-  /** Reports: GET /api/reports/activity-volume — returns activity volume report (MINCRM-181) */
+  /** Reports: GET /api/reports/activity-volume — returns activity volume report */
   http.get('/api/v1/reports/activity-volume', () => {
     return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
   }),
 
-  /** Reports: GET /api/reports/stage-trend — returns stage trend report (MINCRM-284) */
+  /** Reports: GET /api/reports/stage-trend — returns stage trend report */
   http.get('/api/v1/reports/stage-trend', () => {
     return HttpResponse.json(STAGE_TREND_REPORT);
   }),
 
-  /** Custom Reports: GET /api/v1/reports/custom — returns saved custom reports list (MINCRM-402) */
+  /** Custom Reports: GET /api/v1/reports/custom — returns saved custom reports list */
   http.get('/api/v1/reports/custom', () => {
     return HttpResponse.json({ reports: [] });
   }),
 
-  /** Custom Reports: POST /api/v1/reports/custom/run — executes ad-hoc report (MINCRM-402) */
+  /** Custom Reports: POST /api/v1/reports/custom/run — executes ad-hoc report */
   http.post('/api/v1/reports/custom/run', () => {
     return HttpResponse.json({ columns: ['id', 'first_name'], rows: [], row_count: 0 });
   }),
 
-  /** Custom Reports: POST /api/v1/reports/custom — creates a saved report (MINCRM-402) */
+  /** Custom Reports: POST /api/v1/reports/custom — creates a saved report */
   http.post('/api/v1/reports/custom', async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json(
@@ -1225,7 +1225,7 @@ export const handlers = [
     );
   }),
 
-  /** Custom Reports: PATCH /api/v1/reports/custom/:id — updates a saved report (MINCRM-402) */
+  /** Custom Reports: PATCH /api/v1/reports/custom/:id — updates a saved report */
   http.patch('/api/v1/reports/custom/:id', async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({
@@ -1239,12 +1239,12 @@ export const handlers = [
     });
   }),
 
-  /** Custom Reports: DELETE /api/v1/reports/custom/:id — deletes a saved report (MINCRM-402) */
+  /** Custom Reports: DELETE /api/v1/reports/custom/:id — deletes a saved report */
   http.delete('/api/v1/reports/custom/:id', ({ params }) => {
     return HttpResponse.json({ id: params['id'] });
   }),
 
-  /** Custom Reports: POST /api/v1/reports/custom/:id/run — runs a saved report (MINCRM-402) */
+  /** Custom Reports: POST /api/v1/reports/custom/:id/run — runs a saved report */
   http.post('/api/v1/reports/custom/:id/run', () => {
     return HttpResponse.json({ columns: ['id', 'first_name'], rows: [], row_count: 0 });
   }),
@@ -1323,40 +1323,40 @@ export const handlers = [
     return HttpResponse.json({ language: body.language });
   }),
 
-  /** Settings: GET /api/settings/nav-layout (MINCRM-133) */
+  /** Settings: GET /api/settings/nav-layout */
   http.get('/api/v1/settings/nav-layout', () => {
     return HttpResponse.json({ layout: 'top' });
   }),
 
-  /** Settings: PATCH /api/settings/nav-layout (MINCRM-133) */
+  /** Settings: PATCH /api/settings/nav-layout */
   http.patch('/api/v1/settings/nav-layout', async ({ request }) => {
     const body = (await request.json()) as { layout: string };
     return HttpResponse.json({ layout: body.layout });
   }),
 
-  /** Settings: GET /api/settings/email-notifications (MINCRM-163) */
+  /** Settings: GET /api/settings/email-notifications */
   http.get('/api/v1/settings/email-notifications', () => {
     return HttpResponse.json({ enabled: true });
   }),
 
-  /** Settings: PATCH /api/settings/email-notifications (MINCRM-163) */
+  /** Settings: PATCH /api/settings/email-notifications */
   http.patch('/api/v1/settings/email-notifications', async ({ request }) => {
     const body = (await request.json()) as { enabled: boolean };
     return HttpResponse.json({ enabled: body.enabled });
   }),
 
-  /** Settings: GET /api/settings/default-currency (MINCRM-189) */
+  /** Settings: GET /api/settings/default-currency */
   http.get('/api/v1/settings/default-currency', () => {
     return HttpResponse.json({ currency: 'USD' });
   }),
 
-  /** Settings: PATCH /api/settings/default-currency (MINCRM-189) */
+  /** Settings: PATCH /api/settings/default-currency */
   http.patch('/api/v1/settings/default-currency', async ({ request }) => {
     const body = (await request.json()) as { currency: string };
     return HttpResponse.json({ currency: body.currency });
   }),
 
-  /** Settings: GET /api/settings/currencies (MINCRM-251) */
+  /** Settings: GET /api/settings/currencies */
   http.get('/api/v1/settings/currencies', () => {
     return HttpResponse.json({
       home_currency: 'USD',
@@ -1373,7 +1373,7 @@ export const handlers = [
     });
   }),
 
-  /** Settings: PUT /api/settings/currencies (MINCRM-251) */
+  /** Settings: PUT /api/settings/currencies */
   http.put('/api/v1/settings/currencies', async ({ request }) => {
     const body = (await request.json()) as {
       home_currency: string;
@@ -1399,12 +1399,12 @@ export const handlers = [
     });
   }),
 
-  /** Users: GET /api/users/notification-recipient-count (MINCRM-163) */
+  /** Users: GET /api/users/notification-recipient-count */
   http.get('/api/v1/users/notification-recipient-count', () => {
     return HttpResponse.json({ count: 2 });
   }),
 
-  /** Users: GET /api/users/me/notification-preferences (MINCRM-161, MINCRM-162) */
+  /** Users: GET /api/users/me/notification-preferences */
   http.get('/api/v1/users/me/notification-preferences', () => {
     return HttpResponse.json({
       preferences: {
@@ -1415,7 +1415,7 @@ export const handlers = [
     });
   }),
 
-  /** Users: PATCH /api/users/me/notification-preferences (MINCRM-161, MINCRM-162) */
+  /** Users: PATCH /api/users/me/notification-preferences */
   http.patch('/api/v1/users/me/notification-preferences', async ({ request }) => {
     const body = (await request.json()) as {
       notify_overdue_tasks?: boolean;
@@ -1611,7 +1611,7 @@ export const handlers = [
     return HttpResponse.json(searchResponse);
   }),
 
-  // ── Attachments (MINCRM-167) ─────────────────────────────────────────────────
+  // ── Attachments ─────────────────────────────────────────────────
 
   /** Attachments: GET /api/attachments — returns empty list by default */
   http.get('/api/v1/attachments', () => {
@@ -1643,7 +1643,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  // ── Storage settings (MINCRM-169) ────────────────────────────────────────────
+  // ── Storage settings ────────────────────────────────────────────
 
   /** Settings: GET /api/settings/storage/status — not configured by default */
   http.get('/api/v1/settings/storage/status', () => {
@@ -1684,17 +1684,17 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  /** Settings: GET /api/settings/sso/status — SSO disabled by default (MINCRM-399) */
+  /** Settings: GET /api/settings/sso/status — SSO disabled by default */
   http.get('/api/v1/settings/sso/status', () => {
     return HttpResponse.json({ enabled: false, protocol: null });
   }),
 
-  /** Settings: GET /api/settings/sso — not configured by default (MINCRM-399) */
+  /** Settings: GET /api/settings/sso — not configured by default */
   http.get('/api/v1/settings/sso', () => {
     return HttpResponse.json({ sso: null });
   }),
 
-  /** Settings: PUT /api/settings/sso (MINCRM-399) */
+  /** Settings: PUT /api/settings/sso */
   http.put('/api/v1/settings/sso', async ({ request }) => {
     const body = (await request.json()) as {
       protocol: string;
@@ -1711,23 +1711,23 @@ export const handlers = [
     });
   }),
 
-  /** Settings: DELETE /api/settings/sso (MINCRM-399) */
+  /** Settings: DELETE /api/settings/sso */
   http.delete('/api/v1/settings/sso', () => {
     return HttpResponse.json({ ok: true });
   }),
 
-  /** Settings: GET /api/settings/tags-restrict-creation (MINCRM-263) */
+  /** Settings: GET /api/settings/tags-restrict-creation */
   http.get('/api/v1/settings/tags-restrict-creation', () => {
     return HttpResponse.json({ restricted: false });
   }),
 
-  /** Settings: PATCH /api/settings/tags-restrict-creation (MINCRM-263) */
+  /** Settings: PATCH /api/settings/tags-restrict-creation */
   http.patch('/api/v1/settings/tags-restrict-creation', async ({ request }) => {
     const body = (await request.json()) as { restricted: boolean };
     return HttpResponse.json({ restricted: body.restricted });
   }),
 
-  /** Settings: GET /api/settings/smtp — no password set by default (MINCRM-254) */
+  /** Settings: GET /api/settings/smtp — no password set by default */
   http.get('/api/v1/settings/smtp', () => {
     return HttpResponse.json({
       smtp_host: '',
@@ -1738,7 +1738,7 @@ export const handlers = [
     });
   }),
 
-  /** Settings: PUT /api/settings/smtp (MINCRM-254) */
+  /** Settings: PUT /api/settings/smtp */
   http.put('/api/v1/settings/smtp', async ({ request }) => {
     const body = (await request.json()) as {
       smtp_host: string;
@@ -1756,12 +1756,12 @@ export const handlers = [
     });
   }),
 
-  /** Settings: POST /api/settings/smtp/test (MINCRM-254) */
+  /** Settings: POST /api/settings/smtp/test */
   http.post('/api/v1/settings/smtp/test', () => {
     return HttpResponse.json({ success: true });
   }),
 
-  /** Leads: GET /api/leads — returns LEAD_1 by default (MINCRM-173) */
+  /** Leads: GET /api/leads — returns LEAD_1 by default */
   http.get('/api/v1/leads', () => {
     return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 25 });
   }),
@@ -1800,7 +1800,7 @@ export const handlers = [
     return HttpResponse.json({ lead: { ...LEAD_1, ...body, id: params.id as string } });
   }),
 
-  /** Leads: POST /api/leads/:id/score-narrative (MINCRM-441) */
+  /** Leads: POST /api/leads/:id/score-narrative */
   http.post('/api/v1/leads/:id/score-narrative', () => {
     return HttpResponse.json({
       narrative: 'This lead scores well due to a strong referral source and recent activity.',
@@ -1809,7 +1809,7 @@ export const handlers = [
     });
   }),
 
-  /** Leads: GET /api/leads/:id/score (MINCRM-441 prerequisite) */
+  /** Leads: GET /api/leads/:id/score */
   http.get('/api/v1/leads/:id/score', () => {
     return HttpResponse.json({
       score: 55,
@@ -1872,7 +1872,7 @@ export const handlers = [
     return HttpResponse.json({ actors: [] });
   }),
 
-  // ── Pipelines (MINCRM-397) ────────────────────────────────────────────────────
+  // ── Pipelines ────────────────────────────────────────────────────
 
   /** Pipelines: GET /api/pipelines — returns the single default pipeline */
   http.get('/api/v1/pipelines', () => {
@@ -1947,7 +1947,7 @@ export const handlers = [
     return HttpResponse.json({ id: params.id });
   }),
 
-  /** Pipeline stages: PUT /api/settings/pipeline-stages/reorder — batch reorder (MINCRM-381) */
+  /** Pipeline stages: PUT /api/settings/pipeline-stages/reorder — batch reorder */
   http.put('/api/v1/settings/pipeline-stages/reorder', async ({ request }) => {
     const body = (await request.json()) as { stages: string[] };
     const reordered = body.stages.map((id, i) => {
@@ -1966,7 +1966,7 @@ export const handlers = [
     return HttpResponse.json({ stages: reordered });
   }),
 
-  // ── Bulk operations (MINCRM-188) ─────────────────────────────────────────────
+  // ── Bulk operations ─────────────────────────────────────────────
 
   /** Bulk: POST /api/contacts/bulk — returns affected count */
   http.post('/api/v1/contacts/bulk', () => {
@@ -1983,7 +1983,7 @@ export const handlers = [
     return HttpResponse.json({ affected: 1 });
   }),
 
-  // ── Bulk V2 operations (MINCRM-562) ───────────────────────────────────────────
+  // ── Bulk V2 operations ───────────────────────────────────────────
 
   /** Bulk V2: PATCH /api/leads/bulk — reassign owner */
   http.patch('/api/v1/leads/bulk', () => {
@@ -2005,7 +2005,7 @@ export const handlers = [
     return HttpResponse.json({ succeeded: [], failed: [] });
   }),
 
-  // ── Tags (MINCRM-186) ─────────────────────────────────────────────────────────
+  // ── Tags ─────────────────────────────────────────────────────────
 
   /** Tags: GET /api/tags — returns paginated empty list by default */
   http.get('/api/v1/tags', () => {
@@ -2127,12 +2127,12 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Settings: GET /api/settings/branding — no branding by default (MINCRM-356) */
+  /** Settings: GET /api/settings/branding — no branding by default */
   http.get('/api/v1/settings/branding', () => {
     return HttpResponse.json({ branding: null });
   }),
 
-  /** Settings: PUT /api/settings/branding (MINCRM-356) */
+  /** Settings: PUT /api/settings/branding */
   http.put('/api/v1/settings/branding', async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({
@@ -2149,12 +2149,12 @@ export const handlers = [
     });
   }),
 
-  /** Settings: DELETE /api/settings/branding (MINCRM-356) */
+  /** Settings: DELETE /api/settings/branding */
   http.delete('/api/v1/settings/branding', () => {
     return HttpResponse.json({ branding: null });
   }),
 
-  /** Setup checklist: GET /api/settings/onboarding — not first run by default (MINCRM-256, MINCRM-379) */
+  /** Setup checklist: GET /api/settings/onboarding — not first run by default */
   http.get('/api/v1/settings/onboarding', () => {
     return HttpResponse.json({
       is_first_run: false,
@@ -2169,12 +2169,12 @@ export const handlers = [
     });
   }),
 
-  /** Onboarding: PUT /api/settings/onboarding — mark completed (MINCRM-256) */
+  /** Onboarding: PUT /api/settings/onboarding — mark completed */
   http.put('/api/v1/settings/onboarding', () => {
     return HttpResponse.json({ onboarding_completed: true });
   }),
 
-  /** Contacts: POST /api/contacts/:id/send-email — SMTP not configured in test (MINCRM-275) */
+  /** Contacts: POST /api/contacts/:id/send-email — SMTP not configured in test */
   http.post('/api/v1/contacts/:id/send-email', () => {
     return HttpResponse.json({
       delivered: false,
@@ -2182,12 +2182,12 @@ export const handlers = [
     });
   }),
 
-  /** Custom fields: GET /api/custom-fields/definitions — returns empty list (MINCRM-276) */
+  /** Custom fields: GET /api/custom-fields/definitions — returns empty list */
   http.get('/api/v1/custom-fields/definitions', () => {
     return HttpResponse.json({ definitions: [] });
   }),
 
-  /** Custom fields: POST /api/custom-fields/definitions — create definition (MINCRM-276) */
+  /** Custom fields: POST /api/custom-fields/definitions — create definition */
   http.post('/api/v1/custom-fields/definitions', async ({ request }) => {
     const body = (await request.json()) as {
       entity_type: string;
@@ -2209,7 +2209,7 @@ export const handlers = [
     );
   }),
 
-  /** Custom fields: PATCH /api/custom-fields/definitions/:id — update definition (MINCRM-276, MINCRM-461) */
+  /** Custom fields: PATCH /api/custom-fields/definitions/:id — update definition */
   http.patch('/api/v1/custom-fields/definitions/:id', async ({ params, request }) => {
     const body = (await request.json()) as { pii_excluded?: boolean };
     return HttpResponse.json({
@@ -2224,22 +2224,22 @@ export const handlers = [
     });
   }),
 
-  /** Custom fields: DELETE /api/custom-fields/definitions/:id — delete definition (MINCRM-276) */
+  /** Custom fields: DELETE /api/custom-fields/definitions/:id — delete definition */
   http.delete('/api/v1/custom-fields/definitions/:id', ({ params }) => {
     return HttpResponse.json({ id: params['id'] });
   }),
 
-  /** Custom fields: GET /api/custom-fields/:entityType/:recordId/custom-fields — returns empty (MINCRM-276) */
+  /** Custom fields: GET /api/custom-fields/:entityType/:recordId/custom-fields — returns empty */
   http.get('/api/v1/custom-fields/:entityType/:recordId/custom-fields', () => {
     return HttpResponse.json({ values: [] });
   }),
 
-  /** Custom fields: PUT /api/custom-fields/:entityType/:recordId/custom-fields — upsert values (MINCRM-276) */
+  /** Custom fields: PUT /api/custom-fields/:entityType/:recordId/custom-fields — upsert values */
   http.put('/api/v1/custom-fields/:entityType/:recordId/custom-fields', () => {
     return HttpResponse.json({ values: [] });
   }),
 
-  // ── Webhooks (MINCRM-279) ────────────────────────────────────────────────────
+  // ── Webhooks ────────────────────────────────────────────────────
 
   /** Webhooks: GET /api/admin/webhooks — returns empty list by default */
   http.get('/api/v1/admin/webhooks', () => {
@@ -2304,7 +2304,7 @@ export const handlers = [
     return HttpResponse.json({ data: [], total: 0, page: 1, limit: 20 });
   }),
 
-  // ── Notes (MINCRM-352) ────────────────────────────────────────────────────
+  // ── Notes ────────────────────────────────────────────────────
 
   /** Notes: GET /api/v1/contact/:id/notes — returns empty paginated list by default */
   http.get('/api/v1/contact/:id/notes', () => {
@@ -2326,7 +2326,7 @@ export const handlers = [
     return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
   }),
 
-  // ── GDPR (MINCRM-364) ─────────────────────────────────────────────────────
+  // ── GDPR ─────────────────────────────────────────────────────
 
   /** GDPR status: GET /api/v1/gdpr/status/:recordType/:recordId — not erased by default */
   http.get('/api/v1/gdpr/status/:recordType/:recordId', () => {
@@ -2357,7 +2357,7 @@ export const handlers = [
     });
   }),
 
-  // ── MFA (MINCRM-392) ─────────────────────────────────────────────────────────
+  // ── MFA ─────────────────────────────────────────────────────────
 
   /** MFA: GET /api/auth/mfa/status — MFA disabled by default */
   http.get('/api/v1/auth/mfa/status', () => {
@@ -2404,18 +2404,18 @@ export const handlers = [
     return HttpResponse.json({ user: ADMIN_USER, mustChangePassword: false });
   }),
 
-  /** Settings: GET /api/settings/mfa-required — MFA not required by default (MINCRM-392) */
+  /** Settings: GET /api/settings/mfa-required — MFA not required by default */
   http.get('/api/v1/settings/mfa-required', () => {
     return HttpResponse.json({ mfa_required: false });
   }),
 
-  /** Settings: PATCH /api/settings/mfa-required (MINCRM-392) */
+  /** Settings: PATCH /api/settings/mfa-required */
   http.patch('/api/v1/settings/mfa-required', async ({ request }) => {
     const body = (await request.json()) as { mfa_required: boolean };
     return HttpResponse.json({ mfa_required: body.mfa_required });
   }),
 
-  // ── Sequences (MINCRM-403) ───────────────────────────────────────────────────
+  // ── Sequences ───────────────────────────────────────────────────
 
   /** Sequences: GET /api/sequences — returns SEQUENCE_1 by default */
   http.get('/api/v1/sequences', () => {
@@ -2549,7 +2549,7 @@ export const handlers = [
     });
   }),
 
-  // ── Proposal draft generation (MINCRM-473) ──────────────────────────────────────
+  // ── Proposal draft generation ──────────────────────────────────────
 
   /** Deals: POST /api/deals/:id/proposal-draft — default stub draft. */
   http.post('/api/v1/deals/:id/proposal-draft', () => {
@@ -2573,7 +2573,7 @@ export const handlers = [
    * intermittently failed to settle the response when the body is a Blob
    * (observed as the client mutation never resolving in CI only), matching the
    * plain-string/Uint8Array pattern already used by the other blob-response
-   * handlers below (win-loss CSV/PDF export). (MINCRM-473)
+   * handlers below (win-loss CSV/PDF export).
    */
   http.post('/api/v1/deals/:id/proposal-draft/export-docx', () => {
     return new HttpResponse('stub-docx-content', {
@@ -2583,7 +2583,7 @@ export const handlers = [
     });
   }),
 
-  // ── Objection pattern matching (MINCRM-471) ─────────────────────────────────────
+  // ── Objection pattern matching ─────────────────────────────────────
 
   /** Activities: POST /api/activities/:id/classify-objection — defaults to no objection detected. */
   http.post('/api/v1/activities/:id/classify-objection', () => {
@@ -2603,7 +2603,7 @@ export const handlers = [
     });
   }),
 
-  // ── Churn/expansion detection (MINCRM-469) ──────────────────────────────────────
+  // ── Churn/expansion detection ──────────────────────────────────────
 
   /** Accounts: GET /api/accounts/:id/churn-expansion-signal — defaults to no active signal. */
   http.get('/api/v1/accounts/:id/churn-expansion-signal', () => {
@@ -2615,7 +2615,7 @@ export const handlers = [
     return HttpResponse.json({ at_risk: [], expansion: [] });
   }),
 
-  /** Insights: GET /api/insights/coaching/me — defaults to insufficient data, no insights (MINCRM-474). */
+  /** Insights: GET /api/insights/coaching/me — defaults to insufficient data, no insights. */
   http.get('/api/v1/insights/coaching/me', () => {
     return HttpResponse.json({
       rep_id: ADMIN_USER.id,
@@ -2627,12 +2627,12 @@ export const handlers = [
     });
   }),
 
-  /** Insights: GET /api/insights/coaching/team — defaults to an empty rep list (MINCRM-474). */
+  /** Insights: GET /api/insights/coaching/team — defaults to an empty rep list. */
   http.get('/api/v1/insights/coaching/team', () => {
     return HttpResponse.json({ reps: [], min_closed_deals_required: 10 });
   }),
 
-  /** Insights: GET /api/insights/coaching/:repId — defaults to insufficient data (MINCRM-474). */
+  /** Insights: GET /api/insights/coaching/:repId — defaults to insufficient data. */
   http.get('/api/v1/insights/coaching/:repId', ({ params }) => {
     return HttpResponse.json({
       rep_id: params.repId as string,
@@ -2644,7 +2644,7 @@ export const handlers = [
     });
   }),
 
-  /** Leads: POST /api/leads/routing-suggestion — defaults to no confident suggestion (MINCRM-475). */
+  /** Leads: POST /api/leads/routing-suggestion — defaults to no confident suggestion. */
   http.post('/api/v1/leads/routing-suggestion', () => {
     return new HttpResponse(null, { status: 204 });
   }),
@@ -2715,7 +2715,7 @@ export const handlers = [
     return HttpResponse.json({ accepted: true }, { status: 202 });
   }),
 
-  // ── In-app notification feed (MINCRM-469) ───────────────────────────────────────
+  // ── In-app notification feed ───────────────────────────────────────
 
   /** Notifications: GET /api/notifications — defaults to an empty feed. */
   http.get('/api/v1/notifications', () => {
@@ -2732,7 +2732,7 @@ export const handlers = [
     return HttpResponse.json({ notifications: [], unread_count: 0 });
   }),
 
-  // ── Champion/blocker detection (MINCRM-466) ─────────────────────────────────────
+  // ── Champion/blocker detection ─────────────────────────────────────
 
   /** Contacts: GET /api/contacts/:id/champion-blocker — defaults to neutral (no badge rendered). */
   http.get('/api/v1/contacts/:id/champion-blocker', ({ params }) => {
@@ -2781,7 +2781,7 @@ export const handlers = [
     });
   }),
 
-  // ── Sentiment tracking (MINCRM-472) ──────────────────────────────────────────────
+  // ── Sentiment tracking ──────────────────────────────────────────────
 
   /** Contacts: GET /api/contacts/:id/sentiment-trend — defaults to insufficient data (no sparkline rendered). */
   http.get('/api/v1/contacts/:id/sentiment-trend', ({ params }) => {
@@ -2808,7 +2808,7 @@ export const handlers = [
     return HttpResponse.json({ activity_id: params['id'] as string, flagged_inaccurate: true });
   }),
 
-  // ── Relationship health scoring (MINCRM-467) ─────────────────────────────────────
+  // ── Relationship health scoring ─────────────────────────────────────
 
   /** Accounts: GET /api/accounts/:id/health-score — defaults to no computed score. */
   http.get('/api/v1/accounts/:id/health-score', () => {
@@ -2839,7 +2839,7 @@ export const handlers = [
     });
   }),
 
-  // ── Follow-up timing suggestions (MINCRM-470) ────────────────────────────────────
+  // ── Follow-up timing suggestions ────────────────────────────────────
 
   /** Contacts: GET /api/contacts/:id/followup-timing — defaults to insufficient data. */
   http.get('/api/v1/contacts/:id/followup-timing', () => {
@@ -2851,7 +2851,7 @@ export const handlers = [
     return HttpResponse.json({ timezone: 'UTC' });
   }),
 
-  // ── Meeting brief generation (MINCRM-465) ────────────────────────────────────────
+  // ── Meeting brief generation ────────────────────────────────────────
 
   /** Activities: GET /api/activities/:id/brief — defaults to not-found (no brief generated yet). */
   http.get('/api/v1/activities/:id/brief', () => {
@@ -2863,14 +2863,14 @@ export const handlers = [
     );
   }),
 
-  // ── Warm introduction path mapping (MINCRM-468) ──────────────────────────────────
+  // ── Warm introduction path mapping ──────────────────────────────────
 
   /** Contacts: GET /api/contacts/:id/warm-paths — defaults to no paths found. */
   http.get('/api/v1/contacts/:id/warm-paths', ({ params }) => {
     return HttpResponse.json({ target_contact_id: params['id'] as string, paths: [] });
   }),
 
-  // ── Win/loss pattern insights (MINCRM-464) ──────────────────────────────────────
+  // ── Win/loss pattern insights ──────────────────────────────────────
 
   /** Insights: GET /api/insights/win-loss — defaults to sufficient data with one win pattern. */
   http.get('/api/v1/insights/win-loss', () => {
@@ -2911,11 +2911,11 @@ export const handlers = [
     });
   }),
 
-  // ── Feature flags (MINCRM-463) ────────────────────────────────────────────────
+  // ── Feature flags ────────────────────────────────────────────────
   //
   // See allFlagsEnabled() at the bottom of this file: a test overriding one flag
   // must spread it over the full map rather than returning a single-key object,
-  // because flags now default OFF when absent. (MINCRM-695, MINCRM-696)
+  // because flags now default OFF when absent.
 
   /**
    * Feature flags: GET /api/feature-flags/me — returns resolved flag map for the calling user.
@@ -2995,7 +2995,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  // ── AI configuration (MINCRM-457) ─────────────────────────────────────────
+  // ── AI configuration ─────────────────────────────────────────
 
   /** AI config: GET /api/v1/admin/ai/config — default disabled state */
   http.get('/api/v1/admin/ai/config', () => {
@@ -3122,7 +3122,7 @@ export const handlers = [
     });
   }),
 
-  // ── AI user context handlers (MINCRM-427, MINCRM-428) ─────────────────────
+  // ── AI user context handlers ─────────────────────
 
   /** AI context: GET /api/v1/ai/context */
   http.get('/api/v1/ai/context', () => {
@@ -3163,7 +3163,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  // ── AI token budget handlers (MINCRM-458) ──────────────────────────────────
+  // ── AI token budget handlers ──────────────────────────────────
 
   /** AI token budgets: GET /api/v1/admin/ai/token-budgets */
   http.get('/api/v1/admin/ai/token-budgets', () => {
@@ -3199,7 +3199,7 @@ export const handlers = [
     });
   }),
 
-  // ── AI retention handlers (MINCRM-462) ─────────────────────────────────────
+  // ── AI retention handlers ─────────────────────────────────────
 
   /** AI retention stats: GET /api/v1/admin/ai/retention-stats */
   http.get('/api/v1/admin/ai/retention-stats', () => {
@@ -3214,7 +3214,7 @@ export const handlers = [
     );
   }),
 
-  // ── Rep coaching insight config handlers (MINCRM-474) ──────────────────────
+  // ── Rep coaching insight config handlers ──────────────────────
 
   /** GET /api/v1/admin/ai/coaching-config — defaults to the migration-seeded values. */
   http.get('/api/v1/admin/ai/coaching-config', () => {
@@ -3252,7 +3252,7 @@ export const handlers = [
     return HttpResponse.json({ ai_session_retention_days: 90 });
   }),
 
-  // ── AI field exclusion handlers (MINCRM-461) ───────────────────────────────
+  // ── AI field exclusion handlers ───────────────────────────────
 
   /** AI field exclusions: GET /api/v1/admin/ai/field-exclusions */
   http.get('/api/v1/admin/ai/field-exclusions', () => {
@@ -3276,7 +3276,7 @@ export const handlers = [
     return HttpResponse.json(body);
   }),
 
-  // ── AI usage dashboard handlers (MINCRM-459) ───────────────────────────────
+  // ── AI usage dashboard handlers ───────────────────────────────
 
   /** AI usage: GET /api/v1/admin/ai/usage/summary */
   http.get('/api/v1/admin/ai/usage/summary', () => {
@@ -3358,7 +3358,7 @@ export const handlers = [
     });
   }),
 
-  /** Custom roles: GET /api/v1/custom-roles (MINCRM-542) */
+  /** Custom roles: GET /api/v1/custom-roles */
   http.get('/api/v1/custom-roles', () => {
     return HttpResponse.json({
       data: [
@@ -3384,7 +3384,7 @@ export const handlers = [
     });
   }),
 
-  /** Custom roles: POST /api/v1/custom-roles (MINCRM-542) */
+  /** Custom roles: POST /api/v1/custom-roles */
   http.post('/api/v1/custom-roles', async ({ request }) => {
     const body = (await request.json()) as {
       name: string;
@@ -3407,7 +3407,7 @@ export const handlers = [
     );
   }),
 
-  /** Custom roles: PUT /api/v1/custom-roles/:id (MINCRM-542) */
+  /** Custom roles: PUT /api/v1/custom-roles/:id */
   http.put('/api/v1/custom-roles/:id', async ({ request, params }) => {
     const body = (await request.json()) as {
       name?: string;
@@ -3427,19 +3427,19 @@ export const handlers = [
     });
   }),
 
-  /** Custom roles: DELETE /api/v1/custom-roles/:id (MINCRM-542) */
+  /** Custom roles: DELETE /api/v1/custom-roles/:id */
   http.delete('/api/v1/custom-roles/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Visibility settings: GET /api/settings/visibility (MINCRM-538, MINCRM-472) */
+  /** Visibility settings: GET /api/settings/visibility */
   http.get('/api/v1/settings/visibility', () => {
     return HttpResponse.json({
       visibility: { contact: 'org', deal: 'org', activity: 'org', account: 'org' },
     });
   }),
 
-  /** Visibility settings: PUT /api/settings/visibility (MINCRM-538, MINCRM-472) */
+  /** Visibility settings: PUT /api/settings/visibility */
   http.put('/api/v1/settings/visibility', async ({ request }) => {
     const body = (await request.json()) as Record<string, string>;
     return HttpResponse.json({
@@ -3452,12 +3452,12 @@ export const handlers = [
     });
   }),
 
-  /** Teams: GET /api/v1/teams (MINCRM-539) */
+  /** Teams: GET /api/v1/teams */
   http.get('/api/v1/teams', () => {
     return HttpResponse.json({ teams: [] });
   }),
 
-  /** Teams: POST /api/v1/teams (MINCRM-539) */
+  /** Teams: POST /api/v1/teams */
   http.post('/api/v1/teams', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json(
@@ -3477,7 +3477,7 @@ export const handlers = [
     );
   }),
 
-  /** Teams: PUT /api/v1/teams/:id (MINCRM-539) */
+  /** Teams: PUT /api/v1/teams/:id */
   http.put('/api/v1/teams/:id', async ({ params, request }) => {
     const body = (await request.json()) as { name?: string };
     return HttpResponse.json({
@@ -3494,17 +3494,17 @@ export const handlers = [
     });
   }),
 
-  /** Teams: DELETE /api/v1/teams/:id (MINCRM-539) */
+  /** Teams: DELETE /api/v1/teams/:id */
   http.delete('/api/v1/teams/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Teams: GET /api/v1/teams/:id/members (MINCRM-539) */
+  /** Teams: GET /api/v1/teams/:id/members */
   http.get('/api/v1/teams/:id/members', () => {
     return HttpResponse.json({ members: [] });
   }),
 
-  /** Teams: POST /api/v1/teams/:id/members (MINCRM-539) */
+  /** Teams: POST /api/v1/teams/:id/members */
   http.post('/api/v1/teams/:id/members', async ({ params, request }) => {
     const body = (await request.json()) as { user_id: string; role: string };
     return HttpResponse.json(
@@ -3521,17 +3521,17 @@ export const handlers = [
     );
   }),
 
-  /** Teams: DELETE /api/v1/teams/:id/members/:userId (MINCRM-539) */
+  /** Teams: DELETE /api/v1/teams/:id/members/:userId */
   http.delete('/api/v1/teams/:id/members/:userId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** SCIM: GET /api/v1/scim-token (MINCRM-541) */
+  /** SCIM: GET /api/v1/scim-token */
   http.get('/api/v1/scim-token', () => {
     return HttpResponse.json({ token: null });
   }),
 
-  /** SCIM: POST /api/v1/scim-token (MINCRM-541) */
+  /** SCIM: POST /api/v1/scim-token */
   http.post('/api/v1/scim-token', () => {
     return HttpResponse.json(
       {
@@ -3546,22 +3546,22 @@ export const handlers = [
     );
   }),
 
-  /** SCIM: DELETE /api/v1/scim-token (MINCRM-541) */
+  /** SCIM: DELETE /api/v1/scim-token */
   http.delete('/api/v1/scim-token', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** SCIM: GET /api/v1/scim/group-role-mappings (MINCRM-541) */
+  /** SCIM: GET /api/v1/scim/group-role-mappings */
   http.get('/api/v1/scim/group-role-mappings', () => {
     return HttpResponse.json({ mappings: [] });
   }),
 
-  /** SCIM: PUT /api/v1/scim/group-role-mappings/:scimGroupId (MINCRM-541) */
+  /** SCIM: PUT /api/v1/scim/group-role-mappings/:scimGroupId */
   http.put('/api/v1/scim/group-role-mappings/:scimGroupId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** SCIM: DELETE /api/v1/scim/group-role-mappings/:scimGroupId (MINCRM-541) */
+  /** SCIM: DELETE /api/v1/scim/group-role-mappings/:scimGroupId */
   http.delete('/api/v1/scim/group-role-mappings/:scimGroupId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
@@ -3572,7 +3572,7 @@ export const handlers = [
  * MSW handler serves.
  *
  * Exported so a test overriding ONE flag can spread this and change just that
- * key. Since MINCRM-695/696 an absent flag resolves to OFF (a feature is hidden
+ * key. Since a later change, an absent flag resolves to OFF (a feature is hidden
  * until affirmatively confirmed on), so `HttpResponse.json({ flags: { one: false } })`
  * no longer means "everything as usual except `one`" — it means "`one` is off and
  * every other feature is too", which silently removes the very UI a test is

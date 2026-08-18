@@ -26,7 +26,7 @@ import fr from './locales/fr.json';
 import de from './locales/de.json';
 // pseudo is not in SUPPORTED_LOCALES (so it stays off the server-validated language
 // selector), but is registered here so E2E tests can call i18n.changeLanguage('pseudo')
-// client-side without any API call. MINCRM-241
+// client-side without any API call.
 import pseudo from './locales/pseudo.json';
 
 /** Translation resource map keyed by language code */
@@ -55,7 +55,7 @@ i18n.use(initReactI18next).init({
  * Called once on app load after the auth session is available.
  *
  * Priority:
- *  1. userPreference — stored on the user record (MINCRM-31)
+ *  1. userPreference — stored on the user record
  *  2. systemDefault  — fetched from /api/settings/default-language
  *  3. Stays on 'en' (the init default above)
  *

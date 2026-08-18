@@ -1,5 +1,5 @@
 /**
- * Unit tests for ContextProposalChip. (MINCRM-429, MINCRM-430)
+ * Unit tests for ContextProposalChip.
  *
  * Covers:
  *  - Renders key, value, reason

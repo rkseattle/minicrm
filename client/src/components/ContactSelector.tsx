@@ -52,7 +52,7 @@ export default function ContactSelector({
   });
 
   // Fetch the selected contacts by searching without a filter so we can show their names.
-  // Override global staleTime: 0 — picker results are stable while a form is being completed. (MINCRM-348)
+  // Override global staleTime: 0 — picker results are stable while a form is being completed.
   const { data: selectedData } = useQuery({
     queryKey: ['contacts', 'selector-selected-all'],
     queryFn: () => listContacts(),

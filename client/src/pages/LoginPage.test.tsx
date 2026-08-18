@@ -1,8 +1,8 @@
 /**
  * Tests for the LoginPage component.
  * Covers: render, form interaction, failed login error state, redirect on success,
- * session-expired banner (MINCRM-365), ?next= redirect after re-authentication,
- * and MFA challenge / org-MFA-required flows (MINCRM-392).
+ * session-expired banner, ?next= redirect after re-authentication,
+ * and MFA challenge / org-MFA-required flows.
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -32,7 +32,7 @@ function renderLoginPage() {
 
 /**
  * Renders LoginPage with ?reason=session_expired (and optional ?next=) query params,
- * simulating a redirect from the Axios 401 interceptor (MINCRM-365).
+ * simulating a redirect from the Axios 401 interceptor.
  */
 function renderLoginPageSessionExpired(next?: string) {
   const search = next
@@ -130,7 +130,7 @@ describe('LoginPage', () => {
     });
   });
 
-  it('redirects to the saved location (from state) after successful login (MINCRM-147)', async () => {
+  it('redirects to the saved location (from state) after successful login', async () => {
     const user = userEvent.setup();
     server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
 
@@ -145,7 +145,7 @@ describe('LoginPage', () => {
     });
   });
 
-  it('redirects to dashboard when from state is /change-password (MINCRM-147)', async () => {
+  it('redirects to dashboard when from state is /change-password', async () => {
     // /change-password must never be a redirect-back destination — it is reserved
     // for the forced-change flow and redirecting back there would create a loop.
     const user = userEvent.setup();
@@ -177,12 +177,12 @@ describe('LoginPage', () => {
     });
   });
 
-  it('renders the "Forgot your password?" link (MINCRM-156)', () => {
+  it('renders the "Forgot your password?" link', () => {
     renderLoginPage();
     expect(screen.getByTestId('login-forgot-password')).toBeInTheDocument();
   });
 
-  it('navigates to /forgot-password when the link is clicked (MINCRM-156)', async () => {
+  it('navigates to /forgot-password when the link is clicked', async () => {
     const user = userEvent.setup();
     renderLoginPage();
 
@@ -215,9 +215,9 @@ describe('LoginPage', () => {
   });
 });
 
-// ── MINCRM-365: session-expired banner + ?next= redirect ────────────────────
+// ── session-expired banner + ?next= redirect ────────────────────
 
-describe('LoginPage — session expired (MINCRM-365)', () => {
+describe('LoginPage — session expired', () => {
   it('does not show the session-expired banner without ?reason=session_expired', () => {
     renderLoginPage();
     expect(screen.queryByTestId('session-expired-banner')).not.toBeInTheDocument();
@@ -233,7 +233,7 @@ describe('LoginPage — session expired (MINCRM-365)', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
-  it('redirects to ?next= path after successful login (MINCRM-365)', async () => {
+  it('redirects to ?next= path after successful login', async () => {
     const user = userEvent.setup();
     server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })));
 
@@ -263,7 +263,7 @@ describe('LoginPage — session expired (MINCRM-365)', () => {
     });
   });
 
-  describe('MFA challenge flow (MINCRM-392)', () => {
+  describe('MFA challenge flow', () => {
     it('shows the MFA modal when login returns mfaRequired:true', async () => {
       server.use(
         http.post('/api/v1/auth/login', () =>

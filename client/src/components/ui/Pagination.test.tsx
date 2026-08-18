@@ -1,5 +1,5 @@
 /**
- * Tests for the Pagination component. (MINCRM-68)
+ * Tests for the Pagination component.
  */
 
 import { render, screen } from '@testing-library/react';

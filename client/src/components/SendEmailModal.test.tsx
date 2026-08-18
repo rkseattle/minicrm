@@ -1,5 +1,5 @@
 /**
- * Tests for SendEmailModal (MINCRM-275).
+ * Tests for SendEmailModal.
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';
@@ -191,7 +191,7 @@ describe('SendEmailModal', () => {
     await waitFor(() => {
       expect(screen.getByTestId('send-email-error')).toBeInTheDocument();
     });
-    // Must show the i18n translation, not the raw English server message (MINCRM-354)
+    // Must show the i18n translation, not the raw English server message
     expect(screen.getByTestId('send-email-error')).not.toHaveTextContent('SMTP connection refused');
     expect(screen.getByTestId('send-email-error')).toHaveTextContent(
       'Failed to send email. Please check your SMTP settings.',

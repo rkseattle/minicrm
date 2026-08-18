@@ -2,7 +2,7 @@
  * useExportAction — wraps an async export call with an in-flight loading
  * flag, following the setLoading(true) → await → finally setLoading(false)
  * pattern shared by every list page's ExportMenu items (Deals, Accounts,
- * Contacts, Leads). (MINCRM-652)
+ * Contacts, Leads).
  */
 
 import { useCallback, useState } from 'react';

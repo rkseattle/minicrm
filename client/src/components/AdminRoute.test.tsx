@@ -1,7 +1,7 @@
 /**
  * Tests for the AdminRoute component.
  *
- * MINCRM-147: added redirect-back location state test.
+ * added redirect-back location state test.
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -73,7 +73,7 @@ describe('AdminRoute', () => {
     });
   });
 
-  it('passes the current location as state when redirecting to /login (MINCRM-147)', async () => {
+  it('passes the current location as state when redirecting to /login', async () => {
     server.use(
       http.get('/api/v1/auth/me', () =>
         HttpResponse.json({ error: { code: 'UNAUTHORIZED' } }, { status: 401 }),

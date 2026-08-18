@@ -1,7 +1,7 @@
 /**
  * AiLeadRoutingSection — lead routing suggestion scoring weights + per-team
  * disable toggle. One of the sub-sections behind the AI panel's
- * sub-navigation (MINCRM-653). (MINCRM-475)
+ * sub-navigation.
  *
  * Split into a data-fetching wrapper (this component) and presentational
  * forms that only mount once their query data exists — same pattern as

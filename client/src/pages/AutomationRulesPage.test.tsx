@@ -12,7 +12,7 @@ import AutomationRulesPage from './AutomationRulesPage.js';
 
 // Resolve feature flags synchronously so the page's own loading/error/empty states are testable.
 // `flags` must carry the keys this page's nav actually gates on, not `{}`.
-// Since MINCRM-695/696 an absent flag resolves to OFF (a feature is hidden until
+// Since a later change, an absent flag resolves to OFF (a feature is hidden until
 // affirmatively confirmed on), so an empty map means "every feature disabled"
 // and the gated nav links are filtered out. It previously read as "nothing
 // disabled" because the filter tested `!== false`.
@@ -89,7 +89,7 @@ describe('AutomationRulesPage', () => {
       });
     });
 
-    it('shows pagination controls even when there are no rules (MINCRM-345)', async () => {
+    it('shows pagination controls even when there are no rules', async () => {
       server.use(
         http.get('/api/v1/automation/rules', () =>
           HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
@@ -542,7 +542,7 @@ describe('AutomationRulesPage', () => {
     });
   });
 
-  describe('execution logs drawer — locale timestamp (MINCRM-114)', () => {
+  describe('execution logs drawer — locale timestamp', () => {
     it('renders the log timestamp formatted with the active locale', async () => {
       const user = userEvent.setup();
       renderWithProviders(<AutomationRulesPage />);
@@ -561,7 +561,7 @@ describe('AutomationRulesPage', () => {
     });
   });
 
-  describe('execution logs drawer — Escape key (MINCRM-109)', () => {
+  describe('execution logs drawer — Escape key', () => {
     it('closes the drawer when Escape is pressed', async () => {
       const user = userEvent.setup();
       renderWithProviders(<AutomationRulesPage />);
@@ -586,7 +586,7 @@ describe('AutomationRulesPage', () => {
     });
   });
 
-  describe('execution logs drawer — focus trap (MINCRM-280)', () => {
+  describe('execution logs drawer — focus trap', () => {
     it('moves focus to the close button when the drawer opens', async () => {
       const user = userEvent.setup();
       renderWithProviders(<AutomationRulesPage />);

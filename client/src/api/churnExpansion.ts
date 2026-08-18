@@ -1,5 +1,5 @@
 /**
- * Churn/expansion detection API module. (MINCRM-469)
+ * Churn/expansion detection API module.
  * Wraps the account signal and org-wide signals list endpoints. Requires
  * authentication and the ai_churn_expansion_detection feature flag.
  */

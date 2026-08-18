@@ -1,7 +1,7 @@
 /**
  * IntegrationSettings — File storage and webhooks.
- * SSO and SCIM moved to SecuritySettings (MINCRM-563).
- * Extracted from AdminSettingsPage.tsx (MINCRM-259).
+ * SSO and SCIM moved to SecuritySettings.
+ * Extracted from AdminSettingsPage.tsx.
  */
 
 import { useState, useEffect, useCallback } from 'react';

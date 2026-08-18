@@ -1,5 +1,5 @@
 /**
- * Renders a single account as a summary row in the NLI result block. (MINCRM-431)
+ * Renders a single account as a summary row in the NLI result block.
  */
 import { Link } from 'react-router-dom';
 

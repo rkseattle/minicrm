@@ -1,5 +1,5 @@
 /**
- * Tests for the DealCard component (MINCRM-179, MINCRM-300).
+ * Tests for the DealCard component.
  * Covers probability badge display and drag-and-drop source behavior.
  */
 
@@ -40,9 +40,9 @@ const DEAL_OVERRIDDEN_PROB: DealResponse = {
   probability_is_overridden: true,
 };
 
-// ── Drag-and-drop source (MINCRM-300) ─────────────────────────────────────────
+// ── Drag-and-drop source ─────────────────────────────────────────
 
-describe('DealCard — drag-and-drop source (MINCRM-300)', () => {
+describe('DealCard — drag-and-drop source', () => {
   it('renders the card as draggable', () => {
     renderWithProviders(
       <DealCard
@@ -78,9 +78,9 @@ describe('DealCard — drag-and-drop source (MINCRM-300)', () => {
   });
 });
 
-// ── Probability display (MINCRM-179) ──────────────────────────────────────────
+// ── Probability display ──────────────────────────────────────────
 
-describe('DealCard — probability display (MINCRM-179)', () => {
+describe('DealCard — probability display', () => {
   it('renders the probability badge with stage default value', () => {
     renderWithProviders(
       <DealCard

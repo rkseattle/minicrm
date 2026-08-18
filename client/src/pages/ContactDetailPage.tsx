@@ -73,7 +73,7 @@ import FollowUpTimingCard from '@/components/FollowUpTimingCard.js';
 /**
  * Single contact detail page with view/edit/delete.
  */
-/** Field names available for merge comparison (address fields excluded — addresses are re-linked, MINCRM-500) */
+/** Field names available for merge comparison (address fields excluded — addresses are re-linked) */
 type MergeableField =
   | 'first_name'
   | 'last_name'
@@ -106,7 +106,7 @@ export default function ContactDetailPage() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportPdfError, setExportPdfError] = useState<string | null>(null);
 
-  // Merge state (MINCRM-187)
+  // Merge state
   const [isMerging, setIsMerging] = useState(false);
   const [mergeSearchQuery, setMergeSearchQuery] = useState('');
   const [mergeLoserContact, setMergeLoserContact] = useState<string | null>(null);
@@ -132,7 +132,7 @@ export default function ContactDetailPage() {
   const [emailDraftResult, setEmailDraftResult] = useState<EmailDraftResponse | null>(null);
   const [emailDraftError, setEmailDraftError] = useState<string | null>(null);
 
-  // Sequence enrollment state (MINCRM-403)
+  // Sequence enrollment state
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [enrollSequenceId, setEnrollSequenceId] = useState('');
   const [enrollError, setEnrollError] = useState<string | null>(null);
@@ -140,7 +140,7 @@ export default function ContactDetailPage() {
 
   const contactQueryKey = ['contacts', id] as const;
 
-  // Three-way merge conflict state (MINCRM-351, MINCRM-406)
+  // Three-way merge conflict state
   const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
     useEntityConflictHandler<ContactFormValues>({
       entityCacheKey: 'contact',
@@ -153,7 +153,7 @@ export default function ContactDetailPage() {
     enabled: Boolean(id),
   });
 
-  // AI champion/blocker classification (MINCRM-466) — passive, page-load read of the cached signal.
+  // AI champion/blocker classification — passive, page-load read of the cached signal.
   const { data: championBlocker } = useQuery({
     queryKey: contactChampionBlockerQueryKey(id ?? ''),
     queryFn: () => getContactChampionBlocker(id!),
@@ -167,14 +167,14 @@ export default function ContactDetailPage() {
     },
   });
 
-  // AI sentiment trend (MINCRM-472) — passive, page-load read of the last 10 interactions.
+  // AI sentiment trend — passive, page-load read of the last 10 interactions.
   const { data: sentimentTrend } = useQuery({
     queryKey: contactSentimentTrendQueryKey(id ?? ''),
     queryFn: () => getContactSentimentTrend(id!),
     enabled: Boolean(id) && sentimentTrackingEnabled,
   });
 
-  // AI follow-up timing suggestion (MINCRM-470) — passive, page-load read of the cached suggestion.
+  // AI follow-up timing suggestion — passive, page-load read of the cached suggestion.
   const { data: followUpTiming } = useQuery({
     queryKey: followUpTimingQueryKey(id ?? ''),
     queryFn: () => getFollowUpTiming(id!),
@@ -222,7 +222,7 @@ export default function ContactDetailPage() {
     enabled: Boolean(id),
   });
 
-  // Sequence enrollment queries (MINCRM-403)
+  // Sequence enrollment queries
   const enrollmentsQueryKey = contactEnrollmentsQueryKey(id!);
   const {
     data: enrollmentsData,
@@ -293,7 +293,7 @@ export default function ContactDetailPage() {
         linkedin_url: values.linkedin_url || undefined,
         twitter_x_url: values.twitter_x_url || undefined,
         other_url: values.other_url || undefined,
-        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits
         version:
           version ??
           queryClient.getQueryData<{ contact: { version: number } }>(contactQueryKey)?.contact
@@ -302,10 +302,10 @@ export default function ContactDetailPage() {
       }),
     onSuccess: async (data) => {
       // Cancel any in-flight refetch (e.g. from the 409 onError invalidation) before seeding
-      // the cache so a stale refetch cannot overwrite the authoritative PATCH version (MINCRM-385)
+      // the cache so a stale refetch cannot overwrite the authoritative PATCH version
       await queryClient.cancelQueries({ queryKey: contactQueryKey });
       queryClient.setQueryData(contactQueryKey, data);
-      // Save custom field values after core record is saved (MINCRM-276).
+      // Save custom field values after core record is saved.
       // Read from the ref (not state) to avoid stale-closure issues: React may
       // not have flushed the useEffect that propagates CustomFieldsSection's
       // onValuesChange into the customFieldValues state before this onSuccess
@@ -346,7 +346,7 @@ export default function ContactDetailPage() {
     },
   });
 
-  // Merge: search for loser contact as query changes (MINCRM-187)
+  // Merge: search for loser contact as query changes
   useEffect(() => {
     const trimmed = mergeSearchQuery.trim();
     if (trimmed.length < 2) return;
@@ -457,7 +457,7 @@ export default function ContactDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Back link — MINCRM-113, MINCRM-115 */}
+        {/* Back link */}
         <Link
           to="/contacts"
           data-testid="back-to-contacts"
@@ -600,7 +600,7 @@ export default function ContactDetailPage() {
           />
         )}
 
-        {/* Converted from lead banner (MINCRM-175) */}
+        {/* Converted from lead banner */}
         {!isEditing && contact.source_lead_id && (
           <div
             className="mb-4 rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800"
@@ -873,7 +873,7 @@ export default function ContactDetailPage() {
               )}
             </div>
 
-            {/* Custom field values — edit mode (MINCRM-276) */}
+            {/* Custom field values — edit mode */}
             {id && (
               <CustomFieldsSection
                 entityType="contact"
@@ -908,7 +908,7 @@ export default function ContactDetailPage() {
                 other_url: t('contacts.otherUrlLabel'),
               }}
               onResolve={(resolved) => {
-                // Use the version from theirs (the 409 body) — authoritative, no cache race (MINCRM-351)
+                // Use the version from theirs (the 409 body) — authoritative, no cache race
                 updateMutation.mutate({
                   values: {
                     ...(conflictPendingValues as ContactFormValues),
@@ -955,7 +955,7 @@ export default function ContactDetailPage() {
           </div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
-            {/* Email row with optional Send Email action (MINCRM-275) */}
+            {/* Email row with optional Send Email action */}
             <div className="px-6 py-4 flex flex-col md:flex-row md:items-start md:gap-4">
               <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
                 {t('contacts.emailLabel')}
@@ -1028,12 +1028,12 @@ export default function ContactDetailPage() {
           </div>
         )}
 
-        {/* Custom field values — read mode (MINCRM-276) */}
+        {/* Custom field values — read mode */}
         {!isEditing && id && (
           <CustomFieldsSection entityType="contact" recordId={id} isEditing={false} />
         )}
 
-        {/* Social profile links — shown when at least one URL is set (MINCRM-190) */}
+        {/* Social profile links — shown when at least one URL is set */}
         {!isEditing && (contact.linkedin_url || contact.twitter_x_url || contact.other_url) && (
           <div
             className="mt-6 bg-white border border-gray-200 rounded-lg divide-y divide-gray-100"
@@ -1164,7 +1164,7 @@ export default function ContactDetailPage() {
           </div>
         )}
 
-        {/* Merge contact UI (MINCRM-187) */}
+        {/* Merge contact UI */}
         {!isEditing && (user?.role === 'admin' || user?.id === contact.owner_id) && (
           <div className="mt-6">
             {!isMerging ? (
@@ -1276,12 +1276,10 @@ export default function ContactDetailPage() {
                             ] as MergeableField[]
                           ).map((field) => {
                             const winnerVal = (contact as Record<string, unknown>)[field] as
-                              | string
-                              | null;
+                              string | null;
                             const loserVal = mergeLoserData
                               ? ((mergeLoserData as Record<string, unknown>)[field] as
-                                  | string
-                                  | null)
+                                  string | null)
                               : null;
                             const isDifferent = winnerVal !== loserVal;
                             return (
@@ -1426,7 +1424,7 @@ export default function ContactDetailPage() {
                         <span className="text-sm text-gray-500">
                           {getStageDisplayName(deal.stage, t)}
                         </span>
-                        {/* Probability badge — consistent with DealCard display (MINCRM-179) */}
+                        {/* Probability badge — consistent with DealCard display */}
                         <span
                           data-testid={`linked-deal-probability-${deal.id}`}
                           className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
@@ -1449,7 +1447,7 @@ export default function ContactDetailPage() {
               </div>
             </section>
 
-            {/* AI warm introduction path mapping (MINCRM-468) */}
+            {/* AI warm introduction path mapping */}
             {warmIntroPathEnabled && id && (
               <section className="mt-8" aria-labelledby="warm-intro-paths-heading">
                 <h2
@@ -1463,7 +1461,7 @@ export default function ContactDetailPage() {
               </section>
             )}
 
-            {/* AI smart follow-up timing suggestion (MINCRM-470) */}
+            {/* AI smart follow-up timing suggestion */}
             {followUpTimingEnabled && id && followUpTiming?.suggestion && (
               <section className="mt-8" aria-labelledby="followup-timing-heading">
                 <h2
@@ -1481,7 +1479,7 @@ export default function ContactDetailPage() {
               </section>
             )}
 
-            {/* Sequence enrollments (MINCRM-403) — gated by sequencing feature flag */}
+            {/* Sequence enrollments — gated by sequencing feature flag */}
             {sequencingLoading ? (
               <div className="mt-8 h-24 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
             ) : sequencingEnabled ? (
@@ -1588,7 +1586,7 @@ export default function ContactDetailPage() {
         )}
       </main>
 
-      {/* Enroll in sequence modal (MINCRM-403) */}
+      {/* Enroll in sequence modal */}
       {sequencingEnabled && isEnrollModalOpen && (
         <div
           role="dialog"
@@ -1649,7 +1647,7 @@ export default function ContactDetailPage() {
         </div>
       )}
 
-      {/* Delete confirmation modal — MINCRM-107 */}
+      {/* Delete confirmation modal */}
       <ConfirmDeleteModal
         isOpen={isConfirmDeleteOpen}
         message={t('contacts.confirmDelete')}
@@ -1661,7 +1659,7 @@ export default function ContactDetailPage() {
         onCancel={() => setIsConfirmDeleteOpen(false)}
       />
 
-      {/* Send Email modal — MINCRM-275 */}
+      {/* Send Email modal */}
       {contact.email && (
         <SendEmailModal
           isOpen={isSendEmailOpen}

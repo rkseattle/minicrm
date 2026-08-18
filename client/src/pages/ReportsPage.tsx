@@ -1,13 +1,13 @@
 /**
  * Reports shell page.
- * Hosts the adaptive SubPageNav and renders the active report's content. (MINCRM-294)
+ * Hosts the adaptive SubPageNav and renders the active report's content.
  *
  * View persistence priority on load:
  *   1. `?view=<key>` URL query param
  *   2. localStorage key `minicrm_reports_last_view`
  *   3. Default: `win-loss`
  *
- * Layout follows the same adaptive rules as Admin Settings (MINCRM-259):
+ * Layout follows the same adaptive rules as Admin Settings:
  *   - Mobile: horizontal scrollable tab bar
  *   - Desktop + left sidebar nav: horizontal tab bar
  *   - Desktop + top/hamburger nav: vertical tab list on the left

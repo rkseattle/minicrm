@@ -1,5 +1,5 @@
 /**
- * Tests for the WarmIntroPathsPanel component. (MINCRM-468)
+ * Tests for the WarmIntroPathsPanel component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

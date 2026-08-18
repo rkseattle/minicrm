@@ -2,9 +2,8 @@
  * UserActionsMenu component.
  * Renders a meatball (⋯) trigger button that opens a dropdown context menu
  * with password, onboarding-reset, and activation actions for a single user row.
- * Role changes are handled by the InlineRoleSelect cell (MINCRM-560).
+ * Role changes are handled by the InlineRoleSelect cell.
  * Service accounts show Issue/Revoke API token actions instead of password controls.
- * (MINCRM-535, MINCRM-536)
  */
 
 import { useRef, useCallback } from 'react';
@@ -24,13 +23,13 @@ export interface UserActionsMenuProps {
   onDeactivate: (id: string) => void;
   /** Called when the admin selects Reactivate. */
   onReactivate: (id: string) => void;
-  /** Called when the admin selects Reset onboarding. Hidden for the admin's own row. (MINCRM-410) */
+  /** Called when the admin selects Reset onboarding. Hidden for the admin's own row. */
   onResetOnboarding: (id: string) => void;
-  /** Called when the admin issues an API token for a service account. (MINCRM-536) */
+  /** Called when the admin issues an API token for a service account. */
   onIssueToken?: (id: string) => void;
-  /** Called when the admin revokes the API token for a service account. (MINCRM-536) */
+  /** Called when the admin revokes the API token for a service account. */
   onRevokeToken?: (id: string) => void;
-  /** UUID of the currently logged-in admin — hides Reset Onboarding on the admin's own row. (MINCRM-410) */
+  /** UUID of the currently logged-in admin — hides Reset Onboarding on the admin's own row. */
   currentUserId: string;
   /** Whether the menu should be forced open (e.g. another menu is opening this one). */
   isOpen: boolean;
@@ -107,7 +106,7 @@ export function UserActionsMenu({
             }
           }}
         >
-          {/* Service account token actions (MINCRM-536) */}
+          {/* Service account token actions */}
           {isServiceAccount && (
             <div className="py-1">
               <button
@@ -148,7 +147,7 @@ export function UserActionsMenu({
                 </button>
               )}
 
-              {/* Reset onboarding — hidden for the admin's own row (MINCRM-410) */}
+              {/* Reset onboarding — hidden for the admin's own row */}
               {user.id !== currentUserId && (
                 <button
                   type="button"

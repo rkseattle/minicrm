@@ -1,5 +1,5 @@
 /**
- * SsoSettings — SAML 2.0 / OIDC SSO configuration. (MINCRM-399)
+ * SsoSettings — SAML 2.0 / OIDC SSO configuration.
  * Rendered inside IntegrationSettings.
  */
 

@@ -1,5 +1,5 @@
 /**
- * MfaRecoveryCodesModal — shown once after MFA is enabled. (MINCRM-392)
+ * MfaRecoveryCodesModal — shown once after MFA is enabled.
  * Displays the 8 single-use recovery codes with a copy-all button.
  * User must acknowledge before the modal closes.
  */

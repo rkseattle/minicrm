@@ -1,5 +1,5 @@
 /**
- * Duplicate explanation API module. (MINCRM-440)
+ * Duplicate explanation API module.
  * Wraps the on-demand AI duplicate-explanation endpoint. Requires authentication and
  * the ai_duplicate_explanation feature flag to be enabled.
  */

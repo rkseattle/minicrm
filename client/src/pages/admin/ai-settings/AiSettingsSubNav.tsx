@@ -1,6 +1,5 @@
 /**
  * AiSettingsSubNav — tablist that switches between the AI panel's sub-sections.
- * (MINCRM-653)
  *
  * Follows the WAI-ARIA tabs pattern: role="tablist"/"tab", aria-selected,
  * aria-controls, roving tabindex with ArrowLeft/ArrowRight/Home/End keyboard

@@ -1,7 +1,7 @@
 /**
  * BulkReassignModal component.
  * Owner picker for bulk reassign operations.
- * Accessible dialog with focus trap and Escape dismissal. (MINCRM-188)
+ * Accessible dialog with focus trap and Escape dismissal.
  */
 
 import { useEffect, useRef, useState } from 'react';

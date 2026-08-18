@@ -1,5 +1,5 @@
 /**
- * Tests for the EmailDraftPanel component. (MINCRM-437)
+ * Tests for the EmailDraftPanel component.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
@@ -97,7 +97,7 @@ describe('EmailDraftPanel', () => {
     });
 
     // Tone selector must not desync from the still-displayed subject/body on failure
-    // (MINCRM-437 code review finding) — it should reflect the last successful draft.
+    // — it should reflect the last successful draft.
     expect(screen.getByTestId('email-draft-tone-select')).toHaveValue('Professional');
     expect(screen.getByTestId('email-draft-subject')).toHaveValue(
       'Following up on our conversation',

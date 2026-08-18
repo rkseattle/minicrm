@@ -25,7 +25,7 @@ describe('ContactDetailPage', () => {
     });
   });
 
-  // ── AI smart follow-up timing suggestion (MINCRM-470) ───────────────────────────
+  // ── AI smart follow-up timing suggestion ───────────────────────────
 
   it('shows no follow-up timing section when there is insufficient data', async () => {
     renderWithProviders(<ContactDetailPage />, {
@@ -125,7 +125,7 @@ describe('ContactDetailPage', () => {
     });
   });
 
-  // ── AI champion/blocker classification (MINCRM-466) ─────────────────────────────
+  // ── AI champion/blocker classification ─────────────────────────────
 
   it('shows no badge for the default neutral classification', async () => {
     renderWithProviders(<ContactDetailPage />, {
@@ -211,7 +211,7 @@ describe('ContactDetailPage', () => {
     });
   });
 
-  // ── AI sentiment tracking (MINCRM-472) ───────────────────────────────────────────
+  // ── AI sentiment tracking ───────────────────────────────────────────
 
   it('shows no sentiment sparkline when there is insufficient data', async () => {
     renderWithProviders(<ContactDetailPage />, {
@@ -260,7 +260,7 @@ describe('ContactDetailPage', () => {
     );
   });
 
-  // ── AI warm introduction path mapping (MINCRM-468) ───────────────────────────────
+  // ── AI warm introduction path mapping ───────────────────────────────
 
   it('shows the Find warm path action', async () => {
     renderWithProviders(<ContactDetailPage />, {
@@ -713,7 +713,7 @@ describe('ContactDetailPage', () => {
     });
   });
 
-  describe('optimistic-locking conflict resolution (MINCRM-385)', () => {
+  describe('optimistic-locking conflict resolution', () => {
     // CONTACT_1 is at version 1; the background write bumps it to version 2 with first_name='Theirs'.
     // The UI has first_name='Mine' (user changed it) — a true conflict on first_name.
     const CONTACT_AT_V2 = { ...CONTACT_1, first_name: 'Theirs', version: 2 };
@@ -807,7 +807,7 @@ describe('ContactDetailPage', () => {
       expect(secondPatchVersion).toBe(2);
     });
 
-    it('seeds the cache from the conflict-resolution PATCH response so a subsequent save uses the post-resolve version (MINCRM-385)', async () => {
+    it('seeds the cache from the conflict-resolution PATCH response so a subsequent save uses the post-resolve version', async () => {
       let patchCallCount = 0;
       const capturedVersions: number[] = [];
       // Simulate server state: GET reflects the latest committed version after each PATCH
@@ -1161,7 +1161,7 @@ describe('ContactDetailPage', () => {
     });
   });
 
-  // ── AI email draft generation (MINCRM-437) ──────────────────────────────────────
+  // ── AI email draft generation ──────────────────────────────────────
 
   describe('email draft generation', () => {
     it('shows the Draft Email button when the flag is enabled', async () => {

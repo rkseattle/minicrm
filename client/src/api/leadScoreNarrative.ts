@@ -1,5 +1,5 @@
 /**
- * Lead score narrative API module. (MINCRM-441)
+ * Lead score narrative API module.
  * Wraps the on-demand AI lead-score-narrative endpoint. Requires authentication and
  * the ai_lead_score_narrative feature flag to be enabled.
  */

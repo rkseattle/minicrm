@@ -5,12 +5,11 @@
  * - Closed Lost count and total value
  * - Win rate (Won / Total Closed)
  * - Loss reason breakdown (when loss reasons were captured)
- * - Per-rep breakdown table (admin Team View only) (MINCRM-264)
+ * - Per-rep breakdown table (admin Team View only)
  *
  * Date range defaults to the current month; presets for "this quarter" and
  * a custom range are also available.
  * Admins see a My View / Team View toggle; reps always see only their own data.
- * Implements MINCRM-26, MINCRM-264, MINCRM-407.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -29,7 +28,7 @@ import {
  *
  * @param value - Numeric string from the API (e.g. "87000.00")
  * @param locale - BCP 47 language tag from i18next (e.g. "en", "de", "zh")
- * @param currency - ISO 4217 currency code (e.g. "USD", "EUR") (MINCRM-189)
+ * @param currency - ISO 4217 currency code (e.g. "USD", "EUR")
  */
 function formatCurrency(value: string, locale: string, currency: string): string {
   const number = parseFloat(value);
@@ -49,7 +48,7 @@ function formatWinRate(rate: number | null): string {
 
 /**
  * Standalone Win/Loss report page — includes NavBar.
- * When embedded in ReportsPage shell, use WinLossReportContent instead. (MINCRM-294)
+ * When embedded in ReportsPage shell, use WinLossReportContent instead.
  */
 export default function WinLossReportPage() {
   return (
@@ -62,8 +61,7 @@ export default function WinLossReportPage() {
 
 /**
  * Win/loss report content — no NavBar wrapper.
- * Consumed by ReportsPage shell. (MINCRM-294)
- * Implements MINCRM-26, MINCRM-264.
+ * Consumed by ReportsPage shell.
  */
 export function WinLossReportContent() {
   const { t, i18n } = useTranslation();
@@ -213,7 +211,7 @@ export function WinLossReportContent() {
             </div>
           </div>
 
-          {/* Converted totals in home currency (MINCRM-253) — only shown when rates exist */}
+          {/* Converted totals in home currency — only shown when rates exist */}
           {report.hasRates && (
             <div
               className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-col gap-2"
@@ -335,7 +333,7 @@ export function WinLossReportContent() {
             )}
           </div>
 
-          {/* Per-rep breakdown — admin Team View only (MINCRM-264) */}
+          {/* Per-rep breakdown — admin Team View only */}
           {isAdmin && viewMode === 'team' && (
             <div
               className="bg-white rounded-lg border border-gray-200 mt-6"

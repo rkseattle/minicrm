@@ -29,7 +29,7 @@ interface DealCardProps {
 }
 
 /**
- * Formats a deal value using the deal's own currency and the active locale. (MINCRM-189)
+ * Formats a deal value using the deal's own currency and the active locale.
  *
  * @param value - Numeric string from the API (pg returns numeric as string)
  * @param currency - ISO 4217 currency code stored on the deal
@@ -101,7 +101,7 @@ export default function DealCard({
         </span>
       </div>
 
-      {/* Probability badge — italic when using stage default, plain when overridden (MINCRM-179) */}
+      {/* Probability badge — italic when using stage default, plain when overridden */}
       <div className="flex items-center gap-1 mb-2">
         <span
           data-testid={`deal-card-probability-${deal.id}`}

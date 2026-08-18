@@ -1,5 +1,5 @@
 /**
- * Sequences API module (MINCRM-403).
+ * Sequences API module.
  * Wraps the sales sequence and enrollment endpoints.
  */
 

@@ -49,7 +49,7 @@ if (typeof globalThis.ProgressEvent === 'undefined') {
 // jsdom does not implement window.matchMedia. Default to desktop (>= 768 px) so
 // components that use useBreakpoint() render their desktop subtree in tests,
 // keeping all existing test assertions valid. Individual tests that need to
-// exercise the mobile layout can override this mock locally. (MINCRM-238)
+// exercise the mobile layout can override this mock locally.
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({
@@ -88,5 +88,5 @@ afterAll(() => server.close());
 // real-timer-based async utilities then hang indefinitely with no error, which is
 // very hard to trace back to an unrelated file. Unconditionally restoring real
 // timers after every test (a no-op when a test never used fake timers) closes
-// that gap regardless of how the previous test exited. (MINCRM-473)
+// that gap regardless of how the previous test exited.
 afterEach(() => vi.useRealTimers());

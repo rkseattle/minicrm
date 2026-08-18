@@ -1,6 +1,5 @@
 /**
  * Shared utility for triggering browser CSV file downloads.
- * (MINCRM-164, MINCRM-165, MINCRM-166)
  */
 
 /**

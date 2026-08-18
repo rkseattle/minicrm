@@ -2,7 +2,6 @@
  * Extends MutationConfirmationBlock with a double-confirm gate for bulk deletes.
  * Rendered instead of MutationConfirmationBlock when pendingAction.isBulkDelete is true.
  * The confirm button stays disabled until the user types the record count or "DELETE".
- * (MINCRM-425, MINCRM-426)
  */
 
 import { useTranslation } from 'react-i18next';

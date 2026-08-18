@@ -1,5 +1,5 @@
 /**
- * Tests for the TagInput component (MINCRM-186, MINCRM-263).
+ * Tests for the TagInput component.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
@@ -164,7 +164,7 @@ describe('TagInput', () => {
   });
 });
 
-// ── Tag creation restriction (MINCRM-263) ─────────────────────────────────────
+// ── Tag creation restriction ─────────────────────────────────────
 
 describe('TagInput — rep with restriction enabled', () => {
   beforeEach(() => {

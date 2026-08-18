@@ -1,7 +1,7 @@
 /**
  * Tests for the DealsPage component.
  * Covers both board view (default) and list view (toggled via deals-view-toggle button).
- * MINCRM-51: board view is now the default; list view is toggled.
+ * board view is now the default; list view is toggled.
  */
 
 import { screen, waitFor, within } from '@testing-library/react';
@@ -17,7 +17,7 @@ import * as bulkApi from '../api/bulk.js';
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 
 describe('DealsPage', () => {
-  // Clear persisted view mode before each test so tests start in a known state (MINCRM-146)
+  // Clear persisted view mode before each test so tests start in a known state
   beforeEach(() => {
     sessionStorage.removeItem('deals.viewMode');
   });
@@ -119,7 +119,7 @@ describe('DealsPage', () => {
     });
   });
 
-  it('renders the owner toggle in board view (MINCRM-176)', async () => {
+  it('renders the owner toggle in board view', async () => {
     renderWithProviders(<DealsPage />);
     await waitFor(() => {
       expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe('DealsPage', () => {
     });
     await user.click(screen.getByTestId('deals-view-toggle'));
     expect(screen.queryByTestId('pipeline-board')).not.toBeInTheDocument();
-    // Owner toggle and hide-closed button are visible in list view (MINCRM-176)
+    // Owner toggle and hide-closed button are visible in list view
     expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument();
     expect(screen.getByTestId('deals-owner-filter-mine')).toBeInTheDocument();
     expect(screen.getByTestId('toggle-closed-deals')).toBeInTheDocument();
@@ -227,7 +227,7 @@ describe('DealsPage', () => {
     });
   });
 
-  it('renders the hide/show closed deals toggle in list view (MINCRM-176)', async () => {
+  it('renders the hide/show closed deals toggle in list view', async () => {
     const user = userEvent.setup();
     renderWithProviders(<DealsPage />);
     await waitFor(() => expect(screen.getByTestId('deals-view-toggle')).toBeInTheDocument());
@@ -237,7 +237,7 @@ describe('DealsPage', () => {
     });
   });
 
-  it('hides closed deals from list view when hide-closed toggle is clicked (MINCRM-176)', async () => {
+  it('hides closed deals from list view when hide-closed toggle is clicked', async () => {
     const closedDeal = {
       ...DEAL_1,
       id: '00000000-0000-0000-0000-000000000399',
@@ -273,7 +273,7 @@ describe('DealsPage', () => {
     expect(screen.getAllByText(DEAL_1.name).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('resets to page 1 when hide-closed toggle is clicked in list view (MINCRM-176)', async () => {
+  it('resets to page 1 when hide-closed toggle is clicked in list view', async () => {
     const requests: URL[] = [];
     // Return enough total to show pagination (total > limit)
     server.use(
@@ -404,7 +404,7 @@ describe('DealsPage', () => {
     });
   });
 
-  it('preserves owner filter when switching between board and list views (MINCRM-176)', async () => {
+  it('preserves owner filter when switching between board and list views', async () => {
     const repDeal = {
       ...DEAL_1,
       id: '00000000-0000-0000-0000-000000000303',
@@ -506,7 +506,7 @@ describe('DealsPage', () => {
     expect(screen.queryByTestId('pipeline-summary-bar')).not.toBeInTheDocument();
   });
 
-  // ── View mode persistence (MINCRM-146) ───────────────────────────────────────
+  // ── View mode persistence ───────────────────────────────────────
 
   it('restores list view when sessionStorage has deals.viewMode=list', async () => {
     sessionStorage.setItem('deals.viewMode', 'list');
@@ -556,7 +556,7 @@ describe('DealsPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('pipeline-board')).toBeInTheDocument();
     });
-    // Filter controls are present in board view too (MINCRM-176)
+    // Filter controls are present in board view too
     expect(screen.getByTestId('deals-owner-filter-all')).toBeInTheDocument();
     expect(screen.getByTestId('deals-owner-filter-mine')).toBeInTheDocument();
     expect(screen.getByTestId('toggle-closed-deals')).toBeInTheDocument();

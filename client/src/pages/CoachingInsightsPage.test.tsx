@@ -1,5 +1,5 @@
 /**
- * Tests for the CoachingInsightsPage component. (MINCRM-474)
+ * Tests for the CoachingInsightsPage component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

@@ -1,5 +1,5 @@
 /**
- * Branding API module. (MINCRM-356)
+ * Branding API module.
  * Wraps the custom branding settings endpoints.
  * GET is unauthenticated (public); PUT/DELETE require admin auth.
  */

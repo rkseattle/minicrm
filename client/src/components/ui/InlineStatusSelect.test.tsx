@@ -1,7 +1,7 @@
 /**
  * Tests for InlineStatusSelect — inline status <select> for the user table.
  * Covers optimistic update, rollback on failure, invited badge display,
- * canEdit=false read-only mode, and self-deactivation confirmation (MINCRM-561).
+ * canEdit=false read-only mode, and self-deactivation confirmation.
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';

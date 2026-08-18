@@ -1,5 +1,5 @@
 /**
- * Custom reports API module. (MINCRM-402)
+ * Custom reports API module.
  * Wraps CRUD and execution endpoints for saved custom reports.
  */
 
@@ -109,7 +109,7 @@ export function getCustomReportExportUrl(id: string): string {
 }
 
 /**
- * Returns the URL for exporting a saved report as PDF. (MINCRM-601)
+ * Returns the URL for exporting a saved report as PDF.
  * Triggers a download when assigned to an anchor `href`.
  */
 export function getCustomReportExportPdfUrl(id: string): string {

@@ -1,5 +1,5 @@
 /**
- * Activity summarizer API module. (MINCRM-436)
+ * Activity summarizer API module.
  * Wraps the on-demand AI text-summarization endpoint. Requires authentication and the
  * ai_activity_summarizer feature flag to be enabled.
  */

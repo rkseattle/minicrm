@@ -1,6 +1,6 @@
 /**
  * Tests for UserActionsMenu — meatball menu for per-row user admin actions.
- * Role changes are now handled by InlineRoleSelect (MINCRM-560); this menu
+ * Role changes are now handled by InlineRoleSelect; this menu
  * covers password, onboarding-reset, activation, and service-account token actions.
  *
  * Verifies:
@@ -14,7 +14,7 @@
  * - Clicking Reactivate calls onReactivate
  * - isPending disables the trigger button
  * - Escape key closes the menu via onToggle
- * - Make Admin / Make Rep items are NOT present (removed by MINCRM-560)
+ * - Make Admin / Make Rep items are NOT present
  */
 
 import { screen, fireEvent } from '@testing-library/react';
@@ -110,14 +110,14 @@ describe('UserActionsMenu', () => {
     expect(screen.queryByTestId(`set-password-toggle-${ACTIVE_REP.id}`)).not.toBeInTheDocument();
   });
 
-  it('does not render Make Admin or Make Rep items (removed by MINCRM-560)', () => {
+  it('does not render Make Admin or Make Rep items', () => {
     renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true })} />);
 
     expect(screen.queryByTestId(`make-admin-${ACTIVE_REP.id}`)).not.toBeInTheDocument();
     expect(screen.queryByTestId(`make-rep-${ACTIVE_REP.id}`)).not.toBeInTheDocument();
   });
 
-  it('does not render Make Rep for admin user (removed by MINCRM-560)', () => {
+  it('does not render Make Rep for admin user', () => {
     renderWithProviders(
       <UserActionsMenu {...defaultProps({ user: ACTIVE_ADMIN, isOpen: true })} />,
     );
@@ -198,7 +198,7 @@ describe('UserActionsMenu', () => {
     expect(onToggle).toHaveBeenCalledWith(ACTIVE_REP.id);
   });
 
-  describe('Reset onboarding action (MINCRM-410)', () => {
+  describe('Reset onboarding action', () => {
     it('shows Reset onboarding when user is not the current user', () => {
       renderWithProviders(
         <UserActionsMenu

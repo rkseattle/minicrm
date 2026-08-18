@@ -1,6 +1,6 @@
 /**
  * Tests for WorkspaceSettings — language, nav layout, currency, and exchange
- * rates composite tab (MINCRM-563).
+ * rates composite tab.
  *
  * Smoke tests verify key sections from each absorbed component are present.
  * Full interaction coverage lives in GeneralSettings.test.tsx and

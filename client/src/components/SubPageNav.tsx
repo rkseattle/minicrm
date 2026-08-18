@@ -1,5 +1,5 @@
 /**
- * SubPageNav — adaptive sub-page navigation chrome (MINCRM-294).
+ * SubPageNav — adaptive sub-page navigation chrome.
  *
  * Renders navigation items in one of three modes based on viewport and nav layout:
  *   - Mobile (isMobile): native <select> picker

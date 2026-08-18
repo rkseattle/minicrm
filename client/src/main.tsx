@@ -21,7 +21,7 @@ import { relayCoverageCorrelationIdFromUrl } from './coverageCorrelation.js';
 
 initSentry();
 
-// MINCRM-663: picks up a manual-testing coverage session's correlation ID
+// picks up a manual-testing coverage session's correlation ID
 // from the URL (if the admin arrived via a check-in link from the
 // standalone coverage-dashboard app) and persists it for axiosInstance.ts
 // to forward on every request. A no-op for every normal page load. Must
@@ -31,7 +31,7 @@ relayCoverageCorrelationIdFromUrl();
 /**
  * Shared React Query client instance.
  *
- * Cache policy (MINCRM-348):
+ * Cache policy:
  *   staleTime: 0   — every cached response is immediately stale; React Query
  *                    refetches in the background on mount and window focus so
  *                    teammates' changes are visible without a manual refresh.
@@ -68,11 +68,11 @@ const queryClient = new QueryClient({
   },
 });
 
-// Wire the global 401 interceptor now that queryClient exists. (MINCRM-365)
+// Wire the global 401 interceptor now that queryClient exists.
 setupInterceptors(queryClient);
 
 // Expose i18n on window so E2E tests can call window.i18n.changeLanguage('pseudo')
-// via page.evaluate(). MINCRM-241
+// via page.evaluate().
 (window as Window & { i18n?: typeof i18n }).i18n = i18n;
 
 const rootElement = document.getElementById('root');

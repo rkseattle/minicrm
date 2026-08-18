@@ -1,5 +1,5 @@
 /**
- * Follow-up timing suggestions API module. (MINCRM-470)
+ * Follow-up timing suggestions API module.
  * Wraps the contact follow-up timing endpoint. Requires authentication and
  * the ai_followup_timing_suggestions feature flag.
  */

@@ -1,5 +1,5 @@
 /**
- * Tests for the NavLeft component. (MINCRM-133)
+ * Tests for the NavLeft component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

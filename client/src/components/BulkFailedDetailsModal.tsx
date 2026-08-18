@@ -1,7 +1,6 @@
 /**
  * BulkFailedDetailsModal — shows a table of per-record failures from a partial-success
  * bulk operation so admins can see which IDs failed and why.
- * (MINCRM-562)
  */
 
 import { useTranslation } from 'react-i18next';

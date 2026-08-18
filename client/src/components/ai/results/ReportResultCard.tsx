@@ -2,7 +2,7 @@
  * Renders an NLI-generated report inline in the conversation thread as a
  * summary table. Supports win_loss, activity_volume, and stage_trend report
  * types. Uses summary tables rather than interactive charts — the full chart
- * view is in the Reports module. (MINCRM-424)
+ * view is in the Reports module.
  */
 import { useTranslation } from 'react-i18next';
 

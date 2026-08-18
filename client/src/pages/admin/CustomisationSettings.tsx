@@ -1,6 +1,6 @@
 /**
- * CustomisationSettings — Pipeline stage configuration and custom fields. (MINCRM-259, MINCRM-276)
- * Extracted from AdminSettingsPage.tsx (MINCRM-259).
+ * CustomisationSettings — Pipeline stage configuration and custom fields.
+ * Extracted from AdminSettingsPage.tsx.
  */
 
 import { useState, useEffect, useRef, useId, Fragment } from 'react';
@@ -42,7 +42,7 @@ export default function CustomisationSettings() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  // ── Pipeline management (MINCRM-397) ──────────────────────────────────────
+  // ── Pipeline management ──────────────────────────────────────
   const { data: pipelinesData, isLoading: pipelinesLoading } = useQuery({
     queryKey: PIPELINES_QUERY_KEY,
     queryFn: listPipelines,
@@ -164,9 +164,9 @@ export default function CustomisationSettings() {
   const [editDraft, setEditDraft] = useState<{
     name: string;
     probability: string;
-    /** Comma-separated required field names for stage_exit_requirements (MINCRM-527) */
+    /** Comma-separated required field names for stage_exit_requirements */
     exitRequiredFields: string;
-    /** Comma-separated warning field names for stage_exit_requirements (MINCRM-527) */
+    /** Comma-separated warning field names for stage_exit_requirements */
     exitWarningFields: string;
   }>({
     name: '',
@@ -254,7 +254,7 @@ export default function CustomisationSettings() {
     mutationFn: (orderedIds: string[]) => reorderPipelineStages({ stages: orderedIds }),
     onSuccess: async (data) => {
       // Cancel any in-flight background refetch before seeding the cache so a
-      // stale GET cannot overwrite the authoritative reorder result (MINCRM-387).
+      // stale GET cannot overwrite the authoritative reorder result.
       const qk = pipelineStagesQueryKey(activePipelineId);
       await queryClient.cancelQueries({ queryKey: qk });
       queryClient.setQueryData(qk, data);
@@ -544,7 +544,7 @@ export default function CustomisationSettings() {
 
   return (
     <>
-      {/* ── Pipelines section (MINCRM-397) ───────────────────────────────── */}
+      {/* ── Pipelines section ───────────────────────────────── */}
       <div
         className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl mb-6"
         data-testid="pipelines-section"
@@ -775,7 +775,7 @@ export default function CustomisationSettings() {
         )}
       </div>
 
-      {/* ── Pipeline Stages section (MINCRM-180) ─────────────────────────── */}
+      {/* ── Pipeline Stages section ─────────────────────────── */}
       <div
         className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="pipeline-stages-section"
@@ -787,7 +787,7 @@ export default function CustomisationSettings() {
           >
             {t('settings.pipelineStages.sectionTitle')}
           </h2>
-          {/* Pipeline selector for stage management (MINCRM-397) */}
+          {/* Pipeline selector for stage management */}
           {pipelines.length > 1 && (
             <select
               aria-label={t('settings.pipelines.sectionTitle')}
@@ -851,7 +851,7 @@ export default function CustomisationSettings() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {stages.map((stage, index) => (
-                  // Fragment needed to emit two <tr> elements per stage row when editing (MINCRM-527)
+                  // Fragment needed to emit two <tr> elements per stage row when editing
                   <Fragment key={stage.id}>
                     <tr data-testid={`pipeline-stage-row-${stage.id}`}>
                       <td className="py-2 pe-2">
@@ -1177,7 +1177,7 @@ export default function CustomisationSettings() {
         )}
       </div>
 
-      {/* ── Custom Fields section (MINCRM-276) ──────────────────────────── */}
+      {/* ── Custom Fields section ──────────────────────────── */}
       <div
         className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl mt-6"
         data-testid="custom-fields-section"

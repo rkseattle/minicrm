@@ -1,8 +1,7 @@
 /**
  * Tests for FeatureFlagsSettings — admin feature flag registry UI.
  * Covers: loading/error/empty states, flag list rendering, toggle confirmation dialog,
- * role override matrix, save error, scheduled enable_at (MINCRM-488), beta users panel (MINCRM-489).
- * (MINCRM-463, MINCRM-488, MINCRM-489)
+ * role override matrix, save error, scheduled enable_at, beta users panel.
  */
 
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
@@ -114,7 +113,7 @@ describe('FeatureFlagsSettings', () => {
     expect(mobileToggle).toHaveAttribute('aria-checked', 'false');
   });
 
-  // MINCRM-565: every flag now shows a role override panel (no longer restricted to an allowlist)
+  // every flag now shows a role override panel (no longer restricted to an allowlist)
   it('renders role override panel for all flags, including notes', async () => {
     renderWithProviders(<FeatureFlagsSettings />);
 
@@ -122,14 +121,14 @@ describe('FeatureFlagsSettings', () => {
       expect(screen.getByTestId('feature-flag-role-overrides-reporting')).toBeInTheDocument();
     });
 
-    // notes flag also shows role override panel (MINCRM-565 — no more ROLE_OVERRIDE_FLAG_KEYS)
+    // notes flag also shows role override panel (no more ROLE_OVERRIDE_FLAG_KEYS)
     expect(screen.getByTestId('feature-flag-role-overrides-notes')).toBeInTheDocument();
     // Role checkboxes default to flag.enabled since role_overrides is null for notes
     expect(screen.getByTestId('feature-flag-role-override-notes-admin')).toBeInTheDocument();
     expect(screen.getByTestId('feature-flag-role-override-notes-rep')).toBeInTheDocument();
   });
 
-  // MINCRM-460: AI sub-feature flags also render role override matrix
+  // AI sub-feature flags also render role override matrix
   it('renders role override matrix for AI sub-feature flags', async () => {
     renderWithProviders(<FeatureFlagsSettings />);
 
@@ -171,7 +170,7 @@ describe('FeatureFlagsSettings', () => {
     expect(repCheckbox).toBeChecked();
   });
 
-  // MINCRM-565: stale role keys from deleted custom roles are stripped before PATCH
+  // stale role keys from deleted custom roles are stripped before PATCH
   it('strips other stale role keys when removing one stale role override', async () => {
     // Fixture: reporting has two stale keys ('stale_a', 'stale_b') not in custom-roles.
     // Clicking Remove on 'stale_a' must send a payload that omits both stale keys,
@@ -220,7 +219,7 @@ describe('FeatureFlagsSettings', () => {
     expect(overrides['rep']).toBe(true);
   });
 
-  // MINCRM-565: stale keys are also stripped when toggling a live role override checkbox
+  // stale keys are also stripped when toggling a live role override checkbox
   it('strips stale role keys when toggling a live role override checkbox', async () => {
     // Fixture: reporting has one stale key ('stale_a') not in custom-roles.
     // Toggling the 'admin' checkbox must send { admin: <new>, rep: true } with stale_a absent.
@@ -372,7 +371,7 @@ describe('FeatureFlagsSettings', () => {
     });
   });
 
-  // ── Scheduled enable_at (MINCRM-488) ────────────────────────────────────────
+  // ── Scheduled enable_at ────────────────────────────────────────
 
   it('shows Scheduled badge when enable_at is set and flag is disabled', async () => {
     const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
@@ -512,7 +511,7 @@ describe('FeatureFlagsSettings', () => {
     expect(screen.queryByTestId('feature-flag-badge-off-mobile_access')).not.toBeInTheDocument();
   });
 
-  // ── Beta users panel (MINCRM-489) ────────────────────────────────────────────
+  // ── Beta users panel ────────────────────────────────────────────
 
   it('shows beta user count badge when beta_user_count > 0', async () => {
     server.use(
@@ -586,7 +585,7 @@ describe('FeatureFlagsSettings', () => {
     expect(within(betaRow).getByText('Alice Beta')).toBeInTheDocument();
   });
 
-  // ── Delete group dialog (MINCRM-567) ─────────────────────────────────────────
+  // ── Delete group dialog ─────────────────────────────────────────
 
   const GROUP_FIXTURE_BASE = {
     group_key: 'test_group',
@@ -692,9 +691,9 @@ describe('FeatureFlagsSettings', () => {
     expect(deleteCallCount).toBe(0);
   });
 
-  // ── Category rendering: the Developer Tools removal (MINCRM-685) ────────────
+  // ── Category rendering: the Developer Tools removal ────────────
   //
-  // AC-3/AC-4 of MINCRM-685: no Coverage/TIA entry appears in Feature Flags,
+  // AC-3/AC-4: no Coverage/TIA entry appears in Feature Flags,
   // the "Developer Tools" section is absent entirely, and the raw
   // `featureFlags.categories.developer_tools` string never renders.
   //
@@ -703,7 +702,7 @@ describe('FeatureFlagsSettings', () => {
   //
   //   1. Migration 163 deleted the last rows carrying that category, so nothing
   //      in the table asks for the section.
-  //   2. MINCRM-685 also removed 'Developer Tools' from FEATURE_FLAG_CATEGORIES,
+  //   2. A later change also removed 'Developer Tools' from FEATURE_FLAG_CATEGORIES,
   //      and this page renders one section per entry in THAT array — never per
   //      distinct category found in the data. So even a row that somehow
   //      reappeared with category 'Developer Tools' renders nowhere at all.
@@ -715,7 +714,7 @@ describe('FeatureFlagsSettings', () => {
   // would guard nothing. Seeding the row is what makes the assertion able to
   // fail.
 
-  it('drops a flag whose category is not in FEATURE_FLAG_CATEGORIES entirely, rather than rendering an unsectioned row (MINCRM-685 AC-3/AC-4)', async () => {
+  it('drops a flag whose category is not in FEATURE_FLAG_CATEGORIES entirely, rather than rendering an unsectioned row', async () => {
     server.use(
       http.get('/api/v1/admin/feature-flags', () =>
         HttpResponse.json({

@@ -9,11 +9,11 @@ import type { UserResponse } from '@shared/schemas/userSchema.js';
 interface AuthResponse {
   user: UserResponse;
   mustChangePassword?: boolean;
-  /** True when MFA is enabled; session cookie not yet issued. (MINCRM-392) */
+  /** True when MFA is enabled; session cookie not yet issued. */
   mfaRequired?: boolean;
-  /** Short-lived pre-auth token to complete MFA challenge. Present when mfaRequired:true. (MINCRM-392) */
+  /** Short-lived pre-auth token to complete MFA challenge. Present when mfaRequired:true. */
   mfaToken?: string;
-  /** True when org requires MFA but this user hasn't set it up. (MINCRM-392) */
+  /** True when org requires MFA but this user hasn't set it up. */
   mfaSetupRequired?: boolean;
 }
 
@@ -75,7 +75,7 @@ export async function resetPassword(token: string, password: string): Promise<Au
 /**
  * Refreshes the session JWT to reset the 30-minute idle timeout.
  * Preserves the original login_at so the 8-hour absolute cap is unaffected.
- * Called automatically by useSessionRefresh on user activity. (MINCRM-365)
+ * Called automatically by useSessionRefresh on user activity.
  */
 export async function refreshSession(): Promise<void> {
   await apiClient.post('/auth/refresh');

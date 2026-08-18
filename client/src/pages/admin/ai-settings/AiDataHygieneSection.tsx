@@ -1,8 +1,8 @@
 /**
  * AiDataHygieneSection — data hygiene scan thresholds + manual "run now".
- * One of the sub-sections behind the AI panel's sub-navigation (MINCRM-653).
+ * One of the sub-sections behind the AI panel's sub-navigation.
  * Follows AiCoachingSection's pattern: threshold inputs + save button, plus
- * a manual trigger that reuses the exact nightly-job function. (MINCRM-476)
+ * a manual trigger that reuses the exact nightly-job function.
  *
  * Split into a data-fetching wrapper (this component) and a presentational
  * form that only mounts once config data exists — avoids syncing

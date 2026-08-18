@@ -1,5 +1,5 @@
 /**
- * Custom fields API module (MINCRM-276).
+ * Custom fields API module.
  * Wraps the /api/custom-fields endpoints.
  * Definition mutations require admin auth; value reads/writes require auth.
  */

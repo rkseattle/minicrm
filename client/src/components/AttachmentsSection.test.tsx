@@ -1,5 +1,5 @@
 /**
- * Tests for AttachmentsSection component. (MINCRM-167, MINCRM-169)
+ * Tests for AttachmentsSection component.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';

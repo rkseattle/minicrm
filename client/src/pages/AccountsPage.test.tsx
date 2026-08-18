@@ -37,7 +37,7 @@ describe('AccountsPage', () => {
     expect(screen.getAllByText(ACCOUNT_1.industry!).length).toBeGreaterThanOrEqual(1);
   });
 
-  // ── AI relationship health scoring (MINCRM-467) ─────────────────────────────────
+  // ── AI relationship health scoring ─────────────────────────────────
 
   it('shows a dash placeholder when the account has no computed health score', async () => {
     renderWithProviders(<AccountsPage />);
@@ -134,7 +134,7 @@ describe('AccountsPage', () => {
     expect(screen.queryByTestId('account-form')).not.toBeInTheDocument();
   });
 
-  // MINCRM-440: account duplicate-name detection and AI explanation
+  // account duplicate-name detection and AI explanation
   describe('duplicate detection', () => {
     it('shows the duplicate warning banner when the API returns 409', async () => {
       server.use(

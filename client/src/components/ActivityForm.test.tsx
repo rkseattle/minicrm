@@ -150,7 +150,7 @@ describe('ActivityForm', () => {
     expect((screen.getByTestId('activity-due-date') as HTMLInputElement).value).toBe('2026-03-15');
   });
 
-  // MINCRM-82: direction field conditional rendering tests
+  // direction field conditional rendering tests
   it('shows direction and outcome fields when type is Call', () => {
     renderWithProviders(
       <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
@@ -183,7 +183,7 @@ describe('ActivityForm', () => {
     expect(screen.queryByTestId('activity-outcome')).not.toBeInTheDocument();
   });
 
-  // MINCRM-119: remaining absent-field branches for Task and Meeting
+  // remaining absent-field branches for Task and Meeting
   it('hides direction and outcome fields when type is Task', () => {
     renderWithProviders(
       <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
@@ -232,11 +232,11 @@ describe('ActivityForm', () => {
     expect(screen.getByTestId('activity-form-error')).toHaveTextContent('Something went wrong');
   });
 
-  // MINCRM-436: AI call/note summarizer
+  // AI call/note summarizer
   describe('AI summarizer', () => {
     // async: the Summarize button is feature-flag gated, and flag-gated UI now
     // appears once the flag query confirms it rather than rendering optimistically
-    // on first paint, so its presence must be awaited. (MINCRM-695, MINCRM-696)
+    // on first paint, so its presence must be awaited.
     it('shows the Summarize button for Note, Call, and Meeting types but not Email or Task', async () => {
       renderWithProviders(
         <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
@@ -315,7 +315,7 @@ describe('ActivityForm', () => {
         'Send revised proposal.',
       );
 
-      // Accepted tasks are not created until the form is actually submitted (MINCRM-436).
+      // Accepted tasks are not created until the form is actually submitted.
       expect(handleSubmit).not.toHaveBeenCalled();
       await user.type(screen.getByTestId('activity-subject'), 'Renewal call');
       await user.click(screen.getByTestId('activity-form-submit'));

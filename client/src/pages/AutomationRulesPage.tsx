@@ -8,7 +8,6 @@
  * - View the 20 most recent execution logs per rule
  * - Delete a rule
  *
- * Implements MINCRM-27.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -139,7 +138,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
     queryFn: () => listRuleLogs(rule.id),
   });
 
-  /** Closes the drawer and returns focus to the trigger button. (MINCRM-109) */
+  /** Closes the drawer and returns focus to the trigger button. */
   const handleClose = useCallback((): void => {
     triggerRef.current?.focus();
     onClose();
@@ -151,7 +150,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
   }, []);
 
   // Close the drawer when Escape is pressed from any focused child (WCAG 2.1 SC 1.4.13)
-  // MINCRM-109: dependency array added to prevent listener leak on every render
+  // dependency array added to prevent listener leak on every render
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') handleClose();
@@ -160,7 +159,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleClose]);
 
-  // Trap focus within the drawer panel while open (WCAG 2.1.1 / MINCRM-280)
+  // Trap focus within the drawer panel while open (WCAG 2.1.1)
   useEffect(() => {
     const drawer = drawerRef.current;
     if (!drawer) return;
@@ -198,7 +197,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
 
   return (
     // Backdrop — role="presentation" lets click-outside dismissal work without an interactive role,
-    // removing the need for jsx-a11y suppressions (MINCRM-280)
+    // removing the need for jsx-a11y suppressions
     <div
       role="presentation"
       className="fixed inset-0 bg-black/30 z-20 flex justify-end"
@@ -335,7 +334,7 @@ export default function AutomationRulesPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   /** Ref to the "View logs" button that last opened the drawer, for focus restoration on close */
   const logsButtonRef = useRef<HTMLButtonElement | null>(null);
-  /** Stable callback passed to RuleLogsDrawer so handleClose useCallback dep doesn't churn (MINCRM-109) */
+  /** Stable callback passed to RuleLogsDrawer so handleClose useCallback dep doesn't churn */
   const handleCloseLogsDrawer = useCallback(() => setSelectedLogsRule(null), []);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
@@ -708,7 +707,7 @@ export default function AutomationRulesPage() {
               </div>
             )}
 
-            {/* send_notification inline hint — MINCRM-54 */}
+            {/* send_notification inline hint */}
             {form.action_type === 'send_notification' && (
               <p
                 className="mb-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"

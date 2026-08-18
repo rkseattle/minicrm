@@ -1,5 +1,5 @@
 /**
- * Tests for NotesSection component. (MINCRM-352)
+ * Tests for NotesSection component.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';

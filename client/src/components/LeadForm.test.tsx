@@ -1,5 +1,5 @@
 /**
- * Tests for the LeadForm component. (MINCRM-198)
+ * Tests for the LeadForm component.
  * Covers: field rendering, required fields, lead source dropdown, owner selector conditional,
  * initialValues population, onSubmit values, cancel button, isSubmitting state.
  */
@@ -194,7 +194,7 @@ describe('LeadForm', () => {
     });
   });
 
-  describe('routing profile fields (MINCRM-475)', () => {
+  describe('routing profile fields', () => {
     it('renders territory, industry, and employee_range fields', () => {
       renderWithProviders(<LeadForm onSubmit={noop} activeUsers={[]} isAdmin={false} />);
       expect(screen.getByTestId('lead-territory')).toBeInTheDocument();
@@ -229,7 +229,7 @@ describe('LeadForm', () => {
     });
   });
 
-  describe('routing suggestion panel (MINCRM-475)', () => {
+  describe('routing suggestion panel', () => {
     const ACTIVE_USERS_FOR_ROUTING = [{ id: 'u-1', name: 'Alice Smith' }];
 
     it('does not render for the edit flow (isCreate=false)', () => {

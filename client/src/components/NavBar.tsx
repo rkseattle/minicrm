@@ -2,7 +2,7 @@
  * NavBar — layout-aware navigation dispatcher.
  * Reads the active nav layout from NavLayoutContext and renders the
  * appropriate layout component. Page components import NavBar without
- * needing to know which layout is active. (MINCRM-133)
+ * needing to know which layout is active.
  *
  * The layout setting is a desktop-only concept. On mobile viewports (< 1024 px)
  * NavTop always renders regardless of the stored layout — its built-in hamburger
@@ -29,7 +29,7 @@ import NavHamburger from './NavHamburger.js';
  * - hamburger: renders NavHamburger (search in the top bar)
  * - left: returns null — NavLeft owns its header; sidebar injected by LayoutShell
  *
- * SetupChecklistWidget is mounted once in LayoutShell as a fixed overlay (MINCRM-379).
+ * SetupChecklistWidget is mounted once in LayoutShell as a fixed overlay.
  */
 export default function NavBar() {
   const { layout } = useNavLayout();

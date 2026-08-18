@@ -1,5 +1,5 @@
 /**
- * Tests for the formatHourOfDay utility. (MINCRM-470)
+ * Tests for the formatHourOfDay utility.
  */
 
 import { describe, it, expect } from 'vitest';

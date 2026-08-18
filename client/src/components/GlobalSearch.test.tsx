@@ -1,5 +1,5 @@
 /**
- * Tests for the GlobalSearch component. (MINCRM-168)
+ * Tests for the GlobalSearch component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

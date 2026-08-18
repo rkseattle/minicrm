@@ -1,7 +1,6 @@
 /**
  * Tests for the StageTrendReportPage component.
  * Covers heading, filters, table rendering, empty state, loading and error states.
- * Implements MINCRM-284.
  */
 
 import { screen, waitFor } from '@testing-library/react';

@@ -24,11 +24,11 @@ import type { ActiveUser } from '@/api/users.js';
 /** Form field values managed by this component */
 export interface DealFormValues {
   name: string;
-  /** UUID of the pipeline this deal belongs to (MINCRM-408) */
+  /** UUID of the pipeline this deal belongs to */
   pipeline_id: string;
   stage: string;
   value: string;
-  /** ISO 4217 currency code for the deal value (MINCRM-189) */
+  /** ISO 4217 currency code for the deal value */
   currency: string;
   close_date: string;
   account_id: string;
@@ -36,7 +36,7 @@ export interface DealFormValues {
   owner_id: string;
   /**
    * Probability override string (empty string = no override, use stage default).
-   * When non-empty, must parse to an integer 0–100. (MINCRM-179)
+   * When non-empty, must parse to an integer 0–100.
    */
   probability: string;
 }
@@ -81,20 +81,20 @@ interface DealFormProps {
   /** Optional ref to the element that triggered the form open; focus returns here on cancel/success */
   triggerRef?: React.RefObject<HTMLElement | null>;
   /**
-   * UUID of the pipeline to scope the stage selector to (MINCRM-397).
+   * UUID of the pipeline to scope the stage selector to.
    * Used by the create form (board context). In edit mode the pipeline comes from initialValues.
    * When omitted, defaults to the default pipeline's stages.
    */
   pipelineId?: string;
   /**
    * When true, renders a pipeline selector above the stage selector.
-   * Used by DealDetailPage to allow moving a deal to a different pipeline. (MINCRM-408)
+   * Used by DealDetailPage to allow moving a deal to a different pipeline.
    */
   showPipelineSelector?: boolean;
   /**
    * When provided, pre-selects this stage instead of initialValues.stage on mount.
    * Used by DealDetailPage to pre-set the AI-suggested next stage when the rep
-   * clicks the stage advancement indicator. (MINCRM-443)
+   * clicks the stage advancement indicator.
    */
   initialStageOverride?: string;
 }
@@ -120,7 +120,7 @@ function buildInitialState(
     close_date: initial?.close_date ?? '',
     account_id: initial?.account_id ?? '',
     owner_id: initial?.owner_id ?? '',
-    // Pre-populate only when overridden; empty string means "use stage default" (MINCRM-179)
+    // Pre-populate only when overridden; empty string means "use stage default"
     probability: initial?.probability_is_overridden ? String(initial.effective_probability) : '',
   };
 }
@@ -151,7 +151,7 @@ export default function DealForm({
   const { data: defaultCurrencyData } = useQuery({
     queryKey: DEFAULT_CURRENCY_QUERY_KEY,
     queryFn: getDefaultCurrency,
-    // Override global staleTime: 0 — currency default is stable during form completion. (MINCRM-348)
+    // Override global staleTime: 0 — currency default is stable during form completion.
     staleTime: 5 * 60 * 1000,
   });
   const defaultCurrency = defaultCurrencyData?.currency ?? 'USD';
@@ -172,7 +172,7 @@ export default function DealForm({
   const [probabilityError, setProbabilityError] = useState<string | null>(null);
 
   // The active pipeline: formData.pipeline_id when set (edit mode), otherwise the prop (create mode),
-  // otherwise undefined (usePipelineStages falls back to the default pipeline). (MINCRM-408)
+  // otherwise undefined (usePipelineStages falls back to the default pipeline).
   const activePipelineId = formData.pipeline_id || pipelineId || undefined;
   const { stageNames, terminalStageNames, stages } = usePipelineStages(activePipelineId);
 
@@ -196,7 +196,7 @@ export default function DealForm({
     const { name, value } = event.target;
     if (name === 'currency') setCurrencyTouched(true);
     if (name === 'pipeline_id') {
-      // Clear stage when the pipeline changes — stage names differ across pipelines. (MINCRM-408)
+      // Clear stage when the pipeline changes — stage names differ across pipelines.
       setFormData((previous) => ({ ...previous, pipeline_id: value, stage: '' }));
       return;
     }
@@ -205,7 +205,7 @@ export default function DealForm({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    // Reject decimal probability input before it reaches parseInt (MINCRM-179)
+    // Reject decimal probability input before it reaches parseInt
     if (formData.probability !== '') {
       const raw = Number(formData.probability);
       if (!Number.isInteger(raw) || raw < 0 || raw > 100) {
@@ -236,7 +236,7 @@ export default function DealForm({
           disabled={isSubmitting}
         />
 
-        {/* Pipeline selector — edit mode only (MINCRM-408) */}
+        {/* Pipeline selector — edit mode only */}
         {showPipelineSelector && (
           <Select
             id="deal-pipeline"
@@ -333,7 +333,7 @@ export default function DealForm({
           disabled={isSubmitting}
         />
 
-        {/* Probability override field — empty = inherit from stage default (MINCRM-179) */}
+        {/* Probability override field — empty = inherit from stage default */}
         <div className="flex flex-col gap-1">
           <Input
             id="deal-probability"

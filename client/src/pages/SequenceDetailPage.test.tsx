@@ -1,7 +1,6 @@
 /**
  * Tests for SequenceDetailPage component.
  * Covers loading, error, and populated states plus step management interactions.
- * (MINCRM-403)
  */
 
 import { screen, waitFor } from '@testing-library/react';

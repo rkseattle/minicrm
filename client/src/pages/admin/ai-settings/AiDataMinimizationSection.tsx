@@ -1,8 +1,7 @@
 /**
  * AiDataMinimizationSection — field exclusions from AI context.
- * One of the sub-sections behind the AI panel's sub-navigation (MINCRM-653).
+ * One of the sub-sections behind the AI panel's sub-navigation.
  * Extracted from AiSettings.tsx without behavior changes.
- * (MINCRM-461)
  */
 
 import { useState } from 'react';

@@ -1,5 +1,5 @@
 /**
- * MfaSetupModal — two-step modal for enabling TOTP MFA. (MINCRM-392)
+ * MfaSetupModal — two-step modal for enabling TOTP MFA.
  * Step 1: display QR code for the user to scan.
  * Step 2: user enters the 6-digit code to confirm, which enables MFA.
  * On success, calls onSuccess with the 8 plaintext recovery codes.

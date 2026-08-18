@@ -1,5 +1,5 @@
 /**
- * Tests for the ProposalDraftEditor component. (MINCRM-473)
+ * Tests for the ProposalDraftEditor component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

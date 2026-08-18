@@ -13,15 +13,15 @@ export interface StageBreakdown {
   stage: string;
   count: number;
   value: string;
-  /** Sum of (value × effective_probability / 100) for deals in this stage (MINCRM-179) */
+  /** Sum of (value × effective_probability / 100) for deals in this stage */
   weightedValue: string;
-  /** True when deals in this stage span more than one currency (MINCRM-189) */
+  /** True when deals in this stage span more than one currency */
   mixedCurrencies: boolean;
-  /** Currency code when all deals in the stage share one currency; null when mixed (MINCRM-189) */
+  /** Currency code when all deals in the stage share one currency; null when mixed */
   currency: string | null;
 }
 
-/** A single entry in the recent activity feed returned on the dashboard (MINCRM-185) */
+/** A single entry in the recent activity feed returned on the dashboard */
 export interface RecentActivityEntry {
   id: string;
   type: string;
@@ -41,31 +41,31 @@ export interface DashboardSummaryResponse {
   openDealCount: number;
   openPipelineValue: string;
   /**
-   * Sum of (value × effective_probability / 100) for all open deals. (MINCRM-179)
+   * Sum of (value × effective_probability / 100) for all open deals.
    */
   weightedPipelineValue: string;
-  /** True when open deals span more than one currency (MINCRM-189) */
+  /** True when open deals span more than one currency */
   mixedCurrencies: boolean;
-  /** Currency code when all open deals share one currency; null when mixed or no deals (MINCRM-189) */
+  /** Currency code when all open deals share one currency; null when mixed or no deals */
   currency: string | null;
   stageBreakdown: StageBreakdown[];
-  /** The 10 most recently updated activities visible to this user (MINCRM-185) */
+  /** The 10 most recently updated activities visible to this user */
   recentActivities: RecentActivityEntry[];
-  /** Converted pipeline value in home currency; null when hasRates is false (MINCRM-253) */
+  /** Converted pipeline value in home currency; null when hasRates is false */
   convertedPipelineValue: string | null;
-  /** Converted weighted pipeline value in home currency (MINCRM-253) */
+  /** Converted weighted pipeline value in home currency */
   convertedWeightedPipelineValue: string | null;
-  /** Code of the home currency (MINCRM-253) */
+  /** Code of the home currency */
   homeCurrency: string | null;
-  /** Symbol of the home currency (MINCRM-253) */
+  /** Symbol of the home currency */
   homeSymbol: string | null;
-  /** Number of deal currencies that have no rate configured (MINCRM-253) */
+  /** Number of deal currencies that have no rate configured */
   unratedCount: number;
-  /** Comma-separated codes of unrated currencies (MINCRM-253) */
+  /** Comma-separated codes of unrated currencies */
   unratedCurrencies: string | null;
-  /** ISO timestamp of the most recently updated rate (MINCRM-253) */
+  /** ISO timestamp of the most recently updated rate */
   ratesLastUpdated: string | null;
-  /** True when at least one non-home rate exists in the currencies table (MINCRM-253) */
+  /** True when at least one non-home rate exists in the currencies table */
   hasRates: boolean;
 }
 

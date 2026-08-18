@@ -1,12 +1,11 @@
 /**
  * FeatureFlagsSettings — Admin feature flag registry management.
  * Flags are grouped by category. Supports per-role override toggles for all flags,
- * with roles loaded dynamically from the IAM roles API (built-in + custom). (MINCRM-565)
- * Supports scheduled auto-enable via enable_at (MINCRM-488).
- * Supports beta user enrollment for user-level targeting (MINCRM-489).
- * Supports flag groups with master toggle and group-level beta users (MINCRM-491).
+ * with roles loaded dynamically from the IAM roles API (built-in + custom).
+ * Supports scheduled auto-enable via enable_at.
+ * Supports beta user enrollment for user-level targeting.
+ * Supports flag groups with master toggle and group-level beta users.
  * Changes require confirmation and write to the audit log.
- * (MINCRM-463, MINCRM-460, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-491, MINCRM-492, MINCRM-565)
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -168,7 +167,7 @@ function ConfirmDialog({
   );
 }
 
-// ── Delete Group Dialog (MINCRM-567) ─────────────────────────────────────────
+// ── Delete Group Dialog ─────────────────────────────────────────
 
 interface DeleteGroupDialogProps {
   group: FlagGroupRow;
@@ -667,7 +666,7 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
   );
 }
 
-// ── Group Beta Users Panel (MINCRM-491) ───────────────────────────────────────
+// ── Group Beta Users Panel ───────────────────────────────────────
 
 interface GroupBetaUsersPanelProps {
   groupKey: string;
@@ -807,7 +806,7 @@ function GroupBetaUsersPanel({ groupKey }: GroupBetaUsersPanelProps) {
   );
 }
 
-// ── Group Row (MINCRM-491) ────────────────────────────────────────────────────
+// ── Group Row ────────────────────────────────────────────────────
 
 interface GroupRowProps {
   group: FlagGroupRow;
@@ -1002,7 +1001,7 @@ function GroupRow({
             </div>
           )}
 
-          {/* Delete group button — always enabled; non-empty groups show a warning dialog (MINCRM-567) */}
+          {/* Delete group button — always enabled; non-empty groups show a warning dialog */}
           <div className="mt-3 border-t border-gray-100 pt-3">
             <button
               type="button"
@@ -1020,7 +1019,7 @@ function GroupRow({
   );
 }
 
-// ── Create Group Form (MINCRM-491) ────────────────────────────────────────────
+// ── Create Group Form ────────────────────────────────────────────
 
 interface CreateGroupFormProps {
   onCreated: () => void;
@@ -1181,7 +1180,7 @@ function CreateGroupForm({ onCreated }: CreateGroupFormProps) {
   );
 }
 
-// ── Groups Section (MINCRM-491) ───────────────────────────────────────────────
+// ── Groups Section ───────────────────────────────────────────────
 
 interface GroupsSectionProps {
   flags: FeatureFlagRow[];
@@ -1249,7 +1248,7 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
     setDeleteError(null);
     // Always confirm via dialog — never trust the cached member_count to bypass consent.
     // The server atomically unassigns member flags; if the cache is stale the user would
-    // silently lose flag assignments with no warning. (MINCRM-567)
+    // silently lose flag assignments with no warning.
     deleteDialogTriggerRef.current = triggerEl;
     setPendingDeleteGroup(group);
   }
@@ -1377,20 +1376,20 @@ function FlagRow({
   // isPendingSchedule: enable_at is set and still in the future — flag not yet live.
   // isScheduleFired: enable_at is set but already in the past — flag is effectively on
   //   (the server evaluates it as enabled once the cache refreshes). Show "On" so admins
-  //   can tell the flag is already active. (MINCRM-488, fixes greptile P1)
+  //   can tell the flag is already active.
   const isPendingSchedule =
     !flag.enabled && flag.enable_at !== null && isEnableAtPending(flag.enable_at, nowMs);
   const isScheduleFired =
     !flag.enabled && flag.enable_at !== null && !isEnableAtPending(flag.enable_at, nowMs);
 
-  // Local state for rollout stages editing (MINCRM-490)
+  // Local state for rollout stages editing
   const [localStages, setLocalStages] = useState<
     Array<{ percentage: number; scheduled_at: string }>
   >(() => flag.rollout_stages ?? []);
 
   // Keys that change when the server-confirmed values change, causing React to remount the
   // relevant inputs with fresh defaultValues. This avoids setState-in-effect while still
-  // re-syncing after a scheduler advancement or React Query refetch. (MINCRM-490)
+  // re-syncing after a scheduler advancement or React Query refetch.
   const rolloutPctInputKey =
     flag.rollout_percentage === null ? 'null' : String(flag.rollout_percentage);
   const rolloutStagesKey = JSON.stringify(flag.rollout_stages);
@@ -1484,7 +1483,7 @@ function FlagRow({
               </span>
             )}
 
-            {/* Rollout percentage badge (MINCRM-490) */}
+            {/* Rollout percentage badge */}
             {flag.rollout_percentage !== null && (
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700"
@@ -1494,7 +1493,7 @@ function FlagRow({
               </span>
             )}
 
-            {/* Force-enabled count badge (MINCRM-492) */}
+            {/* Force-enabled count badge */}
             {flag.override_count.force_enabled > 0 && (
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700"
@@ -1506,7 +1505,7 @@ function FlagRow({
               </span>
             )}
 
-            {/* Force-disabled count badge (MINCRM-492) */}
+            {/* Force-disabled count badge */}
             {flag.override_count.force_disabled > 0 && (
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700"
@@ -1518,7 +1517,7 @@ function FlagRow({
               </span>
             )}
 
-            {/* Group badge — click opens the group detail (MINCRM-491) */}
+            {/* Group badge — click opens the group detail */}
             {flag.group_key && (
               <button
                 type="button"
@@ -1580,7 +1579,7 @@ function FlagRow({
         </div>
       </div>
 
-      {/* Role override matrix — shown for all flags; roles loaded dynamically (MINCRM-565) */}
+      {/* Role override matrix — shown for all flags; roles loaded dynamically */}
       <div
         className="mt-2 ms-0 flex items-center gap-4 flex-wrap"
         data-testid={`feature-flag-role-overrides-${flag.flag_key}`}
@@ -1648,7 +1647,7 @@ function FlagRow({
         )}
       </div>
 
-      {/* Schedule enable_at picker — only when the flag is currently disabled (MINCRM-488) */}
+      {/* Schedule enable_at picker — only when the flag is currently disabled */}
       {!flag.enabled && (
         <div
           className="mt-2 flex items-center gap-3 flex-wrap"
@@ -1682,7 +1681,7 @@ function FlagRow({
         </div>
       )}
 
-      {/* Advanced settings toggle (rollout, overrides, beta) — MINCRM-490, MINCRM-492 */}
+      {/* Advanced settings toggle (rollout, overrides, beta) */}
       <div className="mt-2">
         <button
           type="button"
@@ -1697,7 +1696,7 @@ function FlagRow({
 
       {showAdvanced && (
         <>
-          {/* Rollout percentage + stages (MINCRM-490) */}
+          {/* Rollout percentage + stages */}
           {(flag.enabled ||
             flag.rollout_percentage !== null ||
             (flag.rollout_stages && flag.rollout_stages.length > 0)) && (
@@ -1815,7 +1814,7 @@ function FlagRow({
             </div>
           )}
 
-          {/* Group assignment dropdown (MINCRM-491) */}
+          {/* Group assignment dropdown */}
           {groups.length > 0 && (
             <div className="mt-3 border-t border-gray-100 pt-3 flex items-center gap-3 flex-wrap">
               <label
@@ -1842,7 +1841,7 @@ function FlagRow({
             </div>
           )}
 
-          {/* Beta users panel (MINCRM-489) */}
+          {/* Beta users panel */}
           {(showBetaPanel || flag.beta_user_count === 0) && (
             <BetaUsersPanel flagKey={flag.flag_key} flagLabel={flag.label} />
           )}
@@ -1857,7 +1856,7 @@ function FlagRow({
             </button>
           )}
 
-          {/* User overrides panel (MINCRM-492) */}
+          {/* User overrides panel */}
           <UserOverridesPanel flagKey={flag.flag_key} />
         </>
       )}
@@ -1882,7 +1881,7 @@ export default function FeatureFlagsSettings() {
   });
 
   // Fetch all roles (built-in + custom) once; passed to every FlagRow to power the
-  // dynamic role override panel. null while loading. (MINCRM-565)
+  // dynamic role override panel. null while loading.
   const { data: rolesData, isError: isRolesError } = useQuery({
     queryKey: CUSTOM_ROLES_QUERY_KEY,
     queryFn: listCustomRoles,
@@ -1894,7 +1893,6 @@ export default function FeatureFlagsSettings() {
 
   // Ref maps for scrolling: flag rows (clicked from group member list) and group rows
   // (clicked from a flag's group badge). Keyed by flag_key and group_key respectively.
-  // (MINCRM-491)
   const flagRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const groupRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -1925,7 +1923,7 @@ export default function FeatureFlagsSettings() {
 
   // Role override changes do not route through the confirm dialog — they don't change the
   // flag's enabled state, so "Enable X?" wording would be misleading. Mutate directly like
-  // rollout and group changes. (MINCRM-565)
+  // rollout and group changes.
   function handleRoleOverride(flag: FeatureFlagRow, role: string, value: boolean) {
     // Strip stale keys (deleted custom roles) for the same reason as handleRoleOverrideRemove —
     // assertValidRoleOverrides rejects any unknown key in the full payload.
@@ -2024,7 +2022,7 @@ export default function FeatureFlagsSettings() {
   // Recomputed on every render so enable_at classification stays accurate after React Query
   // refetches. A frozen mount-time snapshot keeps isPendingSchedule=true after the schedule
   // fires until the user navigates away. eslint-disable-next-line is intentional — Date.now()
-  // here is safe because this component is not called inside another hook. (MINCRM-488)
+  // here is safe because this component is not called inside another hook.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
 
@@ -2094,7 +2092,7 @@ export default function FeatureFlagsSettings() {
           </div>
         )}
 
-        {/* Groups section — always shown so admins can create groups (MINCRM-491) */}
+        {/* Groups section — always shown so admins can create groups */}
         <GroupsSection
           flags={flags}
           onFlagClick={handleFlagClick}

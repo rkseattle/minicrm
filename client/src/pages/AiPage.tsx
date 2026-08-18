@@ -2,7 +2,6 @@
  * AI Assistant page — two-panel layout with multi-session conversation support.
  * Left panel: conversation thread + fixed input area.
  * Right sidebar: "My Context" panel with user-managed key/value preferences.
- * (MINCRM-420, MINCRM-421, MINCRM-425, MINCRM-426, MINCRM-427, MINCRM-428, MINCRM-429, MINCRM-430)
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -125,7 +124,7 @@ function MessageBubble({
           {hasToolResults && (
             <NliResultBlock toolResults={message.tool_results!} isLoading={isLoading} />
           )}
-          {/* Confirmation block for pending mutation actions (MINCRM-425, MINCRM-426) */}
+          {/* Confirmation block for pending mutation actions */}
           {hasPendingAction &&
             // Non-null assertion safe: hasPendingAction guard above confirms this is non-null
             (message.pending_action!.isBulkDelete ? (
@@ -145,7 +144,7 @@ function MessageBubble({
                 isDisabled={isActionDisabled}
               />
             ))}
-          {/* Context proposal chip (MINCRM-429, MINCRM-430) */}
+          {/* Context proposal chip */}
           {hasProposal && (
             // Non-null assertion safe: hasProposal guard above confirms context_proposal is non-null
             <ContextProposalChip
@@ -229,7 +228,7 @@ export default function AiPage() {
   const { enabled: featureEnabled, isLoading: featureFlagLoading } = useFeatureFlag('ai_nli_page');
   const visualViewportHeight = useVisualViewportHeight();
 
-  // Retention window notice (MINCRM-462) — only fetched once the feature is enabled,
+  // Retention window notice — only fetched once the feature is enabled,
   // since the endpoint is gated by the same flag.
   const { data: retentionWindow } = useQuery({
     queryKey: MY_RETENTION_WINDOW_QUERY_KEY,
@@ -245,7 +244,7 @@ export default function AiPage() {
   const [optimisticMessages, setOptimisticMessages] = useState<AiMessageResponse[]>([]);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // ── Confirmation block state (MINCRM-425, MINCRM-426) ───────────────────────
+  // ── Confirmation block state ───────────────────────
 
   // The ID of the message whose confirmation block was last acted on (confirm/cancel).
   // That block becomes disabled/greyed-out while the follow-up AI turn is in flight.
@@ -256,7 +255,7 @@ export default function AiPage() {
   // each has independent input state (though in practice only one is active at a time).
   const [bulkDeleteConfirmTexts, setBulkDeleteConfirmTexts] = useState<Record<string, string>>({});
 
-  // ── Context proposal dismiss state (MINCRM-429, MINCRM-430) ─────────────────
+  // ── Context proposal dismiss state ─────────────────
 
   // Session-scoped set of message IDs whose context proposal chip has been dismissed.
   // A Set stored in a ref-stable updater pattern.
@@ -413,7 +412,7 @@ export default function AiPage() {
 
       // Single round-trip: the POST response already contains the persisted
       // assistant message, so commit it straight into the query cache instead
-      // of awaiting a second GET refetch (MINCRM-602). This removes the
+      // of awaiting a second GET refetch. This removes the
       // unguarded optimistic/refetch handshake that caused two prior
       // assistant-bubble timing bugs (4735d536, ca941cbc).
       //
@@ -566,7 +565,7 @@ export default function AiPage() {
     }
   }, [deleteConfirmId, deleteMutation]);
 
-  // ── Mutation confirmation handlers (MINCRM-425, MINCRM-426) ─────────────────
+  // ── Mutation confirmation handlers ─────────────────
 
   /**
    * Called when the user clicks "Confirm" on a pending-action block.
@@ -643,7 +642,7 @@ export default function AiPage() {
 
   /**
    * Marks a context proposal chip as dismissed for this session.
-   * Updater form: no side effects, safe in StrictMode. (MINCRM-429, MINCRM-430)
+   * Updater form: no side effects, safe in StrictMode.
    */
   const handleProposalDismiss = useCallback((messageId: string) => {
     setDismissedProposalIds((prev) => new Set([...prev, messageId]));
@@ -866,7 +865,7 @@ export default function AiPage() {
             </button>
           </div>
 
-          {/* Retention window notice (MINCRM-462) */}
+          {/* Retention window notice */}
           {retentionWindow && (
             <p
               className="px-4 py-1.5 text-xs text-gray-500 border-b border-gray-50 flex-shrink-0"
@@ -1049,7 +1048,7 @@ export default function AiPage() {
           </div>
         </main>
 
-        {/* ── Context sidebar (MINCRM-427, MINCRM-428) ──────────────────── */}
+        {/* ── Context sidebar ──────────────────── */}
         <ContextPanel />
       </div>
     </div>

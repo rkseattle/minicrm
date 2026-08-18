@@ -1,6 +1,6 @@
 /**
  * Tests for UsersAndAccessSettings — teams, roles, and visibility policy
- * composite tab (MINCRM-563).
+ * composite tab.
  *
  * Smoke tests verify key sections from each absorbed component are present.
  * Full interaction coverage lives in TeamsSettings.test.tsx,

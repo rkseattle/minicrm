@@ -243,7 +243,7 @@ describe('DataSettings — demo data', () => {
     });
   });
 
-  it('invalidates the entire query cache after seed succeeds (MINCRM-347)', async () => {
+  it('invalidates the entire query cache after seed succeeds', async () => {
     server.use(http.post('/api/v1/admin/demo/seed', () => HttpResponse.json({ success: true })));
 
     const queryClient = new QueryClient({
@@ -263,7 +263,7 @@ describe('DataSettings — demo data', () => {
     });
   });
 
-  it('invalidates the entire query cache after reset succeeds (MINCRM-347)', async () => {
+  it('invalidates the entire query cache after reset succeeds', async () => {
     server.use(http.post('/api/v1/admin/demo/reset', () => HttpResponse.json({ success: true })));
 
     const queryClient = new QueryClient({
@@ -282,7 +282,7 @@ describe('DataSettings — demo data', () => {
     });
   });
 
-  it('invalidates the entire query cache after remove succeeds (MINCRM-347)', async () => {
+  it('invalidates the entire query cache after remove succeeds', async () => {
     server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
     server.use(http.delete('/api/v1/admin/demo', () => HttpResponse.json({ success: true })));
 

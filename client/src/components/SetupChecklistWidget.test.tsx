@@ -1,5 +1,5 @@
 /**
- * Tests for SetupChecklistWidget component (MINCRM-379).
+ * Tests for SetupChecklistWidget component.
  *
  * Verifies:
  * - Widget renders for admin when is_first_run is true
@@ -48,7 +48,7 @@ const ALL_INCOMPLETE_TASKS = [
 
 const ALL_COMPLETE_TASKS = ALL_INCOMPLETE_TASKS.map((t) => ({ ...t, completed: true }));
 
-// MINCRM-410: rep task list (4 tasks, no admin-only tasks)
+// rep task list (4 tasks, no admin-only tasks)
 const REP_INCOMPLETE_TASKS = [
   { id: 'first_contact_added', completed: false },
   { id: 'first_account_created', completed: false },
@@ -134,7 +134,7 @@ describe('SetupChecklistWidget', () => {
     });
   });
 
-  // MINCRM-410: reps now have their own onboarding checklist
+  // reps now have their own onboarding checklist
   it('renders widget for rep users when is_first_run is true', async () => {
     mockRepUser();
     server.use(

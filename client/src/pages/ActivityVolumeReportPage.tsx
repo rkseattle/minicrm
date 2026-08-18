@@ -5,12 +5,11 @@
  * - Columns: Note, Call, Email, Meeting, Task, Total
  * - Totals row at the bottom
  * - Date range filter (this week / this month / this quarter / custom)
- * - Admin-only My View / Team View toggle (MINCRM-264)
+ * - Admin-only My View / Team View toggle
  * - Admin-only rep filter dropdown
  * - Clicking a count cell navigates to Activities filtered to that rep/type/range
  * - CSV export of the full table
  *
- * Implements MINCRM-181, MINCRM-264, MINCRM-407.
  */
 
 import { useState } from 'react';
@@ -30,7 +29,7 @@ import {
   type ActivityVolumeRepRow,
 } from '@/api/reports.js';
 
-/** Ordered activity type columns (MINCRM-181) */
+/** Ordered activity type columns */
 const ACTIVITY_TYPE_COLUMNS: (keyof ActivityTypeCounts)[] = [
   'Note',
   'Call',
@@ -114,7 +113,7 @@ function downloadCsv(csv: string, filename: string): void {
 
 /**
  * Standalone Activity Volume report page — includes NavBar.
- * When embedded in ReportsPage shell, use ActivityVolumeReportContent instead. (MINCRM-294)
+ * When embedded in ReportsPage shell, use ActivityVolumeReportContent instead.
  */
 export default function ActivityVolumeReportPage() {
   return (
@@ -127,8 +126,7 @@ export default function ActivityVolumeReportPage() {
 
 /**
  * Activity volume report content — no NavBar wrapper.
- * Consumed by ReportsPage shell. (MINCRM-294)
- * Implements MINCRM-181, MINCRM-264.
+ * Consumed by ReportsPage shell.
  */
 export function ActivityVolumeReportContent() {
   const { t } = useTranslation();
@@ -249,7 +247,7 @@ export function ActivityVolumeReportContent() {
           className="bg-white rounded-lg border border-gray-200"
           data-testid="activity-volume-table-container"
         >
-          {/* Per-rep breakdown heading — admin Team View only (MINCRM-264) */}
+          {/* Per-rep breakdown heading — admin Team View only */}
           {isAdmin && viewMode === 'team' && report.rows.length > 0 && (
             <div className="px-6 py-4 border-b border-gray-200" data-testid="rep-breakdown-heading">
               <h2 className="text-base font-semibold text-gray-900">

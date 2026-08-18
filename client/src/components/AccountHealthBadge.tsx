@@ -1,5 +1,5 @@
 /**
- * AccountHealthBadge component. (MINCRM-467)
+ * AccountHealthBadge component.
  * Renders the 5-state AI relationship health score as a colored badge with a
  * click-to-reveal "Why this score?" panel showing the top 2-3 contributing
  * factors, plus a single-threaded risk flag when applicable.

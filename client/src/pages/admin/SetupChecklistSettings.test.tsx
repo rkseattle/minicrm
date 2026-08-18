@@ -1,5 +1,5 @@
 /**
- * Tests for SetupChecklistSettings — onboarding checklist reset (MINCRM-256, MINCRM-379, MINCRM-563).
+ * Tests for SetupChecklistSettings — onboarding checklist reset.
  *
  * Verifies:
  * - Reset section renders with the reset button

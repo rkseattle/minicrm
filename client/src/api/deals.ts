@@ -27,13 +27,13 @@ export interface DealContact {
 
 /** Parameters for filtering and paginating the deals list */
 export interface ListDealsParams {
-  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  /** 'me' = current user only; 'my_team' = all team co-members */
   owner?: 'me' | 'my_team';
   /** When provided, only deals for this account are returned */
   accountId?: string;
-  /** When true, terminal-stage deals are excluded (MINCRM-176) */
+  /** When true, terminal-stage deals are excluded */
   hideClosed?: boolean;
-  /** When provided, only deals in this pipeline are returned (MINCRM-397) */
+  /** When provided, only deals in this pipeline are returned */
   pipelineId?: string;
   /** Column to sort by */
   sort?: 'created_at' | 'name' | 'close_date' | 'value';
@@ -43,7 +43,7 @@ export interface ListDealsParams {
   page?: number;
   /** Records per page */
   limit?: number;
-  /** Tag IDs to filter by (any-match). MINCRM-186. */
+  /** Tag IDs to filter by (any-match). */
   tags?: string[];
 }
 
@@ -146,7 +146,6 @@ export interface ExportDealsParams {
 /**
  * Downloads all matching deals as a CSV file.
  * Triggers a browser file-save dialog.
- * (MINCRM-166)
  *
  * @param params - Optional filter parameters
  */
@@ -167,7 +166,7 @@ export async function exportDealsCsv(params: ExportDealsParams = {}): Promise<vo
 
 /**
  * Downloads all matching deals as a paginated PDF table.
- * Triggers a browser file-save dialog. Same filters as exportDealsCsv() (MINCRM-601).
+ * Triggers a browser file-save dialog. Same filters as exportDealsCsv().
  *
  * @param params - Optional filter parameters
  */
@@ -188,7 +187,7 @@ export async function exportDealsPdf(params: ExportDealsParams = {}): Promise<vo
 
 /**
  * Downloads a single deal as a one-record summary PDF.
- * Triggers a browser file-save dialog. (MINCRM-650)
+ * Triggers a browser file-save dialog.
  *
  * @param id - Deal UUID
  */

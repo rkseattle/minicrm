@@ -2,12 +2,11 @@
  * AiSettings — AI provider, model, deployment mode, DPA configuration, and token budgets.
  * Hosted as the 'ai' tab in AdminSettingsPage.
  *
- * The panel is split into sub-navigated sections (MINCRM-653) — General,
+ * The panel is split into sub-navigated sections — General,
  * Usage & Budgets, Data Retention, Data Minimization — deep-linkable via the
  * `section` query param (alongside AdminSettingsPage's own `tab=ai`). The
  * master AI toggle renders above the sub-nav on every section, since it's
  * the only way to re-enable AI once disabled (see the `disabled` prop below).
- * (MINCRM-457, MINCRM-458, MINCRM-653)
  */
 
 import { useTranslation } from 'react-i18next';
@@ -122,7 +121,7 @@ interface AiSettingsProps {
    * ai_features flag (AdminSettingsPage.tsx) when an admin has turned AI
    * off — the master toggle must stay interactive even then, since it's the
    * only way to turn AI back on. Wrapping the whole panel (toggle included)
-   * in a disabled fieldset was the original MINCRM-566 behavior, but became
+   * in a disabled fieldset was the original behavior, but became
    * a self-lockout once setAiEnabled started syncing ai_features to the
    * toggle's own state (see aiConfigService.ts).
    */

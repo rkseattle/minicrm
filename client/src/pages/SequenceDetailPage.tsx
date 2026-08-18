@@ -1,7 +1,6 @@
 /**
  * SequenceDetailPage component.
  * Admin-only page for managing the steps of a single sales sequence.
- * Implements MINCRM-403.
  */
 
 import { useState } from 'react';

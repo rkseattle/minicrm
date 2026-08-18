@@ -1,5 +1,5 @@
 /**
- * Tests for ContactResultCard. (MINCRM-431)
+ * Tests for ContactResultCard.
  *
  * Covers:
  *  - Renders name as a link to /contacts/:id

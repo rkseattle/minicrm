@@ -1,5 +1,5 @@
 /**
- * Tests for PoweredByBadge component. (MINCRM-356)
+ * Tests for PoweredByBadge component.
  */
 
 import { screen } from '@testing-library/react';

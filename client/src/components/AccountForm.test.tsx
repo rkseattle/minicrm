@@ -1,5 +1,5 @@
 /**
- * Tests for the AccountForm component. (MINCRM-198)
+ * Tests for the AccountForm component.
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';

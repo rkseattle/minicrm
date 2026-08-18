@@ -1,5 +1,5 @@
 /**
- * RolesSettings — Custom role management panel for MINCRM-542 capability RBAC.
+ * RolesSettings — Custom role management panel for capability RBAC.
  * Admin only (settings:manage capability required).
  *
  * Features:
@@ -7,7 +7,7 @@
  * - Create a new custom role via an inline form
  * - Edit an existing custom role's name, description, and capabilities
  * - Delete non-built-in roles (with guard against roles with active assignees)
- * - View capabilities for built-in roles via a read-only inline panel (MINCRM-547)
+ * - View capabilities for built-in roles via a read-only inline panel
  */
 
 import { useState } from 'react';
@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/Button.js';
 
 // ── Capability grouping for the capability picker ─────────────────────────────
 
-// groupKey maps to rolesSettings.capabilityGroups.<key> in locale files (MINCRM-544)
+// groupKey maps to rolesSettings.capabilityGroups.<key> in locale files
 const CAPABILITY_GROUPS: Array<{ groupKey: string; caps: Capability[] }> = [
   {
     groupKey: 'contacts',
@@ -99,7 +99,7 @@ const CAPABILITY_GROUPS: Array<{ groupKey: string; caps: Capability[] }> = [
 /**
  * Returns a fully-qualified label for a capability checkbox: "Namespace: Action"
  * e.g. contacts:view → "Contacts: View", feature_flags:manage → "Feature Flags: Manage".
- * Consistent across all groups; eliminates duplicate action names within a group (MINCRM-544).
+ * Consistent across all groups; eliminates duplicate action names within a group.
  */
 function capabilityLabel(
   cap: Capability,
@@ -121,7 +121,7 @@ interface CapabilityPickerProps {
   disabled?: boolean;
   /**
    * Renders all checkboxes as disabled with read-only testid prefixes and no
-   * hover/cursor affordances. Use for built-in role inspection (MINCRM-547).
+   * hover/cursor affordances. Use for built-in role inspection.
    * When true, `onChange` is not required.
    */
   readOnly?: boolean;
