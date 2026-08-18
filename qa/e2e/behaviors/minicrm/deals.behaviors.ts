@@ -1165,10 +1165,18 @@ export async function waitForActivityItem(
 // AI proposal draft generation
 // ---------------------------------------------------------------------------
 
-/** Clicks the "Generate Proposal Draft" button. */
+/**
+ * Clicks the "Generate Proposal Draft" button.
+ *
+ * Resolves at FIRST_INTERACTION_TIMEOUT_MS: specs call this straight after
+ * navigateToDeal, and the button is absent from the DOM until the deal detail
+ * query settles, so the healing locator's 2s default can expire before it
+ * exists and report StrategyExhaustedError — indistinguishable from selector
+ * drift.
+ */
 export async function clickGenerateProposalDraft(context: DealsBehaviorContext): Promise<void> {
   const detail = new DealDetailPage(context);
-  const locator = await detail.generateProposalDraftButtonLocator();
+  const locator = await detail.generateProposalDraftButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await locator.click();
 }
 
