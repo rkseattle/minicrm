@@ -1,7 +1,7 @@
 /**
  * GlobalSearch — search bar in the navigation that queries across contacts,
  * accounts, and deals simultaneously. Results appear in a dropdown panel
- * grouped by entity type. (MINCRM-168)
+ * grouped by entity type.
  */
 
 import { useState, useRef, useCallback } from 'react';
@@ -32,7 +32,7 @@ export default function GlobalSearch() {
     queryKey: ['global-search', debouncedQuery],
     queryFn: () => globalSearch(debouncedQuery.trim()),
     enabled: isQueryLong,
-    // Override global staleTime: 0 — brief cache avoids hammering the server on rapid typing. (MINCRM-348)
+    // Override global staleTime: 0 — brief cache avoids hammering the server on rapid typing.
     staleTime: 30_000,
   });
 

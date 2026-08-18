@@ -1,5 +1,5 @@
 /**
- * Tests for TokenBudgetWarningBanner component. (MINCRM-458)
+ * Tests for TokenBudgetWarningBanner component.
  *
  * Covers:
  *  - Loading state: renders nothing

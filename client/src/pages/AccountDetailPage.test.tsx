@@ -28,7 +28,7 @@ describe('AccountDetailPage', () => {
     });
   });
 
-  // ── AI churn/expansion signal banner (MINCRM-469) ───────────────────────────────
+  // ── AI churn/expansion signal banner ───────────────────────────────
 
   it('shows no churn/expansion banner when there is no active signal', async () => {
     renderAccountDetail();
@@ -59,7 +59,7 @@ describe('AccountDetailPage', () => {
     });
   });
 
-  // ── AI sentiment tracking (MINCRM-472) ───────────────────────────────────────────
+  // ── AI sentiment tracking ───────────────────────────────────────────
 
   it('shows no sentiment sparkline when there is insufficient data', async () => {
     renderAccountDetail();
@@ -102,7 +102,7 @@ describe('AccountDetailPage', () => {
     );
   });
 
-  // ── AI relationship health scoring (MINCRM-467) ─────────────────────────────────
+  // ── AI relationship health scoring ─────────────────────────────────
 
   it('shows no health badge when no score has been computed yet', async () => {
     renderAccountDetail();

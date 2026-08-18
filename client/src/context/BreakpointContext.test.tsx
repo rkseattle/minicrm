@@ -1,6 +1,5 @@
 /**
  * Unit tests for BreakpointContext / useBreakpoint.
- * MINCRM-238
  */
 
 import { render, screen, act } from '@testing-library/react';

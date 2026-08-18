@@ -1,5 +1,5 @@
 /**
- * Tests for MutationConfirmationBlock. (MINCRM-425)
+ * Tests for MutationConfirmationBlock.
  *
  * Covers:
  *  - Renders operation badge and summary for create / update / delete

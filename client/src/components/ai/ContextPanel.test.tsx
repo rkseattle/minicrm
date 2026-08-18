@@ -1,5 +1,5 @@
 /**
- * Unit tests for ContextPanel. (MINCRM-427, MINCRM-428)
+ * Unit tests for ContextPanel.
  *
  * Covers:
  *  - Empty state when no entries are returned

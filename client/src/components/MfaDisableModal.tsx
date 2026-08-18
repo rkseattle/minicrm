@@ -1,5 +1,5 @@
 /**
- * MfaDisableModal — confirms current password before disabling TOTP MFA. (MINCRM-392)
+ * MfaDisableModal — confirms current password before disabling TOTP MFA.
  */
 
 import { useEffect, useRef, useState } from 'react';

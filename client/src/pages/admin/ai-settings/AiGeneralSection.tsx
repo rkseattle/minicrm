@@ -1,9 +1,8 @@
 /**
  * AiGeneralSection — deployment status header, provider/model configuration,
  * connection test, and Data Processing Agreement acknowledgment.
- * One of the sub-sections behind the AI panel's sub-navigation (MINCRM-653).
+ * One of the sub-sections behind the AI panel's sub-navigation.
  * Extracted from AiSettings.tsx without behavior changes.
- * (MINCRM-457, MINCRM-458)
  */
 
 import { useState, useEffect, useCallback } from 'react';

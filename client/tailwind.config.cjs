@@ -4,7 +4,7 @@ module.exports = {
   theme: {
     extend: {
       // Primary color scale wired to CSS custom properties so BrandingContext
-      // can override the palette at runtime without a rebuild. (MINCRM-356)
+      // can override the palette at runtime without a rebuild.
       colors: {
         primary: {
           50: 'var(--color-primary-50)',

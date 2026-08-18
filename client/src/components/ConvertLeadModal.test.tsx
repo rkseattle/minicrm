@@ -1,5 +1,5 @@
 /**
- * Tests for the ConvertLeadModal component. (MINCRM-198)
+ * Tests for the ConvertLeadModal component.
  * Covers: prefilled values from lead prop, create/link account mode toggle,
  * validation, successful conversion callback, close button, Escape key.
  */

@@ -1,5 +1,5 @@
 /**
- * CustomFieldsSection — displays and edits custom field values for a record. (MINCRM-276)
+ * CustomFieldsSection — displays and edits custom field values for a record.
  * Mounted on ContactDetailPage, AccountDetailPage, and DealDetailPage.
  */
 
@@ -51,7 +51,7 @@ export default function CustomFieldsSection({
   // Reset to false when leaving edit mode so the next entry re-seeds cleanly.
   // This prevents background query refetches from overwriting in-progress user
   // input — the original bug where `definitions.length` / `serverValues.length`
-  // in deps caused a mid-edit re-seed. (MINCRM-421)
+  // in deps caused a mid-edit re-seed.
   const seededRef = useRef(false);
 
   useEffect(() => {

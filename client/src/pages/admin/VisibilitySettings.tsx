@@ -1,7 +1,6 @@
 /**
  * VisibilitySettings — Per-object data visibility policy configuration.
  * Admin only. Allows configuring private / team / org scoping per object type.
- * (MINCRM-538)
  */
 
 import { useState } from 'react';

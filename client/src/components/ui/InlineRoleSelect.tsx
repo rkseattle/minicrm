@@ -1,7 +1,7 @@
 /**
  * InlineRoleSelect — inline built-in role <select> for the user table.
  * Fires PATCH /users/:id/role on change with optimistic update and rollback toast.
- * Renders read-only custom role chips below the select (MINCRM-560).
+ * Renders read-only custom role chips below the select.
  */
 
 import { useState, useCallback } from 'react';
@@ -44,7 +44,7 @@ export interface InlineRoleSelectProps {
 /**
  * Renders a built-in role <select> with optimistic update and rollback, plus
  * read-only custom role chips that link to /settings/roles/:id.
- * Service accounts show a disabled select with a tooltip (MINCRM-560).
+ * Service accounts show a disabled select with a tooltip.
  */
 export function InlineRoleSelect({
   user,

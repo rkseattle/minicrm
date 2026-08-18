@@ -1,5 +1,5 @@
 /**
- * Tests for the ObjectionInsights component. (MINCRM-471)
+ * Tests for the ObjectionInsights component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

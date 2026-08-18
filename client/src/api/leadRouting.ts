@@ -1,5 +1,5 @@
 /**
- * Lead routing suggestion API module. (MINCRM-475)
+ * Lead routing suggestion API module.
  * Wraps the pre-create routing suggestion endpoint and admin config/team-override endpoints.
  */
 

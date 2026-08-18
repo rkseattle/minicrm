@@ -1,5 +1,5 @@
 /**
- * Task suggestions API module. (MINCRM-438)
+ * Task suggestions API module.
  * Wraps the on-demand AI follow-up task suggestion endpoint. Requires authentication and
  * the ai_task_suggestions feature flag to be enabled.
  */

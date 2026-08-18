@@ -1,5 +1,5 @@
 /**
- * SetupChecklistWidget — floating setup checklist for first-run admins (MINCRM-379).
+ * SetupChecklistWidget — floating setup checklist for first-run admins.
  *
  * Rendered at the app root; floats fixed in the bottom-right of the viewport.
  * Visible only to admin users when onboarding_completed is false.
@@ -144,7 +144,7 @@ export default function SetupChecklistWidget() {
   const { data, isLoading } = useQuery({
     queryKey: ONBOARDING_STATUS_QUERY_KEY,
     queryFn: getOnboardingStatus,
-    // Visible to both admin and rep users (MINCRM-410)
+    // Visible to both admin and rep users
     enabled: user?.role === 'admin' || user?.role === 'rep',
     staleTime: 0,
   });
@@ -156,7 +156,7 @@ export default function SetupChecklistWidget() {
     },
   });
 
-  // Task count is driven by the server response — supports role-specific task lists (MINCRM-410)
+  // Task count is driven by the server response — supports role-specific task lists
   const taskCount = data?.tasks?.length ?? 0;
   const completedCount = data?.tasks?.filter((t) => t.completed).length ?? 0;
   const allDone = data !== undefined && taskCount > 0 && completedCount === taskCount;

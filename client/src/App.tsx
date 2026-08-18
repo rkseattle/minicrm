@@ -2,12 +2,11 @@
  * App component — root routing configuration.
  * Declares all application routes using React Router v6.
  * Wraps the route tree in NavLayoutProvider so the active layout is available
- * to all page components. (MINCRM-133)
+ * to all page components.
  *
  * Page components are loaded via React.lazy() so Vite splits each page into its
  * own chunk, reducing the initial bundle to only what the landing route needs.
  * A single Suspense boundary around the Routes tree handles the loading state.
- * (MINCRM-281)
  */
 
 import { lazy, Suspense } from 'react';
@@ -20,7 +19,7 @@ import SetupChecklistWidget from '@/components/SetupChecklistWidget.js';
 import CoverageSessionIndicator from '@/components/CoverageSessionIndicator.js';
 import { useIsMobile } from '@/hooks/useIsMobile.js';
 
-// Page-level lazy imports — each becomes its own Vite chunk (MINCRM-281)
+// Page-level lazy imports — each becomes its own Vite chunk
 const LoginPage = lazy(() => import('@/pages/LoginPage.js'));
 const ChangePasswordPage = lazy(() => import('@/pages/ChangePasswordPage.js'));
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage.js'));
@@ -56,10 +55,10 @@ const AiUsageDashboardPage = lazy(() => import('@/pages/admin/AiUsageDashboardPa
 /**
  * Wraps the outlet in NavLeft when the left layout is active on desktop.
  * For top and hamburger layouts, each page renders its own NavBar inline,
- * so no wrapper is needed here. (MINCRM-133)
+ * so no wrapper is needed here.
  *
  * SetupChecklistWidget is rendered once here — it is position:fixed so layout
- * nesting doesn't affect its viewport placement. (MINCRM-379)
+ * nesting doesn't affect its viewport placement.
  */
 function LayoutShell() {
   const { layout } = useNavLayout();
@@ -110,12 +109,12 @@ function AppRoutes() {
             <Route path="/accounts/:id" element={<AccountDetailPage />} />
             <Route path="/deals" element={<DealsPage />} />
             <Route path="/deals/:id" element={<DealDetailPage />} />
-            {/* MINCRM-51: /pipeline merged into /deals; redirect for backwards compatibility */}
+            {/* /pipeline merged into /deals; redirect for backwards compatibility */}
             <Route path="/pipeline" element={<Navigate to="/deals" replace />} />
             <Route path="/tasks" element={<MyTasksPage />} />
             <Route path="/activities" element={<ActivitiesPage />} />
             <Route path="/activities/:id/brief" element={<ActivityBriefPage />} />
-            {/* MINCRM-294: Reports shell page — adaptive SubPageNav */}
+            {/* Reports shell page — adaptive SubPageNav */}
             <Route path="/reports" element={<ReportsPage />} />
             {/* Legacy deep-link redirects — keep old URLs working */}
             <Route
@@ -131,15 +130,15 @@ function AppRoutes() {
               element={<Navigate to="/reports?view=pipeline-stage" replace />}
             />
             <Route path="/profile" element={<ProfilePage />} />
-            {/* MINCRM-420: AI Assistant page */}
+            {/* AI Assistant page */}
             <Route path="/ai" element={<AiPage />} />
-            {/* MINCRM-464: AI win/loss pattern insights — distinct from the live /reports/win-loss aggregate */}
+            {/* AI win/loss pattern insights — distinct from the live /reports/win-loss aggregate */}
             <Route path="/insights/win-loss" element={<WinLossInsightsPage />} />
-            {/* MINCRM-469: AI churn/expansion signal insights */}
+            {/* AI churn/expansion signal insights */}
             <Route path="/insights/churn-expansion" element={<ChurnExpansionInsightsPage />} />
-            {/* MINCRM-474: AI rep coaching insights — page self-gates to manager/admin roles */}
+            {/* AI rep coaching insights — page self-gates to manager/admin roles */}
             <Route path="/insights/coaching" element={<CoachingInsightsPage />} />
-            {/* MINCRM-476: personal data hygiene queue — the caller's own flagged records */}
+            {/* personal data hygiene queue — the caller's own flagged records */}
             <Route path="/hygiene" element={<DataHygienePage scope="mine" />} />
           </Route>
         </Route>
@@ -149,7 +148,7 @@ function AppRoutes() {
           <Route element={<LayoutShell />}>
             <Route path="/users" element={<UsersPage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
-            {/* Redirect old /admin/tags route to the Pipelines & Fields tab (MINCRM-563) */}
+            {/* Redirect old /admin/tags route to the Pipelines & Fields tab */}
             <Route
               path="/admin/tags"
               element={<Navigate to="/admin/settings?tab=pipelines" replace />}
@@ -159,7 +158,7 @@ function AppRoutes() {
             <Route path="/admin/automation" element={<AutomationRulesPage />} />
             <Route path="/admin/sequences" element={<SequencesPage />} />
             <Route path="/admin/sequences/:id" element={<SequenceDetailPage />} />
-            {/* MINCRM-476: org-wide data hygiene queue */}
+            {/* org-wide data hygiene queue */}
             <Route path="/admin/hygiene" element={<DataHygienePage scope="all" />} />
           </Route>
         </Route>

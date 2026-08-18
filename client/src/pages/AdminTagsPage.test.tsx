@@ -1,5 +1,5 @@
 /**
- * Tests for the AdminTagsPage component (MINCRM-186, MINCRM-263).
+ * Tests for the AdminTagsPage component.
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -221,7 +221,7 @@ describe('AdminTagsPage', () => {
   });
 });
 
-// ── Restrict-creation toggle (MINCRM-263) ─────────────────────────────────────
+// ── Restrict-creation toggle ─────────────────────────────────────
 
 describe('AdminTagsPage restrict-creation toggle', () => {
   it('renders the toggle section', async () => {

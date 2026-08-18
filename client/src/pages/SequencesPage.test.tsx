@@ -1,7 +1,6 @@
 /**
  * Tests for SequencesPage component.
  * Covers loading, error, empty, and populated states plus create/delete interactions.
- * (MINCRM-403)
  */
 
 import { screen, waitFor } from '@testing-library/react';

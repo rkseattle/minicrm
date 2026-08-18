@@ -1,5 +1,5 @@
 /**
- * Tests for the GdprEraseModal component. (MINCRM-364)
+ * Tests for the GdprEraseModal component.
  */
 
 import { screen, fireEvent } from '@testing-library/react';

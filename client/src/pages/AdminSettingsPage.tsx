@@ -1,13 +1,13 @@
 /**
  * Admin Settings page.
- * Renders settings sections in adaptive tab navigation (MINCRM-259).
+ * Renders settings sections in adaptive tab navigation.
  * Layout adapts based on viewport and active nav layout:
  *   - Mobile (< 768px): native <select> picker — one line, OS-native UX
  *   - Desktop + left sidebar nav: horizontal tab bar (avoids double sidebar)
  *   - Desktop + top/hamburger nav: vertical tab list on the left
  *
- * Navigation chrome is provided by SubPageNav (MINCRM-294).
- * Tab structure reorganized from 12+1 → 10 grouped tabs (MINCRM-563).
+ * Navigation chrome is provided by SubPageNav.
+ * Tab structure reorganized from 12+1 → 10 grouped tabs.
  */
 
 import { useTranslation } from 'react-i18next';
@@ -71,7 +71,7 @@ function isValidTab(value: string | null): value is TabKey {
   return TAB_KEYS.includes(value as TabKey);
 }
 
-/** Renders Panel in a visually-disabled state with a banner. Used when a flag gates an admin panel. (MINCRM-566) */
+/** Renders Panel in a visually-disabled state with a banner. Used when a flag gates an admin panel. */
 function DisabledPanelWrapper({ Panel, banner }: { Panel: React.ComponentType; banner: string }) {
   return (
     <div className="opacity-60" aria-disabled="true" data-testid="ai-panel-disabled-wrapper">
@@ -104,7 +104,7 @@ export default function AdminSettingsPage() {
 
   const ActivePanel = TAB_CONTENT[activeTab];
   // When the AI flag is off, render the panel in a visually-disabled state rather than hiding it.
-  // Non-admin surfaces that hide AI features by flag are correct and unchanged. (MINCRM-566)
+  // Non-admin surfaces that hide AI features by flag are correct and unchanged.
   const aiPanelDisabled = activeTab === 'ai' && !aiEnabled;
 
   const navItems = TAB_KEYS.map((tab) => ({

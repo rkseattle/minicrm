@@ -1,5 +1,5 @@
 /**
- * UTC calendar-day helpers for values sent to the API. (MINCRM-700)
+ * UTC calendar-day helpers for values sent to the API.
  *
  * The server stores these against timezone-naive `date` columns
  * (`ai_token_usage_daily.usage_date`, `deals.close_date`) written under a UTC

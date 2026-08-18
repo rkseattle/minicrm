@@ -1,6 +1,6 @@
 /**
  * Tests for PipelinesAndFieldsSettings — pipelines, custom fields, and tag
- * management composite tab (MINCRM-563).
+ * management composite tab.
  *
  * Smoke tests verify key sections from each absorbed component are present.
  * Full interaction coverage lives in CustomisationSettings.test.tsx.

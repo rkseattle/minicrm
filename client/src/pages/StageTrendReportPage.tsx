@@ -9,7 +9,6 @@
  * third-party charting library required.
  *
  * Localized date labels use Intl.DateTimeFormat with the active i18next locale.
- * Implements MINCRM-284.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -207,7 +206,7 @@ function drawChart(
 
 /**
  * Standalone Stage Trend report page — includes NavBar.
- * When embedded in ReportsPage shell, use StageTrendReportContent instead. (MINCRM-294)
+ * When embedded in ReportsPage shell, use StageTrendReportContent instead.
  */
 export default function StageTrendReportPage() {
   return (
@@ -220,8 +219,7 @@ export default function StageTrendReportPage() {
 
 /**
  * Stage trend report content — no NavBar wrapper.
- * Consumed by ReportsPage shell. (MINCRM-294)
- * Implements MINCRM-284.
+ * Consumed by ReportsPage shell.
  */
 export function StageTrendReportContent() {
   const { t } = useTranslation();

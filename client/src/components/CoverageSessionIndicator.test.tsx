@@ -1,5 +1,5 @@
 /**
- * Tests for CoverageSessionIndicator (MINCRM-663).
+ * Tests for CoverageSessionIndicator.
  *
  * Verifies:
  * - Renders nothing when no coverage correlation ID is persisted

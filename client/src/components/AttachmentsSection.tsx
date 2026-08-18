@@ -1,7 +1,7 @@
 /**
  * AttachmentsSection component.
  * Renders an upload zone, attachment list, and delete confirmation dialog
- * for a contact, account, or deal detail page. (MINCRM-167, MINCRM-169)
+ * for a contact, account, or deal detail page.
  *
  * If storage is not configured, a message is shown instead of upload controls.
  */

@@ -3,10 +3,10 @@
  * exceeds their monthly AI token budget. Renders nothing when status is 'ok'.
  *
  * - 'warning' (80–99%): amber banner informing the user they are approaching the limit.
- * - 'exceeded' (100%+): red banner with the prescribed message from MINCRM-458 AC.
+ * - 'exceeded' (100%+): red banner with the prescribed message from the spec.
  *
  * Intended to be rendered near the top of any page that surfaces AI features.
- * (MINCRM-458)
+ *
  */
 
 import { useQuery } from '@tanstack/react-query';

@@ -1,5 +1,5 @@
 /**
- * Teams API module — wraps MINCRM-539 team management endpoints. (MINCRM-539)
+ * Teams API module — wraps the team management endpoints.
  */
 
 import apiClient from './axiosInstance.js';

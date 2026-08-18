@@ -2,7 +2,7 @@
  * ExportMenu component.
  * Renders a single "Export" trigger button that reveals a dropdown of export
  * actions (CSV, PDF, admin-only "export all", etc.), consolidating what was
- * previously a row of standalone buttons on each list/report page. (MINCRM-652)
+ * previously a row of standalone buttons on each list/report page.
  *
  * Follows the WAI-ARIA menu button pattern: trigger has aria-haspopup/aria-expanded,
  * the panel has role="menu" with role="menuitem" children, and focus moves onto

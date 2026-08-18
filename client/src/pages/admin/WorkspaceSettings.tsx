@@ -1,7 +1,7 @@
 /**
  * WorkspaceSettings — Default language, navigation layout, default currency,
  * and exchange rates. Consolidates GeneralSettings (lang + nav) and
- * CurrencySettings into a single Workspace tab (MINCRM-563).
+ * CurrencySettings into a single Workspace tab.
  */
 
 import GeneralSettings from '@/pages/admin/GeneralSettings.js';

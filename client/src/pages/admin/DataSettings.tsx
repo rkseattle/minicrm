@@ -1,6 +1,6 @@
 /**
  * DataSettings — Import Data, Demo Data, and Audit Log link.
- * Extracted from AdminSettingsPage.tsx (MINCRM-259).
+ * Extracted from AdminSettingsPage.tsx.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -61,7 +61,7 @@ export default function DataSettings() {
     mutationFn: seedDemoData,
     onSuccess: () => {
       // Seeding creates contacts, accounts, deals, leads, activities, and a rep user.
-      // Invalidate the entire cache so every list page reflects the new data. (MINCRM-347)
+      // Invalidate the entire cache so every list page reflects the new data.
       void queryClient.invalidateQueries();
       setDemoFeedback({ type: 'success', key: 'settings.demo.seedSuccess' });
     },
@@ -73,7 +73,7 @@ export default function DataSettings() {
   const resetMutation = useMutation({
     mutationFn: resetDemoData,
     onSuccess: () => {
-      // Reset replaces all demo data across every entity type — invalidate the full cache. (MINCRM-347)
+      // Reset replaces all demo data across every entity type — invalidate the full cache.
       void queryClient.invalidateQueries();
       setDemoFeedback({ type: 'success', key: 'settings.demo.resetSuccess' });
     },
@@ -85,7 +85,7 @@ export default function DataSettings() {
   const removeMutation = useMutation({
     mutationFn: removeDemoData,
     onSuccess: () => {
-      // Removing deletes demo records across every entity type — invalidate the full cache. (MINCRM-347)
+      // Removing deletes demo records across every entity type — invalidate the full cache.
       void queryClient.invalidateQueries();
       setDemoFeedback({ type: 'success', key: 'settings.demo.removeSuccess' });
     },
@@ -137,7 +137,7 @@ export default function DataSettings() {
               {t('settings.featureDisabledBanner')}
             </p>
           )}
-          {/* fieldset[disabled] propagates disabled to all descendant form controls (MINCRM-566) */}
+          {/* fieldset[disabled] propagates disabled to all descendant form controls */}
           <fieldset disabled={!csvImportEnabled} className="contents">
             <h2
               className="text-lg font-semibold text-gray-900 mb-1"
@@ -281,7 +281,7 @@ export default function DataSettings() {
             </p>
           )}
 
-          {/* fieldset[disabled] propagates disabled to all descendant form controls (MINCRM-566) */}
+          {/* fieldset[disabled] propagates disabled to all descendant form controls */}
           <fieldset disabled={!demoDataEnabled} className="contents">
             <div className="flex flex-wrap gap-3">
               <Button
@@ -377,7 +377,7 @@ export default function DataSettings() {
         </div>
       )}
 
-      {/* ── Audit Log section (MINCRM-172) ───────────────────────────────── */}
+      {/* ── Audit Log section ───────────────────────────────── */}
       <div
         className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="audit-log-section"

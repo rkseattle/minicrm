@@ -1,5 +1,5 @@
 /**
- * Tests for the FollowUpTimingCard component. (MINCRM-470)
+ * Tests for the FollowUpTimingCard component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

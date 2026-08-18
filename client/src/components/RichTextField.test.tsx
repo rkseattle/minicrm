@@ -1,5 +1,5 @@
 /**
- * Tests for the RichTextField component. (MINCRM-473)
+ * Tests for the RichTextField component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

@@ -1,5 +1,5 @@
 /**
- * MfaLoginModal — prompts for TOTP or recovery code after password verification. (MINCRM-392)
+ * MfaLoginModal — prompts for TOTP or recovery code after password verification.
  * Shown when /auth/login returns { mfaRequired: true, mfaToken }.
  * On success, calls onSuccess with the user data so the LoginPage can complete the flow.
  */

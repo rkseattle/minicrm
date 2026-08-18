@@ -1,5 +1,5 @@
 /**
- * ObjectionInsights component. (MINCRM-471)
+ * ObjectionInsights component.
  * Mounted per-activity inside ActivityTimeline when the activity has note
  * text and the ai_objection_pattern_matching flag is enabled. Classifies the
  * note on demand (cached server-side after the first call), shows a neutral

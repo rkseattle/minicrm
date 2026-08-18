@@ -1,8 +1,8 @@
 /**
  * Audit log API module.
- * Wraps the audit log REST endpoints. (MINCRM-170, MINCRM-171, MINCRM-172)
+ * Wraps the audit log REST endpoints.
  *
- * Note: The paginated system-wide list (listAuditLog) was removed in MINCRM-377.
+ * Note: The paginated system-wide list (listAuditLog) has since been removed.
  * AuditLogPage now fetches via ConnectRPC (gRPC-Web) instead.
  */
 
@@ -24,7 +24,6 @@ export interface RecordAuditLogResponse {
 /**
  * Returns audit log entries for a single record.
  * Used by the Change History section on Contact, Account, and Deal detail pages.
- * (MINCRM-171)
  *
  * @param recordType - Type of the record (contact, account, deal)
  * @param recordId - UUID of the record
@@ -43,7 +42,7 @@ export async function getRecordAuditLog(
 
 /**
  * Returns distinct users who appear in the audit log.
- * Used for the user filter dropdown on the admin audit log page. (MINCRM-172)
+ * Used for the user filter dropdown on the admin audit log page.
  */
 export async function listAuditLogActors(): Promise<{ actors: { id: string; name: string }[] }> {
   const response = await apiClient.get<{ actors: { id: string; name: string }[] }>(

@@ -2,7 +2,6 @@
  * UsersPage component — Admin only.
  * Lists all users and provides controls to invite new users,
  * change roles inline, change status inline, and perform bulk actions.
- * (MINCRM-560, MINCRM-561, MINCRM-562)
  */
 
 import { useState, Fragment, useCallback, useMemo, useEffect, useRef } from 'react';
@@ -371,12 +370,12 @@ export default function UsersPage() {
   const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
   const [openMobileMenuUserId, setOpenMobileMenuUserId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  /** ID of the user whose onboarding reset confirmation dialog is open (MINCRM-410) */
+  /** ID of the user whose onboarding reset confirmation dialog is open */
   const [resetOnboardingUserId, setResetOnboardingUserId] = useState<string | null>(null);
   const [resetOnboardingSuccessUserId, setResetOnboardingSuccessUserId] = useState<string | null>(
     null,
   );
-  /** Issued token data shown once after Issue API Token action (MINCRM-536) */
+  /** Issued token data shown once after Issue API Token action */
   const [issuedTokenResult, setIssuedTokenResult] = useState<IssueApiTokenResponse | null>(null);
 
   /**
@@ -408,7 +407,7 @@ export default function UsersPage() {
 
   const users: UserResponse[] = useMemo(() => data?.data ?? [], [data]);
 
-  // Fetch assigned custom roles for each user on the current page (MINCRM-560)
+  // Fetch assigned custom roles for each user on the current page
   const userRoleQueries = useQueries({
     queries: users.map((u) => ({
       queryKey: ['users', u.id, 'roles'] as const,
@@ -462,13 +461,13 @@ export default function UsersPage() {
     },
   });
 
-  // canEditUsers: admins have users:edit capability by definition (MINCRM-560, MINCRM-561)
+  // canEditUsers: admins have users:edit capability by definition
   const canEditUsers = currentUser?.role === 'admin';
 
   // canBulkOp: bulk:operations capability is seeded for admins only on UsersPage
   const canBulkOp = currentUser?.role === 'admin';
 
-  // ── Bulk selection state (MINCRM-562) ────────────────────────────────────
+  // ── Bulk selection state ────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lastClickedIndexRef = useRef<number | null>(null);
 
@@ -597,7 +596,7 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Bulk action bar (MINCRM-562) */}
+        {/* Bulk action bar */}
         {canBulkOp && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}
@@ -845,7 +844,7 @@ export default function UsersPage() {
           </PagedListLayout>
         )}
 
-        {/* Reset onboarding confirmation (MINCRM-410) */}
+        {/* Reset onboarding confirmation */}
         {resetOnboardingUserId && (
           <div
             role="presentation"
@@ -901,7 +900,7 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Reset onboarding success toast (MINCRM-410) */}
+        {/* Reset onboarding success toast */}
         {resetOnboardingSuccessUserId && (
           <div
             role="status"
@@ -922,7 +921,7 @@ export default function UsersPage() {
             </button>
           </div>
         )}
-        {/* Inline role/status error toast (MINCRM-560, MINCRM-561) */}
+        {/* Inline role/status error toast */}
         {inlineErrorMessage && (
           <div
             role="alert"
@@ -942,7 +941,7 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Bulk change role dialog (MINCRM-562) */}
+        {/* Bulk change role dialog */}
         {showBulkChangeRole && (
           <div
             role="presentation"
@@ -1010,7 +1009,7 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Bulk activate confirmation (MINCRM-562) */}
+        {/* Bulk activate confirmation */}
         {showBulkActivate && (
           <div
             role="presentation"
@@ -1061,7 +1060,7 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Bulk deactivate confirmation (MINCRM-562) */}
+        {/* Bulk deactivate confirmation */}
         {showBulkDeactivate && (
           <div
             role="presentation"
@@ -1116,7 +1115,7 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Bulk delete confirmation (MINCRM-562) */}
+        {/* Bulk delete confirmation */}
         <ConfirmDeleteModal
           isOpen={showBulkDelete}
           message={t('bulk.deleteMessage', { count: selectedIds.size })}
@@ -1125,7 +1124,7 @@ export default function UsersPage() {
           onCancel={() => setShowBulkDelete(false)}
         />
 
-        {/* Bulk success toast (MINCRM-562) */}
+        {/* Bulk success toast */}
         {bulkSuccessMessage && (
           <div
             role="status"
@@ -1144,14 +1143,14 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Bulk failed details modal (MINCRM-562) */}
+        {/* Bulk failed details modal */}
         <BulkFailedDetailsModal
           isOpen={showBulkFailedDetails}
           failures={bulkPartialFailures}
           onClose={() => setShowBulkFailedDetails(false)}
         />
 
-        {/* Issued API token modal — shown exactly once after Issue API Token action (MINCRM-536) */}
+        {/* Issued API token modal — shown exactly once after Issue API Token action */}
         {issuedTokenResult && (
           <div
             role="presentation"

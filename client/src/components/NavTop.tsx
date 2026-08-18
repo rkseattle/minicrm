@@ -3,7 +3,6 @@
  * Desktop: sticky header + tab bar across the top with all nav links visible.
  * Mobile (below lg): hamburger button in the header triggers a full-width
  * slide-down drawer with nav links and search.
- * (MINCRM-133)
  */
 
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -48,7 +47,7 @@ function mobileNavLinkClass({ isActive }: { isActive: boolean }): string {
 }
 
 /**
- * Top navigation bar layout component. (MINCRM-133)
+ * Top navigation bar layout component.
  */
 export default function NavTop() {
   const { t, i18n } = useTranslation();
@@ -129,7 +128,7 @@ export default function NavTop() {
       // While still loading the link is kept in the list on purpose, so the
       // skeleton branch below can render in its place — filtering it out here
       // would make that skeleton unreachable and collapse the nav on first
-      // paint. (MINCRM-695, MINCRM-696)
+      // paint.
       if (link.featureFlag && !flagsLoading && flags?.[link.featureFlag] !== true) return false;
       return true;
     }

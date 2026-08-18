@@ -1,6 +1,6 @@
 /**
  * CoverageSessionIndicator — small floating "check out" affordance for an
- * active manual-testing coverage session. (MINCRM-663)
+ * active manual-testing coverage session.
  *
  * Rendered at the app root (see App.tsx's LayoutShell, same
  * position:fixed precedent as SetupChecklistWidget) so it survives client-

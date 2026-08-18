@@ -1,6 +1,5 @@
 /**
  * Tests for ChangeHistory component.
- * (MINCRM-171)
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';

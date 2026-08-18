@@ -1,5 +1,5 @@
 /**
- * MeetingBriefPanel component. (MINCRM-465)
+ * MeetingBriefPanel component.
  *
  * Sidebar panel for an AI-generated pre-meeting brief. Slides in from the
  * right edge of the viewport, matching EmailDraftPanel's dialog/focus-trap/
@@ -190,7 +190,7 @@ export default function MeetingBriefPanel({
             </div>
           )}
 
-          {/* AI smart follow-up timing suggestion (MINCRM-470) — read-only display, no schedule action here. */}
+          {/* AI smart follow-up timing suggestion — read-only display, no schedule action here. */}
           {content.followup_timing && (
             <div>
               <h4 className="text-xs font-medium text-gray-700 mb-1">

@@ -1,5 +1,5 @@
 /**
- * NotesSection component. (MINCRM-352)
+ * NotesSection component.
  *
  * Renders a paginated list of rich notes for a CRM entity detail page.
  * Includes an inline composer with a Lexical rich-text editor, visibility

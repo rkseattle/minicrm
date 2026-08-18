@@ -1,5 +1,5 @@
 /**
- * Tests for the usePermissions hook (MINCRM-535, MINCRM-536).
+ * Tests for the usePermissions hook.
  */
 
 import { renderHook } from '@testing-library/react';

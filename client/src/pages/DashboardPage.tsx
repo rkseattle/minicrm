@@ -6,10 +6,9 @@
  * - Total open deal count
  * - Total open pipeline value
  * - Per-stage breakdown of open deals
- * - Recent activity feed (MINCRM-185)
+ * - Recent activity feed
  *
  * Admins see team-wide data; reps see their own data only.
- * Implements MINCRM-25, MINCRM-185.
  */
 
 import { Link } from 'react-router-dom';
@@ -32,7 +31,7 @@ import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
  *
  * @param value - Numeric string from the API (e.g. "150000.00")
  * @param locale - BCP 47 language tag from i18next (e.g. "en", "de", "zh")
- * @param currency - ISO 4217 currency code (e.g. "USD", "EUR") (MINCRM-189)
+ * @param currency - ISO 4217 currency code (e.g. "USD", "EUR")
  */
 function formatCurrency(value: string, locale: string, currency: string): string {
   const number = parseFloat(value);
@@ -136,7 +135,7 @@ function relativeTime(isoString: string): string {
 
 /**
  * Renders the authenticated user's own AI coaching insights on the dashboard,
- * under a "My Performance" heading. (MINCRM-474)
+ * under a "My Performance" heading.
  * Any rep, manager, or admin sees only their own data here — the org-wide
  * manager/admin view lives at /insights/coaching. Silently renders nothing
  * when the feature flag is off, insufficient data exists, or there are no
@@ -192,7 +191,7 @@ function MyPerformanceSection() {
 }
 
 /**
- * Renders the recent activity feed section on the dashboard. (MINCRM-185)
+ * Renders the recent activity feed section on the dashboard.
  */
 function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] }) {
   const { t } = useTranslation();
@@ -368,7 +367,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Currency conversion summary (MINCRM-253) — only shown when rates exist */}
+            {/* Currency conversion summary — only shown when rates exist */}
             {data.hasRates && (
               <div
                 className="bg-white rounded-lg border border-gray-200 p-4 mb-8 flex flex-col gap-2"
@@ -545,10 +544,10 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* My Performance — own AI coaching insights (MINCRM-474) */}
+            {/* My Performance — own AI coaching insights */}
             <MyPerformanceSection />
 
-            {/* Recent activity feed (MINCRM-185) */}
+            {/* Recent activity feed */}
             <RecentActivityFeed activities={data.recentActivities} />
           </>
         )}

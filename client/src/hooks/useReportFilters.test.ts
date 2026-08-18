@@ -75,7 +75,7 @@ describe('useReportFilters', () => {
     // already September for a viewer in UTC+13, which is where the old
     // local-calendar helpers diverged: endOfCurrentMonth returned 2026-09-29,
     // a month late. Fake timers are safe in this file — it does no DB or
-    // network I/O, and the hook reads the clock once at mount. (MINCRM-700)
+    // network I/O, and the hook reads the clock once at mount.
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date('2026-08-31T23:30:00.000Z'));
@@ -104,7 +104,7 @@ describe('useReportFilters', () => {
     // must not change the preset, which would mask the bug by forcing a
     // dependency change. Two earlier revisions both failed this: capturing
     // `now` in a useState initializer, and moving it into a useMemo whose
-    // dependency array holds no time-varying value. (MINCRM-700)
+    // dependency array holds no time-varying value.
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date('2026-08-31T23:30:00.000Z'));
@@ -136,7 +136,7 @@ describe('useReportFilters', () => {
     // so it would sit on the previous month and — because its React Query key
     // carries the dates — never refetch either. A timer aimed at the next UTC
     // midnight forces the render. No rerender(), no setState, no clicks here:
-    // only the clock and the timer. (MINCRM-700)
+    // only the clock and the timer.
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date('2026-08-31T23:59:30.000Z'));

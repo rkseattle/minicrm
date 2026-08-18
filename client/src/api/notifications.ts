@@ -1,5 +1,5 @@
 /**
- * In-app notification feed API module. (MINCRM-469)
+ * In-app notification feed API module.
  * Requires authentication only — no feature flag, generic infrastructure.
  */
 

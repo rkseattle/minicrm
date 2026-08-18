@@ -1,6 +1,5 @@
 /**
  * Tests for AuditLogPage.
- * (MINCRM-172, MINCRM-377)
  *
  * The page fetches audit data via ConnectRPC (auditClient), not REST.
  * Tests mock the auditClient module directly so no HTTP interception is needed.
@@ -145,7 +144,7 @@ describe('AuditLogPage', () => {
     expect(screen.getByTestId('clear-filters-button')).toBeInTheDocument();
   });
 
-  it('includes "Lead" as a selectable option in the record-type filter (MINCRM-363)', async () => {
+  it('includes "Lead" as a selectable option in the record-type filter', async () => {
     renderWithProviders(<AuditLogPage />);
     fireEvent.click(screen.getByTestId('filters-toggle'));
     const select = screen.getByTestId('filter-record-type') as HTMLSelectElement;
@@ -153,7 +152,7 @@ describe('AuditLogPage', () => {
     expect(optionValues).toContain('lead');
   });
 
-  it('filters by lead record type when "Lead" is selected (MINCRM-363)', async () => {
+  it('filters by lead record type when "Lead" is selected', async () => {
     renderWithProviders(<AuditLogPage />);
     await waitFor(() => screen.getByTestId('audit-log-empty-state'));
     fireEvent.click(screen.getByTestId('filters-toggle'));
@@ -163,8 +162,7 @@ describe('AuditLogPage', () => {
 
     await waitFor(() => {
       const call = mockListAuditEvents.mock.calls.at(-1)?.[0] as
-        | { recordType?: string }
-        | undefined;
+        { recordType?: string } | undefined;
       expect(call?.recordType).toBe('lead');
     });
   });
@@ -179,8 +177,7 @@ describe('AuditLogPage', () => {
 
     await waitFor(() => {
       const call = mockListAuditEvents.mock.calls.at(-1)?.[0] as
-        | { recordType?: string }
-        | undefined;
+        { recordType?: string } | undefined;
       expect(call?.recordType).toBe('contact');
     });
   });
@@ -210,7 +207,7 @@ describe('AuditLogPage', () => {
     expect((screen.getByTestId('filter-record-type') as HTMLSelectElement).value).toBe('');
   });
 
-  it('shows pagination controls with next enabled when there are multiple pages (MINCRM-345)', async () => {
+  it('shows pagination controls with next enabled when there are multiple pages', async () => {
     const events = [
       makeProtoEvent({ id: '00000000-0000-0000-0000-000000000001' }),
       makeProtoEvent({ id: '00000000-0000-0000-0000-000000000002' }),
@@ -227,7 +224,7 @@ describe('AuditLogPage', () => {
     });
   });
 
-  it('shows pagination controls even when all entries fit on one page (MINCRM-345)', async () => {
+  it('shows pagination controls even when all entries fit on one page', async () => {
     const event = makeProtoEvent();
     mockListAuditEvents.mockReturnValue(makeListResponse([event], 1));
 

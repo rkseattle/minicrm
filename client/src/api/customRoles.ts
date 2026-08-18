@@ -1,5 +1,5 @@
 /**
- * Custom roles API module — wraps MINCRM-542 capability RBAC endpoints.
+ * Custom roles API module — wraps the capability RBAC endpoints.
  */
 
 import apiClient from './axiosInstance.js';

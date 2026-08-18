@@ -1,13 +1,13 @@
 /**
- * Tests for the AI page's retention window notice (MINCRM-462) and the
- * message-send handshake (MINCRM-602).
+ * Tests for the AI page's retention window notice and the
+ * message-send handshake.
  *
  * Retention window notice coverage:
  *  - Notice renders with the configured retention window once loaded
  *  - Notice is absent while the retention window request is pending
  *  - Notice is absent when the retention window request fails
  *
- * Send handshake coverage (MINCRM-602):
+ * Send handshake coverage:
  *  - Successful send commits the assistant reply via the POST response alone —
  *    the assistant bubble does not require a second, awaited GET round-trip
  *    to appear (a background invalidation still fires to reconcile the
@@ -76,7 +76,7 @@ function mockSingleSession() {
  * message store that the message POST appends both turns into — mirroring
  * the real server, which persists the user message and the assistant reply
  * in the same synchronous request (see docs/dev/ai-chat.md). Needed for
- * MINCRM-602's send tests: onSuccess fires a background invalidateQueries
+ * The send tests: onSuccess fires a background invalidateQueries
  * after the optimistic cache write, which triggers a real refetch of this
  * GET — a static `messages: []` handler would make that refetch clobber the
  * just-written cache with stale empty data, which a real server never would.
@@ -148,7 +148,7 @@ function mockStatefulSession() {
   );
 }
 
-describe('AiPage — markdown rendering (MINCRM-657)', () => {
+describe('AiPage — markdown rendering', () => {
   it('renders markdown formatting in assistant replies', async () => {
     server.use(
       http.get('/api/v1/ai/sessions', () =>
@@ -275,7 +275,7 @@ describe('AiPage — retention window notice', () => {
   });
 });
 
-describe('AiPage — send message handshake (MINCRM-602)', () => {
+describe('AiPage — send message handshake', () => {
   it('shows the assistant reply from the POST response before any follow-up GET resolves', async () => {
     mockSingleSession();
     server.use(
@@ -406,7 +406,7 @@ describe('AiPage — send message handshake (MINCRM-602)', () => {
     expect(screen.queryByTestId('ai-thinking-indicator')).not.toBeInTheDocument();
   });
 
-  it('surfaces the plain-language FORBIDDEN message for a 403 send response (MINCRM-435)', async () => {
+  it('surfaces the plain-language FORBIDDEN message for a 403 send response', async () => {
     mockSingleSession();
     server.use(
       http.get('/api/v1/ai/retention-window', () =>
@@ -435,7 +435,7 @@ describe('AiPage — send message handshake (MINCRM-602)', () => {
   });
 });
 
-describe('AiPage — send handshake cache correctness (MINCRM-602)', () => {
+describe('AiPage — send handshake cache correctness', () => {
   it('appends both the user and assistant messages into the session query cache', async () => {
     mockStatefulSession();
     server.use(
@@ -769,7 +769,7 @@ describe('AiPage — send handshake cache correctness (MINCRM-602)', () => {
   });
 });
 
-describe('AiPage — optimistic state is scoped per session (MINCRM-602 PR review)', () => {
+describe('AiPage — optimistic state is scoped per session', () => {
   it('does not clear a different session’s in-flight optimistic bubble when switching sessions', async () => {
     const SESSION_B_ID = '33333333-3333-3333-3333-333333333333';
     server.use(

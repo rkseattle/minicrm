@@ -2,7 +2,7 @@
  * Pagination controls component.
  * Renders previous/next buttons, page indicator, a record count summary, and an
  * optional page-size selector.
- * Used by all paginated list pages (MINCRM-68, MINCRM-343).
+ * Used by all paginated list pages.
  */
 
 import { useTranslation } from 'react-i18next';

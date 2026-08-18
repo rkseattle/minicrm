@@ -1,5 +1,5 @@
 /**
- * Tests for BulkFailedDetailsModal. (MINCRM-562)
+ * Tests for BulkFailedDetailsModal.
  */
 
 import { screen, fireEvent } from '@testing-library/react';

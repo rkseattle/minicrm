@@ -1,5 +1,5 @@
 /**
- * RichTextField component. (MINCRM-473)
+ * RichTextField component.
  *
  * A standalone, reusable rich-text editor field — bold/italic/underline/lists
  * only (no images or headings; this is for prose-length body text, not full

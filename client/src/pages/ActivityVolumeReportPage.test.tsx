@@ -1,8 +1,7 @@
 /**
  * Tests for the ActivityVolumeReportPage component.
  * Covers heading, filters, table rendering, totals row, empty state, CSV export,
- * admin vs rep scoping, and My View / Team View toggle (MINCRM-264).
- * Implements MINCRM-181, MINCRM-264.
+ * admin vs rep scoping, and My View / Team View toggle.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
@@ -33,7 +32,7 @@ describe('ActivityVolumeReportPage', () => {
     });
   });
 
-  describe('view mode toggle (MINCRM-264)', () => {
+  describe('view mode toggle', () => {
     it('admin sees toggle buttons', async () => {
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => {
@@ -339,7 +338,7 @@ describe('ActivityVolumeReportPage', () => {
     });
   });
 
-  describe('date preset filters — full coverage (MINCRM-303)', () => {
+  describe('date preset filters — full coverage', () => {
     it('selects the "This week" preset and triggers a fetch', async () => {
       let capturedStart: string | null = null;
       server.use(

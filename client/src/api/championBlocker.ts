@@ -1,5 +1,5 @@
 /**
- * Champion/blocker detection API module. (MINCRM-466)
+ * Champion/blocker detection API module.
  * Wraps the contact classification and deal stakeholder-map endpoints.
  * Requires authentication and the ai_champion_blocker_detection feature flag.
  */

@@ -1,5 +1,5 @@
 /**
- * ContactEnrichmentModal component. (MINCRM-439)
+ * ContactEnrichmentModal component.
  * Lets the user paste freeform text (LinkedIn bio, email signature, vCard,
  * business card text) and calls the AI extractor. Extracted fields are
  * returned to the caller (ContactForm), which pre-fills its own fields —

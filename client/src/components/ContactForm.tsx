@@ -34,7 +34,7 @@ export interface ContactFormValues {
   account_id: string;
   /** UUID of the owner; populated only when users prop is provided (edit mode) */
   owner_id: string;
-  // Social profile URLs (MINCRM-190)
+  // Social profile URLs
   linkedin_url: string;
   twitter_x_url: string;
   other_url: string;
@@ -301,7 +301,7 @@ export default function ContactForm({
         )}
       </div>
 
-      {/* Social Profiles section — collapsible (MINCRM-190) */}
+      {/* Social Profiles section — collapsible */}
       <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
         <button
           type="button"

@@ -1,7 +1,7 @@
 /**
  * SetupChecklistSettings — Admin control to reset the onboarding setup
- * checklist (MINCRM-256, MINCRM-379). Extracted from GeneralSettings as part
- * of the Data & Platform tab consolidation (MINCRM-563).
+ * checklist. Extracted from GeneralSettings as part
+ * of the Data & Platform tab consolidation.
  */
 
 import { useState } from 'react';

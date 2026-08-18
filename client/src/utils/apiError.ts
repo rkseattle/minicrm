@@ -24,7 +24,7 @@ export function getApiErrorMessage(err: unknown, fallback: string): string {
  *
  * Looks up `errors.<code>` in the i18n catalog; falls back to `fallbackKey`
  * (default: `errors.generic`) for unknown codes, missing responses, or
- * non-Axios errors. (MINCRM-354)
+ * non-Axios errors.
  */
 export function resolveApiError(
   error: unknown,

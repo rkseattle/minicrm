@@ -1,5 +1,5 @@
 /**
- * usePermissions hook (MINCRM-535, MINCRM-536).
+ * usePermissions hook.
  *
  * Centralises role-based UI permission checks so that individual pages
  * do not need to inline role comparisons. Currently determines write

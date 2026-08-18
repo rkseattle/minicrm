@@ -2,7 +2,6 @@
  * CsvImporter — shared wizard component for importing CRM data from CSV files.
  * Steps: 1) file select → 2) column mapping → 3) preview → 4) confirm + run → 5) progress → 6) summary.
  * Used by AdminSettingsPage for accounts, contacts, and deals.
- * MINCRM-158, MINCRM-159, MINCRM-160, MINCRM-255
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -56,7 +55,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
     Object.fromEntries(options.map((o) => [o.key, o.defaultValue])),
   );
 
-  // Background job tracking (MINCRM-255)
+  // Background job tracking
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobData, setJobData] = useState<ImportJobResponse | null>(null);
   const [runError, setRunError] = useState<string | null>(null);

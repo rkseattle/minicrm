@@ -2,7 +2,6 @@
  * Renders a confirmation prompt for an AI-proposed mutation action.
  * Shown below the assistant's text when message.pending_action is non-null.
  * The user must confirm or cancel before the AI proceeds with the write tool.
- * (MINCRM-425, MINCRM-426)
  */
 
 import { useTranslation } from 'react-i18next';

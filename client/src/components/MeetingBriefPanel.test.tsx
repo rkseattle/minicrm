@@ -1,5 +1,5 @@
 /**
- * Tests for the MeetingBriefPanel component. (MINCRM-465)
+ * Tests for the MeetingBriefPanel component.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
@@ -84,7 +84,7 @@ describe('MeetingBriefPanel', () => {
     expect(screen.queryByTestId('meeting-brief-followup-timing')).not.toBeInTheDocument();
   });
 
-  it('renders the follow-up timing suggestion when present (MINCRM-470)', () => {
+  it('renders the follow-up timing suggestion when present', () => {
     renderPanel({
       brief: {
         ...SAMPLE_BRIEF,

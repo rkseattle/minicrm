@@ -66,7 +66,7 @@ export default function AccountDetailPage() {
 
   const accountQueryKey = ['accounts', id] as const;
 
-  // Three-way merge conflict state (MINCRM-351, MINCRM-406)
+  // Three-way merge conflict state
   const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
     useEntityConflictHandler<AccountFormValues>({
       entityCacheKey: 'account',
@@ -93,7 +93,7 @@ export default function AccountDetailPage() {
     enabled: Boolean(id),
   });
 
-  // Fetch parent account name so the edit form can display it (MINCRM-184)
+  // Fetch parent account name so the edit form can display it
   const parentAccountQueryKey = ['accounts', data?.account?.parent_account_id] as const;
   const { data: parentAccountData } = useQuery({
     queryKey: parentAccountQueryKey,
@@ -106,14 +106,14 @@ export default function AccountDetailPage() {
     queryFn: listActiveUsers,
   });
 
-  // AI sentiment trend (MINCRM-472) — passive, page-load read of the last 90 days.
+  // AI sentiment trend — passive, page-load read of the last 90 days.
   const { data: sentimentTrend } = useQuery({
     queryKey: accountSentimentTrendQueryKey(id ?? ''),
     queryFn: () => getAccountSentimentTrend(id!),
     enabled: Boolean(id) && sentimentTrackingEnabled,
   });
 
-  // AI relationship health score (MINCRM-467) — cached, page-load read.
+  // AI relationship health score — cached, page-load read.
   const { data: healthScoreData } = useQuery({
     queryKey: accountHealthScoreQueryKey(id ?? ''),
     queryFn: () => getAccountHealthScore(id!),
@@ -140,7 +140,7 @@ export default function AccountDetailPage() {
         contact_ids: values.contact_ids,
         account_type: values.account_type || null,
         parent_account_id: values.parent_account_id || null,
-        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
+        // Prefer explicit version (from conflict resolution); fall back to cache for normal edits
         version:
           version ??
           queryClient.getQueryData<{ account: { version: number } }>(accountQueryKey)?.account
@@ -148,7 +148,7 @@ export default function AccountDetailPage() {
           1,
       }),
     onSuccess: async (data) => {
-      // Seed the cache immediately so the version is correct before any subsequent edit (MINCRM-351)
+      // Seed the cache immediately so the version is correct before any subsequent edit
       queryClient.setQueryData(accountQueryKey, data);
       if (customFieldValues.length > 0) {
         await putCustomFieldValues('account', id!, customFieldValues);
@@ -221,7 +221,7 @@ export default function AccountDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Back link — MINCRM-113, MINCRM-115 */}
+        {/* Back link */}
         <Link
           to="/accounts"
           data-testid="back-to-accounts"
@@ -513,7 +513,7 @@ export default function AccountDetailPage() {
                   </div>
                 </section>
 
-                {/* Subsidiary accounts (MINCRM-184) */}
+                {/* Subsidiary accounts */}
                 {childAccounts.length > 0 && (
                   <section className="mt-8" aria-labelledby="subsidiaries-heading">
                     <h2
@@ -554,7 +554,7 @@ export default function AccountDetailPage() {
         )}
       </main>
 
-      {/* Delete confirmation modal — MINCRM-107 */}
+      {/* Delete confirmation modal */}
       <ConfirmDeleteModal
         isOpen={isConfirmDeleteOpen}
         message={t('accounts.confirmDelete')}

@@ -2,9 +2,9 @@
  * Tests for ProfilePage.
  *
  * Covers: loading states, language preference form, notification preferences form,
- * save success/error feedback, checkbox toggling, and MFA section (MINCRM-392).
+ * save success/error feedback, checkbox toggling, and MFA section.
  *
- * MINCRM-161, MINCRM-162, MINCRM-163, MINCRM-392
+ *
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -227,7 +227,7 @@ describe('ProfilePage', () => {
     });
   });
 
-  describe('MFA section (MINCRM-392)', () => {
+  describe('MFA section', () => {
     it('renders the MFA section', async () => {
       renderWithProviders(<ProfilePage />);
       await waitFor(() => {

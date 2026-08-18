@@ -1,7 +1,7 @@
 /**
  * Dispatches NLI tool results to the appropriate CRM result card components.
  * Renders a loading skeleton while the send mutation is in flight,
- * and gracefully handles empty result sets. (MINCRM-423, MINCRM-431)
+ * and gracefully handles empty result sets.
  */
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';

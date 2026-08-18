@@ -1,5 +1,5 @@
 /**
- * Coverage/TIA session API — CRM-client side. (MINCRM-663)
+ * Coverage/TIA session API — CRM-client side.
  *
  * The CRM client never starts or lists sessions itself (that UI lives in the
  * standalone coverage-dashboard app — see coverage-dashboard/src/api/

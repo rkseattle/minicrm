@@ -1,7 +1,7 @@
 /**
  * BulkChangeStageModal component.
  * Stage picker for bulk change-stage operations on deals.
- * Accessible dialog with focus trap and Escape dismissal. (MINCRM-188)
+ * Accessible dialog with focus trap and Escape dismissal.
  */
 
 import { useEffect, useRef, useState } from 'react';

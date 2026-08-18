@@ -1,5 +1,5 @@
 /**
- * TeamsSettings — Team management panel for MINCRM-539.
+ * TeamsSettings — Team management panel.
  * Requires teams:manage capability (admin or any custom role with that capability).
  *
  * Features:

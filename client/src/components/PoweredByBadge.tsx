@@ -1,5 +1,5 @@
 /**
- * PoweredByBadge — shown in the nav when custom branding is active. (MINCRM-356)
+ * PoweredByBadge — shown in the nav when custom branding is active.
  * Standard white-label attribution practice (Shopify storefronts, Intercom widget).
  */
 

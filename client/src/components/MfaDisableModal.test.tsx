@@ -1,5 +1,5 @@
 /**
- * Tests for MfaDisableModal. (MINCRM-392)
+ * Tests for MfaDisableModal.
  * Covers: closed state, form render, invalid password error,
  * success callback, cancel, and Escape key.
  */

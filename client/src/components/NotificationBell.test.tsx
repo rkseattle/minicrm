@@ -1,5 +1,5 @@
 /**
- * Tests for the NotificationBell component. (MINCRM-469)
+ * Tests for the NotificationBell component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

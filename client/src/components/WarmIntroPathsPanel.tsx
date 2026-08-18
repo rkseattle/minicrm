@@ -1,5 +1,5 @@
 /**
- * WarmIntroPathsPanel component. (MINCRM-468)
+ * WarmIntroPathsPanel component.
  *
  * "Find warm path" action + results panel showing ranked introduction paths
  * (Rep -> Known Contact -> Target Contact) through the rep's own contact

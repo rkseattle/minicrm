@@ -44,7 +44,7 @@ export async function setDefaultLanguage(
   return response.data;
 }
 
-/** React Query cache key for the nav layout setting (MINCRM-133) */
+/** React Query cache key for the nav layout setting */
 export const NAV_LAYOUT_QUERY_KEY = ['settings', 'navLayout'] as const;
 
 /**
@@ -57,7 +57,7 @@ export async function getNavLayout(): Promise<NavLayoutResponse> {
 }
 
 /**
- * Updates the system-wide navigation layout. Admin only. (MINCRM-133)
+ * Updates the system-wide navigation layout. Admin only.
  *
  * @param layout - One of the supported nav layout values.
  */
@@ -66,7 +66,7 @@ export async function setNavLayout(layout: NavLayout): Promise<NavLayoutResponse
   return response.data;
 }
 
-// ── Email notifications global toggle (MINCRM-163) ───────────────────────────
+// ── Email notifications global toggle ───────────────────────────
 
 /** Shape returned by the email notifications toggle endpoints */
 export interface EmailNotificationsResponse {
@@ -100,7 +100,7 @@ export async function setEmailNotificationsEnabled(
   return response.data;
 }
 
-// ── Default currency (MINCRM-189) ─────────────────────────────────────────────
+// ── Default currency ─────────────────────────────────────────────
 
 /** React Query cache key for the default currency setting */
 export const DEFAULT_CURRENCY_QUERY_KEY = ['settings', 'defaultCurrency'] as const;
@@ -115,7 +115,7 @@ export async function getDefaultCurrency(): Promise<DefaultCurrencyResponse> {
 }
 
 /**
- * Updates the system-wide default currency. Admin only. (MINCRM-189)
+ * Updates the system-wide default currency. Admin only.
  *
  * @param currency - One of the supported ISO 4217 currency codes.
  */
@@ -128,7 +128,7 @@ export async function setDefaultCurrency(
   return response.data;
 }
 
-// ── Exchange rate configuration (MINCRM-251) ──────────────────────────────────
+// ── Exchange rate configuration ──────────────────────────────────
 
 /** React Query cache key for the currencies configuration */
 export const CURRENCIES_CONFIG_QUERY_KEY = ['settings', 'currenciesConfig'] as const;
@@ -170,7 +170,7 @@ export async function updateCurrenciesConfig(payload: {
   return response.data;
 }
 
-// ── Tag creation restriction (MINCRM-263) ─────────────────────────────────────
+// ── Tag creation restriction ─────────────────────────────────────
 
 /** Shape returned by the tags-restrict-creation endpoints */
 export interface TagsRestrictCreationResponse {
@@ -206,7 +206,7 @@ export async function setTagsRestrictCreation(
   return response.data;
 }
 
-// ── SMTP configuration (MINCRM-254) ───────────────────────────────────────────
+// ── SMTP configuration ───────────────────────────────────────────
 
 /** Shape returned by GET /api/settings/smtp */
 export interface SmtpConfigResponse {
@@ -262,7 +262,7 @@ export async function testSmtpConfig(to: string): Promise<SmtpTestResult> {
   return response.data;
 }
 
-// ── Data visibility policies (MINCRM-538) ─────────────────────────────────────
+// ── Data visibility policies ─────────────────────────────────────
 
 /** Shape returned by GET/PUT /api/settings/visibility */
 export interface VisibilityConfigResponse {

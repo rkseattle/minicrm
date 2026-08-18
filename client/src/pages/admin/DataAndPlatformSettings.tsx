@@ -1,7 +1,7 @@
 /**
  * DataAndPlatformSettings — Demo data management and setup checklist reset.
  * Consolidates DataSettings and the setup checklist section (previously in
- * GeneralSettings) into a single Data & Platform tab (MINCRM-563).
+ * GeneralSettings) into a single Data & Platform tab.
  */
 
 import DataSettings from '@/pages/admin/DataSettings.js';

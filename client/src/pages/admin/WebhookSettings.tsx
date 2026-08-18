@@ -1,6 +1,6 @@
 /**
  * WebhookSettings — Outbound webhook subscription management.
- * Rendered inside the Integrations tab of AdminSettingsPage. (MINCRM-279)
+ * Rendered inside the Integrations tab of AdminSettingsPage.
  */
 
 import { useState } from 'react';

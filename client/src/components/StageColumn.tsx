@@ -71,7 +71,7 @@ function columnHeaderClass(stage: string): string {
 }
 
 /**
- * Returns true when the deals in a column have more than one distinct currency. (MINCRM-189)
+ * Returns true when the deals in a column have more than one distinct currency.
  *
  * @param deals - Deals to check
  */
@@ -83,7 +83,7 @@ function hasMixedCurrencies(deals: DealResponse[]): boolean {
 }
 
 /**
- * Returns the single currency used by all deals, or null when mixed. (MINCRM-189)
+ * Returns the single currency used by all deals, or null when mixed.
  *
  * @param deals - Deals to inspect
  */
@@ -95,7 +95,7 @@ function singleCurrency(deals: DealResponse[]): string | null {
 }
 
 /**
- * Computes the sum of deal values and formats it using the deals' shared currency. (MINCRM-189)
+ * Computes the sum of deal values and formats it using the deals' shared currency.
  *
  * @param deals - Deals to sum (caller must ensure all share the same currency)
  * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
@@ -109,7 +109,7 @@ function sumValues(deals: DealResponse[], locale: string): string {
 
 /**
  * Computes the weighted pipeline value (sum of value × probability / 100) for a set of deals
- * and formats it using the deals' shared currency. (MINCRM-189)
+ * and formats it using the deals' shared currency.
  *
  * @param deals - Deals to sum (caller must ensure all share the same currency)
  * @param locale - BCP 47 locale tag from i18next
@@ -179,9 +179,9 @@ export default function StageColumn({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {/* Column header — sticky so stage name/count stay visible as cards scroll within the column (MINCRM-346).
+      {/* Column header — sticky so stage name/count stay visible as cards scroll within the column.
           Explicit onDragOver/onDrop so drop events targeting this element are handled directly
-          rather than relying on parent bubbling (MINCRM-300). */}
+          rather than relying on parent bubbling. */}
       <div
         data-testid={`stage-column-header-${slug}`}
         className={`sticky top-0 z-10 px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}

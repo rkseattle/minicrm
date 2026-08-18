@@ -1,5 +1,5 @@
 /**
- * Email draft API module. (MINCRM-437)
+ * Email draft API module.
  * Wraps the on-demand AI email draft generation endpoint. Requires authentication and
  * the ai_email_draft feature flag to be enabled.
  */

@@ -1,5 +1,5 @@
 /**
- * Tests for the DataHygienePage component. (MINCRM-476)
+ * Tests for the DataHygienePage component.
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';

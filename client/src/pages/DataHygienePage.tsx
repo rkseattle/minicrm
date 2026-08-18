@@ -1,5 +1,5 @@
 /**
- * DataHygienePage component. (MINCRM-476)
+ * DataHygienePage component.
  * Displays the cached data hygiene queue from the most recent nightly scan.
  * Shared between the admin view (/admin/hygiene, scope=all, all records)
  * and the personal view (/hygiene, scope=mine, the caller's own records) —

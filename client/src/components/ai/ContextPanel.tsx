@@ -4,7 +4,6 @@
  *
  * Supports inline add, inline edit, and delete with a single confirmation.
  * All mutations optimistically update via React Query.
- * (MINCRM-427, MINCRM-428)
  */
 
 import { useState, useRef, useEffect } from 'react';

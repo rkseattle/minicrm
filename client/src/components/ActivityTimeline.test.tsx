@@ -1,6 +1,6 @@
 /**
  * Tests for ActivityTimeline component.
- * MINCRM-303: extended to cover mutation paths, direction badge, error states,
+ * extended to cover mutation paths, direction badge, error states,
  * and delete confirmation branches.
  */
 
@@ -512,7 +512,7 @@ describe('ActivityTimeline', () => {
     });
   });
 
-  // MINCRM-436: AI call/note summarizer — accepted follow-up tasks create linked Task activities
+  // AI call/note summarizer — accepted follow-up tasks create linked Task activities
   it('creates a linked Task activity for each accepted AI-suggested follow-up task only after the parent activity saves', async () => {
     const createdActivityBodies: Array<Record<string, unknown>> = [];
     server.use(
@@ -560,7 +560,7 @@ describe('ActivityTimeline', () => {
     });
     await user.click(screen.getByTestId('activity-summary-apply'));
 
-    // The Task must not be created until the parent activity is actually saved (MINCRM-436).
+    // The Task must not be created until the parent activity is actually saved.
     expect(createdActivityBodies).toHaveLength(0);
 
     await user.type(screen.getByTestId('activity-subject'), 'Renewal call');
@@ -578,7 +578,7 @@ describe('ActivityTimeline', () => {
     });
   });
 
-  // MINCRM-437: AI email draft generation — Draft Email action on contact-linked activities
+  // AI email draft generation — Draft Email action on contact-linked activities
   describe('email draft generation', () => {
     it('shows the Draft Email action only for activities linked to a contact', async () => {
       server.use(
@@ -626,7 +626,7 @@ describe('ActivityTimeline', () => {
     });
   });
 
-  // MINCRM-438: AI follow-up task suggestions after activity logging
+  // AI follow-up task suggestions after activity logging
   describe('task suggestions after save', () => {
     it('fetches and shows suggestions once after saving a Call activity', async () => {
       server.use(
@@ -726,7 +726,7 @@ describe('ActivityTimeline', () => {
     });
   });
 
-  // MINCRM-472: AI sentiment tracking
+  // AI sentiment tracking
   describe('sentiment tracking', () => {
     it('shows the sentiment indicator for an activity with a scored sentiment', async () => {
       server.use(
@@ -819,7 +819,7 @@ describe('ActivityTimeline', () => {
     });
   });
 
-  // MINCRM-465: AI pre-meeting brief generation
+  // AI pre-meeting brief generation
   describe('meeting brief generation', () => {
     const FUTURE_CALL_ACTIVITY = {
       ...ACTIVITY_2,

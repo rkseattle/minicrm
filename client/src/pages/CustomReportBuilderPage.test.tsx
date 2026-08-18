@@ -1,5 +1,5 @@
 /**
- * Tests for the CustomReportBuilderPage component. (MINCRM-402)
+ * Tests for the CustomReportBuilderPage component.
  * Covers: loading state, empty state, error state, builder interactions,
  * running a report, saving a report, and CSV export link.
  */

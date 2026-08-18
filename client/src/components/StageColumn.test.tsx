@@ -1,5 +1,5 @@
 /**
- * Tests for StageColumn component (MINCRM-116, MINCRM-300).
+ * Tests for StageColumn component.
  */
 
 import { screen, fireEvent } from '@testing-library/react';
@@ -106,7 +106,7 @@ describe('StageColumn', () => {
     expect(screen.getByTestId('stage-column-count-proposal')).toHaveTextContent('0');
   });
 
-  // ── Drag-and-drop drop zone (MINCRM-300) ──────────────────────────────────────
+  // ── Drag-and-drop drop zone ──────────────────────────────────────
 
   it('calls onStageChange when a deal is dropped onto an open stage column', () => {
     const onStageChange = vi.fn();
@@ -187,7 +187,7 @@ describe('StageColumn', () => {
     expect(onCloseRequested).not.toHaveBeenCalled();
   });
 
-  // ── Weighted pipeline value (MINCRM-179) ──────────────────────────────────────
+  // ── Weighted pipeline value ──────────────────────────────────────
 
   it('renders the weighted value in the column header', () => {
     renderWithProviders(
@@ -220,7 +220,7 @@ describe('StageColumn', () => {
   });
 });
 
-// ── Mixed currency (MINCRM-189) ───────────────────────────────────────────────
+// ── Mixed currency ───────────────────────────────────────────────
 
 const DEAL_EUR: DealResponse = {
   ...DEAL_FIXTURE,
@@ -228,7 +228,7 @@ const DEAL_EUR: DealResponse = {
   currency: 'EUR',
 };
 
-describe('StageColumn — mixed currency (MINCRM-189)', () => {
+describe('StageColumn — mixed currency', () => {
   it('shows the mixed-currency note instead of totals when deals have different currencies', () => {
     renderWithProviders(
       <StageColumn

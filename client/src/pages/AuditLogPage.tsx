@@ -2,7 +2,6 @@
  * AuditLogPage — admin-only page showing the system-wide audit log.
  * Supports filtering by date range, user, record type, and event type.
  * Paginated at 50 entries per page, with expandable rows for field detail.
- * (MINCRM-172, MINCRM-377)
  *
  * Data is fetched via ConnectRPC (gRPC-Web) instead of REST. On the first
  * unfiltered page a live StreamAuditEvents stream prepends new events in real
@@ -117,7 +116,6 @@ function formatTimestamp(dateStr: string, locale: string): string {
 
 /**
  * Admin-only system-wide audit log page.
- * (MINCRM-172, MINCRM-377)
  */
 export default function AuditLogPage() {
   const { t, i18n } = useTranslation();
@@ -227,7 +225,7 @@ export default function AuditLogPage() {
           const stream = auditClient.streamAuditEvents({}, { signal: abortController.signal });
           retryDelay = 1_000; // reset backoff on a successful connection
           for await (const event of stream) {
-            // Discard the stream-ready sentinel emitted by the server on subscribe (MINCRM-554)
+            // Discard the stream-ready sentinel emitted by the server on subscribe
             if (event.action === '__stream_ready__') continue;
             setLiveEvents((prev) => [grpcEventToEntry(event), ...prev]);
           }
@@ -327,7 +325,7 @@ export default function AuditLogPage() {
           {t('auditLog.heading')}
         </h1>
 
-        {/* Filter bar — collapsible on mobile (MINCRM-345) */}
+        {/* Filter bar — collapsible on mobile */}
         <div className="bg-white border border-gray-200 rounded-lg mb-6">
           <button
             type="button"
@@ -458,7 +456,7 @@ export default function AuditLogPage() {
                   </Select>
                 </div>
 
-                {/* Source filter (MINCRM-444) */}
+                {/* Source filter */}
                 <div>
                   <label
                     htmlFor="filter-source"

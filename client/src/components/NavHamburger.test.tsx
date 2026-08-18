@@ -1,5 +1,5 @@
 /**
- * Tests for the NavHamburger component. (MINCRM-133, MINCRM-265)
+ * Tests for the NavHamburger component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

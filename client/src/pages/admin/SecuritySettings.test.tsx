@@ -1,6 +1,6 @@
 /**
  * Tests for SecuritySettings — MFA enforcement, SSO, and SCIM provisioning
- * composite tab (MINCRM-563).
+ * composite tab.
  *
  * Smoke tests verify key sections from each absorbed component are present.
  * Full interaction coverage lives in MfaSettings.test.tsx,

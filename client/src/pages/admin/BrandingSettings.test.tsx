@@ -1,5 +1,5 @@
 /**
- * Tests for BrandingSettings admin panel. (MINCRM-356)
+ * Tests for BrandingSettings admin panel.
  *
  * Covers:
  * - Loading state

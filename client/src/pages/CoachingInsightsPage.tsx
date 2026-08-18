@@ -1,5 +1,5 @@
 /**
- * CoachingInsightsPage component. (MINCRM-474)
+ * CoachingInsightsPage component.
  * Displays cached AI rep coaching insights from the most recent nightly run.
  * Manager and admin roles only — reps view their own insights via the "My
  * Performance" section on the dashboard instead (DashboardPage.tsx).
@@ -132,7 +132,7 @@ export default function CoachingInsightsPage() {
     );
   }
 
-  // Manager and admin roles only — reps use the dashboard's "My Performance" section (MINCRM-474 AC)
+  // Manager and admin roles only — reps use the dashboard's "My Performance" section
   if (user && user.role !== 'admin' && user.role !== 'manager') {
     return <Navigate to="/" replace />;
   }

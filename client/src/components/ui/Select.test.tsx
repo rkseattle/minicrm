@@ -53,7 +53,7 @@ describe('Select', () => {
     expect(screen.getByRole('combobox')).toHaveClass('focus:ring-primary-500');
   });
 
-  it('applies min-h touch-target class (MINCRM-98)', () => {
+  it('applies min-h touch-target class', () => {
     render(<Select />);
     expect(screen.getByRole('combobox')).toHaveClass('min-h-[44px]');
     expect(screen.getByRole('combobox')).toHaveClass('sm:min-h-0');

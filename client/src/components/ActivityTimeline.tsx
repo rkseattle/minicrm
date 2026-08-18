@@ -46,10 +46,10 @@ import type { BadgeProps } from '@/components/ui/Badge.js';
 import type { SuggestedTask } from '@shared/schemas/taskSuggestionSchema.js';
 import type { MeetingBriefResponse } from '@shared/schemas/meetingBriefSchema.js';
 
-/** Activity types eligible for pre-meeting brief generation (MINCRM-465). */
+/** Activity types eligible for pre-meeting brief generation. */
 const BRIEF_ELIGIBLE_TYPES: ReadonlySet<ActivityType> = new Set(['Call', 'Meeting']);
 
-/** Activity types the task-suggestion feature supports (MINCRM-438) */
+/** Activity types the task-suggestion feature supports */
 const TASK_SUGGESTABLE_TYPES: ReadonlySet<ActivityType> = new Set(['Call', 'Meeting', 'Email']);
 import type { EmailDraftResponse } from '@shared/schemas/emailDraftSchema.js';
 
@@ -99,7 +99,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const [briefingActivityId, setBriefingActivityId] = useState<string | null>(null);
   const { enabled: taskSuggestionsEnabled } = useFeatureFlag('ai_task_suggestions');
   const [taskSuggestions, setTaskSuggestions] = useState<SuggestedTask[] | null>(null);
-  // Three-way merge conflict state — tracks which activity has a pending conflict (MINCRM-351)
+  // Three-way merge conflict state — tracks which activity has a pending conflict
   const [editConflict, setEditConflict] = useState<{
     activityId: string;
     pendingValues: ActivityFormValues;
@@ -140,7 +140,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
       setCreateError(null);
 
       // Create AI-suggested follow-up tasks the user accepted while summarizing, now
-      // that the parent activity itself has actually saved (MINCRM-436).
+      // that the parent activity itself has actually saved.
       variables.acceptedSuggestedTasks.forEach((task) => {
         createActivity({
           type: 'Task',
@@ -156,7 +156,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
           });
       });
 
-      // Fetch AI follow-up task suggestions once, immediately after save (MINCRM-438).
+      // Fetch AI follow-up task suggestions once, immediately after save.
       // Not regenerated on subsequent page loads — this call only happens right here.
       if (
         taskSuggestionsEnabled &&
@@ -200,7 +200,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
       setEditConflict(null);
 
       // Create AI-suggested follow-up tasks the user accepted while summarizing, now
-      // that the parent activity's edits have actually saved (MINCRM-436).
+      // that the parent activity's edits have actually saved.
       variables.values.acceptedSuggestedTasks.forEach((task) => {
         createActivity({
           type: 'Task',
@@ -226,7 +226,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
     ) => {
       const code = error.response?.data?.error?.code;
       if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
-        // Capture base from current timeline data before invalidating (MINCRM-351)
+        // Capture base from current timeline data before invalidating
         const activities: ActivityResponse[] = data?.data ?? [];
         const baseActivity = activities.find((a) => a.id === variables.id);
         setEditConflict({
@@ -287,7 +287,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
     },
   });
 
-  // AI sentiment tracking (MINCRM-472) — per-activity indicator sourced from the same
+  // AI sentiment tracking — per-activity indicator sourced from the same
   // trend endpoints the Contact/Account detail pages use, keyed by activity_id. Only
   // contact- and account-scoped timelines have a trend endpoint; deal-scoped timelines
   // show no per-activity sentiment (activities can't be scored by deal alone).
@@ -324,7 +324,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const hasMore = data !== undefined && activities.length < data.total;
 
   /**
-   * Creates a linked Task activity for one accepted AI-suggested follow-up task (MINCRM-438).
+   * Creates a linked Task activity for one accepted AI-suggested follow-up task.
    * Links to the opportunity (deal) when the suggestion says 'opportunity' and this timeline
    * has a dealId; otherwise links to whichever single parent record this timeline represents.
    * Fired only from the post-save TaskSuggestionPanel, so the parent activity is always
@@ -478,7 +478,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                           outcome: t('activities.outcomeLabel'),
                         }}
                         onResolve={(resolved) => {
-                          // Use version from theirs (the 409 body) — authoritative, no cache race (MINCRM-351)
+                          // Use version from theirs (the 409 body) — authoritative, no cache race
                           updateMutation.mutate({
                             id: activity.id,
                             values: {
@@ -590,7 +590,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 shrink-0">
-                        {/* Draft email — only for activities linked to a contact (MINCRM-437) */}
+                        {/* Draft email — only for activities linked to a contact */}
                         {emailDraftEnabled && activity.contact_id && (
                           <Button
                             type="button"
@@ -614,7 +614,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                           </Button>
                         )}
                         {/* Generate Brief — only for future-dated Call/Meeting activities
-                            linked to a contact (MINCRM-465) */}
+                            linked to a contact */}
                         {meetingBriefEnabled &&
                           activity.contact_id &&
                           BRIEF_ELIGIBLE_TYPES.has(activity.type as ActivityType) &&

@@ -1,5 +1,5 @@
 /**
- * Tests for SsoSettings component. (MINCRM-399)
+ * Tests for SsoSettings component.
  *
  * Covers: loading, error, and unconfigured empty states; save flow;
  * certificate masking; disable with confirmation; all three required async states.

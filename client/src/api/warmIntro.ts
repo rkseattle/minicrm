@@ -1,5 +1,5 @@
 /**
- * Warm introduction path API module. (MINCRM-468)
+ * Warm introduction path API module.
  * Wraps the warm-path lookup endpoint. Requires authentication and the
  * ai_warm_intro_path feature flag.
  */

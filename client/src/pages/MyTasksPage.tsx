@@ -5,7 +5,6 @@
  * Each row links to the associated contact, account, or deal record.
  * Users can mark tasks complete inline and toggle visibility of completed tasks.
  *
- * Implements MINCRM-20.
  */
 
 import { useEffect, useState } from 'react';
@@ -90,10 +89,10 @@ export default function MyTasksPage() {
   const [completeError, setCompleteError] = useState<string | null>(null);
   const { page, limit, setPage, handleLimitChange } = usePagination();
 
-  // bulk:operations capability is seeded for admin and manager roles (MINCRM-562)
+  // bulk:operations capability is seeded for admin and manager roles
   const canBulkOp = user?.role === 'admin' || user?.role === 'manager';
 
-  // Bulk selection state (MINCRM-562)
+  // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [showBulkFailedDetails, setShowBulkFailedDetails] = useState(false);
@@ -125,7 +124,7 @@ export default function MyTasksPage() {
   const overdueTasks = openTasks.filter(isOverdue);
   const visibleTasks = overdueFilter ? overdueTasks : showCompleted ? allTasks : openTasks;
 
-  // Clear selection when page or filters change (MINCRM-562)
+  // Clear selection when page or filters change
   useEffect(() => {
     setSelectedIds(new Set()); // eslint-disable-line react-hooks/set-state-in-effect -- mirrors ContactsPage/DealsPage/ActivitiesPage pattern
   }, [page, overdueFilter, showCompleted]);
@@ -210,7 +209,7 @@ export default function MyTasksPage() {
           </p>
         )}
 
-        {/* Bulk action bar (MINCRM-562) */}
+        {/* Bulk action bar */}
         {canBulkOp && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}

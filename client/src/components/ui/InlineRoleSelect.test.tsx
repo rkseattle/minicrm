@@ -1,7 +1,7 @@
 /**
  * Tests for InlineRoleSelect — inline built-in role <select> for the user table.
  * Covers optimistic update, rollback on failure, service account display,
- * canEdit=false read-only mode, and custom role chips (MINCRM-560).
+ * canEdit=false read-only mode, and custom role chips.
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';

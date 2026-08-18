@@ -1,5 +1,5 @@
 /**
- * NotificationBell component. (MINCRM-469)
+ * NotificationBell component.
  * Minimal in-app notification bell — unread badge, click-to-open dropdown
  * feed, mark-as-read on click, mark-all-as-read action. Self-contained, no
  * feature flag — generic infrastructure any feature can write notifications to.

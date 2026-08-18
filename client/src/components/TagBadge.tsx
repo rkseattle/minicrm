@@ -1,5 +1,5 @@
 /**
- * TagBadge — compact tag label for list view rows (MINCRM-186).
+ * TagBadge — compact tag label for list view rows.
  * Renders a tag name as an inline badge. When onRemove is provided,
  * renders an × button to detach the tag.
  */

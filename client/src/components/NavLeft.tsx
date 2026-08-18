@@ -1,7 +1,6 @@
 /**
  * NavLeft — collapsible left sidebar navigation layout.
  * Fully functional at viewport widths of 1024px and above.
- * (MINCRM-133)
  */
 
 import { NavLink } from 'react-router-dom';
@@ -27,7 +26,7 @@ function sidebarLinkClass({ isActive }: { isActive: boolean }): string {
 }
 
 /**
- * Left sidebar navigation layout component. (MINCRM-133)
+ * Left sidebar navigation layout component.
  */
 export default function NavLeft({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -46,7 +45,7 @@ export default function NavLeft({ children }: { children: React.ReactNode }) {
       // While still loading the link is kept in the list on purpose, so the
       // skeleton branch below can render in its place — filtering it out here
       // would make that skeleton unreachable and collapse the nav on first
-      // paint. (MINCRM-695, MINCRM-696)
+      // paint.
       if (link.featureFlag && !flagsLoading && flags?.[link.featureFlag] !== true) return false;
       return true;
     }

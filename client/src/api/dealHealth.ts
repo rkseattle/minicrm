@@ -1,5 +1,5 @@
 /**
- * Deal health check API module. (MINCRM-442)
+ * Deal health check API module.
  * Wraps the on-demand AI health-check endpoint. Requires authentication and the
  * ai_deal_health_check feature flag to be enabled.
  */

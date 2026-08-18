@@ -65,7 +65,6 @@ export function useFeatureFlags(): {
  * `isLoading` is still returned so callers that want a skeleton — rather than
  * the feature simply appearing when confirmed — can render one. Callers that
  * ignore it now get the safe behavior by default instead of the unsafe one.
- * (MINCRM-695, MINCRM-696)
  */
 export function useFeatureFlag(key: FeatureFlagKey): { enabled: boolean; isLoading: boolean } {
   const { flags, isLoading } = useFeatureFlags();

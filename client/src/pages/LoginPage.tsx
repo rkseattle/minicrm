@@ -2,7 +2,7 @@
  * LoginPage component.
  * Renders the email/password login form.
  * On success, invalidates the auth query and redirects to the dashboard.
- * When the server returns mfaRequired:true, shows the MFA challenge modal. (MINCRM-392)
+ * When the server returns mfaRequired:true, shows the MFA challenge modal.
  */
 
 import { useState } from 'react';
@@ -21,7 +21,7 @@ import type { MfaLoginResponse } from '@/api/mfa.js';
 
 /**
  * Login page with email and password form.
- * Handles both direct login and MFA challenge flow. (MINCRM-392)
+ * Handles both direct login and MFA challenge flow.
  */
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -30,11 +30,11 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
-  // MINCRM-147: ProtectedRoute/AdminRoute pass the blocked location as state
+  // ProtectedRoute/AdminRoute pass the blocked location as state
   // so we can return the user there after a successful login.
   const fromLocation = (location.state as { from?: Location } | null)?.from;
 
-  // MINCRM-365: the Axios 401 interceptor appends ?reason=session_expired and
+  // the Axios 401 interceptor appends ?reason=session_expired and
   // ?next=<encoded-path> when redirecting here after a session expiry.
   const sessionExpired = searchParams.get('reason') === 'session_expired';
   const nextPath = searchParams.get('next');
@@ -42,7 +42,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // SSO status — determines whether to show the SSO login button (MINCRM-399)
+  // SSO status — determines whether to show the SSO login button
   const { data: ssoStatus } = useQuery({
     queryKey: SSO_STATUS_QUERY_KEY,
     queryFn: getSsoStatus,
@@ -50,10 +50,10 @@ export default function LoginPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // SSO error from callback redirect (MINCRM-399)
+  // SSO error from callback redirect
   const ssoError = searchParams.get('sso_error');
 
-  // MFA challenge state — set when login returns mfaRequired:true (MINCRM-392)
+  // MFA challenge state — set when login returns mfaRequired:true
   const [pendingMfaToken, setPendingMfaToken] = useState<string | null>(null);
 
   function completeLogin(mustChangePassword: boolean): void {
@@ -62,11 +62,11 @@ export default function LoginPage() {
       navigate('/change-password', { replace: true });
     } else {
       // Priority order for redirect destination after login:
-      // 1. ?next= param (set by 401 interceptor after session expiry) — MINCRM-365
-      // 2. location.state.from (set by ProtectedRoute on unauthenticated access) — MINCRM-147
+      // 1. ?next= param (set by 401 interceptor after session expiry)
+      // 2. location.state.from (set by ProtectedRoute on unauthenticated access)
       // 3. Dashboard (default)
       // Never redirect back to /change-password — that path is reserved for the forced-change
-      // flow and would create a confusing loop. (MINCRM-147)
+      // flow and would create a confusing loop.
       const decodedNext = nextPath ? decodeURIComponent(nextPath) : null;
       const destination =
         decodedNext && decodedNext !== '/change-password'
@@ -82,12 +82,12 @@ export default function LoginPage() {
     mutationFn: () => login(email, password),
     onSuccess: (data) => {
       if ('mfaRequired' in data && data.mfaRequired && 'mfaToken' in data) {
-        // MFA challenge: server hasn't issued a session cookie yet (MINCRM-392)
+        // MFA challenge: server hasn't issued a session cookie yet
         setPendingMfaToken(data.mfaToken as string);
         return;
       }
       // Org-wide MFA is required but this user hasn't set it up. Session cookie
-      // is issued so the user can reach the profile page to complete setup. (MINCRM-392)
+      // is issued so the user can reach the profile page to complete setup.
       if (data.mfaSetupRequired) {
         void queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
         navigate('/profile?mfa_setup_required=1', { replace: true });
@@ -116,7 +116,7 @@ export default function LoginPage() {
           <p className="text-gray-500 mt-1 text-sm">{t('login.tagline')}</p>
         </div>
 
-        {/* Session-expired notice (MINCRM-365) */}
+        {/* Session-expired notice */}
         {sessionExpired && (
           <div
             role="status"
@@ -127,7 +127,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* SSO error notice — shown when the IdP callback redirects back with an error (MINCRM-399) */}
+        {/* SSO error notice — shown when the IdP callback redirects back with an error */}
         {ssoError && (
           <div
             role="alert"
@@ -142,7 +142,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <h2 className="text-base font-semibold text-gray-900 mb-6">{t('login.title')}</h2>
 
-          {/* SSO login button — shown when SSO is enabled (MINCRM-399) */}
+          {/* SSO login button — shown when SSO is enabled */}
           {ssoStatus?.enabled && (
             <>
               <a
@@ -221,7 +221,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* MFA challenge modal (MINCRM-392) */}
+      {/* MFA challenge modal */}
       <MfaLoginModal
         isOpen={pendingMfaToken !== null}
         mfaToken={pendingMfaToken ?? ''}

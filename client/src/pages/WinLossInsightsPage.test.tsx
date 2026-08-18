@@ -1,5 +1,5 @@
 /**
- * Tests for the WinLossInsightsPage component. (MINCRM-464)
+ * Tests for the WinLossInsightsPage component.
  */
 
 import { screen, waitFor } from '@testing-library/react';

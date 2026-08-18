@@ -1,6 +1,6 @@
 /**
- * Tests for CustomisationSettings — pipeline stages reorder (MINCRM-381) and
- * custom fields section (MINCRM-276).
+ * Tests for CustomisationSettings — pipeline stages reorder and
+ * custom fields section.
  *
  * Pipeline stages covers:
  *  - Stages table renders with move-up / move-down buttons
@@ -29,7 +29,7 @@ const FIELD_ID = '00000000-0000-0000-0000-000000000099';
 
 // ── Pipeline stages section ──────────────────────────────────────────────────
 
-describe('CustomisationSettings — pipeline stages reorder (MINCRM-381)', () => {
+describe('CustomisationSettings — pipeline stages reorder', () => {
   it('renders the pipeline stages table with move-up and move-down buttons', async () => {
     renderWithProviders(<CustomisationSettings />);
 
@@ -137,9 +137,9 @@ describe('CustomisationSettings — pipeline stages reorder (MINCRM-381)', () =>
   });
 });
 
-// ── Stage exit requirements (MINCRM-527) ─────────────────────────────────────
+// ── Stage exit requirements ─────────────────────────────────────
 
-describe('CustomisationSettings — stage exit requirements (MINCRM-527)', () => {
+describe('CustomisationSettings — stage exit requirements', () => {
   const firstStage = PIPELINE_STAGES_FIXTURE[0]; // ps-1, no exit requirements
 
   it('shows exit requirement inputs when edit button is clicked', async () => {
@@ -509,7 +509,7 @@ describe('CustomisationSettings — custom fields section', () => {
     });
   });
 
-  // ── AI field exclusion toggle (MINCRM-461) ─────────────────────────────────
+  // ── AI field exclusion toggle ─────────────────────────────────
 
   it('shows the AI-excluded badge when pii_excluded is true', async () => {
     mockCustomFieldsWithOne(true);

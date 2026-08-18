@@ -1,5 +1,5 @@
 /**
- * SendEmailModal — compose and send an outbound email to a contact. (MINCRM-275)
+ * SendEmailModal — compose and send an outbound email to a contact.
  * Accessible dialog with focus trap and Escape dismissal.
  */
 

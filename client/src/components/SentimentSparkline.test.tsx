@@ -1,5 +1,5 @@
 /**
- * Tests for the SentimentSparkline component. (MINCRM-472)
+ * Tests for the SentimentSparkline component.
  */
 
 import { render, screen } from '@testing-library/react';

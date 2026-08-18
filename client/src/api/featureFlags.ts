@@ -2,7 +2,6 @@
  * Feature flags API module.
  * Wraps the admin feature flag endpoints.
  * All calls require admin authentication.
- * (MINCRM-463, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-491, MINCRM-492)
  */
 
 import apiClient from './axiosInstance.js';
@@ -68,7 +67,7 @@ export async function getMyFeatureFlags(): Promise<{ flags: MyFeatureFlagsRespon
   return response.data;
 }
 
-// ── Beta user endpoints (MINCRM-489) ──────────────────────────────────────────
+// ── Beta user endpoints ──────────────────────────────────────────
 
 /** React Query cache key factory for beta users list; scoped per flag key. */
 export const betaUsersQueryKey = (flagKey: string) =>
@@ -113,7 +112,7 @@ export async function removeBetaUser(flagKey: string, userId: string): Promise<v
   await apiClient.delete(`/admin/feature-flags/${flagKey}/beta-users/${userId}`);
 }
 
-// ── Per-user overrides (MINCRM-492) ──────────────────────────────────────────
+// ── Per-user overrides ──────────────────────────────────────────
 
 /** React Query cache key factory for user overrides list; scoped per flag key. */
 export const userOverridesQueryKey = (flagKey: string) =>
@@ -160,7 +159,7 @@ export async function deleteUserOverride(flagKey: string, userId: string): Promi
   await apiClient.delete(`/admin/feature-flags/${flagKey}/overrides/${userId}`);
 }
 
-// ── Flag group endpoints (MINCRM-491) ─────────────────────────────────────────
+// ── Flag group endpoints ─────────────────────────────────────────
 
 /** React Query cache key for the flag groups list. */
 export const FLAG_GROUPS_QUERY_KEY = ['admin', 'feature-flags', 'groups'] as const;

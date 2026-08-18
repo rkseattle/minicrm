@@ -1,5 +1,5 @@
 /**
- * Tests for WebhookSettings — Outbound webhook subscription management. (MINCRM-279)
+ * Tests for WebhookSettings — Outbound webhook subscription management.
  *
  * Verifies:
  * - Renders empty-state when no subscriptions exist

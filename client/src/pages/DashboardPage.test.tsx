@@ -171,7 +171,7 @@ describe('DashboardPage', () => {
     });
   });
 
-  describe('weighted pipeline value (MINCRM-179)', () => {
+  describe('weighted pipeline value', () => {
     it('renders the weighted pipeline stat card', async () => {
       renderWithProviders(<DashboardPage />);
       await waitFor(() => {
@@ -198,7 +198,7 @@ describe('DashboardPage', () => {
     });
   });
 
-  describe('recent activity feed (MINCRM-185)', () => {
+  describe('recent activity feed', () => {
     it('renders the recent activity feed section', async () => {
       renderWithProviders(<DashboardPage />);
       await waitFor(() => {
@@ -524,7 +524,7 @@ describe('DashboardPage', () => {
     });
   });
 
-  describe('My Performance (MINCRM-474)', () => {
+  describe('My Performance', () => {
     it('renders nothing when there is insufficient coaching data', async () => {
       renderWithProviders(<DashboardPage />);
       await waitFor(() => {

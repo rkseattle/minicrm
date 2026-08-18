@@ -1,5 +1,5 @@
 /**
- * EmailDraftPanel component. (MINCRM-437)
+ * EmailDraftPanel component.
  *
  * Sidebar panel for an AI-generated follow-up email draft. Slides in from the
  * right edge of the viewport. Not persisted: the draft lives only in this

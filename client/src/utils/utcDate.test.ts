@@ -1,5 +1,5 @@
 /**
- * Unit tests for the client's UTC calendar-day helpers. (MINCRM-700)
+ * Unit tests for the client's UTC calendar-day helpers.
  *
  * These seed AiUsageDashboardPage's default custom range and DealsPage's
  * default close date. Both are sent to the server and compared against
@@ -70,7 +70,7 @@ describe('the two helpers together', () => {
   });
 });
 
-// ── Report-filter boundaries (MINCRM-700) ────────────────────────────────────
+// ── Report-filter boundaries ────────────────────────────────────
 //
 // These back useReportFilters, whose values filter deals.close_date. Every case
 // pins an instant where the local and UTC constructions disagree for a viewer

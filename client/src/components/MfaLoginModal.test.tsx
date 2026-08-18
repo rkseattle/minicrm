@@ -1,5 +1,5 @@
 /**
- * Tests for MfaLoginModal. (MINCRM-392)
+ * Tests for MfaLoginModal.
  * Covers: closed state, TOTP mode, recovery code mode switching,
  * invalid code error, success callback, cancel, and Escape key.
  */

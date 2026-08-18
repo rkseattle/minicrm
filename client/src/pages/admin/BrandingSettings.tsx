@@ -1,5 +1,5 @@
 /**
- * BrandingSettings — Admin UI for custom branding configuration. (MINCRM-356)
+ * BrandingSettings — Admin UI for custom branding configuration.
  *
  * Controls: logo URL, favicon URL, brand colour picker, font selector,
  * company name, live preview panel, and reset to defaults.

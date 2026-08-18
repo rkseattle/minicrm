@@ -1,5 +1,5 @@
 /**
- * Tests for the DealForm component. (MINCRM-179, MINCRM-198)
+ * Tests for the DealForm component.
  * Covers: field rendering, initialValues, submit, cancel, isSubmitting,
  * account/owner selectors, terminal stage onCloseRequested callback, and
  * probability field behaviour.
@@ -16,7 +16,7 @@ import { ACCOUNT_1 } from '@/test/msw/handlers.js';
 
 const noop = () => {};
 
-/** Existing deal fixture with a probability override (MINCRM-179) */
+/** Existing deal fixture with a probability override */
 const DEAL_WITH_OVERRIDE: Partial<DealResponse> = {
   id: '00000000-0000-0000-0000-000000000401',
   name: 'Override Deal',
@@ -28,7 +28,7 @@ const DEAL_WITH_OVERRIDE: Partial<DealResponse> = {
   probability_is_overridden: true,
 };
 
-describe('DealForm — probability clear button (MINCRM-179)', () => {
+describe('DealForm — probability clear button', () => {
   it('does not show the clear button when probability field is empty', () => {
     renderWithProviders(<DealForm onSubmit={noop} />);
     expect(screen.queryByTestId('deal-probability-clear')).not.toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('DealForm — probability clear button (MINCRM-179)', () => {
   });
 });
 
-describe('DealForm — probability validation (MINCRM-179)', () => {
+describe('DealForm — probability validation', () => {
   it('shows an error for a decimal probability input', () => {
     const onSubmit = vi.fn();
     renderWithProviders(<DealForm onSubmit={onSubmit} />);
@@ -78,7 +78,7 @@ describe('DealForm — probability validation (MINCRM-179)', () => {
   });
 });
 
-describe('DealForm — field rendering (MINCRM-198)', () => {
+describe('DealForm — field rendering', () => {
   it('renders all core fields', () => {
     renderWithProviders(<DealForm onSubmit={noop} />);
     expect(screen.getByTestId('deal-name-input')).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe('DealForm — field rendering (MINCRM-198)', () => {
   });
 });
 
-describe('DealForm — initialValues (MINCRM-198)', () => {
+describe('DealForm — initialValues', () => {
   it('pre-populates fields from initialValues', () => {
     renderWithProviders(
       <DealForm
@@ -131,7 +131,7 @@ describe('DealForm — initialValues (MINCRM-198)', () => {
   });
 });
 
-describe('DealForm — onSubmit (MINCRM-198)', () => {
+describe('DealForm — onSubmit', () => {
   it('calls onSubmit with correct values', () => {
     const handleSubmit = vi.fn();
     renderWithProviders(<DealForm onSubmit={handleSubmit} />);
@@ -150,7 +150,7 @@ describe('DealForm — onSubmit (MINCRM-198)', () => {
   });
 });
 
-describe('DealForm — cancel button (MINCRM-198)', () => {
+describe('DealForm — cancel button', () => {
   it('calls onCancel when the Cancel button is clicked', async () => {
     const handleCancel = vi.fn();
     const user = userEvent.setup();
@@ -166,7 +166,7 @@ describe('DealForm — cancel button (MINCRM-198)', () => {
   });
 });
 
-describe('DealForm — isSubmitting (MINCRM-198)', () => {
+describe('DealForm — isSubmitting', () => {
   it('disables inputs and submit button when isSubmitting is true', () => {
     renderWithProviders(<DealForm onSubmit={noop} isSubmitting />);
     expect(screen.getByTestId('deal-name-input')).toBeDisabled();
@@ -174,7 +174,7 @@ describe('DealForm — isSubmitting (MINCRM-198)', () => {
   });
 });
 
-describe('DealForm — error display (MINCRM-198)', () => {
+describe('DealForm — error display', () => {
   it('renders error message in an alert when error prop is set', () => {
     renderWithProviders(<DealForm onSubmit={noop} error="Save failed" />);
     expect(screen.getByRole('alert')).toHaveTextContent('Save failed');
@@ -186,7 +186,7 @@ describe('DealForm — error display (MINCRM-198)', () => {
   });
 });
 
-describe('DealForm — terminal stage / onCloseRequested (MINCRM-198)', () => {
+describe('DealForm — terminal stage / onCloseRequested', () => {
   it('calls onCloseRequested instead of updating stage when a terminal stage is selected', async () => {
     const handleCloseRequested = vi.fn();
     renderWithProviders(<DealForm onSubmit={noop} onCloseRequested={handleCloseRequested} />);
@@ -224,7 +224,7 @@ describe('DealForm — terminal stage / onCloseRequested (MINCRM-198)', () => {
   });
 });
 
-describe('DealForm — probability hint text (MINCRM-179)', () => {
+describe('DealForm — probability hint text', () => {
   it('shows the overridden hint when probability has a value', async () => {
     renderWithProviders(<DealForm onSubmit={noop} />);
 
@@ -249,7 +249,7 @@ describe('DealForm — probability hint text (MINCRM-179)', () => {
   });
 });
 
-describe('DealForm — currency selector (MINCRM-189)', () => {
+describe('DealForm — currency selector', () => {
   it('renders the currency selector', async () => {
     renderWithProviders(<DealForm onSubmit={noop} />);
     await waitFor(() => {

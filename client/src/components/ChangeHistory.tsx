@@ -1,7 +1,7 @@
 /**
  * ChangeHistory component.
  * Displays the audit log for a single record (contact, account, or deal).
- * Shows the 20 most recent entries with a "Show all" toggle. (MINCRM-171)
+ * Shows the 20 most recent entries with a "Show all" toggle.
  */
 
 import { useState } from 'react';
@@ -123,7 +123,6 @@ const PREVIEW_COUNT = 20;
 /**
  * Displays the change history for a single contact, account, or deal.
  * Shows the 20 most recent entries; "Show all" fetches the full history.
- * (MINCRM-171)
  */
 export default function ChangeHistory({ recordType, recordId }: ChangeHistoryProps) {
   const { t, i18n } = useTranslation();

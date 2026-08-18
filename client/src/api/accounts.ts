@@ -20,13 +20,13 @@ interface AccountSingleResponse {
 
 /** Parameters for filtering and paginating the accounts list */
 export interface ListAccountsParams {
-  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  /** 'me' = current user only; 'my_team' = all team co-members */
   owner?: 'me' | 'my_team';
   /** Case-insensitive substring match on account name */
   search?: string;
   /** Case-insensitive match on industry field */
   industry?: string;
-  /** Filter by account type (MINCRM-183) */
+  /** Filter by account type */
   account_type?: AccountType;
   /** Column to sort by */
   sort?: 'created_at' | 'name';
@@ -36,9 +36,9 @@ export interface ListAccountsParams {
   page?: number;
   /** Records per page */
   limit?: number;
-  /** Tag IDs to filter by (any-match). MINCRM-186. */
+  /** Tag IDs to filter by (any-match). */
   tags?: string[];
-  /** Relationship health states to filter by (any-match). MINCRM-467. */
+  /** Relationship health states to filter by (any-match). */
   health_status?: AccountHealthListFilterState[];
 }
 
@@ -128,7 +128,7 @@ export interface ExportAccountsParams {
 }
 
 /**
- * Returns all direct child (subsidiary) accounts of the given account. (MINCRM-184)
+ * Returns all direct child (subsidiary) accounts of the given account.
  *
  * @param id - Parent account UUID
  */
@@ -146,7 +146,7 @@ export interface SearchAccountsParams {
 }
 
 /**
- * Type-ahead search for accounts by name. Returns up to 10 matches. (MINCRM-184)
+ * Type-ahead search for accounts by name. Returns up to 10 matches.
  *
  * @param params - Search parameters
  */
@@ -164,7 +164,6 @@ export async function searchAccountsByName(
 /**
  * Downloads all matching accounts as a CSV file.
  * Triggers a browser file-save dialog.
- * (MINCRM-165)
  *
  * @param params - Optional filter parameters
  */
@@ -186,7 +185,7 @@ export async function exportAccountsCsv(params: ExportAccountsParams = {}): Prom
 
 /**
  * Downloads all matching accounts as a paginated PDF table.
- * Triggers a browser file-save dialog. Same filters as exportAccountsCsv() (MINCRM-601).
+ * Triggers a browser file-save dialog. Same filters as exportAccountsCsv().
  *
  * @param params - Optional filter parameters
  */
@@ -208,7 +207,7 @@ export async function exportAccountsPdf(params: ExportAccountsParams = {}): Prom
 
 /**
  * Downloads a single account as a one-record summary PDF.
- * Triggers a browser file-save dialog. (MINCRM-650)
+ * Triggers a browser file-save dialog.
  *
  * @param id - Account UUID
  */

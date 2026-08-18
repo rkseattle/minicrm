@@ -1,7 +1,6 @@
 /**
  * Leads API module.
  * Wraps the lead CRUD and lifecycle endpoints.
- * (MINCRM-173, MINCRM-174, MINCRM-175)
  */
 
 import apiClient from './axiosInstance.js';
@@ -29,7 +28,7 @@ export interface DuplicateLeadInfo {
 
 /** Parameters for filtering and paginating the leads list */
 export interface ListLeadsParams {
-  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  /** 'me' = current user only; 'my_team' = all team co-members */
   owner?: 'me' | 'my_team';
   status?: string;
   lead_source?: string;
@@ -122,7 +121,7 @@ export async function deleteLead(id: string): Promise<void> {
 }
 
 /**
- * Returns the status change history for a lead. (MINCRM-174)
+ * Returns the status change history for a lead.
  *
  * @param id - Lead UUID
  */
@@ -134,7 +133,7 @@ export async function getLeadStatusHistory(id: string): Promise<{ history: LeadS
 }
 
 /**
- * Converts a lead into a contact, account, and deal. (MINCRM-175)
+ * Converts a lead into a contact, account, and deal.
  *
  * @param id - Lead UUID to convert
  * @param data - Prefilled conversion form data
@@ -151,7 +150,7 @@ export async function convertLead(
 }
 
 /**
- * Searches accounts by name substring for the conversion form. (MINCRM-175)
+ * Searches accounts by name substring for the conversion form.
  *
  * @param q - Substring to search
  */
@@ -167,7 +166,7 @@ export async function searchAccountsForConversion(
 
 /**
  * Downloads a single lead as a one-record summary PDF.
- * Triggers a browser file-save dialog. (MINCRM-650)
+ * Triggers a browser file-save dialog.
  *
  * @param id - Lead UUID
  */
@@ -183,7 +182,7 @@ export async function exportLeadPdf(id: string): Promise<void> {
 
 /** Parameters for the leads list CSV/PDF export */
 export interface ExportLeadsParams {
-  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  /** 'me' = current user only; 'my_team' = all team co-members */
   owner?: 'me' | 'my_team';
   status?: string;
   lead_source?: string;
@@ -206,7 +205,7 @@ function buildLeadExportQueryParams(params: ExportLeadsParams): Record<string, s
 
 /**
  * Downloads all matching leads as a CSV file.
- * Triggers a browser file-save dialog. (MINCRM-651)
+ * Triggers a browser file-save dialog.
  *
  * @param params - Optional filter parameters, mirroring the on-screen filters
  */
@@ -225,7 +224,7 @@ export async function exportLeadsCsv(params: ExportLeadsParams = {}): Promise<vo
 
 /**
  * Downloads all matching leads as a paginated PDF table.
- * Triggers a browser file-save dialog. Same filters as exportLeadsCsv(). (MINCRM-651)
+ * Triggers a browser file-save dialog. Same filters as exportLeadsCsv().
  *
  * @param params - Optional filter parameters, mirroring the on-screen filters
  */

@@ -1,7 +1,7 @@
 /**
  * ConvertLeadModal component.
  * Three-section form for converting a qualified lead into a contact, account, and deal.
- * Prefills from lead data; all fields editable. (MINCRM-175)
+ * Prefills from lead data; all fields editable.
  */
 
 import { useState, useEffect, useRef } from 'react';

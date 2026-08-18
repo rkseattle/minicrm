@@ -1,5 +1,5 @@
 /**
- * Tests for SetPasswordPage (MINCRM-262).
+ * Tests for SetPasswordPage.
  */
 
 import { screen, waitFor } from '@testing-library/react';

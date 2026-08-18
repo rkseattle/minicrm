@@ -1,7 +1,7 @@
 /**
  * Context proposal chip — shown inline within an AI message bubble when the AI
  * has proposed saving a context entry. The user can accept (saves via API) or
- * dismiss (session-scoped, never stored). (MINCRM-429, MINCRM-430)
+ * dismiss (session-scoped, never stored).
  */
 
 import { useState } from 'react';

@@ -1,9 +1,9 @@
 /**
  * Tests for the AdminSettingsPage component.
  * Covers: loading state, load error state, default language display, save action,
- * validation rejection (400), success/error feedback, demo data section (MINCRM-103),
- * MFA enforcement toggle (MINCRM-392), 10-tab structure (MINCRM-563), and AI tab
- * visibility gated on the ai_features feature flag (MINCRM-563).
+ * validation rejection (400), success/error feedback, demo data section,
+ * MFA enforcement toggle, 10-tab structure, and AI tab
+ * visibility gated on the ai_features feature flag.
  */
 
 import { screen, waitFor, act } from '@testing-library/react';
@@ -227,7 +227,7 @@ describe('AdminSettingsPage', () => {
     });
   });
 
-  // ── Demo data section (MINCRM-103) ─────────────────────────────────────────
+  // ── Demo data section ─────────────────────────────────────────
 
   describe('demo data section', () => {
     it('renders the demo section', async () => {
@@ -539,7 +539,7 @@ describe('AdminSettingsPage', () => {
     });
   });
 
-  // ── Default currency section (MINCRM-189) ──────────────────────────────────
+  // ── Default currency section ──────────────────────────────────
 
   describe('default currency section', () => {
     it('renders the currency section', async () => {
@@ -596,7 +596,7 @@ describe('AdminSettingsPage', () => {
     });
   });
 
-  // ── Exchange Rates section (MINCRM-251) ───────────────────────────────────
+  // ── Exchange Rates section ───────────────────────────────────
 
   describe('exchange rates section', () => {
     it('renders the exchange rates section for admin users', async () => {
@@ -819,7 +819,7 @@ describe('AdminSettingsPage', () => {
     });
   });
 
-  // ── AI tab visibility — gated on ai_features flag (MINCRM-563) ────────────
+  // ── AI tab visibility — gated on ai_features flag ────────────
 
   describe('AI tab visibility', () => {
     afterEach(() => {
@@ -833,20 +833,20 @@ describe('AdminSettingsPage', () => {
       expect(screen.getByTestId('settings-tab-ai')).not.toBeDisabled();
     });
 
-    it('shows the AI tab enabled (not disabled) when ai_features flag is off — panel shows disabled banner instead (MINCRM-566)', async () => {
+    it('shows the AI tab enabled (not disabled) when ai_features flag is off — panel shows disabled banner instead', async () => {
       flagOverrides['ai_features'] = false;
       renderWithProviders(<AdminSettingsPage />, { initialEntries: ['/?tab=ai'] });
       expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
       expect(screen.getByTestId('settings-tab-ai')).not.toBeDisabled();
       // The banner now renders inside AiSettings itself once its own
-      // getAiConfig query resolves (MINCRM-459/461/462) rather than in a
+      // getAiConfig query resolves rather than in a
       // wrapper rendered before any data fetch — needs a waitFor.
       await waitFor(() => {
         expect(screen.getByTestId('ai-panel-disabled-banner')).toBeInTheDocument();
       });
     });
 
-    it('navigates to the AI tab when ai_features is disabled and shows disabled banner (MINCRM-566)', async () => {
+    it('navigates to the AI tab when ai_features is disabled and shows disabled banner', async () => {
       flagOverrides['ai_features'] = false;
       renderWithProviders(<AdminSettingsPage />, { initialEntries: ['/?tab=ai'] });
       expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
@@ -874,8 +874,8 @@ describe('AdminSettingsPage', () => {
   });
 
   // MFA enforcement tests live in MfaSettings.test.tsx and SecuritySettings.test.tsx
-  // since the MFA section moved to the Security & Identity tab (MINCRM-563).
-  describe('MFA enforcement — security tab (MINCRM-392)', () => {
+  // since the MFA section moved to the Security & Identity tab.
+  describe('MFA enforcement — security tab', () => {
     it('renders the MFA required section on the security tab', async () => {
       renderOnTab('security');
       await waitFor(() => {

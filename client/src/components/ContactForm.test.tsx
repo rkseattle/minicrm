@@ -1,5 +1,5 @@
 /**
- * Tests for the ContactForm component. (MINCRM-198)
+ * Tests for the ContactForm component.
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';
@@ -276,7 +276,7 @@ describe('ContactForm', () => {
     });
   });
 
-  // MINCRM-439: AI contact auto-enrich from pasted text
+  // AI contact auto-enrich from pasted text
   describe('AI contact enrichment', () => {
     it('extracts and applies fields as a diff overlay, prefilling only extracted fields', async () => {
       server.use(
@@ -300,7 +300,7 @@ describe('ContactForm', () => {
       const user = userEvent.setup();
       renderWithProviders(<ContactForm onSubmit={noop} />);
 
-      // Flag-gated: appears once the flag query confirms it, so await it. (MINCRM-695, MINCRM-696)
+      // Flag-gated: appears once the flag query confirms it, so await it.
       await user.click(await screen.findByTestId('contact-enrich-from-text-button'));
       await user.type(screen.getByTestId('contact-enrichment-input'), 'Jane Doe, VP Sales');
       await user.click(screen.getByTestId('contact-enrichment-submit'));

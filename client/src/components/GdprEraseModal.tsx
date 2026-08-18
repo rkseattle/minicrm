@@ -2,7 +2,6 @@
  * GdprEraseModal component.
  * Confirmation dialog for GDPR Art. 17 personal data erasure.
  * Requires the admin to type "ERASE" and provides an optional reference note.
- * (MINCRM-364)
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -30,7 +29,7 @@ const CONTACT_PII_FIELDS = [
   'phone',
   'title',
   'department',
-  // All address rows deleted from contact_addresses table (MINCRM-500)
+  // All address rows deleted from contact_addresses table
   'addresses (all)',
   'linkedin_url',
   'twitter_x_url',

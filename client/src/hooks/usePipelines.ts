@@ -1,5 +1,5 @@
 /**
- * Hook that returns the live pipelines list fetched from the API (MINCRM-397).
+ * Hook that returns the live pipelines list fetched from the API.
  *
  * Pipelines are cached for 5 minutes — they change rarely (admin-only writes).
  * Returns a loading/error state and the resolved pipelines array.

@@ -9,7 +9,6 @@
  * where window.matchMedia is unavailable. A useEffect corrects the value after
  * mount and keeps it in sync on viewport changes.
  *
- * MINCRM-238
  */
 
 import { createContext, useContext, useState, useEffect } from 'react';
@@ -44,7 +43,7 @@ export function BreakpointProvider({ children }: { children: React.ReactNode }) 
 
     // Correct the initial value after mount via a named helper so the lint
     // rule (no direct setState in effect body) is satisfied. Matches the
-    // pattern used in useIsMobile.ts (MINCRM-238).
+    // pattern used in useIsMobile.ts.
     sync(mq.matches);
 
     mq.addEventListener('change', handleChange);

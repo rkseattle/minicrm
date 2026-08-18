@@ -1,5 +1,5 @@
 /**
- * Data hygiene assistant API module. (MINCRM-476)
+ * Data hygiene assistant API module.
  * Wraps the hygiene queue read/action endpoints and admin config endpoints.
  */
 

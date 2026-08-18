@@ -1,5 +1,5 @@
 /**
- * Tests for the GdprPrivacySection component. (MINCRM-364)
+ * Tests for the GdprPrivacySection component.
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';

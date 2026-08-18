@@ -18,7 +18,7 @@ export default function ProtectedRoute() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
-  // Slide the idle timeout on user activity (MINCRM-365).
+  // Slide the idle timeout on user activity.
   useSessionRefresh(isAuthenticated);
 
   if (isLoading) {
@@ -26,7 +26,7 @@ export default function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
-    // MINCRM-147: preserve the intended destination so LoginPage can redirect
+    // preserve the intended destination so LoginPage can redirect
     // back after successful authentication.
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

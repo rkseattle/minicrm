@@ -1,6 +1,6 @@
 /**
  * Tests for IntegrationSettings — File Storage + Webhooks panels.
- * SSO and SCIM moved to SecuritySettings (MINCRM-563).
+ * SSO and SCIM moved to SecuritySettings.
  *
  * Verifies:
  * - Storage panel and webhook panel each render as separate sections

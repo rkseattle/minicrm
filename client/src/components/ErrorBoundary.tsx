@@ -1,5 +1,5 @@
 /**
- * ErrorBoundary component (MINCRM-112).
+ * ErrorBoundary component.
  * Catches unhandled render errors and displays a fallback UI instead of a blank screen.
  * Wrap the application router or layout with this component to prevent full app crashes.
  */

@@ -62,7 +62,7 @@ export default function ContactsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  // bulk:operations capability is seeded for admin and manager roles (MINCRM-562)
+  // bulk:operations capability is seeded for admin and manager roles
   const canBulkOp = user?.role === 'admin' || user?.role === 'manager';
   const { canWrite } = usePermissions();
   const [showForm, setShowForm] = useState(false);
@@ -77,7 +77,7 @@ export default function ContactsPage() {
    * Set by "Create anyway" so the form re-submits with its current (live) values.
    */
   const forceNextSubmit = useRef(false);
-  // AI duplicate detection explanation (MINCRM-440) — the submitted (unsaved) side of the pair.
+  // AI duplicate detection explanation — the submitted (unsaved) side of the pair.
   const [duplicateSubmittedValues, setDuplicateSubmittedValues] =
     useState<ContactFormValues | null>(null);
   const [duplicateExplanation, setDuplicateExplanation] = useState<string | null>(null);
@@ -95,7 +95,7 @@ export default function ContactsPage() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   /**
-   * Updates the ?owner query param and resets to page 1. (MINCRM-55)
+   * Updates the ?owner query param and resets to page 1.
    *
    * @param value - New owner filter value
    */
@@ -275,7 +275,7 @@ export default function ContactsPage() {
     ownerFilter !== 'all' ||
     selectedTagIds.length > 0;
 
-  // ── Bulk selection state (MINCRM-188, MINCRM-562) ─────────────────────────
+  // ── Bulk selection state ─────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -552,7 +552,7 @@ export default function ContactsPage() {
           </div>
         )}
 
-        {/* Bulk success message (MINCRM-562) */}
+        {/* Bulk success message */}
         {bulkSuccessMessage && (
           <p
             role="status"
@@ -563,14 +563,14 @@ export default function ContactsPage() {
           </p>
         )}
 
-        {/* Bulk error message (MINCRM-188) */}
+        {/* Bulk error message */}
         {bulkError && (
           <p role="alert" className="mb-2 text-sm text-red-600" data-testid="bulk-error-message">
             {bulkError}
           </p>
         )}
 
-        {/* Bulk action bar (MINCRM-188, MINCRM-562) */}
+        {/* Bulk action bar */}
         {canBulkOp && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}
@@ -623,7 +623,7 @@ export default function ContactsPage() {
           onCancel={() => setShowBulkDelete(false)}
         />
 
-        {/* Bulk failed details modal (MINCRM-562) */}
+        {/* Bulk failed details modal */}
         <BulkFailedDetailsModal
           isOpen={showBulkFailedDetails}
           failures={bulkPartialFailures}
@@ -664,7 +664,7 @@ export default function ContactsPage() {
                   onChange={setOwnerFilter}
                   testIdPrefix="contacts-owner-filter"
                 />
-                {/* Tag filter (MINCRM-186) */}
+                {/* Tag filter */}
                 {tagsData && tagsData.tags.length > 0 && (
                   <select
                     aria-label={t('tags.sectionTitle')}
@@ -765,7 +765,7 @@ export default function ContactsPage() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10 bg-gray-50">
                   <tr className="border-b border-gray-200">
-                    {/* Bulk select-all checkbox — admins only (MINCRM-188, MINCRM-562) */}
+                    {/* Bulk select-all checkbox — admins only */}
                     {canBulkOp && (
                       <th className="w-10 ps-4 py-3">
                         <input
@@ -856,7 +856,7 @@ export default function ContactsPage() {
                       data-selected={selectedIds.has(contact.id) || undefined}
                       className={`group hover:bg-gray-50 transition-colors${selectedIds.has(contact.id) ? ' bg-primary-50' : ''}`}
                     >
-                      {/* Row checkbox — admins only (MINCRM-188, MINCRM-562) */}
+                      {/* Row checkbox — admins only */}
                       {canBulkOp && (
                         <td className="w-10 ps-4 py-3">
                           <input
@@ -920,7 +920,7 @@ export default function ContactsPage() {
             ) : (
               /* Mobile card view */
               <>
-                {/* Select-all bar — admins only (MINCRM-562) */}
+                {/* Select-all bar — admins only */}
                 {canBulkOp && (
                   <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
                     <input
@@ -944,7 +944,7 @@ export default function ContactsPage() {
                       className={`group px-4 py-3 flex items-start gap-3${selectedIds.has(contact.id) ? ' bg-primary-50' : ''}`}
                       data-testid={`contact-card-${contact.id}`}
                     >
-                      {/* Row checkbox — admins only (MINCRM-562) */}
+                      {/* Row checkbox — admins only */}
                       {canBulkOp && (
                         <input
                           type="checkbox"

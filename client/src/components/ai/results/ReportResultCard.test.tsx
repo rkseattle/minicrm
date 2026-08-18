@@ -1,5 +1,5 @@
 /**
- * Tests for ReportResultCard. (MINCRM-424)
+ * Tests for ReportResultCard.
  *
  * Covers:
  *  - Renders each of the four report types (win_loss, activity_volume,

@@ -29,7 +29,7 @@ describe('WinLossReportPage', () => {
     });
   });
 
-  describe('view mode toggle (MINCRM-264)', () => {
+  describe('view mode toggle', () => {
     it('admin sees Team View heading by default', async () => {
       renderWithProviders(<WinLossReportPage />);
       await waitFor(() => {
@@ -69,7 +69,7 @@ describe('WinLossReportPage', () => {
     });
   });
 
-  describe('per-rep breakdown table (MINCRM-264)', () => {
+  describe('per-rep breakdown table', () => {
     const repRowsFixture = [
       {
         ownerId: 'uuid-rep-1',
@@ -342,7 +342,7 @@ describe('WinLossReportPage', () => {
     });
   });
 
-  describe('multi-currency support (MINCRM-253)', () => {
+  describe('multi-currency support', () => {
     it('shows converted totals summary when hasRates is true', async () => {
       server.use(
         http.get('/api/v1/reports/win-loss', () =>

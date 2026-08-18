@@ -1,6 +1,5 @@
 /**
  * Tests for the LeadsPage component.
- * (MINCRM-173, MINCRM-174)
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -192,7 +191,7 @@ describe('LeadsPage', () => {
   });
 });
 
-// ── CSV/PDF export (MINCRM-651, MINCRM-652) ───────────────────────────────────
+// ── CSV/PDF export ───────────────────────────────────
 
 describe('CSV export buttons', () => {
   beforeEach(() => {
@@ -257,7 +256,7 @@ describe('CSV export buttons', () => {
   });
 });
 
-// ── Filter interactions (MINCRM-295) ──────────────────────────────────────────
+// ── Filter interactions ──────────────────────────────────────────
 
 describe('filter interactions', () => {
   it('sends ?owner=me when "Mine" filter is clicked', async () => {
@@ -382,7 +381,7 @@ describe('filter interactions', () => {
   });
 });
 
-// ── Delete action (MINCRM-295) ────────────────────────────────────────────────
+// ── Delete action ────────────────────────────────────────────────
 
 describe('delete lead action', () => {
   it('calls DELETE after window.confirm and removes the row', async () => {
@@ -430,7 +429,7 @@ describe('delete lead action', () => {
   });
 });
 
-// ── Inline status update (MINCRM-295) ────────────────────────────────────────
+// ── Inline status update ────────────────────────────────────────
 
 describe('inline status update', () => {
   it('calls PATCH with the new status when a new value is selected', async () => {
@@ -457,7 +456,7 @@ describe('inline status update', () => {
     });
   });
 
-  // MINCRM-388: badge must display the new status after the mutation succeeds
+  // badge must display the new status after the mutation succeeds
   it('updates the status badge text after inline status change', async () => {
     const updatedLead = { ...LEAD_1, status: 'Contacted' as const };
     // Override PATCH handler; GET still returns LEAD_1 (status: New) on initial load.
@@ -465,7 +464,7 @@ describe('inline status update', () => {
       http.patch(`/api/v1/leads/${LEAD_1.id}`, async ({ request }) => {
         const body = (await request.json()) as { status?: string };
         // Once the PATCH fires, switch the GET to return the updated lead so the
-        // post-invalidation refetch reflects the new status (MINCRM-388).
+        // post-invalidation refetch reflects the new status.
         server.use(
           http.get('/api/v1/leads', () =>
             HttpResponse.json({ data: [updatedLead], total: 1, page: 1, limit: 50 }),
@@ -485,14 +484,14 @@ describe('inline status update', () => {
     await user.click(screen.getByTestId(`status-badge-${LEAD_1.id}`));
     await user.selectOptions(screen.getByTestId(`status-select-${LEAD_1.id}`), 'Contacted');
 
-    // Badge should now show the new status (MINCRM-388)
+    // Badge should now show the new status
     await waitFor(() => {
       expect(screen.getByTestId(`status-badge-${LEAD_1.id}`)).toHaveTextContent('Contacted');
     });
   });
 });
 
-// ── Bulk selection (MINCRM-562) ───────────────────────────────────────────────
+// ── Bulk selection ───────────────────────────────────────────────
 
 describe('bulk selection', () => {
   it('does not show the bulk action bar before any rows are selected', async () => {

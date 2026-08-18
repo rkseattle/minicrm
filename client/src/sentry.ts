@@ -1,5 +1,5 @@
 /**
- * Sentry error tracking integration for the client (MINCRM-285).
+ * Sentry error tracking integration for the client.
  * Only initializes when VITE_SENTRY_DSN is set and the build is not a test run.
  * All exports are safe to call unconditionally — they no-op when Sentry is not active.
  */
@@ -19,7 +19,7 @@ async function sha256Hex(value: string): Promise<string> {
 }
 
 /**
- * Redacts PII from a Sentry event before transmission (MINCRM-394).
+ * Redacts PII from a Sentry event before transmission.
  * - Removes POST body (request.data) to prevent credential/payload leakage
  * - Hashes user.email, user.username, user.name (SHA-256) so errors can be
  *   correlated to a specific user without exposing the raw value

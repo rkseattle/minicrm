@@ -2,7 +2,7 @@
  * ConfirmDeleteModal component.
  * Accessible confirmation dialog for destructive delete operations.
  * Implements focus trap, ARIA attributes, and Escape key dismissal.
- * Replaces window.confirm() on detail pages (MINCRM-107).
+ * Replaces window.confirm() on detail pages.
  */
 
 import { useEffect, useRef } from 'react';

@@ -1,5 +1,5 @@
 /**
- * Contact enrichment API module. (MINCRM-439)
+ * Contact enrichment API module.
  * Wraps the on-demand AI contact-field-extraction endpoint. Requires authentication and
  * the ai_contact_enrichment feature flag to be enabled.
  */

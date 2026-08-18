@@ -2,7 +2,7 @@
  * Tests for the CsvImporter component.
  * Covers: file validation, parse step, column mapping, preview, run (now async with job polling),
  * progress display, summary, and error download.
- * MINCRM-158, MINCRM-159, MINCRM-160, MINCRM-255
+ *
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';

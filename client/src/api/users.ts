@@ -132,7 +132,7 @@ export async function reactivateUser(id: string): Promise<UserSingleResponse> {
 
 /**
  * Sets the active/inactive status of a user via a single endpoint. Admin only.
- * Replaces the separate deactivate/reactivate endpoints for the inline status cell (MINCRM-561).
+ * Replaces the separate deactivate/reactivate endpoints for the inline status cell.
  *
  * @param id - User UUID
  * @param active - true to activate, false to deactivate
@@ -173,7 +173,7 @@ export async function adminSetPassword(id: string, password: string): Promise<Us
 
 /**
  * Resets a user's onboarding checklist so they see it again on next login.
- * Admin only. (MINCRM-410)
+ * Admin only.
  *
  * @param id - Target user UUID
  */
@@ -182,7 +182,7 @@ export async function resetUserOnboarding(id: string): Promise<{ success: boolea
   return response.data;
 }
 
-// ── Notification preferences (MINCRM-163) ────────────────────────────────────
+// ── Notification preferences ────────────────────────────────────
 
 /** Shape of the notification preference flags */
 export interface NotificationPrefs {

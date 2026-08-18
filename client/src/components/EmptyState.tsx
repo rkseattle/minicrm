@@ -1,5 +1,5 @@
 /**
- * Shared empty-state component used across all list and detail pages. (MINCRM-380)
+ * Shared empty-state component used across all list and detail pages.
  *
  * Renders centred in its container: icon → title → description → action button(s).
  * The icon is muted and typography is subdued so it reads as informational, not an error.

@@ -1,5 +1,5 @@
 /**
- * Notes API module. (MINCRM-352)
+ * Notes API module.
  * Wraps the notes CRUD endpoints. All endpoints require authentication.
  */
 

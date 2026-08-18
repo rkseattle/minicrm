@@ -1,5 +1,5 @@
 /**
- * Tests for BulkReassignModal (MINCRM-188).
+ * Tests for BulkReassignModal.
  */
 
 import { screen, fireEvent } from '@testing-library/react';

@@ -1,6 +1,5 @@
 /**
  * Tests for FieldMergeModal — three-way merge UI for optimistic locking conflict resolution.
- * (MINCRM-351)
  */
 
 import { screen, fireEvent, within } from '@testing-library/react';

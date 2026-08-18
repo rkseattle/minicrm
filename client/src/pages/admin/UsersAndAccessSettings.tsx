@@ -1,7 +1,7 @@
 /**
  * UsersAndAccessSettings — Teams, roles, and visibility policy management.
  * Consolidates TeamsSettings, RolesSettings, and VisibilitySettings into a
- * single Users & Access tab (MINCRM-563).
+ * single Users & Access tab.
  */
 
 import TeamsSettings from '@/pages/admin/TeamsSettings.js';

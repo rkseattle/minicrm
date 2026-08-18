@@ -1,6 +1,5 @@
 /**
  * Shared navigation link definitions and constants used by all three nav layout components.
- * (MINCRM-133)
  */
 
 import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';

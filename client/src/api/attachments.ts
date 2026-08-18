@@ -1,5 +1,5 @@
 /**
- * Attachments API module. (MINCRM-167)
+ * Attachments API module.
  * Wraps the attachment endpoints for contacts, accounts, and deals.
  */
 
@@ -111,7 +111,7 @@ export async function deleteAttachment(id: string): Promise<void> {
   await apiClient.delete(`/attachments/${id}`);
 }
 
-// ── Storage settings (MINCRM-169) ─────────────────────────────────────────────
+// ── Storage settings ─────────────────────────────────────────────
 
 /** Response shape for storage config endpoints. */
 export interface StorageConfigResponse {

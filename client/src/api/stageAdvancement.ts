@@ -1,5 +1,5 @@
 /**
- * Stage advancement suggestion API module. (MINCRM-443)
+ * Stage advancement suggestion API module.
  * Wraps the passive AI stage-advancement-check endpoint. Requires authentication
  * and the ai_stage_advancement feature flag to be enabled.
  */

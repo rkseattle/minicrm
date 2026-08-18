@@ -1,5 +1,5 @@
 /**
- * NavHamburger — icon-triggered popover navigation layout. (MINCRM-133, MINCRM-265)
+ * NavHamburger — icon-triggered popover navigation layout.
  * A persistent top bar shows only the brand + hamburger icon.
  * Clicking the icon opens a fixed-position popover anchored below the hamburger
  * button in the top-right corner — not a left-edge drawer.
@@ -31,7 +31,7 @@ function popoverLinkClass({ isActive }: { isActive: boolean }): string {
 const POPOVER_GAP = 4;
 
 /**
- * Hamburger popover navigation layout component. (MINCRM-133)
+ * Hamburger popover navigation layout component.
  */
 export default function NavHamburger() {
   const { t } = useTranslation();
@@ -109,7 +109,7 @@ export default function NavHamburger() {
       // While still loading the link is kept in the list on purpose, so the
       // skeleton branch below can render in its place — filtering it out here
       // would make that skeleton unreachable and collapse the nav on first
-      // paint. (MINCRM-695, MINCRM-696)
+      // paint.
       if (link.featureFlag && !flagsLoading && flags?.[link.featureFlag] !== true) return false;
       return true;
     }
@@ -130,7 +130,7 @@ export default function NavHamburger() {
         />
       </nav>
 
-      {/* Popover anchored to the hamburger button — MINCRM-265 */}
+      {/* Popover anchored to the hamburger button */}
       {menuOpen && (
         <div
           id="hamburger-nav-drawer"

@@ -2,8 +2,7 @@
  * Bulk operations API module.
  * Wraps the bulk endpoints for contacts, accounts, deals, activities, and users.
  * Legacy endpoints (contacts/accounts/deals) return { affected }.
- * New MINCRM-562 endpoints return { succeeded, failed } for partial-success reporting.
- * (MINCRM-188, MINCRM-562)
+ * The newer endpoints return { succeeded, failed } for partial-success reporting.
  */
 
 import apiClient from './axiosInstance.js';
@@ -13,19 +12,19 @@ export interface BulkResult {
   affected: number;
 }
 
-/** Per-record failure detail returned by MINCRM-562 bulk endpoints */
+/** Per-record failure detail returned by the bulk endpoints */
 export interface BulkFailure {
   id: string;
   reason: string;
 }
 
-/** Result returned by MINCRM-562 bulk endpoints — partial success is reported in the body */
+/** Result returned by the bulk endpoints — partial success is reported in the body */
 export interface BulkOperationResult {
   succeeded: string[];
   failed: BulkFailure[];
 }
 
-/** PATCH body for bulk user updates (MINCRM-562) */
+/** PATCH body for bulk user updates */
 export interface BulkUserPatch {
   ids: string[];
   patch: {
@@ -34,30 +33,30 @@ export interface BulkUserPatch {
   };
 }
 
-/** DELETE body for bulk entity deletes (MINCRM-562) */
+/** DELETE body for bulk entity deletes */
 export interface BulkDeleteBody {
   ids: string[];
 }
 
-/** PATCH body for bulk contact updates (MINCRM-562) */
+/** PATCH body for bulk contact updates */
 export interface BulkContactPatch {
   ids: string[];
   patch: { owner_id?: string };
 }
 
-/** PATCH body for bulk deal updates (MINCRM-562) */
+/** PATCH body for bulk deal updates */
 export interface BulkDealPatch {
   ids: string[];
   patch: { owner_id?: string; stage?: string };
 }
 
-/** PATCH body for bulk activity updates (MINCRM-562) */
+/** PATCH body for bulk activity updates */
 export interface BulkActivityPatch {
   ids: string[];
   patch: { owner_id?: string };
 }
 
-/** PATCH body for bulk lead updates (MINCRM-562) */
+/** PATCH body for bulk lead updates */
 export interface BulkLeadPatch {
   ids: string[];
   patch: { owner_id: string };
@@ -108,7 +107,7 @@ export async function bulkDeals(payload: BulkDealPayload): Promise<BulkResult> {
   return response.data;
 }
 
-// ── MINCRM-562 bulk endpoints (partial-success response shape) ────────────────
+// ── Bulk endpoints (partial-success response shape) ──────────────────────────
 
 /**
  * Bulk PATCH for users (activate, deactivate, change role).
@@ -193,7 +192,7 @@ export async function bulkDeleteActivities(body: BulkDeleteBody): Promise<BulkOp
 }
 
 /**
- * Bulk PATCH for leads (reassign owner). (MINCRM-562)
+ * Bulk PATCH for leads (reassign owner).
  *
  * @param body - ids and patch fields
  */
@@ -203,7 +202,7 @@ export async function bulkPatchLeads(body: BulkLeadPatch): Promise<BulkOperation
 }
 
 /**
- * Bulk DELETE for leads. (MINCRM-562)
+ * Bulk DELETE for leads.
  *
  * @param body - ids to delete
  */

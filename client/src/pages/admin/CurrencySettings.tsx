@@ -1,6 +1,6 @@
 /**
  * CurrencySettings — Default currency and exchange rates.
- * Extracted from AdminSettingsPage.tsx (MINCRM-259).
+ * Extracted from AdminSettingsPage.tsx.
  */
 
 import { useState } from 'react';
@@ -35,7 +35,7 @@ export default function CurrencySettings() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // ── Default currency (MINCRM-189) ────────────────────────────────────────────
+  // ── Default currency ────────────────────────────────────────────
 
   const {
     data: currencyData,
@@ -74,7 +74,7 @@ export default function CurrencySettings() {
     currencyMutation.mutate(selectedCurrency);
   }
 
-  // ── Exchange rate configuration (MINCRM-251) ─────────────────────────────────
+  // ── Exchange rate configuration ─────────────────────────────────
 
   const { data: currenciesConfigData } = useQuery({
     queryKey: CURRENCIES_CONFIG_QUERY_KEY,
@@ -173,7 +173,7 @@ export default function CurrencySettings() {
 
   return (
     <>
-      {/* ── Default Currency section (MINCRM-189) ─────────────────────────── */}
+      {/* ── Default Currency section ─────────────────────────── */}
       <div
         className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="currency-section"
@@ -243,7 +243,7 @@ export default function CurrencySettings() {
         )}
       </div>
 
-      {/* ── Exchange Rates section (MINCRM-251) ──────────────────────────── */}
+      {/* ── Exchange Rates section ──────────────────────────── */}
       {user?.role === 'admin' && (
         <div
           className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"

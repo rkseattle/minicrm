@@ -1,7 +1,7 @@
 /**
  * Reports API module.
  * Wraps report endpoints (win/loss, activity volume, stage trend). Requires authentication.
- * Implements MINCRM-26 (win/loss), MINCRM-181 (activity volume), MINCRM-284 (stage trend).
+ * Covers win/loss, activity volume, stage trend.
  */
 
 import apiClient from './axiosInstance.js';
@@ -26,7 +26,7 @@ export interface LossReasonBreakdown {
   count: number;
 }
 
-/** A single rep row in the win/loss per-rep breakdown (MINCRM-264) */
+/** A single rep row in the win/loss per-rep breakdown */
 export interface WinLossRepRow {
   ownerId: string;
   ownerName: string;
@@ -46,25 +46,25 @@ export interface WinLossReportResponse {
   /** Win rate as a decimal 0–1, or null when no closed deals exist */
   winRate: number | null;
   lossReasonBreakdown: LossReasonBreakdown[];
-  /** True when closed deals span more than one currency (MINCRM-189) */
+  /** True when closed deals span more than one currency */
   mixedCurrencies: boolean;
-  /** Currency code when all closed deals share one currency; null when mixed or no deals (MINCRM-189) */
+  /** Currency code when all closed deals share one currency; null when mixed or no deals */
   currency: string | null;
-  /** Converted Closed Won total in home currency; null when hasRates is false (MINCRM-253) */
+  /** Converted Closed Won total in home currency; null when hasRates is false */
   convertedWonValue: string | null;
-  /** Converted Closed Lost total in home currency (MINCRM-253) */
+  /** Converted Closed Lost total in home currency */
   convertedLostValue: string | null;
-  /** Code of the home currency (MINCRM-253) */
+  /** Code of the home currency */
   homeCurrency: string | null;
-  /** Symbol of the home currency (MINCRM-253) */
+  /** Symbol of the home currency */
   homeSymbol: string | null;
-  /** Number of deals with a value whose currency lacks a rate (MINCRM-253) */
+  /** Number of deals with a value whose currency lacks a rate */
   unratedCount: number;
-  /** ISO timestamp of the most recently updated rate (MINCRM-253) */
+  /** ISO timestamp of the most recently updated rate */
   ratesLastUpdated: string | null;
-  /** True when at least one non-home currency rate exists (MINCRM-253) */
+  /** True when at least one non-home currency rate exists */
   hasRates: boolean;
-  /** Per-rep breakdown rows; populated only when no owner filter is applied (MINCRM-264) */
+  /** Per-rep breakdown rows; populated only when no owner filter is applied */
   repRows: WinLossRepRow[];
 }
 
@@ -91,7 +91,7 @@ export async function getWinLossReport(
   return response.data;
 }
 
-// ── Activity Volume Report (MINCRM-181) ───────────────────────────────────────
+// ── Activity Volume Report ───────────────────────────────────────
 
 /** React Query cache key for activity volume report queries */
 export const ACTIVITY_VOLUME_REPORT_QUERY_KEY = ['reports', 'activity-volume'] as const;
@@ -153,7 +153,7 @@ export async function getActivityVolumeReport(
 }
 
 /**
- * Fetches an activity volume report as a PDF and triggers a browser download. (MINCRM-601)
+ * Fetches an activity volume report as a PDF and triggers a browser download.
  * Admins can optionally filter by owner; reps always see only their own data.
  *
  * @param params - Date range and optional owner filter
@@ -177,7 +177,7 @@ export async function exportActivityVolumeReportPdf(
   triggerCsvDownload(response.data, `minicrm-activity-volume-${date}.pdf`);
 }
 
-// ── Stage Trend Report (MINCRM-284) ───────────────────────────────────────────
+// ── Stage Trend Report ───────────────────────────────────────────
 
 /** React Query cache key for stage trend report queries */
 export const STAGE_TREND_REPORT_QUERY_KEY = ['reports', 'stage-trend'] as const;

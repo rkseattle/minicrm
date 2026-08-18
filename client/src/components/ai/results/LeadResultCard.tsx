@@ -1,5 +1,5 @@
 /**
- * Renders a single lead as a summary card in the NLI result block. (MINCRM-431)
+ * Renders a single lead as a summary card in the NLI result block.
  */
 import { Link } from 'react-router-dom';
 

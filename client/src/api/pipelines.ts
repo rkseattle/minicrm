@@ -1,5 +1,5 @@
 /**
- * Pipelines API module (MINCRM-397).
+ * Pipelines API module.
  * Wraps the /api/v1/pipelines endpoints.
  * GET requires authentication; POST/PATCH/DELETE require admin auth.
  */

@@ -1,5 +1,5 @@
 /**
- * Tests for the ChampionBlockerBadge component. (MINCRM-466)
+ * Tests for the ChampionBlockerBadge component.
  */
 
 import { render, screen } from '@testing-library/react';

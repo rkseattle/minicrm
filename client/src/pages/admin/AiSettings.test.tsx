@@ -1,5 +1,5 @@
 /**
- * Tests for AiSettings admin panel. (MINCRM-457, MINCRM-653)
+ * Tests for AiSettings admin panel.
  *
  * Covers:
  *  - Loading state
@@ -13,7 +13,7 @@
  *
  * Each non-General section requires navigating to it first (via initialEntries
  * deep-link or a sub-nav click) since AiSettings only renders the active
- * section's content — mirroring how the real component behaves post-MINCRM-653.
+ * section's content — mirroring how the real component behaves after that change.
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';
@@ -89,7 +89,7 @@ describe('AiSettings — error state', () => {
   });
 });
 
-// ── Sub-navigation (MINCRM-653) ─────────────────────────────────────────────────
+// ── Sub-navigation ─────────────────────────────────────────────────
 
 describe('AiSettings — sub-navigation', () => {
   it('defaults to the General section when no ?section= param is present', async () => {
@@ -145,7 +145,7 @@ describe('AiSettings — sub-navigation', () => {
     fireEvent.keyDown(generalTab, { key: 'ArrowRight' });
     expect(screen.getByTestId('ai-settings-tab-usage-budgets')).toHaveFocus();
 
-    // 'data-hygiene' is now the last tab (added after 'lead-routing', MINCRM-476).
+    // 'data-hygiene' is now the last tab (added after 'lead-routing').
     fireEvent.keyDown(screen.getByTestId('ai-settings-tab-usage-budgets'), { key: 'End' });
     expect(screen.getByTestId('ai-settings-tab-data-hygiene')).toHaveFocus();
 
@@ -459,7 +459,7 @@ describe('AiSettings — DPA status badge', () => {
   });
 });
 
-// ── Usage & Budgets section — token budgets (MINCRM-458) ───────────────────────
+// ── Usage & Budgets section — token budgets ───────────────────────
 
 describe('AiSettings — token budget section', () => {
   it('renders the token budget section after data loads', async () => {
@@ -562,7 +562,7 @@ describe('AiSettings — token budget section', () => {
   });
 });
 
-// ── Data Retention section — stats + manual purge (MINCRM-462) ─────────────────
+// ── Data Retention section — stats + manual purge ─────────────────
 
 describe('AiSettings — retention stats and manual purge', () => {
   it('shows loading skeleton while stats are fetching', async () => {
@@ -675,13 +675,13 @@ describe('AiSettings — retention stats and manual purge', () => {
     } finally {
       // try/finally so a failed assertion above still restores real timers —
       // otherwise fake timers stay installed for every test that runs afterward
-      // in this worker, including in unrelated files. (MINCRM-473)
+      // in this worker, including in unrelated files.
       vi.useRealTimers();
     }
   });
 });
 
-// ── Data Minimization section — field exclusions (MINCRM-461) ──────────────────
+// ── Data Minimization section — field exclusions ──────────────────
 
 describe('AiSettings — data minimization section', () => {
   it('shows loading skeleton while field exclusions are fetching', async () => {
@@ -813,7 +813,7 @@ describe('AiSettings — data minimization section', () => {
   });
 });
 
-// ── Usage & Budgets section — cost rates (MINCRM-459) ───────────────────────────
+// ── Usage & Budgets section — cost rates ───────────────────────────
 
 describe('AiSettings — cost rates section', () => {
   it('renders the cost rate inputs with current values', async () => {
@@ -877,7 +877,7 @@ describe('AiSettings — cost rates section', () => {
   });
 });
 
-// ── Coaching section — rep coaching insight thresholds (MINCRM-474) ────────────
+// ── Coaching section — rep coaching insight thresholds ────────────
 
 describe('AiSettings — coaching section', () => {
   it('shows a loading state, then renders threshold inputs with the seeded values', async () => {

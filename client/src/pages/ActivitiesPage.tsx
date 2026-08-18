@@ -10,7 +10,6 @@
  * Reps always see only their own activities regardless of the owner param.
  * Admins see the requested owner's activities, or all activities if no owner param.
  *
- * Implements MINCRM-181, MINCRM-185, MINCRM-345.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -74,7 +73,7 @@ export default function ActivitiesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === 'admin';
-  // bulk:operations capability is seeded for admin and manager roles (MINCRM-562)
+  // bulk:operations capability is seeded for admin and manager roles
   const canBulkOp = user?.role === 'admin' || user?.role === 'manager';
   const [searchParams] = useSearchParams();
   const [page, setPage] = useState(1);
@@ -122,7 +121,7 @@ export default function ActivitiesPage() {
 
   const activities = data?.data ?? [];
 
-  // ── Bulk selection state (MINCRM-562) ─────────────────────────────────────
+  // ── Bulk selection state ─────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -245,7 +244,7 @@ export default function ActivitiesPage() {
           </p>
         )}
 
-        {/* Bulk success message (MINCRM-562) */}
+        {/* Bulk success message */}
         {bulkSuccessMessage && (
           <p
             role="status"
@@ -256,14 +255,14 @@ export default function ActivitiesPage() {
           </p>
         )}
 
-        {/* Bulk error message (MINCRM-562) */}
+        {/* Bulk error message */}
         {bulkError && (
           <p role="alert" className="mb-2 text-sm text-red-600" data-testid="bulk-error-message">
             {bulkError}
           </p>
         )}
 
-        {/* Bulk action bar — admins only (MINCRM-562) */}
+        {/* Bulk action bar — admins only */}
         {canBulkOp && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}
@@ -293,7 +292,7 @@ export default function ActivitiesPage() {
           />
         )}
 
-        {/* Bulk reassign modal (MINCRM-562) */}
+        {/* Bulk reassign modal */}
         <BulkReassignModal
           isOpen={showBulkReassign}
           selectedCount={selectedIds.size}
@@ -305,7 +304,7 @@ export default function ActivitiesPage() {
           onCancel={() => setShowBulkReassign(false)}
         />
 
-        {/* Bulk delete confirmation modal (MINCRM-562) */}
+        {/* Bulk delete confirmation modal */}
         <ConfirmDeleteModal
           isOpen={showBulkDelete}
           message={t('bulk.deleteMessage', { count: selectedIds.size })}
@@ -316,7 +315,7 @@ export default function ActivitiesPage() {
           onCancel={() => setShowBulkDelete(false)}
         />
 
-        {/* Bulk failed details modal (MINCRM-562) */}
+        {/* Bulk failed details modal */}
         <BulkFailedDetailsModal
           isOpen={showBulkFailedDetails}
           failures={bulkPartialFailures}

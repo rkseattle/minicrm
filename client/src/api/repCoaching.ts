@@ -1,5 +1,5 @@
 /**
- * Rep coaching insights API module. (MINCRM-474)
+ * Rep coaching insights API module.
  * Wraps the my/team/rep-specific coaching insight endpoints. Requires
  * authentication and the ai_rep_coaching_insights feature flag.
  */

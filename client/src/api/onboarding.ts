@@ -1,12 +1,12 @@
 /**
- * Onboarding / setup checklist API module (MINCRM-256, MINCRM-379).
+ * Onboarding / setup checklist API module.
  * Wraps GET /api/settings/onboarding and PUT /api/settings/onboarding.
  * Admin only.
  */
 
 import apiClient from './axiosInstance.js';
 
-/** Completion state of one setup checklist task (MINCRM-379) */
+/** Completion state of one setup checklist task */
 export interface OnboardingTask {
   id: string;
   completed: boolean;
@@ -16,7 +16,7 @@ export interface OnboardingTask {
 export interface OnboardingStatusResponse {
   is_first_run: boolean;
   onboarding_completed: boolean;
-  /** Per-task completion determined server-side (MINCRM-379) */
+  /** Per-task completion determined server-side */
   tasks: OnboardingTask[];
 }
 

@@ -1,5 +1,5 @@
 /**
- * Unit tests for SubPageNav component. (MINCRM-294)
+ * Unit tests for SubPageNav component.
  *
  * Default test environment: desktop (matchMedia returns matches=true for min-width:768px),
  * navLayout='top' → vertical tab list mode.

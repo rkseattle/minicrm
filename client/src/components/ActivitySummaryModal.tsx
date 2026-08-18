@@ -1,5 +1,5 @@
 /**
- * ActivitySummaryModal component. (MINCRM-436)
+ * ActivitySummaryModal component.
  * Lets the user paste a call transcript / meeting notes / raw text, calls the AI
  * summarizer, and previews the result (summary, action items, suggested follow-up
  * tasks) before applying it to the activity form. The user can edit the summary

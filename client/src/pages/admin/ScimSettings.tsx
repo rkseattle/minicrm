@@ -1,6 +1,6 @@
 /**
  * ScimSettings — SCIM 2.0 provisioning token management and group-role mapping.
- * Rendered inside IntegrationSettings. (MINCRM-541)
+ * Rendered inside IntegrationSettings.
  */
 
 import { useState } from 'react';

@@ -1,5 +1,5 @@
 /**
- * Tests for MfaSettings — MFA enforcement toggle (MINCRM-392, MINCRM-563).
+ * Tests for MfaSettings — MFA enforcement toggle.
  *
  * Verifies:
  * - Section renders with the MFA checkbox

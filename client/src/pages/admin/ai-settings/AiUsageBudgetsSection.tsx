@@ -1,8 +1,7 @@
 /**
  * AiUsageBudgetsSection — org/per-user token budgets and cost estimation rates.
- * One of the sub-sections behind the AI panel's sub-navigation (MINCRM-653).
+ * One of the sub-sections behind the AI panel's sub-navigation.
  * Extracted from AiSettings.tsx without behavior changes.
- * (MINCRM-458, MINCRM-459)
  */
 
 import { useState, useEffect } from 'react';

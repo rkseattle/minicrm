@@ -1,5 +1,5 @@
 /**
- * Tests for BrandingContext side effects. (MINCRM-356)
+ * Tests for BrandingContext side effects.
  *
  * Covers:
  * - Custom font applied to document.body when a non-inter font is configured

@@ -1,5 +1,5 @@
 /**
- * ChurnExpansionInsightsPage component. (MINCRM-469)
+ * ChurnExpansionInsightsPage component.
  * Displays the cached AI churn-risk and expansion-opportunity signals from
  * the most recent nightly detection run. Never triggers a synchronous AI call.
  */

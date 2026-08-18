@@ -1,5 +1,5 @@
 /**
- * AccountHealthSparkline component. (MINCRM-467)
+ * AccountHealthSparkline component.
  * Renders a hand-rolled SVG sparkline of the account's 6-month health score
  * trend history. Renders nothing when there are fewer than 2 points — a
  * single point cannot show a trend.

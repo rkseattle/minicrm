@@ -1,5 +1,5 @@
 /**
- * useSessionRefresh — sliding idle timeout for authenticated sessions. (MINCRM-365)
+ * useSessionRefresh — sliding idle timeout for authenticated sessions.
  *
  * Listens for user activity (mouse, keyboard, click, scroll, touch) and calls
  * POST /api/auth/refresh when the user is active and the session is within
@@ -75,7 +75,7 @@ export function useSessionRefresh(isAuthenticated: boolean): void {
           lastRefreshAt.current = Date.now();
         })
         .catch(() => {
-          // 401 from refresh is handled by the global Axios interceptor (MINCRM-365).
+          // 401 from refresh is handled by the global Axios interceptor.
           // Any other error is transient — the next activity event will retry.
         })
         .finally(() => {

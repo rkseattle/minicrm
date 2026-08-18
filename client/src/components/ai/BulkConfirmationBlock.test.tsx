@@ -1,5 +1,5 @@
 /**
- * Tests for BulkConfirmationBlock. (MINCRM-426)
+ * Tests for BulkConfirmationBlock.
  *
  * Covers:
  *  - Renders Delete badge, summary, and affected count

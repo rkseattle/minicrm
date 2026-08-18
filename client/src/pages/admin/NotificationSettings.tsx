@@ -1,6 +1,6 @@
 /**
  * NotificationSettings — Email notifications toggle and SMTP configuration.
- * Extracted from AdminSettingsPage.tsx (MINCRM-259).
+ * Extracted from AdminSettingsPage.tsx.
  */
 
 import { useState } from 'react';
@@ -27,7 +27,7 @@ export default function NotificationSettings() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // ── Email Notifications global toggle (MINCRM-163) ──────────────────────────
+  // ── Email Notifications global toggle ──────────────────────────
 
   const {
     data: emailNotifData,
@@ -75,7 +75,7 @@ export default function NotificationSettings() {
     queryFn: getNotificationRecipientCount,
   });
 
-  // ── SMTP configuration (MINCRM-254) ─────────────────────────────────────────
+  // ── SMTP configuration ─────────────────────────────────────────
 
   const {
     data: smtpData,
@@ -172,7 +172,7 @@ export default function NotificationSettings() {
 
   return (
     <>
-      {/* ── Email Notifications section (MINCRM-163) ─────────────────────── */}
+      {/* ── Email Notifications section ─────────────────────── */}
       <div
         className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="email-notifications-section"
@@ -249,7 +249,7 @@ export default function NotificationSettings() {
         )}
       </div>
 
-      {/* ── SMTP Configuration section (MINCRM-254) ──────────────────────── */}
+      {/* ── SMTP Configuration section ──────────────────────── */}
       {user?.role === 'admin' && (
         <div
           className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"

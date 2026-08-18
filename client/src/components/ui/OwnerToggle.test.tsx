@@ -1,5 +1,5 @@
 /**
- * Tests for the OwnerToggle component. (MINCRM-55)
+ * Tests for the OwnerToggle component.
  */
 
 import { render, screen } from '@testing-library/react';

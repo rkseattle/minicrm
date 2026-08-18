@@ -27,9 +27,9 @@ export interface AccountFormValues {
   owner_id: string;
   /** UUIDs of contacts linked to this account */
   contact_ids: string[];
-  /** Account classification type (MINCRM-183) */
+  /** Account classification type */
   account_type: AccountType | '';
-  /** UUID of the parent account, or empty string for no parent (MINCRM-184) */
+  /** UUID of the parent account, or empty string for no parent */
   parent_account_id: string;
 }
 
@@ -44,7 +44,7 @@ interface AccountFormProps {
    */
   accountId?: string;
   /**
-   * Display name of the currently selected parent account (MINCRM-184).
+   * Display name of the currently selected parent account.
    * Populated by AccountDetailPage when editing an account that already has a parent.
    */
   initialParentAccountName?: string;
@@ -116,7 +116,7 @@ export default function AccountForm({
     buildInitialState(initialValues, initialContactIds),
   );
 
-  // Parent account type-ahead state (MINCRM-184)
+  // Parent account type-ahead state
   const [parentQuery, setParentQuery] = useState('');
   const [parentSuggestions, setParentSuggestions] = useState<AccountResponse[]>([]);
   const [parentName, setParentName] = useState(initialParentAccountName ?? '');
@@ -126,7 +126,7 @@ export default function AccountForm({
     firstInputRef.current?.focus();
   }, []);
 
-  // Search parent accounts when query changes (MINCRM-184)
+  // Search parent accounts when query changes
   useEffect(() => {
     const trimmed = parentQuery.trim();
     if (trimmed.length < 2) return;
@@ -239,7 +239,7 @@ export default function AccountForm({
           disabled={isSubmitting}
         />
 
-        {/* Account Type dropdown (MINCRM-183) */}
+        {/* Account Type dropdown */}
         <Select
           id="account-type"
           data-testid="account-type-select"
@@ -282,7 +282,7 @@ export default function AccountForm({
         />
       </div>
 
-      {/* Parent Account type-ahead (MINCRM-184) */}
+      {/* Parent Account type-ahead */}
       <div className="mb-4 relative">
         <label
           htmlFor="account-parent-search"

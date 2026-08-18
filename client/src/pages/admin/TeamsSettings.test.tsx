@@ -1,6 +1,5 @@
 /**
  * Tests for TeamsSettings — team management admin panel.
- * (MINCRM-539)
  *
  * Verifies:
  * - Loading state renders while query is in flight

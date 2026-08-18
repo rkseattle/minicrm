@@ -2,7 +2,6 @@
  * LeadForm component.
  * Reusable form for creating and editing lead records.
  * Used by LeadsPage (create) and LeadDetailPage (edit).
- * (MINCRM-173, MINCRM-174)
  */
 
 import { useState, useEffect, useRef, forwardRef } from 'react';
@@ -32,7 +31,7 @@ export interface LeadFormValues {
   territory: string;
   industry: string;
   employee_range: string;
-  /** Set once the manager applies or dismisses a routing suggestion, echoed back on submit (MINCRM-475) */
+  /** Set once the manager applies or dismisses a routing suggestion, echoed back on submit */
   routingSuggestion: LeadRoutingSuggestionResponse | null;
 }
 
@@ -44,7 +43,7 @@ interface LeadFormProps {
   onCancel?: () => void;
   isSubmitting?: boolean;
   submitLabel?: string;
-  /** True only for the create flow — routing suggestions never apply to existing leads (MINCRM-475) */
+  /** True only for the create flow — routing suggestions never apply to existing leads */
   isCreate?: boolean;
 }
 
@@ -70,7 +69,7 @@ function buildInitialState(initial?: Partial<LeadFormValues>): LeadFormValues {
  * manager fills in territory/industry/employee_range/lead_source, and lets
  * them apply it (sets owner_id) or dismiss it. Silently renders nothing when
  * the feature flag is off, no confident suggestion exists, or the manager
- * has already dismissed/applied one for the current profile. (MINCRM-475)
+ * has already dismissed/applied one for the current profile.
  */
 function RoutingSuggestionPanel({
   territory,
@@ -387,7 +386,7 @@ const LeadForm = forwardRef<HTMLFormElement, LeadFormProps>(function LeadForm(
         )}
       </div>
 
-      {/* AI routing suggestion — create flow only, admins only (matches OwnerSelect's own gating) (MINCRM-475) */}
+      {/* AI routing suggestion — create flow only, admins only (matches OwnerSelect's own gating) */}
       {isCreate && isAdmin && (
         <RoutingSuggestionPanel
           territory={formData.territory}

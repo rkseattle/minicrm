@@ -2,7 +2,7 @@
  * CSV import API module.
  * Two-step flow per entity: parse (preview) then run (import).
  * Run now returns a job_id immediately; poll getImportJob for progress.
- * MINCRM-158 (contacts), MINCRM-159 (accounts), MINCRM-160 (deals), MINCRM-255
+ * contacts, accounts, deals
  */
 
 import apiClient from './axiosInstance.js';

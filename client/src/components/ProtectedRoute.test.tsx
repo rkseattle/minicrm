@@ -1,7 +1,7 @@
 /**
  * Tests for the ProtectedRoute component.
  *
- * MINCRM-147: added redirect-back and must_change_password tests.
+ * added redirect-back and must_change_password tests.
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -66,7 +66,7 @@ describe('ProtectedRoute', () => {
     });
   });
 
-  it('passes the current location as state when redirecting to /login (MINCRM-147)', async () => {
+  it('passes the current location as state when redirecting to /login', async () => {
     server.use(
       http.get('/api/v1/auth/me', () =>
         HttpResponse.json({ error: { code: 'UNAUTHORIZED' } }, { status: 401 }),

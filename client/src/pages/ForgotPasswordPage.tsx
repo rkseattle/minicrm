@@ -1,5 +1,5 @@
 /**
- * ForgotPasswordPage component. (MINCRM-156)
+ * ForgotPasswordPage component.
  *
  * Renders a single-field form where the user enters their email address to
  * request a password reset link. Always shows a success message after submit

@@ -1,5 +1,5 @@
 /**
- * Tests for MfaSetupModal. (MINCRM-392)
+ * Tests for MfaSetupModal.
  * Covers: loading state, QR code display, verification step,
  * invalid code error, success callback, cancel, and Escape key.
  */

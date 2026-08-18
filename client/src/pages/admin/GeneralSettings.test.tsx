@@ -1,7 +1,7 @@
 /**
  * Tests for GeneralSettings — default language and nav layout settings.
- * Reset setup checklist tests moved to SetupChecklistSettings.test.tsx (MINCRM-563).
- * MFA enforcement tests moved to MfaSettings.test.tsx (MINCRM-563).
+ * Reset setup checklist tests moved to SetupChecklistSettings.test.tsx.
+ * MFA enforcement tests moved to MfaSettings.test.tsx.
  *
  * Verifies:
  * - Default language select renders and reflects current value

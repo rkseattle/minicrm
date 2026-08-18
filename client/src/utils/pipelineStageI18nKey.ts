@@ -3,7 +3,7 @@
  * under the `pipeline.stages` namespace.
  *
  * The built-in stages have dedicated translation keys. Custom stages added by
- * admins (MINCRM-180) are displayed using their raw name — no i18n lookup is
+ * admins are displayed using their raw name — no i18n lookup is
  * performed for them, since translations are not available for user-defined names.
  *
  * Usage:
@@ -44,7 +44,7 @@ export function getStageDisplayName(stageName: string, t: (key: string) => strin
 }
 
 /**
- * @deprecated Use getStageDisplayName or getStagei18nKey instead (MINCRM-180).
+ * @deprecated Use getStageDisplayName or getStagei18nKey instead.
  * Kept for backward compatibility with components not yet updated to the dynamic stage list.
  */
 export const PIPELINE_STAGE_I18N_KEY: Record<string, string> = BUILTIN_STAGE_I18N_KEY;

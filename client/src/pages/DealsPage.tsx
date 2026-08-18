@@ -1,7 +1,7 @@
 /**
  * DealsPage component.
  * Displays deals as either a Kanban pipeline board (default) or a list/table view.
- * The board view satisfies MINCRM-16 AC: deals as cards organised into stage columns,
+ * The board view shows deals as cards organised into stage columns,
  * each column showing deal count and total value.
  * The list view provides the original tabular layout for scanning and bulk review.
  */
@@ -65,10 +65,10 @@ import { usePipelineStages } from '@/hooks/usePipelineStages.js';
 /** Which view is active on the Deals page */
 type ViewMode = 'board' | 'list';
 
-/** sessionStorage key used to persist the selected view mode across navigation (MINCRM-146) */
+/** sessionStorage key used to persist the selected view mode across navigation */
 const VIEW_MODE_STORAGE_KEY = 'deals.viewMode';
 
-/** sessionStorage key to persist the selected pipeline across navigation (MINCRM-397) */
+/** sessionStorage key to persist the selected pipeline across navigation */
 const SELECTED_PIPELINE_KEY = 'deals.selectedPipelineId';
 
 /** State captured while the user has selected a terminal stage but not yet confirmed */
@@ -79,7 +79,7 @@ interface PendingClose {
 }
 
 /**
- * Formats a deal value using the deal's own currency and the active locale. (MINCRM-189)
+ * Formats a deal value using the deal's own currency and the active locale.
  *
  * @param value - Numeric string from the API (pg returns numeric as string)
  * @param currency - ISO 4217 currency code stored on the deal
@@ -96,7 +96,7 @@ function formatDealValue(value: string | null, currency: string, locale: string)
 
 /**
  * Deals page with board/list view toggle.
- * Board view (default) renders a Kanban pipeline board satisfying MINCRM-16 AC.
+ * Board view (default) renders a Kanban pipeline board.
  * List view renders the original sortable table.
  */
 export default function DealsPage() {
@@ -105,11 +105,11 @@ export default function DealsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  // bulk:operations capability is seeded for admin and manager roles (MINCRM-562)
+  // bulk:operations capability is seeded for admin and manager roles
   const canBulkOp = user?.role === 'admin' || user?.role === 'manager';
   const { canWrite } = usePermissions();
 
-  // Pipeline selector — persisted in sessionStorage (MINCRM-397)
+  // Pipeline selector — persisted in sessionStorage
   const { pipelines, defaultPipeline } = usePipelines();
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | undefined>(() => {
     return sessionStorage.getItem(SELECTED_PIPELINE_KEY) ?? undefined;
@@ -123,7 +123,7 @@ export default function DealsPage() {
     setSelectedPipelineId(pipelineId);
   }
 
-  // Live stage list scoped to the active pipeline (MINCRM-180, MINCRM-397)
+  // Live stage list scoped to the active pipeline
   const {
     stages: pipelineStages,
     stageNames,
@@ -134,7 +134,7 @@ export default function DealsPage() {
   const { isExporting: isExportingPdf, run: runExportPdf } = useExportAction();
 
   // ── View mode ───────────────��──────────────────────────────────────────────
-  // Restore from sessionStorage so the chosen view survives navigation (MINCRM-146)
+  // Restore from sessionStorage so the chosen view survives navigation
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const stored = sessionStorage.getItem(VIEW_MODE_STORAGE_KEY);
     return stored === 'list' ? 'list' : 'board';
@@ -146,7 +146,7 @@ export default function DealsPage() {
   const newDealButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
 
-  // ── Shared filter state (MINCRM-176, MINCRM-545) ─────────────────────────
+  // ── Shared filter state ─────────────────────────
   // ownerFilter persists in the URL ?owner param so the filter survives navigation.
   // showClosed is lifted to the parent so it persists across Board ↔ List switches.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -337,7 +337,7 @@ export default function DealsPage() {
     });
   }, [listData?.data, viewMode, openStages]);
 
-  // Server handles sorting, pagination, and closed-stage filtering (MINCRM-176)
+  // Server handles sorting, pagination, and closed-stage filtering
   const sortedDeals: DealResponse[] = listData?.data ?? [];
 
   const hasActiveListFilters = ownerFilter !== 'all' || !showClosed || selectedTagIds.length > 0;
@@ -360,9 +360,9 @@ export default function DealsPage() {
         currency: values.currency ? (values.currency as SupportedCurrency) : undefined,
         close_date: values.close_date || undefined,
         account_id: values.account_id || undefined,
-        // Pass probability override only when the field is non-empty (MINCRM-179)
+        // Pass probability override only when the field is non-empty
         probability: values.probability !== '' ? parseInt(values.probability, 10) : undefined,
-        // Associate the deal with the currently selected pipeline (MINCRM-397)
+        // Associate the deal with the currently selected pipeline
         pipeline_id: activePipelineId,
       }),
     onSuccess: () => {
@@ -502,7 +502,7 @@ export default function DealsPage() {
 
   const isClosing = stageMutation.isPending && pendingClose !== null;
 
-  // ── Bulk selection state (MINCRM-188, MINCRM-562) — only available in list view ──────
+  // ── Bulk selection state — only available in list view ──────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -594,7 +594,7 @@ export default function DealsPage() {
     <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
       <main className="flex-1 flex flex-col min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8">
-        {/* Page header — sticky so title and controls stay visible while board scrolls (MINCRM-346) */}
+        {/* Page header — sticky so title and controls stay visible while board scrolls */}
         <div className="flex items-center justify-between mb-6 sticky top-0 z-20 bg-gray-50 py-4 -mt-4">
           <h1 className="text-2xl font-bold text-gray-900">{t('deals.pageTitle')}</h1>
           <div className="flex items-center gap-2">
@@ -689,7 +689,7 @@ export default function DealsPage() {
           </section>
         )}
 
-        {/* ── Pipeline selector — shown above both board and list views (MINCRM-397) */}
+        {/* ── Pipeline selector — shown above both board and list views */}
         {pipelines.length > 1 && (
           <div className="mb-4 flex items-center gap-2">
             <label
@@ -717,7 +717,7 @@ export default function DealsPage() {
         {/* ── Board view ──────────────────────────────────────────────────── */}
         {viewMode === 'board' && (
           <>
-            {/* Board toolbar — sticky below the page header so filters stay visible while board scrolls (MINCRM-346) */}
+            {/* Board toolbar — sticky below the page header so filters stay visible while board scrolls */}
             <div className="flex items-center gap-3 mb-4 sticky top-[72px] z-10 bg-gray-50 py-2">
               <OwnerToggle
                 value={ownerFilter}
@@ -766,7 +766,7 @@ export default function DealsPage() {
             {!isLoading && !isError && (
               <div data-testid="pipeline-board" className="flex-1 flex flex-col min-h-0">
                 {isDesktop ? (
-                  /* Desktop multi-column Kanban — flex-1 + overflow-auto so columns scroll within the remaining viewport height (MINCRM-346) */
+                  /* Desktop multi-column Kanban — flex-1 + overflow-auto so columns scroll within the remaining viewport height */
                   <div className="flex gap-4 overflow-auto flex-1 min-h-0 pb-4">
                     {stageNames.map((stage) => (
                       <StageColumn
@@ -782,7 +782,7 @@ export default function DealsPage() {
                     ))}
                   </div>
                 ) : (
-                  /* Mobile single-stage view — flex col so nav bar can be sticky and card list scrolls below (MINCRM-346) */
+                  /* Mobile single-stage view — flex col so nav bar can be sticky and card list scrolls below */
                   <div className="flex flex-col flex-1 min-h-0">
                     {/* Stage navigation — sticky so prev/next/stage-name stay pinned while cards scroll */}
                     <div className="flex items-center justify-between mb-3 gap-2 sticky top-[120px] z-10 bg-gray-50 py-2">
@@ -884,7 +884,7 @@ export default function DealsPage() {
               </div>
             )}
 
-            {/* Bulk success message (MINCRM-562) */}
+            {/* Bulk success message */}
             {bulkSuccessMessage && (
               <p
                 role="status"
@@ -895,7 +895,7 @@ export default function DealsPage() {
               </p>
             )}
 
-            {/* Bulk error message (MINCRM-188) */}
+            {/* Bulk error message */}
             {bulkError && (
               <p
                 role="alert"
@@ -906,7 +906,7 @@ export default function DealsPage() {
               </p>
             )}
 
-            {/* Bulk action bar (MINCRM-188, MINCRM-562) */}
+            {/* Bulk action bar */}
             {canBulkOp && selectedIds.size > 0 && (
               <BulkActionBar
                 selectedCount={selectedIds.size}
@@ -978,7 +978,7 @@ export default function DealsPage() {
               onCancel={() => setShowBulkDelete(false)}
             />
 
-            {/* Bulk failed details modal (MINCRM-562) */}
+            {/* Bulk failed details modal */}
             <BulkFailedDetailsModal
               isOpen={showBulkFailedDetails}
               failures={bulkPartialFailures}
@@ -1008,7 +1008,7 @@ export default function DealsPage() {
                           ? t('pipeline.closeDeal.hideClosed')
                           : t('pipeline.closeDeal.showClosed')}
                       </Button>
-                      {/* Tag filter (MINCRM-186) */}
+                      {/* Tag filter */}
                       {tagsData && tagsData.tags.length > 0 && (
                         <select
                           aria-label={t('tags.sectionTitle')}
@@ -1055,7 +1055,7 @@ export default function DealsPage() {
                       )}
                     </div>
 
-                    {/* Pipeline summary bar — below filter controls, matching pre-refactor order (MINCRM-56) */}
+                    {/* Pipeline summary bar — below filter controls, matching pre-refactor order */}
                     {pipelineSummary.length > 0 && (
                       <div
                         data-testid="pipeline-summary-bar"
@@ -1141,7 +1141,7 @@ export default function DealsPage() {
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 z-10 bg-gray-50">
                       <tr className="border-b border-gray-200">
-                        {/* Bulk select-all checkbox — admins only (MINCRM-188, MINCRM-562) */}
+                        {/* Bulk select-all checkbox — admins only */}
                         {canBulkOp && (
                           <th className="w-10 ps-4 py-3">
                             <input
@@ -1245,7 +1245,7 @@ export default function DealsPage() {
                           key={deal.id}
                           className={`hover:bg-gray-50 transition-colors${selectedIds.has(deal.id) ? ' bg-primary-50' : ''}`}
                         >
-                          {/* Row checkbox — admins only (MINCRM-188, MINCRM-562) */}
+                          {/* Row checkbox — admins only */}
                           {canBulkOp && (
                             <td className="w-10 ps-4 py-3">
                               <input
@@ -1299,7 +1299,7 @@ export default function DealsPage() {
                 ) : (
                   /* Mobile card view */
                   <>
-                    {/* Select-all bar — admins only (MINCRM-562) */}
+                    {/* Select-all bar — admins only */}
                     {canBulkOp && (
                       <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
                         <input
@@ -1322,7 +1322,7 @@ export default function DealsPage() {
                           className={`px-4 py-3 flex items-start gap-3${selectedIds.has(deal.id) ? ' bg-primary-50' : ''}`}
                           data-testid={`deal-list-card-${deal.id}`}
                         >
-                          {/* Row checkbox — admins only (MINCRM-562) */}
+                          {/* Row checkbox — admins only */}
                           {canBulkOp && (
                             <input
                               type="checkbox"

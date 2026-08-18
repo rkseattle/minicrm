@@ -1,5 +1,5 @@
 /**
- * Lead score API module. (MINCRM-441 prerequisite)
+ * Lead score API module.
  * Wraps the on-demand rule-based lead scoring endpoint. Requires authentication and
  * the ai_lead_scoring feature flag to be enabled.
  */

@@ -1,5 +1,5 @@
 /**
- * Tests for ActivityBriefPage component. (MINCRM-465)
+ * Tests for ActivityBriefPage component.
  * Covers loading, not-found, and populated states for the shareable brief link.
  */
 

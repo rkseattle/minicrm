@@ -1,7 +1,7 @@
 /**
- * MfaSettings — MFA enforcement toggle for admins (MINCRM-392).
+ * MfaSettings — MFA enforcement toggle for admins.
  * Extracted from GeneralSettings as part of the Security & Identity
- * tab consolidation (MINCRM-563).
+ * tab consolidation.
  */
 
 import { useState } from 'react';

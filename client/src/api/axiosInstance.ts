@@ -3,7 +3,7 @@
  * All API modules import from here so that withCredentials (for httpOnly cookie
  * handling) and the base URL are applied consistently.
  *
- * MINCRM-365: setupInterceptors() wires a global 401 interceptor that clears
+ * setupInterceptors() wires a global 401 interceptor that clears
  * the React Query cache and redirects to /login?reason=session_expired when any
  * authenticated API call receives a 401. Call once from main.tsx after the
  * QueryClient is created.
@@ -22,7 +22,7 @@ const apiClient = axios.create({
   },
 });
 
-// MINCRM-663: forwards a manual-testing coverage session's correlation ID
+// forwards a manual-testing coverage session's correlation ID
 // (see coverageCorrelation.ts) on every outgoing request, so requests made
 // in this CRM tab are attributed to the session started in the separate
 // coverage-dashboard app. Reads localStorage on every request rather than
@@ -46,7 +46,7 @@ apiClient.interceptors.request.use((config) => {
 const SESSION_EXPIRY_EXCLUDED_PATHS = [
   '/auth/login',
   '/auth/me',
-  // Public endpoint — called by the login page before any session exists (MINCRM-399)
+  // Public endpoint — called by the login page before any session exists
   '/settings/sso/status',
 ];
 
@@ -72,7 +72,7 @@ export function setupInterceptors(queryClient: QueryClient): void {
 
       if (status === 401 && !isExcluded) {
         // Clear all cached query data so stale authenticated content is not shown
-        // after the user re-authenticates (MINCRM-365).
+        // after the user re-authenticates.
         queryClient.clear();
 
         // Preserve current location so the user returns there after re-authenticating.

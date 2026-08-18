@@ -1,5 +1,5 @@
 /**
- * Tests for RolesSettings — custom role management admin panel (MINCRM-542, MINCRM-547).
+ * Tests for RolesSettings — custom role management admin panel.
  *
  * Verifies:
  * - Loading state renders while query is in flight
@@ -188,7 +188,7 @@ describe('RolesSettings — capability picker labels', () => {
 
     const picker = screen.getByTestId('capability-picker');
 
-    // Raw key strings must not appear as visible text (MINCRM-544)
+    // Raw key strings must not appear as visible text
     expect(picker).not.toHaveTextContent('contacts:view');
     expect(picker).not.toHaveTextContent('deals:create');
 
@@ -271,7 +271,7 @@ describe('RolesSettings — create form', () => {
     });
   });
 
-  it('never offers coverage:admin in the capability picker — internal coverage-tia tooling stays out of the self-service custom-role editor (MINCRM-637)', async () => {
+  it('never offers coverage:admin in the capability picker — internal coverage-tia tooling stays out of the self-service custom-role editor', async () => {
     renderWithProviders(<RolesSettings />);
 
     await waitFor(() => {

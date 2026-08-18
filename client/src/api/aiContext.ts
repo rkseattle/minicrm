@@ -2,7 +2,6 @@
  * AI context API module.
  * Wraps the user context entry CRUD endpoints. All endpoints require authentication
  * and the ai_nli_page feature flag to be enabled.
- * (MINCRM-427, MINCRM-428)
  */
 
 import apiClient from './axiosInstance.js';
