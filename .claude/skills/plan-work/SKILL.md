@@ -128,6 +128,44 @@ triggers and assignment notifications fired after commit and never awaited; owne
 the WHERE clause on PATCH/DELETE; ORDER BY allowlist; explicit PG error mapping;
 varchar + CHECK over new enums; corrective migrations only, each with a real `down`.
 
+### Length: 40 lines per phase, 400 for the document
+
+Hard caps, counted on the finished file. A phase over 40 lines is a phase doing too much
+— **split it or cut its scope; do not compress the prose to fit.** A document over 400
+means the branch is too large to review, which is a scope finding to raise with Rob, not
+a formatting problem. Plans for comparable work in `docs/plans/` land at 430–530 lines
+total including the shared sections; a phase needs well under 40 to say what it does.
+
+The four phase bullets are the phase. `Files touched` is a list of paths, not prose.
+`Change summary` is what changes and why, in a few sentences. If a claim needs three
+paragraphs of defense, that is a signal the approach is wrong or unverified — not that
+it needs more words.
+
+### Describe the end state, never the revision history
+
+The plan says what will ship. It does not narrate how the plan got here. Never write
+"an earlier draft said…", "this was previously scoped as…", "round N found…", or any
+justification of the current text against a superseded version. When review changes
+something, **edit it in place so the document reads as if it were always right**, and
+carry the correction into every other passage stating the same fact — a corrected claim
+left standing in three other paragraphs is how a plan starts contradicting itself.
+
+Revision history belongs in chat, where Rob can see the reasoning moved. In the document
+it is pure bulk, and it actively causes defects: every restatement of a fact is another
+copy to drift.
+
+### Verify claims instead of arguing for them
+
+A plan asserting "safe by construction", "closes the class", "transcribed flag-for-flag",
+or "exhaustive" must have run something that shows it. Fluent prose is where a
+plausible-but-wrong claim survives — a shell command settles it in seconds and a
+paragraph never does.
+
+Prefer a guard that enumerates instances over a hand-maintained list of them: a list is a
+count you will get wrong, a guard is one the repo reports. Where a claim genuinely cannot
+be checked before implementation, mark it unverified in one clause and move on. Do not
+compensate with length.
+
 Never the simplest, quickest, or easiest solution. If you catch yourself writing "wait",
 "actually", or "let me look at this differently" more than once, stop and think it
 through rather than iterating in the open.
