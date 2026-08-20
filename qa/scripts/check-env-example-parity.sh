@@ -85,6 +85,13 @@ for pair in "${PAIRS[@]}"; do
     echo "FAIL: $example defines variables missing from $local_file:"
     echo "$only_example" | sed 's/^/    /'
     echo "  Either add them locally or drop them from the template."
+    # Only offer the generator when a generated secret is actually what is missing —
+    # telling someone to paste 32 random bytes into DB_HOST would be worse than silence.
+    if echo "$only_example" | grep -qE '^(JWT_SECRET|NODE_ENCRYPTION_KEY)$'; then
+      echo "  These are generated secrets. Produce a value with:"
+      echo "    node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+      echo "  See README.md's 'Upgrading an existing clone' note on NODE_ENCRYPTION_KEY."
+    fi
     failures=$((failures + 1))
   fi
 done

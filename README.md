@@ -10,11 +10,34 @@ A minimal viable CRM (alpha / proof of concept) built to validate the core sales
 git clone https://github.com/rkseattle/minicrm.git
 cd minicrm
 cp .env.example .env
-# Edit .env: set ADMIN_PASSWORD and generate JWT_SECRET (see .env.example for instructions)
+
+# Generate the two secrets the server refuses to start without. This prints two
+# labeled lines — paste each over the matching placeholder in .env. Generate them
+# separately as below; the two keys must not share a value.
+node -e "console.log('JWT_SECRET=' + require('crypto').randomBytes(32).toString('hex'))"
+node -e "console.log('NODE_ENCRYPTION_KEY=' + require('crypto').randomBytes(32).toString('hex'))"
+
+# Then set ADMIN_PASSWORD in .env: at least 12 characters, with a letter, a
+# number, and a special character.
+
 docker compose --profile web up -d
 ```
 
 Open http://localhost — the admin account is created automatically on first boot.
+
+`JWT_SECRET` and `NODE_ENCRYPTION_KEY` are validated at startup: the server throws and
+exits if either is missing or malformed, before it binds to a port. The placeholders
+shipped in `.env.example` deliberately fail that check, so replacing them is not
+optional. See [Required Secrets](docs/operations.md#required-secrets) for what each key
+protects and how to rotate it.
+
+> **Upgrading an existing clone:** `NODE_ENCRYPTION_KEY` is now declared active in
+> `server/.env.example` rather than commented out, because the server has always
+> required it unconditionally at startup — the template understated that. If you have a
+> local `server/.env` without the key, add it (generate with the command above); leaving
+> it out fails `bash qa/scripts/check-env-example-parity.sh`, which CI runs on any
+> `.env*.example` change. A root `.env` is unaffected: `.env.example` already declared
+> the key active, so its parity requirement has not changed.
 
 `--profile web` starts the nginx client on port 80. It serves a production build, so it
 does not hot-reload; for day-to-day development use the Vite dev server instead (see
@@ -420,7 +443,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Users prompted to change their password are redirected to `/change-password` immediately after login
 - Admin can assign roles (admin / rep) and deactivate / reactivate users
 - JWT stored in httpOnly cookie; sessions expire after 8 hours
-- Password requirements: at least 8 characters, at least one letter, and at least one number (validated on both client and server via shared Zod schema)
+- Password requirements: at least 12 characters, at least one letter, at least one number, and at least one special character (validated on both client and server via shared Zod schema)
 - Database migration: `007_add_must_change_password.js` adds `must_change_password` boolean column to `users`
 
 ### Leads
