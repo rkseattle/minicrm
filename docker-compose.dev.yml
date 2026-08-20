@@ -38,7 +38,8 @@ services:
       NODE_ENV: development
 
   # MINCRM-399: Dex OIDC provider for local SSO testing.
-  # Enable with: docker compose -f docker-compose.dev.yml --profile sso up -d
+  # Enable with (both files — this overlay's services are override fragments):
+  #   docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile sso up -d
   # Discovery URL: http://localhost:5556/dex/.well-known/openid-configuration
   # Test credentials: admin@example.com / password  (or rep@example.com / password)
   dex:

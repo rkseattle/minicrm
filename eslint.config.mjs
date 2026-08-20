@@ -274,10 +274,6 @@ const e2eSpecConfig = {
 // waitForTimeout, waitForLoadState, on, once, removeListener, pause.
 // Everything else that belongs in a behavior is forbidden.
 //
-// Currently set to 'warn' because existing spec files have pre-existing
-// violations that will be cleaned up incrementally. Escalate to 'error'
-// once all existing violations are resolved.
-//
 // No `plugins` key here — the plugin is already registered in e2eSpecConfig
 // above, which also covers spec files. This config only overrides the rule
 // severity for the narrower file glob.
