@@ -80,6 +80,18 @@ async function createClosedDealsForRep(
 }
 
 /** Triggers the manual rep coaching run and polls until the target rep's insights reflect it. */
+/**
+ * Triggers the coaching run and waits for it to land.
+ *
+ * The endpoint answers 202 — the recompute is asynchronous — so the poll has to
+ * observe something the JOB writes. has_sufficient_data alone does not: it is derived
+ * from the rep's closed-deal count, so it flips true the moment the seeded deals
+ * exist, whether or not a single insight row has been written yet. Waiting on it lets
+ * a caller that goes on to assert insights.length race the job it just started, which
+ * it loses on a slower runner.
+ *
+ * When insights are expected, wait for a row to actually appear.
+ */
 async function triggerManualRunAndWaitForRep(
   restClient: RestClient,
   repId: string,
@@ -93,6 +105,9 @@ async function triggerManualRunAndWaitForRep(
       `/api/v1/insights/coaching/${repId}`,
     );
     expect(result.body.has_sufficient_data).toBe(expectSufficientData);
+    if (expectSufficientData) {
+      expect(result.body.insights.length).toBeGreaterThan(0);
+    }
   }).toPass({ timeout: 20_000 });
 }
 

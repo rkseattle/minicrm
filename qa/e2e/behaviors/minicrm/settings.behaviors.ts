@@ -1424,15 +1424,24 @@ export async function expectPipelineBoardContainerVisible(
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/** Clicks the inline edit button for a pipeline stage row. */
+/**
+ * Clicks the inline edit button for a pipeline stage row.
+ *
+ * Callers create the stage over REST and then navigate, so the row appears only once
+ * the page's own stages query resolves — which may already have been in flight when
+ * the stage was written. The default probe budget is short enough that this races on
+ * a slower-rendering viewport, and a stage row that has not arrived yet is reported
+ * as selector drift rather than as the wait it actually is.
+ */
 export async function clickPipelineStageEditButton(
   stageId: string,
   context: AdminSettingsBehaviorContext,
+  timeout = 10_000,
 ): Promise<void> {
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
   const locator = await context.page
     .locate([{ type: 'testId', value: `pipeline-stage-edit-${stageId}` }])
-    .resolve();
+    .resolve(timeout);
   await locator.click();
 }
 
