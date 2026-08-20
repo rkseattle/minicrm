@@ -2,12 +2,13 @@
 # https://github.com/k1LoW/tbls
 #
 # Run: npm run db:erd --workspace=minicrm-server
-# CI:  check-erd job in .github/workflows/ci.yml regenerates and diffs output;
-#      fails if committed docs/schema/ is stale after a migration change.
+#
+# Freshness is manual: tbls output is non-deterministic across postgres versions, so
+# no CI job diffs it. docs/schema/ goes stale silently unless regenerated with the
+# migration that changes the schema.
 
-# sslmode=disable is injected via PGSSLMODE env var in the db:erd npm script
-# and in the CI check-erd job — do not append query params here since DATABASE_URL
-# may already contain them.
+# sslmode=disable is injected via the PGSSLMODE env var in the db:erd npm script —
+# do not append query params here since DATABASE_URL may already contain them.
 dsn: ${DATABASE_URL}
 
 docPath: docs/schema

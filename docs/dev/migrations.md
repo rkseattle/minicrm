@@ -160,7 +160,7 @@ npm run db:erd --workspace=minicrm-server
 DATABASE_URL=postgres://user:pass@host:5432/db npm run db:erd --workspace=minicrm-server
 ```
 
-`.tbls.yml` at repo root. Audit log partitions and `pgmigrations` are excluded (visual noise). To upgrade tbls: update the pinned version in `.tbls.yml` comments and the `check-erd` CI job's `curl` command.
+`.tbls.yml` at repo root. Audit log partitions and `pgmigrations` are excluded (visual noise). To upgrade tbls: install the matching binary locally. Regenerate the ERD in the same PR as any migration — nothing in CI will catch a stale one.
 
 ---
 
@@ -170,6 +170,14 @@ DATABASE_URL=postgres://user:pass@host:5432/db npm run db:erd --workspace=minicr
 
 **Env vars:** `NODE_ENCRYPTION_KEY` = key version 1; `ENCRYPTION_KEY_V2`/`V3`/… = higher versions (64-char hex each); `CURRENT_ENCRYPTION_KEY_VERSION` controls which version encrypts new secrets (defaults to 1).
 
-**To rotate:** set `ENCRYPTION_KEY_V2` + `CURRENT_ENCRYPTION_KEY_VERSION=2`, redeploy, then run `npm run key-rotate` (see `docs/admin-guide.md`) to re-encrypt existing secrets and update `_key_version` columns.
+**To rotate:** set `ENCRYPTION_KEY_V2` + `CURRENT_ENCRYPTION_KEY_VERSION=2` and redeploy. New secrets are then written under version 2.
 
-**Limitation:** `sso_idp_certificate_encrypted` in `system_settings` has no `key_version` column and uses the legacy unversioned API — it cannot be re-encrypted by `npm run key-rotate`. Re-configure SSO manually after rotation.
+**There is no tooling to re-encrypt existing secrets under the new key.** A secret stays at the version that encrypted it, so every key ever used must remain in the environment permanently.
+
+**`NODE_ENCRYPTION_KEY` can never be retired**, rotated or not: it backs key version 1 — there is no `ENCRYPTION_KEY_V1`, version 1 resolves to it — and it also backs every legacy `encrypt`/`decrypt` secret. Removing it makes all of them permanently unreadable.
+
+**Two encryption paths exist.** AI and SMTP credentials use the versioned path. The legacy unversioned `encrypt`/`decrypt` protects a separate, wider set with no `key_version` column at all: the storage secret (`storage_secret_access_key`), TOTP MFA secrets, the SSO SP private key and IdP certificate, and webhook signing secrets — all under `NODE_ENCRYPTION_KEY`.
+
+[docs/operations.md](../operations.md#key-rotation) carries the operator-facing summary of the same constraints.
+
+Re-configure SSO manually after any rotation: its certificate and private key are in that legacy set.
