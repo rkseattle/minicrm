@@ -165,8 +165,13 @@ self_test() {
   rm -f "$tmp/.claude/state"/blocked-*
 
   # The marker write is the hook's only I/O; if it fails the block has no guard at all.
+  # The state file must be in place BEFORE the chmod, or fire() cannot copy it in and the
+  # case degrades to "state absent → allow", passing for the wrong reason.
+  cp "$tmp/.claude/state/two.json" "$tmp/.claude/state/current-plan.json"
   chmod 555 "$tmp/.claude/state"
-  check "unwritable state dir fails open" "$(fire s1 two.json "$tmp/words.jsonl" 2>/dev/null)" allow
+  check "unwritable state dir fails open" \
+    "$(printf '{"session_id":"s1","cwd":"%s","transcript_path":"%s"}' "$tmp" "$tmp/words.jsonl" \
+       | CLAUDE_PROJECT_DIR="$tmp" bash "$hook" 2>/dev/null | jq -r '.decision // "allow"')" allow
   chmod 755 "$tmp/.claude/state"
   rm -f "$tmp/.claude/state"/blocked-*
 

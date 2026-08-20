@@ -14,6 +14,7 @@ that is a repeatable procedure lives in a gate file or a skill and loads on dema
 | E2E authoring rules                       | `e2e-authoring` skill — auto-loads on `qa/**`          |
 | Full delivery workflow, plan → PR → green | `/deliver`, or the stage skills                        |
 | Jira transitions, PR feedback handling    | `plan-work`, `implement-phases`, `ship-pr`, `ci-green` |
+| Turn blocked with phases unfinished       | `.claude/hooks/block-false-stop.sh`                    |
 
 ---
 
