@@ -354,15 +354,22 @@ export async function checkWebsiteStatus(url: string): Promise<WebsiteStatus> {
     await assertUrlIsFetchSafe(url);
   } catch (err) {
     if (err instanceof UrlNotSafeError) {
-      // Only a URL that is malformed or non-HTTPS is a defect in the stored data.
-      // 'unresolvable_hostname' is raised for ANY dns.lookup rejection, a transient
-      // EAI_AGAIN included, and 'blocked_address' describes where the name points
-      // rather than whether the site is alive — neither is evidence to flag on.
-      if (err.reason === 'invalid_url' || err.reason === 'insecure_protocol') {
+      // A malformed or non-HTTPS URL is a defect in the stored data, and a hostname
+      // that definitively does not resolve is a defect in the site — both are worth
+      // reporting. Reuses the MX signal's DEFINITIVE_DNS_FAILURE_CODES so the two
+      // cannot drift apart on what counts as proof that a name is gone.
+      if (
+        err.reason === 'invalid_url' ||
+        err.reason === 'insecure_protocol' ||
+        (err.dnsCode !== undefined && DEFINITIVE_DNS_FAILURE_CODES.has(err.dnsCode))
+      ) {
         return 'unreachable';
       }
+      // Everything else is our own uncertainty: a resolver that failed to answer, or
+      // 'blocked_address', which describes where the name points rather than whether
+      // the site is alive.
       logger.warn(
-        { url, reason: err.reason },
+        { url, reason: err.reason, dnsCode: err.dnsCode },
         'dataHygiene: website safety check inconclusive — not flagging',
       );
       return 'unknown';
