@@ -79,6 +79,7 @@ jobs:
       dockerfiles:       ${{ steps.filter.outputs.dockerfiles }}
       eslint-config:     ${{ steps.filter.outputs.eslint-config }}
       comment-ids:       ${{ steps.filter.outputs.comment-ids }}
+      claude-hooks:      ${{ steps.filter.outputs.claude-hooks }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -174,6 +175,19 @@ jobs:
               - 'qa/migrations/**'
               - 'scripts/strip-work-item-ids.ts'
               - 'scripts/check-comments-only-diff.ts'
+            # Single-purpose filter for the Claude Code Stop hook and the settings
+            # file that wires it. Nothing else matches either path: `config`'s '*.json'
+            # is root-level only (picomatch does not cross '/'), and `docs` is '**.md'
+            # plus 'docs/**'. Without this a PR deleting the Stop entry or mistyping
+            # the command path triggers no job and merges green — and the hook's whole
+            # point is that its failure mode is silence. Both sides are listed because
+            # the invariant breaks from either: settings.json names the hook, and the
+            # hook is what settings.json points at. Kept separate from `config` so this
+            # does not boot unrelated jobs; OR'd into lint-and-typecheck, which hosts
+            # the other self-tests and needs no services.
+            claude-hooks:
+              - '.claude/hooks/**'
+              - '.claude/settings.json'
             # Single-purpose filter for the docker-images job. The `config` filter's
             # 'Dockerfile*' matches only root-level files, so server/Dockerfile and
             # client/Dockerfile were covered by nothing — and no job built them either.
@@ -420,7 +434,7 @@ jobs:
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
     needs: changes
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true'
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true' || needs.changes.outputs.claude-hooks == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -443,6 +457,20 @@ jobs:
 
       - name: Work-item-ID codemod self-test
         run: npx tsx scripts/strip-work-item-ids.ts --self-test
+
+      # The Stop hook's only failure mode is silence, and it is never exercised by CI
+      # otherwise. Also the only place the Linux `tac` reversal path runs at all —
+      # Darwin has `tail -r` and no `tac`.
+      - name: Stop-hook self-test
+        run: bash .claude/hooks/block-false-stop.sh --self-test
+
+      # The self-test passes whether or not settings.json still points at the hook, so
+      # assert the wiring itself: a Stop entry naming a command that exists and runs.
+      - name: Stop-hook is wired into settings
+        run: |
+          cmd=$(jq -er '.hooks.Stop[0].hooks[0].command' .claude/settings.json)
+          cmd=${cmd/\$\{CLAUDE_PROJECT_DIR\}/$GITHUB_WORKSPACE}
+          test -x "$cmd" || { echo "Stop hook command is not executable: $cmd"; exit 1; }
 
       # Covers db/migrations and qa/migrations, which eslint.config.mjs ignores, so
       # the ESLint rule above never sees them. Without this the ID convention is
