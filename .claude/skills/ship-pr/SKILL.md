@@ -77,7 +77,10 @@ If the lease check rejects the push, the remote branch has commits your local co
 not — someone else pushed, or an earlier run of this skill did. Do not re-force past it.
 Fetch, look at what is there, and reconcile.
 
-Once the PR exists, the phase state no longer describes live work — clear it:
+Once the PR exists, the phase state no longer describes live work — clear it. The file is
+per-checkout, and a checkout has one HEAD, so any concurrent session here is on this same
+branch and this same plan; a session on another branch has its own worktree and its own
+state:
 
 ```bash
 find .claude/state -type f -delete
