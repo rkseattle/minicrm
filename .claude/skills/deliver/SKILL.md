@@ -110,6 +110,13 @@ Atlassian MCP first — never guess a transition ID.
 **Stay quiet while monitors run.** No filler turns, no polling loops, no narrating the
 wait.
 
+**Declare a deliberate stop.** Any stage may end a turn to ask Rob something — a genuine
+decision, a deferral, persistent BLOCKERs, an ambiguous E2E scope. Whenever that happens
+with phases still unfinished, set `"paused": true` in `.claude/state/current-plan.json`
+first, and clear it as the first action of the turn that resumes. The `Stop` hook cannot
+tell a question from a stall, by design: distinguishing them would mean classifying
+prose. Declaring the stop is what separates them.
+
 ## If a stage file is missing or unreadable
 
 Stop and say which one. Do not reconstruct the procedure from memory — the gates and

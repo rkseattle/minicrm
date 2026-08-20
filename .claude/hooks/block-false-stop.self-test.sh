@@ -48,6 +48,14 @@ self_test() {
   printf '{"phases":"oops"}\n'                      > "$tmp/.claude/state/malformed.json"
   printf '{"phases":{"a":{"done":false}}}\n'         > "$tmp/.claude/state/objphases.json"
   printf '{"phases":[{"name":"a"}],"paused":true}\n' > "$tmp/.claude/state/paused.json"
+  # A real repo, so the branch check has something to read.
+  git -C "$tmp" init -q -b feature/live 2>/dev/null
+  printf '{"branch":"feature/live","phases":[{"name":"a","done":false}]}\n' \
+    > "$tmp/.claude/state/ownbranch.json"
+  printf '{"branch":"feature/abandoned","phases":[{"name":"a","done":false}]}\n' \
+    > "$tmp/.claude/state/otherbranch.json"
+  printf '{"branch":5,"phases":[{"name":"a","done":false}]}\n' \
+    > "$tmp/.claude/state/numbranch.json"
 
   fire() {  # fire <session> <state-file|-> <transcript> [extra-json] -> block|allow
     rm -f "$tmp/.claude/state/current-plan.json"
@@ -92,6 +100,9 @@ self_test() {
   verdict block "2 remaining / nonewline"  two.json "$tmp/nonewline.jsonl"
 
   verdict allow "object-valued .phases"    objphases.json "$tmp/words.jsonl"
+  verdict block "state names this branch"  ownbranch.json   "$tmp/words.jsonl"
+  verdict allow "state names another branch" otherbranch.json "$tmp/words.jsonl"
+  verdict allow "non-string branch"        numbranch.json   "$tmp/words.jsonl"
   verdict allow "missing transcript"       two.json "$tmp/nonexistent.jsonl"
   verdict allow "stop_hook_active"         two.json "$tmp/words.jsonl" ',"stop_hook_active":true'
 
@@ -153,7 +164,7 @@ self_test() {
     "$(cd / && printf '{"session_id":"s2","cwd":"%s","transcript_path":"%s"}' "$tmp" "$tmp/words.jsonl" \
        | bash "$hook" | jq -r '.decision // "allow"')" block
 
-  local expected=51
+  local expected=54
   if [ "$st_total" -ne "$expected" ]; then
     echo "SELF-TEST FAILED: ran ${st_total} cases, expected exactly ${expected}."
     return 1

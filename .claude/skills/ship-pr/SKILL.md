@@ -30,7 +30,8 @@ run usually goes wrong:
   and produces failures that look like test bugs.
 - `rm -rf qa/e2e/test-results/` so stale output cannot influence the verdict.
 - Scope the `--grep` to the domains this branch touched. If you are not confident the
-  blast radius is contained, ask before narrowing.
+  blast radius is contained, ask before narrowing — declaring the stop per `deliver`'s
+  invariants, since the phase state is still live until Step 4.
 - Non-serial and serial as two separate runs, `--workers=1` each.
 - Read `qa/e2e/test-results/results.xml` for the counts. Not the console. Not the exit
   code. If output truncates, read the file — do not re-run.
@@ -38,7 +39,8 @@ run usually goes wrong:
 One run. If it fails, root-cause and fix, then run **once** against just the affected
 specs. Never re-run to see whether a failure goes away. Never dismiss one as a known
 flake, pre-existing, or unrelated, and never compare against `main` to wave it off. If
-you cannot find the root cause, say so explicitly and ask how to proceed.
+you cannot find the root cause, say so explicitly and ask how to proceed, declaring the
+stop per `deliver`'s invariants.
 
 ## Step 3 — Clean the working tree
 
@@ -74,6 +76,12 @@ through.
 If the lease check rejects the push, the remote branch has commits your local copy does
 not — someone else pushed, or an earlier run of this skill did. Do not re-force past it.
 Fetch, look at what is there, and reconcile.
+
+Once the PR exists, the phase state no longer describes live work — clear it:
+
+```bash
+rm -f .claude/state/current-plan.json .claude/state/blocked-*
+```
 
 Title lists every covered ticket ID in full — `MINCRM-542, MINCRM-565` — never
 abbreviated, never partial.
