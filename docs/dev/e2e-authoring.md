@@ -226,7 +226,7 @@ and one does not substitute for the other.
 `test.describe.serial(...)` orders tests **within one file**. It does nothing
 about other spec files, which under `fullyParallel: true` run concurrently on
 other workers. The `@serial` **tag** is what moves a file out of the parallel
-shard matrix into the single-worker `e2e-serial` job, because
+shard matrix into the `e2e-serial` job, because
 `gen-conflict-group-configs.ts` discovers files by scanning test **titles** for
 it and CI filters on titles too.
 
@@ -346,7 +346,7 @@ message argument is sufficient and keeps the assertion visible in the spec.
 | Tag           | Meaning                                                                   |
 | ------------- | ------------------------------------------------------------------------- |
 | `@functional` | Required on every test in this suite                                      |
-| `@serial`     | Mutates shared global state; runs in `e2e-serial` job (--workers=1)       |
+| `@serial`     | Mutates shared global state; runs in `e2e-serial` job (1-2 workers/group) |
 | `@smoke`      | Subset of functional tests for quick sanity checks                        |
 | `@visual`     | Screenshot comparison tests; run in a separate visual regression pipeline |
 

@@ -160,6 +160,9 @@ npm run dev --workspace=minicrm-client
 
 ## Running Tests
 
+To reproduce what CI runs — including the coverage thresholds a bare `npm test` skips —
+see [Reproducing a failure locally](docs/dev/ci.md#reproducing-a-failure-locally).
+
 **Server tests** (run against the isolated test stack, never the dev database):
 
 ```bash
@@ -327,7 +330,9 @@ Shard and worker counts come from the `capacity-probe` job rather than being fix
 
 ## Automated PR Code Review
 
-All pull requests are automatically reviewed by Claude Code via `.github/workflows/claude-review.yml`. The review runs on `pull_request` events (opened, synchronize, reopened) and posts inline comments and a summary review.
+`.github/workflows/claude-review.yml` runs a Claude Code review that posts inline comments and a summary review. **It is currently disabled** — its `pull_request` trigger was removed, leaving `workflow_dispatch` only, pending credit availability. `claude-review-autofix.yml` is disabled more thoroughly: its triggers were removed too, and its one job still requires a `pull_request_review` or `issue_comment` event, so a manual dispatch skips the job and does nothing.
+
+What the review checks, when run:
 
 ### What it checks
 
@@ -347,13 +352,13 @@ Style issues enforced by ESLint/Prettier, naming preferences, and correct-but-st
 
 Comments quote the specific code that violated a rule and explain the correct pattern. If the diff is clean, the review will say so briefly.
 
-### Triggering a re-review
+### Triggering a review
 
-Push a new commit to the branch. The `synchronize` event re-triggers the review automatically.
+Run the workflow by hand from the Actions tab. With no `pull_request` trigger, pushing a commit does not start a review.
 
 ### Auto-fix loop
 
-`.github/workflows/claude-review-autofix.yml` listens for review comments from `github-actions[bot]` (the actor used by the review workflow) and runs Claude Code on the branch to address the feedback automatically, then pushes a fix commit.
+`.github/workflows/claude-review-autofix.yml` runs Claude Code on the branch to address review feedback and pushes a fix commit. It cannot currently be run at all: its event triggers were removed, and its job condition still requires a `pull_request_review` or `issue_comment` event that a manual dispatch cannot supply.
 
 ## Project Structure
 
@@ -929,8 +934,7 @@ framework — please open a discussion first so the approach can be agreed on be
 work begins.
 
 All commits must follow [Conventional Commits](https://www.conventionalcommits.org/)
-(`feat:`, `fix:`, `chore:`, `docs:`, `test:`). Pull requests are automatically reviewed
-by Claude Code and must pass CI before merging.
+(`feat:`, `fix:`, `chore:`, `docs:`, `test:`). Pull requests must pass CI before merging.
 
 ## License
 
