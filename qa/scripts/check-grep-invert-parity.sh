@@ -137,37 +137,37 @@ if [[ "${1:-}" == "--self-test" ]]; then
 
   # Markdown: a fenced command counts; narration and an in-fence shell comment
   # do not. This is the exact shape docs/operations.md and the gate document use.
-  cat > "$tmp/case.md" <<'FIXTURE'
-Narration mentioning --grep-invert "visual-regression|serial" in body prose.
+  cat > "$tmp/case.md" <<FIXTURE
+Narration mentioning --grep-invert "${canonical}" in body prose.
 
-```bash
-# a shell comment about --grep-invert "visual-regression|serial"
-npm run test -- --grep-invert "visual-regression|serial"
-```
+\`\`\`bash
+# a shell comment about --grep-invert "${canonical}"
+npm run test -- --grep-invert "${canonical}"
+\`\`\`
 
-More prose about --grep-invert "visual-regression|serial".
+More prose about --grep-invert "${canonical}".
 FIXTURE
   expect_count "markdown: fenced command counts, prose does not" 1 \
-    "$(grep --text -c -- '--grep-invert "visual-regression|serial"' \
+    "$(grep --text -c -- "--grep-invert \"${canonical}\"" \
       <(runnable_lines "$tmp/case.md") || true)"
 
   # A Markdown file that only TALKS about the expression must yield zero — this
   # is what keeps the deliberately-unchecked prose mentions from passing as real.
-  cat > "$tmp/prose-only.md" <<'FIXTURE'
-The suite excludes --grep-invert "visual-regression|serial" from the first pass.
+  cat > "$tmp/prose-only.md" <<FIXTURE
+The suite excludes --grep-invert "${canonical}" from the first pass.
 FIXTURE
   expect_count "markdown: prose-only file yields nothing" 0 \
-    "$(grep --text -c -- '--grep-invert "visual-regression|serial"' \
+    "$(grep --text -c -- "--grep-invert \"${canonical}\"" \
       <(runnable_lines "$tmp/prose-only.md") || true)"
 
   # YAML: a run step counts, a `#` comment does not. The e2e-serial job's comment
   # explaining what e2e-functional excluded is precisely this case.
-  cat > "$tmp/case.yml" <<'FIXTURE'
-# comment about --grep-invert "visual-regression|serial"
-      - run: npx playwright test --grep-invert "visual-regression|serial"
+  cat > "$tmp/case.yml" <<FIXTURE
+# comment about --grep-invert "${canonical}"
+      - run: npx playwright test --grep-invert "${canonical}"
 FIXTURE
   expect_count "yaml: run step counts, comment does not" 1 \
-    "$(grep --text -c -- '--grep-invert "visual-regression|serial"' \
+    "$(grep --text -c -- "--grep-invert \"${canonical}\"" \
       <(runnable_lines "$tmp/case.yml") || true)"
 
   if [[ "$st_failures" -ne 0 ]]; then

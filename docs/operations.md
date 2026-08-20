@@ -74,15 +74,22 @@ instead of silently mutating dev data.
 ### Running the E2E suite
 
 Export the commit SHA and rebuild the server image first, otherwise the container runs
-the previous build and coverage dumps are tagged with the wrong commit. Clear old results
+the previous build and coverage dumps are tagged with the wrong commit. Re-run the setup
+script so the admin user and storage/SMTP settings are reseeded, then clear old results
 so a stale file cannot influence the outcome:
 
 ```bash
 export GIT_COMMIT_SHA=$(git rev-parse HEAD)
 docker compose -f docker-compose.test.yml build server
 docker compose -f docker-compose.test.yml up -d server
+npm run e2e:setup
 rm -rf qa/e2e/test-results/
 ```
+
+Re-running `e2e:setup` here is not redundant with "once per session" above: it also
+resets accumulated test data. Skipping it across many runs lets test users pile up —
+50k+ has been observed, which times out user-list pagination and cascades failures
+into suites that have nothing to do with the change under test.
 
 Then the non-serial run:
 
