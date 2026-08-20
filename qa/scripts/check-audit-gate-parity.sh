@@ -46,12 +46,19 @@ CALLERS=(
 
 # Prose that instructs a human to run the audit. A drifted instruction sends a contributor
 # to the fail-open bare command — the regression this guard exists to prevent.
+# Fully pinned: commands live in fenced blocks, so both checks apply.
 DOC_CALLERS=(
   "docs/dev/contributing.md"
-  "docs/dev/ci.md"
   "docs/dev/troubleshooting.md"
   ".claude/gates/definition-of-done.md"
   ".claude/gates/pre-push.md"
+)
+
+# Name-checked only: these give the command in a table or inline span, which the fenced
+# scan cannot see. Listed separately so the weaker guarantee is visible rather than
+# implied by inclusion above.
+NAME_ONLY_DOCS=(
+  "docs/dev/ci.md"
 )
 
 failed=0
@@ -149,13 +156,29 @@ for caller in "${CALLERS[@]}"; do
 done
 
 # Extracts fenced code blocks only. Prose mentioning either command is legal and common —
-# both gates explain why the bare form is wrong — so classifying sentences is not an option
-# (a regex over English does not converge; an earlier revision of this loop tried and either
-# passed a bullet-form command or flagged the explanatory paragraph). A fenced block is
-# machine-readable: what a reader copies and runs.
+# contributing.md explains why the bare form is wrong, in inline code spans — so
+# classifying sentences is not an option (a regex over English does not converge; an
+# earlier revision tried and either passed a bullet-form command or flagged the
+# explanatory paragraph). A fenced block is machine-readable: what a reader copies.
+#
+# CONSEQUENCE, stated because a guard that overclaims is worse than a narrow one: a doc
+# whose commands live in a table or an inline span is covered only by the name check
+# below, so ADDITIVE drift there is not caught. DOC_CALLERS lists which files are fully
+# pinned. Moving a command into a fenced block is what extends coverage to it.
 fenced_lines() {
   awk '/^[[:space:]]*```/ { infence = !infence; next } infence { print }' "$1"
 }
+
+for doc in "${NAME_ONLY_DOCS[@]}"; do
+  path="${REPO_ROOT}/${doc}"
+  if [[ ! -f "$path" ]]; then
+    echo "ERROR: ${doc} does not exist — update NAME_ONLY_DOCS in $(basename "$0")."
+    failed=1
+  elif ! grep -q 'npm-audit-gate\.sh' "$path"; then
+    echo "ERROR: ${doc} does not name scripts/npm-audit-gate.sh as the audit command."
+    failed=1
+  fi
+done
 
 for doc in "${DOC_CALLERS[@]}"; do
   path="${REPO_ROOT}/${doc}"
@@ -180,6 +203,49 @@ for doc in "${DOC_CALLERS[@]}"; do
   fi
 done
 
+self_test() {
+  local tmp failures=0 out
+  tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064  # expand tmp now, not at trap time
+  trap "rm -rf '$tmp'" EXIT
+
+  # Must NOT flag: a fenced block with the shared script, plus inline prose explaining
+  # why the bare command is wrong — the shape contributing.md actually uses.
+  printf '# d\n\n```bash\nbash scripts/npm-audit-gate.sh\n```\n\nRun it rather than bare `npm audit`, which reports success on an outage.\n' \
+    > "$tmp/clean.md"
+  out="$(fenced_lines "$tmp/clean.md" | grep -c -E '^[[:space:]]*npm audit' || true)"
+  if [[ "$out" != "0" ]]; then
+    echo "SELF-TEST FAIL: explanatory prose counted as a command (got ${out})."
+    failures=1
+  fi
+
+  # Must flag: a fenced bare command, in each list-marker form a doc might use.
+  printf '# d\n\n```bash\nnpm audit --audit-level=high\n```\n' > "$tmp/fenced.md"
+  out="$(fenced_lines "$tmp/fenced.md" | grep -c -E '^[[:space:]]*npm audit' || true)"
+  if [[ "$out" != "1" ]]; then
+    echo "SELF-TEST FAIL: fenced bare command not detected (got ${out}, want 1)."
+    failures=1
+  fi
+
+  # Must NOT flag: a file with no fenced block yields no false positives.
+  printf '# d\n\nSee `bash scripts/npm-audit-gate.sh` in the table.\n' > "$tmp/table.md"
+  out="$(fenced_lines "$tmp/table.md" | wc -l | tr -d ' ')"
+  if [[ "$out" != "0" ]]; then
+    echo "SELF-TEST FAIL: a fence-free file produced ${out} scanned lines."
+    failures=1
+  fi
+
+  if [[ "$failures" -ne 0 ]]; then
+    exit 1
+  fi
+  echo "SELF-TEST PASS: fenced bare command flagged; explanatory prose and fence-free files not."
+}
+
+if [[ "${1:-}" == "--self-test" ]]; then
+  self_test
+  exit 0
+fi
+
 if [[ $failed -ne 0 ]]; then
   echo
   echo "FAIL: the dependency audit must have exactly one definition"
@@ -190,4 +256,4 @@ if [[ $failed -ne 0 ]]; then
   exit 1
 fi
 
-echo "PASS: ${#CALLERS[@]} audit callers invoke ${SHARED_SCRIPT} and ${#DOC_CALLERS[@]} docs name it; it fails closed."
+echo "PASS: ${#CALLERS[@]} callers invoke ${SHARED_SCRIPT}; ${#DOC_CALLERS[@]} docs pinned, ${#NAME_ONLY_DOCS[@]} name-checked."
