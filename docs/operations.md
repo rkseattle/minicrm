@@ -89,15 +89,21 @@ the first `docker compose up`.
 
 ### `NODE_ENCRYPTION_KEY`
 
-**Required when file storage or UI-configured SMTP is used.** Encrypts the S3/MinIO secret
-access key and SMTP password at rest in `system_settings` using AES-256-GCM. Must be a
-64-character hex string (32 bytes).
+**Required at startup, unconditionally.** If `NODE_ENCRYPTION_KEY` is absent or malformed
+when the server starts, it throws and exits before binding to its port — whether or not you
+use file storage or SMTP. This mirrors `JWT_SECRET` and catches misconfiguration at
+deployment time rather than at first use.
 
-If this variable is absent or malformed, any admin action that writes or reads a storage or
-SMTP secret throws:
+What it protects: the S3/MinIO secret access key and the SMTP password, encrypted at rest in
+`system_settings` using AES-256-GCM. Must be a 64-character hex string (32 bytes).
+
+A server that exits at startup for this reason prints:
 
 ```
-Error: NODE_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)...
+Error: NODE_ENCRYPTION_KEY is not set or is not a valid 64-character hex string (32 bytes).
+This key is required for file storage and SMTP secret encryption. Generate one with:
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" and set it in
+your .env file. See docs/operations.md for details.
 ```
 
 Generate a value the same way as `JWT_SECRET`:
@@ -106,15 +112,8 @@ Generate a value the same way as `JWT_SECRET`:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Set `NODE_ENCRYPTION_KEY` in your `.env` before enabling file attachments or configuring
-SMTP via the Admin Settings UI. Once set, **do not rotate this key** without first decrypting
-and re-encrypting any existing stored secrets — rotating without migration will make stored
-secrets unreadable.
-
-**Required at startup (MINCRM-301).** If `NODE_ENCRYPTION_KEY` is absent or malformed when
-the server starts, it exits immediately with a non-zero status code before binding to its port.
-This mirrors the behaviour of `JWT_SECRET` and ensures misconfiguration is caught at deployment
-time rather than at first use.
+Once set, **do not rotate this key** without first decrypting and re-encrypting any existing
+stored secrets — rotating without migration will make stored secrets unreadable.
 
 #### Key Rotation
 
