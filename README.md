@@ -53,6 +53,7 @@ Local Development below).
 | [Webhook Integration Guide](docs/webhooks.md)       | Developers — subscriptions, event types, payload verification, retry behaviour         |
 | [Operations Guide](docs/operations.md)              | Developers and operators — local test environment, running E2E, secrets, backups       |
 | [Developer Documentation](docs/dev/index.md)        | Contributors — architecture references, migrations, E2E authoring, CI, troubleshooting |
+| [Troubleshooting](docs/dev/troubleshooting.md)      | Contributors — symptoms, causes, and fixes for common local failures                   |
 | [Architecture Decision Records](docs/adr/README.md) | Contributors — why significant architectural decisions were made, and what they cost   |
 | [Database Schema Reference](docs/schema/README.md)  | Contributors — every table and column, generated from the live database                |
 | [Performance Testing](docs/performance-testing.md)  | Developers — load and performance test setup and results                               |
