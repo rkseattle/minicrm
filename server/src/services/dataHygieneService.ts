@@ -353,7 +353,20 @@ export async function checkWebsiteStatus(url: string): Promise<WebsiteStatus> {
   try {
     await assertUrlIsFetchSafe(url);
   } catch (err) {
-    if (err instanceof UrlNotSafeError) return 'unreachable';
+    if (err instanceof UrlNotSafeError) {
+      // Only a URL that is malformed or non-HTTPS is a defect in the stored data.
+      // 'unresolvable_hostname' is raised for ANY dns.lookup rejection, a transient
+      // EAI_AGAIN included, and 'blocked_address' describes where the name points
+      // rather than whether the site is alive — neither is evidence to flag on.
+      if (err.reason === 'invalid_url' || err.reason === 'insecure_protocol') {
+        return 'unreachable';
+      }
+      logger.warn(
+        { url, reason: err.reason },
+        'dataHygiene: website safety check inconclusive — not flagging',
+      );
+      return 'unknown';
+    }
     throw err;
   }
 

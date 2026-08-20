@@ -191,6 +191,29 @@ describe('checkWebsiteStatus', () => {
     await expect(checkWebsiteStatus('https://opaque.test-site.co')).resolves.toBe('unknown');
   });
 
+  /**
+   * assertUrlIsFetchSafe runs BEFORE the fetch and raises UrlNotSafeError for several
+   * unrelated conditions. Collapsing them all to 'unreachable' reintroduced the very
+   * bug the tri-state fixed, one layer up: 'unresolvable_hostname' is raised for ANY
+   * dns.lookup rejection, a transient EAI_AGAIN included.
+   */
+  it('reports an unresolvable hostname as unknown — the resolver may be at fault', async () => {
+    lookup.mockRejectedValueOnce(Object.assign(new Error('EAI_AGAIN'), { code: 'EAI_AGAIN' }));
+    await expect(checkWebsiteStatus('https://blip.test-site.co')).resolves.toBe('unknown');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('reports a blocked address as unknown — it describes where the name points', async () => {
+    lookup.mockResolvedValueOnce([{ address: '127.0.0.1', family: 4 }]);
+    await expect(checkWebsiteStatus('https://internal.test-site.co')).resolves.toBe('unknown');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('still reports a malformed URL as unreachable — that is a real data defect', async () => {
+    await expect(checkWebsiteStatus('not-a-url')).resolves.toBe('unreachable');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('reports our own abort as unknown, not as a broken site', async () => {
     const abort = new Error('This operation was aborted');
     abort.name = 'AbortError';
