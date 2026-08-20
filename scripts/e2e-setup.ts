@@ -28,10 +28,13 @@ import {
   resolveTestStackDbEnv,
   parseEnvFileContents,
   pickDbCoordinates,
+  pickAdminCredentials,
+  resolveTestStackAdmin,
   DevDatabaseRefusedError,
   DEV_DB_PORT,
   TEST_DB_PORT,
   type TestStackDbSource,
+  type TestStackAdminSource,
 } from '../qa/scripts/test-stack-db-env.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -57,20 +60,34 @@ const EXPORTED_DB_PORT = process.env.DB_PORT;
 const EXPORTED_DB_HOST = process.env.DB_HOST;
 const EXPORTED_DB_USER = process.env.DB_USER;
 const EXPORTED_DB_PASSWORD = process.env.DB_PASSWORD;
+const EXPORTED_ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL;
+const EXPORTED_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
 
 /**
- * Reads the DB coordinates AND credentials straight out of qa/e2e/.env, bypassing process.env —
- * root .env is loaded below for NODE_ENCRYPTION_KEY and its DEV coordinates
- * would otherwise shadow the test stack's. This is what keeps a developer's
- * non-default test-stack host/port working.
+ * Reads qa/e2e/.env directly, bypassing process.env — root .env is loaded below
+ * for NODE_ENCRYPTION_KEY and its DEV coordinates would otherwise shadow the
+ * test stack's.
  */
-function readE2eEnvFileDbSource(): TestStackDbSource {
+function readE2eEnvFile(): Record<string, string> {
   try {
-    const contents = readFileSync(resolve(__dirname, '..', 'qa', 'e2e', '.env'), 'utf8');
-    return pickDbCoordinates(parseEnvFileContents(contents));
+    return parseEnvFileContents(
+      readFileSync(resolve(__dirname, '..', 'qa', 'e2e', '.env'), 'utf8'),
+    );
   } catch {
     return {};
   }
+}
+
+function readE2eEnvFileDbSource(): TestStackDbSource {
+  return pickDbCoordinates(readE2eEnvFile());
+}
+
+/** Admin credentials live in qa/e2e/.env, so the bare `npm run e2e:setup` works. */
+function resolveAdminCredentials(): TestStackAdminSource {
+  return resolveTestStackAdmin(
+    { E2E_ADMIN_EMAIL: EXPORTED_ADMIN_EMAIL, E2E_ADMIN_PASSWORD: EXPORTED_ADMIN_PASSWORD },
+    pickAdminCredentials(readE2eEnvFile()),
+  );
 }
 
 // Load root .env so NODE_ENCRYPTION_KEY and other server-side vars are available
@@ -233,8 +250,8 @@ function ensureCoverageE2eDatabase(): void {
 // after the reset.
 
 function resetE2eData(): void {
-  const adminEmail = process.env.E2E_ADMIN_EMAIL;
-  const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+  const { E2E_ADMIN_EMAIL: adminEmail, E2E_ADMIN_PASSWORD: adminPassword } =
+    resolveAdminCredentials();
 
   if (!adminEmail || !adminPassword) {
     console.error(
@@ -264,8 +281,8 @@ function resetE2eData(): void {
 // ── Step 3: Seed E2E admin user ───────────────────────────────────────────────
 
 function seedE2eAdmin(): void {
-  const adminEmail = process.env.E2E_ADMIN_EMAIL;
-  const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+  const { E2E_ADMIN_EMAIL: adminEmail, E2E_ADMIN_PASSWORD: adminPassword } =
+    resolveAdminCredentials();
 
   if (!adminEmail || !adminPassword) {
     console.error(

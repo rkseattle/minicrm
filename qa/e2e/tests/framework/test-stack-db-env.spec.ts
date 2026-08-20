@@ -30,6 +30,8 @@ import {
   TEST_COVERAGE_DB_NAME,
   TEST_DB_USER,
   TEST_DB_PASSWORD,
+  resolveTestStackAdmin,
+  pickAdminCredentials,
 } from '../../../scripts/test-stack-db-env.js';
 // Imported at its real home, not through the qa re-export, so this pins the
 // shared module both guards actually run.
@@ -463,6 +465,45 @@ test.describe('resolveRuntimeTestStackDb', () => {
     expect(resolveRuntimeTestStackDb({ DB_HOST: '', DB_PORT: '' })).toMatchObject({
       host: 'localhost',
       port: Number(TEST_DB_PORT),
+    });
+  });
+});
+
+test.describe('resolveTestStackAdmin', () => {
+  test('falls back to qa/e2e/.env when nothing is exported', () => {
+    const resolved = resolveTestStackAdmin(
+      {},
+      { E2E_ADMIN_EMAIL: 'admin@ead.com', E2E_ADMIN_PASSWORD: 'from-file' },
+    );
+    expect(resolved.E2E_ADMIN_EMAIL).toBe('admin@ead.com');
+    expect(resolved.E2E_ADMIN_PASSWORD).toBe('from-file');
+  });
+
+  test('prefers a deliberate export over the file', () => {
+    const resolved = resolveTestStackAdmin(
+      { E2E_ADMIN_EMAIL: 'exported@ead.com', E2E_ADMIN_PASSWORD: 'exported' },
+      { E2E_ADMIN_EMAIL: 'file@ead.com', E2E_ADMIN_PASSWORD: 'from-file' },
+    );
+    expect(resolved.E2E_ADMIN_EMAIL).toBe('exported@ead.com');
+    expect(resolved.E2E_ADMIN_PASSWORD).toBe('exported');
+  });
+
+  test('resolves each key independently', () => {
+    const resolved = resolveTestStackAdmin(
+      { E2E_ADMIN_EMAIL: 'exported@ead.com' },
+      { E2E_ADMIN_PASSWORD: 'from-file' },
+    );
+    expect(resolved.E2E_ADMIN_EMAIL).toBe('exported@ead.com');
+    expect(resolved.E2E_ADMIN_PASSWORD).toBe('from-file');
+  });
+
+  test('omits keys neither source supplies, so the caller still exits 1', () => {
+    expect(resolveTestStackAdmin({}, {})).toEqual({});
+  });
+
+  test('pickAdminCredentials ignores unrelated keys', () => {
+    expect(pickAdminCredentials({ DB_PORT: '5433', E2E_ADMIN_EMAIL: 'a@b.c' })).toEqual({
+      E2E_ADMIN_EMAIL: 'a@b.c',
     });
   });
 });
