@@ -80,7 +80,7 @@ Fetch, look at what is there, and reconcile.
 Once the PR exists, the phase state no longer describes live work — clear it:
 
 ```bash
-rm -f .claude/state/current-plan.json .claude/state/blocked-*
+find .claude/state -type f -delete
 ```
 
 Title lists every covered ticket ID in full — `MINCRM-542, MINCRM-565` — never

@@ -46,8 +46,9 @@ Set `"paused": true` before ending a turn deliberately, per `deliver`'s invarian
 **remove it as the first action of the turn that resumes** — left set, it disables the
 guard for every remaining phase.
 
-If work is abandoned before `/ship-pr`, delete `.claude/state/current-plan.json` and
-`.claude/state/blocked-*`; an unfinished plan nobody is working on nags the next session.
+If work is abandoned before `/ship-pr`, clear the state with
+`find .claude/state -type f -delete`; an unfinished plan nobody is working on nags the
+next session.
 
 ## Step 2 — Run all phases straight through
 
