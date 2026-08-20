@@ -45,13 +45,17 @@ Local Development below).
 
 ## Documentation
 
-| Guide                                         | Audience                                                                          |
-| --------------------------------------------- | --------------------------------------------------------------------------------- |
-| [User Guide](docs/user-guide/index.md)        | Sales reps and managers — contacts, deals, leads, activities, notes, dashboard    |
-| [Admin Guide](docs/admin-guide.md)            | Administrators — user management, pipeline config, settings, branding, automation |
-| [REST API Reference](docs/api.md)             | Developers — authentication, all endpoints, pagination, error codes, gRPC         |
-| [Webhook Integration Guide](docs/webhooks.md) | Developers — subscriptions, event types, payload verification, retry behaviour    |
-| [Operations Guide](docs/operations.md)        | Developers and operators — local test environment, running E2E, secrets, backups  |
+| Guide                                               | Audience                                                                               |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [User Guide](docs/user-guide/index.md)              | Sales reps and managers — contacts, deals, leads, activities, notes, dashboard         |
+| [Admin Guide](docs/admin-guide.md)                  | Administrators — user management, pipeline config, settings, branding, automation      |
+| [REST API Reference](docs/api.md)                   | Developers — authentication, all endpoints, pagination, error codes, gRPC              |
+| [Webhook Integration Guide](docs/webhooks.md)       | Developers — subscriptions, event types, payload verification, retry behaviour         |
+| [Operations Guide](docs/operations.md)              | Developers and operators — local test environment, running E2E, secrets, backups       |
+| [Developer Documentation](docs/dev/index.md)        | Contributors — architecture references, migrations, E2E authoring, CI, troubleshooting |
+| [Architecture Decision Records](docs/adr/README.md) | Contributors — why significant architectural decisions were made, and what they cost   |
+| [Database Schema Reference](docs/schema/README.md)  | Contributors — every table and column, generated from the live database                |
+| [Performance Testing](docs/performance-testing.md)  | Developers — load and performance test setup and results                               |
 
 For upgrade procedures, backup and restore scripts, email deliverability setup (SPF/DKIM/DMARC), and other operational guidance, see [docs/operations.md](docs/operations.md).
 

@@ -80,6 +80,7 @@ jobs:
       eslint-config:     ${{ steps.filter.outputs.eslint-config }}
       comment-ids:       ${{ steps.filter.outputs.comment-ids }}
       claude-hooks:      ${{ steps.filter.outputs.claude-hooks }}
+      doc-links:         ${{ steps.filter.outputs.doc-links }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -96,6 +97,12 @@ jobs:
               # skill, gate, and agent doc triggering no job at all. markdownlint itself
               # globs with dot:true and always covered them — the gap was reaching it.
               - '.claude/**/*.md'
+            # Link targets outside docs/ that are not .md, plus the guard itself so
+            # editing it re-runs it. `docs` is OR'd into the same job, so duplicating
+            # its globs here would only be drift surface.
+            doc-links:
+              - 'LICENSE'
+              - 'qa/scripts/check-doc-links.mjs'
             client:
               - 'client/src/**'
               - 'client/public/**'
@@ -2773,7 +2780,7 @@ jobs:
   lint-docs:
     name: Phase 1 - Lint Docs
     needs: changes
-    if: needs.changes.outputs.docs == 'true'
+    if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.doc-links == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -2784,6 +2791,10 @@ jobs:
         run: npm install -g markdownlint-cli2
       - name: Lint markdown files
         run: markdownlint-cli2 "**/*.md" "#node_modules"
+      - name: Verify the link guard catches a break
+        run: node qa/scripts/check-doc-links.mjs --self-test
+      - name: Check relative documentation links
+        run: node qa/scripts/check-doc-links.mjs
 
   # MINCRM-324: Generate visual regression baselines on Linux and commit them
   # back to the PR branch. Runs only on qa path changes. Services and setup

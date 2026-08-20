@@ -190,7 +190,7 @@ New deals default to this currency. Existing deals keep their own currency.
 ### Default timezone
 
 > **Feature dependency:** used to display
-> [AI follow-up timing suggestions](contacts.md#ai-smart-follow-up-timing-suggestions)
+> [AI follow-up timing suggestions](user-guide/contacts.md#ai-smart-follow-up-timing-suggestions)
 > in local terms. MiniCRM does not store a timezone per contact or per user — this is
 > the single org-wide display timezone.
 
@@ -826,7 +826,7 @@ in place until the next successful run.
 ### AI relationship health scoring configuration
 
 The weights and thresholds behind
-[relationship health scoring](accounts.md#ai-relationship-health-scoring) are
+[relationship health scoring](user-guide/accounts.md#ai-relationship-health-scoring) are
 admin-tunable via `GET`/`PATCH /api/v1/settings/relationship-health-config`
 (admin role required):
 
