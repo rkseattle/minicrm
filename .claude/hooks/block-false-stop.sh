@@ -45,6 +45,15 @@ marker="$root/.claude/state/blocked-$session"
 [ "$(jq -r 'if (.phases|type) == "array" then "ok" else "bad" end' "$state" 2>/dev/null)" = "ok" ] || allow
 [ "$(jq -r '.paused // false' "$state" 2>/dev/null)" = "true" ] && allow
 
+# Abandoned work is left on its branch, so a state file naming a branch that is no longer
+# checked out describes phases this session is not working on. Plan files cannot serve
+# here: nothing ever deletes one, so a plan-existence check would never fire.
+want_branch=$(jq -r '.branch // ""' "$state" 2>/dev/null)
+if [ -n "$want_branch" ]; then
+  here=$(git -C "$root" symbolic-ref --short HEAD 2>/dev/null || echo "")
+  [ -n "$here" ] && [ "$here" != "$want_branch" ] && { rm -f "$marker"; allow; }
+fi
+
 remaining=$(jq -r '[.phases[]? | select(.done != true)] | length' "$state" 2>/dev/null)
 [[ "$remaining" =~ ^[0-9]+$ ]] || allow
 [ "$remaining" -eq 0 ] && { rm -f "$marker"; allow; }

@@ -55,7 +55,8 @@ Work through findings in batches by root cause, not one commit per finding.
 Once fixes are committed, re-run `greptile-reviewer` against the same base ref with the
 same minimal prompt. Continue until the verdict is APPROVE, to a maximum of three
 rounds. If it still requests changes after the third round, stop and bring the specific
-disagreement to Rob rather than iterating further.
+disagreement to Rob rather than iterating further, declaring the stop per `deliver`'s
+invariants.
 
 ## Step 4 — Verify the acceptance criteria table
 

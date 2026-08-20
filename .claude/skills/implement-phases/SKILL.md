@@ -25,6 +25,30 @@ first and use the ID it returns — never guess one.
 Read `.claude/gates/definition-of-done.md` now. It applies to every commit in this
 skill and does not need re-reading between phases.
 
+Then write the phase list to `.claude/state/current-plan.json`, which is what the `Stop`
+hook reads to tell an unfinished plan from a finished one.
+
+```json
+{
+  "branch": "<ticket-slug>",
+  "plan": "docs/plans/<primary-ticket>.md",
+  "tickets": ["MINCRM-N"],
+  "phases": [{ "name": "Phase 1 — <name>", "done": false }]
+}
+```
+
+One entry per phase in the approved plan, all `done: false`. `branch` is the branch just
+created: the hook ignores a state file naming a branch that is not checked out, so
+abandoned work stops nagging once you switch away from it. `plan` and `tickets` are
+provenance for a human reading the file.
+
+Set `"paused": true` before ending a turn deliberately, per `deliver`'s invariants, and
+**remove it as the first action of the turn that resumes** — left set, it disables the
+guard for every remaining phase.
+
+If work is abandoned before `/ship-pr`, delete `.claude/state/current-plan.json` and
+`.claude/state/blocked-*`; an unfinished plan nobody is working on nags the next session.
+
 ## Step 2 — Run all phases straight through
 
 Once the plan is approved, run every phase to completion **without stopping to ask
@@ -76,14 +100,19 @@ where you think the risk is. It reads the diff cold and derives its own context.
 Fix every BLOCKER and MAJOR. Address PATTERN SPREAD findings in this same commit unless
 they are genuinely out of scope, in which case say so explicitly and note them for the
 branch review. Re-run the review on the fixed diff. Repeat to a maximum of three rounds;
-if BLOCKERs persist after the third, stop and bring it to Rob.
+if BLOCKERs persist after the third, stop and bring it to Rob, declaring the stop per
+`deliver`'s invariants.
 
 ### 2d. Definition of Done, then commit
 
 Run every gate in `.claude/gates/definition-of-done.md`, including the conditional ones
 that apply to this phase's diff. All green. Read result files, never exit codes.
 
-Commit with the ticket ID in the message. Then move directly to the next phase.
+Commit with the ticket ID in the message, then mark this phase `"done": true` in
+`.claude/state/current-plan.json`. If the file is missing — a resumed session, or this
+skill re-entered on an existing branch — rebuild it from the plan document's phase list,
+marking `done: true` every phase whose commit is already on the branch. Then move directly
+to the next phase.
 
 ## Step 3 — Report
 
