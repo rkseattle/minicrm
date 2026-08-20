@@ -16,11 +16,32 @@ MAX_SCAN_BYTES=2000000
 MAX_SCAN_LINES=400
 
 allow() {
+  # Declared before log_invocation, so guard the call: allow() is reachable from the
+  # --self-test line above, before the logger is defined.
+  if declare -F log_invocation >/dev/null 2>&1; then log_invocation "verdict=allow"; fi
   printf '{"continue": true}\n'
   exit 0
 }
 
 [ "${1:-}" = "--self-test" ] && exec bash "$(dirname "$0")/block-false-stop.self-test.sh" "$0"
+
+# Records that the harness actually ran this script. A stall with no line here means the
+# hook was never dispatched; a line with no matching block means it ran and its verdict
+# went unapplied. Nothing else distinguishes those two, and they have different fixes.
+# Runs before every exit path, uses no jq (the next line may exit without it), and never
+# fails the hook: a log that breaks the guard is worse than no log.
+log_invocation() {
+  local dir="${CLAUDE_PROJECT_DIR:-.}/.claude/state"
+  local logfile="$dir/hook-invocations.log"
+  [ -d "$dir" ] || return 0
+  # Keep the tail bounded; this file is diagnostic, never state.
+  if [ -f "$logfile" ] && [ "$(wc -l < "$logfile" 2>/dev/null || echo 0)" -gt 500 ]; then
+    tail -n 200 "$logfile" > "$logfile.tmp" 2>/dev/null && mv "$logfile.tmp" "$logfile" 2>/dev/null
+  fi
+  printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$1" >> "$logfile" 2>/dev/null || true
+}
+
+log_invocation "invoked"
 
 command -v jq >/dev/null 2>&1 || allow
 input=$(cat) || allow
@@ -100,6 +121,7 @@ last=$({ cat "$transcript"; printf '\n'; } \
 [ "$attempt" -gt "$MAX_CONSECUTIVE_BLOCKS" ] && allow
 
 { mkdir -p "$(dirname "$marker")" && printf '%s %s' "$size" "$attempt" > "$marker"; } || allow
+log_invocation "verdict=block remaining=$remaining attempt=$attempt"
 jq -n --arg r "$remaining" '{
   decision: "block",
   reason: ("Plan has \($r) unfinished phase(s) in .claude/state/current-plan.json. Continue with the next phase now — do not end the turn. To stop deliberately, set \"paused\": true in that file; if the plan is abandoned, delete it.")
