@@ -44,6 +44,16 @@ CALLERS=(
   "scripts/pre-push-tia.ts"
 )
 
+# Prose that instructs a human to run the audit. A drifted instruction sends a contributor
+# to the fail-open bare command — the regression this guard exists to prevent.
+DOC_CALLERS=(
+  "docs/dev/contributing.md"
+  "docs/dev/ci.md"
+  "docs/dev/troubleshooting.md"
+  ".claude/gates/definition-of-done.md"
+  ".claude/gates/pre-push.md"
+)
+
 failed=0
 
 if [[ ! -x "${REPO_ROOT}/${SHARED_SCRIPT}" ]]; then
@@ -138,6 +148,38 @@ for caller in "${CALLERS[@]}"; do
   fi
 done
 
+# Extracts fenced code blocks only. Prose mentioning either command is legal and common —
+# both gates explain why the bare form is wrong — so classifying sentences is not an option
+# (a regex over English does not converge; an earlier revision of this loop tried and either
+# passed a bullet-form command or flagged the explanatory paragraph). A fenced block is
+# machine-readable: what a reader copies and runs.
+fenced_lines() {
+  awk '/^[[:space:]]*```/ { infence = !infence; next } infence { print }' "$1"
+}
+
+for doc in "${DOC_CALLERS[@]}"; do
+  path="${REPO_ROOT}/${doc}"
+
+  if [[ ! -f "$path" ]]; then
+    echo "ERROR: ${doc} does not exist — update DOC_CALLERS in $(basename "$0")."
+    failed=1
+    continue
+  fi
+
+  if ! grep -q 'npm-audit-gate\.sh' "$path"; then
+    echo "ERROR: ${doc} does not name scripts/npm-audit-gate.sh as the audit command."
+    failed=1
+  fi
+
+  bare="$(fenced_lines "$path" | grep -n -E '^[[:space:]]*npm audit' || true)"
+  if [[ -n "$bare" ]]; then
+    echo "ERROR: ${doc} has a runnable bare 'npm audit' in a code block:"
+    echo "${bare}" | sed 's/^/    /'
+    echo "  It reports success when the registry returns no verdict — see MINCRM-703."
+    failed=1
+  fi
+done
+
 if [[ $failed -ne 0 ]]; then
   echo
   echo "FAIL: the dependency audit must have exactly one definition"
@@ -148,4 +190,4 @@ if [[ $failed -ne 0 ]]; then
   exit 1
 fi
 
-echo "PASS: all ${#CALLERS[@]} audit callers delegate to ${SHARED_SCRIPT}, which fails closed."
+echo "PASS: ${#CALLERS[@]} audit callers invoke ${SHARED_SCRIPT} and ${#DOC_CALLERS[@]} docs name it; it fails closed."

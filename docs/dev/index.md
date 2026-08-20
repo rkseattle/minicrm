@@ -12,6 +12,7 @@ running and operating a deployment, see the [Operations Guide](../operations.md)
 | --------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [AI Chat Lifecycle](ai-chat.md)               | How the AI page sends a message and renders the assistant's reply                              | Anyone changing the chat flow or its caching                           |
 | [CI Pipeline](ci.md)                          | What runs on a PR, what gates a merge, and how to reproduce a failure                          | Anyone with a red check or a skipped job                               |
+| [Contributing](contributing.md)               | What to run before a commit, a push, and a PR                                                  | Anyone about to commit                                                 |
 | [Coverage/TIA Instrumentation](coverage.md)   | Runtime coverage collection, session management, the mapping engine, and test-impact selection | Anyone touching coverage, TIA selection, or a failing attestation gate |
 | [Coverage/TIA SDK](coverage-tia-sdk.md)       | The versioned agent and harness-adapter contract                                               | Anyone adding a new language or test runner to coverage                |
 | [Custom ESLint Rules](eslint-plugins.md)      | The seven repo-specific lint rules and what each enforces                                      | Anyone whose lint run failed on a `local/` rule                        |
@@ -21,6 +22,7 @@ running and operating a deployment, see the [Operations Guide](../operations.md)
 | [gRPC / ConnectRPC](grpc.md)                  | The ConnectRPC layer mounted alongside REST, and where its protos live                         | Anyone adding or changing a gRPC service                               |
 | [Local SSO Testing](local-sso.md)             | Running Dex as a local OIDC provider, and its test accounts                                    | Anyone working on SSO or login flows                                   |
 | [Migrations](migrations.md)                   | Writing migrations, regenerating the ERD, and encryption key versioning                        | Anyone changing the database schema                                    |
+| [New Endpoint Checklist](new-endpoint.md)     | Layering, authorization, audit, and error rules for a new route                                | Anyone adding a route                                                  |
 | [Retention](retention.md)                     | Which log tables are purged, on what schedule, and by which condition                          | Anyone adding a log table or debugging vanished rows                   |
 | [Schema Reference](schema.md)                 | Non-obvious fields, enums, and constraints                                                     | Anyone writing a query against an unfamiliar table                     |
 | [Troubleshooting](troubleshooting.md)         | Symptoms, causes, and the exact fix for common local failures                                  | Anyone whose stack, tests, or push just broke                          |
@@ -33,3 +35,15 @@ running and operating a deployment, see the [Operations Guide](../operations.md)
 | ------------------------------------------------- | --------------------------------------------------------------------- |
 | [Architecture Decision Records](../adr/README.md) | Why significant architectural decisions were made, and what they cost |
 | [Generated schema reference](../schema/README.md) | Every table and column, generated from the live database by `tbls`    |
+
+---
+
+## `.claude/` and `docs/`
+
+Procedures that bind anyone working in this repo live here, in `docs/dev/`. `.claude/`
+holds the agent-facing copies: the same requirements plus session-level pacing — when to
+run E2E across a multi-commit branch, what to do between phases of a plan — which has no
+meaning for a person working normally.
+
+Where a rule binds both, `docs/` is canonical and the gate points here. That direction is
+deliberate: reversing it per-file is how the two trees drift apart.

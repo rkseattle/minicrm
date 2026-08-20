@@ -1,5 +1,9 @@
 # Pre-push and pre-PR gate
 
+The human account of this checklist is
+[docs/dev/contributing.md](../../docs/dev/contributing.md). This file is the agent copy:
+the pre-PR self-review and the turn-level pacing below have no human equivalent.
+
 ## Pre-push checklist
 
 In order, all green, before every `git push`:
@@ -39,7 +43,7 @@ In order, all green, before every `git push`:
 3. `npm run typecheck` at repo root — covers server, client, and qa
 4. `npm test --workspace=minicrm-server` if server files changed;
    `npm test --workspace=minicrm-client` if client files changed
-5. `npm audit --audit-level=high` — **always, never conditional on whether dependencies
+5. `bash scripts/npm-audit-gate.sh` — **always, never conditional on whether dependencies
    changed.** Advisories are published against versions you already have: a lockfile
    that was clean yesterday fails today because the advisory database moved, not because
    anything in the repo did. Skipping this on a branch that touched no `package.json`
@@ -106,8 +110,8 @@ turns into an unverified push:
    result and the gate restarts from step 1. Confirm with `git rev-parse HEAD`, don't
    assume.
 4. **Steps 2–5 and 7 still run.** This skips _only_ the redundant E2E leg. Lint,
-   typecheck, unit tests, and `npm audit` are cheap, are not what an E2E run covers, and
-   `npm audit` in particular fails on advisories published against a lockfile that never
+   typecheck, unit tests, and the audit gate are cheap, are not what an E2E run covers,
+   and the audit in particular fails on advisories published against a lockfile that never
    changed. The hook enforces steps 3 and 5 itself — see below — but not 2, 4, or 7.
 
 What the bypass gives up beyond the tests themselves: the hook's `attestOrThrow` proves
@@ -119,7 +123,7 @@ not the one to eyeball.
 Never skip the hook to get _around_ a failure, a flake, or a run you'd rather not sit
 through. The only thing this shortcut is for is not paying twice for the same verdict.
 
-**`SKIP_TIA_PREPUSH=1` does not skip typecheck or `npm audit`.** The hook runs both
+**`SKIP_TIA_PREPUSH=1` does not skip typecheck or the audit gate.** The hook runs both
 (steps 3 and 5) before it consults that variable, so the bypass drops only the E2E leg —
 which is the scope the variable's name describes. Both are seconds against a 20-60 minute
 E2E run, and both guard a documented way a branch reaches CI red: a cross-file type error

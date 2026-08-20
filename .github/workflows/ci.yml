@@ -272,7 +272,7 @@ jobs:
               - 'scripts/pre-push-tia.ts'
             # Single-purpose output for check-audit-gate-parity.sh, which pins
             # every caller of the dependency audit to the one shared definition.
-            # All three files live outside qa/, so without this entry an edit to
+            # The files it pins live outside qa/, so without this entry an edit to
             # any of them would not re-run the guard — the bidirectional-
             # invariant rule in CLAUDE.md. Deliberately not folded into `server`
             # or `config`, which gate far more than this one check needs.
@@ -282,6 +282,13 @@ jobs:
               - 'scripts/pre-push-tia.ts'
               - '.github/actions/npm-audit/action.yml'
               - 'qa/scripts/check-audit-gate-parity.sh'
+              # The three prose sites the guard pins. Without these a docs-only PR can
+              # drift an instruction back to the fail-open bare command unchecked.
+              - 'docs/dev/contributing.md'
+              - 'docs/dev/ci.md'
+              - 'docs/dev/troubleshooting.md'
+              - '.claude/gates/definition-of-done.md'
+              - '.claude/gates/pre-push.md'
             # Single-purpose output for check-grep-invert-parity.sh, which pins
             # the non-serial --grep-invert expression across this workflow, the
             # shared TS constant, and the documented local command. Three of the
@@ -1119,10 +1126,10 @@ jobs:
     # one in a workspace this job's other checks ignore — still runs the template
     # mirror assertion. Scoped here rather than widening `qa`, which gates the
     # whole E2E matrix. (MINCRM-699)
-    # audit-gate is OR'd in for the same reason: its three pinned files all live
-    # outside qa/, so an edit to the shared audit script or to either caller
-    # would otherwise leave check-audit-gate-parity.sh unrun on exactly the
-    # change it guards. (MINCRM-668)
+    # audit-gate is OR'd in for the same reason: its pinned files live outside qa/,
+    # so an edit to the shared audit script, to a caller, or to one of the docs that
+    # instructs a human to run it would otherwise leave check-audit-gate-parity.sh
+    # unrun on exactly the change it guards. (MINCRM-668)
     # grep-invert-parity is OR'd in for the same reason: three of the four files
     # it pins (this workflow, .claude/gates/e2e-run.md and docs/operations.md)
     # live outside qa/, so an edit to any would otherwise leave

@@ -1,5 +1,9 @@
 # Definition of Done — required before every `git commit`, no exceptions
 
+The human account of these gates is [docs/dev/contributing.md](../../docs/dev/contributing.md).
+This file is the agent copy: it adds session pacing and the conditional-gate reasoning,
+which have no human equivalent.
+
 Run in order. All must be green. Read this file before the first commit of a session;
 it does not need re-reading between commits.
 
@@ -19,9 +23,9 @@ npm run lint
 #    overrides for transitive deps and makes a fixable advisory look unfixable. The
 #    re-resolve is only for changing overrides — `npm ci` installs a committed
 #    lockfile verbatim — see .claude/gates/pre-push.md (MINCRM-703).
-npm audit
+bash scripts/npm-audit-gate.sh
 
-# 4. Unit tests — sequential; never run the two workspaces in parallel
+# 4. Unit tests — sequential; never run the three workspaces in parallel
 npm run unit_test
 
 # 5. QA static checks
@@ -34,6 +38,7 @@ bash qa/scripts/check-grep-invert-parity.sh
 bash qa/scripts/check-framework-spec-titles.sh
 bash qa/scripts/check-e2e-cleanup.sh
 node qa/scripts/check-locator-timeout-forwarding.mjs
+bash qa/scripts/check-audit-gate-parity.sh
 ```
 
 Steps 1–5 run before every commit. **E2E does not gate individual commits** — see
