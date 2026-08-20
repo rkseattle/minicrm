@@ -449,5 +449,5 @@ context. (MINCRM-668)
 
 A record that is deliberately left behind, or is already cleaned up by other means,
 opts out with a `// MINCRM-686-ok: <reason>` marker on the create line or in a comment
-block directly above it, within three lines. The reason is required and brief — it is what makes a deliberate
-exception distinguishable from an oversight.
+block directly above it, within three lines. The reason is required and brief — it
+is what makes a deliberate exception distinguishable from an oversight.

@@ -22,7 +22,6 @@ allow() {
 
 [ "${1:-}" = "--self-test" ] && exec bash "$(dirname "$0")/block-false-stop.self-test.sh" "$0"
 
-
 command -v jq >/dev/null 2>&1 || { printf '{"continue": true}\n'; exit 0; }
 
 input=$(cat) || { printf '{"continue": true}\n'; exit 0; }
@@ -39,11 +38,11 @@ marker="$root/.claude/state/blocked-$session"
 
 # stop_hook_active is undocumented for Stop, so the marker is what terminates the loop.
 # Keyed by session so one session cannot silence another.
-[ "$(jq -r '.stop_hook_active // false' <<<"$input")" = "true" ] && allow
+[ "$(jq -r '.stop_hook_active // false' <<<"$input")" = "true" ] && { rm -f "$marker"; allow; }
 
 [ -f "$state" ] || { rm -f "$marker"; allow; }
 [ "$(jq -r 'if (.phases|type) == "array" then "ok" else "bad" end' "$state" 2>/dev/null)" = "ok" ] || allow
-[ "$(jq -r '.paused // false' "$state" 2>/dev/null)" = "true" ] && allow
+[ "$(jq -r '.paused // false' "$state" 2>/dev/null)" = "true" ] && { rm -f "$marker"; allow; }
 
 # Abandoned work is left on its branch, so a state file naming a branch that is no longer
 # checked out describes phases this session is not working on. Plan files cannot serve
@@ -70,7 +69,6 @@ mark_size=""; mark_n=0
 [ "$mark_size" = "$size" ] && allow
 [[ "$mark_n" =~ ^[0-9]+$ ]] || mark_n=0
 attempt=$((mark_n + 1))
-[ "$attempt" -gt "$MAX_CONSECUTIVE_BLOCKS" ] && allow
 
 # The transcript is mid-append, so its last line is routinely partial. The added
 # newline stops `tail -r` welding that fragment onto the entry before it. A fragment
@@ -92,8 +90,9 @@ last=$({ cat "$transcript"; printf '\n'; } \
   ) // "none"' 2>/dev/null)
 
 [ "$last" = "words" ] || { rm -f "$marker"; allow; }
+[ "$attempt" -gt "$MAX_CONSECUTIVE_BLOCKS" ] && allow
 
-mkdir -p "$(dirname "$marker")" && printf '%s %s' "$size" "$attempt" > "$marker"
+{ mkdir -p "$(dirname "$marker")" && printf '%s %s' "$size" "$attempt" > "$marker"; } || allow
 jq -n --arg r "$remaining" '{
   decision: "block",
   reason: ("Plan has \($r) unfinished phase(s). Continue with the next phase now — do not end the turn. If you need a decision from the user, ask it as an explicit question.")

@@ -130,6 +130,35 @@ self_test() {
       >> "$tmp/grow.jsonl"
   done
   check "growing transcript stops blocking (bounded)" "$seq" "block block allow allow "
+
+  # The cap must not be permanent. Real work clears the marker, so a later stall is
+  # judged fresh — otherwise two blocks disable the hook for the rest of the session.
+  printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"w","name":"Bash","input":{}}]}}\n' \
+    >> "$tmp/grow.jsonl"
+  check "work after the cap clears the marker" "$(fire s1 two.json "$tmp/grow.jsonl")" allow
+  check "marker gone after progress" \
+    "$([ -f "$tmp/.claude/state/blocked-s1" ] && echo kept || echo cleared)" cleared
+  printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"stalled again"}]}}\n' \
+    >> "$tmp/grow.jsonl"
+  check "stall after post-cap progress blocks again" \
+    "$(fire s1 two.json "$tmp/grow.jsonl")" block
+  rm -f "$tmp/.claude/state"/blocked-*
+
+  # These paths returned without clearing, so a capped marker survived a pause/resume.
+  : > "$tmp/.claude/state/blocked-s1"
+  fire s1 paused.json "$tmp/words.jsonl" >/dev/null
+  check "paused clears a stale marker" \
+    "$([ -f "$tmp/.claude/state/blocked-s1" ] && echo kept || echo cleared)" cleared
+  : > "$tmp/.claude/state/blocked-s1"
+  fire s1 two.json "$tmp/words.jsonl" ',"stop_hook_active":true' >/dev/null
+  check "stop_hook_active clears a stale marker" \
+    "$([ -f "$tmp/.claude/state/blocked-s1" ] && echo kept || echo cleared)" cleared
+  rm -f "$tmp/.claude/state"/blocked-*
+
+  # The marker write is the hook's only I/O; if it fails the block has no guard at all.
+  chmod 555 "$tmp/.claude/state"
+  check "unwritable state dir fails open" "$(fire s1 two.json "$tmp/words.jsonl" 2>/dev/null)" allow
+  chmod 755 "$tmp/.claude/state"
   rm -f "$tmp/.claude/state"/blocked-*
 
   # The failure a presence-only marker hides: a real stall right after an unrelated
@@ -164,7 +193,7 @@ self_test() {
     "$(cd / && printf '{"session_id":"s2","cwd":"%s","transcript_path":"%s"}' "$tmp" "$tmp/words.jsonl" \
        | bash "$hook" | jq -r '.decision // "allow"')" block
 
-  local expected=54
+  local expected=60
   if [ "$st_total" -ne "$expected" ]; then
     echo "SELF-TEST FAILED: ran ${st_total} cases, expected exactly ${expected}."
     return 1
