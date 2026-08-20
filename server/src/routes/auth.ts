@@ -378,15 +378,7 @@ router.post('/forgot-password', forgotPasswordLimiter, asyncHandler(forgotPasswo
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required: [token, password]
- *             properties:
- *               token:
- *                 type: string
- *                 example: abc123...
- *               password:
- *                 type: string
- *                 example: Str0ng!Passphrase
+ *             $ref: '#/components/schemas/SetPasswordRequest'
  *     responses:
  *       200:
  *         description: Password reset successful — user is now logged in
