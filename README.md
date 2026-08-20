@@ -99,7 +99,7 @@ npm run seed:demo
 - **Validation:** Zod (shared schemas used on both client and server)
 - **Auth:** JWT stored in httpOnly cookies
 - **Infrastructure:** Docker + Docker Compose
-- **Monorepo:** npm workspaces (`/client`, `/server`, `/shared`, `/qa`)
+- **Monorepo:** npm workspaces (`/client`, `/server`, `/shared`, `/qa`, `/coverage-dashboard`)
 
 ## Local Development
 
@@ -357,10 +357,13 @@ Push a new commit to the branch. The `synchronize` event re-triggers the review 
 ## Project Structure
 
 ```
-/client        React + Vite frontend
-/server        Express API server
-/shared        Zod schemas shared between client and server
-/db            PostgreSQL migration files (node-pg-migrate)
+/client              React + Vite frontend
+/server              Express API server
+/shared              Zod schemas shared between client and server
+/qa                  Playwright E2E suite and its static checks
+/coverage-dashboard  Standalone coverage/TIA reporting app
+/db                  PostgreSQL migration files (node-pg-migrate)
+/docs                User, admin, and developer documentation
 ```
 
 ### Server conventions

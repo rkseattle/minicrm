@@ -129,9 +129,10 @@ guard is silent on precisely the edit it exists to catch. The invariant is usual
 **bidirectional**: it breaks by editing either side.
 
 **Scope the trigger to the job, not the workspace.** Check what the natural
-workspace filter actually gates before adding to it — `server` and `qa` each
-appear in eight job conditions, including the full `e2e-functional` matrix. The
-two `qa` entries above predate this guidance and are grandfathered: a server-only
+workspace filter actually gates before adding to it — counting
+`needs.changes.outputs.<name> ==` occurrences inside `if:` expressions, `qa` appears in
+eight job conditions and `server` in seven, both including the full `e2e-functional`
+matrix. The two `qa` entries above predate this guidance and are grandfathered: a server-only
 edit to `junitXml.ts` does boot the whole E2E suite, which is over-broad but
 harmless enough that churning `ci.yml` to fix it is not worth it. Don't copy that
 shape for new guards. Instead add a **single-purpose filter output** and OR it
@@ -321,13 +322,17 @@ Always `void fireAutomationTrigger(...)` — never `await`. It swallows all inte
 
 ## Testing
 
-**Server** (`server/src/__tests__/`) — Vitest against real `minicrm_test` DB. 80%
-coverage on `services/` (CI). `beforeEach` truncates tables. Required:
+**Server** (`server/src/__tests__/`) — Vitest against real `minicrm_test` DB. 70%
+lines/functions/branches/statements (CI). `beforeEach` truncates tables. Required:
 `auth-boundaries.test.ts`, `auditService.test.ts`, `notificationService.test.ts`.
 
 **Client** (`client/src/`) — Vitest + RTL + MSW (`onUnhandledRequest: 'error'`). 70%
-lines / 80% branches (CI). Co-locate `Component.test.tsx`. Every async component tests
-loading + error + empty. Every conditional branch gets a test.
+lines/functions/branches/statements (CI). Co-locate `Component.test.tsx`. Every async
+component tests loading + error + empty. Every conditional branch gets a test.
+
+All three workspaces enforce 70/70/70/70 — `server/vitest.config.ts`,
+`client/vite.config.ts`, `coverage-dashboard/vite.config.ts`. The configs are
+authoritative; `qa/`'s framework suite is the separate 80% bar (`qa/package.json`).
 
 Run the suites sequentially with `npm run unit_test` — it runs three workspaces (server,
 client, coverage-dashboard) in series. Never run them in parallel, and **run nothing else
