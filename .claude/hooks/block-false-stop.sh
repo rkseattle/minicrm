@@ -22,9 +22,8 @@ allow() {
 
 [ "${1:-}" = "--self-test" ] && exec bash "$(dirname "$0")/block-false-stop.self-test.sh" "$0"
 
-command -v jq >/dev/null 2>&1 || { printf '{"continue": true}\n'; exit 0; }
-
-input=$(cat) || { printf '{"continue": true}\n'; exit 0; }
+command -v jq >/dev/null 2>&1 || allow
+input=$(cat) || allow
 
 # cwd is not guaranteed to be the repo root, and a state path that misses silently
 # disables the hook.
@@ -75,6 +74,9 @@ attempt=$((mark_n + 1))
 # counts as unknown rather than skipped: it may be a tool call, and judging by the
 # previous entry would read an in-flight call as a stall.
 #
+# Tool results are skipped: they are the transcript's own bookkeeping, not a turn.
+# Role, not content shape, is what marks a human turn — a typed prompt is a bare string
+# but an ESC interrupt, a skill prompt, and a pasted screenshot all arrive as arrays.
 # tool_use is tested before text because one entry can carry both, and a turn that
 # called a tool has acted.
 last=$({ cat "$transcript"; printf '\n'; } \
@@ -82,8 +84,9 @@ last=$({ cat "$transcript"; printf '\n'; } \
   first(
     (inputs? // empty) | select(length > 0)
     | (try fromjson catch "partial") as $o | select($o != null)
-    | if   ($o == "partial")                                    then "partial"
-      elif ($o.message.content|type) == "string"                then "human"
+    | if   ($o == "partial")                                     then "partial"
+      elif (any($o.message.content[]?; .type == "tool_result")) then empty
+      elif ($o.message.role == "user")                          then "human"
       elif (any($o.message.content[]?; .type == "tool_use"))    then "action"
       elif (any($o.message.content[]?; .type == "text"))        then "words"
       else empty end
