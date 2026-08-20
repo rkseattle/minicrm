@@ -117,7 +117,7 @@ failure the test exists to catch.
 
 **Adding a third requires all of the same:** import-safety (no `pg.Pool`, no
 `dotenv/config` pulled in at module load), an in-file comment carrying this
-justification kept to the shortest form that carries it, and an entry in `ci.yml`'s `qa`
+justification within the comment budget above, and an entry in `ci.yml`'s `qa`
 paths filter for the server file — without that filter entry the parity test is silent
 on exactly the server-side edit it guards.
 

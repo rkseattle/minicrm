@@ -92,6 +92,10 @@ jobs:
             docs:
               - '**.md'
               - 'docs/**'
+              # `**.md` does not match a dotfile directory, so every skill, gate, and
+              # agent doc was invisible to lint-docs — the markdownlint job never ran
+              # for a change that only touched them.
+              - '.claude/**/*.md'
             client:
               - 'client/src/**'
               - 'client/public/**'
@@ -2779,7 +2783,8 @@ jobs:
       - name: Install markdownlint-cli2
         run: npm install -g markdownlint-cli2
       - name: Lint markdown files
-        run: markdownlint-cli2 "**/*.md" "#node_modules"
+        # `**/*.md` skips dotfile directories, so .claude/ needs naming explicitly.
+        run: markdownlint-cli2 "**/*.md" ".claude/**/*.md" "#node_modules"
 
   # MINCRM-324: Generate visual regression baselines on Linux and commit them
   # back to the PR branch. Runs only on qa path changes. Services and setup

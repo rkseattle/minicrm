@@ -31,6 +31,13 @@ self_test() {
   printf '%s\n{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"ok"},{"type":"tool_use","id":"b","name":"Bash","input":{}}]}}\n%s\n' \
     "$noise" "$noise" > "$tmp/mixed.jsonl"
   printf '%s\n' "$noise" > "$tmp/none.jsonl"
+  # Human turns are not always bare strings: an ESC interrupt and a skill prompt arrive
+  # as an array of text blocks, a pasted screenshot as image+text. Content shape alone
+  # cannot tell them from an assistant stall — only role can.
+  printf '%s\n{"type":"user","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user for tool use]"}]}}\n%s\n' \
+    "$noise" "$noise" > "$tmp/humanarray.jsonl"
+  printf '%s\n{"type":"user","message":{"role":"user","content":[{"type":"image","source":{}},{"type":"text","text":"see this"}]}}\n%s\n' \
+    "$noise" "$noise" > "$tmp/humanimage.jsonl"
   # A Stop hook fires mid-append, so the final line is routinely a partial fragment.
   printf '%s\n{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"done"}]}}\n{"type":"assistant","message":{"role":"assis' \
     "$noise" > "$tmp/truncated.jsonl"
@@ -82,7 +89,7 @@ self_test() {
   # short-circuit before the transcript is read. Enumerated against every transcript
   # anyway, to prove the short-circuit holds for each input rather than assuming it.
   local t
-  for t in human action words mixed none truncated fragaction nonewline; do
+  for t in human humanarray humanimage action words mixed none truncated fragaction nonewline; do
     verdict allow "state absent / $t"    -             "$tmp/$t.jsonl"
     verdict allow "malformed / $t"       malformed.json "$tmp/$t.jsonl"
     verdict allow "0 remaining / $t"     zero.json      "$tmp/$t.jsonl"
@@ -91,6 +98,8 @@ self_test() {
 
   # The only rows that reach the classifier.
   verdict allow "2 remaining / human"      two.json "$tmp/human.jsonl"
+  verdict allow "human interrupt (array)"  two.json "$tmp/humanarray.jsonl"
+  verdict allow "human paste (image+text)" two.json "$tmp/humanimage.jsonl"
   verdict allow "2 remaining / action"     two.json "$tmp/action.jsonl"
   verdict block "2 remaining / words"      two.json "$tmp/words.jsonl"
   verdict allow "2 remaining / mixed"      two.json "$tmp/mixed.jsonl"
@@ -193,7 +202,7 @@ self_test() {
     "$(cd / && printf '{"session_id":"s2","cwd":"%s","transcript_path":"%s"}' "$tmp" "$tmp/words.jsonl" \
        | bash "$hook" | jq -r '.decision // "allow"')" block
 
-  local expected=60
+  local expected=70
   if [ "$st_total" -ne "$expected" ]; then
     echo "SELF-TEST FAILED: ran ${st_total} cases, expected exactly ${expected}."
     return 1
