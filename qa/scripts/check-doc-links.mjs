@@ -305,5 +305,13 @@ function main() {
 }
 
 if (INVOKED_DIRECTLY) {
+  const args = process.argv.slice(2);
+  const unknown = args.filter((a) => a !== '--self-test');
+  if (unknown.length > 0) {
+    // A typo'd flag must not silently run the real check and print OK.
+    console.error(`Unknown argument: ${unknown[0]}`);
+    console.error('Usage: node qa/scripts/check-doc-links.mjs [--self-test]');
+    process.exit(2);
+  }
   main();
 }

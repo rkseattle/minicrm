@@ -15,7 +15,14 @@ bash scripts/npm-audit-gate.sh
 npm run unit_test        # server, client, coverage-dashboard — in series
 ```
 
-Then the QA static checks, plus any conditional gates the diff triggers —
+`unit_test` runs the suites without `--coverage`, so it does not evaluate the thresholds
+CI enforces. To reproduce a coverage failure, use the per-workspace `test:coverage`
+commands in [CI](ci.md#reproducing-a-failure-locally).
+
+Then the QA static checks, plus any conditional gates the diff triggers. That list is
+canonical in the gate rather than here — see the note on the split in
+[the index](index.md) — because a dozen commands that must match CI is the worst thing
+to hold in two places. The triggers are
 `.env*.example` parity, compose isolation, the comments-only guard, markdown lint,
 `actionlint`. Both lists, with the reason each check exists, are in
 [.claude/gates/definition-of-done.md](../../.claude/gates/definition-of-done.md); they

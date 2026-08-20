@@ -37,10 +37,11 @@ allow() {
   exit 0
 }
 
-log_invocation "invoked"
-
+# The self-test is not a hook invocation; logging it would manufacture the very
+# signature this log exists to distinguish — an "invoked" line with no verdict.
 [ "${1:-}" = "--self-test" ] && exec bash "$(dirname "$0")/block-false-stop.self-test.sh" "$0"
 
+log_invocation "invoked"
 
 command -v jq >/dev/null 2>&1 || allow
 input=$(cat) || allow

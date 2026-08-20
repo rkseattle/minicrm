@@ -45,5 +45,14 @@ holds the agent-facing copies: the same requirements plus session-level pacing �
 run E2E across a multi-commit branch, what to do between phases of a plan — which has no
 meaning for a person working normally.
 
-Where a rule binds both, `docs/` is canonical and the gate points here. That direction is
-deliberate: reversing it per-file is how the two trees drift apart.
+Where a rule binds both, `docs/` is canonical for the **reasoning** — why a gate exists,
+what it protects, when a bypass is legitimate — and the gate points here for it.
+
+**Executable check lists are the exception, and they run the other way.** The full
+command sequence lives in `.claude/gates/definition-of-done.md`, and `docs/` links it
+rather than copying it. A list of a dozen commands that must match what CI runs is the
+worst possible thing to hold in two places: the copies drift silently, and the one a
+contributor follows is the one that gets it wrong. One list, linked from both trees.
+
+`check-gate-pointer-parity.sh` pins the pointers in the first direction; the second is
+a single list with no second copy to drift.
