@@ -82,8 +82,9 @@ catalog `COMMENT ON` string edited inside a `pgm.sql` template literal is caught
 though it looks like a comment in the diff. Any non-comment hunk is a bug in the pass,
 fixed at its source rather than hand-patched.
 
-**Changed `.md` files** — run `markdownlint-cli2` on them. CI `lint-docs` catches what
-the pre-commit hook misses.
+**Changed `.md` files** — run `markdownlint-cli2` on them, plus
+`node qa/scripts/check-doc-links.mjs` when a link or a link target moved. CI `lint-docs`
+catches what the pre-commit hook misses, but only after the push.
 
 **Staged `.github/workflows/*.yml`** — the pre-commit hook runs `actionlint` and hard-
 fails if it isn't installed (`brew install actionlint`, once per machine).
