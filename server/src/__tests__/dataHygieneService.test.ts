@@ -443,6 +443,64 @@ describe('runDataHygieneScan — clearing stale findings', () => {
     expect(row.rows).toHaveLength(1);
     expect(row.rows[0].status).toBe('dismissed');
   });
+
+  /**
+   * The companion to the test above. Excluding dismissed rows from the sweep protects a
+   * LIVE suppression window, but excluding them unconditionally strands the row forever:
+   * listHygieneFindings surfaces it again the moment the window lapses, reporting an
+   * issue that no longer exists, and no later scan can clear it.
+   */
+  it('clears a resolved finding once its dismissal window has expired', async () => {
+    const contact = await createContact({
+      first_name: 'Expired',
+      last_name: 'Dismissal',
+      email: '',
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Call',
+      direction: 'Outbound',
+      subject: 'Intro call',
+      contact_id: contact.id,
+      owner_id: ownerId,
+    });
+
+    await runDataHygieneScan();
+    const open = (await listHygieneFindings(ownerId)).find(
+      (f) => f.entity_id === contact.id && f.issue_type === 'contact_missing_contact_info',
+    );
+    expect(open).toBeDefined();
+    await dismissHygieneFinding(open!.id, 'Known placeholder record', ACTOR, true);
+
+    // Resolve the underlying issue so the next scan stops detecting it.
+    const before = await findContactById(contact.id);
+    await updateContact(
+      contact.id,
+      {
+        email: `${FILE_PREFIX}-${uid()}-expired@example.com`,
+        phone: '+1-555-0143',
+        version: before!.version,
+      },
+      ACTOR,
+      before!,
+    );
+
+    // Expire the window rather than waiting out the configured number of days.
+    await pool.query(
+      `UPDATE data_hygiene_findings SET dismissed_until = now() - interval '1 day' WHERE id = $1`,
+      [open!.id],
+    );
+
+    await runDataHygieneScan();
+
+    const row = await pool.query(`SELECT status FROM data_hygiene_findings WHERE id = $1`, [
+      open!.id,
+    ]);
+    expect(row.rows).toHaveLength(0);
+    expect((await listHygieneFindings(ownerId)).some((f) => f.entity_id === contact.id)).toBe(
+      false,
+    );
+  });
 });
 
 describe('dismissHygieneFinding', () => {

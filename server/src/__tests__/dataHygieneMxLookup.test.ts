@@ -5,14 +5,28 @@
  * Run: npm test (from /server)
  */
 
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 const resolveMx = vi.fn();
+/**
+ * `lookup` is mocked to a public address because assertUrlIsFetchSafe re-resolves the
+ * hostname immediately before every fetch (its DNS-rebinding defence). Left unmocked it
+ * throws UrlNotSafeError, and checkWebsiteStatus returns 'unreachable' before reaching
+ * the classification these tests exist to cover.
+ */
+const lookup = vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]);
 vi.mock('dns', () => ({
-  default: { promises: { resolveMx: (...args: unknown[]) => resolveMx(...args) } },
+  default: {
+    promises: {
+      resolveMx: (...args: unknown[]) => resolveMx(...args),
+      // Arguments are irrelevant: every hostname resolves to the same safe address.
+      lookup: () => lookup(),
+    },
+  },
 }));
 
-const { resolveMailDomainStatus } = await import('../services/dataHygieneService.js');
+const { resolveMailDomainStatus, checkWebsiteStatus } =
+  await import('../services/dataHygieneService.js');
 
 /** Builds a DNS error the way node's resolver surfaces one, with a `code`. */
 function dnsError(code: string): NodeJS.ErrnoException {
@@ -33,16 +47,46 @@ describe('resolveMailDomainStatus', () => {
 
   it('treats an RFC 7505 null MX as accepting no mail', async () => {
     resolveMx.mockResolvedValue([{ exchange: '', priority: 0 }]);
-    await expect(resolveMailDomainStatus('someone@defunct.test.invalid')).resolves.toBe('no-mail');
+    await expect(resolveMailDomainStatus('someone@defunct-domain.co')).resolves.toBe('no-mail');
   });
 
-  it.each(['example.com', 'example.net', 'example.org', 'localhost', 'anything.test'])(
-    'skips the reserved documentation domain %s without a lookup',
-    async (domain) => {
-      await expect(resolveMailDomainStatus(`someone@${domain}`)).resolves.toBe('accepts-mail');
-      expect(resolveMx).not.toHaveBeenCalled();
-    },
-  );
+  it.each([
+    'example.com',
+    'example.net',
+    'example.org',
+    'example.edu',
+    'test',
+    'invalid',
+    'localhost',
+    'anything.test',
+  ])('skips the reserved domain %s without a lookup', async (domain) => {
+    await expect(resolveMailDomainStatus(`someone@${domain}`)).resolves.toBe('accepts-mail');
+    expect(resolveMx).not.toHaveBeenCalled();
+  });
+
+  /**
+   * RFC 2606/6761 reserve these names and everything beneath them. Exact-set
+   * membership passed the flat cases above while missing every one of these —
+   * and `acme-demo.example.com` is what demoService actually seeds, whose real
+   * MX lookup answers ENODATA and would therefore flag every demo contact.
+   */
+  it.each([
+    'acme-demo.example.com',
+    'globex-demo.example.com',
+    'mail.example.net',
+    'foo.invalid',
+    'foo.localhost',
+    'deep.nested.example.org',
+  ])('skips %s, a subdomain of a reserved domain, without a lookup', async (domain) => {
+    await expect(resolveMailDomainStatus(`someone@${domain}`)).resolves.toBe('accepts-mail');
+    expect(resolveMx).not.toHaveBeenCalled();
+  });
+
+  it('still looks up a domain that merely contains a reserved name', async () => {
+    resolveMx.mockResolvedValue([{ exchange: 'mx.notexample.com', priority: 10 }]);
+    await expect(resolveMailDomainStatus('someone@notexample.com')).resolves.toBe('accepts-mail');
+    expect(resolveMx).toHaveBeenCalledWith('notexample.com');
+  });
 
   it('treats an empty record set as accepting no mail', async () => {
     resolveMx.mockResolvedValue([]);
@@ -87,5 +131,70 @@ describe('resolveMailDomainStatus', () => {
   it('treats an address with no domain part as accepting no mail', async () => {
     await expect(resolveMailDomainStatus('malformed-address')).resolves.toBe('no-mail');
     expect(resolveMx).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The website signal's failure classification. undici reports a refused connection,
+ * a TLS failure and a resolver outage all as `TypeError: fetch failed`, separable
+ * only by `cause.code` — so a check that branched on the error NAME reported our own
+ * network trouble as the customer's site being dead. A DNS blip during the nightly
+ * scan would have flagged every account website at once.
+ */
+describe('checkWebsiteStatus', () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** Builds the error undici raises for a transport failure: name is always TypeError. */
+  function fetchFailed(code: string): Error {
+    const err = new TypeError('fetch failed');
+    (err as { cause?: NodeJS.ErrnoException }).cause = Object.assign(new Error(code), { code });
+    return err;
+  }
+
+  it('reports a 200 as reachable', async () => {
+    fetchMock.mockResolvedValue({ status: 200 });
+    await expect(checkWebsiteStatus('https://live.test-site.co')).resolves.toBe('reachable');
+  });
+
+  it('reports a 404 as unreachable', async () => {
+    fetchMock.mockResolvedValue({ status: 404 });
+    await expect(checkWebsiteStatus('https://gone.test-site.co')).resolves.toBe('unreachable');
+  });
+
+  it.each(['ENOTFOUND', 'ENODATA'])(
+    'reports %s as unreachable — the name genuinely does not resolve',
+    async (code) => {
+      fetchMock.mockRejectedValue(fetchFailed(code));
+      await expect(checkWebsiteStatus('https://missing.test-site.co')).resolves.toBe('unreachable');
+    },
+  );
+
+  it.each(['ECONNREFUSED', 'EAI_AGAIN', 'ETIMEDOUT', 'ECONNRESET', 'CERT_HAS_EXPIRED'])(
+    'reports %s as unknown rather than blaming the site',
+    async (code) => {
+      fetchMock.mockRejectedValue(fetchFailed(code));
+      await expect(checkWebsiteStatus('https://flaky.test-site.co')).resolves.toBe('unknown');
+    },
+  );
+
+  it('reports a transport failure with no cause code as unknown', async () => {
+    fetchMock.mockRejectedValue(new TypeError('fetch failed'));
+    await expect(checkWebsiteStatus('https://opaque.test-site.co')).resolves.toBe('unknown');
+  });
+
+  it('reports our own abort as unknown, not as a broken site', async () => {
+    const abort = new Error('This operation was aborted');
+    abort.name = 'AbortError';
+    fetchMock.mockRejectedValue(abort);
+    await expect(checkWebsiteStatus('https://slow.test-site.co')).resolves.toBe('unknown');
   });
 });
