@@ -100,6 +100,9 @@ Thumbs.db
 # ─── Claude Code ──────────────────────────────────────────────────────────────
 # Session-specific memory files Claude Code writes locally
 .claude/settings.local.json
+# Phase-tracking state the Stop hook reads, plus its per-session recursion
+# markers. Session-local, not repo content.
+.claude/state/
 
 # ─── Git ──────────────────────────────────────────────────────────────────────
 *.orig
