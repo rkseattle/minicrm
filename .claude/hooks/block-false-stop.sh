@@ -15,16 +15,6 @@ MAX_CONSECUTIVE_BLOCKS=2
 MAX_SCAN_BYTES=2000000
 MAX_SCAN_LINES=400
 
-allow() {
-  # Declared before log_invocation, so guard the call: allow() is reachable from the
-  # --self-test line above, before the logger is defined.
-  if declare -F log_invocation >/dev/null 2>&1; then log_invocation "verdict=allow"; fi
-  printf '{"continue": true}\n'
-  exit 0
-}
-
-[ "${1:-}" = "--self-test" ] && exec bash "$(dirname "$0")/block-false-stop.self-test.sh" "$0"
-
 # Records that the harness actually ran this script. A stall with no line here means the
 # hook was never dispatched; a line with no matching block means it ran and its verdict
 # went unapplied. Nothing else distinguishes those two, and they have different fixes.
@@ -41,7 +31,16 @@ log_invocation() {
   printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$1" >> "$logfile" 2>/dev/null || true
 }
 
+allow() {
+  log_invocation "verdict=allow"
+  printf '{"continue": true}\n'
+  exit 0
+}
+
 log_invocation "invoked"
+
+[ "${1:-}" = "--self-test" ] && exec bash "$(dirname "$0")/block-false-stop.self-test.sh" "$0"
+
 
 command -v jq >/dev/null 2>&1 || allow
 input=$(cat) || allow
@@ -121,6 +120,9 @@ last=$({ cat "$transcript"; printf '\n'; } \
 [ "$attempt" -gt "$MAX_CONSECUTIVE_BLOCKS" ] && allow
 
 { mkdir -p "$(dirname "$marker")" && printf '%s %s' "$size" "$attempt" > "$marker"; } || allow
+# Logged before the emit rather than after: `allow` on a jq failure would recurse into
+# log_invocation and record a contradictory second line, and a block whose jq failed
+# still ran — which is what this log distinguishes.
 log_invocation "verdict=block remaining=$remaining attempt=$attempt"
 jq -n --arg r "$remaining" '{
   decision: "block",

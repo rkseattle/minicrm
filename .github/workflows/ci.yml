@@ -1189,6 +1189,9 @@ jobs:
       - name: Check the corrupt-map exit code has not drifted (MINCRM-703)
         run: bash qa/scripts/check-coverage-map-exit-code-parity.sh
 
+      - name: Verify the audit-gate guard catches a break (MINCRM-668)
+        run: bash qa/scripts/check-audit-gate-parity.sh --self-test
+
       - name: Check every audit caller uses the shared gate (MINCRM-668)
         run: bash qa/scripts/check-audit-gate-parity.sh
 

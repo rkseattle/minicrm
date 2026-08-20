@@ -69,6 +69,22 @@ check_tree() {
       echo "wrong-counterpart: ${gate} does not link ${want}."
     fi
   done
+
+  # Enumerate rather than trust the list: a gate added without an entry would otherwise
+  # be invisible, which is the same drift this guard exists to catch, one level up.
+  local found entry_gate
+  for found in "$root"/.claude/gates/*.md; do
+    [[ -e "$found" ]] || continue
+    gate=".claude/gates/$(basename "$found")"
+    linked=0
+    for entry in "${GATE_COUNTERPARTS[@]}"; do
+      entry_gate="${entry%%|*}"
+      [[ "$entry_gate" == "$gate" ]] && linked=1
+    done
+    if [[ "$linked" -eq 0 ]]; then
+      echo "unlisted-gate: ${gate} has no GATE_COUNTERPARTS entry."
+    fi
+  done
 }
 
 count_findings() {
@@ -134,12 +150,19 @@ self_test() {
   # A deleted gate.
   rm "$tmp/.claude/gates/e2e-run.md"
   expect 1 "deleted gate"
+  printf '# gate\n\nSee [operations](../../docs/operations.md).\n' \
+    > "$tmp/.claude/gates/e2e-run.md"
+
+  # A gate added without an entry — invisible to a list-driven check.
+  printf '# new\n\nNo pointer.\n' > "$tmp/.claude/gates/brand-new.md"
+  expect 1 "gate added with no entry"
+  rm "$tmp/.claude/gates/brand-new.md"
 
   if [[ "$failures" -ne 0 ]]; then
     exit 1
   fi
   n="${#GATE_COUNTERPARTS[@]}"
-  echo "SELF-TEST PASS: ${n} pairs; clean=0, repointed=1, moved=1, unlinked=1, deleted=1."
+  echo "SELF-TEST PASS: ${n} pairs; clean=0, repointed=1, moved=1, unlinked=1, deleted=1, unlisted=1."
 }
 
 case "${1:-}" in
