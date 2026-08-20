@@ -36,16 +36,22 @@ const BLOCKED_IPV6_CIDRS: Array<[ipaddr.IPv6, number]> = [
 
 /** Reason a URL was rejected by {@link assertUrlIsFetchSafe}. */
 export type UrlSafetyRejectionReason =
-  | 'invalid_url'
-  | 'insecure_protocol'
-  | 'unresolvable_hostname'
-  | 'blocked_address';
+  'invalid_url' | 'insecure_protocol' | 'unresolvable_hostname' | 'blocked_address';
 
 /** Thrown when a URL fails SSRF safety checks. `reason` lets callers map to a specific error code. */
 export class UrlNotSafeError extends Error {
   constructor(
     public readonly reason: UrlSafetyRejectionReason,
     message: string,
+    /**
+     * The resolver error code behind an `unresolvable_hostname`, when there was one.
+     *
+     * A name that does not exist (ENOTFOUND/ENODATA) and a resolver that failed to
+     * answer (EAI_AGAIN, ETIMEDOUT) both surface as the same reason, but they are not
+     * the same fact: the first is evidence about the URL, the second is evidence about
+     * our own network. Callers that report findings to users need to tell them apart.
+     */
+    public readonly dnsCode?: string,
   ) {
     super(message);
     this.name = 'UrlNotSafeError';
@@ -79,8 +85,12 @@ export async function assertUrlIsFetchSafe(urlString: string): Promise<void> {
   let addresses: dns.LookupAddress[];
   try {
     addresses = await dns.promises.lookup(hostname, { all: true });
-  } catch {
-    throw new UrlNotSafeError('unresolvable_hostname', `Unable to resolve hostname: ${hostname}`);
+  } catch (err) {
+    throw new UrlNotSafeError(
+      'unresolvable_hostname',
+      `Unable to resolve hostname: ${hostname}`,
+      (err as NodeJS.ErrnoException).code,
+    );
   }
 
   for (const { address, family } of addresses) {

@@ -197,11 +197,31 @@ describe('checkWebsiteStatus', () => {
    * bug the tri-state fixed, one layer up: 'unresolvable_hostname' is raised for ANY
    * dns.lookup rejection, a transient EAI_AGAIN included.
    */
-  it('reports an unresolvable hostname as unknown — the resolver may be at fault', async () => {
-    lookup.mockRejectedValueOnce(Object.assign(new Error('EAI_AGAIN'), { code: 'EAI_AGAIN' }));
-    await expect(checkWebsiteStatus('https://blip.test-site.co')).resolves.toBe('unknown');
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
+  it.each(['EAI_AGAIN', 'ETIMEDOUT', 'ECONNREFUSED'])(
+    'reports a %s lookup failure as unknown — the resolver may be at fault',
+    async (code) => {
+      lookup.mockRejectedValueOnce(Object.assign(new Error(code), { code }));
+      await expect(checkWebsiteStatus('https://blip.test-site.co')).resolves.toBe('unknown');
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  /**
+   * The other half of the same boundary. assertUrlIsFetchSafe raises one reason for
+   * every lookup failure, so treating that reason as inconclusive wholesale silences
+   * the finding this signal exists to produce — a name that genuinely does not exist.
+   * The underlying resolver code is what separates the two.
+   */
+  it.each(['ENOTFOUND', 'ENODATA'])(
+    'still reports a %s lookup failure as unreachable — the name is genuinely gone',
+    async (code) => {
+      lookup.mockRejectedValueOnce(Object.assign(new Error(code), { code }));
+      await expect(checkWebsiteStatus('https://gone-for-good.test-site.co')).resolves.toBe(
+        'unreachable',
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
 
   it('reports a blocked address as unknown — it describes where the name points', async () => {
     lookup.mockResolvedValueOnce([{ address: '127.0.0.1', family: 4 }]);
