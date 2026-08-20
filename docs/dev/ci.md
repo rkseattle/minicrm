@@ -45,7 +45,7 @@ report jobs, and `update-visual-snapshots`, which is `if: false`.
 | `e2e-timing-setup`         | Generates LPT shard configs from the timing baseline                 |
 | `e2e-functional`           | The sharded functional E2E matrix                                    |
 | `e2e-all-shards-passed`    | Sentinel — fails if any shard failed                                 |
-| `e2e-serial`               | `@serial` specs, single-worker, in conflict-free groups              |
+| `e2e-serial`               | `@serial` specs in conflict-free groups, 1-2 workers each            |
 | `e2e-aggregate`            | Merges per-shard JUnit and blob reports                              |
 | `e2e-functional-report`    | Posts the sticky E2E results PR comment                              |
 | `unit-test-report`         | Posts the sticky coverage PR comment                                 |
