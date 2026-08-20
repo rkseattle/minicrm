@@ -159,6 +159,8 @@ stale and run again.
 - [ ] No work-item ID added to a source comment — they belong in the commit message and
       PR title only (see PR conventions below, which are unchanged). Exempt: the `-ok`
       suppression markers and `@openapi` blocks
+- [ ] Every comment added explains why, within CLAUDE.md's budget (one line, 15 words
+      inline) — none restates the code or narrates how the change came about
 - [ ] Would pass a Greptile review
 
 ## PR conventions

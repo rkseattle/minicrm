@@ -46,7 +46,9 @@ Work through all of these. Report per dimension so gaps in your own coverage are
    feature regressed? Coverage of branches, error paths, and ownership enforcement.
    E2E spec present per story and correctly tagged
 7. **Consistency** — naming, `data-testid` conventions, query key constants, i18n key
-   placement across all 5 locales, RTL logical CSS, no work-item IDs in source comments
+   placement across all 5 locales, RTL logical CSS, comments that explain why rather than
+   restate the code or narrate review history (budget and carve-outs are CLAUDE.md's
+   comment rule), no work-item IDs in source comments
    (they belong in the commit message and PR title; `-ok` markers and `@openapi` blocks
    are exempt)
 8. **Completeness** — user docs, screenshots, AI tool schemas, evals, ERD regeneration

@@ -72,8 +72,8 @@ the dev database (MINCRM-684).
 `local-comments/no-work-item-id-in-comment`, so step 2 already covers `.ts`/`.tsx`/`.mjs`/
 `.cjs`/`.js`. `db/migrations/**` is ESLint-ignored, so it is covered instead by
 `npx tsx scripts/strip-work-item-ids.ts --verify`, which runs in CI on every
-`lint-and-typecheck`. Put the reason in the comment and the ID in the commit message.
-Exempt: the `-ok` suppression markers and `@openapi` blocks.
+`lint-and-typecheck`. Put the reason in the comment — one line, about the code — and the
+ID in the commit message. Exempt: the `-ok` suppression markers and `@openapi` blocks.
 
 **A comments-only commit** (a comment refactor, an ID strip, a concision pass) —
 `npx tsx scripts/check-comments-only-diff.ts <base-ref>` must pass. It parses both sides
@@ -103,6 +103,10 @@ Read the diff and ask: does any block of logic appear more than once — within 
 across files in this diff, or once here and once already in the repo? If yes, extract
 the helper first, then stage. This applies to private methods, shared utilities, and
 framework helpers alike.
+
+Then read every comment the diff adds or changes. Cut any that restates the code, runs
+past CLAUDE.md's budget (one line, 15 words for an inline justification), or narrates a
+review round rather than describing the code — the commit message is where history goes.
 
 ## Reading results
 

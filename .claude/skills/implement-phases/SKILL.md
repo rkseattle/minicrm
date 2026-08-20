@@ -66,7 +66,8 @@ For each phase:
 
 Industry-standard patterns only. Never the simplest, quickest, or easiest solution that
 happens to work here. Where the repo has an established precedent, follow it; where you
-depart from it, the departure must be justifiable to a reviewer who cannot ask you why.
+depart from it, put the reason in the commit message — that is where a reviewer looks for
+why a change was made, and it does not go stale the way an inline defense does.
 
 While implementing, catch cross-cutting impact in the same pass rather than waiting for
 runtime to surface it. Any time you rename a file, change a signature, change a script
@@ -83,10 +84,10 @@ is not benign. Before deferring, and before creating any work item, follow the d
 procedure in `deliver`'s invariants: `commit-adversary` on the benign claim, then ask
 Rob, then file.
 
-### 2b. Refactor before staging
+### 2b. Read the diff before staging
 
-Read the diff. Does any block of logic appear more than once — in this diff, or once
-here and once already in the repo? Extract the helper first. Then stage.
+Run the "Before `git add`" checks in `.claude/gates/definition-of-done.md` — extract
+duplicated logic, and cut comments that restate the code or narrate history. Then stage.
 
 ### 2c. Adversarial review, before the commit
 
