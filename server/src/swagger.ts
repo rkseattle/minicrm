@@ -10,6 +10,14 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import type { Express } from 'express';
+import { PASSWORD_MIN_LENGTH } from '@minicrm/shared/schemas/userSchema.js';
+
+/** Derived from the schema that enforces it, so the two cannot drift. */
+const PASSWORD_POLICY_DESCRIPTION = `At least ${PASSWORD_MIN_LENGTH} characters, one letter, one number, and one special character`;
+
+/** Examples must satisfy the policy — a rejected example is a broken doc. */
+const EXAMPLE_PASSWORD = 'Str0ng!Passphrase';
+const EXAMPLE_PRIOR_PASSWORD = 'Prev10us!Passphrase';
 
 /** Base URL path where Swagger UI is served. */
 export const SWAGGER_UI_PATH = '/api-docs';
@@ -63,15 +71,14 @@ const componentSchemas = {
     properties: {
       currentPassword: {
         type: 'string',
-        example: 'OldPass1',
+        example: EXAMPLE_PRIOR_PASSWORD,
         description: 'Intentional camelCase exception — all other request fields use snake_case.',
       },
       newPassword: {
         type: 'string',
-        minLength: 8,
-        description:
-          'At least 8 characters, one letter, one number. Intentional camelCase exception — all other request fields use snake_case.',
-        example: 'NewPass2',
+        minLength: PASSWORD_MIN_LENGTH,
+        description: `${PASSWORD_POLICY_DESCRIPTION}. Intentional camelCase exception — all other request fields use snake_case.`,
+        example: EXAMPLE_PASSWORD,
       },
     },
   },
@@ -127,9 +134,9 @@ const componentSchemas = {
       },
       password: {
         type: 'string',
-        minLength: 8,
-        description: 'At least 8 characters, one letter, one number',
-        example: 'MySecurePass1',
+        minLength: PASSWORD_MIN_LENGTH,
+        description: PASSWORD_POLICY_DESCRIPTION,
+        example: EXAMPLE_PASSWORD,
       },
     },
   },
@@ -139,9 +146,9 @@ const componentSchemas = {
     properties: {
       password: {
         type: 'string',
-        minLength: 8,
-        description: 'At least 8 characters, one letter, one number',
-        example: 'TempPass123',
+        minLength: PASSWORD_MIN_LENGTH,
+        description: PASSWORD_POLICY_DESCRIPTION,
+        example: EXAMPLE_PASSWORD,
       },
     },
   },

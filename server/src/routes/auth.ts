@@ -278,8 +278,8 @@ router.post('/refresh', authenticate, asyncHandler(refreshSession));
  *           schema:
  *             $ref: '#/components/schemas/ChangePasswordRequest'
  *           example:
- *             currentPassword: OldPass1
- *             newPassword: NewPass2
+ *             currentPassword: Prev10us!Passphrase
+ *             newPassword: Str0ng!Passphrase
  *     responses:
  *       200:
  *         description: Password changed successfully
@@ -302,7 +302,7 @@ router.post('/refresh', authenticate, asyncHandler(refreshSession));
  *             example:
  *               error:
  *                 code: VALIDATION_ERROR
- *                 message: Password must be at least 8 characters
+ *                 message: Password must be at least 12 characters
  *       401:
  *         description: Missing/invalid token or current password is incorrect
  *         content:
@@ -386,7 +386,7 @@ router.post('/forgot-password', forgotPasswordLimiter, asyncHandler(forgotPasswo
  *                 example: abc123...
  *               password:
  *                 type: string
- *                 example: NewPass1
+ *                 example: Str0ng!Passphrase
  *     responses:
  *       200:
  *         description: Password reset successful — user is now logged in

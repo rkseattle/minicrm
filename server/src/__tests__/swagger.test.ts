@@ -10,6 +10,10 @@
 import request from 'supertest';
 import express from 'express';
 import { setupSwagger, swaggerSpec } from '../swagger.js';
+import {
+  PASSWORD_MIN_LENGTH,
+  passwordComplexitySchema,
+} from '@minicrm/shared/schemas/userSchema.js';
 
 describe('setupSwagger — mounts Swagger UI', () => {
   it('GET /api-docs/ returns 200 when setupSwagger has been called', async () => {
@@ -92,5 +96,53 @@ describe('swaggerSpec — generated spec structure', () => {
     for (const path of expectedPaths) {
       expect(paths).toContain(path);
     }
+  });
+});
+
+describe('served password contract', () => {
+  /** Walks every schema node, collecting password-ish fields with an example. */
+  function collectPasswordFields(
+    node: unknown,
+    path: string,
+    out: Array<{ path: string; field: Record<string, unknown> }>,
+  ): void {
+    if (!node || typeof node !== 'object') return;
+    for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+      const field = value as Record<string, unknown>;
+      const holdsAPassword = /password$/i.test(key) && field?.type === 'string';
+      if (holdsAPassword && 'example' in field) {
+        out.push({ path: `${path}.${key}`, field });
+      }
+      collectPasswordFields(value, `${path}.${key}`, out);
+    }
+  }
+
+  const spec = swaggerSpec as Record<string, unknown>;
+  const fields: Array<{ path: string; field: Record<string, unknown> }> = [];
+  collectPasswordFields(spec.components, 'components', fields);
+  collectPasswordFields(spec.paths, 'paths', fields);
+
+  // Login accepts any existing password, so it is exempt from the new-password policy.
+  const setPasswordFields = fields.filter(
+    (f) => !/login/i.test(f.path) && !/current|old|prior/i.test(f.path),
+  );
+
+  it('finds password examples to check', () => {
+    expect(setPasswordFields.length).toBeGreaterThan(0);
+    expect(Object.keys(spec.paths as object).length).toBeGreaterThan(0);
+  });
+
+  it('documents examples the server would actually accept', () => {
+    const rejected = setPasswordFields.filter(
+      (f) => !passwordComplexitySchema.safeParse(f.field.example).success,
+    );
+    expect(rejected.map((f) => `${f.path} = ${String(f.field.example)}`)).toEqual([]);
+  });
+
+  it('states the minLength the schema enforces', () => {
+    const wrong = setPasswordFields.filter(
+      (f) => f.field.minLength !== undefined && f.field.minLength !== PASSWORD_MIN_LENGTH,
+    );
+    expect(wrong.map((f) => `${f.path} = ${String(f.field.minLength)}`)).toEqual([]);
   });
 });
