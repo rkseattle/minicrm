@@ -241,6 +241,37 @@ export function resolveRuntimeTestStackDb(env: Readonly<NodeJS.ProcessEnv>): Tes
  * the TEST stack. Absent keys are omitted rather than set to undefined, so the
  * resolver's `??` chain falls through cleanly.
  */
+/** E2E admin credentials, from the same sources as the DB coordinates. */
+export interface TestStackAdminSource {
+  E2E_ADMIN_EMAIL?: string;
+  E2E_ADMIN_PASSWORD?: string;
+}
+
+export function pickAdminCredentials(
+  parsed: Readonly<Record<string, string | undefined>>,
+): TestStackAdminSource {
+  const credentials: TestStackAdminSource = {};
+  if (parsed.E2E_ADMIN_EMAIL) credentials.E2E_ADMIN_EMAIL = parsed.E2E_ADMIN_EMAIL;
+  if (parsed.E2E_ADMIN_PASSWORD) credentials.E2E_ADMIN_PASSWORD = parsed.E2E_ADMIN_PASSWORD;
+  return credentials;
+}
+
+/**
+ * Same precedence as resolveTestStackDbEnv: a deliberate export wins, then
+ * qa/e2e/.env. Root .env is not consulted — it describes the dev stack.
+ */
+export function resolveTestStackAdmin(
+  exported: Readonly<TestStackAdminSource>,
+  fromE2eEnvFile: Readonly<TestStackAdminSource>,
+): TestStackAdminSource {
+  const resolved: TestStackAdminSource = {};
+  const email = exported.E2E_ADMIN_EMAIL ?? fromE2eEnvFile.E2E_ADMIN_EMAIL;
+  const password = exported.E2E_ADMIN_PASSWORD ?? fromE2eEnvFile.E2E_ADMIN_PASSWORD;
+  if (email) resolved.E2E_ADMIN_EMAIL = email;
+  if (password) resolved.E2E_ADMIN_PASSWORD = password;
+  return resolved;
+}
+
 export function pickDbCoordinates(
   parsed: Readonly<Record<string, string | undefined>>,
 ): TestStackDbSource {
