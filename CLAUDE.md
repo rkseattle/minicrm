@@ -10,7 +10,7 @@ that is a repeatable procedure lives in a gate file or a skill and loads on dema
 | Definition of Done, before every commit   | `.claude/gates/definition-of-done.md`                  |
 | Pre-push checklist and pre-PR self-review | `.claude/gates/pre-push.md`                            |
 | E2E run procedure and cadence policy      | `.claude/gates/e2e-run.md`                             |
-| New endpoint checklist                    | `.claude/gates/new-endpoint.md`                        |
+| New endpoint checklist                    | `docs/dev/new-endpoint.md`                             |
 | E2E authoring rules                       | `e2e-authoring` skill — auto-loads on `qa/**`          |
 | Full delivery workflow, plan → PR → green | `/deliver`, or the stage skills                        |
 | Jira transitions, PR feedback handling    | `plan-work`, `implement-phases`, `ship-pr`, `ci-green` |
@@ -215,7 +215,7 @@ Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations
 - **No magic numbers or strings.** Use named constants.
 - **All async route handlers** wrapped in `asyncHandler` or explicit try/catch.
 
-Adding a route? Read `.claude/gates/new-endpoint.md` first.
+Adding a route? Read [docs/dev/new-endpoint.md](docs/dev/new-endpoint.md) first.
 
 ---
 
