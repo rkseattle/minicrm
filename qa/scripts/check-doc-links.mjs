@@ -89,6 +89,59 @@ export function findBrokenLinks(files, root = REPO_ROOT) {
   return findings;
 }
 
+/**
+ * Every .md in docs/dev/ must appear in docs/dev/index.md exactly once. The index is
+ * hand-maintained, and markdownlint sees neither a page added without a row nor a row
+ * duplicated by an edit.
+ *
+ * Enumerates tracked files, so a brand-new page is invisible until `git add`. CI always
+ * sees tracked files; locally, stage the page before trusting a pass.
+ *
+ * Returns findings as {page, problem}.
+ */
+export function findIndexGaps(root = REPO_ROOT) {
+  const indexPath = join(root, 'docs', 'dev', 'index.md');
+  let index;
+  try {
+    index = readFileSync(indexPath, 'utf8');
+  } catch {
+    return [{ page: 'index.md', problem: 'docs/dev/index.md is missing' }];
+  }
+
+  // Reuse the link parser rather than substring-matching: an anchored or titled link is
+  // a listing, and two links on one line are two listings. Targets stay relative to the
+  // index, so a nested page listed as `nested/deep.md` matches on that path.
+  const listed = new Map();
+  for (const match of index.matchAll(INLINE_LINK)) {
+    const target = match[1].split('#')[0].split('?')[0];
+    if (!target || target.startsWith('.') || !target.endsWith('.md')) continue;
+    listed.set(target, (listed.get(target) ?? 0) + 1);
+  }
+
+  const pages = execFileSync('git', ['-C', root, 'ls-files', '-z', 'docs/dev/*.md'], {
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024,
+  })
+    .split('\0')
+    .filter(Boolean)
+    // Relative to docs/dev/, matching how the index links them. git's `*` crosses '/',
+    // so a nested page arrives here as `nested/deep.md` rather than colliding on its
+    // basename with a top-level page of the same name.
+    .map((p) => p.replace(/^docs\/dev\//, ''))
+    .filter((name) => name !== 'index.md');
+
+  const findings = [];
+  for (const page of pages) {
+    const count = listed.get(page) ?? 0;
+    if (count === 0) {
+      findings.push({ page, problem: 'not listed in docs/dev/index.md' });
+    } else if (count > 1) {
+      findings.push({ page, problem: `listed ${count} times in docs/dev/index.md` });
+    }
+  }
+  return findings;
+}
+
 function selfTest() {
   const dir = mkdtempSync(join(tmpdir(), 'doclinks-'));
   const write = (rel, content) => {
@@ -150,13 +203,58 @@ function selfTest() {
     failures.push(`trackedMarkdown() returned ${tracked.length} files; expected at least 10`);
   }
 
+  // findIndexGaps has its own fixture tree: a bare filename match would pass the plain
+  // rows and fail the anchored and titled ones, so both shapes are must-not-flag cases.
+  const idxDir = mkdtempSync(join(tmpdir(), 'docidx-'));
+  mkdirSync(join(idxDir, 'docs', 'dev'), { recursive: true });
+  const writeDev = (name, body) => writeFileSync(join(idxDir, 'docs', 'dev', name), body);
+  for (const name of ['alpha.md', 'beta.md', 'gamma.md', 'delta.md']) writeDev(name, '# x');
+  // A nested page whose basename collides with a top-level one. git's `*` pathspec
+  // crosses '/', so comparing basenames would both mask this page and reject its row.
+  mkdirSync(join(idxDir, 'docs', 'dev', 'nested'), { recursive: true });
+  writeFileSync(join(idxDir, 'docs', 'dev', 'nested', 'alpha.md'), '# nested');
+  execFileSync('git', ['-C', idxDir, 'init', '-q']);
+  execFileSync('git', ['-C', idxDir, 'add', '-A']);
+
+  writeDev(
+    'index.md',
+    [
+      '| [A](alpha.md) |',
+      '| [B](beta.md#s) |',
+      '| [G](gamma.md "T") |',
+      '| [D](delta.md) |',
+      '| [N](nested/alpha.md) |',
+    ].join('\n'),
+  );
+  execFileSync('git', ['-C', idxDir, 'add', '-A']);
+  const cleanIdx = findIndexGaps(idxDir);
+  if (cleanIdx.length !== 0) {
+    failures.push(
+      `expected 0 index findings on plain/anchored/titled/nested rows, got ${cleanIdx.length}: ` +
+        cleanIdx.map((f) => `${f.page} ${f.problem}`).join('; '),
+    );
+  }
+
+  // Must flag: one page missing a row, and one listed twice on a single line.
+  writeDev('index.md', ['| [A](alpha.md) |', '| [B](beta.md) and [B2](beta.md) |'].join('\n'));
+  execFileSync('git', ['-C', idxDir, 'add', '-A']);
+  const badIdx = findIndexGaps(idxDir);
+  const missing = badIdx.filter((f) => f.problem.startsWith('not listed')).length;
+  const dupes = badIdx.filter((f) => f.problem.includes('listed 2 times')).length;
+  if (missing !== 3 || dupes !== 1) {
+    failures.push(
+      `expected exactly 3 missing and 1 duplicate index finding, got ${missing} and ${dupes}`,
+    );
+  }
+  rmSync(idxDir, { recursive: true, force: true });
+
   if (failures.length > 0) {
     for (const f of failures) console.error(`SELF-TEST FAIL: ${f}`);
     process.exit(1);
   }
   console.log(
     `SELF-TEST PASS: 0 findings on 8 must-not-flag links, 4 on 4 broken links, ` +
-      `${tracked.length} files discovered.`,
+      `${tracked.length} files discovered, index gaps asserted.`,
   );
 }
 
@@ -176,16 +274,34 @@ function main() {
     console.error('No Markdown files discovered — SCANNED_PREFIXES or git ls-files is broken.');
     process.exit(1);
   }
+  // Both checks report before either exits: an index gap must not mask link rot, or
+  // fixing one row sends the author back for a second run to find the rest.
+  const indexGaps = findIndexGaps();
   const findings = findBrokenLinks(files);
+
+  if (indexGaps.length > 0) {
+    console.error(`docs/dev/index.md is out of step with the directory: ${indexGaps.length}\n`);
+    for (const gap of indexGaps) {
+      console.error(`  ${gap.page}: ${gap.problem}`);
+    }
+    console.error('');
+  }
+
   if (findings.length > 0) {
     console.error(`Broken relative Markdown links: ${findings.length}\n`);
     for (const f of findings) {
       console.error(`  ${f.file}: [${f.href}] does not resolve (${f.resolved})`);
     }
     console.error('\nFix the link or restore the target.');
+  }
+
+  if (indexGaps.length > 0 || findings.length > 0) {
     process.exit(1);
   }
-  console.log(`OK: every relative Markdown link resolves (${files.length} files checked).`);
+  console.log(
+    `OK: every relative Markdown link resolves (${files.length} files checked), ` +
+      `and docs/dev/index.md lists every page exactly once.`,
+  );
 }
 
 if (INVOKED_DIRECTLY) {

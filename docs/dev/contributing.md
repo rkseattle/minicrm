@@ -19,8 +19,7 @@ Then the QA static checks, plus any conditional gates the diff triggers —
 `.env*.example` parity, compose isolation, the comments-only guard, markdown lint,
 `actionlint`. Both lists, with the reason each check exists, are in
 [.claude/gates/definition-of-done.md](../../.claude/gates/definition-of-done.md); they
-are not copied here, because a second copy of a nine-item list is a second thing to
-drift.
+are not copied here, because a second copy of that list is a second thing to drift.
 
 **The audit is unconditional.** Advisories land against versions already in the
 lockfile, so "I changed no dependencies" is exactly when drift goes unnoticed. The bar

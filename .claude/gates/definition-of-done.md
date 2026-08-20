@@ -39,6 +39,7 @@ bash qa/scripts/check-framework-spec-titles.sh
 bash qa/scripts/check-e2e-cleanup.sh
 node qa/scripts/check-locator-timeout-forwarding.mjs
 bash qa/scripts/check-audit-gate-parity.sh
+bash qa/scripts/check-gate-pointer-parity.sh
 ```
 
 Steps 1–5 run before every commit. **E2E does not gate individual commits** — see
