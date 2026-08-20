@@ -61,6 +61,72 @@ NAME_ONLY_DOCS=(
   "docs/dev/ci.md"
 )
 
+# Extracts fenced code blocks only. Prose mentioning either command is legal and common —
+# contributing.md explains why the bare form is wrong, in inline code spans — so
+# classifying sentences is not an option (a regex over English does not converge; an
+# earlier revision tried and either passed a bullet-form command or flagged the
+# explanatory paragraph). A fenced block is machine-readable: what a reader copies.
+#
+# CONSEQUENCE, stated because a guard that overclaims is worse than a narrow one: a doc
+# whose commands live in a table or an inline span is covered only by the name check
+# below, so ADDITIVE drift there is not caught. DOC_CALLERS lists which files are fully
+# pinned. Moving a command into a fenced block is what extends coverage to it.
+fenced_lines() {
+  awk '/^[[:space:]]*```/ { infence = !infence; next } infence { print }' "$1"
+}
+
+self_test() {
+  local tmp failures=0 out
+  tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064  # expand tmp now, not at trap time
+  trap "rm -rf '$tmp'" EXIT
+
+  # Must NOT flag: a fenced block with the shared script, plus inline prose explaining
+  # why the bare command is wrong — the shape contributing.md actually uses.
+  printf '# d\n\n```bash\nbash scripts/npm-audit-gate.sh\n```\n\nRun it rather than bare `npm audit`, which reports success on an outage.\n' \
+    > "$tmp/clean.md"
+  out="$(fenced_lines "$tmp/clean.md" | grep -c -E '^[[:space:]]*npm audit' || true)"
+  if [[ "$out" != "0" ]]; then
+    echo "SELF-TEST FAIL: explanatory prose counted as a command (got ${out})."
+    failures=1
+  fi
+
+  # Must flag: a fenced bare command, in each list-marker form a doc might use.
+  printf '# d\n\n```bash\nnpm audit --audit-level=high\n```\n' > "$tmp/fenced.md"
+  out="$(fenced_lines "$tmp/fenced.md" | grep -c -E '^[[:space:]]*npm audit' || true)"
+  if [[ "$out" != "1" ]]; then
+    echo "SELF-TEST FAIL: fenced bare command not detected (got ${out}, want 1)."
+    failures=1
+  fi
+
+  # Must NOT flag: a file with no fenced block yields no false positives.
+  printf '# d\n\nSee `bash scripts/npm-audit-gate.sh` in the table.\n' > "$tmp/table.md"
+  out="$(fenced_lines "$tmp/table.md" | wc -l | tr -d ' ')"
+  if [[ "$out" != "0" ]]; then
+    echo "SELF-TEST FAIL: a fence-free file produced ${out} scanned lines."
+    failures=1
+  fi
+
+  if [[ "$failures" -ne 0 ]]; then
+    exit 1
+  fi
+  echo "SELF-TEST PASS: fenced bare command flagged; explanatory prose and fence-free files not."
+}
+
+case "${1:-}" in
+  --self-test)
+    self_test
+    exit 0
+    ;;
+  '') ;;
+  *)
+    # A typo'd flag must not silently run the real check and print PASS.
+    echo "Unknown argument: $1" >&2
+    echo "Usage: $(basename "$0") [--self-test]" >&2
+    exit 2
+    ;;
+esac
+
 failed=0
 
 if [[ ! -x "${REPO_ROOT}/${SHARED_SCRIPT}" ]]; then
@@ -155,19 +221,6 @@ for caller in "${CALLERS[@]}"; do
   fi
 done
 
-# Extracts fenced code blocks only. Prose mentioning either command is legal and common —
-# contributing.md explains why the bare form is wrong, in inline code spans — so
-# classifying sentences is not an option (a regex over English does not converge; an
-# earlier revision tried and either passed a bullet-form command or flagged the
-# explanatory paragraph). A fenced block is machine-readable: what a reader copies.
-#
-# CONSEQUENCE, stated because a guard that overclaims is worse than a narrow one: a doc
-# whose commands live in a table or an inline span is covered only by the name check
-# below, so ADDITIVE drift there is not caught. DOC_CALLERS lists which files are fully
-# pinned. Moving a command into a fenced block is what extends coverage to it.
-fenced_lines() {
-  awk '/^[[:space:]]*```/ { infence = !infence; next } infence { print }' "$1"
-}
 
 for doc in "${NAME_ONLY_DOCS[@]}"; do
   path="${REPO_ROOT}/${doc}"
@@ -202,49 +255,6 @@ for doc in "${DOC_CALLERS[@]}"; do
     failed=1
   fi
 done
-
-self_test() {
-  local tmp failures=0 out
-  tmp="$(mktemp -d)"
-  # shellcheck disable=SC2064  # expand tmp now, not at trap time
-  trap "rm -rf '$tmp'" EXIT
-
-  # Must NOT flag: a fenced block with the shared script, plus inline prose explaining
-  # why the bare command is wrong — the shape contributing.md actually uses.
-  printf '# d\n\n```bash\nbash scripts/npm-audit-gate.sh\n```\n\nRun it rather than bare `npm audit`, which reports success on an outage.\n' \
-    > "$tmp/clean.md"
-  out="$(fenced_lines "$tmp/clean.md" | grep -c -E '^[[:space:]]*npm audit' || true)"
-  if [[ "$out" != "0" ]]; then
-    echo "SELF-TEST FAIL: explanatory prose counted as a command (got ${out})."
-    failures=1
-  fi
-
-  # Must flag: a fenced bare command, in each list-marker form a doc might use.
-  printf '# d\n\n```bash\nnpm audit --audit-level=high\n```\n' > "$tmp/fenced.md"
-  out="$(fenced_lines "$tmp/fenced.md" | grep -c -E '^[[:space:]]*npm audit' || true)"
-  if [[ "$out" != "1" ]]; then
-    echo "SELF-TEST FAIL: fenced bare command not detected (got ${out}, want 1)."
-    failures=1
-  fi
-
-  # Must NOT flag: a file with no fenced block yields no false positives.
-  printf '# d\n\nSee `bash scripts/npm-audit-gate.sh` in the table.\n' > "$tmp/table.md"
-  out="$(fenced_lines "$tmp/table.md" | wc -l | tr -d ' ')"
-  if [[ "$out" != "0" ]]; then
-    echo "SELF-TEST FAIL: a fence-free file produced ${out} scanned lines."
-    failures=1
-  fi
-
-  if [[ "$failures" -ne 0 ]]; then
-    exit 1
-  fi
-  echo "SELF-TEST PASS: fenced bare command flagged; explanatory prose and fence-free files not."
-}
-
-if [[ "${1:-}" == "--self-test" ]]; then
-  self_test
-  exit 0
-fi
 
 if [[ $failed -ne 0 ]]; then
   echo
