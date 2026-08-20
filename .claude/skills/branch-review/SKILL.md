@@ -67,7 +67,7 @@ not done, regardless of how the branch feels.
 ## Gates
 
 Every fix commit in this skill still runs the full Definition of Done in
-`.claude/gates/definition-of-done.md`. Refactor duplicated logic before staging.
+`.claude/gates/definition-of-done.md`, including its "Before `git add`" checks.
 Nothing about being in review mode relaxes the commit gates.
 
 ## Validate before reporting

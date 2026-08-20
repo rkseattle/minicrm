@@ -58,6 +58,9 @@ on a fact you cannot verify, say `UNVERIFIABLE` and name what evidence would set
 - ORDER BY interpolated without allowlist validation
 - PATCH/DELETE without ownership in the WHERE clause
 - Missing explicit service return types; `any`; uncommented `!` or `as`
+- A comment that restates the code, over-explains, or narrates history ("found via
+  review", "an earlier version") — absence of a required comment and excess are both
+  defects. Budget and carve-outs are CLAUDE.md's comment rule; read it there
 - Work-item ID (`MINCRM-N`, `LAR-N`, `MININT-N`) in a source comment — it belongs in the
   commit message, not the code; exempt: `-ok` markers and `@openapi` blocks
 - `console.log` in `server/src/`; magic numbers or strings
