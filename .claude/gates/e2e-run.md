@@ -17,6 +17,11 @@ These four rules stack; none relaxes another.
 4. **Validate a fix narrowly.** The post-fix run targets only the specific failing
    spec(s) with `--grep`. The scoped suite gets its one run at the actual push gate.
 
+Rules 3 and 4, and the failure-handling section below, apply to anyone running this
+suite. They are documented for humans in
+[docs/operations.md](../../docs/operations.md#reading-results); this file is the agent
+copy. Rules 1 and 2 are agent pacing and have no human equivalent.
+
 ## Infrastructure — once per dev machine boot
 
 ```bash

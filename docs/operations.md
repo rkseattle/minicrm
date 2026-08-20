@@ -52,7 +52,87 @@ This script:
 5. Seeds MinIO storage and Mailhog SMTP coordinates into `system_settings`
 
 The script is idempotent — safe to re-run if you restart the Docker services or wipe
-the database.
+the database. It reads `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` from `qa/e2e/.env`;
+copy `qa/e2e/.env.example` to `qa/e2e/.env` first if you have not already.
+
+### Serving the test client
+
+The E2E suite drives a Vite dev server on **5175**, pointed at the test API on **3002**.
+Start it in a separate terminal and leave it running:
+
+```bash
+npm run e2e:client
+```
+
+Use `e2e:client`, not `dev:client`. They serve different stacks — `e2e:client` on 5175
+against the test server (3002), `dev:client` on 5173 against the dev server (3001) — and
+both print their target on startup, which is how you confirm which one you are on. Both
+can run at once. Playwright refuses to start when `E2E_BASE_URL` is unset outside CI
+rather than defaulting to 5173, so pointing a run at the dev frontend fails loudly
+instead of silently mutating dev data.
+
+### Running the E2E suite
+
+Export the commit SHA and rebuild the server image first, otherwise the container runs
+the previous build and coverage dumps are tagged with the wrong commit. Clear old results
+so a stale file cannot influence the outcome:
+
+```bash
+export GIT_COMMIT_SHA=$(git rev-parse HEAD)
+docker compose -f docker-compose.test.yml build server
+docker compose -f docker-compose.test.yml up -d server
+rm -rf qa/e2e/test-results/
+```
+
+Then the non-serial run:
+
+```bash
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
+  PW_GLOBAL_TIMEOUT_MS=3600000 \
+  npm run test -- --grep "@functional" --grep-invert "visual-regression|serial" --workers=1
+```
+
+and the serial one, which is desktop-only and single-worker:
+
+```bash
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
+  PW_GLOBAL_TIMEOUT_MS=1500000 \
+  npm run test -- --project=desktop \
+  --grep "@functional.*@serial|@serial.*@functional" --workers=1
+```
+
+`PW_GLOBAL_TIMEOUT_MS` is required on both. `qa/e2e/playwright.config.ts` defaults
+`globalTimeout` to 20 minutes, which is calibrated for CI's sharded matrix; an unsharded
+local run exceeds it and is **truncated, not failed** — see Reading results below.
+
+### Tags
+
+`@functional` is required on every test. `@serial` marks tests that mutate shared global
+state, which is why they run single-worker in their own pass and are excluded from the
+first command. `@smoke` is a quick subset; `@visual` is screenshot comparison, run
+separately. The authoritative table is in
+[docs/dev/e2e-authoring.md](dev/e2e-authoring.md#tags-reference), which also covers how
+to write and register a `@serial` test.
+
+### Reading results
+
+Read `qa/e2e/test-results/results.xml`. Do not judge a run by console output or exit
+code.
+
+Check the executed count, not just failures. A truncated run reports `failures="0"` and
+looks green: the tells are a `<testsuites>` `time` sitting at exactly the timeout and an
+executed count well below the suite total.
+
+Every failure gets root-caused. Never label one a known flake, flaky, pre-existing, or
+unrelated as grounds to stop investigating — whether it has failed before is irrelevant,
+and comparing against `main` is not a way to dismiss it. **Never rerun to make a failure
+go away**; a rerun that passes is not a resolution. Run once, accept the result, fix the
+cause, then rerun only the specific failing spec with `--grep` to validate the fix. If
+you cannot find the root cause, say so rather than moving on.
+
+For a healed-locator failure, download that run's `healing-report.json` artifact
+(`gh api .../artifacts/<id>/zip`) — it shows the original → healed strategy per event.
+The local `heal-trends.json` is from a different run and will mislead you.
 
 ### Stopping the services
 

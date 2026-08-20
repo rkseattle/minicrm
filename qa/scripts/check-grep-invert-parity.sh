@@ -116,6 +116,7 @@ runnable_lines() {
 CALLERS=(
   ".github/workflows/ci.yml"
   ".claude/gates/e2e-run.md"
+  "docs/operations.md"
 )
 
 for file in "${CALLERS[@]}"; do

@@ -51,6 +51,7 @@ Local Development below).
 | [Admin Guide](docs/admin-guide.md)            | Administrators — user management, pipeline config, settings, branding, automation |
 | [REST API Reference](docs/api.md)             | Developers — authentication, all endpoints, pagination, error codes, gRPC         |
 | [Webhook Integration Guide](docs/webhooks.md) | Developers — subscriptions, event types, payload verification, retry behaviour    |
+| [Operations Guide](docs/operations.md)        | Developers and operators — local test environment, running E2E, secrets, backups  |
 
 For upgrade procedures, backup and restore scripts, email deliverability setup (SPF/DKIM/DMARC), and other operational guidance, see [docs/operations.md](docs/operations.md).
 
@@ -116,8 +117,8 @@ so develop against 5173, not 80. (MINCRM-684)
 
 Automated tests never touch this stack. The server unit, coverage and E2E suites all run
 against the isolated test environment in `docker-compose.test.yml` (Postgres on 5433) —
-see [.claude/gates/e2e-run.md](.claude/gates/e2e-run.md) and Running Tests below.
-(MINCRM-684)
+see [docs/operations.md](docs/operations.md#local-test-environment-developer-workflow)
+and Running Tests below. (MINCRM-684)
 
 To develop without Docker:
 
@@ -168,15 +169,13 @@ npm test --workspace=minicrm-client
 npm run test:coverage --workspace=minicrm-client
 ```
 
-**E2E tests** (requires the app running and a `minicrm_e2e` database):
+**E2E tests** run against the test stack (client on 5175, API on 3002) — not the dev
+stack on 5173/3001 that Local Development above starts. They need the test stack up, a
+`qa/e2e/.env`, `npm run e2e:setup`, and a separate `npm run e2e:client`.
 
-```bash
-cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
-# Smoke tests only:
-cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @smoke
-```
-
-Copy `qa/e2e/.env.example` to `qa/e2e/.env` and fill in `E2E_BASE_URL`, `E2E_ADMIN_EMAIL`, and `E2E_ADMIN_PASSWORD` before running.
+The full procedure — prerequisites, both run commands, `PW_GLOBAL_TIMEOUT_MS`, the tag
+split, and how to read `results.xml` — is in
+[docs/operations.md](docs/operations.md#running-the-e2e-suite).
 
 > **Upgrading an existing clone:** `E2E_DATABASE_URL` was retired (MINCRM-699) — the
 > stale-data guard now reads `DB_HOST`/`DB_PORT` (and `DB_USER`/`DB_PASSWORD`) like every
