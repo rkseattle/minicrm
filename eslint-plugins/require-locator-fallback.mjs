@@ -8,7 +8,7 @@
  *
  * Documented exception: dynamic ID locators (e.g. `deal-card-${id}`) that
  * have no stable role-based alternative may use a single testId strategy, but
- * must add an inline comment explaining why:
+ * must add a one-line comment explaining why:
  *
  *   // single-strategy: no stable role alternative for dynamic deal-card ID
  *   page.locate([{ type: 'testId', value: `deal-card-${id}` }], { intent: '...' })
@@ -35,7 +35,7 @@ const requireLocatorFallback = {
         'page.locate() has only one strategy. Add a fallback (role, label, text, or css) ' +
         'so the healing framework can recover when the primary strategy fails. ' +
         'If a stable fallback truly does not exist (e.g. dynamic ID with no role), ' +
-        'add eslint-disable-next-line with a justification comment. ' +
+        'add eslint-disable-next-line with a one-line justification. ' +
         'See MINCRM-313.',
     },
   },

@@ -33,8 +33,9 @@ const noWorkItemIdInComment = {
     schema: [],
     messages: {
       workItemIdInComment:
-        'Work-item ID {{ id }} in a comment. Put the reason in the comment and the ID ' +
-        'in the commit message — git blame carries the linkage without going stale.',
+        'Work-item ID {{ id }} in a comment. Put the reason in the comment — one line, ' +
+        'about the code not the ticket — and the ID in the commit message, which git ' +
+        'blame links without going stale.',
     },
   },
 

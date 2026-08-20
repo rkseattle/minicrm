@@ -213,7 +213,7 @@ with a clear 401/403 rather than silently using stale auth).
 
 `test.beforeAll` is acceptable **only** for seeding immutable, read-only shared data that
 would be expensive to create per-test and that no test mutates. When used this way, add an
-inline comment explaining why the shared state is safe:
+inline comment explaining why the shared state is safe, in a line or two:
 
 ```ts
 // Safe: seeds a pipeline stage that all tests in this file read but never modify.

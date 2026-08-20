@@ -23,7 +23,7 @@ Conventions for anything under `qa/`. Full reference: `docs/dev/e2e-authoring.md
 
 Primary strategy is always `testId`. Every `locate()` in a page object needs at least
 two strategies and a 5–10 word `intent` string. Spec-layer single-testId locates are
-allowed for dynamic IDs with a comment explaining why.
+allowed for dynamic IDs with a one-line comment explaining why.
 
 ## Waits
 
@@ -91,7 +91,8 @@ how four call sites leaked a user on every failing run (MINCRM-668).
 - A record the test deletes itself through the UI still gets registered — registration
   covers the path where the test fails before reaching its own delete. The follow-up 404
   is treated as successful cleanup, so this costs nothing on the happy path.
-- Deliberate exception? `// MINCRM-686-ok: <reason>`. The reason is required. This is a
+- Deliberate exception? `// MINCRM-686-ok: <reason>`. The reason is required and brief;
+  a comment block directly above the call also matches, within three lines. This is a
   named exemption from CLAUDE.md's no-work-item-IDs-in-comments rule, not a
   counter-example to it: the marker is an opt-out token whose exact spelling
   `check-e2e-cleanup.sh` matches, so it is an API, not a ticket reference for the reader.

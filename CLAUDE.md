@@ -117,9 +117,9 @@ failure the test exists to catch.
 
 **Adding a third requires all of the same:** import-safety (no `pg.Pool`, no
 `dotenv/config` pulled in at module load), an in-file comment carrying this
-justification, and an entry in `ci.yml`'s `qa` paths filter for the server file —
-without that filter entry the parity test is silent on exactly the server-side
-edit it guards.
+justification kept to the shortest form that carries it, and an entry in `ci.yml`'s `qa`
+paths filter for the server file — without that filter entry the parity test is silent
+on exactly the server-side edit it guards.
 
 **The paths-filter rule generalizes beyond those two.** Any test that pins a file
 outside its own workspace — a parity assertion, a docs-completeness check, a
@@ -177,7 +177,18 @@ Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations
 - **No N+1 queries.** List endpoints must join or batch-load.
 - **`async/await` only.** No `.then()` chains.
 - **`no-explicit-any` enforced.** Fix the type; never suppress.
-- **Non-null `!` and `as` casts** require an inline comment explaining why it's safe.
+- **Comments explain why, never what.** Use the fewest words that carry the reason; no
+  comment beats one that restates the line above it. A comment's subject is the **code** —
+  never the ticket, the review round, or an earlier revision of itself; that history goes
+  in the commit message, which never goes stale. **Budget:** an inline justification is one
+  line, 15 words. A block comment is for a genuinely non-obvious constraint — an invariant,
+  a footgun, a why-not — and earns its length by naming one. Exempt as contract or machine
+  input: `@openapi` blocks, the `-ok` suppression markers, directive comments
+  (`eslint-disable*`, `@ts-expect-error`, `v8 ignore`, `/// <reference>`,
+  `prettier-ignore`), JSDoc tag lines (`@param`, `@returns`, `@throws`) on exported
+  members, and `require-locator-intent`'s `intent` strings.
+- **Non-null `!` and `as` casts** require an inline comment explaining why it's safe, in
+  one line.
 - **No work-item IDs in source comments.** `MINCRM-N`, `LAR-N`, `MININT-N` belong in
   commit messages, PR titles, and branch names — never in a comment. State the _reason_
   inline without the ID; `git blame` → commit → PR is the authoritative provenance and
