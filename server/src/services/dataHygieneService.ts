@@ -122,15 +122,56 @@ async function gatherContactStaleTitle(titleStalenessDays: number): Promise<RawF
   }));
 }
 
-/** Resolves the MX records for an email's domain. Never throws — DNS failures are treated as a finding, not a scan crash. */
-async function hasResolvableMxRecord(email: string): Promise<boolean> {
+/** Bounds every network probe; without one a lookup can hang for tens of seconds. */
+const NETWORK_SIGNAL_TIMEOUT_MS = 5000;
+
+/** Codes proving the domain takes no mail. Any other error means unknown, not absent. */
+const DEFINITIVE_DNS_FAILURE_CODES = new Set(['ENOTFOUND', 'ENODATA']);
+
+/** `unknown` is not `no-mail`: a resolver that fails to answer is not evidence. */
+export type MailDomainStatus = 'accepts-mail' | 'no-mail' | 'unknown';
+
+/** Reserved domains (RFC 2606/6761) all publish a null MX; flagging seed data is noise. */
+const RESERVED_NON_MAIL_DOMAINS = new Set([
+  'example.com',
+  'example.net',
+  'example.org',
+  'example.edu',
+  'test',
+  'invalid',
+  'localhost',
+]);
+
+export async function resolveMailDomainStatus(email: string): Promise<MailDomainStatus> {
   const domain = email.split('@')[1]?.trim().toLowerCase();
-  if (!domain) return false;
+  if (!domain) return 'no-mail';
+  if (RESERVED_NON_MAIL_DOMAINS.has(domain) || domain.endsWith('.test')) return 'accepts-mail';
   try {
-    const records = await dns.promises.resolveMx(domain);
-    return records.length > 0;
-  } catch {
-    return false;
+    const records = await withTimeout(dns.promises.resolveMx(domain), NETWORK_SIGNAL_TIMEOUT_MS);
+    // RFC 7505 null MX: an empty exchange means the domain takes no mail,
+    // so a record count alone would report it as healthy.
+    const acceptsMail = records.some((record) => record.exchange.trim() !== '');
+    return acceptsMail ? 'accepts-mail' : 'no-mail';
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code && DEFINITIVE_DNS_FAILURE_CODES.has(code)) return 'no-mail';
+    logger.warn({ err, domain }, 'dataHygiene: MX lookup inconclusive — not flagging');
+    return 'unknown';
+  }
+}
+
+/** Stops waiting after ms. The work itself is not cancellable — DNS has no abort signal. */
+async function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -139,11 +180,22 @@ async function gatherContactUnresolvableEmailDomain(): Promise<RawFinding[]> {
     `SELECT id, owner_id, email FROM contacts WHERE email IS NOT NULL AND email != ''`,
   );
 
+  // One lookup per domain, not per contact — cost tracks domains, not rows.
+  const statusByDomain = new Map<string, Promise<MailDomainStatus>>();
+  const lookup = (email: string): Promise<MailDomainStatus> => {
+    const domain = email.split('@')[1]?.trim().toLowerCase() ?? '';
+    const cached = statusByDomain.get(domain);
+    if (cached) return cached;
+    const pending = resolveMailDomainStatus(email);
+    statusByDomain.set(domain, pending);
+    return pending;
+  };
+
   const findings: RawFinding[] = [];
   for (const row of result.rows) {
     try {
-      const resolvable = await hasResolvableMxRecord(row.email);
-      if (!resolvable) {
+      // Only 'no-mail' is evidence; 'unknown' must never reach a rep as fact.
+      if ((await lookup(row.email)) === 'no-mail') {
         findings.push({
           entityType: 'contact',
           entityId: row.id,
@@ -275,20 +327,20 @@ async function gatherAccountNoActivity(inactivityDays: number): Promise<RawFindi
   }));
 }
 
-/** Fetch timeout for the account website reachability check. */
-const WEBSITE_CHECK_TIMEOUT_MS = 5000;
+/** Mirrors MailDomainStatus: a probe that never completed is not a broken URL. */
+type WebsiteStatus = 'reachable' | 'unreachable' | 'unknown';
 
 /** Checks whether an account's website returns a non-404 response. Never throws. */
-async function isWebsiteUnreachable(url: string): Promise<boolean> {
+async function checkWebsiteStatus(url: string): Promise<WebsiteStatus> {
   try {
     await assertUrlIsFetchSafe(url);
   } catch (err) {
-    if (err instanceof UrlNotSafeError) return true;
+    if (err instanceof UrlNotSafeError) return 'unreachable';
     throw err;
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), WEBSITE_CHECK_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), NETWORK_SIGNAL_TIMEOUT_MS);
   try {
     // redirect: 'manual' so a 3xx response can't bypass assertUrlIsFetchSafe's
     // check by redirecting to a blocked/internal address after validation.
@@ -297,11 +349,14 @@ async function isWebsiteUnreachable(url: string): Promise<boolean> {
       redirect: 'manual',
       signal: controller.signal,
     });
-    return response.status === 404;
-  } catch {
-    // Network errors (DNS failure, connection refused, timeout) are themselves
-    // a hygiene signal — the site is unreachable either way.
-    return true;
+    return response.status === 404 ? 'unreachable' : 'reachable';
+  } catch (err) {
+    // Our own timeout says nothing about the site. Other fetch failures do.
+    if (err instanceof Error && err.name === 'AbortError') {
+      logger.warn({ url }, 'dataHygiene: website check timed out — not flagging');
+      return 'unknown';
+    }
+    return 'unreachable';
   } finally {
     clearTimeout(timeout);
   }
@@ -315,8 +370,8 @@ async function gatherAccountWebsiteUnreachable(): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
   for (const row of result.rows) {
     try {
-      const unreachable = await isWebsiteUnreachable(row.website);
-      if (unreachable) {
+      // Only a definite 'unreachable' is reported; see checkWebsiteStatus.
+      if ((await checkWebsiteStatus(row.website)) === 'unreachable') {
         findings.push({
           entityType: 'account',
           entityId: row.id,
@@ -508,12 +563,16 @@ export async function runDataHygieneScan(): Promise<void> {
     // Clear findings the scan no longer detects — the queue reflects current
     // state, not history. Fetch existing keys first since a parameterized
     // "NOT IN this exact set" delete isn't practical for a dynamic-size set.
+    //
+    // Dismissed rows are excluded: deleting one discards dismissed_until and
+    // dismissed_reason, so the issue resurfaces as new and suppression is lost.
     const existingResult = await client.query<{
       id: string;
       entity_type: string;
       entity_id: string;
       issue_type: string;
-    }>(`SELECT id, entity_type, entity_id, issue_type FROM data_hygiene_findings`);
+    }>(`SELECT id, entity_type, entity_id, issue_type FROM data_hygiene_findings
+        WHERE status <> 'dismissed'`);
 
     const staleIds = existingResult.rows
       .filter((row) => !detectedKeys.has(`${row.entity_type}:${row.entity_id}:${row.issue_type}`))

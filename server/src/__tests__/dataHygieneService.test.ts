@@ -1,11 +1,7 @@
 /**
- * Integration tests for dataHygieneService.
- * Runs against a real PostgreSQL test database. Network-dependent signals
- * (MX lookup, website reachability) are exercised with real DNS/HTTP calls
- * against known-good/known-bad targets rather than mocked, matching this
- * codebase's convention of not mocking the database or external I/O in
- * service-level integration tests — kept to a minimum given real network
- * calls are inherently slower and less deterministic than the rest of the suite.
+ * Integration tests for dataHygieneService, against a real PostgreSQL test
+ * database. Fixtures use reserved domains, which the MX check skips, so these
+ * do not depend on DNS; that logic is unit-tested in dataHygieneMxLookup.test.ts.
  *
  * Run: npm test (from /server)
  */
@@ -403,6 +399,49 @@ describe('runDataHygieneScan — clearing stale findings', () => {
 
   it('completes without throwing when there is nothing to flag', async () => {
     await expect(runDataHygieneScan()).resolves.not.toThrow();
+  });
+
+  it('keeps a dismissed finding when the scan no longer detects it', async () => {
+    const contact = await createContact({
+      first_name: 'Dismissed',
+      last_name: 'Survivor',
+      email: '',
+      owner_id: ownerId,
+    });
+    await createActivity({
+      type: 'Call',
+      direction: 'Outbound',
+      subject: 'Intro call',
+      contact_id: contact.id,
+      owner_id: ownerId,
+    });
+
+    await runDataHygieneScan();
+    const open = (await listHygieneFindings(ownerId)).find(
+      (f) => f.entity_id === contact.id && f.issue_type === 'contact_missing_contact_info',
+    );
+    expect(open).toBeDefined();
+    await dismissHygieneFinding(open!.id, 'Known placeholder record', ACTOR, true);
+
+    // Resolve the issue so the next scan stops detecting it.
+    const before = await findContactById(contact.id);
+    await updateContact(
+      contact.id,
+      {
+        email: `${FILE_PREFIX}-${uid()}-dismissed@example.com`,
+        phone: '+1-555-0142',
+        version: before!.version,
+      },
+      ACTOR,
+      before!,
+    );
+    await runDataHygieneScan();
+
+    const row = await pool.query(`SELECT status FROM data_hygiene_findings WHERE id = $1`, [
+      open!.id,
+    ]);
+    expect(row.rows).toHaveLength(1);
+    expect(row.rows[0].status).toBe('dismissed');
   });
 });
 
