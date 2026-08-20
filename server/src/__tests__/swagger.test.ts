@@ -100,7 +100,20 @@ describe('swaggerSpec — generated spec structure', () => {
 });
 
 describe('served password contract', () => {
-  /** Walks every schema node, collecting password-ish fields with an example. */
+  /**
+   * Walks every schema node, collecting password-ish values carrying an example.
+   *
+   * Two shapes exist and BOTH are served contract, so both must be walked:
+   *
+   *   1. Field-level, from swagger.ts's componentSchemas —
+   *      `password: { type: 'string', example: '...' }`
+   *   2. Object-level, from the `@openapi` JSDoc in routes/ —
+   *      `example: { token: '...', password: '...' }`, where the password is a bare
+   *      string with no sibling `type`.
+   *
+   * A `type === 'string'` test matches only the first, which left every hand-written
+   * route example unguarded — the exact sites this guard exists to pin.
+   */
   function collectPasswordFields(
     node: unknown,
     path: string,
@@ -113,6 +126,21 @@ describe('served password contract', () => {
       if (holdsAPassword && 'example' in field) {
         out.push({ path: `${path}.${key}`, field });
       }
+
+      // Shape 2: an `example` whose value is an object mapping field names to sample
+      // values. Normalized into the same {example} shape so the assertions below are
+      // identical for both, and minLength stays undefined — the object carries none.
+      if (key === 'example' && value && typeof value === 'object' && !Array.isArray(value)) {
+        for (const [exampleKey, exampleValue] of Object.entries(value as Record<string, unknown>)) {
+          if (/password$/i.test(exampleKey) && typeof exampleValue === 'string') {
+            out.push({
+              path: `${path}.example.${exampleKey}`,
+              field: { example: exampleValue },
+            });
+          }
+        }
+      }
+
       collectPasswordFields(value, `${path}.${key}`, out);
     }
   }
