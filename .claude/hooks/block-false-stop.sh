@@ -74,6 +74,10 @@ attempt=$((mark_n + 1))
 # counts as unknown rather than skipped: it may be a tool call, and judging by the
 # previous entry would read an in-flight call as a stall.
 #
+# The "partial" arm is defensive, not behavioral: without it a fragment makes jq error
+# instead of classifying, which the redirect swallows into the same allow. No corpus can
+# tell the two apart by verdict, so no self-test case can either.
+#
 # Tool results are skipped: they are the transcript's own bookkeeping, not a turn.
 # Role, not content shape, is what marks a human turn — a typed prompt is a bare string
 # but an ESC interrupt, a skill prompt, and a pasted screenshot all arrive as arrays.
@@ -98,5 +102,5 @@ last=$({ cat "$transcript"; printf '\n'; } \
 { mkdir -p "$(dirname "$marker")" && printf '%s %s' "$size" "$attempt" > "$marker"; } || allow
 jq -n --arg r "$remaining" '{
   decision: "block",
-  reason: ("Plan has \($r) unfinished phase(s). Continue with the next phase now — do not end the turn. If you need a decision from the user, ask it as an explicit question.")
+  reason: ("Plan has \($r) unfinished phase(s) in .claude/state/current-plan.json. Continue with the next phase now — do not end the turn. To stop deliberately, set \"paused\": true in that file; if the plan is abandoned, delete it.")
 }'
