@@ -42,7 +42,8 @@ const button = await this.page.locate([{ type: 'testId', value: 'new-contact-but
 
 Spec files (`tests/apps/minicrm/**/*.spec.ts`) must also satisfy the two-strategy minimum
 for any `page.locate()` call. Dynamic row-scoped IDs (e.g. `deal-card-${id}`) may use a
-single `testId` strategy when no stable role-based fallback exists — add a comment explaining why.
+single `testId` strategy when no stable role-based fallback exists — add a one-line
+comment explaining why.
 
 ## Lint Gates
 

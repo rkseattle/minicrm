@@ -312,7 +312,7 @@ is fine — it's only banned in spec files.
 - **Primary strategy** in every `locate()` call must be `testId`.
 - Every `locate()` must have at least two strategies and an `intent` string
   (5–10 words describing what the locator is for).
-- Spec-layer single-`testId` locates for dynamic IDs are allowed with an
+- Spec-layer single-`testId` locates for dynamic IDs are allowed with a one-line
   inline comment, but all such locates must go through a behavior function —
   specs must never call `page.locate()` or `page.getByTestId()` directly.
 
@@ -449,5 +449,5 @@ context. (MINCRM-668)
 
 A record that is deliberately left behind, or is already cleaned up by other means,
 opts out with a `// MINCRM-686-ok: <reason>` marker on the create line or in a comment
-directly above it. The reason is required — it is what makes a deliberate exception
-distinguishable from an oversight.
+block directly above it, within three lines. The reason is required and brief — it is what makes a deliberate
+exception distinguishable from an oversight.
