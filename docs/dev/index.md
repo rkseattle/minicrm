@@ -22,6 +22,7 @@ running and operating a deployment, see the [Operations Guide](../operations.md)
 | [Migrations](migrations.md)                   | Writing migrations, regenerating the ERD, and encryption key versioning                        | Anyone changing the database schema                                    |
 | [Retention](retention.md)                     | Which log tables are purged, on what schedule, and by which condition                          | Anyone adding a log table or debugging vanished rows                   |
 | [Schema Reference](schema.md)                 | Non-obvious fields, enums, and constraints                                                     | Anyone writing a query against an unfamiliar table                     |
+| [Troubleshooting](troubleshooting.md)         | Symptoms, causes, and the exact fix for common local failures                                  | Anyone whose stack, tests, or push just broke                          |
 
 ---
 

@@ -68,6 +68,7 @@ running is lost on restart.
 
 ## Related
 
+- [Troubleshooting](troubleshooting.md) — stack and callback failures
 - `dex/config.yaml` — the IdP definition this page describes
 - `server/src/controllers/ssoController.ts` — the callback endpoints the redirect URI hits
 - `server/src/services/ssoService.ts` — the SP side, including the encrypted private key
