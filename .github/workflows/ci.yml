@@ -2765,7 +2765,7 @@ jobs:
             echo "| coverage-dashboard | ${cd_lines}% | ${cd_funcs}% | ${cd_branch}% | ${cd_stmts}% |"
             echo "| e2e framework | ${f_lines}% | ${f_funcs}% | ${f_branch}% | ${f_stmts}% |"
             echo ""
-            echo "> Thresholds: server services ≥ 80% · client/coverage-dashboard components/pages ≥ 70%"
+            echo "> Thresholds: server, client and coverage-dashboard 70% lines/functions/branches/statements · e2e framework 80%"
             echo ""
             echo "[Download coverage artifacts]($ARTIFACTS_URL)"
           } > /tmp/coverage-comment-body.md

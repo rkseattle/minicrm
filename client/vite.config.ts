@@ -99,12 +99,13 @@ export default defineConfig({
       },
     },
   },
-  // Both dev and E2E serve on 5173 and differ only in which API they proxy to, so the
-  // banner names the target explicitly. Getting it wrong is otherwise silent: the page
-  // loads normally and every login fails later against a stack whose database has no
-  // matching user. E2E stays on 5173 because CI hardcodes localhost:5173 in its
-  // readiness gates and E2E_BASE_URL — moving it locally would diverge from CI, which is
-  // a worse trade than the ambiguity.
+  // This default serves the dev stack. `dev:e2e` overrides it to 5175 via --strictPort
+  // so both stacks can run at once; CI runs E2E on this 5173 default instead, which is
+  // why its readiness gates and E2E_BASE_URL hardcode 5173.
+  //
+  // The banner names the target API explicitly because getting the stack wrong is
+  // otherwise silent: the page loads normally and every login fails later against a
+  // database with no matching user.
   server: {
     host: '0.0.0.0',
     port: 5173,

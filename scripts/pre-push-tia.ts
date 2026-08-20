@@ -29,7 +29,9 @@
  * like a failed test run would — this is what makes "the selected subset
  * ran" a provable claim instead of merely an attempted one.
  *
- * Escape hatch: SKIP_TIA_PREPUSH=1 git push bypasses this hook entirely.
+ * Escape hatch: SKIP_TIA_PREPUSH=1 git push skips the TIA-selected E2E run.
+ * Typecheck and the audit gate still run — they execute before the bypass is
+ * read, being seconds of work that no E2E run would have covered.
  * Every bypass is appended to a local, gitignored audit log
  * (.git/tia-prepush-bypass.log) with a timestamp and the branch being
  * pushed — visible locally, never uploaded, never blocking (a missing log
