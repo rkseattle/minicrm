@@ -15,9 +15,12 @@
  * To rotate:
  *   1. Set ENCRYPTION_KEY_V2 to a new 64-char hex key.
  *   2. Set CURRENT_ENCRYPTION_KEY_VERSION=2 in the environment and redeploy.
- *   3. Run the key rotation script (see docs/admin-guide.md) to re-encrypt all
- *      existing ciphertexts with the new key and update key_version columns.
- *   4. Once all rows are on V2, you may remove ENCRYPTION_KEY_V1.
+ *      New ciphertexts are written under version 2 from then on.
+ *
+ * Nothing re-encrypts existing ciphertexts, so every key ever used must stay in the
+ * environment. NODE_ENCRYPTION_KEY in particular can never be retired: it backs key
+ * version 1 (there is no ENCRYPTION_KEY_V1) and every legacy encrypt/decrypt secret.
+ * See docs/dev/migrations.md for the full inventory.
  */
 
 import crypto from 'crypto';

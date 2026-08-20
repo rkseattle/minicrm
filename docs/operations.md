@@ -199,110 +199,34 @@ Generate a value the same way as `JWT_SECRET`:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Once set, **do not rotate this key** without first decrypting and re-encrypting any existing
-stored secrets — rotating without migration will make stored secrets unreadable.
+Once set, **treat this key as permanent.** There is no supported way to rotate it that
+preserves existing secrets — see [Key Rotation](#key-rotation) below.
 
 #### Key Rotation
 
-> **Warning — data loss risk.** Rotating `NODE_ENCRYPTION_KEY` without first re-encrypting
-> stored secrets will make those secrets permanently unreadable. There is no automated
-> migration tool — this is a manual procedure requiring careful operator attention.
-> **Test the procedure on a non-production instance before rotating in production.**
+> **Warning — data loss.** Rotating `NODE_ENCRYPTION_KEY` makes every secret encrypted
+> under it permanently unreadable. No tooling re-encrypts them, and the key itself can
+> never be retired. A step-by-step procedure previously documented here targeted
+> `system_settings` keys that do not exist, so it silently did nothing while implying
+> rotation was safe; it has been removed rather than corrected.
 
 Rotation is necessary only if the key is compromised or a compliance requirement mandates
 periodic rotation. If neither condition applies, do not rotate.
 
-**Step 1 — Identify encrypted values.**
+The versioned keyring and the full inventory of encrypted values are documented in
+[migrations.md](dev/migrations.md#encryption-key-rotation). In summary:
 
-The following `system_settings` keys hold AES-256-GCM encrypted values when configured:
+- Setting `ENCRYPTION_KEY_V2` and `CURRENT_ENCRYPTION_KEY_VERSION=2` makes **new**
+  ciphertexts use version 2. Existing rows are untouched.
+- **No tooling re-encrypts existing secrets.** Every key ever used must stay in the
+  environment permanently.
+- **`NODE_ENCRYPTION_KEY` can never be retired.** It backs key version 1 (there is no
+  `ENCRYPTION_KEY_V1`) and every legacy `encrypt`/`decrypt` secret — the storage secret,
+  TOTP MFA secrets, the SSO private key and IdP certificate, and webhook signing secrets.
 
-- `file_storage_secret` — S3/MinIO secret access key
-- `smtp_password` — SMTP account password (if UI-configured SMTP is enabled)
-
-Run this query against the database to confirm which rows are currently populated:
-
-```sql
-SELECT key, length(value) AS value_len
-FROM system_settings
-WHERE key IN ('file_storage_secret', 'smtp_password')
-  AND value IS NOT NULL;
-```
-
-If both rows are empty or absent, no re-encryption is needed and you can update the
-environment variable and restart (skipping Steps 2 and 4).
-
-**Step 2 — Decrypt the existing values with the old key.**
-
-Stop the server before proceeding. A running server holds the old key in memory; if the
-encrypted values are re-encrypted before the server is stopped, the server will fail to
-decrypt them on the next request.
-
-```bash
-docker compose stop server
-```
-
-Use the Node.js REPL (or a one-off script) with the old `NODE_ENCRYPTION_KEY` to decrypt
-each encrypted value and record the plaintext in a secure location (e.g. a password manager
-or an encrypted file). The `cryptoService` module in `server/src/services/cryptoService.ts`
-provides the `decrypt` function:
-
-```js
-// Run inside the server container or a local Node.js session with the old key set.
-// NODE_ENCRYPTION_KEY=<old-key> node --input-type=module <<'EOF'
-import { decrypt } from './server/src/services/cryptoService.js';
-console.log(decrypt('<encrypted-value-from-db>'));
-// EOF
-```
-
-Store the plaintext values securely — you will re-encrypt them in Step 4.
-
-**Step 3 — Update `NODE_ENCRYPTION_KEY` in the environment.**
-
-Generate a new 64-character hex key:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-Update `NODE_ENCRYPTION_KEY` in your `.env` file (or `docker-compose.yml` environment block).
-Do **not** restart the server yet.
-
-**Step 4 — Re-encrypt each value with the new key.**
-
-With the new key set in the environment, encrypt each plaintext value recorded in Step 2:
-
-```js
-// NODE_ENCRYPTION_KEY=<new-key> node --input-type=module <<'EOF'
-import { encrypt } from './server/src/services/cryptoService.js';
-console.log(encrypt('<plaintext-value>'));
-// EOF
-```
-
-Write each new encrypted value back to `system_settings`:
-
-```sql
-UPDATE system_settings SET value = '<new-encrypted-value>', updated_at = NOW()
-WHERE key = 'file_storage_secret';
-
-UPDATE system_settings SET value = '<new-encrypted-value>', updated_at = NOW()
-WHERE key = 'smtp_password';
-```
-
-**Step 5 — Restart the server and verify.**
-
-```bash
-docker compose up -d server
-```
-
-Verify that file storage and SMTP are functional by testing a file upload and (if applicable)
-sending a test email from the Admin Settings UI. Check the server logs for any decryption
-errors before declaring the rotation complete.
-
-> **Future improvement:** An automated `rotate-encryption-key` script in `scripts/` that
-> performs Steps 2–4 atomically is a planned improvement. Until it exists, follow this manual
-> procedure exactly and do not skip the verification step.
-
----
+If the key is compromised, there is no supported rotation path that preserves existing
+secrets. Re-entering each credential through the UI after setting a new key is the only
+route, and it invalidates every enrolled MFA device and webhook signature.
 
 ## API Versioning Policy
 
