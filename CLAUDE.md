@@ -160,7 +160,8 @@ Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations
 [ai-chat](docs/dev/ai-chat.md) · [coverage](docs/dev/coverage.md) ·
 [dates-and-timezones](docs/dev/dates-and-timezones.md) ·
 [e2e-performance](docs/dev/e2e-performance.md) · [e2e-authoring](docs/dev/e2e-authoring.md) ·
-[ADRs](docs/adr/)
+[eslint-plugins](docs/dev/eslint-plugins.md) · [local-sso](docs/dev/local-sso.md) ·
+[ADRs](docs/adr/) · [dev index](docs/dev/index.md)
 
 ---
 
