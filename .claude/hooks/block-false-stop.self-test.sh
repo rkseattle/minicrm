@@ -207,7 +207,30 @@ self_test() {
     "$(cd / && printf '{"session_id":"s2","cwd":"%s","transcript_path":"%s"}' "$tmp" "$tmp/words.jsonl" \
        | bash "$hook" | jq -r '.decision // "allow"')" block
 
-  local expected=70
+  # The log is the only evidence distinguishing "never dispatched" from "ran but the
+  # verdict went unapplied", so a silent logger defeats the diagnostic entirely.
+  rm -f "$tmp/.claude/state"/blocked-* "$tmp/.claude/state/hook-invocations.log"
+  fire s1 two.json "$tmp/words.jsonl" >/dev/null
+  check "block writes an invoked line" \
+    "$(grep -c ' invoked$' "$tmp/.claude/state/hook-invocations.log" 2>/dev/null || echo 0)" 1
+  check "block writes a verdict line" \
+    "$(grep -c ' verdict=block ' "$tmp/.claude/state/hook-invocations.log" 2>/dev/null || echo 0)" 1
+
+  rm -f "$tmp/.claude/state"/blocked-* "$tmp/.claude/state/hook-invocations.log"
+  fire s1 done.json "$tmp/words.jsonl" >/dev/null
+  check "allow writes a verdict line" \
+    "$(grep -c ' verdict=allow$' "$tmp/.claude/state/hook-invocations.log" 2>/dev/null || echo 0)" 1
+
+  # The payload-cwd path resolves state without CLAUDE_PROJECT_DIR; the log must follow
+  # it rather than writing to a directory the hook never read.
+  rm -f "$tmp/.claude/state"/blocked-* "$tmp/.claude/state/hook-invocations.log"
+  cp "$tmp/.claude/state/two.json" "$tmp/.claude/state/current-plan.json"
+  (cd / && printf '{"session_id":"s3","cwd":"%s","transcript_path":"%s"}' "$tmp" "$tmp/words.jsonl" \
+     | bash "$hook" >/dev/null)
+  check "payload-cwd run still logs" \
+    "$(grep -c ' invoked$' "$tmp/.claude/state/hook-invocations.log" 2>/dev/null || echo 0)" 1
+
+  local expected=74
   if [ "$st_total" -ne "$expected" ]; then
     echo "SELF-TEST FAILED: ran ${st_total} cases, expected exactly ${expected}."
     return 1

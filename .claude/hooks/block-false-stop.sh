@@ -20,19 +20,23 @@ MAX_SCAN_LINES=400
 # went unapplied. Nothing else distinguishes those two, and they have different fixes.
 # Runs before every exit path, uses no jq (the next line may exit without it), and never
 # fails the hook: a log that breaks the guard is worse than no log.
+# Takes the resolved root rather than re-deriving it: the script resolves state from
+# CLAUDE_PROJECT_DIR or the payload cwd, and a logger that honored only the first would
+# stay silent on a real block — manufacturing the "never dispatched" signature it exists
+# to rule out.
 log_invocation() {
-  local dir="${CLAUDE_PROJECT_DIR:-.}/.claude/state"
+  local dir="$1/.claude/state"
   local logfile="$dir/hook-invocations.log"
   [ -d "$dir" ] || return 0
   # Keep the tail bounded; this file is diagnostic, never state.
   if [ -f "$logfile" ] && [ "$(wc -l < "$logfile" 2>/dev/null || echo 0)" -gt 500 ]; then
     tail -n 200 "$logfile" > "$logfile.tmp" 2>/dev/null && mv "$logfile.tmp" "$logfile" 2>/dev/null
   fi
-  printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$1" >> "$logfile" 2>/dev/null || true
+  printf '%s %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$2" >> "$logfile" 2>/dev/null || true
 }
 
 allow() {
-  log_invocation "verdict=allow"
+  log_invocation "${root:-${CLAUDE_PROJECT_DIR:-.}}" "verdict=allow"
   printf '{"continue": true}\n'
   exit 0
 }
@@ -41,8 +45,6 @@ allow() {
 # signature this log exists to distinguish — an "invoked" line with no verdict.
 [ "${1:-}" = "--self-test" ] && exec bash "$(dirname "$0")/block-false-stop.self-test.sh" "$0"
 
-log_invocation "invoked"
-
 command -v jq >/dev/null 2>&1 || allow
 input=$(cat) || allow
 
@@ -50,6 +52,8 @@ input=$(cat) || allow
 # disables the hook.
 root="${CLAUDE_PROJECT_DIR:-$(jq -r '.cwd // "."' <<<"$input")}"
 state="$root/.claude/state/current-plan.json"
+
+log_invocation "$root" "invoked"
 
 session=$(jq -r '.session_id // "nosession"' <<<"$input")
 # The id reaches the filesystem, so anything outside a safe segment is not a name.
@@ -124,7 +128,7 @@ last=$({ cat "$transcript"; printf '\n'; } \
 # Logged before the emit rather than after: `allow` on a jq failure would recurse into
 # log_invocation and record a contradictory second line, and a block whose jq failed
 # still ran — which is what this log distinguishes.
-log_invocation "verdict=block remaining=$remaining attempt=$attempt"
+log_invocation "$root" "verdict=block remaining=$remaining attempt=$attempt"
 jq -n --arg r "$remaining" '{
   decision: "block",
   reason: ("Plan has \($r) unfinished phase(s) in .claude/state/current-plan.json. Continue with the next phase now — do not end the turn. To stop deliberately, set \"paused\": true in that file; if the plan is abandoned, delete it.")
