@@ -147,7 +147,7 @@ export async function updateUserStatus(id: string, active: boolean): Promise<Use
  * This is an unauthenticated endpoint.
  *
  * @param token - The JWT from the invite link
- * @param password - The new password (min 8 characters)
+ * @param password - The new password (min 12 characters, one letter, one number, one special character)
  */
 export async function setPassword(token: string, password: string): Promise<MessageResponse> {
   const response = await apiClient.post<MessageResponse>('/users/set-password', {

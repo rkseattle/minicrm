@@ -55,7 +55,7 @@ const router = Router();
  *             $ref: '#/components/schemas/SetPasswordRequest'
  *           example:
  *             token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *             password: MySecurePass1
+ *             password: Str0ng!Passphrase
  *     responses:
  *       200:
  *         description: Password set successfully; account is now active
@@ -83,7 +83,7 @@ const router = Router();
  *                 value:
  *                   error:
  *                     code: VALIDATION_ERROR
- *                     message: Password must be at least 8 characters
+ *                     message: Password must be at least 12 characters
  *               invalidToken:
  *                 summary: Invalid or expired invite token
  *                 value:
@@ -866,7 +866,7 @@ router.patch('/:id/status', asyncHandler(updateUserStatusHandler));
  *           schema:
  *             $ref: '#/components/schemas/AdminSetPasswordRequest'
  *           example:
- *             password: TempPass123
+ *             password: Str0ng!Passphrase
  *     responses:
  *       200:
  *         description: Password set and must_change_password flag enabled
@@ -896,7 +896,7 @@ router.patch('/:id/status', asyncHandler(updateUserStatusHandler));
  *             example:
  *               error:
  *                 code: VALIDATION_ERROR
- *                 message: Password must be at least 8 characters
+ *                 message: Password must be at least 12 characters
  *       401:
  *         description: Not authenticated
  *         content:
