@@ -524,7 +524,7 @@ describe('seedDefaultAdmin', () => {
 
     process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-admin@example.com`;
     process.env.ADMIN_NAME = 'Seed Admin';
-    process.env.ADMIN_PASSWORD = 'SeedPass1';
+    process.env.ADMIN_PASSWORD = 'Se3dPass!phrase';
 
     await seedDefaultAdmin();
 
@@ -532,6 +532,35 @@ describe('seedDefaultAdmin', () => {
     expect(user).not.toBeNull();
     expect(user!.role).toBe('admin');
     expect(user!.status).toBe('active');
+  });
+
+  /**
+   * Both .env templates ship this literal. Seeding it produces an ACTIVE admin whose
+   * password is published in this repository — so refusing to boot is the safe
+   * outcome, and it is reachable by a reader who follows the Quick Start but misses
+   * the single line of prose telling them to change it.
+   */
+  it('refuses to seed the placeholder password shipped in .env.example', async () => {
+    process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-placeholder@example.com`;
+    process.env.ADMIN_NAME = 'Seed Admin';
+    process.env.ADMIN_PASSWORD = 'REPLACE_WITH_STRONG_PASSWORD';
+
+    await expect(seedDefaultAdmin()).rejects.toThrow(/still the placeholder/i);
+    expect(await findUserByEmail(`${FILE_PREFIX}-seed-placeholder@example.com`)).toBeNull();
+  });
+
+  /**
+   * The policy is enforced wherever a password is CHANGED but was not where the first
+   * one is SEEDED, so a weak value was accepted here and then rejected the moment the
+   * admin tried to change it — locking them out of their own account.
+   */
+  it('refuses to seed a password the change-password policy would reject', async () => {
+    process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-weak@example.com`;
+    process.env.ADMIN_NAME = 'Seed Admin';
+    process.env.ADMIN_PASSWORD = 'short1';
+
+    await expect(seedDefaultAdmin()).rejects.toThrow(/password policy/i);
+    expect(await findUserByEmail(`${FILE_PREFIX}-seed-weak@example.com`)).toBeNull();
   });
 
   // the guard is scoped to ADMIN_EMAIL, not "any user exists". An
@@ -542,7 +571,7 @@ describe('seedDefaultAdmin', () => {
     await createUser(BASE_USER);
     process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-with-others@example.com`;
     process.env.ADMIN_NAME = 'Seed Admin';
-    process.env.ADMIN_PASSWORD = 'SeedPass1';
+    process.env.ADMIN_PASSWORD = 'Se3dPass!phrase';
 
     await seedDefaultAdmin();
 
@@ -555,7 +584,7 @@ describe('seedDefaultAdmin', () => {
   it('is idempotent when the configured admin already exists', async () => {
     process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-idempotent@example.com`;
     process.env.ADMIN_NAME = 'Seed Admin';
-    process.env.ADMIN_PASSWORD = 'SeedPass1';
+    process.env.ADMIN_PASSWORD = 'Se3dPass!phrase';
 
     await seedDefaultAdmin();
     await seedDefaultAdmin();
@@ -574,7 +603,7 @@ describe('seedDefaultAdmin', () => {
     const address = `${FILE_PREFIX}-seed-mixed-case@example.com`;
     process.env.ADMIN_EMAIL = address;
     process.env.ADMIN_NAME = 'Seed Admin';
-    process.env.ADMIN_PASSWORD = 'SeedPass1';
+    process.env.ADMIN_PASSWORD = 'Se3dPass!phrase';
     await seedDefaultAdmin();
 
     process.env.ADMIN_EMAIL = `  ${address.toUpperCase()}  `;
@@ -603,7 +632,7 @@ describe('seedDefaultAdmin', () => {
     });
     process.env.ADMIN_EMAIL = address;
     process.env.ADMIN_NAME = 'Seed Admin';
-    process.env.ADMIN_PASSWORD = 'SeedPass1';
+    process.env.ADMIN_PASSWORD = 'Se3dPass!phrase';
 
     await expect(seedDefaultAdmin()).resolves.toBeUndefined();
 
@@ -624,7 +653,7 @@ describe('seedDefaultAdmin', () => {
     await updateUserStatus(user.id, 'inactive');
     process.env.ADMIN_EMAIL = address;
     process.env.ADMIN_NAME = 'Seed Admin';
-    process.env.ADMIN_PASSWORD = 'SeedPass1';
+    process.env.ADMIN_PASSWORD = 'Se3dPass!phrase';
 
     await expect(seedDefaultAdmin()).resolves.toBeUndefined();
 
@@ -646,7 +675,7 @@ describe('seedDefaultAdmin', () => {
     });
     process.env.ADMIN_EMAIL = address;
     process.env.ADMIN_NAME = 'Seed Admin';
-    process.env.ADMIN_PASSWORD = 'SeedPass1';
+    process.env.ADMIN_PASSWORD = 'Se3dPass!phrase';
 
     await expect(seedDefaultAdmin()).resolves.toBeUndefined();
 
@@ -662,7 +691,7 @@ describe('seedDefaultAdmin', () => {
   it('is a no-op when ADMIN_NAME is not set', async () => {
     process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-no-name@example.com`;
     delete process.env.ADMIN_NAME;
-    process.env.ADMIN_PASSWORD = 'SeedPass1';
+    process.env.ADMIN_PASSWORD = 'Se3dPass!phrase';
 
     await expect(seedDefaultAdmin()).resolves.toBeUndefined();
 

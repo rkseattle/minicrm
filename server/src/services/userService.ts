@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 import logger from '../logger.js';
 import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js';
+import { passwordComplexitySchema } from '@minicrm/shared/schemas/userSchema.js';
 import { SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
@@ -393,6 +394,30 @@ export async function seedDefaultAdmin(): Promise<void> {
     warnIfAdminUnusable(existing, normalizedAdminEmail);
     logger.info(`Default admin user already exists, skipping seed: ${normalizedAdminEmail}`);
     return;
+  }
+
+  // Refuse the shipped placeholder outright. Both .env templates carry
+  // REPLACE_WITH_STRONG_PASSWORD, and seeding it produces an ACTIVE admin whose
+  // password is public knowledge — a worse outcome than refusing to seed, and one
+  // the reader of a Quick Start hits by missing a single line of prose.
+  if (ADMIN_PASSWORD.startsWith('REPLACE_WITH_')) {
+    throw new Error(
+      'ADMIN_PASSWORD is still the placeholder from .env.example. ' +
+        'Set a real password before first boot — seeding it would create an admin ' +
+        'account whose password is published in this repository.',
+    );
+  }
+
+  // The policy is enforced everywhere a password is CHANGED but not where the first
+  // one is SEEDED, so a weak value succeeded here and was then rejected the moment the
+  // admin tried to change it — locking them out of their own account.
+  const policyCheck = passwordComplexitySchema.safeParse(ADMIN_PASSWORD);
+  if (!policyCheck.success) {
+    throw new Error(
+      `ADMIN_PASSWORD does not meet the password policy: ${policyCheck.error.issues
+        .map((issue) => issue.message)
+        .join('; ')}`,
+    );
   }
 
   const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, BCRYPT_SALT_ROUNDS);
