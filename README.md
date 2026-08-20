@@ -137,7 +137,13 @@ than an error — and can resolve the lockfile differently from CI.
 
 ```bash
 cp server/.env.example server/.env
-# Edit server/.env with your local Postgres credentials
+
+# Edit server/.env: set your local Postgres credentials, and replace the
+# JWT_SECRET and NODE_ENCRYPTION_KEY placeholders. The server validates both at
+# startup and exits before binding a port if either is missing or malformed.
+node -e "console.log('JWT_SECRET=' + require('crypto').randomBytes(32).toString('hex'))"
+node -e "console.log('NODE_ENCRYPTION_KEY=' + require('crypto').randomBytes(32).toString('hex'))"
+
 npm run dev --workspace=minicrm-server
 ```
 
