@@ -142,10 +142,22 @@ const RESERVED_NON_MAIL_DOMAINS = new Set([
   'localhost',
 ]);
 
+/**
+ * RFC 2606/6761 reserve these names *and everything under them*, so this must match
+ * on suffix. Exact-set membership alone misses the seed data it exists to protect:
+ * the demo fixtures use `acme-demo.example.com`, whose MX lookup answers ENODATA —
+ * which is definitive, so every demo contact would be flagged as having a dead domain.
+ */
+function isReservedNonMailDomain(domain: string): boolean {
+  return [...RESERVED_NON_MAIL_DOMAINS].some(
+    (reserved) => domain === reserved || domain.endsWith(`.${reserved}`),
+  );
+}
+
 export async function resolveMailDomainStatus(email: string): Promise<MailDomainStatus> {
   const domain = email.split('@')[1]?.trim().toLowerCase();
   if (!domain) return 'no-mail';
-  if (RESERVED_NON_MAIL_DOMAINS.has(domain) || domain.endsWith('.test')) return 'accepts-mail';
+  if (isReservedNonMailDomain(domain)) return 'accepts-mail';
   try {
     const records = await withTimeout(dns.promises.resolveMx(domain), NETWORK_SIGNAL_TIMEOUT_MS);
     // RFC 7505 null MX: an empty exchange means the domain takes no mail,
@@ -328,10 +340,16 @@ async function gatherAccountNoActivity(inactivityDays: number): Promise<RawFindi
 }
 
 /** Mirrors MailDomainStatus: a probe that never completed is not a broken URL. */
-type WebsiteStatus = 'reachable' | 'unreachable' | 'unknown';
+export type WebsiteStatus = 'reachable' | 'unreachable' | 'unknown';
 
-/** Checks whether an account's website returns a non-404 response. Never throws. */
-async function checkWebsiteStatus(url: string): Promise<WebsiteStatus> {
+/**
+ * Checks whether an account's website returns a non-404 response. Never throws.
+ *
+ * Exported for the same reason resolveMailDomainStatus is: the transport failures
+ * that decide reachable/unknown cannot be produced on demand against a real network,
+ * so the classification is only testable through a mocked fetch.
+ */
+export async function checkWebsiteStatus(url: string): Promise<WebsiteStatus> {
   try {
     await assertUrlIsFetchSafe(url);
   } catch (err) {
@@ -351,12 +369,18 @@ async function checkWebsiteStatus(url: string): Promise<WebsiteStatus> {
     });
     return response.status === 404 ? 'unreachable' : 'reachable';
   } catch (err) {
-    // Our own timeout says nothing about the site. Other fetch failures do.
+    // Only a name that does not resolve proves the site is gone. undici wraps every
+    // transport failure — refused connection, TLS error, resolver outage — as the same
+    // `TypeError: fetch failed`, distinguishable only by `cause.code`, so matching on
+    // the error name would report our own network trouble as the customer's dead site.
     if (err instanceof Error && err.name === 'AbortError') {
       logger.warn({ url }, 'dataHygiene: website check timed out — not flagging');
       return 'unknown';
     }
-    return 'unreachable';
+    const code = (err as { cause?: NodeJS.ErrnoException }).cause?.code;
+    if (code && DEFINITIVE_DNS_FAILURE_CODES.has(code)) return 'unreachable';
+    logger.warn({ err, url }, 'dataHygiene: website check inconclusive — not flagging');
+    return 'unknown';
   } finally {
     clearTimeout(timeout);
   }
@@ -564,15 +588,19 @@ export async function runDataHygieneScan(): Promise<void> {
     // state, not history. Fetch existing keys first since a parameterized
     // "NOT IN this exact set" delete isn't practical for a dynamic-size set.
     //
-    // Dismissed rows are excluded: deleting one discards dismissed_until and
-    // dismissed_reason, so the issue resurfaces as new and suppression is lost.
+    // Rows in a LIVE dismissal window are excluded: deleting one discards
+    // dismissed_until and dismissed_reason, so the issue resurfaces as new and
+    // suppression is lost. Once that window expires the row is swept like any
+    // other — excluding it forever would strand a resolved finding that
+    // listHygieneFindings surfaces again the moment the window lapses, with no
+    // later scan able to clear it.
     const existingResult = await client.query<{
       id: string;
       entity_type: string;
       entity_id: string;
       issue_type: string;
     }>(`SELECT id, entity_type, entity_id, issue_type FROM data_hygiene_findings
-        WHERE status <> 'dismissed'`);
+        WHERE NOT (status = 'dismissed' AND dismissed_until IS NOT NULL AND dismissed_until > now())`);
 
     const staleIds = existingResult.rows
       .filter((row) => !detectedKeys.has(`${row.entity_type}:${row.entity_id}:${row.issue_type}`))
