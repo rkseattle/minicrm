@@ -90,6 +90,25 @@ function resolveAdminCredentials(): TestStackAdminSource {
   );
 }
 
+/**
+ * Resolves the credentials or exits. Returns them non-optional so callers use them
+ * directly instead of repeating the same presence check — which is what let the two
+ * call sites drift apart in wording before they were shared.
+ */
+function requireAdminCredentials(): { email: string; password: string } {
+  const { E2E_ADMIN_EMAIL: email, E2E_ADMIN_PASSWORD: password } = resolveAdminCredentials();
+
+  if (!email || !password) {
+    console.error(
+      '[e2e:setup] ERROR: E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set.\n' +
+        '  Copy qa/e2e/.env.example to qa/e2e/.env and fill in the credentials.',
+    );
+    process.exit(1);
+  }
+
+  return { email, password };
+}
+
 // Load root .env so NODE_ENCRYPTION_KEY and other server-side vars are available
 // to child scripts (e.g. seed:e2e-storage needs NODE_ENCRYPTION_KEY to encrypt secrets).
 try {
@@ -250,16 +269,10 @@ function ensureCoverageE2eDatabase(): void {
 // after the reset.
 
 function resetE2eData(): void {
-  const { E2E_ADMIN_EMAIL: adminEmail, E2E_ADMIN_PASSWORD: adminPassword } =
-    resolveAdminCredentials();
-
-  if (!adminEmail || !adminPassword) {
-    console.error(
-      '[e2e:setup] ERROR: E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set.\n' +
-        '  Copy qa/e2e/.env.example to qa/e2e/.env and fill in the credentials.',
-    );
-    process.exit(1);
-  }
+  // Both are required even though only the email is forwarded: the reset and the
+  // reseed that follows it must agree on the account, so failing here rather than
+  // midway through is what keeps a half-reset stack from being left behind.
+  const { email: adminEmail } = requireAdminCredentials();
 
   console.log('[e2e:setup] Resetting accumulated E2E test data...');
 
@@ -281,16 +294,7 @@ function resetE2eData(): void {
 // ── Step 3: Seed E2E admin user ───────────────────────────────────────────────
 
 function seedE2eAdmin(): void {
-  const { E2E_ADMIN_EMAIL: adminEmail, E2E_ADMIN_PASSWORD: adminPassword } =
-    resolveAdminCredentials();
-
-  if (!adminEmail || !adminPassword) {
-    console.error(
-      '[e2e:setup] ERROR: E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set.\n' +
-        '  Copy qa/e2e/.env.example to qa/e2e/.env and fill in the credentials.',
-    );
-    process.exit(1);
-  }
+  const { email: adminEmail, password: adminPassword } = requireAdminCredentials();
 
   console.log('[e2e:setup] Seeding E2E admin user...');
 

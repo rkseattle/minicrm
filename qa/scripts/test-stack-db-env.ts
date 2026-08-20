@@ -231,16 +231,6 @@ export function resolveRuntimeTestStackDb(env: Readonly<NodeJS.ProcessEnv>): Tes
   };
 }
 
-/**
- * Extracts just the DB coordinates from parsed .env contents.
- *
- * Both callers (scripts/pre-push-tia.ts and scripts/e2e-setup.ts) re-read
- * qa/e2e/.env directly rather than consulting process.env, because by the time
- * they resolve, root .env has been flattened in and its DEV values shadow the
- * test ones. Going back to the file is what names these values as belonging to
- * the TEST stack. Absent keys are omitted rather than set to undefined, so the
- * resolver's `??` chain falls through cleanly.
- */
 /** E2E admin credentials, from the same sources as the DB coordinates. */
 export interface TestStackAdminSource {
   E2E_ADMIN_EMAIL?: string;
@@ -272,6 +262,16 @@ export function resolveTestStackAdmin(
   return resolved;
 }
 
+/**
+ * Extracts just the DB coordinates from parsed .env contents.
+ *
+ * Both callers (scripts/pre-push-tia.ts and scripts/e2e-setup.ts) re-read
+ * qa/e2e/.env directly rather than consulting process.env, because by the time
+ * they resolve, root .env has been flattened in and its DEV values shadow the
+ * test ones. Going back to the file is what names these values as belonging to
+ * the TEST stack. Absent keys are omitted rather than set to undefined, so the
+ * resolver's `??` chain falls through cleanly.
+ */
 export function pickDbCoordinates(
   parsed: Readonly<Record<string, string | undefined>>,
 ): TestStackDbSource {
