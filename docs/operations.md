@@ -242,10 +242,12 @@ simpler to test, and unambiguously visible in logs, proxies, and browser dev-too
 
 ### Backward-compatibility redirects
 
-The server issues `301 Permanent Redirect` from the old unversioned paths to their v1
-equivalents (e.g. `GET /api/contacts` → `GET /api/v1/contacts`). This gives existing
-consumers a graceful migration path. **These redirects will be removed in a future release —
-migrate to `/api/v1/` as soon as possible.**
+The server issues `308 Permanent Redirect` from the old unversioned paths to their v1
+equivalents (e.g. `GET /api/contacts` → `GET /api/v1/contacts`). 308 rather than 301
+because a client may rewrite a 301 to GET and drop the request body, which breaks any
+POST or PATCH sent to a legacy path. This gives existing consumers a graceful migration
+path. **These redirects will be removed in a future release — migrate to `/api/v1/` as
+soon as possible.**
 
 ### Introducing v2
 

@@ -219,9 +219,13 @@ app.use(`${API_V1}/ai`, aiUserRouter);
 app.use(`${API_V1}/admin/ai`, aiRoutes);
 
 // ── Backward-compat redirects (/api/<resource> → /api/v1/<resource>) ───────────
-// 301 redirects let external consumers that haven't migrated yet reach the
-// versioned routes. The redirect preserves the path suffix so nested routes work.
+// 308 rather than 301: a client may rewrite a 301 to GET and drop the request body,
+// silently breaking every POST and PATCH. The path suffix is preserved either way.
+// api.md and operations.md state this status; legacyApiRedirect.test.ts pins them to
+// the constant, since a docs-only edit runs no server test.
 // Remove this block once all known consumers are on /api/v1/.
+export const LEGACY_REDIRECT_STATUS = 308;
+
 const LEGACY_PREFIXES = [
   '/api/auth',
   '/api/users',
@@ -246,7 +250,7 @@ const LEGACY_PREFIXES = [
 for (const prefix of LEGACY_PREFIXES) {
   app.use(prefix, (req, res) => {
     const newUrl = req.originalUrl.replace(/^\/api\//, '/api/v1/');
-    res.redirect(301, newUrl);
+    res.redirect(LEGACY_REDIRECT_STATUS, newUrl);
   });
 }
 
