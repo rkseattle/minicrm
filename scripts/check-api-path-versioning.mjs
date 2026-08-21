@@ -19,6 +19,9 @@
  * Scheme-qualified URLs are stripped before matching, so a link to someone else's API is
  * not a finding. A host-relative path still is, including one aimed at localhost.
  *
+ * Interior lines of a block comment that do not open with `*` are also unseen — mostly
+ * JSX `{/* ... *\/}` blocks. None hides a path today.
+ *
  * Run: node scripts/check-api-path-versioning.mjs [--self-test]
  */
 
@@ -30,14 +33,6 @@ import { fileURLToPath } from 'url';
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SCANNED_PREFIXES = ['server/src/', 'client/src/', 'shared/', 'qa/e2e/'];
 
-/**
- * Paths that are correct without `/api/v1`, each for a stated reason.
- *
- * `qa/e2e/framework/` is excluded wholesale rather than listed: it must stay free of
- * app-domain strings, so its `/api/items`-style placeholders are deliberately generic and
- * versioning them would inject exactly what check-framework-purity.sh forbids.
- */
-
 /** Suppresses one line, so a single fixture does not blind the rest of a file. */
 const LINE_EXEMPTION = /api-path-ok\b/;
 
@@ -45,7 +40,7 @@ const LINE_EXEMPTION = /api-path-ok\b/;
 const DOUBLED_VERSION = /^\/api\/v\d+\/v\d+/;
 
 /** Unversioned paths that are correct: infra endpoints and the Connect RPC prefix. */
-const EXEMPT_PATH = /^\/api\/(?:v1|v2|health|docs)(?:\/|$)|^\/api\/minicrm\./;
+const EXEMPT_PATH = /^\/api\/(?:v1|v2|health)(?:\/|$)|^\/api\/minicrm\./;
 
 const COMMENT_LINE = /^\s*(\*|\/\/|\/\*)/;
 /** Scheme-qualified URLs. A host-relative /api/... path still needs the version. */
@@ -108,12 +103,17 @@ function scannedFiles() {
     encoding: 'utf8',
     maxBuffer: 32 * 1024 * 1024,
   });
-  return out
-    .split('\0')
-    .filter(Boolean)
-    .filter((p) => /\.(ts|tsx)$/.test(p))
-    .filter((p) => SCANNED_PREFIXES.some((prefix) => p.startsWith(prefix)))
-    .filter((p) => !p.startsWith('qa/e2e/framework/'));
+  return (
+    out
+      .split('\0')
+      .filter(Boolean)
+      .filter((p) => /\.(ts|tsx)$/.test(p))
+      .filter((p) => SCANNED_PREFIXES.some((prefix) => p.startsWith(prefix)))
+      // framework/ must stay free of app-domain strings, so its /api/items-style
+      // placeholders are deliberately generic — versioning them would inject exactly what
+      // check-framework-purity.sh forbids.
+      .filter((p) => !p.startsWith('qa/e2e/framework/'))
+  );
 }
 
 function selfTest() {
