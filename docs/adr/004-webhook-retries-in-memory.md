@@ -57,3 +57,9 @@ attempt" shape is what makes reconciliation necessary in the first place.
 
 **Revisit when:** a subscriber needs at-least-once delivery as a contractual guarantee, or
 the retry window materially exceeds the deploy interval.
+
+**No separate defect ticket was filed.** This ADR is the record, and it is indexed from
+`docs/adr/README.md` and linked from the section of `docs/webhooks.md` that describes the
+limitation — so the decision is reachable from both the design history and the place an
+integrator meets the behaviour. Filing a ticket as well would put the reasoning in a
+second place that can close without the design changing.
