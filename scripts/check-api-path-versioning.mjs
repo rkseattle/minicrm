@@ -37,15 +37,12 @@ const SCANNED_PREFIXES = ['server/src/', 'client/src/', 'shared/', 'qa/e2e/'];
  * app-domain strings, so its `/api/items`-style placeholders are deliberately generic and
  * versioning them would inject exactly what check-framework-purity.sh forbids.
  */
-/** Whole-file exemptions. Prefer the per-line marker below; this is for a file whose
- * every /api/ mention is someone else's API. */
-const EXEMPT_FILES = new Map();
 
-/**
- * Suppression marker for a single line, so exempting one fixture does not blind the rest
- * of a file. Prefer this to an EXEMPT_FILES entry.
- */
+/** Suppresses one line, so a single fixture does not blind the rest of a file. */
 const LINE_EXEMPTION = /api-path-ok\b/;
+
+/** A version segment applied twice — what a mechanical rewrite does to a correct path. */
+const DOUBLED_VERSION = /^\/api\/v\d+\/v\d+/;
 
 /** Unversioned paths that are correct: infra endpoints and the Connect RPC prefix. */
 const EXEMPT_PATH = /^\/api\/(?:v1|v2|health|docs)(?:\/|$)|^\/api\/minicrm\./;
@@ -60,7 +57,9 @@ const TRAILING_COMMENT = /\/\/.*$|\/\*[\s\S]*?\*\//g;
 const TEST_TITLE = /(?:describe|it|test)(?:\.\w+)?(?:\([^)]*\))?\(\s*['"`]([^'"`]*)['"`]/g;
 // Not preceded by `@` and not ending in a source extension: `@/api/foo.ts` is the
 // client's import alias, not a URL, and versioning it breaks the path.
-const API_PATH = /(?<![@\w])\/api\/[a-z][a-z0-9.-]*/g;
+// Captures one following segment only when it is a version, so `/api/v1/v1` is visible
+// as a whole while an ordinary `/api/v1/contacts` still reads as its prefix.
+const API_PATH = /(?<![@\w])\/api\/[a-z][a-z0-9.-]*(?:\/v\d+)?/g;
 const MODULE_PATH = /\.(ts|tsx|js|mjs|cjs)$/;
 
 /**
@@ -80,6 +79,10 @@ export function findUnversionedPaths(text) {
     if (!commented) return;
     if (LINE_EXEMPTION.test(commented)) return;
     for (const match of commented.replace(ABSOLUTE_URL, ' ').matchAll(API_PATH)) {
+      if (DOUBLED_VERSION.test(match[0])) {
+        findings.push({ line: index + 1, path: match[0], context: 'comment' });
+        continue;
+      }
       if (EXEMPT_PATH.test(match[0]) || MODULE_PATH.test(match[0])) continue;
       findings.push({ line: index + 1, path: match[0], context: 'comment' });
     }
@@ -88,6 +91,10 @@ export function findUnversionedPaths(text) {
   for (const match of text.matchAll(TEST_TITLE)) {
     const line = text.slice(0, match.index).split('\n').length;
     for (const found of match[1].matchAll(API_PATH)) {
+      if (DOUBLED_VERSION.test(found[0])) {
+        findings.push({ line, path: found[0], context: 'test title' });
+        continue;
+      }
       if (EXEMPT_PATH.test(found[0]) || MODULE_PATH.test(found[0])) continue;
       findings.push({ line, path: found[0], context: 'test title' });
     }
@@ -106,8 +113,7 @@ function scannedFiles() {
     .filter(Boolean)
     .filter((p) => /\.(ts|tsx)$/.test(p))
     .filter((p) => SCANNED_PREFIXES.some((prefix) => p.startsWith(prefix)))
-    .filter((p) => !p.startsWith('qa/e2e/framework/'))
-    .filter((p) => !EXEMPT_FILES.has(p));
+    .filter((p) => !p.startsWith('qa/e2e/framework/'));
 }
 
 function selfTest() {
@@ -127,6 +133,7 @@ function selfTest() {
     ['const s = 1; /* see /api/contacts */', 1, 'a trailing block comment'],
     ["it.each([1])('GET /api/deals %s', () => {})", 1, 'an it.each title'],
     ['// /api/healthz is not the health endpoint.', 1, 'a path that only prefixes health'],
+    ['// Mounted at /api/v1/v1 in app.ts.', 1, 'a doubled version segment'],
   ];
 
   let failures = 0;

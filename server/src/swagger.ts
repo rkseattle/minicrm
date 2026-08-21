@@ -11,6 +11,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import type { Express } from 'express';
 import { PASSWORD_MIN_LENGTH } from '@minicrm/shared/schemas/userSchema.js';
+import { WEBHOOK_EVENT_TYPES } from '@minicrm/shared/schemas/webhookSchema.js';
 
 /** Derived from the schema that enforces it, so the two cannot drift. */
 const PASSWORD_POLICY_DESCRIPTION = `At least ${PASSWORD_MIN_LENGTH} characters, one letter, one number, and one special character`;
@@ -707,25 +708,7 @@ const componentSchemas = {
         minItems: 1,
         items: {
           type: 'string',
-          enum: [
-            'contact.created',
-            'contact.updated',
-            'contact.deleted',
-            'account.created',
-            'account.updated',
-            'account.deleted',
-            'deal.created',
-            'deal.updated',
-            'deal.stage_changed',
-            'deal.won',
-            'deal.lost',
-            'deal.deleted',
-            'activity.created',
-            'activity.completed',
-            'user.invited',
-            'user.activated',
-            'user.deactivated',
-          ],
+          enum: [...WEBHOOK_EVENT_TYPES],
         },
         example: ['deal.won', 'deal.lost'],
       },
@@ -1489,9 +1472,33 @@ These are intentional exceptions and will not be changed to snake_case.
 All endpoints except \`POST /api/v1/auth/login\`, \`POST /api/v1/auth/logout\`, \`POST /api/v1/users/set-password\`, and \`GET /api/v1/settings/default-language\` require a valid session cookie obtained by calling \`POST /api/v1/auth/login\`.`,
     },
     servers: [
-      { url: 'http://localhost:3001/api/v1', description: 'Local development server (v1)' },
+      // Host only: every path already carries its own /api/v1 (or /scim/v2), so a
+      // versioned base would make a generated client request /api/v1/api/v1/...
+      { url: 'http://localhost:3001', description: 'Local development server' },
     ],
+    // Declared here rather than annotated: the endpoint lives in app.ts, which is
+    // outside swagger-jsdoc's `apis` glob and the require-openapi-tag rule's reach.
+    paths: {
+      '/api/health': {
+        get: {
+          operationId: 'healthCheck',
+          summary: 'Liveness and database connectivity probe',
+          description:
+            'Deliberately unversioned — an infrastructure endpoint for load balancers and orchestrators, not part of the resource API. No authentication.',
+          tags: ['Health'],
+          security: [],
+          responses: {
+            200: { description: 'Service healthy and the database is reachable' },
+            503: { description: 'Service degraded — the database could not be reached' },
+          },
+        },
+      },
+    },
     tags: [
+      {
+        name: 'Health',
+        description: 'Infrastructure probes. Unversioned by design.',
+      },
       {
         name: 'Auth',
         description:

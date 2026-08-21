@@ -195,9 +195,8 @@ it resolved to.
 title.
 **Cause:** resource routes mount under `/api/v1`; the unversioned form either 404s or
 rides a redirect that is documented for removal.
-**Fix:** add the prefix. If the path is genuinely correct unversioned — an infra endpoint,
-or a third-party API — add the file to `EXEMPT_FILES` in
-`scripts/check-api-path-versioning.mjs` with the reason.
+**Fix:** add the prefix. If the path is genuinely not a MiniCRM route — a third-party
+API, or an arbitrary test fixture — put `api-path-ok` on the same line with the reason.
 
 **Symptom:** `lint-and-typecheck` says a `ci.yml` filter names a path that does not exist.
 **Cause:** a file moved and its paths-filter entry did not, so the job that runs its guard

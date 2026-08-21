@@ -206,3 +206,40 @@ describe('served session-lifetime contract', () => {
     expect(description).not.toMatch(/hours? of inactivity/i);
   });
 });
+
+describe('response objects do not mix $ref with siblings', () => {
+  // OpenAPI 3.0 discards every sibling of $ref, so a per-endpoint example written
+  // beside one is silently dropped from the served spec. Redocly does not check this.
+  it('has no response object carrying both $ref and other keys', () => {
+    const spec = swaggerSpec as {
+      paths: Record<string, Record<string, { responses?: Record<string, object> }>>;
+    };
+    const offenders: string[] = [];
+    for (const [path, operations] of Object.entries(spec.paths)) {
+      for (const [method, operation] of Object.entries(operations)) {
+        for (const [status, response] of Object.entries(operation.responses ?? {})) {
+          const keys = Object.keys(response);
+          if (keys.includes('$ref') && keys.length > 1) {
+            offenders.push(`${method.toUpperCase()} ${path} ${status}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('server URL does not repeat a path prefix', () => {
+  // A base URL ending in a segment every path also starts with makes a generated client
+  // request /api/v1/api/v1/... The paths carry the version, so the base is host-only.
+  it('does not end in a segment shared by every path', () => {
+    const spec = swaggerSpec as { servers: Array<{ url: string }>; paths: Record<string, object> };
+    const base = spec.servers[0].url;
+    const suffix = new URL(base).pathname.replace(/\/$/, '');
+    const paths = Object.keys(spec.paths);
+    if (suffix !== '') {
+      expect(paths.every((path) => path.startsWith(suffix))).toBe(false);
+    }
+    expect(suffix).toBe('');
+  });
+});

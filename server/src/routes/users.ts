@@ -373,6 +373,31 @@ router.get('/', asyncHandler(listUsers));
 
 /**
  * @openapi
+ * /api/v1/users/notification-recipient-count:
+ *   get:
+ *     tags: [Users]
+ *     operationId: getNotificationRecipientCount
+ *     summary: Count of active users with at least one notification enabled (admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Recipient count
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count: { type: integer }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get('/notification-recipient-count', asyncHandler(getNotificationRecipientCount));
+
+/**
+ * @openapi
  * /api/v1/users/invite:
  *   post:
  *     tags: [Users]
@@ -466,64 +491,6 @@ router.get('/', asyncHandler(listUsers));
  *               error:
  *                 code: FORBIDDEN
  *                 message: Admin role required
- */
-/**
- * @openapi
- * /api/v1/users/notification-recipient-count:
- *   get:
- *     tags: [Users]
- *     operationId: getNotificationRecipientCount
- *     summary: Count of active users with at least one notification enabled (admin only)
- *     security:
- *       - cookieAuth: []
- *     responses:
- *       200:
- *         description: Recipient count
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 count: { type: integer }
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- */
-router.get('/notification-recipient-count', asyncHandler(getNotificationRecipientCount));
-
-/**
- * @openapi
- * /api/v1/users/invite:
- *   post:
- *     tags: [Users]
- *     operationId: inviteUser
- *     summary: Invite a new user (admin only)
- *     description: Creates a new user account in invited status and returns a set-password link.
- *     security:
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, name, role]
- *             properties:
- *               email: { type: string, format: email }
- *               name: { type: string }
- *               role: { type: string, enum: [admin, rep] }
- *     responses:
- *       201:
- *         description: User invited successfully
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- *       409:
- *         $ref: '#/components/responses/Conflict'
  */
 router.post('/invite', asyncHandler(inviteUser));
 
