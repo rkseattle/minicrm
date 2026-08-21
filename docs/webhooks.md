@@ -28,7 +28,9 @@ This guide is for developers building systems that consume MiniCRM events.
 - The request body is a **JSON** payload describing the event and the affected record.
 - Every delivery is signed with **HMAC-SHA256** so your receiver can verify the payload
   came from MiniCRM and was not tampered with in transit.
-- Failed deliveries are retried with **exponential backoff** up to 5 attempts total.
+- Failed deliveries are retried on a fixed schedule, up to 5 attempts total. Pending
+  retries are held **in memory** and are lost if the server restarts — see
+  [Delivery and retries](#6-delivery-and-retries).
 - All webhook management endpoints are **admin-only**.
 
 ---
@@ -38,7 +40,7 @@ This guide is for developers building systems that consume MiniCRM events.
 ### Create a subscription
 
 ```
-POST /api/admin/webhooks
+POST /api/v1/admin/webhooks
 Authorization: (admin JWT cookie or Bearer token)
 Content-Type: application/json
 
@@ -69,7 +71,7 @@ Content-Type: application/json
 ### List subscriptions
 
 ```
-GET /api/admin/webhooks
+GET /api/v1/admin/webhooks
 ```
 
 Returns all subscriptions. The `plaintextSecret` is never included in list or get responses.
@@ -77,7 +79,7 @@ Returns all subscriptions. The `plaintextSecret` is never included in list or ge
 ### Update a subscription
 
 ```
-PATCH /api/admin/webhooks/:id
+PATCH /api/v1/admin/webhooks/:id
 Content-Type: application/json
 
 {
@@ -93,7 +95,7 @@ All fields are optional. `status` accepts `"active"` or `"disabled"` — setting
 ### Delete a subscription
 
 ```
-DELETE /api/admin/webhooks/:id
+DELETE /api/v1/admin/webhooks/:id
 ```
 
 Returns `204 No Content`. All delivery logs for the subscription are also deleted.
@@ -125,6 +127,17 @@ Returns `204 No Content`. All delivery logs for the subscription are also delete
 A single action can fire multiple events. For example, moving a deal to _Closed Won_
 fires `deal.stage_changed`, `deal.won`, and `deal.updated` if other fields changed.
 
+**Bulk operations almost never fire events.** The table above describes single-record
+changes. A bulk edit or bulk delete — of contacts, accounts, users, activities, leads, or
+deals — emits nothing, with one exception: a bulk deal-stage change fires
+`deal.stage_changed`, and `deal.won` / `deal.lost` where they apply. It does not fire
+`deal.updated`.
+
+So a bulk delete of 500 contacts produces no `contact.deleted` events at all, and a
+subscriber listening only for `deal.updated` misses every stage move made in bulk. If
+your integration must observe every change, reconcile against the REST API rather than
+relying on the event stream alone.
+
 ---
 
 ## 4. Payload structure
@@ -137,9 +150,7 @@ Every webhook POST body follows this envelope:
   "event_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "timestamp": "2026-05-29T14:23:01.123Z",
   "delivery_attempt": 1,
-  "data": {
-    /* full current state of the affected record */
-  }
+  "data": {/* full current state of the affected record */}
 }
 ```
 
@@ -262,6 +273,31 @@ failure and triggers the retry schedule:
 After 5 failed attempts the subscription is automatically set to `failed` status and
 no further deliveries are made.
 
+### Retries are held in memory, and a restart drops them
+
+**Pending retries do not survive a server restart or crash.** They are scheduled with an
+in-process timer; nothing about a waiting retry is persisted, and there is no recovery
+pass on startup. A deploy during the retry window silently abandons every attempt still
+queued — and because the schedule spans up to 8 hours 35 minutes from the first attempt,
+that window is wide.
+
+What the drop looks like from your side:
+
+- Each attempt **is** logged as it happens, so the event's last delivery-log row shows
+  the failure that scheduled the doomed retry.
+- No row is ever written for the abandoned attempt, so the event simply stops — the log
+  ends mid-schedule with no terminal entry.
+- The subscription stays `active`. It is only set to `failed` after a fifth attempt
+  actually runs, which in this case never happens.
+
+Why this has not been fixed, and what fixing it would involve, is recorded in
+[ADR-004](adr/004-webhook-retries-in-memory.md).
+
+**Do not rely on the retry schedule as a delivery guarantee.** Reconcile from your side:
+poll `GET /api/v1/admin/webhooks/:id/logs` (see [Delivery logs](#8-delivery-logs)) and
+treat an event whose most recent attempt failed, with no later attempt and no `failed`
+status on the subscription, as one you need to re-request from the REST API.
+
 ### Receiver requirements
 
 - Respond with a `2xx` status code as quickly as possible — ideally before doing any
@@ -277,11 +313,11 @@ no further deliveries are made.
 When a subscription enters `failed` status:
 
 - No further events are delivered to that URL.
-- The subscription remains visible in `GET /api/admin/webhooks` with `"status": "failed"`.
+- The subscription remains visible in `GET /api/v1/admin/webhooks` with `"status": "failed"`.
 - To re-enable it, send:
 
 ```
-PATCH /api/admin/webhooks/:id
+PATCH /api/v1/admin/webhooks/:id
 Content-Type: application/json
 
 { "status": "active" }
@@ -295,7 +331,7 @@ subscription was failed are **not** replayed.
 To pause delivery without triggering the failure state (e.g. for planned maintenance):
 
 ```
-PATCH /api/admin/webhooks/:id
+PATCH /api/v1/admin/webhooks/:id
 Content-Type: application/json
 
 { "status": "disabled" }
@@ -309,7 +345,7 @@ not replayed.
 ## 8. Delivery logs
 
 ```
-GET /api/admin/webhooks/:id/logs?page=1&limit=20
+GET /api/v1/admin/webhooks/:id/logs?page=1&limit=20
 ```
 
 Returns a paginated list of delivery attempts for the subscription, most recent first.

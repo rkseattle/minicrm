@@ -49,7 +49,7 @@ Local Development below).
 | --------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | [User Guide](docs/user-guide/index.md)              | Sales reps and managers — contacts, deals, leads, activities, notes, dashboard         |
 | [Admin Guide](docs/admin-guide.md)                  | Administrators — user management, pipeline config, settings, branding, automation      |
-| [REST API Reference](docs/api.md)                   | Developers — authentication, all endpoints, pagination, error codes, gRPC              |
+| [REST API Reference](docs/api.md)                   | Developers — authentication, versioning, pagination, error codes, gRPC                 |
 | [Webhook Integration Guide](docs/webhooks.md)       | Developers — subscriptions, event types, payload verification, retry behaviour         |
 | [Operations Guide](docs/operations.md)              | Developers and operators — local test environment, running E2E, secrets, backups       |
 | [Developer Documentation](docs/dev/index.md)        | Contributors — architecture references, migrations, E2E authoring, CI, troubleshooting |
@@ -290,7 +290,7 @@ Recommended WCAG level tags: `wcag2a` (WCAG 2.0 A), `wcag2aa` (WCAG 2.0 AA), `wc
 
 ```ts
 // Simulate a server error
-await page.mockRoute('/api/deals', async (route) => {
+await page.mockRoute('/api/v1/deals', async (route) => {
   await route.fulfill({
     status: 500,
     body: JSON.stringify({ error: { code: 'INTERNAL', message: 'Server error' } }),
@@ -298,13 +298,13 @@ await page.mockRoute('/api/deals', async (route) => {
 });
 
 // Simulate a slow response to test loading states
-await page.mockRoute('/api/contacts', async (route) => {
+await page.mockRoute('/api/v1/contacts', async (route) => {
   await new Promise((resolve) => setTimeout(resolve, 3000));
   await route.continue();
 });
 
 // Verify request payload
-await page.mockRoute('/api/contacts', async (route) => {
+await page.mockRoute('/api/v1/contacts', async (route) => {
   const body = route.request().postDataJSON();
   expect(body.email).toBe('test@example.com');
   await route.continue();
@@ -474,7 +474,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Conversion modal prefills contact and deal fields from the lead; supports creating a new account or linking an existing one via typeahead search
 - "Converted from lead" back-reference banner shown on the created contact and deal detail pages
 - Duplicate email warning on create (matching contact behavior); rep can dismiss or create anyway
-- Full CRUD REST API at `/api/leads`; conversion endpoint at `POST /api/leads/:id/convert`; status history at `GET /api/leads/:id/status-history`
+- Full CRUD REST API at `/api/v1/leads`; conversion endpoint at `POST /api/v1/leads/:id/convert`; status history at `GET /api/v1/leads/:id/status-history`
 - Database migrations: `020_create_leads.js` adds `leads` and `lead_status_history` tables; adds `source_lead_id` FK column to `contacts` and `deals`
 
 ### Optimistic Locking (MINCRM-349)
@@ -512,8 +512,8 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Duplicate email detection on create: returns a persistent inline warning banner with a link to the existing contact; rep can still proceed by clicking "Create anyway"
 - Address fields: `address_line1`, `address_line2`, `city`, `state_region`, `postal_code`, `country` — collapsible section in the form, displayed on detail page when populated
 - Social profile URLs: `linkedin_url`, `twitter_x_url` — collapsible section in the form, displayed as clickable links on detail page when populated
-- Contact merge: merge two contact records into one via `POST /api/contacts/:id/merge`; winner survives, loser is deleted; per-field value choices; activities and deal links re-routed to winner; merged audit entry written
-- Full CRUD REST API at `/api/contacts`; merge endpoint: `POST /api/contacts/:id/merge`
+- Contact merge: merge two contact records into one via `POST /api/v1/contacts/:id/merge`; winner survives, loser is deleted; per-field value choices; activities and deal links re-routed to winner; merged audit entry written
+- Full CRUD REST API at `/api/v1/contacts`; merge endpoint: `POST /api/v1/contacts/:id/merge`
 
 ### Full-Viewport List Layout (MINCRM-343)
 
@@ -543,7 +543,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Parent account relationship: accounts may have a parent account; circular chain detection prevents invalid hierarchies; subsidiary accounts listed on parent detail page
 - Type-ahead parent account search in the edit form
 - Linked contacts listed on the account detail page
-- Full CRUD REST API at `/api/accounts`; additional endpoints: `GET /api/accounts/search`, `GET /api/accounts/:id/children`
+- Full CRUD REST API at `/api/v1/accounts`; additional endpoints: `GET /api/v1/accounts/search`, `GET /api/v1/accounts/:id/children`
 
 ### Deals
 
@@ -554,7 +554,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Owner defaults to the creating user; can be reassigned to any active user from the edit form
 - Linked contacts listed on the deal detail page (populated via `deal_contacts` join table)
 - Pipeline stages are admin-configurable (see [Custom Pipeline Stages](#custom-pipeline-stages)); default stages are Prospecting → Qualification → Proposal → Negotiation → Closed Won / Closed Lost
-- Full CRUD REST API at `/api/deals`
+- Full CRUD REST API at `/api/v1/deals`
 - Database migrations: `004_create_deals.js`, `005_create_deal_contacts.js`
 
 ### Rich Notes on Entity Detail Pages (MINCRM-352)
@@ -566,10 +566,10 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Notes support soft-delete: deleted notes are removed from the feed but retained in the audit log
 - Audit events (`note_created`, `note_updated`, `note_deleted`, `note_visibility_changed`) are written in the same transaction as the note change; private note bodies appear as `[private note]` in the audit log
 - API endpoints:
-  - `GET /api/{entityType}/{entityId}/notes` — list notes (paginated)
-  - `POST /api/{entityType}/{entityId}/notes` — create a note (auth required)
-  - `PATCH /api/{entityType}/{entityId}/notes/:noteId` — update a note (creator or admin only)
-  - `DELETE /api/{entityType}/{entityId}/notes/:noteId` — soft-delete a note (creator or admin only)
+  - `GET /api/v1/{entityType}/{entityId}/notes` — list notes (paginated)
+  - `POST /api/v1/{entityType}/{entityId}/notes` — create a note (auth required)
+  - `PATCH /api/v1/{entityType}/{entityId}/notes/:noteId` — update a note (creator or admin only)
+  - `DELETE /api/v1/{entityType}/{entityId}/notes/:noteId` — soft-delete a note (creator or admin only)
 - Database migration: `044_create_notes.js` creates the `notes` table with `entity_type`, `entity_id`, `title`, `body` (Lexical JSON), `visibility`, `deleted_at` (soft-delete), `created_by`, and `updated_by` columns; migration `045_extend_audit_event_types.js` adds note event types to the audit log enum
 
 ### Activities & Tasks
@@ -580,7 +580,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Task completion — mark a task as complete from the timeline; completed tasks are visually distinguished (strikethrough subject, "Complete" badge)
 - Edit and delete activities from the timeline (owners and admins only)
 - `ActivityTimeline` is a shared component embedded in Contact, Account, and Deal detail pages
-- Full CRUD REST API at `/api/activities` with `?contact`, `?account`, `?deal`, and `?owner=me` filter support
+- Full CRUD REST API at `/api/v1/activities` with `?contact`, `?account`, `?deal`, and `?owner=me` filter support
 - Database migration: `006_create_activities.js`
 
 #### Structured communication logging
@@ -598,7 +598,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Each row shows subject, type badge, due date, and the name of the linked record (contact, account, or deal) as a clickable link
 - User can mark any open task complete directly from the list — no navigation to the parent record needed
 - Completed tasks are hidden by default; a **Show completed** toggle reveals them
-- API endpoint: `GET /api/activities/my-tasks` — returns Task-type activities for the authenticated user, with `linked_record_name` and `linked_record_type` fields joined from the parent record
+- API endpoint: `GET /api/v1/activities/my-tasks` — returns Task-type activities for the authenticated user, with `linked_record_name` and `linked_record_type` fields joined from the parent record
 
 ### Admin Settings
 
@@ -606,8 +606,8 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Admin can set a system-wide default language from a dropdown populated with all supported locales
 - Selected default persists across restarts via the `system_settings` table (key/value store)
 - API endpoints:
-  - `GET /api/settings/default-language` — public, returns `{ language }` (used on app load)
-  - `PATCH /api/settings/default-language` — admin only, body `{ language }`, returns `{ language }`
+  - `GET /api/v1/settings/default-language` — public, returns `{ language }` (used on app load)
+  - `PATCH /api/v1/settings/default-language` — admin only, body `{ language }`, returns `{ language }`
 - Shared Zod schema `settingsSchema.ts` in `/shared/schemas/` defines `SUPPORTED_LOCALES` and the request/response schemas; locale display names are stored in the i18n translation files under `settings.languages.*`
 - Database migration: `008_create_system_settings.js` creates the `system_settings` table and seeds the default row (`default_language = 'en'`)
 
@@ -619,9 +619,9 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Branding is distributed to the client on app load via `BrandingContext`; the full CSS colour scale (50–900 shades) is injected as CSS custom properties and consumed via the Tailwind `primary-*` colour utilities, so every use of `bg-primary-*`, `text-primary-*`, etc. picks up the brand colour automatically
 - Custom fonts are loaded from Google Fonts and applied globally; the page font updates immediately without a reload
 - API endpoints (admin only):
-  - `GET /api/settings/branding` — public, returns current branding config or `{ branding: null }` if not configured
-  - `PUT /api/settings/branding` — admin only, partial merge of branding fields
-  - `DELETE /api/settings/branding` — admin only, resets all branding to defaults
+  - `GET /api/v1/settings/branding` — public, returns current branding config or `{ branding: null }` if not configured
+  - `PUT /api/v1/settings/branding` — admin only, partial merge of branding fields
+  - `DELETE /api/v1/settings/branding` — admin only, resets all branding to defaults
 - Branding is stored as a JSON value in the `system_settings` table under the `branding` key; no dedicated migration required
 
 ### Navigation Layout
@@ -629,8 +629,8 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Admin can choose between three navigation layouts from the **Admin Settings** page: **Top Nav** (tab bar, default), **Left Nav** (collapsible sidebar), and **Hamburger Menu** (icon-triggered overlay)
 - The selected layout is stored in the `system_settings` table (`nav_layout` key) and applies immediately to all users without a page reload
 - API endpoints:
-  - `GET /api/settings/nav-layout` — public, returns `{ layout }` (used on app load)
-  - `PATCH /api/settings/nav-layout` — admin only, body `{ layout }`, returns `{ layout }`
+  - `GET /api/v1/settings/nav-layout` — public, returns `{ layout }` (used on app load)
+  - `PATCH /api/v1/settings/nav-layout` — admin only, body `{ layout }`, returns `{ layout }`
 - The active layout is distributed via `NavLayoutContext` / `NavLayoutProvider`; page components use `<NavBar />` without knowing which layout is active
 - Each layout is a self-contained React component (`NavTop`, `NavLeft`, `NavHamburger`) with `data-testid` attributes following the `nav-{layout}-{destination}` convention (e.g. `nav-top-contacts`, `nav-left-deals`, `nav-hamburger-tasks`)
 - Database migration: `014_add_nav_layout_setting.js` seeds the `nav_layout = 'top'` default row
@@ -641,11 +641,11 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - **Assignment notifications**: When a contact, account, or deal is reassigned, the new owner receives an email if they have assignments notifications enabled. Multiple assignment events within a 2-minute window are batched into a single email per recipient.
 - **User notification preferences**: Every authenticated user can configure three per-category toggles on the `/profile` page: overdue task digests, assignment notifications, and deal stage change notifications. Admins additionally have a global kill switch on the **Admin Settings** page that suppresses all notification emails regardless of individual preferences.
 - API endpoints:
-  - `GET /api/users/me/notification-preferences` — auth required, returns `{ preferences: { notify_overdue_tasks, notify_assignments, notify_deal_stage_changes } }`
-  - `PATCH /api/users/me/notification-preferences` — auth required, body with any subset of the three boolean fields
-  - `GET /api/users/notification-recipient-count` — admin only, returns `{ count }` (active users with any notification pref enabled)
-  - `GET /api/settings/email-notifications` — auth required, returns `{ enabled: boolean }`
-  - `PATCH /api/settings/email-notifications` — admin only, body `{ enabled: boolean }`
+  - `GET /api/v1/users/me/notification-preferences` — auth required, returns `{ preferences: { notify_overdue_tasks, notify_assignments, notify_deal_stage_changes } }`
+  - `PATCH /api/v1/users/me/notification-preferences` — auth required, body with any subset of the three boolean fields
+  - `GET /api/v1/users/notification-recipient-count` — admin only, returns `{ count }` (active users with any notification pref enabled)
+  - `GET /api/v1/settings/email-notifications` — auth required, returns `{ enabled: boolean }`
+  - `PATCH /api/v1/settings/email-notifications` — admin only, body `{ enabled: boolean }`
 - Database migrations: `016_add_notification_prefs_to_users.js` adds three boolean columns to `users`; `017_create_overdue_task_notifications.js` creates the dedup table and seeds the `email_notifications_enabled` system setting
 - Email transport uses nodemailer with SMTP env vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`); in development and test environments emails are stubbed (logged to console rather than sent)
 
@@ -657,14 +657,14 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Stage names must be unique (case-insensitive); blank names are rejected
 - Renaming a stage atomically updates all deals in the old stage name in the same DB transaction — no deal records are orphaned
 - Pipeline stage definitions are stored in the new `pipeline_stages` table (migration `021_create_pipeline_stages.js`); the `deals_stage_check` constraint is removed in the same migration
-- The client fetches the live stage list on app startup via `GET /api/settings/pipeline-stages` (public endpoint) and caches it for 5 minutes via React Query (`PIPELINE_STAGES_QUERY_KEY`)
+- The client fetches the live stage list on app startup via `GET /api/v1/settings/pipeline-stages` (public endpoint) and caches it for 5 minutes via React Query (`PIPELINE_STAGES_QUERY_KEY`)
 - All stage selectors (`DealForm`, `DealCard`, `AutomationRulesPage`) and board columns (`DealsPage`, `StageColumn`) now consume the live stage list via the `usePipelineStages` hook instead of the hardcoded constant
 - Custom stage names are displayed using their raw name; built-in stage names still use i18n translation keys
 - API endpoints:
-  - `GET /api/settings/pipeline-stages` — public, returns `{ stages: PipelineStageResponse[] }` in sort order
-  - `POST /api/settings/pipeline-stages` — admin only, body `{ name, sort_order, probability? }`, returns the new stage
-  - `PATCH /api/settings/pipeline-stages/:id` — admin only, body `{ name?, sort_order?, probability? }`, returns updated stage; fixed stages reject name changes with 403
-  - `DELETE /api/settings/pipeline-stages/:id` — admin only, returns `{ id }` on success; 409 if open deals exist
+  - `GET /api/v1/settings/pipeline-stages` — public, returns `{ stages: PipelineStageResponse[] }` in sort order
+  - `POST /api/v1/settings/pipeline-stages` — admin only, body `{ name, sort_order, probability? }`, returns the new stage
+  - `PATCH /api/v1/settings/pipeline-stages/:id` — admin only, body `{ name?, sort_order?, probability? }`, returns updated stage; fixed stages reject name changes with 403
+  - `DELETE /api/v1/settings/pipeline-stages/:id` — admin only, returns `{ id }` on success; 409 if open deals exist
 - Database migration: `021_create_pipeline_stages.js` creates the `pipeline_stages` table, seeds the six default stages, and drops the hardcoded `deals_stage_check` constraint
 
 ### Multi-Currency Deal Values
@@ -677,8 +677,8 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Admin can set a system-wide **default currency** on the **Admin Settings** page; new deals without an explicit currency pick up the system default at creation time
 - **CSV export** includes a `Currency` column alongside `Value`
 - API endpoints:
-  - `GET /api/settings/default-currency` — public, returns `{ currency }` (used at deal creation time); cached client-side for 5 minutes via `DEFAULT_CURRENCY_QUERY_KEY`
-  - `PATCH /api/settings/default-currency` — admin only, body `{ currency }`, returns `{ currency }`
+  - `GET /api/v1/settings/default-currency` — public, returns `{ currency }` (used at deal creation time); cached client-side for 5 minutes via `DEFAULT_CURRENCY_QUERY_KEY`
+  - `PATCH /api/v1/settings/default-currency` — admin only, body `{ currency }`, returns `{ currency }`
 - Database migration: `031_add_currency_to_deals.js` adds `currency VARCHAR(3) NOT NULL DEFAULT 'USD'` to the `deals` table
 
 ### Tags / Labels
@@ -693,25 +693,25 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - List responses embed tags via `JSON_AGG` lateral subquery to avoid N+1 queries
 - Database migration: `032_create_tags.js` creates `tags`, `contact_tags`, `account_tags`, and `deal_tags` tables; junction tables have composite PKs and `ON DELETE CASCADE`
 - API endpoints:
-  - `GET /api/tags` — list all tags
-  - `POST /api/tags` — create a tag (name required)
-  - `GET /api/tags/:id` — get a tag by ID
-  - `PATCH /api/tags/:id` — rename a tag (admin only)
-  - `DELETE /api/tags/:id` — delete a tag and all its junction rows (admin only)
-  - `GET /api/contacts/:id/tags` — list tags attached to a contact
-  - `POST /api/contacts/:id/tags` — attach a tag by name (creates tag if new)
-  - `DELETE /api/contacts/:id/tags/:tagId` — detach a tag from a contact
-  - Same pattern applies to `/api/accounts/:id/tags` and `/api/deals/:id/tags`
+  - `GET /api/v1/tags` — list all tags
+  - `POST /api/v1/tags` — create a tag (name required)
+  - `GET /api/v1/tags/:id` — get a tag by ID
+  - `PATCH /api/v1/tags/:id` — rename a tag (admin only)
+  - `DELETE /api/v1/tags/:id` — delete a tag and all its junction rows (admin only)
+  - `GET /api/v1/contacts/:id/tags` — list tags attached to a contact
+  - `POST /api/v1/contacts/:id/tags` — attach a tag by name (creates tag if new)
+  - `DELETE /api/v1/contacts/:id/tags/:tagId` — detach a tag from a contact
+  - Same pattern applies to `/api/v1/accounts/:id/tags` and `/api/v1/deals/:id/tags`
 
 ### User Language Preference
 
 - Any authenticated user can set a personal preferred language from the **Profile** page (`/profile`) or by using the language dropdown in the nav bar
 - Personal preference overrides the system-wide default at all times; setting it to "Use system default" clears the preference and falls back to the admin-configured default
 - The language dropdown in the nav bar now persists the selection to the server (previously session-only)
-- On login, the user's stored preference is returned with the `/api/auth/me` response and applied immediately — no language flash
+- On login, the user's stored preference is returned with the `/api/v1/auth/me` response and applied immediately — no language flash
 - API endpoints:
-  - `GET /api/users/me/language` — auth required, returns `{ language: SupportedLocale | null }`
-  - `PATCH /api/users/me/language` — auth required, body `{ language: SupportedLocale | null }`, returns `{ language }`
+  - `GET /api/v1/users/me/language` — auth required, returns `{ language: SupportedLocale | null }`
+  - `PATCH /api/v1/users/me/language` — auth required, body `{ language: SupportedLocale | null }`, returns `{ language }`
 - Database migration: `009_add_user_preferred_language.js` adds the nullable `preferred_language` column to the `users` table
 
 ### Home Dashboard
@@ -721,7 +721,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Per-stage breakdown table showing open deal count and total value for each active pipeline stage (Closed Won / Closed Lost excluded)
 - Admins see team-wide metrics; reps see their own data only — enforced server-side
 - Data is always fresh on page load (React Query `staleTime: 0`)
-- API endpoint: `GET /api/dashboard/summary` — returns `{ overdueTasks, tasksDueToday, openDealCount, openPipelineValue, stageBreakdown }` (auth required)
+- API endpoint: `GET /api/v1/dashboard/summary` — returns `{ overdueTasks, tasksDueToday, openDealCount, openPipelineValue, stageBreakdown }` (auth required)
 
 ### Automation Rules
 
@@ -734,12 +734,12 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - For `create_task` actions, the assignee can be the record owner or a specific user
 - A **logs drawer** shows the 20 most recent executions per rule: timestamp, triggering record, and outcome (Success / Error with error message on failure)
 - API endpoints (admin-only):
-  - `GET /api/automation/rules` — list all rules
-  - `POST /api/automation/rules` — create a rule
-  - `GET /api/automation/rules/:id` — get a rule
-  - `PATCH /api/automation/rules/:id` — update a rule (supports partial updates including toggling `enabled`)
-  - `DELETE /api/automation/rules/:id` — delete a rule and its logs (CASCADE)
-  - `GET /api/automation/rules/:id/logs` — 20 most recent execution logs
+  - `GET /api/v1/automation/rules` — list all rules
+  - `POST /api/v1/automation/rules` — create a rule
+  - `GET /api/v1/automation/rules/:id` — get a rule
+  - `PATCH /api/v1/automation/rules/:id` — update a rule (supports partial updates including toggling `enabled`)
+  - `DELETE /api/v1/automation/rules/:id` — delete a rule and its logs (CASCADE)
+  - `GET /api/v1/automation/rules/:id/logs` — 20 most recent execution logs
 - Database migrations: `011_create_automation_rules.js`, `012_create_automation_rule_logs.js`
 - Shared Zod schemas in `shared/schemas/automationSchema.ts`
 
@@ -751,7 +751,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Admins can filter the report by owner (rep); reps always see only their own deals
 - Loss reason breakdown table shows top loss reasons by count when loss reasons were captured
 - Report data is filtered by `close_date` (not `created_at`)
-- API endpoint: `GET /api/reports/win-loss?start=YYYY-MM-DD&end=YYYY-MM-DD[&owner_id=UUID]` — returns `{ wonCount, wonValue, lostCount, lostValue, winRate, lossReasonBreakdown }` (auth required)
+- API endpoint: `GET /api/v1/reports/win-loss?start=YYYY-MM-DD&end=YYYY-MM-DD[&owner_id=UUID]` — returns `{ wonCount, wonValue, lostCount, lostValue, winRate, lossReasonBreakdown }` (auth required)
 
 ### Activity Volume Report
 
@@ -760,7 +760,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Date range defaults to the current month; presets for "this week", "this quarter", and a custom date range are also available
 - Admins can filter by owner (rep); reps always see only their own activity
 - CSV export available for the full report dataset
-- API endpoint: `GET /api/reports/activity-volume?start=YYYY-MM-DD&end=YYYY-MM-DD[&owner_id=UUID]` — returns activity counts grouped by type and owner (auth required)
+- API endpoint: `GET /api/v1/reports/activity-volume?start=YYYY-MM-DD&end=YYYY-MM-DD[&owner_id=UUID]` — returns activity counts grouped by type and owner (auth required)
 
 ### Global Search
 
@@ -769,13 +769,13 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Ownership-aware: admins see results from all records; reps see only records they own
 - Results panel shows entity type label and key fields (e.g. name, email, stage); clicking a result navigates to the detail page
 - Results panel is capped in height with long text truncated to keep the UI compact
-- API endpoint: `GET /api/search?q=<term>` — returns `{ contacts, accounts, deals, leads }` arrays (auth required)
+- API endpoint: `GET /api/v1/search?q=<term>` — returns `{ contacts, accounts, deals, leads }` arrays (auth required)
 
 ### Ownership
 
 - Every contact and account has a single `owner_id` that defaults to the creating user
 - Owner is displayed as a resolved name (not UUID) in list and detail views
-- Active users are fetched from `GET /api/users/active` (auth required, no admin role needed)
+- Active users are fetched from `GET /api/v1/users/active` (auth required, no admin role needed)
 - Owner can be changed from the record's edit form; change is reflected immediately without page reload
 
 ### CSV Import
@@ -783,13 +783,13 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Admin-only two-step CSV import for contacts, accounts, and deals
 - **Step 1 — Parse:** upload a CSV file; the server returns the detected column headers and a preview of the first few rows so the admin can map columns before committing
 - **Step 2 — Run:** upload the CSV again with the column mapping; the server creates a background import job and returns `202 Accepted` immediately
-- **Job polling:** the client polls `GET /api/import/jobs/:job_id` until `status` is `complete` or `error`; the final result includes `total_rows`, `imported`, `skipped`, and `errors`
+- **Job polling:** the client polls `GET /api/v1/admin/import/jobs/:job_id` until `status` is `complete` or `error`; the final result includes `total_rows`, `imported`, `skipped`, and `errors`
 - Rows that fail validation are collected in the `errors` array and skipped — the rest are imported
 - API endpoints (admin only):
-  - `POST /api/import/contacts/parse` — parse CSV, returns headers + preview
-  - `POST /api/import/contacts/run` — start import job, returns `{ job_id }`
-  - Same pattern for `/api/import/accounts/...` and `/api/import/deals/...`
-  - `GET /api/import/jobs/:job_id` — poll job status and result
+  - `POST /api/v1/admin/import/contacts/parse` — parse CSV, returns headers + preview
+  - `POST /api/v1/admin/import/contacts/run` — start import job, returns `{ job_id }`
+  - Same pattern for `/api/v1/admin/import/accounts/...` and `/api/v1/admin/import/deals/...`
+  - `GET /api/v1/admin/import/jobs/:job_id` — poll job status and result
 - Database migration: `037_create_import_jobs.js` creates the `import_jobs` table
 
 ### SMTP Configuration (Admin)
@@ -799,9 +799,9 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - A **Send Test Email** button on the settings page verifies the saved configuration by delivering a test email to the logged-in admin's address
 - SMTP password is encrypted at rest via AES-256-GCM; it is never returned in API responses (`smtp_pass_set: boolean` indicates whether a password is stored)
 - API endpoints (admin only unless noted):
-  - `GET /api/settings/smtp` — returns current config (auth required; no admin needed for read)
-  - `PATCH /api/settings/smtp` — save SMTP config (admin only)
-  - `POST /api/settings/smtp/test` — send a test email (admin only); always returns HTTP 200 with `{ success, error? }` in the body
+  - `GET /api/v1/settings/smtp` — returns current config (auth required; no admin needed for read)
+  - `PATCH /api/v1/settings/smtp` — save SMTP config (admin only)
+  - `POST /api/v1/settings/smtp/test` — send a test email (admin only); always returns HTTP 200 with `{ success, error? }` in the body
 - Database migration: `036_add_smtp_settings.js` seeds the five SMTP rows in `system_settings`
 - Environment variable `SMTP_FROM` (optional) sets the sender address when no DB config is active; defaults to `MiniCRM <noreply@minicrm.local>`
 
@@ -811,8 +811,8 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - The home currency row has `is_home = true` and `rate_to_home = 1.000000`; at most one home row can exist (enforced by a partial unique index)
 - Exchange rates are used for cross-currency deal value aggregation on the pipeline board and dashboard when `SUPPORTED_CURRENCIES` deals are mixed
 - API endpoints:
-  - `GET /api/settings/currencies` — returns home currency and all exchange rates (auth required)
-  - `PUT /api/settings/currencies` — replace full exchange rate table (admin only); body `{ home_currency, currencies: [{ code, rate_to_home }] }`
+  - `GET /api/v1/settings/currencies` — returns home currency and all exchange rates (auth required)
+  - `PUT /api/v1/settings/currencies` — replace full exchange rate table (admin only); body `{ home_currency, currencies: [{ code, rate_to_home }] }`
 - Database migration: `035_create_currencies.js` creates the `currencies` table and seeds USD as the home currency
 
 ### Onboarding
