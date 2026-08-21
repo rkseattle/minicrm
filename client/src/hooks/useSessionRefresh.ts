@@ -2,12 +2,13 @@
  * useSessionRefresh — sliding idle timeout for authenticated sessions.
  *
  * Listens for user activity (mouse, keyboard, click, scroll, touch) and calls
- * POST /api/auth/refresh when the user is active and the session is within
+ * POST /api/v1/auth/refresh when the user is active and the session is within
  * REFRESH_BEFORE_EXPIRY_MS of its idle expiry.
  *
  * The server's JWT idle expiry is 30 minutes. The client tracks when the last
- * refresh happened in a module-level variable and only fires a new refresh once
- * per DEBOUNCE_MS window to avoid hammering the endpoint.
+ * refresh happened in a ref and fires again only once the session is within
+ * REFRESH_BEFORE_EXPIRY_MS of lapsing — about every 25 minutes of activity, not
+ * on every event.
  *
  * A 401 from the refresh endpoint means either the idle window expired (unlikely
  * — the call only goes out when the user is active) or the 8-hour absolute cap

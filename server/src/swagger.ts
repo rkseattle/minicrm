@@ -901,7 +901,9 @@ All endpoints except \`POST /api/v1/auth/login\`, \`POST /api/v1/auth/logout\`, 
           in: 'cookie',
           name: 'minicrm_token',
           description: `JWT stored in an httpOnly, SameSite=lax cookie named 'minicrm_token'.
-Obtain by calling POST /api/v1/auth/login. Token expires after 8 hours of inactivity.
+Obtain by calling POST /api/v1/auth/login. The token is valid for 30 minutes; call
+POST /api/v1/auth/refresh before it lapses to slide the window. Refreshing cannot extend
+a session past the 8-hour absolute cap measured from the original login.
 Expired tokens return 401 on the next request — re-authenticate to obtain a new token.
 The cookie is not accessible to JavaScript (httpOnly) and is scoped to same-site requests.`,
         },

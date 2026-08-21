@@ -355,7 +355,7 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
 }
 
 /**
- * POST /api/auth/refresh
+ * POST /api/v1/auth/refresh
  * Issues a refreshed JWT for an authenticated user, resetting the idle timeout.
  *
  * The original `login_at` claim is preserved so the 8-hour absolute session cap

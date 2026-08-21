@@ -36,26 +36,66 @@ require this cookie to be present.
 ### Login flow
 
 ```
-POST /api/auth/login
+POST /api/v1/auth/login
 Content-Type: application/json
 
 { "email": "user@example.com", "password": "s3cr3t" }
 ```
 
-On success the server responds with `200 OK` and sets a `token` cookie:
+On success the server responds with `200 OK` and sets a `minicrm_token` cookie:
 
 ```
 HTTP/1.1 200 OK
-Set-Cookie: token=<jwt>; HttpOnly; SameSite=Lax; Max-Age=28800
+Set-Cookie: minicrm_token=<jwt>; HttpOnly; SameSite=Lax; Max-Age=1800
 ```
 
-The cookie is valid for **8 hours**. All subsequent requests to authenticated endpoints
-must include the cookie (browsers do this automatically on same-origin requests).
+The cookie name is configurable via the `AUTH_COOKIE_NAME` environment variable, so two
+stacks on one host can hold independent sessions. All subsequent requests to
+authenticated endpoints must include the cookie (browsers do this automatically on
+same-origin requests).
+
+### Session lifetime — read this before writing a client
+
+Two separate limits apply, and confusing them is the most common integration mistake:
+
+| Limit        | Value          | Measured from        | Extendable         |
+| ------------ | -------------- | -------------------- | ------------------ |
+| Idle window  | **30 minutes** | the last token issue | yes, by refreshing |
+| Absolute cap | **8 hours**    | original login       | **no**             |
+
+The token itself is valid for 30 minutes. Verifying a request does **not** re-issue it —
+a client that never refreshes is rejected 30 minutes after login no matter how many
+requests it made in between.
+
+### Keeping a session alive
+
+```
+POST /api/v1/auth/refresh
+```
+
+Returns `200 { "ok": true }` and sets a new cookie carrying a fresh 30-minute window.
+Call it while the session is still valid — the browser client does so on user activity,
+a few minutes before expiry.
+
+Refreshing preserves the original `login_at` claim, so it cannot push a session past the
+8-hour absolute cap. Once that cap is reached, refresh returns:
+
+```
+HTTP/1.1 401 Unauthorized
+{ "error": { "code": "AUTH_SESSION_ABSOLUTE_TIMEOUT", "message": "..." } }
+```
+
+A server-to-server integration must handle this by logging in again, not by retrying the
+refresh.
+
+The cap is evaluated against the token's own issue time, so the last token minted before
+the 8-hour mark stays usable until its 30-minute window lapses. Treat 8 hours as the
+point after which no _new_ token is issued, not as a hard cutoff on the current one.
 
 ### `must_change_password` state
 
 If the user's password was set by an admin they are flagged to change it on first login.
-Any authenticated request other than `POST /api/auth/change-password` returns:
+Any authenticated request other than `POST /api/v1/auth/change-password` returns:
 
 ```
 HTTP/1.1 403 Forbidden
@@ -65,14 +105,14 @@ HTTP/1.1 403 Forbidden
 ### Logout
 
 ```
-POST /api/auth/logout
+POST /api/v1/auth/logout
 ```
 
 Clears the cookie. Returns `200 OK`.
 
 ### Rate limiting
 
-`POST /api/auth/login` and `POST /api/auth/forgot-password` are rate-limited.
+`POST /api/v1/auth/login` and `POST /api/v1/auth/forgot-password` are rate-limited.
 Exceeding the limit returns `429 Too Many Requests`.
 
 ---
@@ -131,9 +171,7 @@ Paginated responses always include a wrapper object:
 
 ```json
 {
-  "data": [
-    /* array of items */
-  ],
+  "data": [/* array of items */],
   "total": 143,
   "page": 2,
   "limit": 20
@@ -744,7 +782,12 @@ tooling such as `curl`.
 
 - **Same-origin browser requests:** the `httpOnly` JWT cookie is forwarded automatically.
 - **Server-to-server / CLI:** pass `Authorization: Bearer <jwt>` in the request header.
-  Obtain the JWT by calling `POST /api/auth/login` and extracting the cookie value.
+  Obtain the JWT by calling `POST /api/v1/auth/login` and extracting the cookie value.
+
+This is a session JWT, so the 30-minute idle window and 8-hour absolute cap from
+[§1](#1-authentication) both apply — a long-running client must refresh it. Note the
+REST API treats a `Bearer` header differently: there it is a service-account API token,
+not a JWT.
 
 ### Service: `AuditService`
 
@@ -752,8 +795,9 @@ Defined in `audit.proto`. Two RPCs:
 
 #### `ListAuditEvents` (unary)
 
-Paginated query of the `audit_log` table. Equivalent to `GET /api/audit` over REST,
-but accessed via the Connect protocol.
+Paginated query of the `audit_log` table. This is the only way to read the system-wide
+audit list — the REST equivalent was removed, and `/api/v1/audit-log` now serves only
+`/record` and `/actors`.
 
 ```
 POST /api/minicrm.audit.v1.AuditService/ListAuditEvents
