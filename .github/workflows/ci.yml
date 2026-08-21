@@ -67,6 +67,7 @@ jobs:
       ai:                ${{ steps.filter.outputs.ai }}
       coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
       attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
+      redirect-status-docs: ${{ steps.filter.outputs.redirect-status-docs }}
       env-example-parity: ${{ steps.filter.outputs.env-example-parity }}
       playwright-version: ${{ steps.filter.outputs.playwright-version }}
       shared-testing: ${{ steps.filter.outputs.shared-testing }}
@@ -342,6 +343,16 @@ jobs:
             # that job's comment for why. (MINCRM-691)
             attestation-docs:
               - 'docs/dev/coverage.md'
+
+            # Single-purpose output for legacyApiRedirect.test.ts, which pins both docs
+            # to LEGACY_REDIRECT_STATUS in app.ts. Without it a docs-only edit changing
+            # 308 back to 301 in prose runs markdownlint and nothing else — the guard
+            # would be silent on exactly the drift it exists to catch. OR'd into
+            # server-tests alone, which needs always() there for the same reason
+            # attestation-docs does.
+            redirect-status-docs:
+              - 'docs/api.md'
+              - 'docs/operations.md'
 
             # Single-purpose filter, deliberately NOT folded into `qa`.
             #
@@ -844,7 +855,8 @@ jobs:
     if: |
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
-      (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true' || needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true')
+      (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true' ||
+        needs.changes.outputs.redirect-status-docs == 'true' || needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true')
     runs-on: ubuntu-latest
 
     services:

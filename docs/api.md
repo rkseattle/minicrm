@@ -1,10 +1,13 @@
 # MiniCRM REST API Reference
 
-This document covers authentication, error handling, pagination, and all resource
-endpoints exposed by the MiniCRM REST API. It is aimed at developers building
-integrations against a MiniCRM instance.
+This document covers the cross-cutting rules of the MiniCRM REST API — authentication,
+session lifetime, versioning, error shape, and pagination. It is aimed at developers
+building integrations against a MiniCRM instance.
 
-An interactive Swagger UI is available at `/api-docs` on dev and staging instances.
+**The per-endpoint reference is generated from the code, not written here.** Every route
+carries an `@openapi` annotation that a lint rule requires, so the generated spec cannot
+fall behind the routes the way a hand-written catalogue does. See
+[Reading the endpoint reference](#4-reading-the-endpoint-reference).
 
 ---
 
@@ -13,18 +16,9 @@ An interactive Swagger UI is available at `/api-docs` on dev and staging instanc
 1. [Authentication](#1-authentication)
 2. [Error shape](#2-error-shape)
 3. [Pagination](#3-pagination)
-4. [Contacts](#4-contacts)
-5. [Accounts](#5-accounts)
-6. [Deals](#6-deals)
-7. [Activities](#7-activities)
-8. [Leads](#8-leads)
-9. [Notes](#9-notes)
-10. [Tags](#10-tags)
-11. [Attachments](#11-attachments)
-12. [Users](#12-users-admin-only)
-13. [Settings](#13-settings)
-14. [Audit Log](#14-audit-log)
-15. [gRPC / ConnectRPC — AuditService](#15-grpc--connectrpc--auditservice)
+4. [Reading the endpoint reference](#4-reading-the-endpoint-reference)
+5. [Versioning](#5-versioning)
+6. [gRPC / ConnectRPC — AuditService](#6-grpc--connectrpc--auditservice)
 
 ---
 
@@ -180,598 +174,81 @@ Paginated responses always include a wrapper object:
 
 ---
 
-## 4. Contacts
+## 4. Reading the endpoint reference
 
-### List contacts
+Every endpoint is described by the generated OpenAPI 3.0 document, built from `@openapi`
+annotations in the route files by [swagger-jsdoc](https://github.com/Surnet/swagger-jsdoc).
+A repo-local ESLint rule (`local-openapi/require-openapi-tag`) fails the build when a
+route is added without one, and CI validates the generated document on every pull
+request, so it stays in step with the code.
 
-```
-GET /api/contacts
-```
+**On a development or staging instance** the interactive UI is served at `/api-docs`, and
+the raw document at `/api-docs.json`.
 
-Query parameters: `page`, `limit`, `search` (name/email substring), `tag`, `owner`,
-`sort` (`first_name` | `email` | `created_at`), `dir` (`asc` | `desc`).
+**In production both are disabled**, so generate the document from a checkout instead:
 
-Returns a paginated list of contact objects.
-
-### Get a contact
-
-```
-GET /api/contacts/:id
-```
-
-### Create a contact
-
-```
-POST /api/contacts
-Content-Type: application/json
-
-{
-  "first_name": "Jane",
-  "last_name": "Smith",
-  "email": "jane@example.com",
-  "phone": "+1-555-0100",
-  "job_title": "VP Sales",
-  "account_id": "<uuid>",
-  "owner_id": "<uuid>"
-}
+```bash
+npm run generate-spec --workspace=minicrm-server
+# writes server/openapi.json
 ```
 
-`first_name` and `email` are required. `email` must be unique. Returns `201 Created`.
-
-### Update a contact
-
-```
-PATCH /api/contacts/:id
-Content-Type: application/json
-
-{ "job_title": "CRO" }
-```
-
-Partial update — only supply the fields you want to change. Ownership enforced:
-reps can only update contacts they own; admins can update any.
-
-### Delete a contact
-
-```
-DELETE /api/contacts/:id
-```
-
-Ownership enforced. Returns `204 No Content`.
-
-### Merge contacts
-
-```
-POST /api/contacts/:id/merge
-Content-Type: application/json
-
-{
-  "loser_id": "<uuid>",
-  "field_choices": {
-    "email": "winner",
-    "phone": "loser"
-  }
-}
-```
-
-Merges two contacts. The contact at `:id` is the winner (survives). `loser_id` is
-deleted. `field_choices` controls which record's value is kept for each field
-(`"winner"` or `"loser"`). All linked deals, activities, and notes are re-routed
-to the winner. Admin only.
-
-### GDPR erasure
-
-```
-POST /api/contacts/:id/gdpr-erase
-```
-
-Blanks the contact's personal fields and writes an erasure record to the audit log.
-Admin only. Irreversible.
+That file is the input to any OpenAPI client generator. See
+[API Documentation](../README.md#api-documentation) for how the pipeline is wired.
 
 ---
 
-## 5. Accounts
+## 5. Versioning
 
-### List accounts
+All resource endpoints are served under **`/api/v1/`**. `GET /api/health` is deliberately
+unversioned — it is an infrastructure endpoint, not part of the resource API.
 
-```
-GET /api/accounts
-```
+`docs/operations.md` holds the [versioning policy](operations.md#api-versioning-policy):
+the scheme, what counts as a breaking change, and how a future `v2` would be introduced.
+The integrator-facing details are below.
 
-Query parameters: `page`, `limit`, `search`, `type`, `owner`, `sort`, `dir`.
+### The legacy unversioned paths
 
-### Search accounts
+Requests to the pre-v1 paths are redirected to their `/api/v1/` equivalent with a
+**`308 Permanent Redirect`**, which preserves the method and body — a `301` would let a
+client rewrite a `POST` to `GET` and drop the payload.
 
-```
-GET /api/accounts/search?q=acme
-```
-
-Returns a lightweight list (id + name) for use in typeahead/autocomplete widgets.
-
-### Get an account
+Eighteen prefixes are covered:
 
 ```
-GET /api/accounts/:id
+/api/auth       /api/users      /api/contacts   /api/accounts
+/api/deals      /api/activities /api/dashboard  /api/reports
+/api/settings   /api/automation /api/admin      /api/search
+/api/attachments /api/audit-log /api/leads      /api/tags
+/api/custom-fields              /api/gdpr
 ```
 
-### Get child accounts
+**Anything else is not redirected at all.** `teams`, `insights`, `duplicates`,
+`data-hygiene`, `notifications`, `pipelines`, `sequences`, `sequence-enrollments`, and
+`custom-roles` have no legacy alias — they were added after the prefix was introduced, so
+an unversioned request to one reaches no route and returns `404`.
 
-```
-GET /api/accounts/:id/children
-```
+Two families are covered only in part. `feature-flags` and `ai` are mounted twice, and
+only the admin mount has an alias: `/api/admin/feature-flags` and `/api/admin/ai` redirect
+via the `/api/admin` prefix, while the user-facing `/api/feature-flags` and `/api/ai`
+`404`. Notes are not affected — they mount beneath their parent entity
+(`/api/v1/{entityType}/{entityId}/notes`), so `/api/contacts/{id}/notes` redirects on the
+`/api/contacts` prefix like any other nested path.
 
-Returns direct children (subsidiaries) of the account.
+Two further traps. `/api/automation` redirects to `/api/v1/automation`, but the router
+mounts at `/api/v1/automation/rules`, so only the suffixed form resolves. And
+`/api/admin/automation` was never a route at any version.
 
-### Create an account
+Note that a `/api/v1/` path with no matching route answers `401`, not `404`: an
+authenticated router is mounted at the bare `/api/v1` prefix, so its auth check runs
+before the not-found handler. Treat `401` on an unfamiliar path as "wrong path or no
+session", not as proof the path exists.
 
-```
-POST /api/accounts
-Content-Type: application/json
-
-{
-  "name": "Acme Corp",
-  "account_type": "Customer",
-  "website": "https://acme.example.com",
-  "parent_account_id": "<uuid>"
-}
-```
-
-`name` is required.
-
-### Update / delete an account
-
-```
-PATCH /api/accounts/:id
-DELETE /api/accounts/:id
-```
-
-Ownership enforced.
+**These redirects will be removed.** Treat them as a migration aid, not an interface —
+send `/api/v1/` directly.
 
 ---
 
-## 6. Deals
-
-### List deals
-
-```
-GET /api/deals
-```
-
-Query parameters: `page`, `limit`, `stage`, `owner`, `account_id`, `search`,
-`sort`, `dir`.
-
-### Get a deal
-
-```
-GET /api/deals/:id
-```
-
-### Create a deal
-
-```
-POST /api/deals
-Content-Type: application/json
-
-{
-  "name": "Acme — Enterprise licence",
-  "value": 25000,
-  "currency": "USD",
-  "stage": "Qualification",
-  "probability": 30,
-  "close_date": "2026-09-30",
-  "account_id": "<uuid>",
-  "owner_id": "<uuid>",
-  "pipeline_id": "<uuid>"
-}
-```
-
-`name` is required. `stage` must match an existing pipeline stage name. `currency`
-defaults to the org's default currency. `probability` defaults to the stage default
-if omitted.
-
-### Update a deal
-
-```
-PATCH /api/deals/:id
-```
-
-Partial update. Moving a deal to _Closed Won_ or _Closed Lost_ forces probability
-to 100% or 0% respectively. Ownership enforced.
-
-### Delete a deal
-
-```
-DELETE /api/deals/:id
-```
-
-### Pipeline board
-
-```
-GET /api/deals/board
-```
-
-Returns deals grouped by stage, suitable for rendering a Kanban board.
-
-### Move a deal (stage drag-and-drop)
-
-```
-PATCH /api/deals/:id/stage
-Content-Type: application/json
-
-{ "stage": "Negotiation" }
-```
-
-Convenience endpoint for board drag-and-drop. Equivalent to `PATCH /api/deals/:id`
-with `{ "stage": "..." }`.
-
-#### Multi-currency notes
-
-- `value` is stored as-is in `deals.currency`.
-- Dashboard totals convert all values to the org default currency for display.
-- MiniCRM does not fetch live exchange rates; conversion is informational.
-
----
-
-## 7. Activities
-
-### List activities
-
-```
-GET /api/activities
-```
-
-Query parameters: `page`, `limit`, `type`, `status`, `contact`, `account`, `deal`,
-`owner` (pass `me` to filter to the authenticated user).
-
-### Get an activity
-
-```
-GET /api/activities/:id
-```
-
-### My tasks
-
-```
-GET /api/activities/my-tasks
-```
-
-Returns open Task-type activities for the authenticated user. Each item includes
-`linked_record_name` and `linked_record_type` joined from the parent record.
-
-### Create an activity
-
-```
-POST /api/activities
-Content-Type: application/json
-
-{
-  "type": "Call",
-  "subject": "Discovery call with Jane",
-  "status": "complete",
-  "direction": "Outbound",
-  "outcome": "Positive — moving to proposal",
-  "contact_id": "<uuid>",
-  "deal_id": "<uuid>",
-  "owner_id": "<uuid>",
-  "due_date": "2026-06-01"
-}
-```
-
-At least one of `contact_id`, `account_id`, or `deal_id` is required. `type` must be
-one of: `Note`, `Call`, `Email`, `Meeting`, `Task`.
-
-### Update / delete an activity
-
-```
-PATCH /api/activities/:id
-DELETE /api/activities/:id
-```
-
-Ownership enforced.
-
----
-
-## 8. Leads
-
-### List leads
-
-```
-GET /api/leads
-```
-
-Query parameters: `page`, `limit`, `status`, `owner`, `search`, `sort`, `dir`.
-
-### Get a lead
-
-```
-GET /api/leads/:id
-```
-
-### Lead status history
-
-```
-GET /api/leads/:id/status-history
-```
-
-Returns the full history of status transitions for the lead.
-
-### Create a lead
-
-```
-POST /api/leads
-Content-Type: application/json
-
-{
-  "first_name": "Bob",
-  "last_name": "Jones",
-  "email": "bob@prospect.com",
-  "company_name": "Prospect Inc",
-  "lead_source": "Referral",
-  "owner_id": "<uuid>"
-}
-```
-
-`first_name` is required.
-
-### Update a lead
-
-```
-PATCH /api/leads/:id
-```
-
-Ownership enforced. Setting `status` to `Disqualified` requires a `disqualification_reason`.
-
-### Delete a lead
-
-```
-DELETE /api/leads/:id
-```
-
-### Convert a lead
-
-```
-POST /api/leads/:id/convert
-Content-Type: application/json
-
-{
-  "contact": {
-    "first_name": "Bob",
-    "last_name": "Jones",
-    "email": "bob@prospect.com"
-  },
-  "account": {
-    "name": "Prospect Inc"
-  },
-  "deal": {
-    "name": "Prospect Inc — Initial",
-    "value": 5000,
-    "stage": "Prospecting"
-  }
-}
-```
-
-`contact` is required. `account` and `deal` are optional. Returns the IDs of all
-created records. The lead's status is set to _Converted_ and locked.
-
----
-
-## 9. Notes
-
-Notes are polymorphic — they attach to a contact, account, deal, or lead.
-
-```
-GET    /api/:entityType/:entityId/notes       — list notes (paginated)
-POST   /api/:entityType/:entityId/notes       — create a note
-PATCH  /api/:entityType/:entityId/notes/:noteId  — update (author or admin only)
-DELETE /api/:entityType/:entityId/notes/:noteId  — delete (author or admin only)
-```
-
-`entityType` is one of: `contacts`, `accounts`, `deals`, `leads`.
-
-### Create a note
-
-```
-POST /api/contacts/<uuid>/notes
-Content-Type: application/json
-
-{
-  "body": "Spoke at length about Q3 budget — confirmed $50k available.",
-  "visibility": "internal"
-}
-```
-
-`body` is required. `visibility` is one of `public`, `internal`, `private`
-(default: `public`).
-
----
-
-## 10. Tags
-
-```
-GET  /api/tags          — list all tags
-POST /api/tags          — create a tag  { "name": "VIP", "color": "#FF0000" }
-PATCH /api/tags/:id     — update a tag
-DELETE /api/tags/:id    — delete a tag (admin only)
-```
-
-Tags are shared across all contacts. `color` is an optional hex string.
-
----
-
-## 11. Attachments
-
-Attachments are files associated with a contact, account, deal, or lead.
-
-```
-POST   /api/attachments/upload            — upload a file (multipart/form-data)
-GET    /api/:recordType/:recordId/attachments  — list attachments for a record
-DELETE /api/attachments/:id               — delete an attachment
-GET    /api/attachments/:id/download      — download a file
-```
-
-`recordType` is one of: `contact`, `account`, `deal`, `lead`.
-
-Upload fields: `file` (the binary), `record_type`, `record_id`.
-
----
-
-## 12. Users (admin only)
-
-All endpoints in this section require admin role.
-
-```
-GET    /api/users                      — list all users
-GET    /api/users/active               — list active users (lightweight; used in owner pickers)
-GET    /api/users/:id                  — get a user
-POST   /api/users/invite               — invite a new user
-PATCH  /api/users/:id                  — update name, role, status
-POST   /api/users/:id/set-password     — set a user's password (forces change on next login)
-POST   /api/users/:id/reset-onboarding — reset the user's onboarding checklist
-```
-
-### Invite a user
-
-```
-POST /api/users/invite
-Content-Type: application/json
-
-{ "email": "alice@example.com", "name": "Alice", "role": "rep" }
-```
-
-`role` is `admin` or `rep`. Returns `201 Created` with the new user object.
-
-#### Notification preferences (authenticated user)
-
-```
-GET   /api/users/me/notification-preferences
-PATCH /api/users/me/notification-preferences
-```
-
-Body for PATCH: any subset of `{ "notify_overdue_tasks": bool, "notify_assignments": bool, "notify_deal_stage_changes": bool }`.
-
----
-
-## 13. Settings
-
-Most read settings are public (no auth required); write settings are admin only.
-
-### General
-
-```
-GET   /api/settings/default-language      — { language }
-PATCH /api/settings/default-language      — { language }  (admin)
-
-GET   /api/settings/nav-layout            — { layout }
-PATCH /api/settings/nav-layout            — { layout }    (admin)
-
-GET   /api/settings/default-currency      — { currency }
-PATCH /api/settings/default-currency      — { currency }  (admin)
-```
-
-### Email notifications
-
-```
-GET   /api/settings/email-notifications   — { enabled: bool }
-PATCH /api/settings/email-notifications   — { enabled: bool }  (admin)
-```
-
-### Pipeline stages
-
-```
-GET  /api/settings/pipeline-stages        — { stages: PipelineStageResponse[] }
-POST /api/settings/pipeline-stages        — create stage  (admin)
-PATCH /api/settings/pipeline-stages/:id   — update stage  (admin)
-DELETE /api/settings/pipeline-stages/:id  — delete stage  (admin)
-```
-
-Stage object:
-
-```json
-{
-  "id": "<uuid>",
-  "name": "Proposal",
-  "sort_order": 3,
-  "probability": 50,
-  "is_terminal": false,
-  "is_fixed": false
-}
-```
-
-### Branding
-
-```
-GET    /api/settings/branding   — current branding config (public)
-PUT    /api/settings/branding   — partial merge of branding fields (admin)
-DELETE /api/settings/branding   — reset all branding to defaults (admin)
-```
-
-### Onboarding
-
-```
-GET  /api/settings/onboarding              — { is_first_run, tasks: [...] }
-POST /api/settings/onboarding/complete     — mark onboarding completed for current user
-```
-
-### Webhooks (admin only)
-
-See [webhooks.md](webhooks.md) for full details.
-
-```
-GET    /api/admin/webhooks
-POST   /api/admin/webhooks
-PATCH  /api/admin/webhooks/:id
-DELETE /api/admin/webhooks/:id
-GET    /api/admin/webhooks/:id/logs
-```
-
-### Automation rules (admin only)
-
-```
-GET    /api/admin/automation
-POST   /api/admin/automation
-PATCH  /api/admin/automation/:id
-DELETE /api/admin/automation/:id
-GET    /api/admin/automation/:id/logs
-```
-
----
-
-## 14. Audit Log
-
-The audit log is an append-only record of every create, update, and delete across
-all user data in MiniCRM. Admin only.
-
-### List audit events (REST)
-
-```
-GET /api/audit
-```
-
-Query parameters: `page`, `limit`, `record_type`, `record_id`, `event_type`,
-`changed_by_id`, `from`, `to` (ISO 8601 timestamps).
-
-Returns a paginated list of audit event objects:
-
-```json
-{
-  "id": "<uuid>",
-  "record_type": "contact",
-  "record_id": "<uuid>",
-  "record_name": "Jane Smith",
-  "event_type": "updated",
-  "field_name": "email",
-  "old_value": "jane.old@example.com",
-  "new_value": "jane@example.com",
-  "changed_by_id": "<uuid>",
-  "changed_by_name": "Rob Admin",
-  "created_at": "2026-05-29T14:23:01.000Z"
-}
-```
-
-For live streaming of audit events see the gRPC section below.
-
----
-
-## 15. gRPC / ConnectRPC — AuditService
+## 6. gRPC / ConnectRPC — AuditService
 
 MiniCRM exposes a ConnectRPC service alongside the REST API on the **same port and
 path prefix** (`/api`). No separate gRPC port is required. The transport uses the
