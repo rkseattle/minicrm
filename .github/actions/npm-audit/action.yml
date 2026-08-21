@@ -30,7 +30,7 @@ runs:
     # to carry its own copy. It did, as a bare `npm audit --audit-level=high`,
     # which is not just a duplicate but a weaker rule: it reintroduces the
     # fail-open hole the script guards against. One rule, three callers, pinned
-    # by qa/scripts/check-audit-gate-parity.sh. (MINCRM-668)
+    # by scripts/check-audit-gate-parity.sh. (MINCRM-668)
     #
     # GITHUB_WORKSPACE, not a relative walk up from github.action_path: the
     # action lives inside the repo, so the checkout root is where the script

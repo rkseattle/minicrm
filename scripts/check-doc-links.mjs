@@ -6,7 +6,7 @@
 // resolving them means parsing every target's headings and reimplementing GitHub's slug
 // rules — a second guard's worth of surface for a weaker failure mode.
 //
-// Run: node qa/scripts/check-doc-links.mjs [--self-test]
+// Run: node scripts/check-doc-links.mjs [--self-test]
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync, statSync, mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
@@ -14,7 +14,7 @@ import { join, dirname, resolve, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Scanning less than the ci.yml `docs`/`doc-links` filters trigger on would report OK
 // on files never opened. Nothing pins these two lists together; keep them in step by hand.
@@ -260,8 +260,10 @@ function selfTest() {
 
 // Mirrors check-settings-mutations.mjs: module scope must stay side-effect free so a
 // future importer cannot inherit a repo scan or a process.exit.
+// Exact resolution, matching scripts/check-comments-only-diff.ts: a basename suffix
+// match would also fire for a same-named file in another directory.
 const INVOKED_DIRECTLY = Boolean(
-  process.argv[1] && process.argv[1].endsWith('check-doc-links.mjs'),
+  process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]),
 );
 
 function main() {
@@ -310,7 +312,7 @@ if (INVOKED_DIRECTLY) {
   if (unknown.length > 0) {
     // A typo'd flag must not silently run the real check and print OK.
     console.error(`Unknown argument: ${unknown[0]}`);
-    console.error('Usage: node qa/scripts/check-doc-links.mjs [--self-test]');
+    console.error('Usage: node scripts/check-doc-links.mjs [--self-test]');
     process.exit(2);
   }
   main();

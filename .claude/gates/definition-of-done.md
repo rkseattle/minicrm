@@ -38,11 +38,15 @@ bash qa/scripts/check-grep-invert-parity.sh
 bash qa/scripts/check-framework-spec-titles.sh
 bash qa/scripts/check-e2e-cleanup.sh
 node qa/scripts/check-locator-timeout-forwarding.mjs
-bash qa/scripts/check-audit-gate-parity.sh
-bash qa/scripts/check-gate-pointer-parity.sh
+
+# 6. Repo-wide guards — these live in scripts/, not qa/, and are not QA-scoped
+bash scripts/check-audit-gate-parity.sh
+bash scripts/check-gate-pointer-parity.sh
+node scripts/check-ci-filter-globs.mjs
+node scripts/check-api-path-versioning.mjs
 ```
 
-Steps 1–5 run before every commit. **E2E does not gate individual commits** — see
+Steps 1–6 run before every commit. **E2E does not gate individual commits** — see
 `.claude/gates/e2e-run.md` for the pre-push E2E gate.
 
 ## Conditional gates
@@ -89,7 +93,7 @@ though it looks like a comment in the diff. Any non-comment hunk is a bug in the
 fixed at its source rather than hand-patched.
 
 **Changed `.md` files** — run `markdownlint-cli2` on them, plus
-`node qa/scripts/check-doc-links.mjs` when a link or a link target moved. CI `lint-docs`
+`node scripts/check-doc-links.mjs` when a link or a link target moved. CI `lint-docs`
 catches what the pre-commit hook misses, but only after the push.
 
 **Staged `.github/workflows/*.yml`** — the pre-commit hook runs `actionlint` and hard-

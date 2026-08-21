@@ -11,13 +11,13 @@
 # compares wording between the two files. Comparing prose does not converge (see
 # check-audit-gate-parity.sh's doc loop for the same conclusion reached the hard way).
 #
-# Run: bash qa/scripts/check-gate-pointer-parity.sh [--self-test]
+# Run: bash scripts/check-gate-pointer-parity.sh [--self-test]
 #
 # No -e: check_tree collects every finding before returning, so an early exit on the
 # first would hide the rest.
 set -uo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # gate → the specific counterpart it must link. Checking only "links something under
 # docs/" would pass a gate repointed at any unrelated page, which is the drift this
