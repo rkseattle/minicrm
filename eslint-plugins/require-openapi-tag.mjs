@@ -16,6 +16,18 @@
 import { OPENAPI_BLOCK } from './work-item-id-patterns.mjs';
 
 /**
+ * A tag with nothing under it is worse than no tag: swagger-jsdoc parses the empty
+ * annotation and consumes the NEXT one, so the following endpoint silently leaves the
+ * spec. Require at least one non-blank line after the tag line.
+ */
+function hasAnnotationBody(commentValue) {
+  const lines = commentValue.split('\n');
+  const tagIndex = lines.findIndex((line) => /^\s*\*?\s*@openapi\s*$/.test(line));
+  if (tagIndex === -1) return false;
+  return lines.slice(tagIndex + 1).some((line) => line.replace(/^\s*\*?/, '').trim() !== '');
+}
+
+/**
  * Method names Express registers handlers under. `all` is included: it registers for
  * every HTTP method, so it needs a spec entry more than the others, not less.
  */
@@ -111,7 +123,12 @@ const requireOpenapiTag = {
           isInnermostLink &&
           sourceCode
             .getCommentsBefore(target)
-            .some((comment) => comment.type === 'Block' && OPENAPI_BLOCK.test(comment.value));
+            .some(
+              (comment) =>
+                comment.type === 'Block' &&
+                OPENAPI_BLOCK.test(comment.value) &&
+                hasAnnotationBody(comment.value),
+            );
 
         if (hasTag) {
           return;

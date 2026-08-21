@@ -265,12 +265,16 @@ describe('served public-endpoint count', () => {
 
 describe('spec covers every route registration', () => {
   // The 'documents all expected API paths' case above names 14 paths out of hundreds and
-  // would pass with the rest deleted. This compares counts instead, so a mass drop shows
-  // up. It is a floor, not equality: featureFlags is one router mounted twice, and three
-  // test-only routes carry an eslint-disable, so registrations slightly exceed operations.
-  const COVERAGE_FLOOR = 0.95;
+  // would pass with the rest deleted. This pins the shortfall exactly, because a ratio
+  // floor left enough slack to hide a real drop: an empty @openapi tag once consumed the
+  // next annotation and dropped a public endpoint while a 0.95 floor still passed.
+  //
+  // Four registrations carry an eslint-disable (three dev-only routes, one documented on
+  // its sibling), and shared-path blocks document two methods from one annotation, which
+  // nets out to this number. Change it only with the reason.
+  const EXPECTED_SHORTFALL = 2;
 
-  it('generates an operation for very nearly every route registration', () => {
+  it('generates an operation for every route registration but the known exceptions', () => {
     const routesDir = join(__dirname, '..', 'routes');
     const registrations = readdirSync(routesDir)
       .filter((file) => file.endsWith('.ts'))
@@ -286,7 +290,7 @@ describe('spec covers every route registration', () => {
     );
 
     expect(registrations).toBeGreaterThan(0);
-    expect(operations / registrations).toBeGreaterThanOrEqual(COVERAGE_FLOOR);
+    expect(registrations - operations).toBe(EXPECTED_SHORTFALL);
   });
 });
 

@@ -102,7 +102,8 @@ HTTP/1.1 403 Forbidden
 POST /api/v1/auth/logout
 ```
 
-Clears the cookie. Returns `200 OK`.
+Clears the cookie. Returns `200 OK`, or `401` if the session has already lapsed — treat
+that as already logged out rather than as a failure to clean up.
 
 ### Rate limiting
 

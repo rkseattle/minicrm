@@ -96,12 +96,11 @@ router.get('/login', asyncHandler(initiateSsoLogin));
 router.get('/callback', asyncHandler(handleSsoCallback));
 
 /**
- * SAML POST-binding callback. Both bindings hit the same handler, and one annotation
+ * SAML POST-binding callback. Both bindings hit the same handler, and the annotation
  * above the GET registration documents both methods of the shared path — a second one
  * here would need a fragment in the path key, which emits a phantom path into the spec.
- *
- * @openapi
  */
+// eslint-disable-next-line local-openapi/require-openapi-tag -- documented on the GET registration above
 router.post('/callback', asyncHandler(handleSsoCallback));
 
 /**

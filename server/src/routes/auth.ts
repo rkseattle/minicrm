@@ -159,12 +159,12 @@ router.post('/login', loginLimiter, asyncHandler(login));
  *     operationId: logout
  *     summary: Log out and clear the auth cookie
  *     description: >
- *       Clears the minicrm_token httpOnly cookie. No authentication required.
- *       This endpoint is idempotent — calling it without a cookie still returns 200.
- *     security: []
+ *       Clears the minicrm_token httpOnly cookie. Requires a valid session — calling it
+ *       without one returns 401, so a client clearing up after an expired session should
+ *       treat that as already logged out.
  *     responses:
  *       200:
- *         description: Logged out successfully (also returned when no cookie was present)
+ *         description: Logged out successfully
  *         content:
  *           application/json:
  *             schema:
@@ -175,6 +175,8 @@ router.post('/login', loginLimiter, asyncHandler(login));
  *                   example: Logged out successfully
  *             example:
  *               message: Logged out successfully
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.post('/logout', authenticate, asyncHandler(logout));
 
