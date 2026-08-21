@@ -41,7 +41,7 @@ async function assertAccountAccess(
 }
 
 /**
- * GET /api/accounts/:id/health-score
+ * GET /api/v1/accounts/:id/health-score
  * Returns the cached relationship health score for the account, or null when
  * no score has been computed yet (insufficient data or not yet run).
  */
@@ -54,7 +54,7 @@ export async function getAccountHealthScoreHandler(req: Request, res: Response):
 }
 
 /**
- * GET /api/accounts/:id/health-score/history
+ * GET /api/v1/accounts/:id/health-score/history
  * Returns up to 6 months of health score history for the trend sparkline.
  */
 export async function getAccountHealthHistoryHandler(req: Request, res: Response): Promise<void> {
@@ -66,7 +66,7 @@ export async function getAccountHealthHistoryHandler(req: Request, res: Response
 }
 
 /**
- * GET /api/admin/relationship-health/config
+ * GET /api/v1/admin/relationship-health/config
  * Returns the admin-editable scoring weights/thresholds. Admin only.
  */
 export async function getAccountHealthScoringConfigHandler(
@@ -78,7 +78,7 @@ export async function getAccountHealthScoringConfigHandler(
 }
 
 /**
- * PATCH /api/admin/relationship-health/config
+ * PATCH /api/v1/admin/relationship-health/config
  * Updates the admin-editable scoring weights/thresholds. Admin only.
  */
 export async function setAccountHealthScoringConfigHandler(

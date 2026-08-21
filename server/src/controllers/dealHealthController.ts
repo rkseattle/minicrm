@@ -17,7 +17,7 @@ const FORBIDDEN_VISIBILITY_ERROR = {
 };
 
 /**
- * POST /api/deals/:id/health-check
+ * POST /api/v1/deals/:id/health-check
  * Runs an on-demand AI health check for the deal and returns the result.
  * Not persisted — the client re-requests each time the action is triggered.
  */

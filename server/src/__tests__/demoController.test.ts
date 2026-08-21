@@ -173,7 +173,7 @@ afterAll(async () => {
   await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'demo_data'`);
 });
 
-// ── GET /api/admin/demo/status ────────────────────────────────────────────────
+// ── GET /api/v1/admin/demo/status ────────────────────────────────────────────────
 
 // ── fixture self-healing ───────────────────────────────────
 
@@ -208,7 +208,7 @@ describe('fixture users survive a wholesale wipe', () => {
   });
 });
 
-describe('GET /api/admin/demo/status', () => {
+describe('GET /api/v1/admin/demo/status', () => {
   it('returns 200 with a status object', async () => {
     const res = await request(app).get('/api/v1/admin/demo/status').set('Cookie', adminCookie);
 
@@ -229,9 +229,9 @@ describe('GET /api/admin/demo/status', () => {
   });
 });
 
-// ── POST /api/admin/demo/seed ─────────────────────────────────────────────────
+// ── POST /api/v1/admin/demo/seed ─────────────────────────────────────────────────
 
-describe('POST /api/admin/demo/seed', () => {
+describe('POST /api/v1/admin/demo/seed', () => {
   it('seeds demo data and returns 200 with success:true', async () => {
     const res = await request(app).post('/api/v1/admin/demo/seed').set('Cookie', adminCookie);
 
@@ -263,9 +263,9 @@ describe('POST /api/admin/demo/seed', () => {
   });
 });
 
-// ── POST /api/admin/demo/reset ────────────────────────────────────────────────
+// ── POST /api/v1/admin/demo/reset ────────────────────────────────────────────────
 
-describe('POST /api/admin/demo/reset', () => {
+describe('POST /api/v1/admin/demo/reset', () => {
   // seed + reset together exercise ~2× the full demo dataset; 300 s covers even slow CI.
   it('resets demo data and returns 200 with success:true', async () => {
     // Seed first so there is something to reset
@@ -290,9 +290,9 @@ describe('POST /api/admin/demo/reset', () => {
   });
 });
 
-// ── DELETE /api/admin/demo ────────────────────────────────────────────────────
+// ── DELETE /api/v1/admin/demo ────────────────────────────────────────────────────
 
-describe('DELETE /api/admin/demo', () => {
+describe('DELETE /api/v1/admin/demo', () => {
   it('removes demo data and returns 200 with success:true', async () => {
     await request(app).post('/api/v1/admin/demo/seed').set('Cookie', adminCookie);
 

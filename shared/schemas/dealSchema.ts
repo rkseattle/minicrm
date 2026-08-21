@@ -13,7 +13,7 @@ import { SUPPORTED_CURRENCIES } from './settingsSchema.js';
 /**
  * Seed pipeline stage names — used for bootstrapping and as the fallback when the
  * live stage list is not yet available. The authoritative list lives in the
- * pipeline_stages table and is fetched via GET /api/settings/pipeline-stages.
+ * pipeline_stages table and is fetched via GET /api/v1/settings/pipeline-stages.
  */
 export const PIPELINE_STAGES = [
   'Prospecting',

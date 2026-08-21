@@ -45,7 +45,7 @@ const bulkDealSchema = z
   });
 
 /**
- * POST /api/contacts/bulk
+ * POST /api/v1/contacts/bulk
  * Bulk reassign or delete contacts.
  */
 export async function bulkContactsHandler(req: Request, res: Response): Promise<void> {
@@ -69,7 +69,7 @@ export async function bulkContactsHandler(req: Request, res: Response): Promise<
 }
 
 /**
- * POST /api/accounts/bulk
+ * POST /api/v1/accounts/bulk
  * Bulk reassign or delete accounts.
  */
 export async function bulkAccountsHandler(req: Request, res: Response): Promise<void> {
@@ -93,7 +93,7 @@ export async function bulkAccountsHandler(req: Request, res: Response): Promise<
 }
 
 /**
- * POST /api/deals/bulk
+ * POST /api/v1/deals/bulk
  * Bulk reassign, delete, or change stage on deals.
  */
 export async function bulkDealsHandler(req: Request, res: Response): Promise<void> {

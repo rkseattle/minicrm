@@ -33,7 +33,7 @@ export { AUTH_COOKIE_NAME };
  *
  * Returns 401 if the token is missing, invalid, or the user has been deactivated.
  * Returns 403 with code PASSWORD_CHANGE_REQUIRED if must_change_password is set,
- * except when the request targets /api/auth/change-password.
+ * except when the request targets /api/v1/auth/change-password.
  */
 export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const cookieToken = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;

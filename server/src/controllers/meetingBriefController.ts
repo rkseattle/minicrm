@@ -33,7 +33,7 @@ function isBriefEligible(activity: { type: string; due_date: string | null }): b
 }
 
 /**
- * POST /api/activities/:id/brief
+ * POST /api/v1/activities/:id/brief
  * Generates (or regenerates) the pre-meeting brief for the activity.
  */
 export async function generateMeetingBriefHandler(req: Request, res: Response): Promise<void> {
@@ -79,7 +79,7 @@ export async function generateMeetingBriefHandler(req: Request, res: Response): 
 }
 
 /**
- * GET /api/activities/:id/brief
+ * GET /api/v1/activities/:id/brief
  * Returns the most recently generated brief for the activity (for the
  * shareable, authenticated link). 404 when none has been generated yet.
  */

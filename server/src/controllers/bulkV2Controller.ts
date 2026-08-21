@@ -101,7 +101,7 @@ function isIdsOverLimit(err: z.ZodError): boolean {
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 /**
- * PATCH /api/users/bulk
+ * PATCH /api/v1/users/bulk
  * Bulk patch users (activate/deactivate/role change). Admin only + bulk:operations + users:edit.
  */
 export async function bulkPatchUsersHandler(req: Request, res: Response): Promise<void> {
@@ -118,7 +118,7 @@ export async function bulkPatchUsersHandler(req: Request, res: Response): Promis
 }
 
 /**
- * DELETE /api/users/bulk
+ * DELETE /api/v1/users/bulk
  * Bulk delete users. Admin only + bulk:operations + users:delete.
  */
 export async function bulkDeleteUsersHandler(req: Request, res: Response): Promise<void> {
@@ -137,7 +137,7 @@ export async function bulkDeleteUsersHandler(req: Request, res: Response): Promi
 // ── Contacts ──────────────────────────────────────────────────────────────────
 
 /**
- * PATCH /api/contacts/bulk
+ * PATCH /api/v1/contacts/bulk
  * Bulk patch contacts (reassign owner). Requires bulk:operations + contacts:edit.
  */
 export async function bulkPatchContactsHandler(req: Request, res: Response): Promise<void> {
@@ -154,7 +154,7 @@ export async function bulkPatchContactsHandler(req: Request, res: Response): Pro
 }
 
 /**
- * DELETE /api/contacts/bulk
+ * DELETE /api/v1/contacts/bulk
  * Bulk delete contacts. Requires bulk:operations + contacts:delete.
  */
 export async function bulkDeleteContactsHandler(req: Request, res: Response): Promise<void> {
@@ -173,7 +173,7 @@ export async function bulkDeleteContactsHandler(req: Request, res: Response): Pr
 // ── Deals ─────────────────────────────────────────────────────────────────────
 
 /**
- * PATCH /api/deals/bulk
+ * PATCH /api/v1/deals/bulk
  * Bulk patch deals (reassign owner or change stage). Requires bulk:operations + deals:edit.
  */
 export async function bulkPatchDealsHandler(req: Request, res: Response): Promise<void> {
@@ -201,7 +201,7 @@ export async function bulkPatchDealsHandler(req: Request, res: Response): Promis
 }
 
 /**
- * DELETE /api/deals/bulk
+ * DELETE /api/v1/deals/bulk
  * Bulk delete deals. Requires bulk:operations + deals:delete.
  */
 export async function bulkDeleteDealsHandler(req: Request, res: Response): Promise<void> {
@@ -220,7 +220,7 @@ export async function bulkDeleteDealsHandler(req: Request, res: Response): Promi
 // ── Activities ────────────────────────────────────────────────────────────────
 
 /**
- * PATCH /api/activities/bulk
+ * PATCH /api/v1/activities/bulk
  * Bulk patch activities (reassign owner). Requires bulk:operations + activities:edit.
  */
 export async function bulkPatchActivitiesHandler(req: Request, res: Response): Promise<void> {
@@ -237,7 +237,7 @@ export async function bulkPatchActivitiesHandler(req: Request, res: Response): P
 }
 
 /**
- * DELETE /api/activities/bulk
+ * DELETE /api/v1/activities/bulk
  * Bulk delete activities. Requires bulk:operations + activities:delete.
  */
 export async function bulkDeleteActivitiesHandler(req: Request, res: Response): Promise<void> {
@@ -263,7 +263,7 @@ const bulkLeadPatchSchema = z.object({
 });
 
 /**
- * PATCH /api/leads/bulk
+ * PATCH /api/v1/leads/bulk
  * Bulk patch leads (reassign owner). Requires bulk:operations + contacts:edit.
  */
 export async function bulkPatchLeadsHandler(req: Request, res: Response): Promise<void> {
@@ -280,7 +280,7 @@ export async function bulkPatchLeadsHandler(req: Request, res: Response): Promis
 }
 
 /**
- * DELETE /api/leads/bulk
+ * DELETE /api/v1/leads/bulk
  * Bulk delete leads. Requires bulk:operations + contacts:delete.
  */
 export async function bulkDeleteLeadsHandler(req: Request, res: Response): Promise<void> {

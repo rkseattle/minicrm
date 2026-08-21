@@ -1,6 +1,6 @@
 /**
  * Pipeline stages API module.
- * Wraps the /api/settings/pipeline-stages endpoints.
+ * Wraps the /api/v1/settings/pipeline-stages endpoints.
  * GET is public; POST/PATCH/DELETE require admin auth.
  */
 
@@ -25,7 +25,7 @@ export function pipelineStagesQueryKey(pipelineId?: string) {
 /** React Query cache key for the default pipeline stages list (backward compat) */
 export const PIPELINE_STAGES_QUERY_KEY = ['settings', 'pipelineStages'] as const;
 
-/** Shape returned by GET /api/settings/pipeline-stages */
+/** Shape returned by GET /api/v1/settings/pipeline-stages */
 export interface PipelineStagesListResponse {
   stages: PipelineStageResponse[];
 }

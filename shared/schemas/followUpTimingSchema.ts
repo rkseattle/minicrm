@@ -19,7 +19,7 @@ export interface FollowUpTimingSuggestion {
   computed_at: string;
 }
 
-/** Response for GET /api/contacts/:id/followup-timing — null means insufficient data. */
+/** Response for GET /api/v1/contacts/:id/followup-timing — null means insufficient data. */
 export interface FollowUpTimingResponse {
   suggestion: FollowUpTimingSuggestion | null;
 }

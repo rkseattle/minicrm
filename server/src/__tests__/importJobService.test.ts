@@ -1,8 +1,8 @@
 /**
  * Unit tests for importJobService and the async import timing contract.
  * Verifies:
- *   1. POST /api/admin/import/:entity/run returns 202 + job_id without running the import inline
- *   2. GET /api/admin/import/jobs/:id returns the current job status
+ *   1. POST /api/v1/admin/import/:entity/run returns 202 + job_id without running the import inline
+ *   2. GET /api/v1/admin/import/jobs/:id returns the current job status
  *   3. pruneOldJobs deletes rows older than 7 days and leaves recent rows intact
  *
  */
@@ -60,7 +60,7 @@ afterAll(async () => {
 
 // ── 1. POST /run returns 202 + job_id promptly (async contract) ──────────────
 
-describe('POST /api/admin/import/contacts/run — async timing', () => {
+describe('POST /api/v1/admin/import/contacts/run — async timing', () => {
   it('returns 202 with job_id without running the import inline', async () => {
     const mapping = JSON.stringify({
       first_name: 'First Name',
@@ -94,9 +94,9 @@ describe('POST /api/admin/import/contacts/run — async timing', () => {
   });
 });
 
-// ── 2. GET /api/admin/import/jobs/:id returns current status ──────────────────
+// ── 2. GET /api/v1/admin/import/jobs/:id returns current status ──────────────────
 
-describe('GET /api/admin/import/jobs/:job_id', () => {
+describe('GET /api/v1/admin/import/jobs/:job_id', () => {
   it('returns 404 for a non-existent job', async () => {
     const res = await request(app)
       .get('/api/v1/admin/import/jobs/00000000-0000-0000-0000-000000000000')

@@ -31,7 +31,7 @@ export const visibilityConfigSchema = z.object({
 });
 export type VisibilityConfig = z.infer<typeof visibilityConfigSchema>;
 
-/** Request body for PUT /api/settings/visibility */
+/** Request body for PUT /api/v1/settings/visibility */
 export const updateVisibilityConfigSchema = visibilityConfigSchema
   .partial()
   .refine((data) => Object.keys(data).length > 0, {

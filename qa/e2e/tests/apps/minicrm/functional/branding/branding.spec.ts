@@ -7,7 +7,7 @@
  *   - Admin can save a company name and see it persisted
  *   - Admin can save a primary colour and see the success message
  *   - Admin can reset branding to defaults
- *   - GET /api/settings/branding is accessible without auth (public endpoint)
+ *   - GET /api/v1/settings/branding is accessible without auth (public endpoint)
  *
  * Framework conventions:
  *   - All tests tagged @functional
@@ -148,7 +148,7 @@ test('admin can reset branding to defaults @functional @serial', async ({
 // Public endpoint (no auth required)
 // ---------------------------------------------------------------------------
 
-test('GET /api/settings/branding is accessible without authentication @functional', async ({
+test('GET /api/v1/settings/branding is accessible without authentication @functional', async ({
   restClient,
 }) => {
   // Use an unauthenticated request by hitting the endpoint directly

@@ -7,7 +7,7 @@ import type { Request, Response } from 'express';
 import { findWarmIntroPaths } from '../services/warmIntroService.js';
 
 /**
- * GET /api/contacts/:id/warm-paths
+ * GET /api/v1/contacts/:id/warm-paths
  * Returns ranked warm introduction paths to the contact through the
  * requesting rep's own contact network. No ownership check on the target
  * contact itself — the whole point is discovering paths to contacts the

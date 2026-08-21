@@ -148,7 +148,7 @@ export async function loginAs(
 // getCurrentUser()
 // ---------------------------------------------------------------------------
 
-/** The authenticated user returned by GET /api/auth/me. */
+/** The authenticated user returned by GET /api/v1/auth/me. */
 export interface CurrentUser {
   id: string;
   email: string;
@@ -158,7 +158,7 @@ export interface CurrentUser {
 }
 
 /**
- * Fetches the currently authenticated user from GET /api/auth/me.
+ * Fetches the currently authenticated user from GET /api/v1/auth/me.
  *
  * @param restClient - An authenticated RestClient.
  * @returns The current user record.
@@ -466,7 +466,7 @@ export async function navigateToProtectedPage(
   const NAVIGATE_TIMEOUT_MS = 15_000;
 
   // Wait for the network to go idle after navigation so the SPA's initial
-  // render and the auth API call (/api/auth/me) have both completed before
+  // render and the auth API call (/api/v1/auth/me) have both completed before
   // we inspect the URL. Without this, waitForURL below can resolve while the
   // browser is still on `path` (the SPA mounted but hasn't yet received the
   // 401 from the auth check and re-rendered with <Navigate to="/login" />).

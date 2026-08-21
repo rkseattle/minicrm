@@ -93,9 +93,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── POST /api/automation/rules ────────────────────────────────────────────────
+// ── POST /api/v1/automation/rules ────────────────────────────────────────────────
 
-describe('POST /api/automation/rules', () => {
+describe('POST /api/v1/automation/rules', () => {
   it('creates a rule and returns 201 with rule object', async () => {
     const res = await request(app)
       .post('/api/v1/automation/rules')
@@ -177,9 +177,9 @@ describe('POST /api/automation/rules', () => {
   });
 });
 
-// ── GET /api/automation/rules ─────────────────────────────────────────────────
+// ── GET /api/v1/automation/rules ─────────────────────────────────────────────────
 
-describe('GET /api/automation/rules', () => {
+describe('GET /api/v1/automation/rules', () => {
   it('returns empty rules array when none exist', async () => {
     const res = await request(app).get('/api/v1/automation/rules').set('Cookie', adminCookie);
 
@@ -218,9 +218,9 @@ describe('GET /api/automation/rules', () => {
   });
 });
 
-// ── GET /api/automation/rules/:id ─────────────────────────────────────────────
+// ── GET /api/v1/automation/rules/:id ─────────────────────────────────────────────
 
-describe('GET /api/automation/rules/:id', () => {
+describe('GET /api/v1/automation/rules/:id', () => {
   it('returns the rule when found', async () => {
     const created = await request(app)
       .post('/api/v1/automation/rules')
@@ -254,9 +254,9 @@ describe('GET /api/automation/rules/:id', () => {
   });
 });
 
-// ── PATCH /api/automation/rules/:id ──────────────────────────────────────────
+// ── PATCH /api/v1/automation/rules/:id ──────────────────────────────────────────
 
-describe('PATCH /api/automation/rules/:id', () => {
+describe('PATCH /api/v1/automation/rules/:id', () => {
   it('updates the rule name and returns 200', async () => {
     const created = await request(app)
       .post('/api/v1/automation/rules')
@@ -308,9 +308,9 @@ describe('PATCH /api/automation/rules/:id', () => {
   });
 });
 
-// ── DELETE /api/automation/rules/:id ─────────────────────────────────────────
+// ── DELETE /api/v1/automation/rules/:id ─────────────────────────────────────────
 
-describe('DELETE /api/automation/rules/:id', () => {
+describe('DELETE /api/v1/automation/rules/:id', () => {
   it('deletes the rule and returns 204', async () => {
     const created = await request(app)
       .post('/api/v1/automation/rules')
@@ -343,9 +343,9 @@ describe('DELETE /api/automation/rules/:id', () => {
   });
 });
 
-// ── GET /api/automation/rules/:id/logs ───────────────────────────────────────
+// ── GET /api/v1/automation/rules/:id/logs ───────────────────────────────────────
 
-describe('GET /api/automation/rules/:id/logs', () => {
+describe('GET /api/v1/automation/rules/:id/logs', () => {
   it('returns an empty logs array when no executions have fired', async () => {
     const created = await request(app)
       .post('/api/v1/automation/rules')

@@ -140,7 +140,7 @@ export async function getJob(jobId: string): Promise<ImportJobRow | null> {
 
 /**
  * Deletes import_jobs rows older than 7 days.
- * Called at the start of each POST /api/admin/import/:type/run request.
+ * Called at the start of each POST /api/v1/admin/import/:type/run request.
  */
 export async function pruneOldJobs(): Promise<void> {
   await pool.query(`DELETE FROM import_jobs WHERE created_at < now() - INTERVAL '7 days'`);

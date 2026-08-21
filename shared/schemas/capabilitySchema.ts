@@ -124,7 +124,7 @@ export const customRoleResponseSchema = z.object({
   updated_at: z.string().or(z.date()),
 });
 
-/** Zod schema for POST /api/custom-roles request body. */
+/** Zod schema for POST /api/v1/custom-roles request body. */
 export const createCustomRoleSchema = z.object({
   name: z
     .string({ required_error: 'Name is required' })
@@ -137,7 +137,7 @@ export const createCustomRoleSchema = z.object({
     .min(1, 'At least one capability is required'),
 });
 
-/** Zod schema for PUT /api/custom-roles/:id request body. */
+/** Zod schema for PUT /api/v1/custom-roles/:id request body. */
 export const updateCustomRoleSchema = z.object({
   name: z
     .string({ required_error: 'Name is required' })
@@ -154,7 +154,7 @@ export const updateCustomRoleSchema = z.object({
   capabilities: z.array(capabilitySchema).min(1, 'At least one capability is required').optional(),
 });
 
-/** Zod schema for POST /api/users/:id/roles request body. */
+/** Zod schema for POST /api/v1/users/:id/roles request body. */
 export const assignUserRoleSchema = z.object({
   roleId: z.string({ required_error: 'roleId is required' }).uuid('roleId must be a valid UUID'),
 });

@@ -50,7 +50,7 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
 };
 
 /**
- * POST /api/deals
+ * POST /api/v1/deals
  * Creates a new deal owned by the authenticated user.
  */
 export async function createDealHandler(req: Request, res: Response): Promise<void> {
@@ -80,7 +80,7 @@ export async function createDealHandler(req: Request, res: Response): Promise<vo
 }
 
 /**
- * GET /api/deals
+ * GET /api/v1/deals
  * Lists deals with optional filters and pagination:
  *   ?owner=me         — scope to the authenticated user's deals
  *   ?account=<uuid>   — filter by account UUID
@@ -146,7 +146,7 @@ export async function listDealsHandler(req: Request, res: Response): Promise<voi
 }
 
 /**
- * GET /api/deals/:id
+ * GET /api/v1/deals/:id
  * Returns a single deal by ID, including its linked contacts.
  */
 export async function getDealHandler(req: Request, res: Response): Promise<void> {
@@ -163,7 +163,7 @@ export async function getDealHandler(req: Request, res: Response): Promise<void>
 }
 
 /**
- * PATCH /api/deals/:id
+ * PATCH /api/v1/deals/:id
  * Updates one or more fields of an existing deal.
  * Reps may only update deals they own; admins may update any deal.
  */
@@ -300,7 +300,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
 }
 
 /**
- * POST /api/deals/:id/contacts/:contactId
+ * POST /api/v1/deals/:id/contacts/:contactId
  * Links a contact to a deal.
  * Returns the updated contacts list for the deal.
  */
@@ -331,7 +331,7 @@ export async function linkContactHandler(req: Request, res: Response): Promise<v
 }
 
 /**
- * DELETE /api/deals/:id/contacts/:contactId
+ * DELETE /api/v1/deals/:id/contacts/:contactId
  * Unlinks a contact from a deal without deleting either record.
  * Returns the updated contacts list for the deal.
  */
@@ -356,7 +356,7 @@ export async function unlinkContactHandler(req: Request, res: Response): Promise
 }
 
 /**
- * DELETE /api/deals/:id
+ * DELETE /api/v1/deals/:id
  * Deletes a deal. Linked contacts and accounts are not affected.
  * Returns 204 No Content on success.
  * Reps may only delete deals they own; admins may delete any deal.
@@ -473,7 +473,7 @@ async function resolveDealExportData(req: Request, res: Response): Promise<DealE
 }
 
 /**
- * GET /api/deals/export
+ * GET /api/v1/deals/export
  * Streams all matching deals as a UTF-8 CSV file.
  *
  * Query params mirror the list endpoint (owner, account) except pagination/sort.
@@ -492,7 +492,7 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
 }
 
 /**
- * GET /api/deals/export.pdf
+ * GET /api/v1/deals/export.pdf
  * Renders all matching deals as a paginated PDF table.
  *
  * Query params and ownership rules are identical to the CSV export above.
@@ -537,10 +537,10 @@ export async function exportDealsPdfHandler(req: Request, res: Response): Promis
 }
 
 /**
- * GET /api/deals/:id/export.pdf
+ * GET /api/v1/deals/:id/export.pdf
  * Renders a single deal as a one-record summary PDF, mirroring the data shown
  * on the deal detail page. Visibility matches getDealHandler — no ownership
- * restriction on read, consistent with GET /api/deals/:id.
+ * restriction on read, consistent with GET /api/v1/deals/:id.
  */
 export async function exportDealPdfHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);

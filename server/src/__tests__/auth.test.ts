@@ -3,7 +3,7 @@
  *
  * Verifies that a deactivated user's JWT is rejected even if the
  *   token is still cryptographically valid, and that must_change_password is
- *   enforced on all routes except /api/auth/change-password.
+ *   enforced on all routes except /api/v1/auth/change-password.
  *
  * Verifies that the login response sets the expected cookie security
  *   flags (httpOnly, sameSite) and that the maxAge matches the 30-minute idle policy.
@@ -100,7 +100,7 @@ describe('deactivated user mid-session', () => {
     expect(res.body.error.code).toBe('USER_INACTIVE');
   });
 
-  it('returns 401 for a deactivated user hitting /api/auth/me', async () => {
+  it('returns 401 for a deactivated user hitting /api/v1/auth/me', async () => {
     const res = await request(app).get('/api/v1/auth/me').set('Cookie', deactivatedCookie);
 
     // me() itself also checks status — either the middleware or controller returns 401
@@ -125,7 +125,7 @@ describe('must_change_password enforcement', () => {
     expect(res.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');
   });
 
-  it('allows the must-change user to reach /api/auth/change-password', async () => {
+  it('allows the must-change user to reach /api/v1/auth/change-password', async () => {
     // Wrong current password — but we should get 401 (credential error), not 403
     const res = await request(app)
       .post('/api/v1/auth/change-password')

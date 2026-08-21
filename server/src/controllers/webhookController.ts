@@ -21,7 +21,7 @@ import {
 } from '../services/webhookService.js';
 
 /**
- * POST /api/admin/webhooks
+ * POST /api/v1/admin/webhooks
  * Creates a new webhook subscription. Returns the subscription and the plaintext
  * signing secret (shown once — not retrievable again). Admin only.
  */
@@ -65,7 +65,7 @@ export async function createWebhookSubscriptionHandler(req: Request, res: Respon
 }
 
 /**
- * GET /api/admin/webhooks
+ * GET /api/v1/admin/webhooks
  * Lists all webhook subscriptions. Admin only.
  */
 export async function listWebhookSubscriptionsHandler(_req: Request, res: Response): Promise<void> {
@@ -82,7 +82,7 @@ export async function listWebhookSubscriptionsHandler(_req: Request, res: Respon
 }
 
 /**
- * GET /api/admin/webhooks/:id
+ * GET /api/v1/admin/webhooks/:id
  * Returns a single webhook subscription. Admin only.
  */
 export async function getWebhookSubscriptionHandler(req: Request, res: Response): Promise<void> {
@@ -109,7 +109,7 @@ export async function getWebhookSubscriptionHandler(req: Request, res: Response)
 }
 
 /**
- * PATCH /api/admin/webhooks/:id
+ * PATCH /api/v1/admin/webhooks/:id
  * Updates a webhook subscription (url, events, status). Admin only.
  */
 export async function updateWebhookSubscriptionHandler(req: Request, res: Response): Promise<void> {
@@ -154,7 +154,7 @@ export async function updateWebhookSubscriptionHandler(req: Request, res: Respon
 }
 
 /**
- * DELETE /api/admin/webhooks/:id
+ * DELETE /api/v1/admin/webhooks/:id
  * Deletes a webhook subscription and its delivery logs. Admin only.
  */
 export async function deleteWebhookSubscriptionHandler(req: Request, res: Response): Promise<void> {
@@ -173,7 +173,7 @@ export async function deleteWebhookSubscriptionHandler(req: Request, res: Respon
 }
 
 /**
- * GET /api/admin/webhooks/:id/logs
+ * GET /api/v1/admin/webhooks/:id/logs
  * Returns paginated delivery logs for a subscription. Admin only.
  */
 export async function listWebhookDeliveryLogsHandler(req: Request, res: Response): Promise<void> {

@@ -6,10 +6,10 @@
  * calling the API directly with a weak password must still get a 400.
  *
  * Endpoints tested:
- *   - POST /api/users/set-password     (invite activation — unauthenticated)
- *   - POST /api/auth/change-password   (authenticated user changes own password)
- *   - POST /api/auth/reset-password    (password reset via token — unauthenticated)
- *   - POST /api/users/:id/admin-set-password  (admin only)
+ *   - POST /api/v1/users/set-password     (invite activation — unauthenticated)
+ *   - POST /api/v1/auth/change-password   (authenticated user changes own password)
+ *   - POST /api/v1/auth/reset-password    (password reset via token — unauthenticated)
+ *   - POST /api/v1/users/:id/admin-set-password  (admin only)
  *
  * PASSWORD_MIN_LENGTH is 12 (from shared/schemas/userSchema.ts — raised by).
  *
@@ -127,9 +127,9 @@ async function getFreshResetToken(): Promise<string> {
   return (tokenRes.body as { token?: string }).token ?? '';
 }
 
-// ── POST /api/users/set-password ─────────────────────────────────────────────
+// ── POST /api/v1/users/set-password ─────────────────────────────────────────────
 
-describe('POST /api/users/set-password password complexity', () => {
+describe('POST /api/v1/users/set-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     const token = await getFreshInviteToken();
     const res = await request(app)
@@ -150,9 +150,9 @@ describe('POST /api/users/set-password password complexity', () => {
   });
 });
 
-// ── POST /api/auth/change-password ───────────────────────────────────────────
+// ── POST /api/v1/auth/change-password ───────────────────────────────────────────
 
-describe('POST /api/auth/change-password password complexity', () => {
+describe('POST /api/v1/auth/change-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     // The complexity check fires before the credential check — any currentPassword
     // value is fine here; the response will be 400 before bcrypt is reached.
@@ -175,9 +175,9 @@ describe('POST /api/auth/change-password password complexity', () => {
   });
 });
 
-// ── POST /api/auth/reset-password ────────────────────────────────────────────
+// ── POST /api/v1/auth/reset-password ────────────────────────────────────────────
 
-describe('POST /api/auth/reset-password password complexity', () => {
+describe('POST /api/v1/auth/reset-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     // Zod validates the password field before the token is verified, so any
     // token value triggers a 400 on a weak password.
@@ -204,9 +204,9 @@ describe('POST /api/auth/reset-password password complexity', () => {
   });
 });
 
-// ── POST /api/users/:id/admin-set-password ────────────────────────────────────
+// ── POST /api/v1/users/:id/admin-set-password ────────────────────────────────────
 
-describe('POST /api/users/:id/admin-set-password password complexity', () => {
+describe('POST /api/v1/users/:id/admin-set-password password complexity', () => {
   it.each(WEAK_PASSWORDS)('returns 400 for $label password', async ({ value }) => {
     const res = await request(app)
       .post(`/api/v1/users/${targetUserId}/admin-set-password`)

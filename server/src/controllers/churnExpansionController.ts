@@ -12,7 +12,7 @@ import {
 } from '../services/churnExpansionService.js';
 
 /**
- * GET /api/accounts/:id/churn-expansion-signal
+ * GET /api/v1/accounts/:id/churn-expansion-signal
  * Returns the active churn/expansion signal for the account, or null when none is active.
  */
 export async function getAccountChurnExpansionSignalHandler(
@@ -47,7 +47,7 @@ export async function getAccountChurnExpansionSignalHandler(
 }
 
 /**
- * GET /api/insights/churn-expansion
+ * GET /api/v1/insights/churn-expansion
  * Returns all active at-risk and expansion account signals from the most recent nightly run,
  * scoped to accounts the caller owns. Admins see signals across all accounts.
  */

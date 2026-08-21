@@ -5,8 +5,8 @@
  * - Rep blocked when tags_restrict_creation is true
  * - Admin allowed when tags_restrict_creation is true
  * - All users allowed when tags_restrict_creation is false
- * - GET /api/settings/tags-restrict-creation accessible to authenticated reps
- * - PATCH /api/settings/tags-restrict-creation restricted to admins
+ * - GET /api/v1/settings/tags-restrict-creation accessible to authenticated reps
+ * - PATCH /api/v1/settings/tags-restrict-creation restricted to admins
  */
 
 import 'dotenv/config';
@@ -63,9 +63,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
 });
 
-// ── GET /api/settings/tags-restrict-creation ─────────────────────────────────
+// ── GET /api/v1/settings/tags-restrict-creation ─────────────────────────────────
 
-describe('GET /api/settings/tags-restrict-creation', () => {
+describe('GET /api/v1/settings/tags-restrict-creation', () => {
   it('returns the current setting (false by default)', async () => {
     const res = await request(app)
       .get('/api/v1/settings/tags-restrict-creation')
@@ -99,9 +99,9 @@ describe('GET /api/settings/tags-restrict-creation', () => {
   });
 });
 
-// ── PATCH /api/settings/tags-restrict-creation ───────────────────────────────
+// ── PATCH /api/v1/settings/tags-restrict-creation ───────────────────────────────
 
-describe('PATCH /api/settings/tags-restrict-creation', () => {
+describe('PATCH /api/v1/settings/tags-restrict-creation', () => {
   it('admin can enable restriction', async () => {
     const res = await request(app)
       .patch('/api/v1/settings/tags-restrict-creation')
@@ -152,9 +152,9 @@ describe('PATCH /api/settings/tags-restrict-creation', () => {
   });
 });
 
-// ── POST /api/tags — tag creation restriction enforcement ─────────────────────
+// ── POST /api/v1/tags — tag creation restriction enforcement ─────────────────────
 
-describe('POST /api/tags with restriction enabled', () => {
+describe('POST /api/v1/tags with restriction enabled', () => {
   it('rep is blocked with TAG_CREATION_RESTRICTED when restriction is true', async () => {
     await setTagsRestrictCreation(true);
 
@@ -180,7 +180,7 @@ describe('POST /api/tags with restriction enabled', () => {
   });
 });
 
-describe('POST /api/tags with restriction disabled', () => {
+describe('POST /api/v1/tags with restriction disabled', () => {
   it('rep can create tags when restriction is false', async () => {
     const res = await request(app)
       .post('/api/v1/tags')

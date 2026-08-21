@@ -3,7 +3,7 @@
  *
  * Proof-of-concept for. Captures and asserts on:
  *   - LCP, CLS, TTFB, INP (Web Vitals via PerformanceObserver injected before load)
- *   - API TTFB for GET /api/contacts (via Playwright response.timing())
+ *   - API TTFB for GET /api/v1/contacts (via Playwright response.timing())
  *
  * Tagged @perf — runs only under the `perf` Playwright project.
  * Not tagged @functional — does not run in the functional suite.
@@ -32,7 +32,7 @@ test('contacts list page load meets performance thresholds @perf', async ({
   const result = await measurePerf({
     scenario: 'contacts-list-load',
     navigateTo: '/contacts',
-    apiUrlFilter: '/api/contacts',
+    apiUrlFilter: '/api/v1/contacts',
   });
 
   // Print metrics to help calibrate thresholds during the spike.
@@ -55,7 +55,7 @@ test('contacts list page load: LCP and API TTFB captured and non-negative @perf'
   const { vitals, apiTimings } = await measurePerf({
     scenario: 'contacts-list-vitals-check',
     navigateTo: '/contacts',
-    apiUrlFilter: '/api/contacts',
+    apiUrlFilter: '/api/v1/contacts',
   });
 
   // Structural assertions: metrics must be captured and sane.
@@ -71,8 +71,8 @@ test('contacts list page load: LCP and API TTFB captured and non-negative @perf'
     expect(vitals.cls, 'CLS must be non-negative').toBeGreaterThanOrEqual(0);
   }
 
-  // At least one API call to /api/contacts should have been captured.
-  expect(apiTimings.length, 'Expected at least one /api/contacts response').toBeGreaterThan(0);
+  // At least one API call to /api/v1/contacts should have been captured.
+  expect(apiTimings.length, 'Expected at least one /api/v1/contacts response').toBeGreaterThan(0);
   for (const t of apiTimings) {
     expect(t.ttfb, `API TTFB for ${t.url} must be non-negative`).toBeGreaterThanOrEqual(0);
     expect(t.duration, `API duration for ${t.url} must be non-negative`).toBeGreaterThanOrEqual(0);

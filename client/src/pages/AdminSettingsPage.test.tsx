@@ -765,7 +765,7 @@ describe('AdminSettingsPage', () => {
       });
     });
 
-    it('clicking Save calls PUT /api/settings/currencies and shows success', async () => {
+    it('clicking Save calls PUT /api/v1/settings/currencies and shows success', async () => {
       const user = userEvent.setup();
       renderOnTab('workspace');
       await waitFor(() => {

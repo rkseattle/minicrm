@@ -19,7 +19,7 @@
  *   - Tests must pass with --workers=4 (no shared mutable state)
  *
  * Token retrieval:
- *   The invite token is returned inline by POST /api/users/invite (admin only),
+ *   The invite token is returned inline by POST /api/v1/users/invite (admin only),
  *   so no separate dev endpoint is needed.
  *
  * Tagged @functional so the suite runs in:

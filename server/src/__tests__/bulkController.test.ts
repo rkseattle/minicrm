@@ -113,9 +113,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── POST /api/contacts/bulk ───────────────────────────────────────────────────
+// ── POST /api/v1/contacts/bulk ───────────────────────────────────────────────────
 
-describe('POST /api/contacts/bulk — reassign', () => {
+describe('POST /api/v1/contacts/bulk — reassign', () => {
   it('rep can bulk reassign their own contacts', async () => {
     const c1 = await createContact({
       first_name: 'Bulk',
@@ -194,7 +194,7 @@ describe('POST /api/contacts/bulk — reassign', () => {
   });
 });
 
-describe('POST /api/contacts/bulk — delete', () => {
+describe('POST /api/v1/contacts/bulk — delete', () => {
   it('rep can bulk delete their own contacts', async () => {
     const c1 = await createContact({
       first_name: 'Bulk',
@@ -213,9 +213,9 @@ describe('POST /api/contacts/bulk — delete', () => {
   });
 });
 
-// ── POST /api/accounts/bulk ───────────────────────────────────────────────────
+// ── POST /api/v1/accounts/bulk ───────────────────────────────────────────────────
 
-describe('POST /api/accounts/bulk — reassign', () => {
+describe('POST /api/v1/accounts/bulk — reassign', () => {
   it('rep can bulk reassign their own accounts', async () => {
     const acct = await createAccount({
       name: `BulkAcct-${uid()}`,
@@ -265,7 +265,7 @@ describe('POST /api/accounts/bulk — reassign', () => {
   });
 });
 
-describe('POST /api/accounts/bulk — delete', () => {
+describe('POST /api/v1/accounts/bulk — delete', () => {
   it('rep can bulk delete their own accounts', async () => {
     const acct = await createAccount({
       name: `BulkAcct-${uid()}-del`,
@@ -283,9 +283,9 @@ describe('POST /api/accounts/bulk — delete', () => {
   });
 });
 
-// ── POST /api/deals/bulk ──────────────────────────────────────────────────────
+// ── POST /api/v1/deals/bulk ──────────────────────────────────────────────────────
 
-describe('POST /api/deals/bulk — reassign', () => {
+describe('POST /api/v1/deals/bulk — reassign', () => {
   it('rep can bulk reassign their own deals', async () => {
     const deal = await createDeal({
       name: `BulkDeal-${uid()}`,
@@ -321,7 +321,7 @@ describe('POST /api/deals/bulk — reassign', () => {
   });
 });
 
-describe('POST /api/deals/bulk — change_stage', () => {
+describe('POST /api/v1/deals/bulk — change_stage', () => {
   it('rep can bulk change stage on their own deals', async () => {
     const deal = await createDeal({
       name: `BulkDeal-${uid()}-stage`,
@@ -374,7 +374,7 @@ describe('POST /api/deals/bulk — change_stage', () => {
   });
 });
 
-describe('POST /api/deals/bulk — delete', () => {
+describe('POST /api/v1/deals/bulk — delete', () => {
   it('rep can bulk delete their own deals', async () => {
     const deal = await createDeal({
       name: `BulkDeal-${uid()}-del`,

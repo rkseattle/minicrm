@@ -1,5 +1,5 @@
 /**
- * SCIM token management routes. Mounted at /api/v1 in app.ts.
+ * SCIM token management routes. Mounted at /api/v1/v1 in app.ts.
  * Both routes require authenticate + requireCapability(Capability.IntegrationsManage).
  */
 

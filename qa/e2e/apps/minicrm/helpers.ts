@@ -65,7 +65,7 @@ export function utcDayOffset(dayOffset: number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Minimal representation of a MiniCRM contact as returned by POST /api/contacts.
+ * Minimal representation of a MiniCRM contact as returned by POST /api/v1/contacts.
  * Field names match the server's snake_case ContactRow shape.
  * Extend as more fields are needed by tests.
  */
@@ -101,7 +101,7 @@ export interface CreateContactOverrides {
 }
 
 /**
- * Minimal representation of a MiniCRM account as returned by POST /api/accounts.
+ * Minimal representation of a MiniCRM account as returned by POST /api/v1/accounts.
  */
 export interface TestAccount {
   id: string;
@@ -368,7 +368,7 @@ export type DealStage =
   'Prospecting' | 'Qualification' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
 
 /**
- * Minimal representation of a MiniCRM deal as returned by POST /api/deals.
+ * Minimal representation of a MiniCRM deal as returned by POST /api/v1/deals.
  */
 export interface TestDeal {
   id: string;
@@ -439,7 +439,7 @@ export async function createTestDeal(
 // ---------------------------------------------------------------------------
 
 /**
- * Minimal representation of a MiniCRM tag as returned by POST /api/tags.
+ * Minimal representation of a MiniCRM tag as returned by POST /api/v1/tags.
  */
 export interface TestTag {
   id: string;
@@ -479,7 +479,7 @@ export async function createTestTag(
   });
   const tag = response.body.tag;
 
-  // Tags require admin to delete (DELETE /api/tags/:id is admin-only).
+  // Tags require admin to delete (DELETE /api/v1/tags/:id is admin-only).
   testData.register('tag', tag.id, `/api/v1/tags/${tag.id}`);
 
   return tag;
@@ -493,7 +493,7 @@ export async function createTestTag(
 export type ActivityType = 'Call' | 'Email' | 'Meeting' | 'Task' | 'Note';
 
 /**
- * Minimal representation of a MiniCRM activity as returned by POST /api/activities.
+ * Minimal representation of a MiniCRM activity as returned by POST /api/v1/activities.
  */
 export interface TestActivity {
   id: string;
@@ -624,7 +624,7 @@ export async function createTestLead(
 // ---------------------------------------------------------------------------
 
 /**
- * Minimal representation of a MiniCRM user as returned by POST /api/users/invite.
+ * Minimal representation of a MiniCRM user as returned by POST /api/v1/users/invite.
  */
 export interface TestUser {
   id: string;
@@ -644,13 +644,13 @@ export interface CreateUserOverrides {
 }
 
 /**
- * Invites a user via POST /api/users/invite, immediately sets their password
- * via POST /api/users/set-password with the invite token, and returns the
+ * Invites a user via POST /api/v1/users/invite, immediately sets their password
+ * via POST /api/v1/users/set-password with the invite token, and returns the
  * created user.
  *
  * **Teardown:** registered automatically. Users cannot be hard-deleted, so
  * cleanup is a `registerCustomTeardown` entry issuing
- * `PATCH /api/users/:id/deactivate` rather than a plain `register()` DELETE.
+ * `PATCH /api/v1/users/:id/deactivate` rather than a plain `register()` DELETE.
  * The entry is registered as soon as the server reports an id — before the
  * response envelope is validated, and before set-password and onboarding — so
  * every step that can throw after the row exists is covered.
@@ -722,7 +722,7 @@ export async function createTestUser(
   }
   const { user, inviteToken } = parsed.data;
 
-  // Use POST /api/users/set-password with the invite token rather than
+  // Use POST /api/v1/users/set-password with the invite token rather than
   // admin-set-password. admin-set-password forces must_change_password=true,
   // which causes a password-change redirect on the invited user's first login
   // and breaks the BVT login assertion. set-password with the invite token
@@ -842,7 +842,7 @@ export async function createTestAdmin(
  * Logs in via the REST API and verifies the session is active before returning.
  *
  * Use this instead of a bare `restClient.post('/api/v1/auth/login', ...)` when the
- * client will immediately make authenticated requests — the GET /api/auth/me call
+ * client will immediately make authenticated requests — the GET /api/v1/auth/me call
  * confirms the session cookie has been set and the server has accepted it, which
  * prevents race conditions under parallel CI load.
  *

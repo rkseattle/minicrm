@@ -15,7 +15,7 @@ const searchQuerySchema = z.object({
 });
 
 /**
- * GET /api/search?q=<term>
+ * GET /api/v1/search?q=<term>
  *
  * Returns contacts, accounts, and deals matching the query string.
  * Requires authentication (handled by middleware in route file).

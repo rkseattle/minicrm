@@ -42,7 +42,7 @@ const winLossQuerySchema = z.object({
 });
 
 /**
- * GET /api/reports/win-loss
+ * GET /api/v1/reports/win-loss
  * Returns a win/loss summary for the given date range.
  * - Admins may filter by owner_id; if omitted, returns team-wide data.
  * - Reps always receive data scoped to their own deals.
@@ -132,7 +132,7 @@ function resolveActivityVolumeParams(
 }
 
 /**
- * GET /api/reports/activity-volume
+ * GET /api/v1/reports/activity-volume
  * Returns an activity count matrix broken down by rep and activity type for a date range.
  * - Admins may filter by owner_id; if omitted, returns team-wide data.
  * - Reps always receive data scoped to their own activities.

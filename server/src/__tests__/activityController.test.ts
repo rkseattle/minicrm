@@ -75,7 +75,7 @@ afterAll(async () => {
 
 // ── Cross-field direction null-guard ──────────────────────────────────────────
 
-describe('PATCH /api/activities/:id — direction null-guard', () => {
+describe('PATCH /api/v1/activities/:id — direction null-guard', () => {
   it('rejects a patch that sets direction: null on an existing Call activity', async () => {
     const call = await createActivity({
       type: 'Call',
@@ -165,9 +165,9 @@ describe('PATCH /api/activities/:id — direction null-guard', () => {
   });
 });
 
-// ── GET /api/activities/my-tasks — pagination envelope ─────────────────────────
+// ── GET /api/v1/activities/my-tasks — pagination envelope ─────────────────────────
 
-describe('GET /api/activities/my-tasks — pagination', () => {
+describe('GET /api/v1/activities/my-tasks — pagination', () => {
   it('returns the paginated envelope with tasks, total, page, and limit', async () => {
     await createActivity({
       type: 'Task',

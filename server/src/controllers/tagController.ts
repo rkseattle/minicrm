@@ -25,7 +25,7 @@ import { getTagsRestrictCreation } from '../services/settingsService.js';
 // ── Global tag CRUD ────────────────────────────────────────────────────────────
 
 /**
- * GET /api/tags
+ * GET /api/v1/tags
  * Returns a paginated list of tags ordered by name.
  */
 export async function listTagsHandler(req: Request, res: Response): Promise<void> {
@@ -41,7 +41,7 @@ export async function listTagsHandler(req: Request, res: Response): Promise<void
 }
 
 /**
- * POST /api/tags
+ * POST /api/v1/tags
  * Creates a new tag. Returns the existing tag if name already exists (idempotent).
  * When tags_restrict_creation is true, rep callers receive 403.
  */
@@ -72,7 +72,7 @@ export async function createTagHandler(req: Request, res: Response): Promise<voi
 }
 
 /**
- * PATCH /api/tags/:id
+ * PATCH /api/v1/tags/:id
  * Renames a tag. Admin only (enforced at route level via requireRole).
  */
 export async function updateTagHandler(req: Request, res: Response): Promise<void> {
@@ -92,7 +92,7 @@ export async function updateTagHandler(req: Request, res: Response): Promise<voi
 }
 
 /**
- * DELETE /api/tags/:id
+ * DELETE /api/v1/tags/:id
  * Deletes a tag and removes it from all records. Admin only.
  */
 export async function deleteTagHandler(req: Request, res: Response): Promise<void> {
@@ -107,9 +107,9 @@ export async function deleteTagHandler(req: Request, res: Response): Promise<voi
 // ── Entity-scoped tag endpoints ────────────────────────────────────────────────
 
 /**
- * GET /api/contacts/:id/tags
- * GET /api/accounts/:id/tags
- * GET /api/deals/:id/tags
+ * GET /api/v1/contacts/:id/tags
+ * GET /api/v1/accounts/:id/tags
+ * GET /api/v1/deals/:id/tags
  * Returns all tags attached to the record.
  */
 export async function listContactTagsHandler(req: Request, res: Response): Promise<void> {
@@ -128,9 +128,9 @@ export async function listDealTagsHandler(req: Request, res: Response): Promise<
 }
 
 /**
- * POST /api/contacts/:id/tags
- * POST /api/accounts/:id/tags
- * POST /api/deals/:id/tags
+ * POST /api/v1/contacts/:id/tags
+ * POST /api/v1/accounts/:id/tags
+ * POST /api/v1/deals/:id/tags
  * Attaches a tag to the record by name, creating the tag if needed.
  */
 export async function attachContactTagHandler(req: Request, res: Response): Promise<void> {
@@ -173,9 +173,9 @@ export async function attachDealTagHandler(req: Request, res: Response): Promise
 }
 
 /**
- * DELETE /api/contacts/:id/tags/:tagId
- * DELETE /api/accounts/:id/tags/:tagId
- * DELETE /api/deals/:id/tags/:tagId
+ * DELETE /api/v1/contacts/:id/tags/:tagId
+ * DELETE /api/v1/accounts/:id/tags/:tagId
+ * DELETE /api/v1/deals/:id/tags/:tagId
  * Detaches a tag from the record.
  */
 export async function detachContactTagHandler(req: Request, res: Response): Promise<void> {
@@ -197,7 +197,7 @@ export async function detachDealTagHandler(req: Request, res: Response): Promise
 }
 
 /**
- * GET /api/tags/:id
+ * GET /api/v1/tags/:id
  * Returns a single tag by ID.
  */
 export async function getTagHandler(req: Request, res: Response): Promise<void> {

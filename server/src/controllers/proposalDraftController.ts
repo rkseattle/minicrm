@@ -26,7 +26,7 @@ const FORBIDDEN_VISIBILITY_ERROR = {
 };
 
 /**
- * POST /api/deals/:id/proposal-draft
+ * POST /api/v1/deals/:id/proposal-draft
  * Generates (or regenerates, with optional focus_notes) an AI proposal
  * draft for the deal. Not persisted — the client holds the draft in memory
  * until the rep exports or dismisses it.
@@ -68,7 +68,7 @@ export async function generateProposalDraftHandler(req: Request, res: Response):
 }
 
 /**
- * POST /api/deals/:id/proposal-draft/export-docx
+ * POST /api/v1/deals/:id/proposal-draft/export-docx
  * Converts an already-generated draft (posted in the request body — never
  * regenerated server-side) into a downloadable DOCX file.
  */

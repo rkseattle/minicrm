@@ -1,7 +1,7 @@
 /**
  * Account lockout tests.
  *
- * Verifies that POST /api/auth/login blocks further attempts with 429
+ * Verifies that POST /api/v1/auth/login blocks further attempts with 429
  * ACCOUNT_TEMPORARILY_LOCKED after LOCKOUT_MAX_ATTEMPTS consecutive failures
  * for the same email address, and that the counter resets on success.
  *

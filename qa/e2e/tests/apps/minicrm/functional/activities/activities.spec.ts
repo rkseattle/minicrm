@@ -114,7 +114,7 @@ test('@smoke @functional F5-C1: create Task → appears in my-tasks with type Ta
     contact_id: contact.id,
   });
 
-  // Verify via API: GET /api/activities/:id returns correct type.
+  // Verify via API: GET /api/v1/activities/:id returns correct type.
   const detail = await getActivityById(restClient, activity.id);
   expect(detail.type, 'type should be Task').toBe('Task');
   expect(detail.status, 'status should be open').toBe('open');
@@ -227,7 +227,7 @@ test('@functional F5-C5: missing linked record → 400 validation error', async 
   expect(caughtStatus, 'missing linked record should return 400').toBe(400);
 });
 
-test('@functional F5-C6: activity visible on associated contact via GET /api/activities?contact=', async ({
+test('@functional F5-C6: activity visible on associated contact via GET /api/v1/activities?contact=', async ({
   restClient,
   testData,
 }) => {
@@ -337,7 +337,7 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
 
   // NOTE: The Jira ticket requests that reassigning a task moves it between
   // users' my-tasks views. The current server implementation does not include
-  // owner_id in the updateActivitySchema, so PATCH /api/activities/:id with
+  // owner_id in the updateActivitySchema, so PATCH /api/v1/activities/:id with
   // { owner_id } strips the unknown field and returns 400 ("At least one field
   // must be provided"). This test verifies that boundary and that the task
   // remains with its original owner. If reassignment is implemented in a future

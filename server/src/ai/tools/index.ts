@@ -1,5 +1,5 @@
 /**
- * NLI tool schema registry — single export consumed by the /api/ai/sessions endpoint.
+ * NLI tool schema registry — single export consumed by the /api/v1/ai/sessions endpoint.
  *
  * buildToolSet(userRole, capabilities) returns the subset of tools that the
  * authenticated user is permitted to see based on their capability set.

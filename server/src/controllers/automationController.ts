@@ -68,7 +68,7 @@ function validateConfigShapes(
 }
 
 /**
- * POST /api/automation/rules
+ * POST /api/v1/automation/rules
  * Creates a new automation rule. Admin only.
  */
 export async function createAutomationRuleHandler(req: Request, res: Response): Promise<void> {
@@ -99,7 +99,7 @@ export async function createAutomationRuleHandler(req: Request, res: Response): 
 }
 
 /**
- * GET /api/automation/rules
+ * GET /api/v1/automation/rules
  * Lists automation rules with pagination. Admin only.
  */
 export async function listAutomationRulesHandler(req: Request, res: Response): Promise<void> {
@@ -115,7 +115,7 @@ export async function listAutomationRulesHandler(req: Request, res: Response): P
 }
 
 /**
- * GET /api/automation/rules/:id
+ * GET /api/v1/automation/rules/:id
  * Returns a single automation rule by ID. Admin only.
  */
 export async function getAutomationRuleHandler(req: Request, res: Response): Promise<void> {
@@ -131,7 +131,7 @@ export async function getAutomationRuleHandler(req: Request, res: Response): Pro
 }
 
 /**
- * PATCH /api/automation/rules/:id
+ * PATCH /api/v1/automation/rules/:id
  * Updates one or more fields of an existing automation rule. Admin only.
  */
 export async function updateAutomationRuleHandler(req: Request, res: Response): Promise<void> {
@@ -181,7 +181,7 @@ export async function updateAutomationRuleHandler(req: Request, res: Response): 
 }
 
 /**
- * DELETE /api/automation/rules/:id
+ * DELETE /api/v1/automation/rules/:id
  * Deletes an automation rule and its logs. Admin only.
  */
 export async function deleteAutomationRuleHandler(req: Request, res: Response): Promise<void> {
@@ -198,7 +198,7 @@ export async function deleteAutomationRuleHandler(req: Request, res: Response): 
 }
 
 /**
- * GET /api/automation/rules/:id/logs
+ * GET /api/v1/automation/rules/:id/logs
  * Returns the 20 most recent execution logs for a rule. Admin only.
  */
 export async function listRuleLogsHandler(req: Request, res: Response): Promise<void> {

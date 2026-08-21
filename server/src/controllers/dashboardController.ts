@@ -7,7 +7,7 @@ import type { Request, Response } from 'express';
 import { getDashboardSummary } from '../services/dashboardService.js';
 
 /**
- * GET /api/dashboard/summary
+ * GET /api/v1/dashboard/summary
  * Returns the dashboard summary metrics for the current user.
  * Admins receive team-wide data; reps receive their own data only.
  */

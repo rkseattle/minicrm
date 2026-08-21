@@ -23,7 +23,7 @@ export interface ParseResponse {
 
 export type ImportJobStatus = 'pending' | 'running' | 'complete' | 'failed';
 
-/** Response from GET /api/admin/import/jobs/:job_id */
+/** Response from GET /api/v1/admin/import/jobs/:job_id */
 export interface ImportJobResponse {
   job_id: string;
   type: string;
@@ -39,7 +39,7 @@ export interface ImportJobResponse {
   created_at: string;
 }
 
-/** Response from POST /api/admin/import/:entity/run (202) */
+/** Response from POST /api/v1/admin/import/:entity/run (202) */
 export interface StartImportResponse {
   job_id: string;
   status: 'pending';

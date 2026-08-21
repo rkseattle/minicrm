@@ -1,6 +1,6 @@
 /**
  * useAuth hook.
- * Wraps the /api/auth/me query with React Query.
+ * Wraps the /api/v1/auth/me query with React Query.
  * Components use this to access the current user and authentication state.
  */
 

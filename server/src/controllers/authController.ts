@@ -40,7 +40,7 @@ import logger from '../logger.js';
 // consolidation set out to remove.
 
 /**
- * POST /api/auth/login
+ * POST /api/v1/auth/login
  * Validates credentials, signs a JWT, and sets it as an httpOnly cookie.
  */
 export async function login(req: Request, res: Response): Promise<void> {
@@ -173,7 +173,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * POST /api/auth/logout
+ * POST /api/v1/auth/logout
  * Clears the auth cookie and writes a logout audit entry.
  */
 export async function logout(req: Request, res: Response): Promise<void> {
@@ -194,7 +194,7 @@ export async function logout(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * GET /api/auth/me
+ * GET /api/v1/auth/me
  * Returns the currently authenticated user (decoded from JWT via middleware).
  */
 export async function me(req: Request, res: Response): Promise<void> {
@@ -210,7 +210,7 @@ export async function me(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * POST /api/auth/change-password
+ * POST /api/v1/auth/change-password
  * Allows an authenticated user to change their own password.
  * Clears the must_change_password flag on success.
  */
@@ -270,7 +270,7 @@ if (!process.env.APP_BASE_URL && process.env.NODE_ENV === 'production') {
 }
 
 /**
- * POST /api/auth/forgot-password
+ * POST /api/v1/auth/forgot-password
  * Accepts an email address and initiates the password reset flow.
  * Always returns 200 regardless of whether the email matches a user,
  * to prevent user enumeration.
@@ -305,7 +305,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
 }
 
 /**
- * POST /api/auth/reset-password
+ * POST /api/v1/auth/reset-password
  * Validates a reset token, updates the user's password, and logs them in.
  * Invalidates the token after use.
  */

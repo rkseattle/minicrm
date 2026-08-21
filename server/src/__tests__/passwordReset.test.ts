@@ -5,8 +5,8 @@
  *   - createPasswordResetToken: generates a token, overwrites an existing one
  *   - findUserByResetToken: finds valid token, rejects expired/missing
  *   - resetPasswordWithToken: happy path, expired token, already-used token
- *   - POST /api/auth/forgot-password: no enumeration (200 for unknown email)
- *   - POST /api/auth/reset-password: success, invalid token, complexity failure
+ *   - POST /api/v1/auth/forgot-password: no enumeration (200 for unknown email)
+ *   - POST /api/v1/auth/reset-password: success, invalid token, complexity failure
  *   - authenticate middleware: rejects JWT issued before password_changed_at
  *
  * Runs against a real PostgreSQL test database via supertest.
@@ -184,10 +184,10 @@ describe('resetPasswordWithToken', () => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/auth/forgot-password
+// POST /api/v1/auth/forgot-password
 // ---------------------------------------------------------------------------
 
-describe('POST /api/auth/forgot-password', () => {
+describe('POST /api/v1/auth/forgot-password', () => {
   it('returns 200 for a known active user email', async () => {
     const user = await createTestUser('forgot-known');
 
@@ -231,10 +231,10 @@ describe('POST /api/auth/forgot-password', () => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/auth/reset-password
+// POST /api/v1/auth/reset-password
 // ---------------------------------------------------------------------------
 
-describe('POST /api/auth/reset-password', () => {
+describe('POST /api/v1/auth/reset-password', () => {
   it('returns 200 and sets a session cookie on success', async () => {
     const user = await createTestUser('api-reset-success');
     const { plaintextToken } = await createPasswordResetToken(user.id);

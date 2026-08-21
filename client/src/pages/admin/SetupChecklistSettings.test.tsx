@@ -3,7 +3,7 @@
  *
  * Verifies:
  * - Reset section renders with the reset button
- * - Clicking Reset calls PUT /api/settings/onboarding with false
+ * - Clicking Reset calls PUT /api/v1/settings/onboarding with false
  * - Success confirmation appears after reset
  * - Error message appears when reset fails
  */

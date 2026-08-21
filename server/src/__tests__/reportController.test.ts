@@ -52,9 +52,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── GET /api/reports/win-loss ─────────────────────────────────────────────────
+// ── GET /api/v1/reports/win-loss ─────────────────────────────────────────────────
 
-describe('GET /api/reports/win-loss', () => {
+describe('GET /api/v1/reports/win-loss', () => {
   const VALID_PARAMS = '?start=2025-01-01&end=2025-12-31';
 
   it('returns 200 with report data for a valid date range', async () => {
@@ -137,9 +137,9 @@ describe('GET /api/reports/win-loss', () => {
   });
 });
 
-// ── GET /api/reports/activity-volume ─────────────────────────────────────────
+// ── GET /api/v1/reports/activity-volume ─────────────────────────────────────────
 
-describe('GET /api/reports/activity-volume', () => {
+describe('GET /api/v1/reports/activity-volume', () => {
   const VALID_PARAMS = '?start=2025-01-01&end=2025-12-31';
 
   it('returns 200 with rows and totals for a valid date range', async () => {
@@ -208,9 +208,9 @@ describe('GET /api/reports/activity-volume', () => {
   });
 });
 
-// ── GET /api/reports/activity-volume/export.pdf ────────────────────────────────
+// ── GET /api/v1/reports/activity-volume/export.pdf ────────────────────────────────
 
-describe('GET /api/reports/activity-volume/export.pdf', () => {
+describe('GET /api/v1/reports/activity-volume/export.pdf', () => {
   const VALID_PARAMS = '?start=2025-01-01&end=2025-12-31';
 
   it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
@@ -246,9 +246,9 @@ describe('GET /api/reports/activity-volume/export.pdf', () => {
   });
 });
 
-// ── GET /api/reports/stage-trend ─────────────────────────────────────────────
+// ── GET /api/v1/reports/stage-trend ─────────────────────────────────────────────
 
-describe('GET /api/reports/stage-trend', () => {
+describe('GET /api/v1/reports/stage-trend', () => {
   it('returns 200 with stages, dataPoints, and window bounds when no days param supplied', async () => {
     const res = await request(app).get('/api/v1/reports/stage-trend').set('Cookie', repCookie);
 

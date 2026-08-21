@@ -291,7 +291,7 @@ describe('rep cannot access admin-only endpoints', () => {
   });
 
   it('returns 403 FORBIDDEN when rep attempts to change another user role', async () => {
-    // PATCH /api/users/:id/role is admin-only; rep should be blocked
+    // PATCH /api/v1/users/:id/role is admin-only; rep should be blocked
     const res = await request(app)
       .patch(`/api/v1/users/${repAId}/role`)
       .set('Cookie', repBCookie)
@@ -309,7 +309,7 @@ describe('rep cannot access admin-only endpoints', () => {
   });
 
   it('returns 200 scoped to rep own data when rep accesses win/loss report', async () => {
-    // Note: GET /api/reports/win-loss is intentionally accessible to reps.
+    // Note: GET /api/v1/reports/win-loss is intentionally accessible to reps.
     // Reps receive their own deals only (scoped by owner_id = req.user.id).
     // This is by design — the endpoint is NOT admin-only.
     const res = await request(app)
@@ -481,21 +481,21 @@ describe("rep cannot modify another rep's account", () => {
 // ── Bulk endpoint auth boundaries ─────────────────────────────────
 
 describe('bulk endpoints require authentication', () => {
-  it('returns 401 when unauthenticated POST to /api/contacts/bulk', async () => {
+  it('returns 401 when unauthenticated POST to /api/v1/contacts/bulk', async () => {
     const res = await request(app)
       .post('/api/v1/contacts/bulk')
       .send({ action: 'delete', ids: [] });
     expect(res.status).toBe(401);
   });
 
-  it('returns 401 when unauthenticated POST to /api/accounts/bulk', async () => {
+  it('returns 401 when unauthenticated POST to /api/v1/accounts/bulk', async () => {
     const res = await request(app)
       .post('/api/v1/accounts/bulk')
       .send({ action: 'delete', ids: [] });
     expect(res.status).toBe(401);
   });
 
-  it('returns 401 when unauthenticated POST to /api/deals/bulk', async () => {
+  it('returns 401 when unauthenticated POST to /api/v1/deals/bulk', async () => {
     const res = await request(app).post('/api/v1/deals/bulk').send({ action: 'delete', ids: [] });
     expect(res.status).toBe(401);
   });

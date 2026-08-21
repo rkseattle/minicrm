@@ -21,7 +21,7 @@
  *
  * AC notes:
  *   - AC1: Notification preferences survive a page reload
- *   - AC2: Admin kill switch is reflected in GET /api/settings/email-notifications
+ *   - AC2: Admin kill switch is reflected in GET /api/v1/settings/email-notifications
  *   - AC3: Recipient count reflects active users with that preference enabled
  *
  *

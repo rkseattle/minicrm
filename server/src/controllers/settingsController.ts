@@ -38,7 +38,7 @@ import { updateVisibilityConfigSchema } from '@minicrm/shared/schemas/visibility
 import logger from '../logger.js';
 
 /**
- * GET /api/settings/default-language
+ * GET /api/v1/settings/default-language
  * Returns the current system-wide default language.
  * Public endpoint — unauthenticated users need this on app load.
  *
@@ -51,7 +51,7 @@ export async function getDefaultLanguageHandler(_req: Request, res: Response): P
 }
 
 /**
- * PATCH /api/settings/default-language
+ * PATCH /api/v1/settings/default-language
  * Updates the system-wide default language. Admin only.
  *
  * @param req - Express request with body `{ language: SupportedLocale }`.
@@ -88,7 +88,7 @@ export async function setDefaultLanguageHandler(req: Request, res: Response): Pr
 }
 
 /**
- * GET /api/settings/nav-layout
+ * GET /api/v1/settings/nav-layout
  * Returns the current system-wide navigation layout.
  * Public endpoint — clients need this before auth to render the shell.
  *
@@ -101,7 +101,7 @@ export async function getNavLayoutHandler(_req: Request, res: Response): Promise
 }
 
 /**
- * PATCH /api/settings/nav-layout
+ * PATCH /api/v1/settings/nav-layout
  * Updates the system-wide navigation layout. Admin only.
  *
  * @param req - Express request with body `{ layout: NavLayout }`.
@@ -140,7 +140,7 @@ export async function setNavLayoutHandler(req: Request, res: Response): Promise<
 // ── Email notifications global toggle ───────────────────────────
 
 /**
- * GET /api/settings/email-notifications
+ * GET /api/v1/settings/email-notifications
  * Returns whether the system-wide email notifications are enabled.
  * Requires authentication (admin sees this in settings page).
  *
@@ -156,7 +156,7 @@ export async function getEmailNotificationsEnabledHandler(
 }
 
 /**
- * PATCH /api/settings/email-notifications
+ * PATCH /api/v1/settings/email-notifications
  * Sets whether the system-wide email notifications are enabled. Admin only.
  *
  * @param req - Express request with body `{ enabled: boolean }`.
@@ -194,7 +194,7 @@ export async function setEmailNotificationsEnabledHandler(
 // ── Default currency ─────────────────────────────────────────────
 
 /**
- * GET /api/settings/default-currency
+ * GET /api/v1/settings/default-currency
  * Returns the current system-wide default currency.
  * Public endpoint — deal create form needs this before auth resolves.
  *
@@ -207,7 +207,7 @@ export async function getDefaultCurrencyHandler(_req: Request, res: Response): P
 }
 
 /**
- * PATCH /api/settings/default-currency
+ * PATCH /api/v1/settings/default-currency
  * Updates the system-wide default currency. Admin only.
  *
  * @param req - Express request with body `{ currency: SupportedCurrency }`.
@@ -245,7 +245,7 @@ export async function setDefaultCurrencyHandler(req: Request, res: Response): Pr
 // ── Default timezone ─────────────────────────────────────────────
 
 /**
- * GET /api/settings/default-timezone
+ * GET /api/v1/settings/default-timezone
  * Returns the current system-wide default display timezone.
  * Public endpoint — the follow-up timing suggestion card needs this before auth resolves.
  *
@@ -258,7 +258,7 @@ export async function getDefaultTimezoneHandler(_req: Request, res: Response): P
 }
 
 /**
- * PATCH /api/settings/default-timezone
+ * PATCH /api/v1/settings/default-timezone
  * Updates the system-wide default display timezone. Admin only.
  *
  * @param req - Express request with body `{ timezone: string }`.
@@ -296,7 +296,7 @@ export async function setDefaultTimezoneHandler(req: Request, res: Response): Pr
 // ── Tag creation restriction ────────────────────────────────────
 
 /**
- * GET /api/settings/tags-restrict-creation
+ * GET /api/v1/settings/tags-restrict-creation
  * Returns whether tag creation is restricted to the Tag Management page.
  * Requires authentication — rep callers need this to know whether to show
  * the "create new tag" option in inline tag inputs.
@@ -310,7 +310,7 @@ export async function getTagsRestrictCreationHandler(_req: Request, res: Respons
 }
 
 /**
- * PATCH /api/settings/tags-restrict-creation
+ * PATCH /api/v1/settings/tags-restrict-creation
  * Sets whether tag creation is restricted. Admin only.
  *
  * @param req - Express request with body `{ restricted: boolean }`.
@@ -344,7 +344,7 @@ export async function setTagsRestrictCreationHandler(req: Request, res: Response
 // ── Exchange rates ───────────────────────────────────────────────
 
 /**
- * GET /api/settings/currencies
+ * GET /api/v1/settings/currencies
  * Returns the full currency configuration including home currency and all rates.
  * Requires authentication.
  *
@@ -357,7 +357,7 @@ export async function getCurrenciesHandler(_req: Request, res: Response): Promis
 }
 
 /**
- * PUT /api/settings/currencies
+ * PUT /api/v1/settings/currencies
  * Atomically replaces the non-home currency set and sets the home currency.
  * Admin only.
  *
@@ -399,7 +399,7 @@ export async function updateCurrenciesHandler(req: Request, res: Response): Prom
 // ── Onboarding ───────────────────────────────────────────────────
 
 /**
- * GET /api/settings/onboarding
+ * GET /api/v1/settings/onboarding
  * Returns first-run detection status and onboarding_completed flag.
  * Visible to both admin and rep users.
  *
@@ -415,7 +415,7 @@ export async function getOnboardingStatusHandler(req: Request, res: Response): P
 }
 
 /**
- * PUT /api/settings/onboarding
+ * PUT /api/v1/settings/onboarding
  * Updates the onboarding_completed flag for the calling user.
  * Available to all authenticated users — writes to the caller's own user row.
  *
@@ -514,7 +514,7 @@ export async function setMfaRequiredHandler(req: Request, res: Response): Promis
 }
 
 /**
- * GET /api/settings/visibility
+ * GET /api/v1/settings/visibility
  * Returns the current per-object-type data visibility policies.
  * Accessible to admin and manager roles.
  */
@@ -524,7 +524,7 @@ export async function getVisibilityConfigHandler(_req: Request, res: Response): 
 }
 
 /**
- * PUT /api/settings/visibility
+ * PUT /api/v1/settings/visibility
  * Updates one or more per-object-type visibility policies. Admin only.
  */
 export async function putVisibilityConfigHandler(req: Request, res: Response): Promise<void> {

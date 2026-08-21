@@ -59,7 +59,7 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
 };
 
 /**
- * POST /api/accounts
+ * POST /api/v1/accounts
  * Creates a new account owned by the authenticated user.
  *
  * If an account with the same name already exists (case-insensitive), returns
@@ -99,7 +99,7 @@ export async function createAccountHandler(req: Request, res: Response): Promise
 }
 
 /**
- * GET /api/accounts
+ * GET /api/v1/accounts
  * Lists accounts with optional filters and pagination:
  *   ?owner=me        — scope to the authenticated user's accounts
  *   ?search=<text>   — case-insensitive substring match on account name
@@ -188,7 +188,7 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
 }
 
 /**
- * GET /api/accounts/:id
+ * GET /api/v1/accounts/:id
  * Returns a single account by ID, subject to the org's account visibility policy.
  */
 export async function getAccountHandler(req: Request, res: Response): Promise<void> {
@@ -220,7 +220,7 @@ export async function getAccountHandler(req: Request, res: Response): Promise<vo
 }
 
 /**
- * PATCH /api/accounts/:id
+ * PATCH /api/v1/accounts/:id
  * Updates one or more fields of an existing account.
  * Reps may only update accounts they own; admins may update any account.
  */
@@ -378,7 +378,7 @@ async function resolveAccountExportData(req: Request): Promise<AccountExportData
 }
 
 /**
- * GET /api/accounts/export
+ * GET /api/v1/accounts/export
  * Streams all matching accounts as a UTF-8 CSV file.
  *
  * Query params mirror the list endpoint (owner, search, industry) except
@@ -397,7 +397,7 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
 }
 
 /**
- * GET /api/accounts/export.pdf
+ * GET /api/v1/accounts/export.pdf
  * Renders all matching accounts as a paginated PDF table.
  *
  * Query params and ownership rules are identical to the CSV export above.
@@ -446,7 +446,7 @@ export async function exportAccountsPdfHandler(req: Request, res: Response): Pro
 }
 
 /**
- * GET /api/accounts/:id/export.pdf
+ * GET /api/v1/accounts/:id/export.pdf
  * Renders a single account as a one-record summary PDF, mirroring the data
  * shown on the account detail page. Visibility matches getAccountHandler —
  * subject to the org's account visibility policy.
@@ -543,7 +543,7 @@ export async function exportAccountPdfHandler(req: Request, res: Response): Prom
 }
 
 /**
- * DELETE /api/accounts/:id
+ * DELETE /api/v1/accounts/:id
  * Deletes an account and unlinks associated contacts. Returns 204 No Content on success.
  * Reps may only delete accounts they own; admins may delete any account.
  */
@@ -566,7 +566,7 @@ export async function deleteAccountHandler(req: Request, res: Response): Promise
 }
 
 /**
- * GET /api/accounts/:id/children
+ * GET /api/v1/accounts/:id/children
  * Returns all direct subsidiary accounts of the given account.
  */
 export async function listChildAccountsHandler(req: Request, res: Response): Promise<void> {
@@ -583,7 +583,7 @@ export async function listChildAccountsHandler(req: Request, res: Response): Pro
 }
 
 /**
- * GET /api/accounts/search
+ * GET /api/v1/accounts/search
  * Type-ahead search for accounts by name. Returns up to 10 matches.
  * Used by the Parent Account selector in AccountForm.
  *

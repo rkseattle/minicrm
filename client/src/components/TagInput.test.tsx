@@ -221,7 +221,7 @@ describe('TagInput — admin with restriction enabled', () => {
         HttpResponse.json({ data: [], total: 0, page: 1, limit: 1000 }),
       ),
     );
-    // Default /api/auth/me handler returns ADMIN_USER
+    // Default /api/v1/auth/me handler returns ADMIN_USER
   });
 
   it('calls onAttach when Enter is pressed (admin is never blocked)', async () => {

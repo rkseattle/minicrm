@@ -48,9 +48,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── GET /api/dashboard/summary ────────────────────────────────────────────────
+// ── GET /api/v1/dashboard/summary ────────────────────────────────────────────────
 
-describe('GET /api/dashboard/summary', () => {
+describe('GET /api/v1/dashboard/summary', () => {
   it('returns 200 with the expected summary shape for an admin', async () => {
     const res = await request(app).get('/api/v1/dashboard/summary').set('Cookie', adminCookie);
 

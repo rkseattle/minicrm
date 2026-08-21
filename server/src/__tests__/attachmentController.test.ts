@@ -123,9 +123,9 @@ async function insertAttachment(opts: {
   return result.rows[0].id;
 }
 
-// ── GET /api/attachments ──────────────────────────────────────────────────────
+// ── GET /api/v1/attachments ──────────────────────────────────────────────────────
 
-describe('GET /api/attachments', () => {
+describe('GET /api/v1/attachments', () => {
   it('returns an attachments array for a record with no uploads', async () => {
     const res = await request(app)
       .get(`/api/v1/attachments?recordType=contact&recordId=${contactId}`)
@@ -197,9 +197,9 @@ describe('GET /api/attachments', () => {
   });
 });
 
-// ── POST /api/attachments ─────────────────────────────────────────────────────
+// ── POST /api/v1/attachments ─────────────────────────────────────────────────────
 
-describe('POST /api/attachments', () => {
+describe('POST /api/v1/attachments', () => {
   it('returns 503 STORAGE_NOT_CONFIGURED when storage is not set up', async () => {
     // The test database has no storage config — upload will hit the STORAGE_NOT_CONFIGURED branch
     const res = await request(app)
@@ -271,7 +271,7 @@ describe('POST /api/attachments', () => {
   });
 });
 
-// ── DELETE /api/attachments/:id ───────────────────────────────────────────────
+// ── DELETE /api/v1/attachments/:id ───────────────────────────────────────────────
 //
 // NOTE: The deleteAttachment service deletes the DB row then calls deleteObject()
 // on the storage key. In test the storage backend is not configured, so a successful
@@ -279,7 +279,7 @@ describe('POST /api/attachments', () => {
 // The tests below cover the auth/guard paths that are resolved before any storage
 // I/O; the happy-path 204 requires a live storage backend and is covered in E2E.
 
-describe('DELETE /api/attachments/:id', () => {
+describe('DELETE /api/v1/attachments/:id', () => {
   it('returns 403 when a non-uploader rep attempts to delete', async () => {
     const attachmentId = await insertAttachment({ uploaderId, filename: 'protected.pdf' });
 

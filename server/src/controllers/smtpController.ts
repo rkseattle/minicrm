@@ -31,7 +31,7 @@ const testSmtpSchema = z.object({
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 /**
- * GET /api/settings/smtp
+ * GET /api/v1/settings/smtp
  * Returns current SMTP configuration. smtp_pass is never included.
  * Accessible by admin and rep roles.
  */
@@ -41,7 +41,7 @@ export async function getSmtpConfigHandler(_req: Request, res: Response): Promis
 }
 
 /**
- * PUT /api/settings/smtp
+ * PUT /api/v1/settings/smtp
  * Updates SMTP configuration. Admin only.
  * If smtp_pass is absent from the payload the stored password is preserved.
  */
@@ -70,7 +70,7 @@ export async function putSmtpConfigHandler(req: Request, res: Response): Promise
 }
 
 /**
- * POST /api/settings/smtp/test
+ * POST /api/v1/settings/smtp/test
  * Sends a test email using the current saved SMTP configuration. Admin only.
  * Returns { success: true } or { success: false, error: string }.
  * The response is always HTTP 200 — the SMTP outcome is in the payload.

@@ -1,7 +1,7 @@
 /**
  * Integration tests for contact-linking via the account controller endpoints.
  *
- * Verifies that POST /api/accounts and PATCH /api/accounts/:id correctly
+ * Verifies that POST /api/v1/accounts and PATCH /api/v1/accounts/:id correctly
  * link and unlink contacts when contact_ids is provided.
  *
  * Runs against a real PostgreSQL test database via supertest.
@@ -84,9 +84,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── POST /api/accounts — contact_ids ────────────────────────────────────────────
+// ── POST /api/v1/accounts — contact_ids ────────────────────────────────────────────
 
-describe('POST /api/accounts — contact_ids', () => {
+describe('POST /api/v1/accounts — contact_ids', () => {
   it('links contacts to the new account when contact_ids is provided', async () => {
     const contactId = await insertContact('post-link@example.com');
 
@@ -137,9 +137,9 @@ describe('POST /api/accounts — contact_ids', () => {
   });
 });
 
-// ── PATCH /api/accounts/:id — contact_ids ────────────────────────────────────────
+// ── PATCH /api/v1/accounts/:id — contact_ids ────────────────────────────────────────
 
-describe('PATCH /api/accounts/:id — contact_ids', () => {
+describe('PATCH /api/v1/accounts/:id — contact_ids', () => {
   it('links new contacts when contact_ids is provided', async () => {
     const createRes = await request(app)
       .post('/api/v1/accounts')

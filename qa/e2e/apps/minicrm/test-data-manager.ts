@@ -34,7 +34,7 @@ interface EntityEntry {
   /** The entity's primary key. */
   id: string | number;
   /**
-   * The REST path used to delete this entity (e.g. `/api/contacts/42`).
+   * The REST path used to delete this entity (e.g. `/api/v1/contacts/42`).
    * Helpers are responsible for constructing the correct path — TestDataManager
    * never infers routes from entity types.
    */
@@ -83,8 +83,8 @@ export interface TeardownResult {
  * Usage:
  * ```ts
  * // In a setup helper:
- * const contact = await restClient.post<Contact>('/api/contacts', payload);
- * testData.register('contact', contact.body.id, `/api/contacts/${contact.body.id}`);
+ * const contact = await restClient.post<Contact>('/api/v1/contacts', payload);
+ * testData.register('contact', contact.body.id, `/api/v1/contacts/${contact.body.id}`);
  * return contact.body;
  *
  * // Teardown is wired automatically by the app-level fixture.
@@ -102,7 +102,7 @@ export class TestDataManager {
    *
    * @param entityType - Human-readable label (e.g. 'contact', 'deal').
    * @param id - Primary key of the created entity.
-   * @param deletePath - REST path for the DELETE request (e.g. `/api/contacts/42`).
+   * @param deletePath - REST path for the DELETE request (e.g. `/api/v1/contacts/42`).
    */
   register(entityType: string, id: string | number, deletePath: string): void {
     this.entries.push({ kind: 'delete', entityType, id, deletePath });

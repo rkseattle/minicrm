@@ -104,7 +104,7 @@ test(
   async ({ page, testData, restClient }) => {
     // Verifies that the button renders when contact.email is set.
     // The complementary guard (button absent when email is empty) is covered by
-    // the server unit test POST /api/contacts/:id/send-email → 400 NO_EMAIL and
+    // the server unit test POST /api/v1/contacts/:id/send-email → 400 NO_EMAIL and
     // the client SendEmailModal unit test (button not rendered when email is falsy).
     const contact = await createTestContact(testData, restClient, {
       first_name: 'HasEmail',
