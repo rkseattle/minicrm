@@ -39,7 +39,7 @@ re-run an exact match on the full slug.
 - **Client:** React + Vite, TanStack Query v5, React Router, Tailwind CSS, i18next
 - **Server:** Node.js + Express + TypeScript, REST, Zod validation
 - **DB:** PostgreSQL 16, node-pg-migrate
-- **Auth:** JWT in httpOnly cookie (8-hour expiry)
+- **Auth:** JWT in httpOnly cookie — 30-minute sliding idle window, 8-hour absolute cap
 - **Infra:** Docker + Docker Compose, npm workspaces (`/client`, `/server`, `/shared`, `/qa`)
 - **gRPC:** ConnectRPC (`@connectrpc/connect-express`) + `@connectrpc/connect-web`
 
@@ -227,8 +227,12 @@ Adding a route? Read [docs/dev/new-endpoint.md](docs/dev/new-endpoint.md) first.
    never trust `req.body` for actor identity.
 3. **ORDER BY allowlist** — validate sort column against an explicit `as const` array
    before SQL interpolation.
-4. **Cookie:** `httpOnly: true, secure: prod-only, sameSite: 'lax', maxAge: 8h`.
-5. **Rate limiting** on `POST /api/auth/login` and `POST /api/auth/forgot-password`
+4. **Cookie:** write the session cookie only through `setSessionCookie`
+   (`server/src/auth/sessionCookie.ts`), which applies
+   `httpOnly: true, secure: prod-only, sameSite: 'lax', maxAge: 30m`. The 8-hour absolute
+   cap is enforced separately via the `login_at` claim, not the cookie. Any other auth
+   cookie spreads `AUTH_COOKIE_ATTRIBUTES` rather than restating the flags.
+5. **Rate limiting** on `POST /api/v1/auth/login` and `POST /api/v1/auth/forgot-password`
    (`E2E=true` bypasses).
 6. **Startup guards:** reject weak `JWT_SECRET` (< 32 chars or known weak values) and
    malformed `NODE_ENCRYPTION_KEY` (must be 64-char hex).
@@ -282,7 +286,7 @@ Always `void fireAutomationTrigger(...)` — never `await`. It swallows all inte
 
 ## Key Domain Rules
 
-- **Pipeline stages are dynamic** — fetch via `GET /api/settings/pipeline-stages`;
+- **Pipeline stages are dynamic** — fetch via `GET /api/v1/settings/pipeline-stages`;
   never hardcode. Validate as non-empty string at Zod level, then verify against the
   `pipeline_stages` table in the service.
 - **Currency** — `deals.currency varchar(3) DEFAULT 'USD'`. Use `SUPPORTED_CURRENCIES`
@@ -314,7 +318,7 @@ Always `void fireAutomationTrigger(...)` — never `await`. It swallows all inte
 - **`data-testid`:** static → `"new-contact-button"`; row-scoped →
   `` `contact-card-${id}` ``; action+entity → `"contacts-export-csv-button"`.
 - **React Query:** every API module exports `FOO_QUERY_KEY = ['foo'] as const`; never
-  inline strings in `queryKey`. `staleTime: 5*60*1000` on `/api/users/active`;
+  inline strings in `queryKey`. `staleTime: 5*60*1000` on `/api/v1/users/active`;
   `staleTime: 0` on dashboard summary. No global `staleTime`.
 - **Responsive:** `min-w-0` on flex children with text; `break-words` on freetext;
   `clamp()` for fluid font sizes. Test at 600/900/1100px.

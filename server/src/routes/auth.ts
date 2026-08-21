@@ -87,7 +87,9 @@ const router = Router();
  *     summary: Authenticate with email and password
  *     description: >
  *       Validates credentials and sets an httpOnly minicrm_token cookie containing
- *       a signed JWT valid for 8 hours. No authentication required.
+ *       a signed JWT valid for 30 minutes. Call POST /api/v1/auth/refresh to slide that
+ *       window; an 8-hour absolute cap from login applies regardless. No authentication
+ *       required.
  *     security: []
  *     requestBody:
  *       required: true

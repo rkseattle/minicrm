@@ -205,9 +205,9 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
     //
     // The project-level storageState (.auth/admin.json, playwright.config.ts) is
     // minted ONCE by globalSetup at suite start, and its JWT carries a 30-minute
-    // SLIDING IDLE expiry (JWT_IDLE_EXPIRY_SECONDS, auth/sessionCookie.ts) — the "8
-    // hours" in the docs is the absolute cap enforced via the login_at claim, not
-    // the token's lifetime. Idle refresh only happens on a context that is
+    // SLIDING IDLE expiry (JWT_IDLE_EXPIRY_SECONDS, auth/sessionCookie.ts). The
+    // separate 8-hour ABSOLUTE_SESSION_CAP_SECONDS runs from the login_at claim and
+    // is not the token's lifetime. Idle refresh only happens on a context that is
     // actually making requests, so any spec whose first navigation lands more
     // than 30 minutes into a run loads a dead cookie and renders /login. Every
     // locator for app content then fails as "all strategies exhausted", which

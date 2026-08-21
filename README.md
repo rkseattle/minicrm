@@ -460,7 +460,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 - Admin can set a user's password directly from the Users page (no email invite required); the user is prompted to change it on their next login
 - Users prompted to change their password are redirected to `/change-password` immediately after login
 - Admin can assign roles (admin / rep) and deactivate / reactivate users
-- JWT stored in httpOnly cookie; sessions expire after 8 hours
+- JWT stored in httpOnly cookie; sessions idle out after 30 minutes, with an 8-hour absolute cap from login
 - Password requirements: at least 12 characters, at least one letter, at least one number, and at least one special character (validated on both client and server via shared Zod schema)
 - Database migration: `007_add_must_change_password.js` adds `must_change_password` boolean column to `users`
 
@@ -889,8 +889,10 @@ npm run generate-spec --workspace=minicrm-server
 ## Auth
 
 - Two roles: `admin` and `rep`
-- Sessions expire after 8 hours of inactivity
-- JWT stored in httpOnly cookie
+- Sessions idle out after 30 minutes of inactivity. The client refreshes the token on
+  user activity, so an active session continues until the 8-hour absolute cap measured
+  from login, which no amount of activity extends.
+- JWT stored in httpOnly cookie named `minicrm_token` (override with `AUTH_COOKIE_NAME`)
 
 ## Pipeline Stages
 

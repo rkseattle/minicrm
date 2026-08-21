@@ -14,6 +14,7 @@ import {
   PASSWORD_MIN_LENGTH,
   passwordComplexitySchema,
 } from '@minicrm/shared/schemas/userSchema.js';
+import { JWT_IDLE_EXPIRY_SECONDS, ABSOLUTE_SESSION_CAP_SECONDS } from '../auth/sessionCookie.js';
 
 describe('setupSwagger — mounts Swagger UI', () => {
   it('GET /api-docs/ returns 200 when setupSwagger has been called', async () => {
@@ -172,5 +173,36 @@ describe('served password contract', () => {
       (f) => f.field.minLength !== undefined && f.field.minLength !== PASSWORD_MIN_LENGTH,
     );
     expect(wrong.map((f) => `${f.path} = ${String(f.field.minLength)}`)).toEqual([]);
+  });
+});
+
+const SECONDS_PER_MINUTE = 60;
+const SECONDS_PER_HOUR = 3600;
+
+describe('served session-lifetime contract', () => {
+  // Shape is fixed by the securitySchemes literal in swagger.ts, not user input.
+  const description = (
+    swaggerSpec as {
+      components: { securitySchemes: { cookieAuth: { description: string } } };
+    }
+  ).components.securitySchemes.cookieAuth.description;
+
+  // Redocly validates structure, not prose, so nothing else stops this description
+  // drifting from the constants. Each value is checked inside its own clause, because a
+  // bare substring match passes even when the window and the cap are swapped.
+  it('gives the token the idle lifetime, not the cap', () => {
+    expect(description).toContain(
+      `valid for ${JWT_IDLE_EXPIRY_SECONDS / SECONDS_PER_MINUTE} minutes`,
+    );
+  });
+
+  it('calls the 8-hour limit an absolute cap from login', () => {
+    expect(description).toContain(
+      `${ABSOLUTE_SESSION_CAP_SECONDS / SECONDS_PER_HOUR}-hour absolute cap`,
+    );
+  });
+
+  it('does not describe the cap as an inactivity timeout', () => {
+    expect(description).not.toMatch(/hours? of inactivity/i);
   });
 });
