@@ -121,6 +121,18 @@ separately. The authoritative table is in
 [docs/dev/e2e-authoring.md](dev/e2e-authoring.md#tags-reference), which also covers how
 to write and register a `@serial` test.
 
+### Choosing what to run
+
+**Push, and let the `pre-push` hook select.** It resolves your diff to the affected
+specs through `select-tests.ts` — the same script CI's select-mode job runs — and widens
+to the full `@functional` suite on its own when the diff is unmapped, the confidence is
+low, or the coverage map is stale.
+
+Do not hand-write a `--grep` to narrow the push gate. It is a third selection path built
+from filenames rather than coverage data, and it skips the attestation that proves the
+selected specs ran against the commit you are pushing. The one place a hand-written
+`--grep` belongs is validating a fix against a spec you watched fail.
+
 ### Reading results
 
 Read `qa/e2e/test-results/results.xml`. Do not judge a run by console output or exit

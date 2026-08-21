@@ -72,7 +72,11 @@ In order, all green, before every `git push`:
    the clean re-resolve. Commit the regenerated lockfile alongside the
    `package.json` change, or CI will install the old tree.
 
-6. E2E per `.claude/gates/e2e-run.md`
+6. **E2E — `git push` runs it.** The `pre-push` hook selects the affected specs and
+   attests that they ran against this HEAD. Do not run Playwright by hand first and then
+   bypass the hook; that replaces reviewed selection with a guess and a proof with an
+   eyeball. See `.claude/gates/e2e-run.md` for the cadence rules and for the manual
+   procedure, which is what the hook's safety net falls back to.
 7. `git status` — scan for tracked files with local modifications that are **not** part
    of the intended commit set. Restore artifacts (`qa/e2e/heal-trends.json`, test
    results, generated outputs) with `git restore <file>`. When unsure whether a change
@@ -81,12 +85,20 @@ In order, all green, before every `git push`:
 Lint and typecheck are separate gates from tests: a branch with type errors fails CI
 even when every test passes locally.
 
-### Not re-running E2E in the push hook
+### Bypassing the push hook
 
-The `pre-push` hook (`scripts/pre-push-tia.ts`) runs its own E2E selection. When step 6
-has just run the gate manually and **nothing has changed since**, that hook run is
-duplicated work on an identical tree — twenty-plus minutes to re-derive a verdict you
-already hold. Skip it:
+`SKIP_TIA_PREPUSH=1` exists for the case where the hook cannot do its job — its
+infrastructure is down, the coverage map is unusable, or you have already run the full
+suite by hand for a reason you can state. It is not the normal path, and reaching for it
+because the hook is slow is how a branch reaches CI with its E2E unverified.
+
+Do not run Playwright manually and then bypass on the grounds that the verdict already
+exists. A hand-composed `--grep` is not the hook's selection: it comes from filenames
+rather than `coverage_test_links`, it is a third implementation alongside the local hook
+and CI's select-mode job, and it produces no attestation. Running the full suite by hand
+avoids the selection problem but still discards the proof.
+
+When a bypass is genuinely warranted:
 
 ```bash
 SKIP_TIA_PREPUSH=1 git push --force-with-lease origin <branch>
@@ -98,8 +110,8 @@ branch — local, gitignored, never blocking. `--no-verify` reaches the same end
 and leaves no record. Use `--no-verify` only when the hook itself is broken in a way the
 env var cannot route around.
 
-All four conditions must hold. They are not a formality — each one is a way the shortcut
-turns into an unverified push:
+If the reason is "I already ran the suite by hand", all four conditions must hold. They
+are not a formality — each one is a way the shortcut turns into an unverified push:
 
 1. **Both halves ran** — non-serial and serial. Skipping the hook after only one half is
    how a whole class of tests reaches CI unexecuted.
@@ -109,7 +121,7 @@ turns into an unverified push:
    rebase afterwards — including a fix for something the runs surfaced — voids the
    result and the gate restarts from step 1. Confirm with `git rev-parse HEAD`, don't
    assume.
-4. **Steps 2–5 and 7 still run.** This skips _only_ the redundant E2E leg. Lint,
+4. **Steps 2–5 and 7 still run.** This skips _only_ the hook's E2E leg. Lint,
    typecheck, unit tests, and the audit gate are cheap, are not what an E2E run covers,
    and the audit in particular fails on advisories published against a lockfile that never
    changed. The hook enforces steps 3 and 5 itself — see below — but not 2, 4, or 7.
@@ -121,7 +133,7 @@ proof by hand — which is why "HEAD is unchanged" is the condition to be strict
 not the one to eyeball.
 
 Never skip the hook to get _around_ a failure, a flake, or a run you'd rather not sit
-through. The only thing this shortcut is for is not paying twice for the same verdict.
+through.
 
 **`SKIP_TIA_PREPUSH=1` does not skip typecheck or the audit gate.** The hook runs both
 (steps 3 and 5) before it consults that variable, so the bypass drops only the E2E leg —

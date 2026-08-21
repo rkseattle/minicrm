@@ -8,19 +8,26 @@ These four rules stack; none relaxes another.
    immediately before pushing. Typecheck / lint / audit / unit tests / QA static checks
    still gate every commit. For a single-commit change that isn't part of an explicit
    phased plan, E2E still runs before the change is considered done.
-2. **Scope the run to the branch's affected domains.** Target the spec files covering
-   domains the branch actually touched with `--grep` — not the whole `@functional`
-   suite. If you are not confident the blast radius is contained, ask before narrowing.
+2. **Let TIA choose the scope; never hand-pick it.** The push gate is `git push` — the
+   `pre-push` hook resolves the diff to affected specs via `select-tests.ts`, the same
+   script CI's select-mode job calls, and widens to the full `@functional` suite by
+   itself when the diff is unmapped, low-confidence, or the map is stale. A `--grep` you
+   compose is a third selection implementation nobody reviewed, built from filenames
+   rather than from `coverage_test_links`. It also discards the hook's attestation, which
+   is what proves the selected specs _ran against this HEAD_ rather than were merely
+   attempted.
 3. **Never rerun, for any reason.** Run once, accept the result. Load-induced timeouts
    are not a reason to rerun. If it fails, root-cause and fix, then run **once** after
    the fix.
 4. **Validate a fix narrowly.** The post-fix run targets only the specific failing
-   spec(s) with `--grep`. The scoped suite gets its one run at the actual push gate.
+   spec(s) with `--grep`. That is the one place a hand-written `--grep` is right: the
+   target is a spec you watched fail, not a guess about blast radius. The selected suite
+   gets its one run at the actual push gate.
 
-Rules 3 and 4, and the failure-handling section below, apply to anyone running this
+Rules 2, 3, and 4, and the failure-handling section below, apply to anyone running this
 suite. They are documented for humans in
 [docs/operations.md](../../docs/operations.md#reading-results); this file is the agent
-copy. Rules 1 and 2 are agent pacing and have no human equivalent.
+copy. Rule 1 is agent pacing and has no human equivalent.
 
 ## Infrastructure — once per dev machine boot
 
@@ -30,7 +37,7 @@ npm run e2e:client   # separate terminal — serves the test UI on :5175, API :3
 ```
 
 > **Before a run that records coverage, use the export + build/up sequence in
-> [The run](#the-run) instead of the bare `up` above.** The server reads
+> [The run, by hand](#the-run-by-hand) instead of the bare `up` above.** The server reads
 > `GIT_COMMIT_SHA` once, at start, so it must be exported first — and a stack started
 > here on one commit keeps tagging dumps with that SHA after you switch branches.
 > Bringing the stack up this way is fine for everything else.
@@ -57,7 +64,12 @@ default is `per-test`, which is what actually produces `coverage_test_links`
 rows; `per-run` routes every dump through `coverage-reporter.ts`'s single
 end-of-run dump with no test attribution at all.
 
-## The run
+## The run, by hand
+
+**The push gate is `git push`** — the hook runs the selected suite and attests it. This
+section is the manual procedure for the cases that sit outside it: the hook's own
+full-suite fallback runs exactly this, and it is what you run when a bypass is warranted
+per `.claude/gates/pre-push.md`, or when validating a fix against a spec you watched fail.
 
 `date` goes in its own Bash call. Never chain it with `&&`.
 

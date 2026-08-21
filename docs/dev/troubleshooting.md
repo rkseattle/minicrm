@@ -171,10 +171,13 @@ then runs a TIA-selected subset of the E2E suite and attests that it really ran.
 
 **Symptom:** your first push on a fresh clone takes far longer than expected.
 **Cause:** with no local coverage map, test selection cannot resolve and falls back to
-the full suite.
-**Fix:** `SKIP_TIA_PREPUSH=1 git push`. This skips **only** the E2E leg — typecheck and
-the audit gate run first and are not bypassed. Every use is appended to
-`.git/tia-prepush-bypass.log`, which is local and never uploaded.
+the full suite. That is the safety net working — an unmapped diff has no evidence for
+narrowing, so it runs everything.
+**Fix:** let it run, or load a coverage map first
+(`npm run load:coverage-map --workspace=minicrm-server`) so selection has something to
+resolve against. `SKIP_TIA_PREPUSH=1 git push` is the last resort and pushes E2E-unverified
+— it skips **only** the E2E leg, typecheck and the audit gate still run, and every use is
+appended to the local `.git/tia-prepush-bypass.log`.
 
 **Symptom:** the hook fails on an advisory you did not introduce.
 **Cause:** the audit gate is unconditional by design; advisories land against versions
