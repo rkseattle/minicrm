@@ -1,5 +1,11 @@
 /**
- * Feature flag routes — all endpoints require authentication and admin role.
+ * Feature flag routes — all endpoints require authentication; all but /me also require
+ * the admin role.
+ *
+ * This router is mounted twice (app.ts), at /api/v1/feature-flags and
+ * /api/v1/admin/feature-flags, so every route below answers on both prefixes. Each
+ * annotation documents one prefix only — the one its callers use — because a second
+ * per-route annotation block would double the spec to describe one handler.
  */
 
 import { Router } from 'express';

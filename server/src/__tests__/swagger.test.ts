@@ -7,6 +7,9 @@
  * - When setupSwagger is NOT called (production mode), the routes return 404
  */
 
+import { LEAD_STATUSES } from '@minicrm/shared/schemas/leadSchema.js';
+import { readdirSync, readFileSync } from 'fs';
+import { join } from 'path';
 import request from 'supertest';
 import express from 'express';
 import { setupSwagger, swaggerSpec } from '../swagger.js';
@@ -241,5 +244,75 @@ describe('server URL does not repeat a path prefix', () => {
       expect(paths.every((path) => path.startsWith(suffix))).toBe(false);
     }
     expect(suffix).toBe('');
+  });
+});
+
+describe('served public-endpoint count', () => {
+  // The description names a count of public operations. An enumeration would drift the
+  // moment a route changes its security; a count at least fails loudly when it does.
+  it('matches the number of operations declaring security: []', () => {
+    const spec = swaggerSpec as {
+      info: { description: string };
+      paths: Record<string, Record<string, { security?: unknown[] }>>;
+    };
+    const publicOperations = Object.values(spec.paths)
+      .flatMap((operations) => Object.values(operations))
+      .filter((operation) => Array.isArray(operation.security) && operation.security.length === 0);
+
+    expect(spec.info.description).toContain(`currently ${publicOperations.length}`);
+  });
+});
+
+describe('spec covers every route registration', () => {
+  // The 'documents all expected API paths' case above names 14 paths out of hundreds and
+  // would pass with the rest deleted. This compares counts instead, so a mass drop shows
+  // up. It is a floor, not equality: featureFlags is one router mounted twice, and three
+  // test-only routes carry an eslint-disable, so registrations slightly exceed operations.
+  const COVERAGE_FLOOR = 0.95;
+
+  it('generates an operation for very nearly every route registration', () => {
+    const routesDir = join(__dirname, '..', 'routes');
+    const registrations = readdirSync(routesDir)
+      .filter((file) => file.endsWith('.ts'))
+      .reduce((total, file) => {
+        const source = readFileSync(join(routesDir, file), 'utf8');
+        return total + (source.match(/^\s*\w+\.(get|post|put|patch|delete|all)\(/gm) ?? []).length;
+      }, 0);
+
+    const spec = swaggerSpec as { paths: Record<string, Record<string, unknown>> };
+    const operations = Object.values(spec.paths).reduce(
+      (total, methods) => total + Object.keys(methods).length,
+      0,
+    );
+
+    expect(registrations).toBeGreaterThan(0);
+    expect(operations / registrations).toBeGreaterThanOrEqual(COVERAGE_FLOOR);
+  });
+});
+
+describe('spec paths are real paths', () => {
+  // swagger-jsdoc treats an @openapi tag anywhere in a JSDoc block as an annotation, so
+  // prose that merely names the tag gets parsed as YAML. A file-header comment doing that
+  // once replaced the whole paths object with 337 single-character keys, and the spec
+  // still generated. Every key must look like a path.
+  it('has no path key that is not a URL path', () => {
+    const spec = swaggerSpec as { paths: Record<string, unknown> };
+    const malformed = Object.keys(spec.paths).filter((path) => !path.startsWith('/'));
+    expect(malformed).toEqual([]);
+  });
+});
+
+describe('enum values in YAML annotations match their constants', () => {
+  // A component schema can spread the constant; a path-level @openapi annotation is YAML
+  // and cannot, so its values are hand-copied and drift silently. Pin the ones that exist.
+  it('leads list status filter offers exactly LEAD_STATUSES', () => {
+    const spec = swaggerSpec as {
+      paths: Record<string, Record<string, { parameters?: Array<Record<string, unknown>> }>>;
+    };
+    const parameter = spec.paths['/api/v1/leads'].get.parameters?.find(
+      (candidate) => candidate['name'] === 'status',
+    );
+    const schema = parameter?.['schema'] as { enum?: string[] } | undefined;
+    expect(schema?.enum).toEqual([...LEAD_STATUSES]);
   });
 });

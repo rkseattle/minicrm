@@ -5,8 +5,8 @@ session lifetime, versioning, error shape, and pagination. It is aimed at develo
 building integrations against a MiniCRM instance.
 
 **The per-endpoint reference is generated from the code, not written here.** Every route
-carries an `@openapi` annotation that a lint rule requires, so the generated spec cannot
-fall behind the routes the way a hand-written catalogue does. See
+carries an `@openapi` annotation that a lint rule requires, so an endpoint cannot be added
+without appearing in the spec — the way a hand-written catalogue silently fell behind. See
 [Reading the endpoint reference](#4-reading-the-endpoint-reference).
 
 ---
@@ -230,7 +230,9 @@ an unversioned request to one reaches no route and returns `404`.
 Two families are covered only in part. `feature-flags` and `ai` are mounted twice, and
 only the admin mount has an alias: `/api/admin/feature-flags` and `/api/admin/ai` redirect
 via the `/api/admin` prefix, while the user-facing `/api/feature-flags` and `/api/ai`
-`404`. Notes are not affected — they mount beneath their parent entity
+`404`. Note that `feature-flags` is one router mounted at both `/api/v1/feature-flags` and
+`/api/v1/admin/feature-flags`, so every one of its routes answers on either prefix even
+though the spec documents each under a single one. Notes are not affected — they mount beneath their parent entity
 (`/api/v1/{entityType}/{entityId}/notes`), so `/api/contacts/{id}/notes` redirects on the
 `/api/contacts` prefix like any other nested path.
 

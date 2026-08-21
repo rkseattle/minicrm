@@ -96,16 +96,11 @@ router.get('/login', asyncHandler(initiateSsoLogin));
 router.get('/callback', asyncHandler(handleSsoCallback));
 
 /**
+ * SAML POST-binding callback. Both bindings hit the same handler, and one annotation
+ * above the GET registration documents both methods of the shared path — a second one
+ * here would need a fragment in the path key, which emits a phantom path into the spec.
+ *
  * @openapi
- * /api/v1/auth/sso/callback#post:
- *   post:
- *     tags: [SSO]
- *     operationId: handleSamlCallbackPost
- *     summary: SAML POST binding callback (see GET variant for full docs)
- *     security: []
- *     responses:
- *       302:
- *         description: Redirect to app on success, or /login?sso_error=<code> on failure
  */
 router.post('/callback', asyncHandler(handleSsoCallback));
 

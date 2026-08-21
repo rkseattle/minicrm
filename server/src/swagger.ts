@@ -12,6 +12,17 @@ import swaggerUi from 'swagger-ui-express';
 import type { Express } from 'express';
 import { PASSWORD_MIN_LENGTH } from '@minicrm/shared/schemas/userSchema.js';
 import { WEBHOOK_EVENT_TYPES } from '@minicrm/shared/schemas/webhookSchema.js';
+import { NAV_LAYOUTS } from '@minicrm/shared/schemas/settingsSchema.js';
+import { LEAD_SOURCES, LEAD_STATUSES } from '@minicrm/shared/schemas/leadSchema.js';
+import {
+  LEAD_ROUTING_CONFIDENCE_LEVELS,
+  LEAD_ROUTING_FACTOR_TYPES,
+} from '@minicrm/shared/schemas/leadRoutingSchema.js';
+import { FEATURE_FLAG_CATEGORIES } from '@minicrm/shared/schemas/featureFlagSchema.js';
+import {
+  AUTOMATION_TRIGGER_TYPES,
+  AUTOMATION_ACTION_TYPES,
+} from '@minicrm/shared/schemas/automationSchema.js';
 
 /** Derived from the schema that enforces it, so the two cannot drift. */
 const PASSWORD_POLICY_DESCRIPTION = `At least ${PASSWORD_MIN_LENGTH} characters, one letter, one number, and one special character`;
@@ -721,7 +732,7 @@ const componentSchemas = {
     type: 'object',
     required: ['layout'],
     properties: {
-      layout: { type: 'string', enum: ['top', 'left', 'hamburger'], example: 'top' },
+      layout: { type: 'string', enum: [...NAV_LAYOUTS], example: 'top' },
     },
   },
   // Mirrors setNavLayoutSchema in shared/schemas/settingsSchema.ts.
@@ -729,7 +740,7 @@ const componentSchemas = {
     type: 'object',
     required: ['layout'],
     properties: {
-      layout: { type: 'string', enum: ['top', 'left', 'hamburger'], example: 'left' },
+      layout: { type: 'string', enum: [...NAV_LAYOUTS], example: 'left' },
     },
   },
 
@@ -957,7 +968,7 @@ const componentSchemas = {
       company_name: { type: 'string', example: 'Acme Corp' },
       lead_source: {
         type: 'string',
-        enum: ['Web', 'Referral', 'Trade Show', 'Cold Outreach', 'Other'],
+        enum: [...LEAD_SOURCES],
         example: 'Referral',
       },
       notes: { type: 'string', example: 'Met at the Seattle trade show' },
@@ -971,7 +982,11 @@ const componentSchemas = {
         required: ['suggested_rep_id', 'confidence', 'contributing_factors'],
         properties: {
           suggested_rep_id: { type: 'string', format: 'uuid' },
-          confidence: { type: 'string', enum: ['high', 'medium', 'low'], example: 'high' },
+          confidence: {
+            type: 'string',
+            enum: [...LEAD_ROUTING_CONFIDENCE_LEVELS],
+            example: 'high',
+          },
           contributing_factors: {
             type: 'array',
             items: {
@@ -980,13 +995,7 @@ const componentSchemas = {
               properties: {
                 type: {
                   type: 'string',
-                  enum: [
-                    'territory_match',
-                    'industry_match',
-                    'workload',
-                    'win_rate',
-                    'availability',
-                  ],
+                  enum: [...LEAD_ROUTING_FACTOR_TYPES],
                   example: 'territory_match',
                 },
                 description: { type: 'string', example: 'Rep owns the US-West territory' },
@@ -1010,7 +1019,7 @@ const componentSchemas = {
       company_name: { type: 'string', example: 'Acme Corp' },
       lead_source: {
         type: 'string',
-        enum: ['Web', 'Referral', 'Trade Show', 'Cold Outreach', 'Other'],
+        enum: [...LEAD_SOURCES],
         example: 'Referral',
       },
       notes: { type: 'string', example: 'Met at the Seattle trade show' },
@@ -1020,7 +1029,7 @@ const componentSchemas = {
       employee_range: { type: 'string', example: '51-200' },
       status: {
         type: 'string',
-        enum: ['New', 'Contacted', 'Qualified', 'Disqualified'],
+        enum: [...LEAD_STATUSES],
         example: 'Qualified',
       },
       disqualification_reason: { type: 'string', nullable: true, example: null },
@@ -1119,7 +1128,7 @@ const componentSchemas = {
       description: { type: 'string', example: 'Trigger-based rules that create tasks' },
       category: {
         type: 'string',
-        enum: ['Core CRM', 'Productivity', 'Data', 'Integrations', 'AI'],
+        enum: [...FEATURE_FLAG_CATEGORIES],
         example: 'Productivity',
       },
       enabled: { type: 'boolean', example: true },
@@ -1205,7 +1214,7 @@ const componentSchemas = {
       enabled: { type: 'boolean', example: true },
       trigger_type: {
         type: 'string',
-        enum: ['deal_stage_changed', 'deal_created', 'contact_created'],
+        enum: [...AUTOMATION_TRIGGER_TYPES],
         example: 'deal_stage_changed',
       },
       trigger_config: {
@@ -1216,7 +1225,7 @@ const componentSchemas = {
       },
       action_type: {
         type: 'string',
-        enum: ['create_task', 'send_notification', 'send_webhook'],
+        enum: [...AUTOMATION_ACTION_TYPES],
         example: 'create_task',
       },
       action_config: {
@@ -1244,7 +1253,7 @@ const componentSchemas = {
       enabled: { type: 'boolean', default: true, example: true },
       trigger_type: {
         type: 'string',
-        enum: ['deal_stage_changed', 'deal_created', 'contact_created'],
+        enum: [...AUTOMATION_TRIGGER_TYPES],
         example: 'deal_stage_changed',
       },
       trigger_config: {
@@ -1255,7 +1264,7 @@ const componentSchemas = {
       },
       action_type: {
         type: 'string',
-        enum: ['create_task', 'send_notification', 'send_webhook'],
+        enum: [...AUTOMATION_ACTION_TYPES],
         example: 'create_task',
       },
       action_config: {
@@ -1469,7 +1478,7 @@ These are intentional exceptions and will not be changed to snake_case.
 
 ## Authentication
 
-All endpoints except \`POST /api/v1/auth/login\`, \`POST /api/v1/auth/logout\`, \`POST /api/v1/users/set-password\`, and \`GET /api/v1/settings/default-language\` require a valid session cookie obtained by calling \`POST /api/v1/auth/login\`.`,
+Endpoints require a valid session cookie obtained by calling \`POST /api/v1/auth/login\`, except the ones whose operation declares \`security: []\` — currently 19, including the health probe, the SSO and MFA login flows, password reset, and the settings a sign-in page reads before a session exists. The spec is the list; enumerating them here would be a second copy to drift.`,
     },
     servers: [
       // Host only: every path already carries its own /api/v1 (or /scim/v2), so a

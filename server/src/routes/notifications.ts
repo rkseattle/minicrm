@@ -51,8 +51,6 @@ router.get('/', authenticate, asyncHandler(getNotificationFeedHandler));
  *         description: Notification marked as read
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *       404:
- *         description: Notification not found
  */
 router.post('/:id/read', authenticate, asyncHandler(markNotificationReadHandler));
 
