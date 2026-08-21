@@ -41,20 +41,19 @@ router.use(authenticate);
  *               type: object
  *               properties:
  *                 token:
- *                   oneOf:
- *                     - type: 'null'
- *                     - type: object
- *                       properties:
- *                         id:
- *                           type: string
- *                           format: uuid
- *                         createdAt:
- *                           type: string
- *                           format: date-time
- *                         lastUsedAt:
- *                           type: string
- *                           format: date-time
- *                           nullable: true
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     lastUsedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:

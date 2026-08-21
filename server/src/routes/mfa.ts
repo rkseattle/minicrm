@@ -252,6 +252,7 @@ if (process.env.NODE_ENV !== 'production') {
    * MFA secret. Used by E2E tests to complete the MFA flow without a real
    * authenticator app. Never available in production.
    */
+  // eslint-disable-next-line local-openapi/require-openapi-tag -- test-only route, never mounted in production
   router.get(
     '/dev/totp-code',
     authenticate,

@@ -44,6 +44,19 @@ const componentSchemas = {
     },
   },
 
+  // ── Tags ───────────────────────────────────────────────────────────────────
+  // Mirrors tagResponseSchema in shared/schemas/tagSchema.ts.
+  Tag: {
+    type: 'object',
+    required: ['id', 'name', 'created_at', 'updated_at'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      name: { type: 'string', example: 'enterprise' },
+      created_at: { type: 'string', format: 'date-time' },
+      updated_at: { type: 'string', format: 'date-time' },
+    },
+  },
+
   // ── Auth ───────────────────────────────────────────────────────────────────
   LoginRequest: {
     type: 'object',
@@ -641,6 +654,641 @@ const componentSchemas = {
     },
   },
 
+  // ── Bulk operations ──────────────────────────────────────────
+  // Mirrors BulkV2Result in server/src/services/bulkV2Service.ts.
+  BulkV2Result: {
+    type: 'object',
+    required: ['succeeded', 'failed'],
+    description: 'Per-record outcome — a failed record does not roll back the others',
+    properties: {
+      succeeded: {
+        type: 'array',
+        items: { type: 'string', format: 'uuid' },
+      },
+      failed: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['id', 'reason'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            reason: { type: 'string', example: 'Not found' },
+          },
+        },
+      },
+    },
+  },
+
+  // ── Webhooks ─────────────────────────────────────────────────
+  // Mirrors webhookSubscriptionResponseSchema in shared/schemas/webhookSchema.ts.
+  WebhookSubscription: {
+    type: 'object',
+    required: ['id', 'url', 'events', 'status', 'created_by', 'created_at'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      url: { type: 'string', format: 'uri', example: 'https://hooks.example.com/minicrm' },
+      events: {
+        type: 'array',
+        items: { type: 'string', example: 'deal.won' },
+      },
+      status: { type: 'string', enum: ['active', 'failed', 'disabled'], example: 'active' },
+      created_by: { type: 'string', format: 'uuid' },
+      created_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
+    },
+  },
+  // Mirrors createWebhookSubscriptionSchema in shared/schemas/webhookSchema.ts.
+  CreateWebhookSubscriptionRequest: {
+    type: 'object',
+    required: ['url', 'events'],
+    properties: {
+      url: { type: 'string', format: 'uri', example: 'https://hooks.example.com/minicrm' },
+      events: {
+        type: 'array',
+        minItems: 1,
+        items: {
+          type: 'string',
+          enum: [
+            'contact.created',
+            'contact.updated',
+            'contact.deleted',
+            'account.created',
+            'account.updated',
+            'account.deleted',
+            'deal.created',
+            'deal.updated',
+            'deal.stage_changed',
+            'deal.won',
+            'deal.lost',
+            'deal.deleted',
+            'activity.created',
+            'activity.completed',
+            'user.invited',
+            'user.activated',
+            'user.deactivated',
+          ],
+        },
+        example: ['deal.won', 'deal.lost'],
+      },
+    },
+  },
+
+  // ── Navigation ───────────────────────────────────────────────
+  // Mirrors navLayoutResponseSchema in shared/schemas/settingsSchema.ts.
+  NavLayoutResponse: {
+    type: 'object',
+    required: ['layout'],
+    properties: {
+      layout: { type: 'string', enum: ['top', 'left', 'hamburger'], example: 'top' },
+    },
+  },
+  // Mirrors setNavLayoutSchema in shared/schemas/settingsSchema.ts.
+  SetNavLayoutRequest: {
+    type: 'object',
+    required: ['layout'],
+    properties: {
+      layout: { type: 'string', enum: ['top', 'left', 'hamburger'], example: 'left' },
+    },
+  },
+
+  // ── Pipelines ────────────────────────────────────────────────
+  // Mirrors pipelineResponseSchema in shared/schemas/pipelineSchema.ts.
+  PipelineResponse: {
+    type: 'object',
+    required: ['id', 'name', 'is_default', 'created_at', 'updated_at'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      name: { type: 'string', example: 'Enterprise Sales' },
+      is_default: { type: 'boolean', example: true },
+      created_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
+      updated_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
+    },
+  },
+  // Mirrors pipelineStageResponseSchema in shared/schemas/pipelineStageSchema.ts.
+  PipelineStageResponse: {
+    type: 'object',
+    required: [
+      'id',
+      'pipeline_id',
+      'name',
+      'sort_order',
+      'probability',
+      'is_terminal',
+      'is_fixed',
+      'stage_exit_requirements',
+    ],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      pipeline_id: { type: 'string', format: 'uuid' },
+      name: { type: 'string', example: 'Negotiation' },
+      sort_order: { type: 'integer', example: 30 },
+      probability: { type: 'integer', minimum: 0, maximum: 100, example: 60 },
+      is_terminal: { type: 'boolean', example: false },
+      is_fixed: { type: 'boolean', example: false },
+      stage_exit_requirements: {
+        type: 'object',
+        required: ['required_fields', 'warning_fields'],
+        description:
+          'Data quality gates — required_fields block the transition, warning_fields do not',
+        properties: {
+          required_fields: { type: 'array', items: { type: 'string' }, example: ['value'] },
+          warning_fields: { type: 'array', items: { type: 'string' }, example: ['close_date'] },
+        },
+      },
+    },
+  },
+
+  // ── Reports ──────────────────────────────────────────────────
+  // Mirrors WinLossReport in server/src/services/reportService.ts.
+  WinLossReport: {
+    type: 'object',
+    required: [
+      'wonCount',
+      'wonValue',
+      'lostCount',
+      'lostValue',
+      'winRate',
+      'lossReasonBreakdown',
+      'mixedCurrencies',
+      'currency',
+      'convertedWonValue',
+      'convertedLostValue',
+      'homeCurrency',
+      'homeSymbol',
+      'unratedCount',
+      'ratesLastUpdated',
+      'hasRates',
+      'repRows',
+    ],
+    properties: {
+      wonCount: { type: 'integer', example: 5 },
+      wonValue: { type: 'string', example: '87000.00' },
+      lostCount: { type: 'integer', example: 2 },
+      lostValue: { type: 'string', example: '30000.00' },
+      winRate: {
+        type: 'number',
+        nullable: true,
+        example: 0.714,
+        description: 'Won / total closed, 0–1. Null when no deals closed in the range.',
+      },
+      lossReasonBreakdown: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['reason', 'count'],
+          properties: {
+            reason: { type: 'string', example: 'Price too high' },
+            count: { type: 'integer', example: 1 },
+          },
+        },
+      },
+      mixedCurrencies: { type: 'boolean', example: false },
+      currency: { type: 'string', nullable: true, example: 'USD' },
+      convertedWonValue: { type: 'string', nullable: true, example: '87000.00' },
+      convertedLostValue: { type: 'string', nullable: true, example: '30000.00' },
+      homeCurrency: { type: 'string', nullable: true, example: 'USD' },
+      homeSymbol: { type: 'string', nullable: true, example: '$' },
+      unratedCount: { type: 'integer', example: 0 },
+      ratesLastUpdated: {
+        type: 'string',
+        format: 'date-time',
+        nullable: true,
+        example: '2025-03-15T09:00:00.000Z',
+      },
+      hasRates: { type: 'boolean', example: true },
+      repRows: {
+        type: 'array',
+        description: 'Populated only on the team-wide view; empty when filtered to one owner',
+        items: {
+          type: 'object',
+          required: [
+            'ownerId',
+            'ownerName',
+            'wonCount',
+            'wonValue',
+            'lostCount',
+            'lostValue',
+            'winRate',
+          ],
+          properties: {
+            ownerId: { type: 'string', format: 'uuid' },
+            ownerName: { type: 'string', example: 'Jane Smith' },
+            wonCount: { type: 'integer', example: 3 },
+            wonValue: { type: 'string', example: '52000.00' },
+            lostCount: { type: 'integer', example: 1 },
+            lostValue: { type: 'string', example: '12000.00' },
+            winRate: { type: 'number', nullable: true, example: 0.75 },
+          },
+        },
+      },
+    },
+  },
+  // Mirrors ActivityVolumeReport in server/src/services/reportService.ts.
+  ActivityVolumeReport: {
+    type: 'object',
+    required: ['rows', 'totals'],
+    properties: {
+      rows: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['ownerId', 'ownerName', 'counts', 'total'],
+          properties: {
+            ownerId: { type: 'string', format: 'uuid' },
+            ownerName: { type: 'string', example: 'Jane Smith' },
+            counts: { $ref: '#/components/schemas/ActivityTypeCounts' },
+            total: { type: 'integer', example: 42 },
+          },
+        },
+      },
+      totals: {
+        allOf: [
+          { $ref: '#/components/schemas/ActivityTypeCounts' },
+          {
+            type: 'object',
+            required: ['total'],
+            properties: { total: { type: 'integer', example: 120 } },
+          },
+        ],
+      },
+    },
+  },
+  // Mirrors ActivityTypeCounts in server/src/services/reportService.ts.
+  ActivityTypeCounts: {
+    type: 'object',
+    required: ['Note', 'Call', 'Email', 'Meeting', 'Task'],
+    properties: {
+      Note: { type: 'integer', example: 12 },
+      Call: { type: 'integer', example: 8 },
+      Email: { type: 'integer', example: 15 },
+      Meeting: { type: 'integer', example: 4 },
+      Task: { type: 'integer', example: 3 },
+    },
+  },
+  // Mirrors StageTrendReport in server/src/services/reportService.ts.
+  StageTrendReport: {
+    type: 'object',
+    required: ['stages', 'dataPoints', 'windowStart', 'windowEnd'],
+    properties: {
+      stages: {
+        type: 'array',
+        description: 'Stage names in pipeline sort_order',
+        items: { type: 'string', example: 'Negotiation' },
+      },
+      dataPoints: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['stage', 'period', 'entered', 'converted'],
+          properties: {
+            stage: { type: 'string', example: 'Negotiation' },
+            period: {
+              type: 'string',
+              format: 'date',
+              description: 'Start of the week or month bucket',
+              example: '2025-03-03',
+            },
+            entered: { type: 'integer', example: 9 },
+            converted: {
+              type: 'integer',
+              example: 5,
+              description: 'Entered deals that later advanced to any other stage',
+            },
+          },
+        },
+      },
+      windowStart: { type: 'string', format: 'date', example: '2025-02-15' },
+      windowEnd: { type: 'string', format: 'date', example: '2025-03-15' },
+    },
+  },
+
+  // ── Lead ─────────────────────────────────────────────────────
+  // Mirrors createLeadSchema in shared/schemas/leadSchema.ts.
+  CreateLeadRequest: {
+    type: 'object',
+    required: ['first_name', 'email'],
+    properties: {
+      first_name: { type: 'string', minLength: 1, example: 'Jane' },
+      last_name: { type: 'string', example: 'Smith' },
+      email: { type: 'string', format: 'email', example: 'jane.smith@acme.com' },
+      phone: { type: 'string', example: '+1-206-555-0100' },
+      company_name: { type: 'string', example: 'Acme Corp' },
+      lead_source: {
+        type: 'string',
+        enum: ['Web', 'Referral', 'Trade Show', 'Cold Outreach', 'Other'],
+        example: 'Referral',
+      },
+      notes: { type: 'string', example: 'Met at the Seattle trade show' },
+      owner_id: { type: 'string', format: 'uuid' },
+      territory: { type: 'string', example: 'US-West' },
+      industry: { type: 'string', example: 'Manufacturing' },
+      employee_range: { type: 'string', example: '51-200' },
+      routing_suggestion: {
+        type: 'object',
+        description: 'Echoes the suggestion the manager saw, to log accept vs override',
+        required: ['suggested_rep_id', 'confidence', 'contributing_factors'],
+        properties: {
+          suggested_rep_id: { type: 'string', format: 'uuid' },
+          confidence: { type: 'string', enum: ['high', 'medium', 'low'], example: 'high' },
+          contributing_factors: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['type', 'description'],
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: [
+                    'territory_match',
+                    'industry_match',
+                    'workload',
+                    'win_rate',
+                    'availability',
+                  ],
+                  example: 'territory_match',
+                },
+                description: { type: 'string', example: 'Rep owns the US-West territory' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  // Mirrors updateLeadSchema in shared/schemas/leadSchema.ts.
+  UpdateLeadRequest: {
+    type: 'object',
+    description: 'At least one field beyond version must be provided',
+    required: ['version'],
+    properties: {
+      first_name: { type: 'string', minLength: 1, example: 'Jane' },
+      last_name: { type: 'string', example: 'Smith' },
+      email: { type: 'string', format: 'email', example: 'jane.smith@acme.com' },
+      phone: { type: 'string', example: '+1-206-555-0100' },
+      company_name: { type: 'string', example: 'Acme Corp' },
+      lead_source: {
+        type: 'string',
+        enum: ['Web', 'Referral', 'Trade Show', 'Cold Outreach', 'Other'],
+        example: 'Referral',
+      },
+      notes: { type: 'string', example: 'Met at the Seattle trade show' },
+      owner_id: { type: 'string', format: 'uuid' },
+      territory: { type: 'string', example: 'US-West' },
+      industry: { type: 'string', example: 'Manufacturing' },
+      employee_range: { type: 'string', example: '51-200' },
+      status: {
+        type: 'string',
+        enum: ['New', 'Contacted', 'Qualified', 'Disqualified'],
+        example: 'Qualified',
+      },
+      disqualification_reason: { type: 'string', nullable: true, example: null },
+      version: {
+        type: 'integer',
+        minimum: 1,
+        example: 1,
+        description: 'Optimistic lock version — must match the current stored value',
+      },
+    },
+  },
+  // Mirrors convertLeadSchema in shared/schemas/leadSchema.ts.
+  ConvertLeadRequest: {
+    type: 'object',
+    required: ['contact', 'account', 'deal'],
+    properties: {
+      contact: {
+        type: 'object',
+        required: ['first_name', 'last_name', 'email'],
+        properties: {
+          first_name: { type: 'string', minLength: 1, example: 'Jane' },
+          last_name: {
+            type: 'string',
+            minLength: 1,
+            example: 'Smith',
+            description: 'Required here even though it is optional on the lead',
+          },
+          email: { type: 'string', format: 'email', example: 'jane.smith@acme.com' },
+          phone: { type: 'string', example: '+1-206-555-0100' },
+        },
+      },
+      account: {
+        oneOf: [
+          {
+            type: 'object',
+            required: ['mode', 'name'],
+            properties: {
+              mode: { type: 'string', enum: ['create'] },
+              name: { type: 'string', minLength: 1, example: 'Acme Corp' },
+            },
+          },
+          {
+            type: 'object',
+            required: ['mode', 'account_id'],
+            properties: {
+              mode: { type: 'string', enum: ['link'] },
+              account_id: { type: 'string', format: 'uuid' },
+            },
+          },
+        ],
+        discriminator: { propertyName: 'mode' },
+      },
+      deal: {
+        type: 'object',
+        required: ['name'],
+        properties: {
+          name: { type: 'string', minLength: 1, example: 'Acme Corp — Platform' },
+          stage: { type: 'string', example: 'Qualification' },
+          value: { type: 'string', example: '25000.00' },
+          close_date: { type: 'string', format: 'date', example: '2025-06-30' },
+        },
+      },
+    },
+  },
+
+  // ── Feature flags ────────────────────────────────────────────
+  // Mirrors FeatureFlagRow in shared/schemas/featureFlagSchema.ts.
+  FeatureFlag: {
+    type: 'object',
+    required: [
+      'flag_key',
+      'label',
+      'description',
+      'category',
+      'enabled',
+      'role_overrides',
+      'enable_at',
+      'rollout_percentage',
+      'rollout_stages',
+      'updated_by',
+      'updated_by_name',
+      'updated_at',
+      'system_flag',
+      'active_user_count',
+      'beta_user_count',
+      'override_count',
+      'group_key',
+    ],
+    properties: {
+      flag_key: {
+        type: 'string',
+        description: 'One of FEATURE_FLAG_KEYS in shared/schemas/featureFlagSchema.ts',
+        example: 'automation_rules',
+      },
+      label: { type: 'string', example: 'Automation rules' },
+      description: { type: 'string', example: 'Trigger-based rules that create tasks' },
+      category: {
+        type: 'string',
+        enum: ['Core CRM', 'Productivity', 'Data', 'Integrations', 'AI'],
+        example: 'Productivity',
+      },
+      enabled: { type: 'boolean', example: true },
+      role_overrides: {
+        type: 'object',
+        nullable: true,
+        description: 'Per-role enable/disable map keyed by role name',
+        additionalProperties: { type: 'boolean' },
+        example: { rep: false },
+      },
+      enable_at: {
+        type: 'string',
+        format: 'date-time',
+        nullable: true,
+        description: 'When set and in the past, the flag is treated as enabled',
+        example: null,
+      },
+      rollout_percentage: {
+        type: 'integer',
+        minimum: 0,
+        maximum: 100,
+        nullable: true,
+        example: 25,
+      },
+      rollout_stages: {
+        type: 'array',
+        nullable: true,
+        description: 'Scheduled advancement steps, ascending by scheduled_at',
+        items: {
+          type: 'object',
+          required: ['percentage', 'scheduled_at'],
+          properties: {
+            percentage: { type: 'integer', minimum: 0, maximum: 100, example: 50 },
+            scheduled_at: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-04-01T09:00:00.000Z',
+            },
+          },
+        },
+      },
+      updated_by: { type: 'string', format: 'uuid', nullable: true },
+      updated_by_name: { type: 'string', nullable: true, example: 'Jane Smith' },
+      updated_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
+      system_flag: { type: 'boolean', example: false },
+      active_user_count: {
+        type: 'integer',
+        example: 17,
+        description: 'Distinct users who used the feature in the last 30 days',
+      },
+      beta_user_count: { type: 'integer', example: 4 },
+      override_count: {
+        type: 'object',
+        required: ['force_enabled', 'force_disabled'],
+        properties: {
+          force_enabled: { type: 'integer', example: 2 },
+          force_disabled: { type: 'integer', example: 1 },
+        },
+      },
+      group_key: { type: 'string', nullable: true, example: 'ai-features' },
+    },
+  },
+
+  // ── Automation ───────────────────────────────────────────────
+  // Mirrors automationRuleResponseSchema in shared/schemas/automationSchema.ts.
+  AutomationRule: {
+    type: 'object',
+    required: [
+      'id',
+      'name',
+      'enabled',
+      'trigger_type',
+      'trigger_config',
+      'action_type',
+      'action_config',
+      'created_by',
+      'created_at',
+      'updated_at',
+    ],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      name: { type: 'string', example: 'Task on move to Negotiation' },
+      enabled: { type: 'boolean', example: true },
+      trigger_type: {
+        type: 'string',
+        enum: ['deal_stage_changed', 'deal_created', 'contact_created'],
+        example: 'deal_stage_changed',
+      },
+      trigger_config: {
+        type: 'object',
+        description: 'Shape depends on trigger_type; validated in the service',
+        additionalProperties: true,
+        example: { stage: 'Negotiation' },
+      },
+      action_type: {
+        type: 'string',
+        enum: ['create_task', 'send_notification', 'send_webhook'],
+        example: 'create_task',
+      },
+      action_config: {
+        type: 'object',
+        description: 'Shape depends on action_type; validated in the service',
+        additionalProperties: true,
+        example: {
+          subject: 'Prepare contract',
+          task_type: 'Task',
+          assignee_type: 'owner',
+          due_date_offset_days: 2,
+        },
+      },
+      created_by: { type: 'string', format: 'uuid' },
+      created_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
+      updated_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
+    },
+  },
+  // Mirrors createAutomationRuleSchema in shared/schemas/automationSchema.ts.
+  CreateAutomationRuleRequest: {
+    type: 'object',
+    required: ['name', 'trigger_type', 'action_type', 'action_config'],
+    properties: {
+      name: { type: 'string', minLength: 1, example: 'Task on move to Negotiation' },
+      enabled: { type: 'boolean', default: true, example: true },
+      trigger_type: {
+        type: 'string',
+        enum: ['deal_stage_changed', 'deal_created', 'contact_created'],
+        example: 'deal_stage_changed',
+      },
+      trigger_config: {
+        type: 'object',
+        description: 'Shape depends on trigger_type; validated in the service',
+        additionalProperties: true,
+        example: { stage: 'Negotiation' },
+      },
+      action_type: {
+        type: 'string',
+        enum: ['create_task', 'send_notification', 'send_webhook'],
+        example: 'create_task',
+      },
+      action_config: {
+        type: 'object',
+        description: 'Shape depends on action_type; validated in the service',
+        additionalProperties: true,
+        example: {
+          subject: 'Prepare contract',
+          task_type: 'Task',
+          assignee_type: 'owner',
+          due_date_offset_days: 2,
+        },
+      },
+    },
+  },
+
   // ── Coverage ─────────────────────────────────────────────────
   CoverageDump: {
     type: 'object',
@@ -895,6 +1543,28 @@ All endpoints except \`POST /api/v1/auth/login\`, \`POST /api/v1/auth/logout\`, 
       },
     ],
     components: {
+      // Reusable error bodies. Every one is the standard { error: { code, message } }
+      // envelope, so they differ only in description and the status they document.
+      responses: Object.fromEntries(
+        [
+          ['ValidationError', 'Request failed Zod validation'],
+          ['BadRequest', 'Malformed or invalid request'],
+          ['Unauthorized', 'Not authenticated'],
+          ['Forbidden', 'Authenticated but not permitted, or feature disabled'],
+          ['NotFound', 'Resource does not exist'],
+          ['Conflict', 'Conflicts with the current state of the resource'],
+        ].map(([name, description]) => [
+          name,
+          {
+            description,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        ]),
+      ),
       securitySchemes: {
         cookieAuth: {
           type: 'apiKey',

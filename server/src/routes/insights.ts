@@ -41,7 +41,7 @@ const router = Router();
  *       200:
  *         description: Cached win/loss insights
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: The ai_win_loss_insights flag is disabled
  */
@@ -52,7 +52,25 @@ router.get(
   asyncHandler(getWinLossInsightsHandler),
 );
 
-/** Exports the cached win/loss insights as CSV. */
+/**
+ * @openapi
+ * /api/v1/insights/win-loss/export.csv:
+ *   get:
+ *     operationId: exportWinLossInsightsCSV
+ *     summary: Export the cached win/loss insights as CSV
+ *     tags: [Insights]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Win/loss insights export
+ *         content:
+ *           text/csv:
+ *             schema: { type: string, format: binary }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ */
 router.get(
   '/win-loss/export.csv',
   authenticate,
@@ -60,7 +78,25 @@ router.get(
   asyncHandler(exportWinLossInsightsCsvHandler),
 );
 
-/** Exports the cached win/loss insights as a PDF document. */
+/**
+ * @openapi
+ * /api/v1/insights/win-loss/export.pdf:
+ *   get:
+ *     operationId: exportWinLossInsightsPDF
+ *     summary: Export the cached win/loss insights as PDF document
+ *     tags: [Insights]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Win/loss insights export
+ *         content:
+ *           application/pdf:
+ *             schema: { type: string, format: binary }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ */
 router.get(
   '/win-loss/export.pdf',
   authenticate,
@@ -85,7 +121,7 @@ router.get(
  *       200:
  *         description: Active churn/expansion signals
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: The ai_churn_expansion_detection flag is disabled
  */
@@ -115,7 +151,7 @@ router.get(
  *       200:
  *         description: Cached coaching insights for the authenticated user
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: The ai_rep_coaching_insights flag is disabled
  */
@@ -145,7 +181,7 @@ router.get(
  *       200:
  *         description: Per-rep coaching insight summary
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Caller is not a manager or admin, or the flag is disabled
  */
@@ -182,7 +218,7 @@ router.get(
  *       200:
  *         description: Cached coaching insights for the requested rep
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Caller is not a manager or admin, is a manager outside the rep's team, or the flag is disabled
  */

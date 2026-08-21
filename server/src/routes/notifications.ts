@@ -29,14 +29,47 @@ const router = Router();
  *       200:
  *         description: Notification feed
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get('/', authenticate, asyncHandler(getNotificationFeedHandler));
 
-/** Marks a single notification as read. */
+/**
+ * @openapi
+ * /api/v1/notifications/{id}/read:
+ *   post:
+ *     operationId: markNotificationRead
+ *     summary: Mark a single notification as read
+ *     tags: [Notifications]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Notification marked as read
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: Notification not found
+ */
 router.post('/:id/read', authenticate, asyncHandler(markNotificationReadHandler));
 
-/** Marks all of the authenticated user's notifications as read. */
+/**
+ * @openapi
+ * /api/v1/notifications/read-all:
+ *   post:
+ *     operationId: markAllNotificationsRead
+ *     summary: Mark all of the authenticated user's notifications as read
+ *     tags: [Notifications]
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: All notifications marked as read
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 router.post('/read-all', authenticate, asyncHandler(markAllNotificationsReadHandler));
 
 export default router;

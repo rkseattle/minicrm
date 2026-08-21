@@ -89,7 +89,7 @@ const router = Router();
  *                 code: VALIDATION_ERROR
  *                 message: Invalid query parameter
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -140,7 +140,7 @@ router.get('/', authenticate, asyncHandler(listAccountsHandler));
  *             schema:
  *               type: string
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get(
   '/export',
@@ -187,7 +187,7 @@ router.get(
  *               type: string
  *               format: binary
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get(
   '/export.pdf',
@@ -244,7 +244,7 @@ router.get(
  *       400:
  *         description: Validation error
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Rep attempting to act on accounts they do not own
  */
@@ -309,7 +309,7 @@ router.post(
  *                 code: VALIDATION_ERROR
  *                 message: Name is required
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -396,7 +396,7 @@ router.get('/search', authenticate, asyncHandler(searchAccountsHandler));
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -447,7 +447,7 @@ router.get('/:id', authenticate, asyncHandler(getAccountHandler));
  *               type: string
  *               format: binary
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         description: Account not found
  */
@@ -519,7 +519,7 @@ router.get(
  *                 code: VALIDATION_ERROR
  *                 message: Name must not be empty
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -580,7 +580,7 @@ router.patch(
  *       204:
  *         description: Account deleted (no content)
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -644,6 +644,46 @@ router.get('/:id/children', authenticate, asyncHandler(listChildAccountsHandler)
 
 // ── Account Tag Routes ───────────────────────────────────────────
 
+/**
+ * @openapi
+ * /api/v1/accounts/{id}/tags:
+ *   get:
+ *     tags: [Accounts]
+ *     operationId: listAccountTags
+ *     summary: List tags on an account
+ *     description: Returns every tag currently attached to the account.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Array of tags attached to the account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tags:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: The tags feature is disabled
+ */
 /** List all tags on an account. */
 router.get(
   '/:id/tags',
@@ -652,6 +692,64 @@ router.get(
   asyncHandler(listAccountTagsHandler),
 );
 
+/**
+ * @openapi
+ * /api/v1/accounts/{id}/tags:
+ *   post:
+ *     tags: [Accounts]
+ *     operationId: attachAccountTag
+ *     summary: Attach a tag to an account
+ *     description: Attaches a tag by name, creating the tag when it does not already exist.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Tag attached (or returned if already attached)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tag:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     name:
+ *                       type: string
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: name is required
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Missing the contacts edit capability, or the tags feature is disabled
+ */
 /** Attach a tag to an account by name, creating the tag if it does not exist. */
 router.post(
   '/:id/tags',
@@ -661,6 +759,36 @@ router.post(
   asyncHandler(attachAccountTagHandler),
 );
 
+/**
+ * @openapi
+ * /api/v1/accounts/{id}/tags/{tagId}:
+ *   delete:
+ *     tags: [Accounts]
+ *     operationId: detachAccountTag
+ *     summary: Detach a tag from an account
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Tag detached
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Missing the contacts edit capability, or the tags feature is disabled
+ */
 /** Detach a tag from an account. */
 router.delete(
   '/:id/tags/:tagId',
@@ -670,6 +798,45 @@ router.delete(
   asyncHandler(detachAccountTagHandler),
 );
 
+/**
+ * @openapi
+ * /api/v1/accounts/{id}/churn-expansion-signal:
+ *   get:
+ *     tags: [Accounts]
+ *     operationId: getAccountChurnExpansionSignal
+ *     summary: Get the account's churn or expansion signal
+ *     description: >
+ *       Returns the active AI-detected churn-risk or expansion signal for the account,
+ *       or null when no signal is currently active.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: The active signal, or null when none is active
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: >
+ *           The AI churn/expansion detection feature is disabled, or the caller has no
+ *           visibility into this account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have visibility into this account.
+ *       404:
+ *         description: Account not found
+ */
 /** Returns the active AI churn/expansion signal for the account, or null when none is active. */
 router.get(
   '/:id/churn-expansion-signal',
@@ -680,6 +847,45 @@ router.get(
 
 // ── AI sentiment tracking ──────────────────────────────────────────
 
+/**
+ * @openapi
+ * /api/v1/accounts/{id}/sentiment-trend:
+ *   get:
+ *     tags: [Accounts]
+ *     operationId: getAccountSentimentTrend
+ *     summary: Get the account's sentiment trend
+ *     description: >
+ *       Returns the aggregate sentiment trend across every contact at the account
+ *       over the last 90 days.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Aggregate sentiment trend for the account
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: >
+ *           The AI sentiment tracking feature is disabled, or the caller has no
+ *           visibility into this account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have visibility into this account.
+ *       404:
+ *         description: Account not found
+ */
 /** Returns the aggregate sentiment trend across all contacts at the account, last 90 days. */
 router.get(
   '/:id/sentiment-trend',
@@ -690,6 +896,53 @@ router.get(
 
 // ── AI relationship health scoring ─────────────────────────────────
 
+/**
+ * @openapi
+ * /api/v1/accounts/{id}/health-score:
+ *   get:
+ *     tags: [Accounts]
+ *     operationId: getAccountHealthScore
+ *     summary: Get the account's relationship health score
+ *     description: >
+ *       Returns the cached relationship health score for the account, or null when a
+ *       score has not yet been computed.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: The cached health score, or null when not yet computed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 score:
+ *                   type: object
+ *                   nullable: true
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: >
+ *           The AI relationship health score feature is disabled, or the caller has no
+ *           visibility into this account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have visibility into this account.
+ *       404:
+ *         description: Account not found
+ */
 /** Returns the cached relationship health score for the account, or null when not yet computed. */
 router.get(
   '/:id/health-score',
@@ -698,6 +951,63 @@ router.get(
   asyncHandler(getAccountHealthScoreHandler),
 );
 
+/**
+ * @openapi
+ * /api/v1/accounts/{id}/health-score/history:
+ *   get:
+ *     tags: [Accounts]
+ *     operationId: getAccountHealthHistory
+ *     summary: Get the account's health score history
+ *     description: Returns up to 6 months of health score history for the trend sparkline.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Health score history points, oldest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 account_id:
+ *                   type: string
+ *                   format: uuid
+ *                 points:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       score:
+ *                         type: number
+ *                       state:
+ *                         type: string
+ *                       computed_at:
+ *                         type: string
+ *                         format: date-time
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: >
+ *           The AI relationship health score feature is disabled, or the caller has no
+ *           visibility into this account
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: FORBIDDEN
+ *                 message: You do not have visibility into this account.
+ *       404:
+ *         description: Account not found
+ */
 /** Returns up to 6 months of health score history for the trend sparkline. */
 router.get(
   '/:id/health-score/history',

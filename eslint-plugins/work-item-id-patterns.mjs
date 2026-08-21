@@ -1,10 +1,13 @@
 /**
- * The single definition of what counts as a work-item ID in a comment, and what is
- * exempt. Imported by both enforcers so they cannot disagree:
+ * The single definition of what counts as a work-item ID in a comment, what is exempt,
+ * and what a real `@openapi` block looks like. Imported by every consumer so they
+ * cannot disagree:
  *
  *   - eslint-plugins/no-work-item-id-in-comment.mjs — lints .ts/.tsx/.mjs/.cjs/.js
  *   - scripts/strip-work-item-ids.ts — covers db/migrations and qa/migrations,
  *     which eslint.config.mjs ignores, and does the removal pass
+ *   - eslint-plugins/require-openapi-tag.mjs — uses OPENAPI_BLOCK for the inverse
+ *     question, whether a docblock really annotates a route
  *
  * Shared rather than hand-synced deliberately. This repo has twice been bitten by
  * copies of a rule drifting apart — see qa/scripts/check-sha-pattern-parity.sh and
