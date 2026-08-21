@@ -3,7 +3,11 @@
  *
  * Two delivery modes:
  *  1. System subscriptions — admins subscribe endpoint URLs to specific event types;
- *     delivery is fire-and-forget with exponential-backoff retry (up to 5 attempts).
+ *     delivery is fire-and-forget, retried on a fixed schedule (up to 5 attempts).
+ *
+ *     Pending retries live in an in-process timer and are lost on restart or crash —
+ *     the window spans about 8.5 hours, longer than a deploy interval. See
+ *     docs/adr/004-webhook-retries-in-memory.md.
  *  2. Automation-triggered — `send_webhook` automation action; single attempt, no retry,
  *     subscription_id = null in delivery logs.
  *
@@ -192,7 +196,7 @@ interface DeliverParams {
 
 /**
  * Self-scheduling delivery runner.
- * On non-2xx or network error, schedules the next attempt with exponential backoff.
+ * On non-2xx or network error, schedules the next attempt from the fixed delay table.
  * After MAX_ATTEMPTS failures marks the subscription 'failed' and notifies admins.
  */
 async function deliverWithRetry(params: DeliverParams): Promise<void> {

@@ -94,14 +94,6 @@ const router = Router();
  *                 message: Invalid query parameter
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  */
 router.get('/', authenticate, asyncHandler(listDealsHandler));
 
@@ -418,14 +410,6 @@ router.delete(
  *                 message: stage must be one of the allowed pipeline values
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  */
 router.post(
   '/',
@@ -475,14 +459,6 @@ router.post(
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       404:
  *         description: Deal not found
  *         content:
@@ -599,14 +575,6 @@ router.get(
  *                 message: stage must be one of the allowed pipeline values
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       403:
  *         description: Rep attempting to update a deal they do not own
  *         content:
@@ -659,14 +627,6 @@ router.patch(
  *         description: Deal deleted (no content)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       403:
  *         description: Rep attempting to delete a deal they do not own
  *         content:
@@ -738,14 +698,6 @@ router.delete(
  *               message: Contact linked to deal
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       404:
  *         description: Deal or contact not found
  *         content:
@@ -796,14 +748,6 @@ router.post(
  *         description: Contact unlinked (no content); also returned when link did not exist
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       404:
  *         description: Deal or contact not found
  *         content:

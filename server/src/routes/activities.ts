@@ -145,14 +145,6 @@ const router = Router();
  *                 message: contact must be a valid UUID
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  */
 router.get(
   '/',
@@ -219,14 +211,6 @@ router.get(
  *               limit: 25
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  */
 router.get(
   '/my-tasks',
@@ -296,14 +280,6 @@ router.get(
  *                 message: At least one of contact_id, account_id, or deal_id is required
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  */
 router.post(
   '/',
@@ -462,14 +438,6 @@ router.delete(
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       404:
  *         description: Activity not found
  *         content:
@@ -554,14 +522,6 @@ router.get(
  *                 message: status must be open or complete
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       403:
  *         description: Rep attempting to update an activity they do not own
  *         content:
@@ -616,14 +576,6 @@ router.patch(
  *         description: Activity deleted (no content)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       403:
  *         description: Rep attempting to delete an activity they do not own
  *         content:

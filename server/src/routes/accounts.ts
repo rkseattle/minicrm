@@ -90,14 +90,6 @@ const router = Router();
  *                 message: Invalid query parameter
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  */
 router.get('/', authenticate, asyncHandler(listAccountsHandler));
 
@@ -310,14 +302,6 @@ router.post(
  *                 message: Name is required
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  */
 router.post(
   '/',
@@ -397,14 +381,6 @@ router.get('/search', authenticate, asyncHandler(searchAccountsHandler));
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       404:
  *         description: Account not found
  *         content:
@@ -520,14 +496,6 @@ router.get(
  *                 message: Name must not be empty
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       403:
  *         description: Rep attempting to update an account they do not own
  *         content:
@@ -581,14 +549,6 @@ router.patch(
  *         description: Account deleted (no content)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       403:
  *         description: Rep attempting to delete an account they do not own
  *         content:

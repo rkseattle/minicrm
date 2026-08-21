@@ -4,6 +4,10 @@
  * Requires every route-handler registration to carry a preceding JSDoc block containing
  * an `@openapi` tag, so the generated OpenAPI spec describes every mounted endpoint.
  *
+ * A registration whose path is not a string literal — a constant or a template literal —
+ * is skipped: without the path there is nothing to name in the report, and no route
+ * registers that way today. That is the rule's blind spot, stated rather than hidden.
+ *
  * `jsdoc/require-jsdoc` already requires *a* JSDoc block on these call sites, and
  * `jsdoc/check-tag-names` only validates tags that are present — so a handler with a
  * plain descriptive comment and no `@openapi` satisfies both while being invisible to

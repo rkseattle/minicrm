@@ -1,5 +1,5 @@
 /**
- * SCIM group-role mapping admin routes. Mounted at /api/v1/v1 in app.ts.
+ * SCIM group-role mapping admin routes. Mounted at /api/v1 in app.ts.
  *
  * All three routes require authenticate + requireCapability(Capability.IntegrationsManage).
  * These are standard JSON responses (not SCIM format) for use by the admin UI.

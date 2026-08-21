@@ -120,14 +120,6 @@ const router = Router();
  *                 message: account must be a valid UUID
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  */
 router.get('/', authenticate, asyncHandler(listContactsHandler));
 
@@ -386,14 +378,6 @@ router.post(
  *                 message: Text to parse is required
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Feature flag ai_contact_enrichment is disabled for this user
  *         content:
@@ -595,14 +579,6 @@ router.delete(
  *                 message: Must be a valid email address
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  */
 router.post(
   '/',
@@ -653,14 +629,6 @@ router.post(
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       404:
  *         description: Contact not found
  *         content:
@@ -778,14 +746,6 @@ router.get(
  *                 message: Must be a valid email address
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       403:
  *         description: Rep attempting to update a contact they do not own
  *         content:
@@ -839,14 +799,6 @@ router.patch(
  *         description: Contact deleted (no content)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       403:
  *         description: Rep attempting to delete a contact they do not own
  *         content:
@@ -920,14 +872,6 @@ router.delete(
  *                   updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHORIZED
- *                 message: Authentication required
  *       404:
  *         description: Contact not found
  *         content:
@@ -1058,10 +1002,6 @@ router.post(
  *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Contact not found
  *         content:
@@ -1139,14 +1079,6 @@ router.post(
  *                         type: boolean
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       404:
  *         description: Contact not found
  *         content:
@@ -1271,14 +1203,6 @@ router.get('/:id/addresses', authenticate, asyncHandler(listContactAddressesHand
  *                 message: label must be 50 characters or fewer
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Caller lacks the required capability
  *         content:
@@ -1417,14 +1341,6 @@ router.post(
  *                 message: city must be 100 characters or fewer
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Caller lacks the required capability
  *         content:
@@ -1483,14 +1399,6 @@ router.patch(
  *         description: Address deleted (no content)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Caller lacks the required capability
  *         content:
@@ -1589,14 +1497,6 @@ router.delete(
  *                       type: boolean
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Caller lacks the required capability
  *         content:
@@ -1671,14 +1571,6 @@ router.post(
  *                         format: date-time
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Feature flag tags is disabled for this user
  *         content:
@@ -1766,14 +1658,6 @@ router.get(
  *                 message: Tag name is required
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Feature flag tags is disabled for this user
  *         content:
@@ -1826,14 +1710,6 @@ router.post(
  *         description: Tag detached (no content)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Feature flag tags is disabled for this user
  *         content:
@@ -1932,14 +1808,6 @@ router.delete(
  *                 message: Sequence has no steps
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Feature flag sequencing is disabled for this user
  *         content:
@@ -2032,14 +1900,6 @@ router.post(
  *                         format: date-time
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Feature flag sequencing is disabled for this user
  *         content:
@@ -2116,14 +1976,6 @@ router.get(
  *                 message: id must be a valid UUID
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Caller is not an admin
  *         content:
@@ -2203,14 +2055,6 @@ router.post(
  *                 message: id must be a valid UUID
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Caller is not an admin
  *         content:
@@ -2286,14 +2130,6 @@ router.get(
  *                   format: date-time
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: >
  *           Feature flag ai_champion_blocker_detection is disabled for this user (FEATURE_DISABLED),
@@ -2379,14 +2215,6 @@ router.get(
  *                   format: date-time
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: >
  *           Feature flag ai_champion_blocker_detection is disabled for this user (FEATURE_DISABLED),
@@ -2500,14 +2328,6 @@ router.post(
  *                 message: Invalid enum value
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: >
  *           Feature flag ai_champion_blocker_detection is disabled for this user (FEATURE_DISABLED),
@@ -2595,14 +2415,6 @@ router.patch(
  *                         format: date-time
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: >
  *           Feature flag ai_sentiment_tracking is disabled for this user (FEATURE_DISABLED),
@@ -2688,14 +2500,6 @@ router.get(
  *                       format: date-time
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: >
  *           Feature flag ai_followup_timing_suggestions is disabled for this user (FEATURE_DISABLED),
@@ -2788,14 +2592,6 @@ router.get(
  *                         type: string
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: Feature flag ai_warm_intro_path is disabled for this user
  *         content:
@@ -2890,14 +2686,6 @@ router.get(
  *                 message: Invalid enum value
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error:
- *                 code: UNAUTHENTICATED
- *                 message: Authentication required
  *       403:
  *         description: >
  *           Feature flag ai_email_draft is disabled for this user (FEATURE_DISABLED),
