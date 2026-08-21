@@ -35,7 +35,7 @@ const updateStatusSchema = z.object({
 const INVITE_TOKEN_EXPIRY = '72h';
 
 /**
- * POST /api/users/invite
+ * POST /api/v1/users/invite
  * Admin creates a new user with status='invited'. No password is set yet.
  * Returns the created user and an invite token the admin can share.
  */
@@ -94,7 +94,7 @@ export async function inviteUser(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * GET /api/users
+ * GET /api/v1/users
  * Returns paginated users. Admin only.
  *   ?page=<n>  — 1-based page number (default 1)
  *   ?limit=<n> — records per page (default 50, max 100)
@@ -116,7 +116,7 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * GET /api/users/active
+ * GET /api/v1/users/active
  * Returns id and name for every active user. Available to all authenticated users
  * so that owner-assignment dropdowns work for reps as well as admins.
  */
@@ -126,7 +126,7 @@ export async function listActiveUsersHandler(_req: Request, res: Response): Prom
 }
 
 /**
- * PATCH /api/users/:id/role
+ * PATCH /api/v1/users/:id/role
  * Updates a user's role. Admin only.
  */
 export async function updateUserRole(req: Request, res: Response): Promise<void> {
@@ -159,7 +159,7 @@ export async function updateUserRole(req: Request, res: Response): Promise<void>
 }
 
 /**
- * PATCH /api/users/:id/deactivate
+ * PATCH /api/v1/users/:id/deactivate
  * Sets user status to 'inactive'. Admin only.
  */
 export async function deactivateUser(req: Request, res: Response): Promise<void> {
@@ -180,7 +180,7 @@ export async function deactivateUser(req: Request, res: Response): Promise<void>
 }
 
 /**
- * PATCH /api/users/:id/reactivate
+ * PATCH /api/v1/users/:id/reactivate
  * Sets user status to 'active'. Admin only.
  */
 export async function reactivateUser(req: Request, res: Response): Promise<void> {
@@ -201,7 +201,7 @@ export async function reactivateUser(req: Request, res: Response): Promise<void>
 }
 
 /**
- * PATCH /api/users/:id/status
+ * PATCH /api/v1/users/:id/status
  * Sets user status via { active: boolean }. Admin only.
  * Rejects self-deactivation with 409.
  */
@@ -246,7 +246,7 @@ export async function updateUserStatusHandler(req: Request, res: Response): Prom
 }
 
 /**
- * POST /api/users/set-password
+ * POST /api/v1/users/set-password
  * Unauthenticated endpoint. Accepts an invite token and a new password.
  * Verifies the token, hashes the password, sets it, and activates the user.
  */
@@ -309,7 +309,7 @@ export async function setPassword(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * GET /api/users/me/language
+ * GET /api/v1/users/me/language
  * Returns the authenticated user's stored language preference, or null if not set.
  */
 export async function getMyPreferredLanguage(req: Request, res: Response): Promise<void> {
@@ -318,7 +318,7 @@ export async function getMyPreferredLanguage(req: Request, res: Response): Promi
 }
 
 /**
- * PATCH /api/users/me/language
+ * PATCH /api/v1/users/me/language
  * Persists the authenticated user's language preference.
  * Accepts { language: SupportedLocale | null } — null clears the preference.
  */
@@ -348,7 +348,7 @@ export async function setMyPreferredLanguage(req: Request, res: Response): Promi
 }
 
 /**
- * GET /api/users/me/notification-preferences
+ * GET /api/v1/users/me/notification-preferences
  * Returns the authenticated user's email notification preference flags.
  */
 export async function getMyNotificationPrefs(req: Request, res: Response): Promise<void> {
@@ -361,7 +361,7 @@ export async function getMyNotificationPrefs(req: Request, res: Response): Promi
 }
 
 /**
- * PATCH /api/users/me/notification-preferences
+ * PATCH /api/v1/users/me/notification-preferences
  * Persists the authenticated user's email notification preference flags.
  */
 export async function updateMyNotificationPrefs(req: Request, res: Response): Promise<void> {
@@ -392,7 +392,7 @@ export async function updateMyNotificationPrefs(req: Request, res: Response): Pr
 }
 
 /**
- * GET /api/users/me/notification-recipient-count
+ * GET /api/v1/users/me/notification-recipient-count
  * Returns the count of active users with at least one notification enabled. Admin only.
  */
 export async function getNotificationRecipientCount(_req: Request, res: Response): Promise<void> {
@@ -401,7 +401,7 @@ export async function getNotificationRecipientCount(_req: Request, res: Response
 }
 
 /**
- * POST /api/users/:id/reset-onboarding
+ * POST /api/v1/users/:id/reset-onboarding
  * Admin resets a user's onboarding_completed flag to false. Admin only.
  *
  * @param req - Express request with `id` param (target user UUID).
@@ -435,7 +435,7 @@ export async function resetOnboardingHandler(req: Request, res: Response): Promi
 }
 
 /**
- * POST /api/users/:id/api-token
+ * POST /api/v1/users/:id/api-token
  * Issues a new API token for a service account user. Admin only.
  * Any previously issued token is atomically revoked on issuance.
  * The plaintext token is returned exactly once — it is never stored.
@@ -470,7 +470,7 @@ export async function issueApiToken(req: Request, res: Response): Promise<void> 
 }
 
 /**
- * DELETE /api/users/:id/api-token
+ * DELETE /api/v1/users/:id/api-token
  * Revokes the API token for a service account user. Admin only.
  * After revocation the token is immediately invalid — no grace period.
  */
@@ -504,7 +504,7 @@ export async function revokeApiToken(req: Request, res: Response): Promise<void>
 }
 
 /**
- * POST /api/users/:id/admin-set-password
+ * POST /api/v1/users/:id/admin-set-password
  * Admin sets a user's password directly, without requiring an invite token.
  * The target user will be prompted to change their password on next login.
  * Admin only.

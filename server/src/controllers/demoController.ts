@@ -1,6 +1,6 @@
 /**
  * Demo data controller.
- * Request/response shaping for the /api/admin/demo endpoints.
+ * Request/response shaping for the /api/v1/admin/demo endpoints.
  * All business logic lives in demoService.
  */
 
@@ -8,7 +8,7 @@ import type { Request, Response } from 'express';
 import * as demoService from '../services/demoService.js';
 
 /**
- * GET /api/admin/demo/status
+ * GET /api/v1/admin/demo/status
  * Returns whether demo data is currently present.
  */
 export async function getDemoStatusHandler(_req: Request, res: Response): Promise<void> {
@@ -17,7 +17,7 @@ export async function getDemoStatusHandler(_req: Request, res: Response): Promis
 }
 
 /**
- * POST /api/admin/demo/seed
+ * POST /api/v1/admin/demo/seed
  * Seeds demo data. 409 if already present.
  */
 export async function seedDemoHandler(_req: Request, res: Response): Promise<void> {
@@ -35,7 +35,7 @@ export async function seedDemoHandler(_req: Request, res: Response): Promise<voi
 }
 
 /**
- * POST /api/admin/demo/reset
+ * POST /api/v1/admin/demo/reset
  * Removes all demo data then re-seeds from scratch.
  */
 export async function resetDemoHandler(_req: Request, res: Response): Promise<void> {
@@ -44,7 +44,7 @@ export async function resetDemoHandler(_req: Request, res: Response): Promise<vo
 }
 
 /**
- * DELETE /api/admin/demo
+ * DELETE /api/v1/admin/demo
  * Removes all demo-flagged records. 409 if none present.
  */
 export async function removeDemoHandler(_req: Request, res: Response): Promise<void> {

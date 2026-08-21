@@ -9,7 +9,7 @@
  *
  * Verifies that must_change_password is enforced at the API layer,
  *   not just client-side. A user with must_change_password=true receives 403
- *   PASSWORD_CHANGE_REQUIRED on all routes except /api/auth/change-password,
+ *   PASSWORD_CHANGE_REQUIRED on all routes except /api/v1/auth/change-password,
  *   regardless of whether they go through the React app.
  *
  * Runs against a real PostgreSQL test database via supertest.

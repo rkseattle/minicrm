@@ -38,7 +38,7 @@ const urlSchema = z
   .startsWith('http', 'Must begin with http:// or https://');
 
 /**
- * Schema for the PUT /api/settings/branding request body.
+ * Schema for the PUT /api/v1/settings/branding request body.
  * All fields are optional — admin can update a subset of branding fields at once.
  */
 export const setBrandingSchema = z.object({
@@ -81,7 +81,7 @@ export interface BrandingConfig {
   poweredByEnabled: boolean;
 }
 
-/** Shape returned by GET /api/settings/branding */
+/** Shape returned by GET /api/v1/settings/branding */
 export interface BrandingResponse {
   branding: BrandingConfig | null;
 }

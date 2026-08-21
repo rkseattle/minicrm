@@ -1,6 +1,6 @@
 /**
  * Demo data API module.
- * Wraps the /api/admin/demo endpoints. All calls require admin auth.
+ * Wraps the /api/v1/admin/demo endpoints. All calls require admin auth.
  */
 
 import apiClient from './axiosInstance.js';

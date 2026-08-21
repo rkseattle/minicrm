@@ -9,7 +9,7 @@ import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import { getFollowUpTiming } from '../services/followUpTimingService.js';
 
 /**
- * GET /api/contacts/:id/followup-timing
+ * GET /api/v1/contacts/:id/followup-timing
  * Returns the best-time-to-contact suggestion for the contact, or null when
  * there is insufficient interaction history (fewer than 5 logged interactions).
  */

@@ -54,7 +54,7 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
 };
 
 /**
- * POST /api/contacts
+ * POST /api/v1/contacts
  * Creates a new contact owned by the authenticated user.
  *
  * If a contact with the same email already exists, returns 409 with the
@@ -117,7 +117,7 @@ export async function createContactHandler(req: Request, res: Response): Promise
 }
 
 /**
- * GET /api/contacts
+ * GET /api/v1/contacts
  * Lists contacts with optional filters and pagination:
  *   ?owner=me          — scope to the authenticated user's contacts
  *   ?account=<uuid>    — scope to a specific account UUID
@@ -197,7 +197,7 @@ export async function listContactsHandler(req: Request, res: Response): Promise<
 }
 
 /**
- * GET /api/contacts/:id
+ * GET /api/v1/contacts/:id
  * Returns a single contact by ID.
  */
 export async function getContactHandler(req: Request, res: Response): Promise<void> {
@@ -213,7 +213,7 @@ export async function getContactHandler(req: Request, res: Response): Promise<vo
 }
 
 /**
- * PATCH /api/contacts/:id
+ * PATCH /api/v1/contacts/:id
  * Updates one or more fields of an existing contact.
  * Reps may only update contacts they own; admins may update any contact.
  */
@@ -286,7 +286,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
 }
 
 /**
- * GET /api/contacts/:id/deals
+ * GET /api/v1/contacts/:id/deals
  * Returns all deals linked to a contact via the deal_contacts join table.
  */
 export async function listContactDealsHandler(req: Request, res: Response): Promise<void> {
@@ -431,7 +431,7 @@ async function resolveContactExportData(
 }
 
 /**
- * GET /api/contacts/export
+ * GET /api/v1/contacts/export
  * Streams all matching contacts as a UTF-8 CSV file.
  *
  * Query params mirror the list endpoint (owner, search, accountSearch, account)
@@ -453,7 +453,7 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
 }
 
 /**
- * GET /api/contacts/export.pdf
+ * GET /api/v1/contacts/export.pdf
  * Renders all matching contacts as a paginated PDF table.
  *
  * Query params and ownership rules are identical to the CSV export above.
@@ -502,10 +502,10 @@ export async function exportContactsPdfHandler(req: Request, res: Response): Pro
 }
 
 /**
- * GET /api/contacts/:id/export.pdf
+ * GET /api/v1/contacts/:id/export.pdf
  * Renders a single contact as a one-record summary PDF, mirroring the data
  * shown on the contact detail page. Visibility matches getContactHandler — no
- * ownership restriction on read, consistent with GET /api/contacts/:id.
+ * ownership restriction on read, consistent with GET /api/v1/contacts/:id.
  */
 export async function exportContactPdfHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
@@ -589,7 +589,7 @@ export async function exportContactPdfHandler(req: Request, res: Response): Prom
 }
 
 /**
- * DELETE /api/contacts/:id
+ * DELETE /api/v1/contacts/:id
  * Deletes a contact. Returns 204 No Content on success.
  * Reps may only delete contacts they own; admins may delete any contact.
  */
@@ -616,7 +616,7 @@ export async function deleteContactHandler(req: Request, res: Response): Promise
 }
 
 /**
- * POST /api/contacts/:id/merge
+ * POST /api/v1/contacts/:id/merge
  * Merges the contact identified by :id (the winner) with a specified loser contact.
  * Only admins and the winner's owner may perform a merge.
  * Body: { loserId: string, fieldChoices: Record<field, 'winner'|'loser'> }
@@ -686,7 +686,7 @@ const contactAddressSchema = z.object({
 });
 
 /**
- * GET /api/contacts/:id/addresses
+ * GET /api/v1/contacts/:id/addresses
  * Returns all addresses for the given contact.
  */
 export async function listContactAddressesHandler(req: Request, res: Response): Promise<void> {
@@ -701,7 +701,7 @@ export async function listContactAddressesHandler(req: Request, res: Response): 
 }
 
 /**
- * POST /api/contacts/:id/addresses
+ * POST /api/v1/contacts/:id/addresses
  * Adds a new address to the given contact.
  */
 export async function addContactAddressHandler(req: Request, res: Response): Promise<void> {
@@ -728,7 +728,7 @@ export async function addContactAddressHandler(req: Request, res: Response): Pro
 }
 
 /**
- * PATCH /api/contacts/:id/addresses/:addressId
+ * PATCH /api/v1/contacts/:id/addresses/:addressId
  * Updates a contact address.
  */
 export async function updateContactAddressHandler(req: Request, res: Response): Promise<void> {
@@ -754,7 +754,7 @@ export async function updateContactAddressHandler(req: Request, res: Response): 
 }
 
 /**
- * DELETE /api/contacts/:id/addresses/:addressId
+ * DELETE /api/v1/contacts/:id/addresses/:addressId
  * Removes a contact address.
  */
 export async function deleteContactAddressHandler(req: Request, res: Response): Promise<void> {
@@ -769,7 +769,7 @@ export async function deleteContactAddressHandler(req: Request, res: Response): 
 }
 
 /**
- * POST /api/contacts/:id/addresses/:addressId/set-default
+ * POST /api/v1/contacts/:id/addresses/:addressId/set-default
  * Sets the given address as the default for this contact.
  */
 export async function setDefaultContactAddressHandler(req: Request, res: Response): Promise<void> {
@@ -795,7 +795,7 @@ const sendContactEmailSchema = z.object({
 });
 
 /**
- * POST /api/contacts/:id/send-email
+ * POST /api/v1/contacts/:id/send-email
  * Sends a composed email to the contact and logs an Email activity.
  */
 export async function sendContactEmailHandler(req: Request, res: Response): Promise<void> {

@@ -9,7 +9,7 @@
  * - Incomplete tasks show action links; completed tasks do not
  * - Collapse/expand toggle works and persists to localStorage
  * - Collapsed pill is shown when expanded=false
- * - X dismiss button calls PUT /api/settings/onboarding with true
+ * - X dismiss button calls PUT /api/v1/settings/onboarding with true
  * - Completion celebration shown when all tasks done; auto-dismiss fires
  * - Loading state renders nothing
  */

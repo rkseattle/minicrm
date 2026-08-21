@@ -14,7 +14,7 @@ import {
 } from '../services/pdfExportService.js';
 
 /**
- * GET /api/insights/win-loss
+ * GET /api/v1/insights/win-loss
  * Returns the cached results of the most recent nightly win/loss analysis run.
  */
 export async function getWinLossInsightsHandler(_req: Request, res: Response): Promise<void> {
@@ -23,7 +23,7 @@ export async function getWinLossInsightsHandler(_req: Request, res: Response): P
 }
 
 /**
- * GET /api/insights/win-loss/export.csv
+ * GET /api/v1/insights/win-loss/export.csv
  * Exports the cached win/loss patterns and loss reason trends as CSV.
  */
 export async function exportWinLossInsightsCsvHandler(_req: Request, res: Response): Promise<void> {
@@ -65,7 +65,7 @@ export async function exportWinLossInsightsCsvHandler(_req: Request, res: Respon
 }
 
 /**
- * GET /api/insights/win-loss/export.pdf
+ * GET /api/v1/insights/win-loss/export.pdf
  * Exports the cached win/loss patterns and loss reason trends as a PDF document.
  */
 export async function exportWinLossInsightsPdfHandler(_req: Request, res: Response): Promise<void> {

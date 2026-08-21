@@ -8,7 +8,7 @@ import { recordAuditLogParamsSchema } from '@minicrm/shared/schemas/auditSchema.
 import { getRecordAuditLog, listAuditLogActors } from '../services/auditService.js';
 
 /**
- * GET /api/audit-log/record
+ * GET /api/v1/audit-log/record
  * Returns audit log entries for a single record.
  * Available to any authenticated user (scoped to record context on the detail page).
  * Query params: record_type, record_id, all (optional, returns full history when true)
@@ -35,7 +35,7 @@ export async function getRecordAuditLogHandler(req: Request, res: Response): Pro
 }
 
 /**
- * GET /api/audit-log/actors
+ * GET /api/v1/audit-log/actors
  * Returns distinct users who appear in the audit log.
  * Used to populate the user filter dropdown on the admin audit log page. Admin only.
  */

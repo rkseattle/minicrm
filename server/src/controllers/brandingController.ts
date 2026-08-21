@@ -10,7 +10,7 @@ import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
 
 /**
- * GET /api/settings/branding
+ * GET /api/v1/settings/branding
  * Returns the current branding config, or { branding: null } if none is configured.
  * Public endpoint — unauthenticated callers need this so the login page reflects branding.
  */
@@ -20,7 +20,7 @@ export async function getBrandingHandler(_req: Request, res: Response): Promise<
 }
 
 /**
- * PUT /api/settings/branding
+ * PUT /api/v1/settings/branding
  * Merges and persists branding configuration. Admin only.
  */
 export async function putBrandingHandler(req: Request, res: Response): Promise<void> {
@@ -48,7 +48,7 @@ export async function putBrandingHandler(req: Request, res: Response): Promise<v
 }
 
 /**
- * DELETE /api/settings/branding
+ * DELETE /api/v1/settings/branding
  * Resets all branding to defaults. Admin only.
  */
 export async function deleteBrandingHandler(req: Request, res: Response): Promise<void> {

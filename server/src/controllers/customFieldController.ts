@@ -27,7 +27,7 @@ function isValidEntityType(value: string): value is (typeof ENTITY_TYPES)[number
 }
 
 /**
- * GET /api/custom-fields/definitions?entity_type=contact
+ * GET /api/v1/custom-fields/definitions?entity_type=contact
  * Returns all definitions for the given entity type.
  */
 export async function listCustomFieldDefinitionsHandler(
@@ -47,7 +47,7 @@ export async function listCustomFieldDefinitionsHandler(
 }
 
 /**
- * POST /api/custom-fields/definitions
+ * POST /api/v1/custom-fields/definitions
  * Creates a new custom field definition. Admin only.
  */
 export async function createCustomFieldDefinitionHandler(
@@ -81,7 +81,7 @@ export async function createCustomFieldDefinitionHandler(
 }
 
 /**
- * PATCH /api/custom-fields/definitions/:id
+ * PATCH /api/v1/custom-fields/definitions/:id
  * Updates a custom field definition. Admin only.
  */
 export async function updateCustomFieldDefinitionHandler(
@@ -122,7 +122,7 @@ export async function updateCustomFieldDefinitionHandler(
 }
 
 /**
- * DELETE /api/custom-fields/definitions/:id
+ * DELETE /api/v1/custom-fields/definitions/:id
  * Deletes a custom field definition and cascades to all values. Admin only.
  */
 export async function deleteCustomFieldDefinitionHandler(
@@ -140,7 +140,7 @@ export async function deleteCustomFieldDefinitionHandler(
 }
 
 /**
- * GET /api/custom-fields/:entityType/:recordId/custom-fields
+ * GET /api/v1/custom-fields/:entityType/:recordId/custom-fields
  * Returns all custom field values for a record. Authenticated.
  */
 export async function getCustomFieldValuesHandler(req: Request, res: Response): Promise<void> {
@@ -166,7 +166,7 @@ export async function getCustomFieldValuesHandler(req: Request, res: Response): 
 }
 
 /**
- * PUT /api/custom-fields/:entityType/:recordId/custom-fields
+ * PUT /api/v1/custom-fields/:entityType/:recordId/custom-fields
  * Upserts custom field values for a record. Authenticated.
  * Body: array of { definition_id, value }.
  */

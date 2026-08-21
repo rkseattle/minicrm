@@ -19,7 +19,7 @@ export const stageExitRequirementsSchema = z.object({
 export type StageExitRequirements = z.infer<typeof stageExitRequirementsSchema>;
 
 /**
- * Shape of a pipeline stage row as returned by GET /api/settings/pipeline-stages.
+ * Shape of a pipeline stage row as returned by GET /api/v1/settings/pipeline-stages.
  */
 export const pipelineStageResponseSchema = z.object({
   id: z.string().uuid(),

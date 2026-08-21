@@ -51,7 +51,7 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
 };
 
 /**
- * POST /api/leads
+ * POST /api/v1/leads
  * Creates a new lead owned by the authenticated user.
  * Returns 409 if a lead with the same email already exists (unless ?force=true).
  */
@@ -122,7 +122,7 @@ export async function getLeadRoutingSuggestionHandler(req: Request, res: Respons
 }
 
 /**
- * GET /api/leads
+ * GET /api/v1/leads
  * Lists leads with optional filters and pagination.
  *   ?owner=me                — scope to authenticated user's leads
  *   ?status=<status>        — filter by status
@@ -184,7 +184,7 @@ export async function listLeadsHandler(req: Request, res: Response): Promise<voi
 }
 
 /**
- * GET /api/leads/:id
+ * GET /api/v1/leads/:id
  * Returns a single lead by ID.
  */
 export async function getLeadHandler(req: Request, res: Response): Promise<void> {
@@ -198,10 +198,10 @@ export async function getLeadHandler(req: Request, res: Response): Promise<void>
 }
 
 /**
- * GET /api/leads/:id/export.pdf
+ * GET /api/v1/leads/:id/export.pdf
  * Renders a single lead as a one-record summary PDF, mirroring the data shown
  * on the lead detail page. Visibility matches getLeadHandler — no ownership
- * restriction on read, consistent with GET /api/leads/:id.
+ * restriction on read, consistent with GET /api/v1/leads/:id.
  *
  * Leads do not support custom fields (ENTITY_TYPES excludes 'lead'), so unlike
  * the Deal/Account/Contact single-record PDFs, this omits a Custom Fields
@@ -319,7 +319,7 @@ async function resolveLeadExportRows(req: Request): Promise<LeadExportRow[]> {
 }
 
 /**
- * GET /api/leads/export
+ * GET /api/v1/leads/export
  * Streams all matching leads as a UTF-8 CSV file.
  *
  * Query params mirror the list endpoint (owner, status, lead_source,
@@ -340,7 +340,7 @@ export async function exportLeadsHandler(req: Request, res: Response): Promise<v
 }
 
 /**
- * GET /api/leads/export.pdf
+ * GET /api/v1/leads/export.pdf
  * Renders all matching leads as a paginated PDF table.
  *
  * Query params and ownership rules are identical to the CSV export above.
@@ -369,7 +369,7 @@ export async function exportLeadsPdfHandler(req: Request, res: Response): Promis
 }
 
 /**
- * PATCH /api/leads/:id
+ * PATCH /api/v1/leads/:id
  * Updates one or more fields of an existing lead.
  * Reps may only update leads they own; admins may update any lead.
  */
@@ -411,7 +411,7 @@ export async function updateLeadHandler(req: Request, res: Response): Promise<vo
 }
 
 /**
- * DELETE /api/leads/:id
+ * DELETE /api/v1/leads/:id
  * Deletes a lead. Returns 204 No Content on success.
  * Reps may only delete leads they own; admins may delete any lead.
  */
@@ -433,7 +433,7 @@ export async function deleteLeadHandler(req: Request, res: Response): Promise<vo
 }
 
 /**
- * GET /api/leads/:id/status-history
+ * GET /api/v1/leads/:id/status-history
  * Returns the status change history for a lead.
  */
 export async function getLeadStatusHistoryHandler(req: Request, res: Response): Promise<void> {
@@ -449,7 +449,7 @@ export async function getLeadStatusHistoryHandler(req: Request, res: Response): 
 }
 
 /**
- * POST /api/leads/:id/convert
+ * POST /api/v1/leads/:id/convert
  * Atomically converts a lead into a contact, account, and deal.
  * Lead must not be Disqualified or already converted.
  */
@@ -498,7 +498,7 @@ export async function convertLeadHandler(req: Request, res: Response): Promise<v
 }
 
 /**
- * GET /api/leads/accounts/search
+ * GET /api/v1/leads/accounts/search
  * Searches accounts by name for the conversion form.
  */
 export async function searchAccountsHandler(req: Request, res: Response): Promise<void> {

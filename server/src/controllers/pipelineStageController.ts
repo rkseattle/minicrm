@@ -23,7 +23,7 @@ import {
 import logger from '../logger.js';
 
 /**
- * GET /api/settings/pipeline-stages
+ * GET /api/v1/settings/pipeline-stages
  * Returns all pipeline stages ordered by sort_order. Public endpoint —
  * the client fetches this on app startup to build the stage selector.
  *
@@ -39,7 +39,7 @@ export async function listPipelineStagesHandler(req: Request, res: Response): Pr
 }
 
 /**
- * POST /api/settings/pipeline-stages
+ * POST /api/v1/settings/pipeline-stages
  * Creates a new pipeline stage. Admin only.
  *
  * @param req - Express request with validated body.
@@ -83,7 +83,7 @@ export async function createPipelineStageHandler(req: Request, res: Response): P
 }
 
 /**
- * PATCH /api/settings/pipeline-stages/:id
+ * PATCH /api/v1/settings/pipeline-stages/:id
  * Updates an existing pipeline stage. Admin only.
  * Fixed stages cannot be renamed; renaming atomically updates all deals.
  *
@@ -140,7 +140,7 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
 }
 
 /**
- * PUT /api/settings/pipeline-stages/reorder
+ * PUT /api/v1/settings/pipeline-stages/reorder
  * Atomically reorders all pipeline stages. Admin only.
  * Accepts { stages: [id1, id2, ...] } in desired order and writes all
  * sort_order values in a single transaction — no transient unique conflicts.
@@ -176,7 +176,7 @@ export async function reorderPipelineStagesHandler(req: Request, res: Response):
 }
 
 /**
- * DELETE /api/settings/pipeline-stages/:id
+ * DELETE /api/v1/settings/pipeline-stages/:id
  * Deletes a pipeline stage. Admin only.
  * Blocked if the stage is fixed or has open deals.
  *

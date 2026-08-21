@@ -208,7 +208,7 @@ export async function setTagsRestrictCreation(
 
 // ── SMTP configuration ───────────────────────────────────────────
 
-/** Shape returned by GET /api/settings/smtp */
+/** Shape returned by GET /api/v1/settings/smtp */
 export interface SmtpConfigResponse {
   smtp_host: string;
   smtp_port: number;
@@ -246,7 +246,7 @@ export async function setSmtpConfig(payload: {
   return response.data;
 }
 
-/** Shape returned by POST /api/settings/smtp/test */
+/** Shape returned by POST /api/v1/settings/smtp/test */
 export interface SmtpTestResult {
   success: boolean;
   error?: string;
@@ -264,7 +264,7 @@ export async function testSmtpConfig(to: string): Promise<SmtpTestResult> {
 
 // ── Data visibility policies ─────────────────────────────────────
 
-/** Shape returned by GET/PUT /api/settings/visibility */
+/** Shape returned by GET/PUT /api/v1/settings/visibility */
 export interface VisibilityConfigResponse {
   visibility: VisibilityConfig;
 }

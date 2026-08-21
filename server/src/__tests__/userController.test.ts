@@ -62,9 +62,9 @@ afterAll(async () => {
   await pool.query("DELETE FROM users WHERE email LIKE 'user-ctrl%'");
 });
 
-// ── GET /api/users ──────────────────────────────────────────────────────────────
+// ── GET /api/v1/users ──────────────────────────────────────────────────────────────
 
-describe('GET /api/users', () => {
+describe('GET /api/v1/users', () => {
   it('returns 200 and a users array for admin', async () => {
     const res = await request(app).get('/api/v1/users').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
@@ -90,9 +90,9 @@ describe('GET /api/users', () => {
   });
 });
 
-// ── POST /api/users/invite ──────────────────────────────────────────────────────
+// ── POST /api/v1/users/invite ──────────────────────────────────────────────────────
 
-describe('POST /api/users/invite', () => {
+describe('POST /api/v1/users/invite', () => {
   it('creates an invited user and never exposes password_hash', async () => {
     const res = await request(app)
       .post('/api/v1/users/invite')
@@ -124,9 +124,9 @@ describe('POST /api/users/invite', () => {
   });
 });
 
-// ── PATCH /api/users/:id/role ───────────────────────────────────────────────────
+// ── PATCH /api/v1/users/:id/role ───────────────────────────────────────────────────
 
-describe('PATCH /api/users/:id/role', () => {
+describe('PATCH /api/v1/users/:id/role', () => {
   afterEach(async () => {
     await pool.query(`UPDATE users SET role = 'rep' WHERE id = $1`, [repId]);
   });
@@ -152,9 +152,9 @@ describe('PATCH /api/users/:id/role', () => {
   });
 });
 
-// ── PATCH /api/users/:id/deactivate ────────────────────────────────────────────
+// ── PATCH /api/v1/users/:id/deactivate ────────────────────────────────────────────
 
-describe('PATCH /api/users/:id/deactivate', () => {
+describe('PATCH /api/v1/users/:id/deactivate', () => {
   it('deactivates a user and never exposes password_hash', async () => {
     const target = await createUser({
       ...BASE_USER,

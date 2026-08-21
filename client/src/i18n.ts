@@ -4,8 +4,8 @@
  * i18next instance used throughout the React application via react-i18next.
  *
  * Language resolution order (highest precedence first):
- *  1. User's stored personal preference (from /api/auth/me, applied after auth resolves)
- *  2. System-wide default set by an admin (from /api/settings/default-language)
+ *  1. User's stored personal preference (from /api/v1/auth/me, applied after auth resolves)
+ *  2. System-wide default set by an admin (from /api/v1/settings/default-language)
  *  3. English (hard-coded fallback)
  *
  * The user preference is fetched alongside the auth session, so it is applied
@@ -56,7 +56,7 @@ i18n.use(initReactI18next).init({
  *
  * Priority:
  *  1. userPreference — stored on the user record
- *  2. systemDefault  — fetched from /api/settings/default-language
+ *  2. systemDefault  — fetched from /api/v1/settings/default-language
  *  3. Stays on 'en' (the init default above)
  *
  * @param userPreference - The user's stored locale code, or null.

@@ -115,9 +115,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── POST /api/accounts ───────────────────────────────────────────────────────
+// ── POST /api/v1/accounts ───────────────────────────────────────────────────────
 
-describe('POST /api/accounts', () => {
+describe('POST /api/v1/accounts', () => {
   it('creates an account and returns 201', async () => {
     const res = await request(app)
       .post('/api/v1/accounts')
@@ -177,9 +177,9 @@ describe('POST /api/accounts', () => {
   });
 });
 
-// ── GET /api/accounts ────────────────────────────────────────────────────────
+// ── GET /api/v1/accounts ────────────────────────────────────────────────────────
 
-describe('GET /api/accounts', () => {
+describe('GET /api/v1/accounts', () => {
   it('returns all accounts', async () => {
     await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
@@ -199,9 +199,9 @@ describe('GET /api/accounts', () => {
   });
 });
 
-// ── PATCH /api/accounts/:id — ownership ──────────────────────────────────────
+// ── PATCH /api/v1/accounts/:id — ownership ──────────────────────────────────────
 
-describe('PATCH /api/accounts/:id — ownership', () => {
+describe('PATCH /api/v1/accounts/:id — ownership', () => {
   it('allows the owning rep to update their own account', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
@@ -248,12 +248,12 @@ describe('PATCH /api/accounts/:id — ownership', () => {
   });
 });
 
-// ── DELETE /api/accounts/:id — ownership ─────────────────────────────────────
+// ── DELETE /api/v1/accounts/:id — ownership ─────────────────────────────────────
 
 // Per migration 109: reps have contacts:delete and can delete their
 // own accounts. Ownership check (owner_id = req.user.id OR role = 'admin') in
 // the controller blocks deletion of accounts owned by other users.
-describe('DELETE /api/accounts/:id — ownership', () => {
+describe('DELETE /api/v1/accounts/:id — ownership', () => {
   it('allows a rep to delete their own account', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
@@ -296,9 +296,9 @@ describe('DELETE /api/accounts/:id — ownership', () => {
   });
 });
 
-// ── GET /api/accounts — ?search filter ───────────────────────────────────────
+// ── GET /api/v1/accounts — ?search filter ───────────────────────────────────────
 
-describe('GET /api/accounts — ?search filter', () => {
+describe('GET /api/v1/accounts — ?search filter', () => {
   it('returns only accounts matching the search term', async () => {
     // Use FILE_PREFIX in names to avoid collision with accountService.test.ts which
     // also creates "Alpha Pharma" in the same DB when tests run concurrently.
@@ -330,9 +330,9 @@ describe('GET /api/accounts — ?search filter', () => {
   });
 });
 
-// ── GET /api/accounts — ?industry filter ─────────────────────────────────────
+// ── GET /api/v1/accounts — ?industry filter ─────────────────────────────────────
 
-describe('GET /api/accounts — ?industry filter', () => {
+describe('GET /api/v1/accounts — ?industry filter', () => {
   it('returns only accounts in the specified industry', async () => {
     await createAccount({ name: 'Tech Co', industry: 'Technology', owner_id: repId });
     await createAccount({ name: 'Finance Co', industry: 'Finance', owner_id: repId });
@@ -356,9 +356,9 @@ describe('GET /api/accounts — ?industry filter', () => {
   });
 });
 
-// ── GET /api/accounts/:id — visibility ───────────────────────────────────────
+// ── GET /api/v1/accounts/:id — visibility ───────────────────────────────────────
 
-describe('GET /api/accounts/:id — visibility', () => {
+describe('GET /api/v1/accounts/:id — visibility', () => {
   it('allows any authenticated user to view any account under the default org policy', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
@@ -393,9 +393,9 @@ describe('GET /api/accounts/:id — visibility', () => {
   });
 });
 
-// ── GET /api/accounts — ?owner=my_team filter ──────────────────
+// ── GET /api/v1/accounts — ?owner=my_team filter ──────────────────
 
-describe('GET /api/accounts — ?owner=my_team filter', () => {
+describe('GET /api/v1/accounts — ?owner=my_team filter', () => {
   const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
   const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
 
@@ -482,9 +482,9 @@ describe('GET /api/accounts — ?owner=my_team filter', () => {
   });
 });
 
-// ── GET /api/accounts/export and /api/accounts/export.pdf ───────────────────
+// ── GET /api/v1/accounts/export and /api/v1/accounts/export.pdf ───────────────────
 
-describe('GET /api/accounts/export', () => {
+describe('GET /api/v1/accounts/export', () => {
   it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {
     await createAccount({ ...BASE_ACCOUNT, name: `ExportAcct-${uid()}`, owner_id: repId });
 
@@ -500,7 +500,7 @@ describe('GET /api/accounts/export', () => {
   });
 });
 
-describe('GET /api/accounts/export.pdf', () => {
+describe('GET /api/v1/accounts/export.pdf', () => {
   it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
     await createAccount({ ...BASE_ACCOUNT, name: `ExportAcctPdf-${uid()}`, owner_id: repId });
 
@@ -526,7 +526,7 @@ describe('GET /api/accounts/export.pdf', () => {
   });
 });
 
-describe('GET /api/accounts/:id/export.pdf', () => {
+describe('GET /api/v1/accounts/:id/export.pdf', () => {
   it('returns a single-record PDF with the correct Content-Type and Content-Disposition headers', async () => {
     const account = await createAccount({
       ...BASE_ACCOUNT,

@@ -1,8 +1,8 @@
 /**
  * HTTP contract tests for smtpController.
  *
- * Covers GET /api/settings/smtp, PUT /api/settings/smtp, and auth-boundary enforcement.
- * POST /api/settings/smtp/test is not integration-tested here because it requires a
+ * Covers GET /api/v1/settings/smtp, PUT /api/v1/settings/smtp, and auth-boundary enforcement.
+ * POST /api/v1/settings/smtp/test is not integration-tested here because it requires a
  * reachable SMTP server; the 400 validation path is covered.
  */
 
@@ -67,7 +67,7 @@ afterAll(async () => {
   await pool.end();
 });
 
-describe('GET /api/settings/smtp', () => {
+describe('GET /api/v1/settings/smtp', () => {
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app).get('/api/v1/settings/smtp');
     expect(res.status).toBe(401);
@@ -99,7 +99,7 @@ describe('GET /api/settings/smtp', () => {
   });
 });
 
-describe('PUT /api/settings/smtp', () => {
+describe('PUT /api/v1/settings/smtp', () => {
   it('returns 403 for rep', async () => {
     const res = await request(app)
       .put('/api/v1/settings/smtp')
@@ -169,7 +169,7 @@ describe('PUT /api/settings/smtp', () => {
   });
 });
 
-describe('POST /api/settings/smtp/test — validation', () => {
+describe('POST /api/v1/settings/smtp/test — validation', () => {
   it('returns 400 for invalid email address', async () => {
     const res = await request(app)
       .post('/api/v1/settings/smtp/test')

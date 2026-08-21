@@ -12,7 +12,7 @@ export const FIELD_TYPES = ['text', 'number', 'date', 'boolean', 'select'] as co
 export type FieldType = (typeof FIELD_TYPES)[number];
 
 /**
- * Shape of a custom_field_definitions row as returned by GET /api/custom-fields/definitions.
+ * Shape of a custom_field_definitions row as returned by GET /api/v1/custom-fields/definitions.
  */
 export const customFieldDefinitionResponseSchema = z.object({
   id: z.string().uuid(),

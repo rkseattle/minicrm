@@ -29,7 +29,7 @@ const FORBIDDEN_VISIBILITY_ERROR = {
 };
 
 /**
- * GET /api/contacts/:id/champion-blocker
+ * GET /api/v1/contacts/:id/champion-blocker
  * Returns the effective champion/blocker classification for the contact.
  */
 export async function getContactChampionBlockerHandler(req: Request, res: Response): Promise<void> {
@@ -56,7 +56,7 @@ export async function getContactChampionBlockerHandler(req: Request, res: Respon
 }
 
 /**
- * POST /api/contacts/:id/champion-blocker/dismiss
+ * POST /api/v1/contacts/:id/champion-blocker/dismiss
  * Records a rep's "Not accurate" feedback, suppressing the badge until new signals arrive.
  */
 export async function dismissContactChampionBlockerHandler(
@@ -87,7 +87,7 @@ export async function dismissContactChampionBlockerHandler(
 }
 
 /**
- * PATCH /api/contacts/:id/champion-blocker/override
+ * PATCH /api/v1/contacts/:id/champion-blocker/override
  * Records a rep's manual override, with an optional reason. Persists until new signals shift it.
  */
 export async function overrideContactChampionBlockerHandler(
@@ -129,7 +129,7 @@ export async function overrideContactChampionBlockerHandler(
 }
 
 /**
- * GET /api/deals/:id/stakeholder-map
+ * GET /api/v1/deals/:id/stakeholder-map
  * Returns the champion/blocker stakeholder map for the deal's linked contacts.
  */
 export async function getDealStakeholderMapHandler(req: Request, res: Response): Promise<void> {

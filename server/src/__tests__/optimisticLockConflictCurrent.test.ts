@@ -77,7 +77,7 @@ afterAll(async () => {
 
 // ── contact ──────────────────────────────────────────────────────────────────
 
-describe('PATCH /api/contacts/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
+describe('PATCH /api/v1/contacts/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
   it('includes the winning record in error.current on 409', async () => {
     const contact = await createContact(
       {
@@ -114,7 +114,7 @@ describe('PATCH /api/contacts/:id — OPTIMISTIC_LOCK_CONFLICT includes current'
 
 // ── account ──────────────────────────────────────────────────────────────────
 
-describe('PATCH /api/accounts/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
+describe('PATCH /api/v1/accounts/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
   it('includes the winning record in error.current on 409', async () => {
     const account = await createAccount(
       { name: `${FILE_PREFIX}-acct-${uid()}`, owner_id: adminId },
@@ -143,7 +143,7 @@ describe('PATCH /api/accounts/:id — OPTIMISTIC_LOCK_CONFLICT includes current'
 
 // ── deal ─────────────────────────────────────────────────────────────────────
 
-describe('PATCH /api/deals/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
+describe('PATCH /api/v1/deals/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
   it('includes the winning record in error.current on 409', async () => {
     const account = await createAccount(
       { name: `${FILE_PREFIX}-deal-acct-${uid()}`, owner_id: adminId },
@@ -181,7 +181,7 @@ describe('PATCH /api/deals/:id — OPTIMISTIC_LOCK_CONFLICT includes current', (
 
 // ── activity ─────────────────────────────────────────────────────────────────
 
-describe('PATCH /api/activities/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
+describe('PATCH /api/v1/activities/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
   it('includes the winning record in error.current on 409', async () => {
     const account = await createAccount(
       { name: `${FILE_PREFIX}-act-acct-${uid()}`, owner_id: adminId },
@@ -216,7 +216,7 @@ describe('PATCH /api/activities/:id — OPTIMISTIC_LOCK_CONFLICT includes curren
 
 // ── lead ─────────────────────────────────────────────────────────────────────
 
-describe('PATCH /api/leads/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
+describe('PATCH /api/v1/leads/:id — OPTIMISTIC_LOCK_CONFLICT includes current', () => {
   it('includes the winning record in error.current on 409', async () => {
     const lead = await createLead(
       {

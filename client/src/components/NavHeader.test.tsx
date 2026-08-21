@@ -47,7 +47,7 @@ describe('NavHeader', () => {
     expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
   });
 
-  it('logout button calls POST /api/auth/logout', async () => {
+  it('logout button calls POST /api/v1/auth/logout', async () => {
     let logoutCalled = false;
     server.use(
       http.post('/api/v1/auth/logout', () => {

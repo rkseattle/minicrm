@@ -74,9 +74,9 @@ afterEach(async () => {
   ]);
 });
 
-// ── GET /api/settings/pipeline-stages ────────────────────────────────────────
+// ── GET /api/v1/settings/pipeline-stages ────────────────────────────────────────
 
-describe('GET /api/settings/pipeline-stages', () => {
+describe('GET /api/v1/settings/pipeline-stages', () => {
   it('returns 200 with an array of stages', async () => {
     const res = await request(app).get('/api/v1/settings/pipeline-stages').set('Cookie', repCookie);
 
@@ -103,9 +103,9 @@ describe('GET /api/settings/pipeline-stages', () => {
   });
 });
 
-// ── POST /api/settings/pipeline-stages ───────────────────────────────────────
+// ── POST /api/v1/settings/pipeline-stages ───────────────────────────────────────
 
-describe('POST /api/settings/pipeline-stages — admin only', () => {
+describe('POST /api/v1/settings/pipeline-stages — admin only', () => {
   it('creates a new stage and returns 201', async () => {
     const name = `${FILE_PREFIX}-${uid()}`;
 
@@ -156,9 +156,9 @@ describe('POST /api/settings/pipeline-stages — admin only', () => {
   });
 });
 
-// ── PUT /api/settings/pipeline-stages/reorder ────────────────────────────────
+// ── PUT /api/v1/settings/pipeline-stages/reorder ────────────────────────────────
 
-describe('PUT /api/settings/pipeline-stages/reorder — admin only', () => {
+describe('PUT /api/v1/settings/pipeline-stages/reorder — admin only', () => {
   it('returns 200 and stages in the new order', async () => {
     const listRes = await request(app)
       .get('/api/v1/settings/pipeline-stages')
@@ -237,9 +237,9 @@ describe('PUT /api/settings/pipeline-stages/reorder — admin only', () => {
   });
 });
 
-// ── PATCH /api/settings/pipeline-stages/:id ──────────────────────────────────
+// ── PATCH /api/v1/settings/pipeline-stages/:id ──────────────────────────────────
 
-describe('PATCH /api/settings/pipeline-stages/:id', () => {
+describe('PATCH /api/v1/settings/pipeline-stages/:id', () => {
   it('updates a custom stage name and returns 200', async () => {
     const name = `${FILE_PREFIX}-${uid()}-patch-orig`;
     const createRes = await request(app)
@@ -302,9 +302,9 @@ describe('PATCH /api/settings/pipeline-stages/:id', () => {
   });
 });
 
-// ── DELETE /api/settings/pipeline-stages/:id ─────────────────────────────────
+// ── DELETE /api/v1/settings/pipeline-stages/:id ─────────────────────────────────
 
-describe('DELETE /api/settings/pipeline-stages/:id', () => {
+describe('DELETE /api/v1/settings/pipeline-stages/:id', () => {
   it('deletes a custom stage with no open deals and returns 200', async () => {
     const name = `${FILE_PREFIX}-${uid()}-del`;
     const createRes = await request(app)

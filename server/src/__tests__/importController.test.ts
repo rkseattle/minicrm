@@ -27,7 +27,7 @@ const CONTACTS_CSV = Buffer.from(
 );
 const DEALS_CSV = Buffer.from('Deal Name,Stage\nDeal One,Prospecting\nDeal Two,Qualification\n');
 
-/** Poll GET /api/admin/import/jobs/:id until status is 'complete' or 'failed'. */
+/** Poll GET /api/v1/admin/import/jobs/:id until status is 'complete' or 'failed'. */
 async function waitForJob(jobId: string, cookie: string, timeoutMs = 10000): Promise<Response> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -85,9 +85,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── POST /api/admin/import/accounts/parse ─────────────────────────────────────
+// ── POST /api/v1/admin/import/accounts/parse ─────────────────────────────────────
 
-describe('POST /api/admin/import/accounts/parse', () => {
+describe('POST /api/v1/admin/import/accounts/parse', () => {
   it('returns headers, preview, and fields on valid CSV upload', async () => {
     const res = await request(app)
       .post('/api/v1/admin/import/accounts/parse')
@@ -120,9 +120,9 @@ describe('POST /api/admin/import/accounts/parse', () => {
   });
 });
 
-// ── POST /api/admin/import/accounts/run ───────────────────────────────────────
+// ── POST /api/v1/admin/import/accounts/run ───────────────────────────────────────
 
-describe('POST /api/admin/import/accounts/run', () => {
+describe('POST /api/v1/admin/import/accounts/run', () => {
   beforeEach(async () => {
     await pool.query(
       `DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
@@ -211,9 +211,9 @@ describe('POST /api/admin/import/accounts/run', () => {
   });
 });
 
-// ── POST /api/admin/import/contacts/parse ─────────────────────────────────────
+// ── POST /api/v1/admin/import/contacts/parse ─────────────────────────────────────
 
-describe('POST /api/admin/import/contacts/parse', () => {
+describe('POST /api/v1/admin/import/contacts/parse', () => {
   it('returns headers, preview, and fields on valid CSV upload', async () => {
     const res = await request(app)
       .post('/api/v1/admin/import/contacts/parse')
@@ -236,9 +236,9 @@ describe('POST /api/admin/import/contacts/parse', () => {
   });
 });
 
-// ── POST /api/admin/import/contacts/run ───────────────────────────────────────
+// ── POST /api/v1/admin/import/contacts/run ───────────────────────────────────────
 
-describe('POST /api/admin/import/contacts/run', () => {
+describe('POST /api/v1/admin/import/contacts/run', () => {
   beforeEach(async () => {
     await pool.query(
       `DELETE FROM contacts WHERE email IN ('alice.import@example.com','bob.import@example.com')`,
@@ -343,9 +343,9 @@ describe('POST /api/admin/import/contacts/run', () => {
   });
 });
 
-// ── POST /api/admin/import/deals/parse ────────────────────────────────────────
+// ── POST /api/v1/admin/import/deals/parse ────────────────────────────────────────
 
-describe('POST /api/admin/import/deals/parse', () => {
+describe('POST /api/v1/admin/import/deals/parse', () => {
   it('returns headers, preview, and fields on valid CSV upload', async () => {
     const res = await request(app)
       .post('/api/v1/admin/import/deals/parse')
@@ -368,9 +368,9 @@ describe('POST /api/admin/import/deals/parse', () => {
   });
 });
 
-// ── POST /api/admin/import/deals/run ──────────────────────────────────────────
+// ── POST /api/v1/admin/import/deals/run ──────────────────────────────────────────
 
-describe('POST /api/admin/import/deals/run', () => {
+describe('POST /api/v1/admin/import/deals/run', () => {
   afterEach(async () => {
     await pool.query(
       `DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,

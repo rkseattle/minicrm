@@ -35,7 +35,7 @@ export interface LeadSearchResult {
   company_name: string | null;
 }
 
-/** Full response from GET /api/search */
+/** Full response from GET /api/v1/search */
 export interface SearchResponse {
   contacts: ContactSearchResult[];
   accounts: AccountSearchResult[];

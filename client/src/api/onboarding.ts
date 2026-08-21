@@ -1,6 +1,6 @@
 /**
  * Onboarding / setup checklist API module.
- * Wraps GET /api/settings/onboarding and PUT /api/settings/onboarding.
+ * Wraps GET /api/v1/settings/onboarding and PUT /api/v1/settings/onboarding.
  * Admin only.
  */
 
@@ -12,7 +12,7 @@ export interface OnboardingTask {
   completed: boolean;
 }
 
-/** Shape returned by GET /api/settings/onboarding */
+/** Shape returned by GET /api/v1/settings/onboarding */
 export interface OnboardingStatusResponse {
   is_first_run: boolean;
   onboarding_completed: boolean;

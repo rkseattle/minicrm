@@ -23,7 +23,7 @@ const VALID_RECORD_TYPES = new Set<RecordType>(['contact', 'account', 'deal', 'l
 // ── Attachment CRUD ───────────────────────────────────────────────────────────
 
 /**
- * GET /api/attachments?recordType=&recordId=
+ * GET /api/v1/attachments?recordType=&recordId=
  * Lists all attachments for a record.
  *
  * @param req - Express request with query params recordType and recordId.
@@ -53,7 +53,7 @@ export async function listAttachmentsHandler(req: Request, res: Response): Promi
 }
 
 /**
- * POST /api/attachments
+ * POST /api/v1/attachments
  * Uploads a file attachment to a record.
  * Expects multipart/form-data with fields: recordType, recordId, file.
  *
@@ -133,7 +133,7 @@ export async function uploadAttachmentHandler(req: Request, res: Response): Prom
 }
 
 /**
- * GET /api/attachments/:id/download
+ * GET /api/v1/attachments/:id/download
  * Streams the file content back through the API (proxied download).
  *
  * @param req - Express request with id param.
@@ -165,7 +165,7 @@ export async function downloadAttachmentHandler(req: Request, res: Response): Pr
 }
 
 /**
- * DELETE /api/attachments/:id
+ * DELETE /api/v1/attachments/:id
  * Deletes an attachment. Only the uploader or an admin may delete.
  *
  * @param req - Express request with id param.
@@ -200,7 +200,7 @@ export async function deleteAttachmentHandler(req: Request, res: Response): Prom
 // ── Storage settings ─────────────────────────────────────────────
 
 /**
- * GET /api/settings/storage/status
+ * GET /api/v1/settings/storage/status
  * Returns only whether storage is configured. Authenticated users (not admin-only).
  * Used by AttachmentsSection to decide whether to show the upload UI.
  *
@@ -213,7 +213,7 @@ export async function getStorageStatusHandler(_req: Request, res: Response): Pro
 }
 
 /**
- * GET /api/settings/storage
+ * GET /api/v1/settings/storage
  * Returns the current storage configuration (secret masked). Admin only.
  *
  * @param _req - Express request (unused).
@@ -237,7 +237,7 @@ export async function getStorageConfigHandler(_req: Request, res: Response): Pro
 }
 
 /**
- * PUT /api/settings/storage
+ * PUT /api/v1/settings/storage
  * Saves storage configuration. Admin only.
  *
  * @param req - Express request with body { endpoint, bucket, accessKeyId, secretAccessKey }.
@@ -273,7 +273,7 @@ export async function setStorageConfigHandler(req: Request, res: Response): Prom
 }
 
 /**
- * DELETE /api/settings/storage
+ * DELETE /api/v1/settings/storage
  * Clears storage configuration. Admin only.
  * Does not delete existing attachment records or objects.
  *
@@ -286,7 +286,7 @@ export async function clearStorageConfigHandler(_req: Request, res: Response): P
 }
 
 /**
- * POST /api/settings/storage/test
+ * POST /api/v1/settings/storage/test
  * Tests candidate storage credentials without saving them. Admin only.
  *
  * @param req - Express request with body { endpoint, bucket, accessKeyId, secretAccessKey }.

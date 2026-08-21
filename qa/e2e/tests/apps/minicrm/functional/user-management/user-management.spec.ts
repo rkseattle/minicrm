@@ -27,7 +27,7 @@
  *          the test documents that explicitly
  *   - AC3: all user management operations are admin-only (F7 covers rep-role rejection)
  *
- * GET /api/users/:id does not exist. Role verification uses GET /api/users (list)
+ * GET /api/v1/users/:id does not exist. Role verification uses GET /api/v1/users (list)
  * and filters by user ID.
  *
  *

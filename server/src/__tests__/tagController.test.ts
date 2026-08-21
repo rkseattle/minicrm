@@ -69,9 +69,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── GET /api/tags ─────────────────────────────────────────────────────────────
+// ── GET /api/v1/tags ─────────────────────────────────────────────────────────────
 
-describe('GET /api/tags', () => {
+describe('GET /api/v1/tags', () => {
   it('returns 200 with a paginated tags response', async () => {
     const res = await request(app).get('/api/v1/tags').set('Cookie', repCookie);
 
@@ -88,9 +88,9 @@ describe('GET /api/tags', () => {
   });
 });
 
-// ── POST /api/tags ────────────────────────────────────────────────────────────
+// ── POST /api/v1/tags ────────────────────────────────────────────────────────────
 
-describe('POST /api/tags', () => {
+describe('POST /api/v1/tags', () => {
   it('creates a tag and returns 201', async () => {
     const name = `${FILE_PREFIX}-${uid()}`;
 
@@ -126,9 +126,9 @@ describe('POST /api/tags', () => {
   });
 });
 
-// ── GET /api/tags/:id ─────────────────────────────────────────────────────────
+// ── GET /api/v1/tags/:id ─────────────────────────────────────────────────────────
 
-describe('GET /api/tags/:id', () => {
+describe('GET /api/v1/tags/:id', () => {
   it('returns 200 with the tag body', async () => {
     const name = `${FILE_PREFIX}-${uid()}-get`;
     const createRes = await request(app)
@@ -154,9 +154,9 @@ describe('GET /api/tags/:id', () => {
   });
 });
 
-// ── PATCH /api/tags/:id ───────────────────────────────────────────────────────
+// ── PATCH /api/v1/tags/:id ───────────────────────────────────────────────────────
 
-describe('PATCH /api/tags/:id — admin only rename', () => {
+describe('PATCH /api/v1/tags/:id — admin only rename', () => {
   it('renames a tag and returns 200', async () => {
     const origName = `${FILE_PREFIX}-${uid()}-rename-orig`;
     const newName = `${FILE_PREFIX}-${uid()}-rename-new`;
@@ -217,9 +217,9 @@ describe('PATCH /api/tags/:id — admin only rename', () => {
   });
 });
 
-// ── DELETE /api/tags/:id ──────────────────────────────────────────────────────
+// ── DELETE /api/v1/tags/:id ──────────────────────────────────────────────────────
 
-describe('DELETE /api/tags/:id — admin only delete', () => {
+describe('DELETE /api/v1/tags/:id — admin only delete', () => {
   it('deletes a tag and returns 204', async () => {
     const createRes = await request(app)
       .post('/api/v1/tags')
@@ -254,9 +254,9 @@ describe('DELETE /api/tags/:id — admin only delete', () => {
   });
 });
 
-// ── GET /api/contacts/:id/tags ────────────────────────────────────────────────
+// ── GET /api/v1/contacts/:id/tags ────────────────────────────────────────────────
 
-describe('GET /api/contacts/:id/tags', () => {
+describe('GET /api/v1/contacts/:id/tags', () => {
   it('returns 200 with an empty tags array for a contact with no tags', async () => {
     const contact = await createContact({
       first_name: 'Tag',
@@ -274,9 +274,9 @@ describe('GET /api/contacts/:id/tags', () => {
   });
 });
 
-// ── POST /api/contacts/:id/tags ───────────────────────────────────────────────
+// ── POST /api/v1/contacts/:id/tags ───────────────────────────────────────────────
 
-describe('POST /api/contacts/:id/tags', () => {
+describe('POST /api/v1/contacts/:id/tags', () => {
   it('attaches a tag by name and returns 201', async () => {
     const contact = await createContact({
       first_name: 'Tag',
@@ -313,9 +313,9 @@ describe('POST /api/contacts/:id/tags', () => {
   });
 });
 
-// ── DELETE /api/contacts/:id/tags/:tagId ──────────────────────────────────────
+// ── DELETE /api/v1/contacts/:id/tags/:tagId ──────────────────────────────────────
 
-describe('DELETE /api/contacts/:id/tags/:tagId', () => {
+describe('DELETE /api/v1/contacts/:id/tags/:tagId', () => {
   it('detaches a tag from a contact and returns 204', async () => {
     const contact = await createContact({
       first_name: 'Tag',

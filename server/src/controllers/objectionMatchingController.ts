@@ -22,7 +22,7 @@ const FORBIDDEN_VISIBILITY_ERROR = {
 };
 
 /**
- * POST /api/activities/:id/classify-objection
+ * POST /api/v1/activities/:id/classify-objection
  * Classifies the activity's note text into an objection category on demand.
  * Returns null when no clear objection is detected.
  */
@@ -59,7 +59,7 @@ const precedentsQuerySchema = z.object({
 });
 
 /**
- * GET /api/activities/:id/objection-precedents?category=Price
+ * GET /api/v1/activities/:id/objection-precedents?category=Price
  * Returns the top 3 similar objections from past won deals for the given category.
  */
 export async function getObjectionPrecedentsHandler(req: Request, res: Response): Promise<void> {

@@ -7,9 +7,9 @@
  * This helper is intentionally placed in apps/minicrm/ rather than framework/
  * because it is app-specific — framework/ must remain app-domain-free.
  *
- * Mailhog API reference:
- *   GET  /api/v2/messages          — list all captured messages
- *   DELETE /api/v1/messages        — delete all captured messages
+ * Mailhog API reference — Mailhog's own paths, which take no MiniCRM prefix:
+ *   GET    /api/v2/messages  — list all captured messages
+ *   DELETE /api/v1/messages  — delete all captured messages
  *
  *
  */

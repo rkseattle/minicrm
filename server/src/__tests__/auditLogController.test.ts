@@ -50,13 +50,13 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// Note: GET /api/audit-log was removed in a later change. The admin audit log page
+// Note: GET /api/v1/audit-log was removed in a later change. The admin audit log page
 // now fetches via ConnectRPC (gRPC-Web) instead. The unary ListAuditEvents and
 // server-streaming StreamAuditEvents RPCs are tested by the E2E suite.
 
-// ── GET /api/audit-log/record ─────────────────────────────────────────────────
+// ── GET /api/v1/audit-log/record ─────────────────────────────────────────────────
 
-describe('GET /api/audit-log/record', () => {
+describe('GET /api/v1/audit-log/record', () => {
   it('returns entries for a specific record', async () => {
     const recordId = '00000000-0000-0000-0000-000000000001';
 
@@ -105,9 +105,9 @@ describe('GET /api/audit-log/record', () => {
   });
 });
 
-// ── GET /api/audit-log/actors ─────────────────────────────────────────────────
+// ── GET /api/v1/audit-log/actors ─────────────────────────────────────────────────
 
-describe('GET /api/audit-log/actors', () => {
+describe('GET /api/v1/audit-log/actors', () => {
   it('returns an actors array', async () => {
     const res = await request(app).get('/api/v1/audit-log/actors').set('Cookie', adminCookie);
 

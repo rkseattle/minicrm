@@ -12,7 +12,7 @@
  *
  * Polling strategy:
  *   fireAutomationTrigger is fire-and-forget (void call in service layer —).
- *   Tests poll GET /api/activities with exponential backoff (200ms → 400ms → 800ms…)
+ *   Tests poll GET /api/v1/activities with exponential backoff (200ms → 400ms → 800ms…)
  *   up to MAX_POLL_MS. A clear failure message is emitted when the timeout is exceeded.
  *
  * Framework conventions:
@@ -48,7 +48,7 @@ const MAX_POLL_MS = 8_000;
 const INITIAL_BACKOFF_MS = 200;
 
 /**
- * Polls GET /api/activities until a task matching the given subject appears,
+ * Polls GET /api/v1/activities until a task matching the given subject appears,
  * using exponential backoff. Throws a descriptive error if the timeout is exceeded.
  *
  * @param restClient - Authenticated REST client.

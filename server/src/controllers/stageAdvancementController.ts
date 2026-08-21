@@ -17,7 +17,7 @@ const FORBIDDEN_VISIBILITY_ERROR = {
 };
 
 /**
- * GET /api/deals/:id/stage-advancement
+ * GET /api/v1/deals/:id/stage-advancement
  * Runs a passive AI check for whether the deal looks ready to advance to its
  * next pipeline stage. Returns { ready: false } (not an error) when the deal
  * is in a terminal stage, has no next stage, or the AI is not confident.

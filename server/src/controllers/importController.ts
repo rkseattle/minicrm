@@ -39,7 +39,7 @@ import { z } from 'zod';
 // ── Parse handlers (Step 1: upload → headers + preview) ───────────────────────
 
 /**
- * POST /api/admin/import/accounts/parse
+ * POST /api/v1/admin/import/accounts/parse
  * Accepts a CSV upload and returns headers, field definitions, and a 5-row preview.
  */
 export async function parseAccountsCsv(req: Request, res: Response): Promise<void> {
@@ -65,7 +65,7 @@ export async function parseAccountsCsv(req: Request, res: Response): Promise<voi
 }
 
 /**
- * POST /api/admin/import/contacts/parse
+ * POST /api/v1/admin/import/contacts/parse
  * Accepts a CSV upload and returns headers, field definitions, and a 5-row preview.
  */
 export async function parseContactsCsv(req: Request, res: Response): Promise<void> {
@@ -91,7 +91,7 @@ export async function parseContactsCsv(req: Request, res: Response): Promise<voi
 }
 
 /**
- * POST /api/admin/import/deals/parse
+ * POST /api/v1/admin/import/deals/parse
  * Accepts a CSV upload and returns headers, field definitions, and a 5-row preview.
  */
 export async function parseDealsCsv(req: Request, res: Response): Promise<void> {
@@ -200,7 +200,7 @@ async function startImportJob(
   const actorName = req.user!.name;
   const job = await createJob(jobType, csvData.rows.length, actorId);
 
-  // Respond immediately — the client polls GET /api/admin/import/jobs/:job_id for progress
+  // Respond immediately — the client polls GET /api/v1/admin/import/jobs/:job_id for progress
   res.status(202).json({ job_id: job.id, status: 'pending' });
 
   const { rows } = csvData;
@@ -245,7 +245,7 @@ async function startImportJob(
 }
 
 /**
- * POST /api/admin/import/accounts/run
+ * POST /api/v1/admin/import/accounts/run
  * Validates the CSV + mapping synchronously, creates the job, returns 202,
  * then runs the account import in the background.
  */
@@ -290,7 +290,7 @@ export async function runAccountsImport(req: Request, res: Response): Promise<vo
 }
 
 /**
- * POST /api/admin/import/contacts/run
+ * POST /api/v1/admin/import/contacts/run
  * Validates the CSV + mapping synchronously, creates the job, returns 202,
  * then runs the contact import in the background.
  */
@@ -336,7 +336,7 @@ export async function runContactsImport(req: Request, res: Response): Promise<vo
 }
 
 /**
- * POST /api/admin/import/deals/run
+ * POST /api/v1/admin/import/deals/run
  * Validates the CSV + mapping synchronously, creates the job, returns 202,
  * then runs the deal import in the background.
  */
@@ -384,7 +384,7 @@ export async function runDealsImport(req: Request, res: Response): Promise<void>
 // ── Job status endpoint ────────────────────────────────────────────────────────
 
 /**
- * GET /api/admin/import/jobs/:job_id
+ * GET /api/v1/admin/import/jobs/:job_id
  * Returns the current state of an import job (admin only).
  */
 export async function getImportJob(req: Request, res: Response): Promise<void> {

@@ -1,6 +1,6 @@
 /**
  * Custom fields API module.
- * Wraps the /api/custom-fields endpoints.
+ * Wraps the /api/v1/custom-fields endpoints.
  * Definition mutations require admin auth; value reads/writes require auth.
  */
 
@@ -20,12 +20,12 @@ export const CUSTOM_FIELD_DEFINITIONS_QUERY_KEY = ['settings', 'customFieldDefin
 export const customFieldValuesQueryKey = (entityType: string, recordId: string) =>
   ['customFieldValues', entityType, recordId] as const;
 
-/** Shape returned by GET /api/custom-fields/definitions */
+/** Shape returned by GET /api/v1/custom-fields/definitions */
 export interface CustomFieldDefinitionsListResponse {
   definitions: CustomFieldDefinitionResponse[];
 }
 
-/** Shape returned by GET/PUT /api/custom-fields/:entityType/:recordId/custom-fields */
+/** Shape returned by GET/PUT /api/v1/custom-fields/:entityType/:recordId/custom-fields */
 export interface CustomFieldValuesResponse {
   values: CustomFieldValueResponse[];
 }

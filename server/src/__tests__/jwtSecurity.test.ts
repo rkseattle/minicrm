@@ -93,7 +93,7 @@ describe('tampered payload (role escalation)', () => {
     const tamperedToken = `${header}.${tamperedPayload}.${signature}`;
     const tamperedCookie = `${AUTH_COOKIE_NAME}=${tamperedToken}`;
 
-    // GET /api/users is admin-only; must return 401 (signature mismatch), not 200 or 403
+    // GET /api/v1/users is admin-only; must return 401 (signature mismatch), not 200 or 403
     const res = await request(app).get('/api/v1/users').set('Cookie', tamperedCookie);
 
     expect(res.status).toBe(401);

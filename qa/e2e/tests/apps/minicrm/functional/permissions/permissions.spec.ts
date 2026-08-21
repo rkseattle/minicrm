@@ -444,7 +444,7 @@ test('@functional F7-FU5: rep does not see admin-only nav links', async ({
 // Rep Forbidden — API tests (AC1)
 // ---------------------------------------------------------------------------
 
-test('@functional F7-FA1: rep calling GET /api/users receives 403 (AC1)', async ({
+test('@functional F7-FA1: rep calling GET /api/v1/users receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,
@@ -472,7 +472,7 @@ test('@functional F7-FA1: rep calling GET /api/users receives 403 (AC1)', async 
   }
 });
 
-test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)', async ({
+test('@functional F7-FA2: rep calling POST /api/v1/users/invite receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,
@@ -505,7 +505,7 @@ test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)'
   }
 });
 
-test('@functional F7-FA3: rep calling PATCH /api/users/:id/role receives 403 (AC1)', async ({
+test('@functional F7-FA3: rep calling PATCH /api/v1/users/:id/role receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,
@@ -535,7 +535,7 @@ test('@functional F7-FA3: rep calling PATCH /api/users/:id/role receives 403 (AC
   }
 });
 
-test('@functional F7-FA4: rep calling PATCH /api/users/:id/deactivate receives 403 (AC1)', async ({
+test('@functional F7-FA4: rep calling PATCH /api/v1/users/:id/deactivate receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,
@@ -565,7 +565,7 @@ test('@functional F7-FA4: rep calling PATCH /api/users/:id/deactivate receives 4
   }
 });
 
-test('@functional F7-FA5: rep calling PATCH /api/users/:id/reactivate receives 403 (AC1)', async ({
+test('@functional F7-FA5: rep calling PATCH /api/v1/users/:id/reactivate receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,
@@ -597,7 +597,7 @@ test('@functional F7-FA5: rep calling PATCH /api/users/:id/reactivate receives 4
   }
 });
 
-test('@functional F7-FA6: rep calling POST /api/users/:id/admin-set-password receives 403 (AC1)', async ({
+test('@functional F7-FA6: rep calling POST /api/v1/users/:id/admin-set-password receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,
@@ -629,7 +629,7 @@ test('@functional F7-FA6: rep calling POST /api/users/:id/admin-set-password rec
   }
 });
 
-test('@functional F7-FA7: rep calling GET /api/automation/rules receives 403 (AC1)', async ({
+test('@functional F7-FA7: rep calling GET /api/v1/automation/rules receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,
@@ -643,7 +643,6 @@ test('@functional F7-FA7: rep calling GET /api/automation/rules receives 403 (AC
 
     let errorStatus: number | null = null;
     try {
-      // Automation routes are mounted at /api/automation/rules (not /api/automation).
       await repClient.get('/api/v1/automation/rules');
     } catch (err: unknown) {
       if (err instanceof RestClientError) {
@@ -652,13 +651,13 @@ test('@functional F7-FA7: rep calling GET /api/automation/rules receives 403 (AC
         throw err;
       }
     }
-    expect(errorStatus, 'rep GET /api/automation/rules should return 403').toBe(403);
+    expect(errorStatus, 'rep GET /api/v1/automation/rules should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
   }
 });
 
-test('@functional F7-FA8: rep calling POST /api/automation/rules receives 403 (AC1)', async ({
+test('@functional F7-FA8: rep calling POST /api/v1/automation/rules receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,
@@ -672,7 +671,6 @@ test('@functional F7-FA8: rep calling POST /api/automation/rules receives 403 (A
 
     let errorStatus: number | null = null;
     try {
-      // Automation routes are mounted at /api/automation/rules (not /api/automation).
       await repClient.post('/api/v1/automation/rules', {
         name: 'Forbidden Rule',
         trigger: 'deal_created',
@@ -686,13 +684,13 @@ test('@functional F7-FA8: rep calling POST /api/automation/rules receives 403 (A
         throw err;
       }
     }
-    expect(errorStatus, 'rep POST /api/automation/rules should return 403').toBe(403);
+    expect(errorStatus, 'rep POST /api/v1/automation/rules should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
   }
 });
 
-test('@functional F7-FA9: rep calling PATCH /api/settings/default-language receives 403 (AC1)', async ({
+test('@functional F7-FA9: rep calling PATCH /api/v1/settings/default-language receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,
@@ -720,7 +718,7 @@ test('@functional F7-FA9: rep calling PATCH /api/settings/default-language recei
   }
 });
 
-test('@functional F7-FA10: rep calling PATCH /api/settings/nav-layout receives 403 (AC1)', async ({
+test('@functional F7-FA10: rep calling PATCH /api/v1/settings/nav-layout receives 403 (AC1)', async ({
   testData,
   playwright,
   restClient,

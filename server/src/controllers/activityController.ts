@@ -31,7 +31,7 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
 };
 
 /**
- * POST /api/activities
+ * POST /api/v1/activities
  * Creates a new activity owned by the authenticated user.
  */
 export async function createActivityHandler(req: Request, res: Response): Promise<void> {
@@ -50,7 +50,7 @@ export async function createActivityHandler(req: Request, res: Response): Promis
 }
 
 /**
- * GET /api/activities/my-tasks
+ * GET /api/v1/activities/my-tasks
  * Returns a paginated list of Task-type activities owned by the authenticated user.
  * Includes the linked record name and type for display.
  */
@@ -61,7 +61,7 @@ export async function listMyTasksHandler(req: Request, res: Response): Promise<v
 }
 
 /**
- * GET /api/activities
+ * GET /api/v1/activities
  * Lists activities with optional filters and pagination:
  *   ?contact=<uuid> — filter by contact UUID
  *   ?account=<uuid> — filter by account UUID
@@ -155,7 +155,7 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
 }
 
 /**
- * GET /api/activities/:id
+ * GET /api/v1/activities/:id
  * Returns a single activity by ID.
  */
 export async function getActivityHandler(req: Request, res: Response): Promise<void> {
@@ -171,7 +171,7 @@ export async function getActivityHandler(req: Request, res: Response): Promise<v
 }
 
 /**
- * PATCH /api/activities/:id
+ * PATCH /api/v1/activities/:id
  * Updates one or more fields of an existing activity.
  * Reps may only update activities they own; admins may update any activity.
  */
@@ -236,7 +236,7 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
 }
 
 /**
- * DELETE /api/activities/:id
+ * DELETE /api/v1/activities/:id
  * Deletes an activity. Returns 204 No Content on success.
  * Reps may only delete activities they own; admins may delete any activity.
  */

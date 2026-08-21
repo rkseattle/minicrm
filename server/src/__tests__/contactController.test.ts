@@ -116,9 +116,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── PATCH /api/contacts/:id ──────────────────────────────────────────────────
+// ── PATCH /api/v1/contacts/:id ──────────────────────────────────────────────────
 
-describe('PATCH /api/contacts/:id — ownership', () => {
+describe('PATCH /api/v1/contacts/:id — ownership', () => {
   it('allows the owning rep to update their own contact', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
@@ -165,11 +165,11 @@ describe('PATCH /api/contacts/:id — ownership', () => {
   });
 });
 
-// ── DELETE /api/contacts/:id ─────────────────────────────────────────────────
+// ── DELETE /api/v1/contacts/:id ─────────────────────────────────────────────────
 
 // Per migration 109: reps have contacts:delete and can delete their
 // own contacts. Ownership check in the controller blocks deletion of other users' contacts.
-describe('DELETE /api/contacts/:id — ownership', () => {
+describe('DELETE /api/v1/contacts/:id — ownership', () => {
   it('allows a rep to delete their own contact', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
@@ -212,9 +212,9 @@ describe('DELETE /api/contacts/:id — ownership', () => {
   });
 });
 
-// ── GET /api/contacts — list + ?account filter ──────────────────────────────
+// ── GET /api/v1/contacts — list + ?account filter ──────────────────────────────
 
-describe('GET /api/contacts — ?account filter', () => {
+describe('GET /api/v1/contacts — ?account filter', () => {
   it('returns 400 when ?account is not a valid UUID', async () => {
     const res = await request(app)
       .get('/api/v1/contacts?account=not-a-uuid')
@@ -234,9 +234,9 @@ describe('GET /api/contacts — ?account filter', () => {
   });
 });
 
-// ── GET /api/contacts — ?search filter ──────────────────────────────────────
+// ── GET /api/v1/contacts — ?search filter ──────────────────────────────────────
 
-describe('GET /api/contacts — ?search filter', () => {
+describe('GET /api/v1/contacts — ?search filter', () => {
   it('returns only contacts matching the search term', async () => {
     await createContact({
       first_name: 'Alice',
@@ -272,9 +272,9 @@ describe('GET /api/contacts — ?search filter', () => {
   });
 });
 
-// ── GET /api/contacts — ?accountSearch filter ────────────────────────────────
+// ── GET /api/v1/contacts — ?accountSearch filter ────────────────────────────────
 
-describe('GET /api/contacts — ?accountSearch filter', () => {
+describe('GET /api/v1/contacts — ?accountSearch filter', () => {
   it('ignores whitespace-only accountSearch', async () => {
     await createContact({ ...makeContact(), owner_id: repId });
 
@@ -288,9 +288,9 @@ describe('GET /api/contacts — ?accountSearch filter', () => {
   });
 });
 
-// ── POST /api/contacts — duplicate detection ─────────────────────────────────
+// ── POST /api/v1/contacts — duplicate detection ─────────────────────────────────
 
-describe('POST /api/contacts — duplicate detection', () => {
+describe('POST /api/v1/contacts — duplicate detection', () => {
   it('returns 409 with duplicate info when a contact with the same email exists', async () => {
     const dupContact = makeContact();
     await createContact({ ...dupContact, owner_id: repId });
@@ -338,9 +338,9 @@ describe('POST /api/contacts — duplicate detection', () => {
   });
 });
 
-// ── GET /api/contacts/:id ────────────────────────────────────────────────────
+// ── GET /api/v1/contacts/:id ────────────────────────────────────────────────────
 
-describe('GET /api/contacts/:id — visibility', () => {
+describe('GET /api/v1/contacts/:id — visibility', () => {
   it('allows any authenticated user to view any contact', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
@@ -353,9 +353,9 @@ describe('GET /api/contacts/:id — visibility', () => {
   });
 });
 
-// ── POST /api/contacts/:id/send-email ──────────────────────────
+// ── POST /api/v1/contacts/:id/send-email ──────────────────────────
 
-describe('POST /api/contacts/:id/send-email', () => {
+describe('POST /api/v1/contacts/:id/send-email', () => {
   it('returns 200 with delivered: false and an activityId when SMTP is not configured', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
@@ -452,9 +452,9 @@ describe('POST /api/contacts/:id/send-email', () => {
   });
 });
 
-// ── GET /api/contacts — ?owner=my_team filter ──────────────────
+// ── GET /api/v1/contacts — ?owner=my_team filter ──────────────────
 
-describe('GET /api/contacts — ?owner=my_team filter', () => {
+describe('GET /api/v1/contacts — ?owner=my_team filter', () => {
   const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
   const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
 
@@ -541,9 +541,9 @@ describe('GET /api/contacts — ?owner=my_team filter', () => {
   });
 });
 
-// ── GET /api/contacts/export and /api/contacts/export.pdf ───────────────────
+// ── GET /api/v1/contacts/export and /api/v1/contacts/export.pdf ───────────────────
 
-describe('GET /api/contacts/export', () => {
+describe('GET /api/v1/contacts/export', () => {
   it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {
     await createContact({ ...makeContact(), owner_id: repId });
 
@@ -568,7 +568,7 @@ describe('GET /api/contacts/export', () => {
   });
 });
 
-describe('GET /api/contacts/export.pdf', () => {
+describe('GET /api/v1/contacts/export.pdf', () => {
   it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
     await createContact({ ...makeContact(), owner_id: repId });
 
@@ -603,7 +603,7 @@ describe('GET /api/contacts/export.pdf', () => {
   });
 });
 
-describe('GET /api/contacts/:id/export.pdf', () => {
+describe('GET /api/v1/contacts/:id/export.pdf', () => {
   it('returns a single-record PDF with the correct Content-Type and Content-Disposition headers', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
     const deal = await createDeal({

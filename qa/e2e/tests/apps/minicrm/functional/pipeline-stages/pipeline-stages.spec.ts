@@ -285,7 +285,7 @@ test('@functional @serial PS-4: admin deletes a custom pipeline stage; stage no 
 }) => {
   // Create a throwaway stage via API to avoid touching any seeded data
   const stageName = `PS4-Delete-${Date.now()}`;
-  // POST /api/settings/pipeline-stages returns the stage object directly (not wrapped)
+  // POST /api/v1/settings/pipeline-stages returns the stage object directly (not wrapped)
   const createRes = await restClient.post<PipelineStage>('/api/v1/settings/pipeline-stages', {
     name: stageName,
     probability: 10,

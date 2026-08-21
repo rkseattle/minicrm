@@ -67,7 +67,7 @@ afterAll(async () => {
 
 // ── Contacts ─────────────────────────────────────────────────────────────────
 
-describe('GET /api/contacts sort injection', () => {
+describe('GET /api/v1/contacts sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
       .get('/api/v1/contacts')
@@ -101,7 +101,7 @@ describe('GET /api/contacts sort injection', () => {
 
 // ── Accounts ──────────────────────────────────────────────────────────────────
 
-describe('GET /api/accounts sort injection', () => {
+describe('GET /api/v1/accounts sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
       .get('/api/v1/accounts')
@@ -135,7 +135,7 @@ describe('GET /api/accounts sort injection', () => {
 
 // ── Deals ─────────────────────────────────────────────────────────────────────
 
-describe('GET /api/deals sort injection', () => {
+describe('GET /api/v1/deals sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
       .get('/api/v1/deals')
@@ -169,7 +169,7 @@ describe('GET /api/deals sort injection', () => {
 
 // ── Activities ────────────────────────────────────────────────────────────────
 
-describe('GET /api/activities sort injection', () => {
+describe('GET /api/v1/activities sort injection', () => {
   it.each(INJECTION_PAYLOADS)('does not return 500 when sort="%s"', async (sortPayload) => {
     const res = await request(app)
       .get('/api/v1/activities')

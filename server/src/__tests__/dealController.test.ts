@@ -115,9 +115,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── POST /api/deals ───────────────────────────────────────────────────────────
+// ── POST /api/v1/deals ───────────────────────────────────────────────────────────
 
-describe('POST /api/deals', () => {
+describe('POST /api/v1/deals', () => {
   it('creates a deal and returns 201 with the deal body', async () => {
     const params = makeDealParams();
     const res = await request(app).post('/api/v1/deals').set('Cookie', repCookie).send(params);
@@ -157,9 +157,9 @@ describe('POST /api/deals', () => {
   });
 });
 
-// ── GET /api/deals ────────────────────────────────────────────────────────────
+// ── GET /api/v1/deals ────────────────────────────────────────────────────────────
 
-describe('GET /api/deals', () => {
+describe('GET /api/v1/deals', () => {
   it('returns 200 with a paginated list', async () => {
     await createDeal({ ...makeDealParams(), owner_id: repId });
 
@@ -212,9 +212,9 @@ describe('GET /api/deals', () => {
   });
 });
 
-// ── GET /api/deals/:id ────────────────────────────────────────────────────────
+// ── GET /api/v1/deals/:id ────────────────────────────────────────────────────────
 
-describe('GET /api/deals/:id', () => {
+describe('GET /api/v1/deals/:id', () => {
   it('returns the deal with its contacts array', async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
 
@@ -235,9 +235,9 @@ describe('GET /api/deals/:id', () => {
   });
 });
 
-// ── PATCH /api/deals/:id ─────────────────────────────────────────────────────
+// ── PATCH /api/v1/deals/:id ─────────────────────────────────────────────────────
 
-describe('PATCH /api/deals/:id — ownership', () => {
+describe('PATCH /api/v1/deals/:id — ownership', () => {
   it('allows the owning rep to update their own deal', async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
 
@@ -314,9 +314,9 @@ describe('PATCH /api/deals/:id — ownership', () => {
   });
 });
 
-// ── PATCH /api/deals/:id — pipeline reassignment ────────────────
+// ── PATCH /api/v1/deals/:id — pipeline reassignment ────────────────
 
-describe('PATCH /api/deals/:id — pipeline reassignment', () => {
+describe('PATCH /api/v1/deals/:id — pipeline reassignment', () => {
   let enterprisePipelineId: string;
   const ENTERPRISE_STAGE = 'Discovery';
 
@@ -390,9 +390,9 @@ describe('PATCH /api/deals/:id — pipeline reassignment', () => {
   });
 });
 
-// ── POST /api/deals/:id/contacts/:contactId ───────────────────────────────────
+// ── POST /api/v1/deals/:id/contacts/:contactId ───────────────────────────────────
 
-describe('POST /api/deals/:id/contacts/:contactId — link contact', () => {
+describe('POST /api/v1/deals/:id/contacts/:contactId — link contact', () => {
   it('links a contact to a deal and returns the updated contacts list', async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
     const contact = await createContact({
@@ -444,9 +444,9 @@ describe('POST /api/deals/:id/contacts/:contactId — link contact', () => {
   });
 });
 
-// ── DELETE /api/deals/:id/contacts/:contactId ─────────────────────────────────
+// ── DELETE /api/v1/deals/:id/contacts/:contactId ─────────────────────────────────
 
-describe('DELETE /api/deals/:id/contacts/:contactId — unlink contact', () => {
+describe('DELETE /api/v1/deals/:id/contacts/:contactId — unlink contact', () => {
   it('unlinks a contact and returns the updated contacts list', async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
     const contact = await createContact({
@@ -488,11 +488,11 @@ describe('DELETE /api/deals/:id/contacts/:contactId — unlink contact', () => {
   });
 });
 
-// ── DELETE /api/deals/:id ─────────────────────────────────────────────────────
+// ── DELETE /api/v1/deals/:id ─────────────────────────────────────────────────────
 
 // Per migration 109: reps have deals:delete and can delete their
 // own deals. Ownership check in the controller blocks deletion of other users' deals.
-describe('DELETE /api/deals/:id — ownership', () => {
+describe('DELETE /api/v1/deals/:id — ownership', () => {
   it('allows a rep to delete their own deal', async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
 
@@ -529,9 +529,9 @@ describe('DELETE /api/deals/:id — ownership', () => {
   });
 });
 
-// ── GET /api/deals/export ─────────────────────────────────────────────────────
+// ── GET /api/v1/deals/export ─────────────────────────────────────────────────────
 
-describe('GET /api/deals/export', () => {
+describe('GET /api/v1/deals/export', () => {
   it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {
     await createDeal({ ...makeDealParams(), owner_id: repId });
 
@@ -552,9 +552,9 @@ describe('GET /api/deals/export', () => {
   });
 });
 
-// ── GET /api/deals/export.pdf ───────────────────────────────────────────────
+// ── GET /api/v1/deals/export.pdf ───────────────────────────────────────────────
 
-describe('GET /api/deals/export.pdf', () => {
+describe('GET /api/v1/deals/export.pdf', () => {
   it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
     await createDeal({ ...makeDealParams(), owner_id: repId });
 
@@ -589,9 +589,9 @@ describe('GET /api/deals/export.pdf', () => {
   });
 });
 
-// ── GET /api/deals/:id/export.pdf ──────────────────────────────
+// ── GET /api/v1/deals/:id/export.pdf ──────────────────────────────
 
-describe('GET /api/deals/:id/export.pdf', () => {
+describe('GET /api/v1/deals/:id/export.pdf', () => {
   it('returns a single-record PDF with the correct Content-Type and Content-Disposition headers', async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
     const contact = await createContact({
@@ -656,9 +656,9 @@ describe('GET /api/deals/:id/export.pdf', () => {
   });
 });
 
-// ── GET /api/deals — ?owner=my_team filter ─────────────────────
+// ── GET /api/v1/deals — ?owner=my_team filter ─────────────────────
 
-describe('GET /api/deals — ?owner=my_team filter', () => {
+describe('GET /api/v1/deals — ?owner=my_team filter', () => {
   const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
   const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
 

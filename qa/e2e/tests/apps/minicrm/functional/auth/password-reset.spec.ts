@@ -16,7 +16,7 @@
  *   - Tests must pass with --workers=4 (no shared mutable state)
  *
  * Token retrieval:
- *   The server's /api/auth/dev/reset-token endpoint (non-production only) creates
+ *   The server's /api/v1/auth/dev/reset-token endpoint (non-production only) creates
  *   and returns a plaintext reset token for a given email, bypassing SMTP.
  *
  * Tagged @functional so the suite runs in:

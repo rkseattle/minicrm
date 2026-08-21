@@ -48,9 +48,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
 });
 
-// ── GET /api/settings/default-language ───────────────────────────────────────
+// ── GET /api/v1/settings/default-language ───────────────────────────────────────
 
-describe('GET /api/settings/default-language', () => {
+describe('GET /api/v1/settings/default-language', () => {
   it('returns 200 with a language string (public endpoint)', async () => {
     const res = await request(app).get('/api/v1/settings/default-language');
 
@@ -59,9 +59,9 @@ describe('GET /api/settings/default-language', () => {
   });
 });
 
-// ── PATCH /api/settings/default-language ─────────────────────────────────────
+// ── PATCH /api/v1/settings/default-language ─────────────────────────────────────
 
-describe('PATCH /api/settings/default-language', () => {
+describe('PATCH /api/v1/settings/default-language', () => {
   it('updates the default language and returns 200', async () => {
     const res = await request(app)
       .patch('/api/v1/settings/default-language')
@@ -106,9 +106,9 @@ describe('PATCH /api/settings/default-language', () => {
   });
 });
 
-// ── GET /api/settings/nav-layout ─────────────────────────────────────────────
+// ── GET /api/v1/settings/nav-layout ─────────────────────────────────────────────
 
-describe('GET /api/settings/nav-layout', () => {
+describe('GET /api/v1/settings/nav-layout', () => {
   it('returns 200 with a layout string (public endpoint)', async () => {
     const res = await request(app).get('/api/v1/settings/nav-layout');
 
@@ -117,9 +117,9 @@ describe('GET /api/settings/nav-layout', () => {
   });
 });
 
-// ── PATCH /api/settings/nav-layout ───────────────────────────────────────────
+// ── PATCH /api/v1/settings/nav-layout ───────────────────────────────────────────
 
-describe('PATCH /api/settings/nav-layout', () => {
+describe('PATCH /api/v1/settings/nav-layout', () => {
   it('updates the nav layout and returns 200', async () => {
     const res = await request(app)
       .patch('/api/v1/settings/nav-layout')
@@ -156,9 +156,9 @@ describe('PATCH /api/settings/nav-layout', () => {
   });
 });
 
-// ── GET /api/settings/email-notifications ────────────────────────────────────
+// ── GET /api/v1/settings/email-notifications ────────────────────────────────────
 
-describe('GET /api/settings/email-notifications', () => {
+describe('GET /api/v1/settings/email-notifications', () => {
   it('returns 200 with an enabled boolean', async () => {
     const res = await request(app)
       .get('/api/v1/settings/email-notifications')
@@ -184,9 +184,9 @@ describe('GET /api/settings/email-notifications', () => {
   });
 });
 
-// ── PATCH /api/settings/email-notifications ───────────────────────────────────
+// ── PATCH /api/v1/settings/email-notifications ───────────────────────────────────
 
-describe('PATCH /api/settings/email-notifications', () => {
+describe('PATCH /api/v1/settings/email-notifications', () => {
   it('enables email notifications and returns 200', async () => {
     const res = await request(app)
       .patch('/api/v1/settings/email-notifications')
@@ -235,9 +235,9 @@ describe('PATCH /api/settings/email-notifications', () => {
   });
 });
 
-// ── GET /api/settings/onboarding ────────────────────
+// ── GET /api/v1/settings/onboarding ────────────────────
 
-describe('GET /api/settings/onboarding', () => {
+describe('GET /api/v1/settings/onboarding', () => {
   it('returns 200 with is_first_run, onboarding_completed, and tasks for admin', async () => {
     const res = await request(app).get('/api/v1/settings/onboarding').set('Cookie', adminCookie);
 
@@ -266,9 +266,9 @@ describe('GET /api/settings/onboarding', () => {
   });
 });
 
-// ── PUT /api/settings/onboarding ────────────────────
+// ── PUT /api/v1/settings/onboarding ────────────────────
 
-describe('PUT /api/settings/onboarding', () => {
+describe('PUT /api/v1/settings/onboarding', () => {
   afterEach(async () => {
     // Reset flag on both test users after each test
     await pool.query(`UPDATE users SET onboarding_completed = false WHERE email = ANY($1)`, [
@@ -325,7 +325,7 @@ describe('PUT /api/settings/onboarding', () => {
   });
 });
 
-// ── DELETE /api/settings/pipeline-stages-reviewed ───────────────
+// ── DELETE /api/v1/settings/pipeline-stages-reviewed ───────────────
 
 describe('DELETE /api/v1/settings/pipeline-stages-reviewed', () => {
   beforeEach(async () => {

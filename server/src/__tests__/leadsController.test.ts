@@ -142,9 +142,9 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
-// ── POST /api/leads ───────────────────────────────────────────────────────────
+// ── POST /api/v1/leads ───────────────────────────────────────────────────────────
 
-describe('POST /api/leads', () => {
+describe('POST /api/v1/leads', () => {
   it('creates a lead and returns 201 with the lead object', async () => {
     const lead = makeLead();
     const res = await request(app).post('/api/v1/leads').set('Cookie', repCookie).send(lead);
@@ -204,9 +204,9 @@ describe('POST /api/leads', () => {
   });
 });
 
-// ── GET /api/leads ────────────────────────────────────────────────────────────
+// ── GET /api/v1/leads ────────────────────────────────────────────────────────────
 
-describe('GET /api/leads', () => {
+describe('GET /api/v1/leads', () => {
   it('returns paginated leads list', async () => {
     await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
@@ -250,9 +250,9 @@ describe('GET /api/leads', () => {
   });
 });
 
-// ── GET /api/leads/export and /api/leads/export.pdf ───────────
+// ── GET /api/v1/leads/export and /api/v1/leads/export.pdf ───────────
 
-describe('GET /api/leads/export', () => {
+describe('GET /api/v1/leads/export', () => {
   it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {
     await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
@@ -277,7 +277,7 @@ describe('GET /api/leads/export', () => {
     expect(res.text).not.toContain(lead.email);
   });
 
-  it('mirrors GET /api/leads visibility by default (org-wide, no owner filter)', async () => {
+  it('mirrors GET /api/v1/leads visibility by default (org-wide, no owner filter)', async () => {
     const lead = await createLead(
       { ...makeLead(), owner_id: repId },
       { id: repId, name: 'Leads Rep' },
@@ -306,7 +306,7 @@ describe('GET /api/leads/export', () => {
   });
 });
 
-describe('GET /api/leads/export.pdf', () => {
+describe('GET /api/v1/leads/export.pdf', () => {
   it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
     await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
 
@@ -332,9 +332,9 @@ describe('GET /api/leads/export.pdf', () => {
   });
 });
 
-// ── GET /api/leads/:id ────────────────────────────────────────────────────────
+// ── GET /api/v1/leads/:id ────────────────────────────────────────────────────────
 
-describe('GET /api/leads/:id', () => {
+describe('GET /api/v1/leads/:id', () => {
   it('returns the lead when found', async () => {
     const lead = await createLead(
       { ...makeLead(), owner_id: repId },
@@ -357,9 +357,9 @@ describe('GET /api/leads/:id', () => {
   });
 });
 
-// ── GET /api/leads/:id/export.pdf ──────────────────────────────
+// ── GET /api/v1/leads/:id/export.pdf ──────────────────────────────
 
-describe('GET /api/leads/:id/export.pdf', () => {
+describe('GET /api/v1/leads/:id/export.pdf', () => {
   it('returns a single-record PDF with the correct Content-Type and Content-Disposition headers', async () => {
     const lead = await createLead(
       { ...makeLead(), owner_id: repId },
@@ -426,9 +426,9 @@ describe('GET /api/leads/:id/export.pdf', () => {
   });
 });
 
-// ── PATCH /api/leads/:id ──────────────────────────────────────────────────────
+// ── PATCH /api/v1/leads/:id ──────────────────────────────────────────────────────
 
-describe('PATCH /api/leads/:id', () => {
+describe('PATCH /api/v1/leads/:id', () => {
   it('updates lead status and returns 200', async () => {
     const lead = await createLead(
       { ...makeLead(), owner_id: repId },
@@ -499,9 +499,9 @@ describe('PATCH /api/leads/:id', () => {
   });
 });
 
-// ── DELETE /api/leads/:id ─────────────────────────────────────────────────────
+// ── DELETE /api/v1/leads/:id ─────────────────────────────────────────────────────
 
-describe('DELETE /api/leads/:id', () => {
+describe('DELETE /api/v1/leads/:id', () => {
   it('deletes the lead and returns 204', async () => {
     const lead = await createLead(
       { ...makeLead(), owner_id: repId },
@@ -545,9 +545,9 @@ describe('DELETE /api/leads/:id', () => {
   });
 });
 
-// ── GET /api/leads/:id/status-history ────────────────────────────────────────
+// ── GET /api/v1/leads/:id/status-history ────────────────────────────────────────
 
-describe('GET /api/leads/:id/status-history', () => {
+describe('GET /api/v1/leads/:id/status-history', () => {
   it('returns the status history for a lead', async () => {
     const lead = await createLead(
       { ...makeLead(), owner_id: repId },
@@ -573,9 +573,9 @@ describe('GET /api/leads/:id/status-history', () => {
   });
 });
 
-// ── POST /api/leads/:id/convert ───────────────────────────────────────────────
+// ── POST /api/v1/leads/:id/convert ───────────────────────────────────────────────
 
-describe('POST /api/leads/:id/convert', () => {
+describe('POST /api/v1/leads/:id/convert', () => {
   it('converts the lead and returns 201 with contact/account/deal IDs', async () => {
     const lead = await createLead(
       { ...makeLead(), owner_id: repId },
@@ -688,9 +688,9 @@ describe('POST /api/leads/:id/convert', () => {
   });
 });
 
-// ── GET /api/leads/accounts/search ────────────────────────────────────────────
+// ── GET /api/v1/leads/accounts/search ────────────────────────────────────────────
 
-describe('GET /api/leads/accounts/search', () => {
+describe('GET /api/v1/leads/accounts/search', () => {
   it('returns accounts matching the query', async () => {
     // Insert an account to search
     await pool.query(`INSERT INTO accounts (name, owner_id) VALUES ($1, $2)`, [
@@ -724,9 +724,9 @@ describe('GET /api/leads/accounts/search', () => {
   });
 });
 
-// ── GET /api/leads — ?owner=my_team filter ─────────────────────
+// ── GET /api/v1/leads — ?owner=my_team filter ─────────────────────
 
-describe('GET /api/leads — ?owner=my_team filter', () => {
+describe('GET /api/v1/leads — ?owner=my_team filter', () => {
   const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
   const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
 

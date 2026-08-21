@@ -15,7 +15,7 @@ import {
 } from '../services/sentimentService.js';
 
 /**
- * GET /api/contacts/:id/sentiment-trend
+ * GET /api/v1/contacts/:id/sentiment-trend
  * Returns the sentiment trend for the contact's last 10 interactions.
  */
 export async function getContactSentimentTrendHandler(req: Request, res: Response): Promise<void> {
@@ -47,7 +47,7 @@ export async function getContactSentimentTrendHandler(req: Request, res: Respons
 }
 
 /**
- * GET /api/accounts/:id/sentiment-trend
+ * GET /api/v1/accounts/:id/sentiment-trend
  * Returns the aggregate sentiment trend across all contacts at the account, last 90 days.
  */
 export async function getAccountSentimentTrendHandler(req: Request, res: Response): Promise<void> {
@@ -79,7 +79,7 @@ export async function getAccountSentimentTrendHandler(req: Request, res: Respons
 }
 
 /**
- * POST /api/activities/:id/sentiment/flag-inaccurate
+ * POST /api/v1/activities/:id/sentiment/flag-inaccurate
  * Records a rep's "Not accurate" feedback on the activity's sentiment score.
  */
 export async function flagActivitySentimentInaccurateHandler(

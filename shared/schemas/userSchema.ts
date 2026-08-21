@@ -73,7 +73,7 @@ export const adminSetPasswordSchema = z.object({
 });
 
 /**
- * Schema for the POST /api/auth/forgot-password request body.
+ * Schema for the POST /api/v1/auth/forgot-password request body.
  */
 export const forgotPasswordSchema = z.object({
   email: z
@@ -84,7 +84,7 @@ export const forgotPasswordSchema = z.object({
 });
 
 /**
- * Schema for the POST /api/auth/reset-password request body.
+ * Schema for the POST /api/v1/auth/reset-password request body.
  */
 export const resetPasswordSchema = z.object({
   token: z.string({ required_error: 'Token is required' }).min(1, 'Token is required'),
@@ -102,7 +102,7 @@ export const updateRoleSchema = z.object({
 });
 
 /**
- * Schema for the PATCH /api/users/me/language request body.
+ * Schema for the PATCH /api/v1/users/me/language request body.
  * Passing null clears the preference and falls back to the system default.
  */
 export const updatePreferredLanguageSchema = z.object({
@@ -117,7 +117,7 @@ export const updatePreferredLanguageSchema = z.object({
 });
 
 /**
- * Schema for PATCH /api/users/me/notification-preferences request body.
+ * Schema for PATCH /api/v1/users/me/notification-preferences request body.
  */
 export const updateNotificationPrefsSchema = z.object({
   notify_overdue_tasks: z.boolean(),
@@ -157,10 +157,10 @@ export const issueApiTokenResponseSchema = z.object({
 
 // ── Envelope schemas (for API response validation) ─────────────────────────────
 
-/** Envelope returned by GET /api/auth/me — { user } */
+/** Envelope returned by GET /api/v1/auth/me — { user } */
 export const authMeResponseEnvelopeSchema = z.object({ user: userResponseSchema });
 
-/** Envelope returned by POST /api/users/invite — { user, inviteToken } */
+/** Envelope returned by POST /api/v1/users/invite — { user, inviteToken } */
 export const inviteUserResponseEnvelopeSchema = z.object({
   user: userResponseSchema,
   inviteToken: z.string().min(1),

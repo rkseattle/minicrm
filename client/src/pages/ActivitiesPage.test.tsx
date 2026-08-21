@@ -209,7 +209,7 @@ describe('ActivitiesPage', () => {
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 100 });
       }),
     );
-    // Default /api/auth/me handler returns ADMIN_USER
+    // Default /api/v1/auth/me handler returns ADMIN_USER
     renderWithProviders(<ActivitiesPage />, {
       initialEntries: [`/activities?owner=${adminUuid}`],
     });

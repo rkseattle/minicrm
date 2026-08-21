@@ -799,12 +799,12 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
 
 /** Default handlers — can be overridden in individual tests with server.use() */
 export const handlers = [
-  /** Auth: GET /api/auth/me — returns admin by default */
+  /** Auth: GET /api/v1/auth/me — returns admin by default */
   http.get('/api/v1/auth/me', () => {
     return HttpResponse.json({ user: ADMIN_USER });
   }),
 
-  /** Auth: POST /api/auth/login */
+  /** Auth: POST /api/v1/auth/login */
   http.post('/api/v1/auth/login', async ({ request }) => {
     const body = (await request.json()) as { email: string; password: string };
     if (body.email === 'admin@example.com' && body.password === 'correct-password') {
@@ -816,18 +816,18 @@ export const handlers = [
     );
   }),
 
-  /** Auth: POST /api/auth/logout */
+  /** Auth: POST /api/v1/auth/logout */
   http.post('/api/v1/auth/logout', () => {
     return HttpResponse.json({ message: 'Logged out' });
   }),
 
-  /** Users: GET /api/users */
+  /** Users: GET /api/v1/users */
   http.get('/api/v1/users', () => {
     const users = [ADMIN_USER, REP_USER, INVITED_USER];
     return HttpResponse.json({ data: users, total: users.length, page: 1, limit: 25 });
   }),
 
-  /** Users: GET /api/users/active — returns only active users with id+name */
+  /** Users: GET /api/v1/users/active — returns only active users with id+name */
   http.get('/api/v1/users/active', () => {
     return HttpResponse.json({
       users: [
@@ -837,7 +837,7 @@ export const handlers = [
     });
   }),
 
-  /** Users: POST /api/users/invite */
+  /** Users: POST /api/v1/users/invite */
   http.post('/api/v1/users/invite', async ({ request }) => {
     const body = (await request.json()) as { email: string; name: string; role: string };
     return HttpResponse.json(
@@ -858,7 +858,7 @@ export const handlers = [
     );
   }),
 
-  /** Users: PATCH /api/users/:id/role */
+  /** Users: PATCH /api/v1/users/:id/role */
   http.patch('/api/v1/users/:id/role', async ({ params, request }) => {
     const body = (await request.json()) as { role: string };
     return HttpResponse.json({
@@ -866,26 +866,26 @@ export const handlers = [
     });
   }),
 
-  /** Users: PATCH /api/users/:id/deactivate */
+  /** Users: PATCH /api/v1/users/:id/deactivate */
   http.patch('/api/v1/users/:id/deactivate', ({ params }) => {
     return HttpResponse.json({
       user: { ...ADMIN_USER, id: params.id as string, status: 'inactive' },
     });
   }),
 
-  /** Users: PATCH /api/users/:id/reactivate */
+  /** Users: PATCH /api/v1/users/:id/reactivate */
   http.patch('/api/v1/users/:id/reactivate', ({ params }) => {
     return HttpResponse.json({
       user: { ...ADMIN_USER, id: params.id as string, status: 'active' },
     });
   }),
 
-  /** Users: POST /api/users/:id/reset-onboarding — admin resets a user's onboarding checklist */
+  /** Users: POST /api/v1/users/:id/reset-onboarding — admin resets a user's onboarding checklist */
   http.post('/api/v1/users/:id/reset-onboarding', () => {
     return HttpResponse.json({ success: true });
   }),
 
-  /** Users: POST /api/users/:id/admin-set-password — admin sets a user's password */
+  /** Users: POST /api/v1/users/:id/admin-set-password — admin sets a user's password */
   http.post('/api/v1/users/:id/admin-set-password', ({ params }) => {
     return HttpResponse.json({
       user: { ...REP_USER, id: params.id as string, must_change_password: true },
@@ -907,24 +907,24 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Auth: POST /api/auth/change-password */
+  /** Auth: POST /api/v1/auth/change-password */
   http.post('/api/v1/auth/change-password', () => {
     return HttpResponse.json({ message: 'Password changed successfully' });
   }),
 
-  /** Auth: POST /api/auth/forgot-password — always returns 200 */
+  /** Auth: POST /api/v1/auth/forgot-password — always returns 200 */
   http.post('/api/v1/auth/forgot-password', () => {
     return HttpResponse.json({
       message: 'If an account with that email exists, a reset link has been sent.',
     });
   }),
 
-  /** Auth: POST /api/auth/reset-password — returns admin user on success */
+  /** Auth: POST /api/v1/auth/reset-password — returns admin user on success */
   http.post('/api/v1/auth/reset-password', () => {
     return HttpResponse.json({ user: ADMIN_USER });
   }),
 
-  /** Contacts: GET /api/contacts — supports ?account=<id> and ?owner=me filters */
+  /** Contacts: GET /api/v1/contacts — supports ?account=<id> and ?owner=me filters */
   http.get('/api/v1/contacts', ({ request }) => {
     const url = new URL(request.url);
     const accountId = url.searchParams.get('account');
@@ -935,7 +935,7 @@ export const handlers = [
     return HttpResponse.json({ data: contacts, total: contacts.length, page: 1, limit: 25 });
   }),
 
-  /** Contacts: POST /api/contacts */
+  /** Contacts: POST /api/v1/contacts */
   http.post('/api/v1/contacts', async ({ request }) => {
     const body = (await request.json()) as Partial<ContactResponse>;
     return HttpResponse.json(
@@ -956,7 +956,7 @@ export const handlers = [
     );
   }),
 
-  /** Contacts: GET /api/contacts/:id */
+  /** Contacts: GET /api/v1/contacts/:id */
   http.get('/api/v1/contacts/:id', ({ params }) => {
     if (params.id === CONTACT_1.id) {
       return HttpResponse.json({ contact: CONTACT_1 });
@@ -967,7 +967,7 @@ export const handlers = [
     );
   }),
 
-  /** Contacts: PATCH /api/contacts/:id */
+  /** Contacts: PATCH /api/v1/contacts/:id */
   http.patch('/api/v1/contacts/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<ContactResponse>;
     return HttpResponse.json({
@@ -975,12 +975,12 @@ export const handlers = [
     });
   }),
 
-  /** Contacts: DELETE /api/contacts/:id */
+  /** Contacts: DELETE /api/v1/contacts/:id */
   http.delete('/api/v1/contacts/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Contacts: GET /api/contacts/:id/deals — returns deals linked to a contact */
+  /** Contacts: GET /api/v1/contacts/:id/deals — returns deals linked to a contact */
   http.get('/api/v1/contacts/:id/deals', ({ params }) => {
     // By default return DEAL_1 when fetching CONTACT_1's deals; empty for others
     if (params.id === CONTACT_1.id) {
@@ -989,12 +989,12 @@ export const handlers = [
     return HttpResponse.json({ deals: [] });
   }),
 
-  /** Accounts: GET /api/accounts */
+  /** Accounts: GET /api/v1/accounts */
   http.get('/api/v1/accounts', () => {
     return HttpResponse.json({ data: [ACCOUNT_1], total: 1, page: 1, limit: 25 });
   }),
 
-  /** Accounts: POST /api/accounts */
+  /** Accounts: POST /api/v1/accounts */
   http.post('/api/v1/accounts', async ({ request }) => {
     const body = (await request.json()) as Partial<AccountResponse>;
     return HttpResponse.json(
@@ -1013,7 +1013,7 @@ export const handlers = [
     );
   }),
 
-  /** Accounts: GET /api/accounts/:id */
+  /** Accounts: GET /api/v1/accounts/:id */
   http.get('/api/v1/accounts/:id', ({ params }) => {
     if (params.id === ACCOUNT_1.id) {
       return HttpResponse.json({ account: ACCOUNT_1 });
@@ -1024,7 +1024,7 @@ export const handlers = [
     );
   }),
 
-  /** Accounts: PATCH /api/accounts/:id */
+  /** Accounts: PATCH /api/v1/accounts/:id */
   http.patch('/api/v1/accounts/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<AccountResponse>;
     return HttpResponse.json({
@@ -1032,27 +1032,27 @@ export const handlers = [
     });
   }),
 
-  /** Accounts: DELETE /api/accounts/:id */
+  /** Accounts: DELETE /api/v1/accounts/:id */
   http.delete('/api/v1/accounts/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Accounts: GET /api/accounts/:id/children — returns empty list by default */
+  /** Accounts: GET /api/v1/accounts/:id/children — returns empty list by default */
   http.get('/api/v1/accounts/:id/children', () => {
     return HttpResponse.json([]);
   }),
 
-  /** Accounts: GET /api/accounts/search — returns empty list by default */
+  /** Accounts: GET /api/v1/accounts/search — returns empty list by default */
   http.get('/api/v1/accounts/search', () => {
     return HttpResponse.json([]);
   }),
 
-  /** Contacts: GET /api/contacts/:id/addresses — returns empty list by default */
+  /** Contacts: GET /api/v1/contacts/:id/addresses — returns empty list by default */
   http.get('/api/v1/contacts/:id/addresses', () => {
     return HttpResponse.json({ addresses: [] });
   }),
 
-  /** Contacts: POST /api/contacts/:id/addresses */
+  /** Contacts: POST /api/v1/contacts/:id/addresses */
   http.post('/api/v1/contacts/:id/addresses', async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({
@@ -1073,12 +1073,12 @@ export const handlers = [
     });
   }),
 
-  /** Contacts: DELETE /api/contacts/:id/addresses/:addressId */
+  /** Contacts: DELETE /api/v1/contacts/:id/addresses/:addressId */
   http.delete('/api/v1/contacts/:id/addresses/:addressId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Contacts: POST /api/contacts/:id/addresses/:addressId/set-default */
+  /** Contacts: POST /api/v1/contacts/:id/addresses/:addressId/set-default */
   http.post('/api/v1/contacts/:id/addresses/:addressId/set-default', ({ params }) => {
     return HttpResponse.json({
       address: {
@@ -1098,7 +1098,7 @@ export const handlers = [
     });
   }),
 
-  /** Deals: GET /api/deals — supports ?owner=me filter */
+  /** Deals: GET /api/v1/deals — supports ?owner=me filter */
   http.get('/api/v1/deals', ({ request }) => {
     const url = new URL(request.url);
     const owner = url.searchParams.get('owner');
@@ -1107,7 +1107,7 @@ export const handlers = [
     return HttpResponse.json({ data: deals, total: deals.length, page: 1, limit: 25 });
   }),
 
-  /** Deals: POST /api/deals */
+  /** Deals: POST /api/v1/deals */
   http.post('/api/v1/deals', async ({ request }) => {
     const body = (await request.json()) as Partial<DealResponse>;
     return HttpResponse.json(
@@ -1126,7 +1126,7 @@ export const handlers = [
     );
   }),
 
-  /** Deals: GET /api/deals/:id */
+  /** Deals: GET /api/v1/deals/:id */
   http.get('/api/v1/deals/:id', ({ params }) => {
     if (params.id === DEAL_1.id) {
       return HttpResponse.json({ deal: DEAL_1, contacts: [] });
@@ -1137,7 +1137,7 @@ export const handlers = [
     );
   }),
 
-  /** Deals: PATCH /api/deals/:id */
+  /** Deals: PATCH /api/v1/deals/:id */
   http.patch('/api/v1/deals/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<DealResponse>;
     return HttpResponse.json({
@@ -1145,12 +1145,12 @@ export const handlers = [
     });
   }),
 
-  /** Deals: DELETE /api/deals/:id */
+  /** Deals: DELETE /api/v1/deals/:id */
   http.delete('/api/v1/deals/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Deals: POST /api/deals/:id/contacts/:contactId — link a contact to a deal */
+  /** Deals: POST /api/v1/deals/:id/contacts/:contactId — link a contact to a deal */
   http.post('/api/v1/deals/:id/contacts/:contactId', ({ params }) => {
     // Return CONTACT_1 as a linked contact by default
     const linkedContact = {
@@ -1163,13 +1163,13 @@ export const handlers = [
     return HttpResponse.json({ contacts: [linkedContact] });
   }),
 
-  /** Deals: DELETE /api/deals/:id/contacts/:contactId — unlink a contact from a deal */
+  /** Deals: DELETE /api/v1/deals/:id/contacts/:contactId — unlink a contact from a deal */
   http.delete('/api/v1/deals/:id/contacts/:contactId', () => {
     return HttpResponse.json({ contacts: [] });
   }),
 
   /**
-   * Deals: GET /api/deals/:id/stage-advancement
+   * Deals: GET /api/v1/deals/:id/stage-advancement
    * Fired passively on every DealDetailPage mount when the ai_stage_advancement flag is
    * enabled (the default in tests) — defaults to { ready: false } so no indicator renders
    * unless a test explicitly overrides this handler.
@@ -1178,22 +1178,22 @@ export const handlers = [
     return HttpResponse.json({ ready: false });
   }),
 
-  /** Dashboard: GET /api/dashboard/summary — returns dashboard summary metrics */
+  /** Dashboard: GET /api/v1/dashboard/summary — returns dashboard summary metrics */
   http.get('/api/v1/dashboard/summary', () => {
     return HttpResponse.json(DASHBOARD_SUMMARY);
   }),
 
-  /** Reports: GET /api/reports/win-loss — returns win/loss report */
+  /** Reports: GET /api/v1/reports/win-loss — returns win/loss report */
   http.get('/api/v1/reports/win-loss', () => {
     return HttpResponse.json(WIN_LOSS_REPORT);
   }),
 
-  /** Reports: GET /api/reports/activity-volume — returns activity volume report */
+  /** Reports: GET /api/v1/reports/activity-volume — returns activity volume report */
   http.get('/api/v1/reports/activity-volume', () => {
     return HttpResponse.json(ACTIVITY_VOLUME_REPORT);
   }),
 
-  /** Reports: GET /api/reports/stage-trend — returns stage trend report */
+  /** Reports: GET /api/v1/reports/stage-trend — returns stage trend report */
   http.get('/api/v1/reports/stage-trend', () => {
     return HttpResponse.json(STAGE_TREND_REPORT);
   }),
@@ -1249,13 +1249,13 @@ export const handlers = [
     return HttpResponse.json({ columns: ['id', 'first_name'], rows: [], row_count: 0 });
   }),
 
-  /** Activities: GET /api/activities/my-tasks — returns paginated task rows with linked record info */
+  /** Activities: GET /api/v1/activities/my-tasks — returns paginated task rows with linked record info */
   http.get('/api/v1/activities/my-tasks', () => {
     const tasks = [MY_TASK_1, MY_TASK_OVERDUE];
     return HttpResponse.json({ tasks, total: tasks.length, page: 1, limit: 25 });
   }),
 
-  /** Activities: GET /api/activities — supports ?contact, ?account, ?deal, ?owner=me filters */
+  /** Activities: GET /api/v1/activities — supports ?contact, ?account, ?deal, ?owner=me filters */
   http.get('/api/v1/activities', ({ request }) => {
     const url = new URL(request.url);
     const contactId = url.searchParams.get('contact');
@@ -1268,7 +1268,7 @@ export const handlers = [
     return HttpResponse.json({ data: activities, total: activities.length, page: 1, limit: 10 });
   }),
 
-  /** Activities: POST /api/activities */
+  /** Activities: POST /api/v1/activities */
   http.post('/api/v1/activities', async ({ request }) => {
     const body = (await request.json()) as Partial<ActivityResponse>;
     return HttpResponse.json(
@@ -1290,7 +1290,7 @@ export const handlers = [
     );
   }),
 
-  /** Activities: GET /api/activities/:id */
+  /** Activities: GET /api/v1/activities/:id */
   http.get('/api/v1/activities/:id', ({ params }) => {
     if (params.id === ACTIVITY_1.id) return HttpResponse.json({ activity: ACTIVITY_1 });
     if (params.id === ACTIVITY_2.id) return HttpResponse.json({ activity: ACTIVITY_2 });
@@ -1300,63 +1300,63 @@ export const handlers = [
     );
   }),
 
-  /** Activities: PATCH /api/activities/:id */
+  /** Activities: PATCH /api/v1/activities/:id */
   http.patch('/api/v1/activities/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<ActivityResponse>;
     const base = params.id === ACTIVITY_2.id ? ACTIVITY_2 : ACTIVITY_1;
     return HttpResponse.json({ activity: { ...base, ...body, id: params.id as string } });
   }),
 
-  /** Activities: DELETE /api/activities/:id */
+  /** Activities: DELETE /api/v1/activities/:id */
   http.delete('/api/v1/activities/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Settings: GET /api/settings/default-language */
+  /** Settings: GET /api/v1/settings/default-language */
   http.get('/api/v1/settings/default-language', () => {
     return HttpResponse.json({ language: 'en' });
   }),
 
-  /** Settings: PATCH /api/settings/default-language */
+  /** Settings: PATCH /api/v1/settings/default-language */
   http.patch('/api/v1/settings/default-language', async ({ request }) => {
     const body = (await request.json()) as { language: string };
     return HttpResponse.json({ language: body.language });
   }),
 
-  /** Settings: GET /api/settings/nav-layout */
+  /** Settings: GET /api/v1/settings/nav-layout */
   http.get('/api/v1/settings/nav-layout', () => {
     return HttpResponse.json({ layout: 'top' });
   }),
 
-  /** Settings: PATCH /api/settings/nav-layout */
+  /** Settings: PATCH /api/v1/settings/nav-layout */
   http.patch('/api/v1/settings/nav-layout', async ({ request }) => {
     const body = (await request.json()) as { layout: string };
     return HttpResponse.json({ layout: body.layout });
   }),
 
-  /** Settings: GET /api/settings/email-notifications */
+  /** Settings: GET /api/v1/settings/email-notifications */
   http.get('/api/v1/settings/email-notifications', () => {
     return HttpResponse.json({ enabled: true });
   }),
 
-  /** Settings: PATCH /api/settings/email-notifications */
+  /** Settings: PATCH /api/v1/settings/email-notifications */
   http.patch('/api/v1/settings/email-notifications', async ({ request }) => {
     const body = (await request.json()) as { enabled: boolean };
     return HttpResponse.json({ enabled: body.enabled });
   }),
 
-  /** Settings: GET /api/settings/default-currency */
+  /** Settings: GET /api/v1/settings/default-currency */
   http.get('/api/v1/settings/default-currency', () => {
     return HttpResponse.json({ currency: 'USD' });
   }),
 
-  /** Settings: PATCH /api/settings/default-currency */
+  /** Settings: PATCH /api/v1/settings/default-currency */
   http.patch('/api/v1/settings/default-currency', async ({ request }) => {
     const body = (await request.json()) as { currency: string };
     return HttpResponse.json({ currency: body.currency });
   }),
 
-  /** Settings: GET /api/settings/currencies */
+  /** Settings: GET /api/v1/settings/currencies */
   http.get('/api/v1/settings/currencies', () => {
     return HttpResponse.json({
       home_currency: 'USD',
@@ -1373,7 +1373,7 @@ export const handlers = [
     });
   }),
 
-  /** Settings: PUT /api/settings/currencies */
+  /** Settings: PUT /api/v1/settings/currencies */
   http.put('/api/v1/settings/currencies', async ({ request }) => {
     const body = (await request.json()) as {
       home_currency: string;
@@ -1399,12 +1399,12 @@ export const handlers = [
     });
   }),
 
-  /** Users: GET /api/users/notification-recipient-count */
+  /** Users: GET /api/v1/users/notification-recipient-count */
   http.get('/api/v1/users/notification-recipient-count', () => {
     return HttpResponse.json({ count: 2 });
   }),
 
-  /** Users: GET /api/users/me/notification-preferences */
+  /** Users: GET /api/v1/users/me/notification-preferences */
   http.get('/api/v1/users/me/notification-preferences', () => {
     return HttpResponse.json({
       preferences: {
@@ -1415,7 +1415,7 @@ export const handlers = [
     });
   }),
 
-  /** Users: PATCH /api/users/me/notification-preferences */
+  /** Users: PATCH /api/v1/users/me/notification-preferences */
   http.patch('/api/v1/users/me/notification-preferences', async ({ request }) => {
     const body = (await request.json()) as {
       notify_overdue_tasks?: boolean;
@@ -1431,23 +1431,23 @@ export const handlers = [
     });
   }),
 
-  /** Users: GET /api/users/me/language — returns null preference by default */
+  /** Users: GET /api/v1/users/me/language — returns null preference by default */
   http.get('/api/v1/users/me/language', () => {
     return HttpResponse.json({ language: null });
   }),
 
-  /** Users: PATCH /api/users/me/language — echoes back the saved language */
+  /** Users: PATCH /api/v1/users/me/language — echoes back the saved language */
   http.patch('/api/v1/users/me/language', async ({ request }) => {
     const body = (await request.json()) as { language: string | null };
     return HttpResponse.json({ language: body.language });
   }),
 
-  /** Automation: GET /api/automation/rules — returns paginated list */
+  /** Automation: GET /api/v1/automation/rules — returns paginated list */
   http.get('/api/v1/automation/rules', () => {
     return HttpResponse.json({ data: [AUTOMATION_RULE_1], total: 1, page: 1, limit: 25 });
   }),
 
-  /** Automation: POST /api/automation/rules */
+  /** Automation: POST /api/v1/automation/rules */
   http.post('/api/v1/automation/rules', async ({ request }) => {
     const body = (await request.json()) as Partial<AutomationRuleResponse>;
     return HttpResponse.json(
@@ -1467,7 +1467,7 @@ export const handlers = [
     );
   }),
 
-  /** Automation: GET /api/automation/rules/:id */
+  /** Automation: GET /api/v1/automation/rules/:id */
   http.get('/api/v1/automation/rules/:id', ({ params }) => {
     if (params.id === AUTOMATION_RULE_1.id) {
       return HttpResponse.json({ rule: AUTOMATION_RULE_1 });
@@ -1478,7 +1478,7 @@ export const handlers = [
     );
   }),
 
-  /** Automation: PATCH /api/automation/rules/:id */
+  /** Automation: PATCH /api/v1/automation/rules/:id */
   http.patch('/api/v1/automation/rules/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<AutomationRuleResponse>;
     return HttpResponse.json({
@@ -1486,12 +1486,12 @@ export const handlers = [
     });
   }),
 
-  /** Automation: DELETE /api/automation/rules/:id */
+  /** Automation: DELETE /api/v1/automation/rules/:id */
   http.delete('/api/v1/automation/rules/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Automation: GET /api/automation/rules/:id/logs */
+  /** Automation: GET /api/v1/automation/rules/:id/logs */
   http.get('/api/v1/automation/rules/:id/logs', ({ params }) => {
     if (params.id === AUTOMATION_RULE_1.id) {
       return HttpResponse.json({ logs: [AUTOMATION_LOG_1] });
@@ -1499,27 +1499,27 @@ export const handlers = [
     return HttpResponse.json({ logs: [] });
   }),
 
-  /** Admin: GET /api/admin/demo/status — no demo data by default */
+  /** Admin: GET /api/v1/admin/demo/status — no demo data by default */
   http.get('/api/v1/admin/demo/status', () => {
     return HttpResponse.json({ active: false });
   }),
 
-  /** Admin: POST /api/admin/demo/seed */
+  /** Admin: POST /api/v1/admin/demo/seed */
   http.post('/api/v1/admin/demo/seed', () => {
     return HttpResponse.json({ success: true });
   }),
 
-  /** Admin: POST /api/admin/demo/reset */
+  /** Admin: POST /api/v1/admin/demo/reset */
   http.post('/api/v1/admin/demo/reset', () => {
     return HttpResponse.json({ success: true });
   }),
 
-  /** Admin: DELETE /api/admin/demo */
+  /** Admin: DELETE /api/v1/admin/demo */
   http.delete('/api/v1/admin/demo', () => {
     return HttpResponse.json({ success: true });
   }),
 
-  /** Import: POST /api/admin/import/:entity/parse — returns headers, fields, preview */
+  /** Import: POST /api/v1/admin/import/:entity/parse — returns headers, fields, preview */
   http.post('/api/v1/admin/import/:entity/parse', ({ params }) => {
     const entity = params.entity as string;
     const headers =
@@ -1551,12 +1551,12 @@ export const handlers = [
     return HttpResponse.json({ headers, fields, preview });
   }),
 
-  /** Import: POST /api/admin/import/:entity/run — returns job_id immediately (202) */
+  /** Import: POST /api/v1/admin/import/:entity/run — returns job_id immediately (202) */
   http.post('/api/v1/admin/import/:entity/run', () => {
     return HttpResponse.json({ job_id: 'test-job-id', status: 'pending' }, { status: 202 });
   }),
 
-  /** Import: GET /api/admin/import/jobs/:job_id — returns completed job status */
+  /** Import: GET /api/v1/admin/import/jobs/:job_id — returns completed job status */
   http.get('/api/v1/admin/import/jobs/:job_id', () => {
     return HttpResponse.json({
       job_id: 'test-job-id',
@@ -1574,7 +1574,7 @@ export const handlers = [
     });
   }),
 
-  /** Search: GET /api/search — returns contacts, accounts, and deals matching ?q= */
+  /** Search: GET /api/v1/search — returns contacts, accounts, and deals matching ?q= */
   http.get('/api/v1/search', ({ request }) => {
     const url = new URL(request.url);
     const query = url.searchParams.get('q') ?? '';
@@ -1613,12 +1613,12 @@ export const handlers = [
 
   // ── Attachments ─────────────────────────────────────────────────
 
-  /** Attachments: GET /api/attachments — returns empty list by default */
+  /** Attachments: GET /api/v1/attachments — returns empty list by default */
   http.get('/api/v1/attachments', () => {
     return HttpResponse.json({ attachments: [] });
   }),
 
-  /** Attachments: POST /api/attachments — returns a created attachment */
+  /** Attachments: POST /api/v1/attachments — returns a created attachment */
   http.post('/api/v1/attachments', () => {
     return HttpResponse.json(
       {
@@ -1638,24 +1638,24 @@ export const handlers = [
     );
   }),
 
-  /** Attachments: DELETE /api/attachments/:id */
+  /** Attachments: DELETE /api/v1/attachments/:id */
   http.delete('/api/v1/attachments/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
   // ── Storage settings ────────────────────────────────────────────
 
-  /** Settings: GET /api/settings/storage/status — not configured by default */
+  /** Settings: GET /api/v1/settings/storage/status — not configured by default */
   http.get('/api/v1/settings/storage/status', () => {
     return HttpResponse.json({ configured: false });
   }),
 
-  /** Settings: GET /api/settings/storage — not configured by default */
+  /** Settings: GET /api/v1/settings/storage — not configured by default */
   http.get('/api/v1/settings/storage', () => {
     return HttpResponse.json({ configured: false, config: null });
   }),
 
-  /** Settings: PUT /api/settings/storage */
+  /** Settings: PUT /api/v1/settings/storage */
   http.put('/api/v1/settings/storage', async ({ request }) => {
     const body = (await request.json()) as {
       endpoint: string;
@@ -1674,27 +1674,27 @@ export const handlers = [
     });
   }),
 
-  /** Settings: DELETE /api/settings/storage */
+  /** Settings: DELETE /api/v1/settings/storage */
   http.delete('/api/v1/settings/storage', () => {
     return HttpResponse.json({ configured: false, config: null });
   }),
 
-  /** Settings: POST /api/settings/storage/test */
+  /** Settings: POST /api/v1/settings/storage/test */
   http.post('/api/v1/settings/storage/test', () => {
     return HttpResponse.json({ success: true });
   }),
 
-  /** Settings: GET /api/settings/sso/status — SSO disabled by default */
+  /** Settings: GET /api/v1/settings/sso/status — SSO disabled by default */
   http.get('/api/v1/settings/sso/status', () => {
     return HttpResponse.json({ enabled: false, protocol: null });
   }),
 
-  /** Settings: GET /api/settings/sso — not configured by default */
+  /** Settings: GET /api/v1/settings/sso — not configured by default */
   http.get('/api/v1/settings/sso', () => {
     return HttpResponse.json({ sso: null });
   }),
 
-  /** Settings: PUT /api/settings/sso */
+  /** Settings: PUT /api/v1/settings/sso */
   http.put('/api/v1/settings/sso', async ({ request }) => {
     const body = (await request.json()) as {
       protocol: string;
@@ -1711,23 +1711,23 @@ export const handlers = [
     });
   }),
 
-  /** Settings: DELETE /api/settings/sso */
+  /** Settings: DELETE /api/v1/settings/sso */
   http.delete('/api/v1/settings/sso', () => {
     return HttpResponse.json({ ok: true });
   }),
 
-  /** Settings: GET /api/settings/tags-restrict-creation */
+  /** Settings: GET /api/v1/settings/tags-restrict-creation */
   http.get('/api/v1/settings/tags-restrict-creation', () => {
     return HttpResponse.json({ restricted: false });
   }),
 
-  /** Settings: PATCH /api/settings/tags-restrict-creation */
+  /** Settings: PATCH /api/v1/settings/tags-restrict-creation */
   http.patch('/api/v1/settings/tags-restrict-creation', async ({ request }) => {
     const body = (await request.json()) as { restricted: boolean };
     return HttpResponse.json({ restricted: body.restricted });
   }),
 
-  /** Settings: GET /api/settings/smtp — no password set by default */
+  /** Settings: GET /api/v1/settings/smtp — no password set by default */
   http.get('/api/v1/settings/smtp', () => {
     return HttpResponse.json({
       smtp_host: '',
@@ -1738,7 +1738,7 @@ export const handlers = [
     });
   }),
 
-  /** Settings: PUT /api/settings/smtp */
+  /** Settings: PUT /api/v1/settings/smtp */
   http.put('/api/v1/settings/smtp', async ({ request }) => {
     const body = (await request.json()) as {
       smtp_host: string;
@@ -1756,17 +1756,17 @@ export const handlers = [
     });
   }),
 
-  /** Settings: POST /api/settings/smtp/test */
+  /** Settings: POST /api/v1/settings/smtp/test */
   http.post('/api/v1/settings/smtp/test', () => {
     return HttpResponse.json({ success: true });
   }),
 
-  /** Leads: GET /api/leads — returns LEAD_1 by default */
+  /** Leads: GET /api/v1/leads — returns LEAD_1 by default */
   http.get('/api/v1/leads', () => {
     return HttpResponse.json({ data: [LEAD_1], total: 1, page: 1, limit: 25 });
   }),
 
-  /** Leads: POST /api/leads */
+  /** Leads: POST /api/v1/leads */
   http.post('/api/v1/leads', async ({ request }) => {
     const body = (await request.json()) as Partial<LeadResponse>;
     return HttpResponse.json(
@@ -1783,7 +1783,7 @@ export const handlers = [
     );
   }),
 
-  /** Leads: GET /api/leads/:id */
+  /** Leads: GET /api/v1/leads/:id */
   http.get('/api/v1/leads/:id', ({ params }) => {
     if (params.id === LEAD_1.id) {
       return HttpResponse.json({ lead: LEAD_1 });
@@ -1794,13 +1794,13 @@ export const handlers = [
     );
   }),
 
-  /** Leads: PATCH /api/leads/:id */
+  /** Leads: PATCH /api/v1/leads/:id */
   http.patch('/api/v1/leads/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<LeadResponse>;
     return HttpResponse.json({ lead: { ...LEAD_1, ...body, id: params.id as string } });
   }),
 
-  /** Leads: POST /api/leads/:id/score-narrative */
+  /** Leads: POST /api/v1/leads/:id/score-narrative */
   http.post('/api/v1/leads/:id/score-narrative', () => {
     return HttpResponse.json({
       narrative: 'This lead scores well due to a strong referral source and recent activity.',
@@ -1809,7 +1809,7 @@ export const handlers = [
     });
   }),
 
-  /** Leads: GET /api/leads/:id/score */
+  /** Leads: GET /api/v1/leads/:id/score */
   http.get('/api/v1/leads/:id/score', () => {
     return HttpResponse.json({
       score: 55,
@@ -1828,17 +1828,17 @@ export const handlers = [
     });
   }),
 
-  /** Leads: DELETE /api/leads/:id */
+  /** Leads: DELETE /api/v1/leads/:id */
   http.delete('/api/v1/leads/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Leads: GET /api/leads/:id/status-history */
+  /** Leads: GET /api/v1/leads/:id/status-history */
   http.get('/api/v1/leads/:id/status-history', () => {
     return HttpResponse.json({ history: [] });
   }),
 
-  /** Leads: POST /api/leads/:id/convert */
+  /** Leads: POST /api/v1/leads/:id/convert */
   http.post('/api/v1/leads/:id/convert', () => {
     return HttpResponse.json(
       {
@@ -1852,34 +1852,34 @@ export const handlers = [
     );
   }),
 
-  /** Leads: GET /api/leads/accounts/search */
+  /** Leads: GET /api/v1/leads/accounts/search */
   http.get('/api/v1/leads/accounts/search', () => {
     return HttpResponse.json({ accounts: [{ id: ACCOUNT_1.id, name: ACCOUNT_1.name }] });
   }),
 
-  /** Audit log: GET /api/audit-log/record — returns empty history by default */
+  /** Audit log: GET /api/v1/audit-log/record — returns empty history by default */
   http.get('/api/v1/audit-log/record', () => {
     return HttpResponse.json({ entries: [] });
   }),
 
-  /** Audit log: GET /api/audit-log — returns empty paginated list by default */
+  /** Audit log: GET /api/v1/audit-log — returns empty paginated list by default */
   http.get('/api/v1/audit-log', () => {
     return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
   }),
 
-  /** Audit log: GET /api/audit-log/actors — returns empty list by default */
+  /** Audit log: GET /api/v1/audit-log/actors — returns empty list by default */
   http.get('/api/v1/audit-log/actors', () => {
     return HttpResponse.json({ actors: [] });
   }),
 
   // ── Pipelines ────────────────────────────────────────────────────
 
-  /** Pipelines: GET /api/pipelines — returns the single default pipeline */
+  /** Pipelines: GET /api/v1/pipelines — returns the single default pipeline */
   http.get('/api/v1/pipelines', () => {
     return HttpResponse.json({ pipelines: [DEFAULT_PIPELINE_FIXTURE] });
   }),
 
-  /** Pipelines: POST /api/pipelines — creates a new pipeline */
+  /** Pipelines: POST /api/v1/pipelines — creates a new pipeline */
   http.post('/api/v1/pipelines', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     const newPipeline: PipelineResponse = {
@@ -1892,7 +1892,7 @@ export const handlers = [
     return HttpResponse.json(newPipeline, { status: 201 });
   }),
 
-  /** Pipelines: PATCH /api/pipelines/:id — renames a pipeline */
+  /** Pipelines: PATCH /api/v1/pipelines/:id — renames a pipeline */
   http.patch('/api/v1/pipelines/:id', async ({ params, request }) => {
     const body = (await request.json()) as { name?: string };
     return HttpResponse.json({
@@ -1903,17 +1903,17 @@ export const handlers = [
     });
   }),
 
-  /** Pipelines: DELETE /api/pipelines/:id — deletes a pipeline */
+  /** Pipelines: DELETE /api/v1/pipelines/:id — deletes a pipeline */
   http.delete('/api/v1/pipelines/:id', ({ params }) => {
     return HttpResponse.json({ id: params.id });
   }),
 
-  /** Pipeline stages: GET /api/settings/pipeline-stages — returns six seed stages */
+  /** Pipeline stages: GET /api/v1/settings/pipeline-stages — returns six seed stages */
   http.get('/api/v1/settings/pipeline-stages', () => {
     return HttpResponse.json({ stages: PIPELINE_STAGES_FIXTURE });
   }),
 
-  /** Pipeline stages: POST /api/settings/pipeline-stages — creates a new stage */
+  /** Pipeline stages: POST /api/v1/settings/pipeline-stages — creates a new stage */
   http.post('/api/v1/settings/pipeline-stages', async ({ request }) => {
     const body = (await request.json()) as { name: string; probability?: number };
     const newStage: PipelineStageResponse = {
@@ -1929,7 +1929,7 @@ export const handlers = [
     return HttpResponse.json(newStage, { status: 201 });
   }),
 
-  /** Pipeline stages: PATCH /api/settings/pipeline-stages/:id — updates a stage */
+  /** Pipeline stages: PATCH /api/v1/settings/pipeline-stages/:id — updates a stage */
   http.patch('/api/v1/settings/pipeline-stages/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<PipelineStageResponse>;
     const existing = PIPELINE_STAGES_FIXTURE.find((s) => s.id === params.id);
@@ -1942,12 +1942,12 @@ export const handlers = [
     return HttpResponse.json({ ...existing, ...body });
   }),
 
-  /** Pipeline stages: DELETE /api/settings/pipeline-stages/:id — deletes a stage */
+  /** Pipeline stages: DELETE /api/v1/settings/pipeline-stages/:id — deletes a stage */
   http.delete('/api/v1/settings/pipeline-stages/:id', ({ params }) => {
     return HttpResponse.json({ id: params.id });
   }),
 
-  /** Pipeline stages: PUT /api/settings/pipeline-stages/reorder — batch reorder */
+  /** Pipeline stages: PUT /api/v1/settings/pipeline-stages/reorder — batch reorder */
   http.put('/api/v1/settings/pipeline-stages/reorder', async ({ request }) => {
     const body = (await request.json()) as { stages: string[] };
     const reordered = body.stages.map((id, i) => {
@@ -1968,51 +1968,51 @@ export const handlers = [
 
   // ── Bulk operations ─────────────────────────────────────────────
 
-  /** Bulk: POST /api/contacts/bulk — returns affected count */
+  /** Bulk: POST /api/v1/contacts/bulk — returns affected count */
   http.post('/api/v1/contacts/bulk', () => {
     return HttpResponse.json({ affected: 1 });
   }),
 
-  /** Bulk: POST /api/accounts/bulk — returns affected count */
+  /** Bulk: POST /api/v1/accounts/bulk — returns affected count */
   http.post('/api/v1/accounts/bulk', () => {
     return HttpResponse.json({ affected: 1 });
   }),
 
-  /** Bulk: POST /api/deals/bulk — returns affected count */
+  /** Bulk: POST /api/v1/deals/bulk — returns affected count */
   http.post('/api/v1/deals/bulk', () => {
     return HttpResponse.json({ affected: 1 });
   }),
 
   // ── Bulk V2 operations ───────────────────────────────────────────
 
-  /** Bulk V2: PATCH /api/leads/bulk — reassign owner */
+  /** Bulk V2: PATCH /api/v1/leads/bulk — reassign owner */
   http.patch('/api/v1/leads/bulk', () => {
     return HttpResponse.json({ succeeded: [], failed: [] });
   }),
 
-  /** Bulk V2: DELETE /api/leads/bulk — delete leads */
+  /** Bulk V2: DELETE /api/v1/leads/bulk — delete leads */
   http.delete('/api/v1/leads/bulk', () => {
     return HttpResponse.json({ succeeded: [], failed: [] });
   }),
 
-  /** Bulk V2: PATCH /api/activities/bulk — reassign owner */
+  /** Bulk V2: PATCH /api/v1/activities/bulk — reassign owner */
   http.patch('/api/v1/activities/bulk', () => {
     return HttpResponse.json({ succeeded: [], failed: [] });
   }),
 
-  /** Bulk V2: DELETE /api/activities/bulk — delete activities */
+  /** Bulk V2: DELETE /api/v1/activities/bulk — delete activities */
   http.delete('/api/v1/activities/bulk', () => {
     return HttpResponse.json({ succeeded: [], failed: [] });
   }),
 
   // ── Tags ─────────────────────────────────────────────────────────
 
-  /** Tags: GET /api/tags — returns paginated empty list by default */
+  /** Tags: GET /api/v1/tags — returns paginated empty list by default */
   http.get('/api/v1/tags', () => {
     return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
   }),
 
-  /** Tags: POST /api/tags */
+  /** Tags: POST /api/v1/tags */
   http.post('/api/v1/tags', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json(
@@ -2028,7 +2028,7 @@ export const handlers = [
     );
   }),
 
-  /** Tags: GET /api/tags/:id */
+  /** Tags: GET /api/v1/tags/:id */
   http.get('/api/v1/tags/:id', ({ params }) => {
     return HttpResponse.json({
       tag: {
@@ -2040,7 +2040,7 @@ export const handlers = [
     });
   }),
 
-  /** Tags: PATCH /api/tags/:id — admin rename */
+  /** Tags: PATCH /api/v1/tags/:id — admin rename */
   http.patch('/api/v1/tags/:id', async ({ params, request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
@@ -2053,17 +2053,17 @@ export const handlers = [
     });
   }),
 
-  /** Tags: DELETE /api/tags/:id — admin delete */
+  /** Tags: DELETE /api/v1/tags/:id — admin delete */
   http.delete('/api/v1/tags/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Contacts: GET /api/contacts/:id/tags — returns empty list by default */
+  /** Contacts: GET /api/v1/contacts/:id/tags — returns empty list by default */
   http.get('/api/v1/contacts/:id/tags', () => {
     return HttpResponse.json({ tags: [] });
   }),
 
-  /** Contacts: POST /api/contacts/:id/tags — attach a tag */
+  /** Contacts: POST /api/v1/contacts/:id/tags — attach a tag */
   http.post('/api/v1/contacts/:id/tags', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
@@ -2076,17 +2076,17 @@ export const handlers = [
     });
   }),
 
-  /** Contacts: DELETE /api/contacts/:id/tags/:tagId — detach a tag */
+  /** Contacts: DELETE /api/v1/contacts/:id/tags/:tagId — detach a tag */
   http.delete('/api/v1/contacts/:id/tags/:tagId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Accounts: GET /api/accounts/:id/tags — returns empty list by default */
+  /** Accounts: GET /api/v1/accounts/:id/tags — returns empty list by default */
   http.get('/api/v1/accounts/:id/tags', () => {
     return HttpResponse.json({ tags: [] });
   }),
 
-  /** Accounts: POST /api/accounts/:id/tags — attach a tag */
+  /** Accounts: POST /api/v1/accounts/:id/tags — attach a tag */
   http.post('/api/v1/accounts/:id/tags', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
@@ -2099,17 +2099,17 @@ export const handlers = [
     });
   }),
 
-  /** Accounts: DELETE /api/accounts/:id/tags/:tagId — detach a tag */
+  /** Accounts: DELETE /api/v1/accounts/:id/tags/:tagId — detach a tag */
   http.delete('/api/v1/accounts/:id/tags/:tagId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Deals: GET /api/deals/:id/tags — returns empty list by default */
+  /** Deals: GET /api/v1/deals/:id/tags — returns empty list by default */
   http.get('/api/v1/deals/:id/tags', () => {
     return HttpResponse.json({ tags: [] });
   }),
 
-  /** Deals: POST /api/deals/:id/tags — attach a tag */
+  /** Deals: POST /api/v1/deals/:id/tags — attach a tag */
   http.post('/api/v1/deals/:id/tags', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
@@ -2122,17 +2122,17 @@ export const handlers = [
     });
   }),
 
-  /** Deals: DELETE /api/deals/:id/tags/:tagId — detach a tag */
+  /** Deals: DELETE /api/v1/deals/:id/tags/:tagId — detach a tag */
   http.delete('/api/v1/deals/:id/tags/:tagId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Settings: GET /api/settings/branding — no branding by default */
+  /** Settings: GET /api/v1/settings/branding — no branding by default */
   http.get('/api/v1/settings/branding', () => {
     return HttpResponse.json({ branding: null });
   }),
 
-  /** Settings: PUT /api/settings/branding */
+  /** Settings: PUT /api/v1/settings/branding */
   http.put('/api/v1/settings/branding', async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({
@@ -2149,12 +2149,12 @@ export const handlers = [
     });
   }),
 
-  /** Settings: DELETE /api/settings/branding */
+  /** Settings: DELETE /api/v1/settings/branding */
   http.delete('/api/v1/settings/branding', () => {
     return HttpResponse.json({ branding: null });
   }),
 
-  /** Setup checklist: GET /api/settings/onboarding — not first run by default */
+  /** Setup checklist: GET /api/v1/settings/onboarding — not first run by default */
   http.get('/api/v1/settings/onboarding', () => {
     return HttpResponse.json({
       is_first_run: false,
@@ -2169,12 +2169,12 @@ export const handlers = [
     });
   }),
 
-  /** Onboarding: PUT /api/settings/onboarding — mark completed */
+  /** Onboarding: PUT /api/v1/settings/onboarding — mark completed */
   http.put('/api/v1/settings/onboarding', () => {
     return HttpResponse.json({ onboarding_completed: true });
   }),
 
-  /** Contacts: POST /api/contacts/:id/send-email — SMTP not configured in test */
+  /** Contacts: POST /api/v1/contacts/:id/send-email — SMTP not configured in test */
   http.post('/api/v1/contacts/:id/send-email', () => {
     return HttpResponse.json({
       delivered: false,
@@ -2182,12 +2182,12 @@ export const handlers = [
     });
   }),
 
-  /** Custom fields: GET /api/custom-fields/definitions — returns empty list */
+  /** Custom fields: GET /api/v1/custom-fields/definitions — returns empty list */
   http.get('/api/v1/custom-fields/definitions', () => {
     return HttpResponse.json({ definitions: [] });
   }),
 
-  /** Custom fields: POST /api/custom-fields/definitions — create definition */
+  /** Custom fields: POST /api/v1/custom-fields/definitions — create definition */
   http.post('/api/v1/custom-fields/definitions', async ({ request }) => {
     const body = (await request.json()) as {
       entity_type: string;
@@ -2209,7 +2209,7 @@ export const handlers = [
     );
   }),
 
-  /** Custom fields: PATCH /api/custom-fields/definitions/:id — update definition */
+  /** Custom fields: PATCH /api/v1/custom-fields/definitions/:id — update definition */
   http.patch('/api/v1/custom-fields/definitions/:id', async ({ params, request }) => {
     const body = (await request.json()) as { pii_excluded?: boolean };
     return HttpResponse.json({
@@ -2224,29 +2224,29 @@ export const handlers = [
     });
   }),
 
-  /** Custom fields: DELETE /api/custom-fields/definitions/:id — delete definition */
+  /** Custom fields: DELETE /api/v1/custom-fields/definitions/:id — delete definition */
   http.delete('/api/v1/custom-fields/definitions/:id', ({ params }) => {
     return HttpResponse.json({ id: params['id'] });
   }),
 
-  /** Custom fields: GET /api/custom-fields/:entityType/:recordId/custom-fields — returns empty */
+  /** Custom fields: GET /api/v1/custom-fields/:entityType/:recordId/custom-fields — returns empty */
   http.get('/api/v1/custom-fields/:entityType/:recordId/custom-fields', () => {
     return HttpResponse.json({ values: [] });
   }),
 
-  /** Custom fields: PUT /api/custom-fields/:entityType/:recordId/custom-fields — upsert values */
+  /** Custom fields: PUT /api/v1/custom-fields/:entityType/:recordId/custom-fields — upsert values */
   http.put('/api/v1/custom-fields/:entityType/:recordId/custom-fields', () => {
     return HttpResponse.json({ values: [] });
   }),
 
   // ── Webhooks ────────────────────────────────────────────────────
 
-  /** Webhooks: GET /api/admin/webhooks — returns empty list by default */
+  /** Webhooks: GET /api/v1/admin/webhooks — returns empty list by default */
   http.get('/api/v1/admin/webhooks', () => {
     return HttpResponse.json({ subscriptions: [] });
   }),
 
-  /** Webhooks: POST /api/admin/webhooks */
+  /** Webhooks: POST /api/v1/admin/webhooks */
   http.post('/api/v1/admin/webhooks', async ({ request }) => {
     const body = (await request.json()) as { url: string; events: string[] };
     return HttpResponse.json(
@@ -2265,7 +2265,7 @@ export const handlers = [
     );
   }),
 
-  /** Webhooks: GET /api/admin/webhooks/:id */
+  /** Webhooks: GET /api/v1/admin/webhooks/:id */
   http.get('/api/v1/admin/webhooks/:id', ({ params }) => {
     return HttpResponse.json({
       subscription: {
@@ -2279,7 +2279,7 @@ export const handlers = [
     });
   }),
 
-  /** Webhooks: PATCH /api/admin/webhooks/:id */
+  /** Webhooks: PATCH /api/v1/admin/webhooks/:id */
   http.patch('/api/v1/admin/webhooks/:id', async ({ params, request }) => {
     const body = (await request.json()) as { url?: string; events?: string[]; status?: string };
     return HttpResponse.json({
@@ -2294,12 +2294,12 @@ export const handlers = [
     });
   }),
 
-  /** Webhooks: DELETE /api/admin/webhooks/:id */
+  /** Webhooks: DELETE /api/v1/admin/webhooks/:id */
   http.delete('/api/v1/admin/webhooks/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Webhooks: GET /api/admin/webhooks/:id/logs — returns empty paginated list by default */
+  /** Webhooks: GET /api/v1/admin/webhooks/:id/logs — returns empty paginated list by default */
   http.get('/api/v1/admin/webhooks/:id/logs', () => {
     return HttpResponse.json({ data: [], total: 0, page: 1, limit: 20 });
   }),
@@ -2359,12 +2359,12 @@ export const handlers = [
 
   // ── MFA ─────────────────────────────────────────────────────────
 
-  /** MFA: GET /api/auth/mfa/status — MFA disabled by default */
+  /** MFA: GET /api/v1/auth/mfa/status — MFA disabled by default */
   http.get('/api/v1/auth/mfa/status', () => {
     return HttpResponse.json({ enabled: false, recoveryCodesRemaining: 0 });
   }),
 
-  /** MFA: POST /api/auth/mfa/setup — returns a dummy QR code */
+  /** MFA: POST /api/v1/auth/mfa/setup — returns a dummy QR code */
   http.post('/api/v1/auth/mfa/setup', () => {
     return HttpResponse.json({
       otpauthUrl: 'otpauth://totp/MiniCRM:test@example.com?secret=JBSWY3DPEHPK3PXP&issuer=MiniCRM',
@@ -2373,7 +2373,7 @@ export const handlers = [
     });
   }),
 
-  /** MFA: POST /api/auth/mfa/verify-setup — succeeds with dummy recovery codes */
+  /** MFA: POST /api/v1/auth/mfa/verify-setup — succeeds with dummy recovery codes */
   http.post('/api/v1/auth/mfa/verify-setup', () => {
     return HttpResponse.json({
       recoveryCodes: [
@@ -2389,27 +2389,27 @@ export const handlers = [
     });
   }),
 
-  /** MFA: POST /api/auth/mfa/disable — succeeds */
+  /** MFA: POST /api/v1/auth/mfa/disable — succeeds */
   http.post('/api/v1/auth/mfa/disable', () => {
     return HttpResponse.json({ message: 'Two-factor authentication has been disabled.' });
   }),
 
-  /** MFA: POST /api/auth/mfa/verify-login — succeeds */
+  /** MFA: POST /api/v1/auth/mfa/verify-login — succeeds */
   http.post('/api/v1/auth/mfa/verify-login', () => {
     return HttpResponse.json({ user: ADMIN_USER, mustChangePassword: false });
   }),
 
-  /** MFA: POST /api/auth/mfa/recovery-login — succeeds */
+  /** MFA: POST /api/v1/auth/mfa/recovery-login — succeeds */
   http.post('/api/v1/auth/mfa/recovery-login', () => {
     return HttpResponse.json({ user: ADMIN_USER, mustChangePassword: false });
   }),
 
-  /** Settings: GET /api/settings/mfa-required — MFA not required by default */
+  /** Settings: GET /api/v1/settings/mfa-required — MFA not required by default */
   http.get('/api/v1/settings/mfa-required', () => {
     return HttpResponse.json({ mfa_required: false });
   }),
 
-  /** Settings: PATCH /api/settings/mfa-required */
+  /** Settings: PATCH /api/v1/settings/mfa-required */
   http.patch('/api/v1/settings/mfa-required', async ({ request }) => {
     const body = (await request.json()) as { mfa_required: boolean };
     return HttpResponse.json({ mfa_required: body.mfa_required });
@@ -2417,12 +2417,12 @@ export const handlers = [
 
   // ── Sequences ───────────────────────────────────────────────────
 
-  /** Sequences: GET /api/sequences — returns SEQUENCE_1 by default */
+  /** Sequences: GET /api/v1/sequences — returns SEQUENCE_1 by default */
   http.get('/api/v1/sequences', () => {
     return HttpResponse.json({ data: [SEQUENCE_1], total: 1, page: 1, limit: 25 });
   }),
 
-  /** Sequences: POST /api/sequences */
+  /** Sequences: POST /api/v1/sequences */
   http.post('/api/v1/sequences', async ({ request }) => {
     const body = (await request.json()) as {
       name: string;
@@ -2445,7 +2445,7 @@ export const handlers = [
     );
   }),
 
-  /** Sequences: GET /api/sequences/:id */
+  /** Sequences: GET /api/v1/sequences/:id */
   http.get('/api/v1/sequences/:id', ({ params }) => {
     if (params['id'] === SEQUENCE_1.id) {
       return HttpResponse.json({ sequence: SEQUENCE_1 });
@@ -2456,18 +2456,18 @@ export const handlers = [
     );
   }),
 
-  /** Sequences: PATCH /api/sequences/:id */
+  /** Sequences: PATCH /api/v1/sequences/:id */
   http.patch('/api/v1/sequences/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<SequenceResponse>;
     return HttpResponse.json({ sequence: { ...SEQUENCE_1, ...body, id: params['id'] as string } });
   }),
 
-  /** Sequences: DELETE /api/sequences/:id */
+  /** Sequences: DELETE /api/v1/sequences/:id */
   http.delete('/api/v1/sequences/:id', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Sequence steps: GET /api/sequences/:id/steps */
+  /** Sequence steps: GET /api/v1/sequences/:id/steps */
   http.get('/api/v1/sequences/:id/steps', ({ params }) => {
     if (params['id'] === SEQUENCE_1.id) {
       return HttpResponse.json({ steps: [SEQUENCE_STEP_1, SEQUENCE_STEP_2] });
@@ -2475,7 +2475,7 @@ export const handlers = [
     return HttpResponse.json({ steps: [] });
   }),
 
-  /** Sequence steps: POST /api/sequences/:id/steps */
+  /** Sequence steps: POST /api/v1/sequences/:id/steps */
   http.post('/api/v1/sequences/:id/steps', async ({ params, request }) => {
     const body = (await request.json()) as Partial<SequenceStepResponse>;
     return HttpResponse.json(
@@ -2494,7 +2494,7 @@ export const handlers = [
     );
   }),
 
-  /** Sequence steps: PATCH /api/sequences/:id/steps/:stepId */
+  /** Sequence steps: PATCH /api/v1/sequences/:id/steps/:stepId */
   http.patch('/api/v1/sequences/:id/steps/:stepId', async ({ params, request }) => {
     const body = (await request.json()) as Partial<SequenceStepResponse>;
     return HttpResponse.json({
@@ -2502,17 +2502,17 @@ export const handlers = [
     });
   }),
 
-  /** Sequence steps: DELETE /api/sequences/:id/steps/:stepId */
+  /** Sequence steps: DELETE /api/v1/sequences/:id/steps/:stepId */
   http.delete('/api/v1/sequences/:id/steps/:stepId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Enrollments: GET /api/contacts/:id/sequence-enrollments */
+  /** Enrollments: GET /api/v1/contacts/:id/sequence-enrollments */
   http.get('/api/v1/contacts/:id/sequence-enrollments', () => {
     return HttpResponse.json({ enrollments: [ENROLLMENT_1] });
   }),
 
-  /** Enrollments: POST /api/contacts/:id/sequence-enrollments */
+  /** Enrollments: POST /api/v1/contacts/:id/sequence-enrollments */
   http.post('/api/v1/contacts/:id/sequence-enrollments', async ({ params }) => {
     return HttpResponse.json(
       {
@@ -2525,7 +2525,7 @@ export const handlers = [
     );
   }),
 
-  /** Enrollments: GET /api/sequence-enrollments/:id */
+  /** Enrollments: GET /api/v1/sequence-enrollments/:id */
   http.get('/api/v1/sequence-enrollments/:id', ({ params }) => {
     if (params['id'] === ENROLLMENT_1.id) {
       return HttpResponse.json({ enrollment: ENROLLMENT_1 });
@@ -2536,7 +2536,7 @@ export const handlers = [
     );
   }),
 
-  /** Enrollments: DELETE /api/sequence-enrollments/:id (unenroll) */
+  /** Enrollments: DELETE /api/v1/sequence-enrollments/:id (unenroll) */
   http.delete('/api/v1/sequence-enrollments/:id', ({ params }) => {
     return HttpResponse.json({
       enrollment: {
@@ -2551,7 +2551,7 @@ export const handlers = [
 
   // ── Proposal draft generation ──────────────────────────────────────
 
-  /** Deals: POST /api/deals/:id/proposal-draft — default stub draft. */
+  /** Deals: POST /api/v1/deals/:id/proposal-draft — default stub draft. */
   http.post('/api/v1/deals/:id/proposal-draft', () => {
     return HttpResponse.json({
       draft: {
@@ -2568,7 +2568,7 @@ export const handlers = [
   }),
 
   /**
-   * Deals: POST /api/deals/:id/proposal-draft/export-docx — default stub blob.
+   * Deals: POST /api/v1/deals/:id/proposal-draft/export-docx — default stub blob.
    * Body is a plain string, not `new Blob([...])` — MSW's node interceptor has
    * intermittently failed to settle the response when the body is a Blob
    * (observed as the client mutation never resolving in CI only), matching the
@@ -2585,12 +2585,12 @@ export const handlers = [
 
   // ── Objection pattern matching ─────────────────────────────────────
 
-  /** Activities: POST /api/activities/:id/classify-objection — defaults to no objection detected. */
+  /** Activities: POST /api/v1/activities/:id/classify-objection — defaults to no objection detected. */
   http.post('/api/v1/activities/:id/classify-objection', () => {
     return HttpResponse.json(null);
   }),
 
-  /** Activities: GET /api/activities/:id/objection-precedents — defaults to insufficient data. */
+  /** Activities: GET /api/v1/activities/:id/objection-precedents — defaults to insufficient data. */
   http.get('/api/v1/activities/:id/objection-precedents', ({ request }) => {
     const url = new URL(request.url);
     const category = url.searchParams.get('category') ?? 'Price';
@@ -2605,17 +2605,17 @@ export const handlers = [
 
   // ── Churn/expansion detection ──────────────────────────────────────
 
-  /** Accounts: GET /api/accounts/:id/churn-expansion-signal — defaults to no active signal. */
+  /** Accounts: GET /api/v1/accounts/:id/churn-expansion-signal — defaults to no active signal. */
   http.get('/api/v1/accounts/:id/churn-expansion-signal', () => {
     return HttpResponse.json({ signal: null });
   }),
 
-  /** Insights: GET /api/insights/churn-expansion — defaults to no active signals. */
+  /** Insights: GET /api/v1/insights/churn-expansion — defaults to no active signals. */
   http.get('/api/v1/insights/churn-expansion', () => {
     return HttpResponse.json({ at_risk: [], expansion: [] });
   }),
 
-  /** Insights: GET /api/insights/coaching/me — defaults to insufficient data, no insights. */
+  /** Insights: GET /api/v1/insights/coaching/me — defaults to insufficient data, no insights. */
   http.get('/api/v1/insights/coaching/me', () => {
     return HttpResponse.json({
       rep_id: ADMIN_USER.id,
@@ -2627,12 +2627,12 @@ export const handlers = [
     });
   }),
 
-  /** Insights: GET /api/insights/coaching/team — defaults to an empty rep list. */
+  /** Insights: GET /api/v1/insights/coaching/team — defaults to an empty rep list. */
   http.get('/api/v1/insights/coaching/team', () => {
     return HttpResponse.json({ reps: [], min_closed_deals_required: 10 });
   }),
 
-  /** Insights: GET /api/insights/coaching/:repId — defaults to insufficient data. */
+  /** Insights: GET /api/v1/insights/coaching/:repId — defaults to insufficient data. */
   http.get('/api/v1/insights/coaching/:repId', ({ params }) => {
     return HttpResponse.json({
       rep_id: params.repId as string,
@@ -2644,7 +2644,7 @@ export const handlers = [
     });
   }),
 
-  /** Leads: POST /api/leads/routing-suggestion — defaults to no confident suggestion. */
+  /** Leads: POST /api/v1/leads/routing-suggestion — defaults to no confident suggestion. */
   http.post('/api/v1/leads/routing-suggestion', () => {
     return new HttpResponse(null, { status: 204 });
   }),
@@ -2717,24 +2717,24 @@ export const handlers = [
 
   // ── In-app notification feed ───────────────────────────────────────
 
-  /** Notifications: GET /api/notifications — defaults to an empty feed. */
+  /** Notifications: GET /api/v1/notifications — defaults to an empty feed. */
   http.get('/api/v1/notifications', () => {
     return HttpResponse.json({ notifications: [], unread_count: 0 });
   }),
 
-  /** Notifications: POST /api/notifications/:id/read */
+  /** Notifications: POST /api/v1/notifications/:id/read */
   http.post('/api/v1/notifications/:id/read', () => {
     return HttpResponse.json({ notifications: [], unread_count: 0 });
   }),
 
-  /** Notifications: POST /api/notifications/read-all */
+  /** Notifications: POST /api/v1/notifications/read-all */
   http.post('/api/v1/notifications/read-all', () => {
     return HttpResponse.json({ notifications: [], unread_count: 0 });
   }),
 
   // ── Champion/blocker detection ─────────────────────────────────────
 
-  /** Contacts: GET /api/contacts/:id/champion-blocker — defaults to neutral (no badge rendered). */
+  /** Contacts: GET /api/v1/contacts/:id/champion-blocker — defaults to neutral (no badge rendered). */
   http.get('/api/v1/contacts/:id/champion-blocker', ({ params }) => {
     return HttpResponse.json({
       contact_id: params['id'] as string,
@@ -2746,7 +2746,7 @@ export const handlers = [
     });
   }),
 
-  /** Contacts: POST /api/contacts/:id/champion-blocker/dismiss */
+  /** Contacts: POST /api/v1/contacts/:id/champion-blocker/dismiss */
   http.post('/api/v1/contacts/:id/champion-blocker/dismiss', ({ params }) => {
     return HttpResponse.json({
       contact_id: params['id'] as string,
@@ -2758,7 +2758,7 @@ export const handlers = [
     });
   }),
 
-  /** Contacts: PATCH /api/contacts/:id/champion-blocker/override */
+  /** Contacts: PATCH /api/v1/contacts/:id/champion-blocker/override */
   http.patch('/api/v1/contacts/:id/champion-blocker/override', async ({ params, request }) => {
     const body = (await request.json()) as { status: string };
     return HttpResponse.json({
@@ -2771,7 +2771,7 @@ export const handlers = [
     });
   }),
 
-  /** Deals: GET /api/deals/:id/stakeholder-map — defaults to an empty stakeholder map. */
+  /** Deals: GET /api/v1/deals/:id/stakeholder-map — defaults to an empty stakeholder map. */
   http.get('/api/v1/deals/:id/stakeholder-map', () => {
     return HttpResponse.json({
       contacts: [],
@@ -2783,7 +2783,7 @@ export const handlers = [
 
   // ── Sentiment tracking ──────────────────────────────────────────────
 
-  /** Contacts: GET /api/contacts/:id/sentiment-trend — defaults to insufficient data (no sparkline rendered). */
+  /** Contacts: GET /api/v1/contacts/:id/sentiment-trend — defaults to insufficient data (no sparkline rendered). */
   http.get('/api/v1/contacts/:id/sentiment-trend', ({ params }) => {
     return HttpResponse.json({
       contact_id: params['id'] as string,
@@ -2793,7 +2793,7 @@ export const handlers = [
     });
   }),
 
-  /** Accounts: GET /api/accounts/:id/sentiment-trend — defaults to insufficient data (no sparkline rendered). */
+  /** Accounts: GET /api/v1/accounts/:id/sentiment-trend — defaults to insufficient data (no sparkline rendered). */
   http.get('/api/v1/accounts/:id/sentiment-trend', ({ params }) => {
     return HttpResponse.json({
       account_id: params['id'] as string,
@@ -2803,24 +2803,24 @@ export const handlers = [
     });
   }),
 
-  /** Activities: POST /api/activities/:id/sentiment/flag-inaccurate */
+  /** Activities: POST /api/v1/activities/:id/sentiment/flag-inaccurate */
   http.post('/api/v1/activities/:id/sentiment/flag-inaccurate', ({ params }) => {
     return HttpResponse.json({ activity_id: params['id'] as string, flagged_inaccurate: true });
   }),
 
   // ── Relationship health scoring ─────────────────────────────────────
 
-  /** Accounts: GET /api/accounts/:id/health-score — defaults to no computed score. */
+  /** Accounts: GET /api/v1/accounts/:id/health-score — defaults to no computed score. */
   http.get('/api/v1/accounts/:id/health-score', () => {
     return HttpResponse.json({ score: null });
   }),
 
-  /** Accounts: GET /api/accounts/:id/health-score/history — defaults to no history. */
+  /** Accounts: GET /api/v1/accounts/:id/health-score/history — defaults to no history. */
   http.get('/api/v1/accounts/:id/health-score/history', ({ params }) => {
     return HttpResponse.json({ account_id: params['id'] as string, points: [] });
   }),
 
-  /** Settings: GET /api/settings/relationship-health-config */
+  /** Settings: GET /api/v1/settings/relationship-health-config */
   http.get('/api/v1/settings/relationship-health-config', () => {
     return HttpResponse.json({
       frequency_weight: 0.25,
@@ -2841,19 +2841,19 @@ export const handlers = [
 
   // ── Follow-up timing suggestions ────────────────────────────────────
 
-  /** Contacts: GET /api/contacts/:id/followup-timing — defaults to insufficient data. */
+  /** Contacts: GET /api/v1/contacts/:id/followup-timing — defaults to insufficient data. */
   http.get('/api/v1/contacts/:id/followup-timing', () => {
     return HttpResponse.json({ suggestion: null });
   }),
 
-  /** Settings: GET /api/settings/default-timezone */
+  /** Settings: GET /api/v1/settings/default-timezone */
   http.get('/api/v1/settings/default-timezone', () => {
     return HttpResponse.json({ timezone: 'UTC' });
   }),
 
   // ── Meeting brief generation ────────────────────────────────────────
 
-  /** Activities: GET /api/activities/:id/brief — defaults to not-found (no brief generated yet). */
+  /** Activities: GET /api/v1/activities/:id/brief — defaults to not-found (no brief generated yet). */
   http.get('/api/v1/activities/:id/brief', () => {
     return HttpResponse.json(
       {
@@ -2865,14 +2865,14 @@ export const handlers = [
 
   // ── Warm introduction path mapping ──────────────────────────────────
 
-  /** Contacts: GET /api/contacts/:id/warm-paths — defaults to no paths found. */
+  /** Contacts: GET /api/v1/contacts/:id/warm-paths — defaults to no paths found. */
   http.get('/api/v1/contacts/:id/warm-paths', ({ params }) => {
     return HttpResponse.json({ target_contact_id: params['id'] as string, paths: [] });
   }),
 
   // ── Win/loss pattern insights ──────────────────────────────────────
 
-  /** Insights: GET /api/insights/win-loss — defaults to sufficient data with one win pattern. */
+  /** Insights: GET /api/v1/insights/win-loss — defaults to sufficient data with one win pattern. */
   http.get('/api/v1/insights/win-loss', () => {
     return HttpResponse.json({
       insights: [
@@ -2895,7 +2895,7 @@ export const handlers = [
     });
   }),
 
-  /** Insights: GET /api/insights/win-loss/export.csv */
+  /** Insights: GET /api/v1/insights/win-loss/export.csv */
   http.get('/api/v1/insights/win-loss/export.csv', () => {
     return new HttpResponse('Type,Signal,Observation\n', {
       status: 200,
@@ -2903,7 +2903,7 @@ export const handlers = [
     });
   }),
 
-  /** Insights: GET /api/insights/win-loss/export.pdf */
+  /** Insights: GET /api/v1/insights/win-loss/export.pdf */
   http.get('/api/v1/insights/win-loss/export.pdf', () => {
     return new HttpResponse(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
       status: 200,
@@ -2918,7 +2918,7 @@ export const handlers = [
   // because flags now default OFF when absent.
 
   /**
-   * Feature flags: GET /api/feature-flags/me — returns resolved flag map for the calling user.
+   * Feature flags: GET /api/v1/feature-flags/me — returns resolved flag map for the calling user.
    * All flags default to enabled so nav and feature-gated UI renders normally in tests.
    * Exceptions: demo_data and mobile_access default to false (matching migration 066 seed).
    */
@@ -2926,12 +2926,12 @@ export const handlers = [
     return HttpResponse.json({ flags: allFlagsEnabled() });
   }),
 
-  /** Feature flags: GET /api/admin/feature-flags — returns fixture flags list */
+  /** Feature flags: GET /api/v1/admin/feature-flags — returns fixture flags list */
   http.get('/api/v1/admin/feature-flags', () => {
     return HttpResponse.json({ flags: FEATURE_FLAGS_FIXTURE });
   }),
 
-  /** Feature flags: PATCH /api/admin/feature-flags/:key — returns updated flag */
+  /** Feature flags: PATCH /api/v1/admin/feature-flags/:key — returns updated flag */
   http.patch('/api/v1/admin/feature-flags/:key', async ({ params, request }) => {
     const body = (await request.json()) as {
       enabled: boolean;
@@ -2958,22 +2958,22 @@ export const handlers = [
     });
   }),
 
-  /** Feature flags: GET /api/admin/feature-flags/groups — returns empty list by default */
+  /** Feature flags: GET /api/v1/admin/feature-flags/groups — returns empty list by default */
   http.get('/api/v1/admin/feature-flags/groups', () => {
     return HttpResponse.json({ groups: [] });
   }),
 
-  /** Feature flags: GET /api/admin/feature-flags/:key/beta-users — returns empty list by default */
+  /** Feature flags: GET /api/v1/admin/feature-flags/:key/beta-users — returns empty list by default */
   http.get('/api/v1/admin/feature-flags/:key/beta-users', () => {
     return HttpResponse.json({ users: [] });
   }),
 
-  /** Feature flags: GET /api/admin/feature-flags/:key/overrides — returns empty list by default */
+  /** Feature flags: GET /api/v1/admin/feature-flags/:key/overrides — returns empty list by default */
   http.get('/api/v1/admin/feature-flags/:key/overrides', () => {
     return HttpResponse.json({ overrides: [] });
   }),
 
-  /** Feature flags: POST /api/admin/feature-flags/:key/beta-users — enrolls a user */
+  /** Feature flags: POST /api/v1/admin/feature-flags/:key/beta-users — enrolls a user */
   http.post('/api/v1/admin/feature-flags/:key/beta-users', async ({ request }) => {
     const body = (await request.json()) as { userId: string };
     return HttpResponse.json(
@@ -2990,7 +2990,7 @@ export const handlers = [
     );
   }),
 
-  /** Feature flags: DELETE /api/admin/feature-flags/:key/beta-users/:userId — removes enrollment */
+  /** Feature flags: DELETE /api/v1/admin/feature-flags/:key/beta-users/:userId — removes enrollment */
   http.delete('/api/v1/admin/feature-flags/:key/beta-users/:userId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
@@ -3432,14 +3432,14 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Visibility settings: GET /api/settings/visibility */
+  /** Visibility settings: GET /api/v1/settings/visibility */
   http.get('/api/v1/settings/visibility', () => {
     return HttpResponse.json({
       visibility: { contact: 'org', deal: 'org', activity: 'org', account: 'org' },
     });
   }),
 
-  /** Visibility settings: PUT /api/settings/visibility */
+  /** Visibility settings: PUT /api/v1/settings/visibility */
   http.put('/api/v1/settings/visibility', async ({ request }) => {
     const body = (await request.json()) as Record<string, string>;
     return HttpResponse.json({

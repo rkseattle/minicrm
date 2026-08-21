@@ -1,5 +1,5 @@
 /**
- * Tests for currencyService and the /api/settings/currencies endpoints.
+ * Tests for currencyService and the /api/v1/settings/currencies endpoints.
  *
  * Uses the real minicrm_test PostgreSQL database — no mocked pool.
  * Covers.
@@ -250,7 +250,7 @@ describe('getRateToHome()', () => {
 // Controller / HTTP tests
 // ---------------------------------------------------------------------------
 
-describe('GET /api/settings/currencies', () => {
+describe('GET /api/v1/settings/currencies', () => {
   it('returns 200 with home_currency and currencies array for admin', async () => {
     const res = await request(app).get('/api/v1/settings/currencies').set('Cookie', adminCookie);
 
@@ -271,7 +271,7 @@ describe('GET /api/settings/currencies', () => {
   });
 });
 
-describe('PUT /api/settings/currencies', () => {
+describe('PUT /api/v1/settings/currencies', () => {
   it('returns 200 and updates the currency configuration for admin', async () => {
     const payload = {
       home_currency: 'USD',

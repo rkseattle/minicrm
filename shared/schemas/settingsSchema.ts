@@ -78,7 +78,7 @@ export const SUPPORTED_CURRENCIES = SUPPORTED_CURRENCY_LIST.map(
 ];
 
 /**
- * Schema for the PATCH /api/settings/default-language request body.
+ * Schema for the PATCH /api/v1/settings/default-language request body.
  */
 export const setDefaultLanguageSchema = z.object({
   language: z.enum(SUPPORTED_LOCALES, {
@@ -89,13 +89,13 @@ export const setDefaultLanguageSchema = z.object({
   }),
 });
 
-/** The shape returned by GET /api/settings/default-language */
+/** The shape returned by GET /api/v1/settings/default-language */
 export const defaultLanguageResponseSchema = z.object({
   language: z.enum(SUPPORTED_LOCALES),
 });
 
 /**
- * Schema for the PATCH /api/settings/default-currency request body.
+ * Schema for the PATCH /api/v1/settings/default-currency request body.
  */
 export const setDefaultCurrencySchema = z.object({
   currency: z.enum(SUPPORTED_CURRENCIES, {
@@ -106,7 +106,7 @@ export const setDefaultCurrencySchema = z.object({
   }),
 });
 
-/** The shape returned by GET /api/settings/default-currency */
+/** The shape returned by GET /api/v1/settings/default-currency */
 export const defaultCurrencyResponseSchema = z.object({
   currency: z.enum(SUPPORTED_CURRENCIES),
 });
@@ -130,7 +130,7 @@ function isValidIanaTimezone(value: string): boolean {
 }
 
 /**
- * Schema for the PATCH /api/settings/default-timezone request body.
+ * Schema for the PATCH /api/v1/settings/default-timezone request body.
  */
 export const setDefaultTimezoneSchema = z.object({
   timezone: z
@@ -140,7 +140,7 @@ export const setDefaultTimezoneSchema = z.object({
     .refine(isValidIanaTimezone, { message: 'Timezone must be a valid IANA timezone identifier' }),
 });
 
-/** The shape returned by GET /api/settings/default-timezone */
+/** The shape returned by GET /api/v1/settings/default-timezone */
 export const defaultTimezoneResponseSchema = z.object({
   timezone: z.string(),
 });
@@ -149,7 +149,7 @@ export type SetDefaultTimezoneInput = z.infer<typeof setDefaultTimezoneSchema>;
 export type DefaultTimezoneResponse = z.infer<typeof defaultTimezoneResponseSchema>;
 
 /**
- * Schema for the PATCH /api/settings/nav-layout request body.
+ * Schema for the PATCH /api/v1/settings/nav-layout request body.
  */
 export const setNavLayoutSchema = z.object({
   layout: z.enum(NAV_LAYOUTS, {
@@ -160,7 +160,7 @@ export const setNavLayoutSchema = z.object({
   }),
 });
 
-/** The shape returned by GET /api/settings/nav-layout */
+/** The shape returned by GET /api/v1/settings/nav-layout */
 export const navLayoutResponseSchema = z.object({
   layout: z.enum(NAV_LAYOUTS),
 });
@@ -485,7 +485,7 @@ export const currencyRowSchema = z.object({
 });
 
 /**
- * Schema for the PUT /api/settings/currencies request body.
+ * Schema for the PUT /api/v1/settings/currencies request body.
  * home_currency must not appear in the currencies array (it is always rate 1.0).
  * Codes in the currencies array must be distinct.
  */
@@ -516,7 +516,7 @@ export const updateCurrenciesSchema = z
 export type CurrencyRow = z.infer<typeof currencyRowSchema>;
 export type UpdateCurrenciesInput = z.infer<typeof updateCurrenciesSchema>;
 
-/** Shape of the full currency configuration returned by GET /api/settings/currencies */
+/** Shape of the full currency configuration returned by GET /api/v1/settings/currencies */
 export interface CurrencyConfig {
   home_currency: string;
   currencies: Array<{

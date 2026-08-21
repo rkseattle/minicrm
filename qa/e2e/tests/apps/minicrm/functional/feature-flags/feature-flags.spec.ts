@@ -32,7 +32,7 @@
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Behaviors imported from @behaviors/* only — never @pages/*
  *   - Feature flag UI state controlled via withFlags() route interception only
- * — never via PATCH /api/admin/feature-flags/:key in UI tests
+ * — never via PATCH /api/v1/admin/feature-flags/:key in UI tests
  *   - Test data cleaned up via TestDataManager + direct REST resets
  */
 
