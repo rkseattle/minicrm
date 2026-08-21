@@ -15,11 +15,12 @@ Each ADR follows the Nygard template:
 
 ## Index
 
-| ADR                                          | Title                                                    | Status   |
-| -------------------------------------------- | -------------------------------------------------------- | -------- |
-| [001](001-single-org-no-multi-tenancy.md)    | Single-org deployment — no multi-tenancy                 | Accepted |
-| [002](002-custom-fields-eav-vs-jsonb.md)     | Custom fields: EAV storage with documented query ceiling | Accepted |
-| [003](003-test-impact-analysis-selection.md) | Test Impact Analysis — change-to-test selection design   | Accepted |
+| ADR                                          | Title                                                     | Status   |
+| -------------------------------------------- | --------------------------------------------------------- | -------- |
+| [001](001-single-org-no-multi-tenancy.md)    | Single-org deployment — no multi-tenancy                  | Accepted |
+| [002](002-custom-fields-eav-vs-jsonb.md)     | Custom fields: EAV storage with documented query ceiling  | Accepted |
+| [003](003-test-impact-analysis-selection.md) | Test Impact Analysis — change-to-test selection design    | Accepted |
+| [004](004-webhook-retries-in-memory.md)      | Webhook retries stay in memory, with the limit documented | Accepted |
 
 ## Guidelines
 

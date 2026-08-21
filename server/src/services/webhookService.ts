@@ -28,7 +28,7 @@ import type {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-/** Exponential backoff delays in ms for retry attempts 2–5 */
+/** Fixed delays in ms for retry attempts 2–5. A lookup table, not a computed curve. */
 const RETRY_DELAYS_MS = [
   5 * 60_000, // attempt 2: 5 min
   30 * 60_000, // attempt 3: 30 min
