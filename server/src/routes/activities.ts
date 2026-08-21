@@ -144,7 +144,7 @@ const router = Router();
  *                 code: VALIDATION_ERROR
  *                 message: contact must be a valid UUID
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -218,7 +218,7 @@ router.get(
  *               page: 1
  *               limit: 25
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -295,7 +295,7 @@ router.get(
  *                 code: VALIDATION_ERROR
  *                 message: At least one of contact_id, account_id, or deal_id is required
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -461,7 +461,7 @@ router.delete(
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -553,7 +553,7 @@ router.get(
  *                 code: VALIDATION_ERROR
  *                 message: status must be open or complete
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -615,7 +615,7 @@ router.patch(
  *       204:
  *         description: Activity deleted (no content)
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -659,6 +659,32 @@ router.delete(
  * Summarizes pasted call transcript / meeting notes / raw text on demand.
  * Not tied to an existing activity ID — used from both the create and edit forms.
  * Registered before /:id routes so Express does not attempt to match 'summarize' as a UUID.
+ *
+ * @openapi
+ * /api/v1/activities/summarize:
+ *   post:
+ *     operationId: summarizeActivity
+ *     summary: Summarize pasted transcript or note text
+ *     tags: [Activities]
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [text]
+ *             properties:
+ *               text: { type: string }
+ *     responses:
+ *       200:
+ *         description: Generated summary
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ *       429:
+ *         description: AI token budget exhausted for the current period
  */
 router.post(
   '/summarize',
@@ -670,7 +696,33 @@ router.post(
 
 // ── AI follow-up task suggestions ──────────────────────────────────
 
-/** Suggests 1-3 follow-up tasks for a just-saved activity, on demand. */
+/**
+ * Suggests 1-3 follow-up tasks for a just-saved activity, on demand.
+ *
+ * @openapi
+ * /api/v1/activities/{id}/task-suggestions:
+ *   post:
+ *     operationId: generateTaskSuggestions
+ *     summary: Suggest follow-up tasks for an activity
+ *     tags: [Activities]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Suggested follow-up tasks
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ *       429:
+ *         description: AI token budget exhausted for the current period
+ *       404:
+ *         description: Activity not found
+ */
 router.post(
   '/:id/task-suggestions',
   authenticate,
@@ -681,7 +733,31 @@ router.post(
 
 // ── AI objection pattern matching ──────────────────────────────────
 
-/** Classifies the activity's note text into an objection category on demand. */
+/**
+ * Classifies the activity's note text into an objection category on demand.
+ *
+ * @openapi
+ * /api/v1/activities/{id}/classify-objection:
+ *   post:
+ *     operationId: classifyActivityObjection
+ *     summary: Classify an activity's note text into an objection category
+ *     tags: [Activities]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Objection category
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ *       404:
+ *         description: Activity not found
+ */
 router.post(
   '/:id/classify-objection',
   authenticate,
@@ -689,7 +765,31 @@ router.post(
   asyncHandler(classifyActivityObjectionHandler),
 );
 
-/** Returns the top 3 similar objections from past won deals for a given category. */
+/**
+ * Returns the top 3 similar objections from past won deals for a given category.
+ *
+ * @openapi
+ * /api/v1/activities/{id}/objection-precedents:
+ *   get:
+ *     operationId: getObjectionPrecedents
+ *     summary: List similar objections from past won deals
+ *     tags: [Activities]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Matching objection precedents
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ *       404:
+ *         description: Activity not found
+ */
 router.get(
   '/:id/objection-precedents',
   authenticate,
@@ -699,7 +799,31 @@ router.get(
 
 // ── AI sentiment tracking ──────────────────────────────────────────
 
-/** Records a rep's "Not accurate" feedback on the activity's AI sentiment score. */
+/**
+ * Records a rep's "Not accurate" feedback on the activity's AI sentiment score.
+ *
+ * @openapi
+ * /api/v1/activities/{id}/sentiment/flag-inaccurate:
+ *   post:
+ *     operationId: flagActivitySentimentInaccurate
+ *     summary: Flag an AI sentiment score as inaccurate
+ *     tags: [Activities]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Feedback recorded
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled or capability missing
+ *       404:
+ *         description: Activity not found
+ */
 router.post(
   '/:id/sentiment/flag-inaccurate',
   authenticate,
@@ -710,7 +834,33 @@ router.post(
 
 // ── AI pre-meeting brief generation ────────────────────────────────
 
-/** Generates (or regenerates) the AI pre-meeting brief for the activity. */
+/**
+ * Generates (or regenerates) the AI pre-meeting brief for the activity.
+ *
+ * @openapi
+ * /api/v1/activities/{id}/brief:
+ *   post:
+ *     operationId: generateMeetingBrief
+ *     summary: Generate the AI pre-meeting brief for an activity
+ *     tags: [Activities]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Generated brief
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ *       429:
+ *         description: AI token budget exhausted for the current period
+ *       404:
+ *         description: Activity not found
+ */
 router.post(
   '/:id/brief',
   authenticate,
@@ -719,7 +869,31 @@ router.post(
   asyncHandler(generateMeetingBriefHandler),
 );
 
-/** Returns the most recently generated brief for the activity (shareable link target). */
+/**
+ * Returns the most recently generated brief for the activity (shareable link target).
+ *
+ * @openapi
+ * /api/v1/activities/{id}/brief:
+ *   get:
+ *     operationId: getMeetingBrief
+ *     summary: Get the most recently generated pre-meeting brief
+ *     tags: [Activities]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: The stored brief
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ *       404:
+ *         description: No brief generated for this activity
+ */
 router.get(
   '/:id/brief',
   authenticate,

@@ -877,7 +877,7 @@ npm run lint:api --workspace=minicrm-server
 
 This generates `server/openapi.json` from the annotations and runs `@redocly/cli lint` against it. The lint fails if annotations are malformed or reference undefined schemas.
 
-`eslint-plugin-jsdoc` is also configured to require JSDoc on all route handlers in `server/src/routes/`, ensuring every endpoint has a documentation block.
+`eslint-plugin-jsdoc` requires a JSDoc block on every route handler in `server/src/routes/`, and the repo-local `local-openapi/require-openapi-tag` rule requires that block to carry an `@openapi` tag, so a route added under `server/src/routes/` cannot ship without appearing in the spec. (`GET /api/health` is registered in `app.ts` and is deliberately outside both the rule's glob and swagger-jsdoc's.)
 
 ### Generating the spec manually
 

@@ -414,6 +414,7 @@ if (process.env.NODE_ENV !== 'production') {
    * Creates and returns a plaintext reset token for a given email address.
    * Used by E2E tests to bypass the email delivery step. Never available in production.
    */
+  // eslint-disable-next-line local-openapi/require-openapi-tag -- test-only route, never mounted in production
   router.post(
     '/dev/reset-token',
     asyncHandler(async (req, res) => {
@@ -439,6 +440,7 @@ if (process.env.NODE_ENV !== 'production') {
    * Returns the raw JWT from the httpOnly session cookie so E2E tests can pass it
    * as gRPC metadata without reading cookies directly. Never available in production.
    */
+  // eslint-disable-next-line local-openapi/require-openapi-tag -- test-only route, never mounted in production
   router.get(
     '/dev/jwt',
     asyncHandler(async (req, res) => {

@@ -148,22 +148,27 @@ describe('getFollowUpTiming', () => {
     const firstDay = first!.day_of_week;
     const firstComputedAt = first!.computed_at;
 
-    // Second batch: 6 rows (outnumbering the first batch's 5), each created_at
-    // strictly after firstComputedAt (spaced 1 second apart, starting now), all
-    // sharing today's actual day-of-week — guaranteed different from firstDay
-    // since the first batch was deliberately offset by 3 days.
-    for (let i = 0; i < 6; i++) {
-      await pool.query(
-        `INSERT INTO activities (type, subject, direction, contact_id, owner_id, created_at)
-         VALUES ('Call', 'Sync', 'Inbound', $1, $2, now() + ($3 || ' seconds')::interval)`,
-        [contact.id, ownerId, i],
-      );
-    }
+    // Second batch: 6 rows outnumbering the first batch's 5, all sharing one timestamp.
+    // Three properties are load-bearing. now() is stable within a statement (unlike
+    // clock_timestamp(), which re-evaluates per row), so all six land in one (day, hour)
+    // bucket — a batch straddling an hour boundary splits into two that each lose to the
+    // first batch's five. The 1-second offset puts them strictly after the cached
+    // computed_at, since the staleness check is a strict `latest > computed_at` and both
+    // stamps can otherwise fall in the same instant. Reading the day back off the row
+    // avoids a second clock read that could cross midnight.
+    const batchInstant = await pool.query<{ at: Date }>(
+      `INSERT INTO activities (type, subject, direction, contact_id, owner_id, created_at)
+       SELECT 'Call', 'Sync', 'Inbound', $1, $2, now() + interval '1 second'
+       FROM generate_series(1, 6)
+       RETURNING created_at AS at`,
+      [contact.id, ownerId],
+    );
+    const expectedDay = batchInstant.rows[0].at.getUTCDay();
 
     const updated = await getFollowUpTiming(contact.id);
     expect(updated!.computed_at > firstComputedAt).toBe(true);
     expect(updated!.day_of_week).not.toBe(firstDay);
-    expect(updated!.day_of_week).toBe(new Date().getUTCDay());
+    expect(updated!.day_of_week).toBe(expectedDay);
   });
 
   it('projects the suggested time into the org default timezone', async () => {

@@ -6,6 +6,13 @@ apis:
     root: ./openapi.json
 
 rules:
+  # A $ref to a component that does not exist resolves to nothing for a consumer, and
+  # the default ruleset stays silent about it — 398 such refs had accumulated, 370 of
+  # them to reusable responses that were never defined at all.
+  no-unresolved-refs: error
+  # A mis-indented nested schema parses as a null-valued property, which the default
+  # ruleset accepts and a generated client renders as an untyped field.
+  struct: error
   # Public endpoints (logout, GET /settings/default-language) have no 4xx by design
   operation-4xx-response: off
   # The localhost server URL is intentional for local dev

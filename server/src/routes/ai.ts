@@ -81,7 +81,7 @@ const router = Router();
 
 /**
  * @openapi
- * /admin/ai/config:
+ * /api/v1/admin/ai/config:
  *   get:
  *     tags: [AI]
  *     summary: Get AI provider/model configuration
@@ -99,7 +99,7 @@ router.get('/config', authenticate, requireRole('admin'), asyncHandler(getAiConf
 
 /**
  * @openapi
- * /admin/ai/config:
+ * /api/v1/admin/ai/config:
  *   patch:
  *     tags: [AI]
  *     summary: Update AI provider/model/key/deployment configuration
@@ -142,7 +142,7 @@ router.patch('/config', authenticate, requireRole('admin'), asyncHandler(setAiCo
 
 /**
  * @openapi
- * /admin/ai/master-toggle:
+ * /api/v1/admin/ai/master-toggle:
  *   patch:
  *     tags: [AI]
  *     summary: Enable or disable all AI features globally
@@ -177,7 +177,7 @@ router.patch(
 
 /**
  * @openapi
- * /admin/ai/session-retention:
+ * /api/v1/admin/ai/session-retention:
  *   patch:
  *     tags: [AI]
  *     summary: Update the AI session retention window (days)
@@ -214,7 +214,7 @@ router.patch(
 
 /**
  * @openapi
- * /admin/ai/dpa-acknowledgment:
+ * /api/v1/admin/ai/dpa-acknowledgment:
  *   post:
  *     tags: [AI]
  *     summary: Record or reset the DPA acknowledgment for the current provider
@@ -251,7 +251,7 @@ router.post(
 
 /**
  * @openapi
- * /admin/ai/test-connection:
+ * /api/v1/admin/ai/test-connection:
  *   post:
  *     tags: [AI]
  *     summary: Test the API key and model against the provider
@@ -306,7 +306,7 @@ router.post(
 
 /**
  * @openapi
- * /admin/ai/token-budgets:
+ * /api/v1/admin/ai/token-budgets:
  *   get:
  *     tags: [AI]
  *     summary: Get org token budget, per-user overrides, and current-month consumption
@@ -329,7 +329,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/token-budgets/org:
+ * /api/v1/admin/ai/token-budgets/org:
  *   patch:
  *     tags: [AI]
  *     summary: Set the org-wide monthly token limit
@@ -366,7 +366,7 @@ router.patch(
 
 /**
  * @openapi
- * /admin/ai/token-budgets/users/{userId}:
+ * /api/v1/admin/ai/token-budgets/users/{userId}:
  *   patch:
  *     tags: [AI]
  *     summary: Set or remove a per-user monthly token limit override
@@ -411,7 +411,7 @@ router.patch(
 
 /**
  * @openapi
- * /admin/ai/retention-stats:
+ * /api/v1/admin/ai/retention-stats:
  *   get:
  *     tags: [AI]
  *     summary: Get current AI session/message counts for the retention admin UI
@@ -434,7 +434,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/retention/purge:
+ * /api/v1/admin/ai/retention/purge:
  *   post:
  *     tags: [AI]
  *     summary: Trigger an immediate AI session purge outside the nightly schedule
@@ -457,7 +457,7 @@ router.post(
 
 /**
  * @openapi
- * /admin/ai/coaching-config:
+ * /api/v1/admin/ai/coaching-config:
  *   get:
  *     tags: [AI]
  *     summary: Get the current rep coaching insight thresholds
@@ -480,7 +480,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/coaching-config:
+ * /api/v1/admin/ai/coaching-config:
  *   patch:
  *     tags: [AI]
  *     summary: Update the rep coaching insight thresholds
@@ -530,7 +530,7 @@ router.patch(
 
 /**
  * @openapi
- * /admin/ai/coaching/run:
+ * /api/v1/admin/ai/coaching/run:
  *   post:
  *     tags: [AI]
  *     summary: Trigger an immediate rep coaching insight recomputation outside the nightly schedule
@@ -553,7 +553,7 @@ router.post(
 
 /**
  * @openapi
- * /admin/ai/lead-routing-config:
+ * /api/v1/admin/ai/lead-routing-config:
  *   get:
  *     tags: [AI]
  *     summary: Get the current lead routing suggestion scoring weights and thresholds
@@ -576,7 +576,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/lead-routing-config:
+ * /api/v1/admin/ai/lead-routing-config:
  *   patch:
  *     tags: [AI]
  *     summary: Update the lead routing suggestion scoring weights and thresholds
@@ -607,7 +607,7 @@ router.patch(
 
 /**
  * @openapi
- * /admin/ai/lead-routing/team-overrides:
+ * /api/v1/admin/ai/lead-routing/team-overrides:
  *   get:
  *     tags: [AI]
  *     summary: List every team's ai_lead_routing_suggestion override
@@ -630,7 +630,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/lead-routing/team-overrides/{teamId}:
+ * /api/v1/admin/ai/lead-routing/team-overrides/{teamId}:
  *   put:
  *     tags: [AI]
  *     summary: Set or clear a team's ai_lead_routing_suggestion override
@@ -678,7 +678,7 @@ router.put(
 
 /**
  * @openapi
- * /admin/ai/data-hygiene-config:
+ * /api/v1/admin/ai/data-hygiene-config:
  *   get:
  *     tags: [AI]
  *     summary: Get the current data hygiene scan thresholds
@@ -701,7 +701,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/data-hygiene-config:
+ * /api/v1/admin/ai/data-hygiene-config:
  *   patch:
  *     tags: [AI]
  *     summary: Update the data hygiene scan thresholds
@@ -732,7 +732,7 @@ router.patch(
 
 /**
  * @openapi
- * /admin/ai/data-hygiene/run:
+ * /api/v1/admin/ai/data-hygiene/run:
  *   post:
  *     tags: [AI]
  *     summary: Trigger an immediate data hygiene scan outside the nightly schedule
@@ -755,7 +755,7 @@ router.post(
 
 /**
  * @openapi
- * /admin/ai/field-exclusions:
+ * /api/v1/admin/ai/field-exclusions:
  *   get:
  *     tags: [AI]
  *     summary: Get the effective AI field exclusion list (defaults, admin overrides, custom fields)
@@ -778,7 +778,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/field-exclusions:
+ * /api/v1/admin/ai/field-exclusions:
  *   patch:
  *     tags: [AI]
  *     summary: Set a standard field's AI payload exclusion state
@@ -818,7 +818,7 @@ router.patch(
 
 /**
  * @openapi
- * /admin/ai/usage/summary:
+ * /api/v1/admin/ai/usage/summary:
  *   get:
  *     tags: [AI]
  *     summary: Get aggregated AI usage/cost summary for a date range
@@ -853,7 +853,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/usage/daily:
+ * /api/v1/admin/ai/usage/daily:
  *   get:
  *     tags: [AI]
  *     summary: Get daily token totals for a date range (for the consumption chart)
@@ -888,7 +888,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/usage/export:
+ * /api/v1/admin/ai/usage/export:
  *   get:
  *     tags: [AI]
  *     summary: Export AI usage data as CSV (per-user, per-day, per-feature)
@@ -926,7 +926,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/usage/export.pdf:
+ * /api/v1/admin/ai/usage/export.pdf:
  *   get:
  *     tags: [AI]
  *     summary: Export AI usage data as PDF (per-user, per-day, per-feature)
@@ -966,7 +966,7 @@ router.get(
 
 /**
  * @openapi
- * /admin/ai/cost-rates:
+ * /api/v1/admin/ai/cost-rates:
  *   patch:
  *     tags: [AI]
  *     summary: Set the AI cost estimation rates (cents per 1,000,000 tokens)
@@ -1014,7 +1014,7 @@ const aiUserRouter = Router();
 
 /**
  * @openapi
- * /ai/token-budget/me:
+ * /api/v1/ai/token-budget/me:
  *   get:
  *     tags: [AI]
  *     summary: Get the calling user's token budget status for the current month
@@ -1030,7 +1030,7 @@ aiUserRouter.get('/token-budget/me', authenticate, asyncHandler(getMyTokenBudget
 
 /**
  * @openapi
- * /ai/retention-window:
+ * /api/v1/ai/retention-window:
  *   get:
  *     tags: [AI]
  *     summary: Get the current AI session retention window (days) for display to end users
@@ -1053,7 +1053,7 @@ aiUserRouter.get(
 
 /**
  * @openapi
- * /ai/sessions:
+ * /api/v1/ai/sessions:
  *   get:
  *     tags: [AI]
  *     summary: List all AI conversation sessions for the authenticated user
@@ -1076,7 +1076,7 @@ aiUserRouter.get(
 
 /**
  * @openapi
- * /ai/sessions:
+ * /api/v1/ai/sessions:
  *   post:
  *     tags: [AI]
  *     summary: Create a new AI conversation session
@@ -1099,7 +1099,7 @@ aiUserRouter.post(
 
 /**
  * @openapi
- * /ai/sessions/{sessionId}:
+ * /api/v1/ai/sessions/{sessionId}:
  *   get:
  *     tags: [AI]
  *     summary: Get a single session with its full message history
@@ -1131,7 +1131,7 @@ aiUserRouter.get(
 
 /**
  * @openapi
- * /ai/sessions/{sessionId}:
+ * /api/v1/ai/sessions/{sessionId}:
  *   delete:
  *     tags: [AI]
  *     summary: Delete a session and all its messages
@@ -1163,7 +1163,7 @@ aiUserRouter.delete(
 
 /**
  * @openapi
- * /ai/sessions/{sessionId}/messages:
+ * /api/v1/ai/sessions/{sessionId}/messages:
  *   post:
  *     tags: [AI]
  *     summary: Send a user message and receive the AI assistant reply
@@ -1213,7 +1213,7 @@ aiUserRouter.post(
 
 /**
  * @openapi
- * /ai/context:
+ * /api/v1/ai/context:
  *   get:
  *     tags: [AI]
  *     summary: List all context entries for the authenticated user
@@ -1236,7 +1236,7 @@ aiUserRouter.get(
 
 /**
  * @openapi
- * /ai/context:
+ * /api/v1/ai/context:
  *   post:
  *     tags: [AI]
  *     summary: Create a new context entry
@@ -1277,7 +1277,7 @@ aiUserRouter.post(
 
 /**
  * @openapi
- * /ai/context/{id}:
+ * /api/v1/ai/context/{id}:
  *   patch:
  *     tags: [AI]
  *     summary: Update a context entry's key or value
@@ -1324,7 +1324,7 @@ aiUserRouter.patch(
 
 /**
  * @openapi
- * /ai/context/{id}:
+ * /api/v1/ai/context/{id}:
  *   delete:
  *     tags: [AI]
  *     summary: Delete a context entry

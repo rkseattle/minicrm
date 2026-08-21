@@ -19,6 +19,7 @@ import noPlaywrightImports from './eslint-plugins/no-playwright-imports.mjs';
 import requireLocatorIntent from './eslint-plugins/require-locator-intent.mjs';
 import requireLocatorFallback from './eslint-plugins/require-locator-fallback.mjs';
 import noWorkItemIdInComment from './eslint-plugins/no-work-item-id-in-comment.mjs';
+import requireOpenapiTag from './eslint-plugins/require-openapi-tag.mjs';
 import i18nextPlugin from 'eslint-plugin-i18next';
 
 /** Files covered by TypeScript rules */
@@ -71,7 +72,7 @@ const clientConfig = {
     react: reactPlugin,
     'react-hooks': reactHooksPlugin,
     'jsx-a11y': jsxA11yPlugin,
-    'local': { rules: { 'require-data-testid': requireDataTestid } },
+    local: { rules: { 'require-data-testid': requireDataTestid } },
     i18next: i18nextPlugin,
   },
   settings: {
@@ -139,7 +140,7 @@ const coverageDashboardConfig = {
     react: reactPlugin,
     'react-hooks': reactHooksPlugin,
     'jsx-a11y': jsxA11yPlugin,
-    'local': { rules: { 'require-data-testid': requireDataTestid } },
+    local: { rules: { 'require-data-testid': requireDataTestid } },
   },
   settings: {
     react: { version: 'detect' },
@@ -191,8 +192,9 @@ const swaggerDevConfig = {
 };
 
 // ── Route files — require @openapi JSDoc on every route handler ───────────────
-// Uses eslint-plugin-jsdoc to enforce that each router.get/post/patch/delete
-// call site has a preceding JSDoc block containing an @openapi tag.
+// jsdoc/require-jsdoc requires a JSDoc block; jsdoc/check-tag-names only validates
+// tags that are present. Neither requires the @openapi tag itself, so
+// local-openapi/require-openapi-tag below is what actually keeps the spec complete.
 const routeJsdocConfig = {
   files: ['server/src/routes/**/*.ts'],
   plugins: {
@@ -211,8 +213,21 @@ const routeJsdocConfig = {
         enableFixer: false,
       },
     ],
-    // Ensure every JSDoc block on a route contains an @openapi tag
+    // Registers @openapi as a known tag so check-tag-names does not reject it.
     'jsdoc/check-tag-names': ['error', { definedTags: ['openapi'] }],
+  },
+};
+
+// ── Route files — the @openapi tag itself ─────────────────────────────────────
+// Flat glob, matching swagger.ts's `apis: ['./src/routes/*.ts']`: a handler in a
+// subdirectory would be required to carry an annotation swagger-jsdoc never reads.
+const routeOpenapiConfig = {
+  files: ['server/src/routes/*.ts'],
+  plugins: {
+    'local-openapi': { rules: { 'require-openapi-tag': requireOpenapiTag } },
+  },
+  rules: {
+    'local-openapi/require-openapi-tag': 'error',
   },
 };
 
@@ -351,6 +366,7 @@ export default [
   serverConfig,
   swaggerDevConfig,
   routeJsdocConfig,
+  routeOpenapiConfig,
   testConfig,
   e2eSpecConfig,
   e2eSpecDirectPageConfig,

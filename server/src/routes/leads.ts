@@ -52,7 +52,7 @@ const router = Router();
  *       400:
  *         description: Missing q parameter
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get('/accounts/search', authenticate, asyncHandler(searchAccountsHandler));
 
@@ -92,7 +92,7 @@ router.get('/accounts/search', authenticate, asyncHandler(searchAccountsHandler)
  *       400:
  *         description: Validation error
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: The ai_lead_routing_suggestion flag is disabled (globally or for the caller's team)
  */
@@ -142,7 +142,7 @@ router.post(
  *       200:
  *         description: Paginated list of leads
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get('/', authenticate, asyncHandler(listLeadsHandler));
 
@@ -167,7 +167,7 @@ router.get('/', authenticate, asyncHandler(listLeadsHandler));
  *       400:
  *         description: Validation error
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       409:
  *         description: Duplicate email warning
  */
@@ -199,7 +199,7 @@ router.post(
  *       400:
  *         description: Validation error or ids over limit
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Missing bulk:operations or contacts:edit capability
  */
@@ -230,7 +230,7 @@ router.patch(
  *       400:
  *         description: Validation error or ids over limit
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Missing bulk:operations or contacts:delete capability
  */
@@ -292,7 +292,7 @@ router.delete(
  *             schema:
  *               type: string
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get(
   '/export',
@@ -349,7 +349,7 @@ router.get(
  *               type: string
  *               format: binary
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get(
   '/export.pdf',
@@ -378,7 +378,7 @@ router.get(
  *       200:
  *         description: Lead found
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         description: Lead not found
  */
@@ -412,7 +412,7 @@ router.get('/:id', authenticate, asyncHandler(getLeadHandler));
  *               type: string
  *               format: binary
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         description: Lead not found
  */
@@ -447,7 +447,7 @@ router.get(
  *       200:
  *         description: Score computed
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         description: Lead not found
  */
@@ -481,9 +481,11 @@ router.get(
  *       200:
  *         description: Narrative generated
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         description: Lead not found
+ *       429:
+ *         description: AI token budget exhausted for the current period
  *       502:
  *         description: AI provider error
  *       503:
@@ -525,7 +527,7 @@ router.post(
  *       400:
  *         description: Validation error
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Forbidden
  *       404:
@@ -558,7 +560,7 @@ router.patch(
  *       204:
  *         description: Lead deleted
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Forbidden
  *       404:
@@ -591,7 +593,7 @@ router.delete(
  *       200:
  *         description: Array of status history entries
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         description: Lead not found
  */
@@ -625,7 +627,7 @@ router.get('/:id/status-history', authenticate, asyncHandler(getLeadStatusHistor
  *       400:
  *         description: Validation error
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Forbidden
  *       404:
@@ -644,9 +646,121 @@ router.post(
 
 // ── GDPR routes (admin only) ─────────────────────────────────────
 
+/**
+ * @openapi
+ * /api/v1/leads/{id}/gdpr-erase:
+ *   post:
+ *     tags: [Leads]
+ *     operationId: eraseLead
+ *     summary: Erase a lead's personal data
+ *     description: >
+ *       Erases the personal data held for a lead per GDPR Art. 17 and records the
+ *       erasure in the deletion log. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notes:
+ *                 type: string
+ *                 description: Optional justification recorded on the erasure log entry
+ *     responses:
+ *       200:
+ *         description: Lead erased
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 erasedAt:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: id must be a valid UUID
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Caller is not an admin
+ *       404:
+ *         description: Lead not found
+ *       409:
+ *         description: Lead has already been erased
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: GDPR_ALREADY_ERASED
+ *                 message: This lead has already been erased under GDPR Art. 17
+ */
 /** Erase personal data for a lead per GDPR Art. 17. */
 router.post('/:id/gdpr-erase', authenticate, requireRole('admin'), asyncHandler(eraseLeadHandler));
 
+/**
+ * @openapi
+ * /api/v1/leads/{id}/gdpr-export:
+ *   get:
+ *     tags: [Leads]
+ *     operationId: gdprExportLead
+ *     summary: Export a lead's personal data
+ *     description: >
+ *       Returns every piece of personal data held for the lead as a JSON file
+ *       download. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: JSON file download of the lead's personal data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: VALIDATION_ERROR
+ *                 message: id must be a valid UUID
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Caller is not an admin
+ *       404:
+ *         description: Lead not found
+ */
 /** Export all personal data held for a lead as a JSON download. */
 router.get(
   '/:id/gdpr-export',

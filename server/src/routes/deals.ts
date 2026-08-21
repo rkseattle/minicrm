@@ -93,7 +93,7 @@ const router = Router();
  *                 code: VALIDATION_ERROR
  *                 message: Invalid query parameter
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -140,7 +140,7 @@ router.get('/', authenticate, asyncHandler(listDealsHandler));
  *             schema:
  *               type: string
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get(
   '/export',
@@ -183,7 +183,7 @@ router.get(
  *               type: string
  *               format: binary
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get(
   '/export.pdf',
@@ -244,7 +244,7 @@ router.get(
  *       400:
  *         description: Validation error or invalid stage
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Rep attempting to act on deals they do not own
  */
@@ -417,7 +417,7 @@ router.delete(
  *                 code: VALIDATION_ERROR
  *                 message: stage must be one of the allowed pipeline values
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -474,7 +474,7 @@ router.post(
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -525,7 +525,7 @@ router.get('/:id', authenticate, asyncHandler(getDealHandler));
  *               type: string
  *               format: binary
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         description: Deal not found
  */
@@ -598,7 +598,7 @@ router.get(
  *                 code: VALIDATION_ERROR
  *                 message: stage must be one of the allowed pipeline values
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -658,7 +658,7 @@ router.patch(
  *       204:
  *         description: Deal deleted (no content)
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -737,7 +737,7 @@ router.delete(
  *             example:
  *               message: Contact linked to deal
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -795,7 +795,7 @@ router.post(
  *       204:
  *         description: Contact unlinked (no content); also returned when link did not exist
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *         content:
  *           application/json:
  *             schema:
@@ -866,7 +866,7 @@ router.delete(
  *                   type: string
  *                   format: date-time
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Rep attempting to check a deal they do not own, or the ai_deal_health_check flag is disabled
  *       404:
@@ -931,7 +931,7 @@ router.post(
  *                       type: boolean
  *                       enum: [false]
  *       401:
- *         description: Not authenticated
+ *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         description: Rep attempting to check a deal they do not own, or the ai_stage_advancement flag is disabled
  *       404:
@@ -948,7 +948,31 @@ router.get(
   asyncHandler(getStageAdvancementHandler),
 );
 
-/** Returns the AI champion/blocker stakeholder map for the deal's linked contacts. */
+/**
+ * Returns the AI champion/blocker stakeholder map for the deal's linked contacts.
+ *
+ * @openapi
+ * /api/v1/deals/{id}/stakeholder-map:
+ *   get:
+ *     operationId: getDealStakeholderMap
+ *     summary: Get the champion/blocker stakeholder map for a deal
+ *     tags: [Deals]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Stakeholder map
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ *       404:
+ *         description: Deal not found
+ */
 router.get(
   '/:id/stakeholder-map',
   authenticate,
@@ -962,6 +986,37 @@ router.get(
  * Generates (or regenerates, with optional focus_notes) an AI proposal draft
  * for the deal. High-token operation — gated by requireAiTokenBudget after
  * the feature flag check, per the spec.
+ *
+ * @openapi
+ * /api/v1/deals/{id}/proposal-draft:
+ *   post:
+ *     operationId: generateProposalDraft
+ *     summary: Generate an AI proposal draft for a deal
+ *     tags: [Deals]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               focus_notes: { type: string }
+ *     responses:
+ *       200:
+ *         description: Generated proposal draft
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ *       429:
+ *         description: AI token budget exhausted for the current period
+ *       404:
+ *         description: Deal not found
  */
 router.post(
   '/:id/proposal-draft',
@@ -971,7 +1026,34 @@ router.post(
   asyncHandler(generateProposalDraftHandler),
 );
 
-/** Converts a client-held (possibly rep-edited) draft into a downloadable DOCX file. */
+/**
+ * Converts a client-held (possibly rep-edited) draft into a downloadable DOCX file.
+ *
+ * @openapi
+ * /api/v1/deals/{id}/proposal-draft/export-docx:
+ *   post:
+ *     operationId: exportProposalDraftDocx
+ *     summary: Export a proposal draft as a DOCX document
+ *     tags: [Deals]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: DOCX document
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+ *             schema: { type: string, format: binary }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ *       404:
+ *         description: Deal not found
+ */
 router.post(
   '/:id/proposal-draft/export-docx',
   authenticate,
@@ -981,7 +1063,29 @@ router.post(
 
 // ── Deal Tag Routes ───────────────────────────────────────────────
 
-/** List all tags on a deal. */
+/**
+ * List all tags on a deal.
+ *
+ * @openapi
+ * /api/v1/deals/{id}/tags:
+ *   get:
+ *     operationId: listDealTags
+ *     summary: List all tags on a deal
+ *     tags: [Deals]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Tags on the deal
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled
+ */
 router.get(
   '/:id/tags',
   authenticate,
@@ -989,7 +1093,38 @@ router.get(
   asyncHandler(listDealTagsHandler),
 );
 
-/** Attach a tag to a deal by name, creating the tag if it does not exist. */
+/**
+ * Attach a tag to a deal by name, creating the tag if it does not exist.
+ *
+ * @openapi
+ * /api/v1/deals/{id}/tags:
+ *   post:
+ *     operationId: attachDealTag
+ *     summary: Attach a tag to a deal, creating it if needed
+ *     tags: [Deals]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name: { type: string }
+ *     responses:
+ *       201:
+ *         description: Tag attached
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled or capability missing
+ */
 router.post(
   '/:id/tags',
   authenticate,
@@ -998,7 +1133,33 @@ router.post(
   asyncHandler(attachDealTagHandler),
 );
 
-/** Detach a tag from a deal. */
+/**
+ * Detach a tag from a deal.
+ *
+ * @openapi
+ * /api/v1/deals/{id}/tags/{tagId}:
+ *   delete:
+ *     operationId: detachDealTag
+ *     summary: Detach a tag from a deal
+ *     tags: [Deals]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       204:
+ *         description: Tag detached
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Feature disabled or capability missing
+ */
 router.delete(
   '/:id/tags/:tagId',
   authenticate,
