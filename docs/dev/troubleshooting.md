@@ -188,8 +188,22 @@ The full rationale is in [.claude/gates/pre-push.md](../../.claude/gates/pre-pus
 
 **Symptom:** `lint-docs` fails on a link you did not touch.
 **Cause:** the link's target moved or was renamed.
-**Fix:** `node qa/scripts/check-doc-links.mjs` names every unresolved link and the path
+**Fix:** `node scripts/check-doc-links.mjs` names every unresolved link and the path
 it resolved to.
+
+**Symptom:** `lint-and-typecheck` fails naming an `/api/...` path in a comment or a test
+title.
+**Cause:** resource routes mount under `/api/v1`; the unversioned form either 404s or
+rides a redirect that is documented for removal.
+**Fix:** add the prefix. If the path is genuinely correct unversioned — an infra endpoint,
+or a third-party API — add the file to `EXEMPT_FILES` in
+`scripts/check-api-path-versioning.mjs` with the reason.
+
+**Symptom:** `lint-and-typecheck` says a `ci.yml` filter names a path that does not exist.
+**Cause:** a file moved and its paths-filter entry did not, so the job that runs its guard
+has silently stopped triggering.
+**Fix:** update the glob. A newly added file is untracked until `git add`, so stage it
+before trusting the failure.
 
 **Symptom:** a lint rule fires that you cannot find in any config.
 **Fix:** it is probably one of the repo's own — see

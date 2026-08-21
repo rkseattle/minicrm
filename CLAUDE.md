@@ -138,6 +138,17 @@ harmless enough that churning `ci.yml` to fix it is not worth it. Don't copy tha
 shape for new guards. Instead add a **single-purpose filter output** and OR it
 into the specific jobs that run the test.
 
+**A guard's file location is part of its trigger scope.** A single-purpose output narrows
+nothing if a broad filter already matches the directory you put the file in — the job
+runs on the union, so the narrow output never gets to be the deciding trigger. Before
+adding a guard, check which filters already match its intended directory.
+
+Concretely: `qa/scripts/**` is matched by the `qa` filter, which gates the whole
+`e2e-functional` matrix, so a guard placed there boots four sharded jobs plus the serial
+run to check a script no Playwright spec imports. Put repo-wide guards in `scripts/`,
+which no broad filter matches. `scripts/check-ci-filter-globs.mjs` enforces the half of
+this that is a literal path check.
+
 **`always()` is mandatory on the job you gate.** GitHub auto-skips a job when
 anything in its `needs` was skipped, _before_ evaluating `if:` — so a
 single-purpose filter alone is not enough if an upstream job doesn't match the

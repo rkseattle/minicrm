@@ -880,7 +880,9 @@ test.describe('mockRoute / unmockRoute / unmockAllRoutes', () => {
     // unmockAllRoutes should only unroute the remaining pattern.
     await hp.unmockAllRoutes();
 
-    // unrouteCalls: one for unmockRoute('/api/contacts') + one for unmockAllRoutes('/api/deals')
+    // One unroute call each from unmockRoute and unmockAllRoutes, in that order. The
+    // patterns are arbitrary strings, not MiniCRM routes:
+    // '/api/contacts' + '/api/deals'  api-path-ok
     expect(unrouteCalls).toHaveLength(2);
     expect(unrouteCalls[0]!.pattern).toBe('/api/contacts');
     expect(unrouteCalls[1]!.pattern).toBe('/api/deals');

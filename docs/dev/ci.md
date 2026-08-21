@@ -29,30 +29,30 @@ report jobs, and `update-visual-snapshots`, which is `if: false`.
 
 ## The jobs
 
-| Job                        | What it does                                                         |
-| -------------------------- | -------------------------------------------------------------------- |
-| `capacity-probe`           | Sizes the E2E matrix from runner CPU count                           |
-| `changes`                  | Path filters — decides which jobs run at all                         |
-| `lint-and-typecheck`       | Lint, typecheck, the API spec lint, and the comment-guard self-tests |
-| `security-audit`           | Dependency audit; `always()` so it runs on every PR                  |
-| `docker-images`            | Builds the shipped server and client images                          |
-| `tia-selection`            | Advisory test-impact selection — never blocks                        |
-| `server-tests`             | Server Vitest suite and coverage, against real Postgres              |
-| `client-tests`             | Client Vitest suite and coverage                                     |
-| `coverage-dashboard-tests` | Dashboard suite, including the custom ESLint rule tests              |
-| `e2e-framework-purity`     | Static guards over `qa/` — framework purity, parity checks           |
-| `e2e-framework-specs`      | Framework unit specs with their own 80% coverage gate                |
-| `e2e-timing-setup`         | Generates LPT shard configs from the timing baseline                 |
-| `e2e-functional`           | The sharded functional E2E matrix                                    |
-| `e2e-all-shards-passed`    | Sentinel — fails if any shard failed                                 |
-| `e2e-serial`               | `@serial` specs in conflict-free groups, 1-2 workers each            |
-| `e2e-aggregate`            | Merges per-shard JUnit and blob reports                              |
-| `e2e-functional-report`    | Posts the sticky E2E results PR comment                              |
-| `unit-test-report`         | Posts the sticky coverage PR comment                                 |
-| `lint-docs`                | markdownlint plus the documentation link guard                       |
-| `update-visual-snapshots`  | Disabled (`if: false`); baselines refresh via manual dispatch        |
-| `ai-evals`                 | Promptfoo evals; skipped on drafts, forks, and dependabot            |
-| `ci-gate`                  | The sentinel described above                                         |
+| Job                        | What it does                                                      |
+| -------------------------- | ----------------------------------------------------------------- |
+| `capacity-probe`           | Sizes the E2E matrix from runner CPU count                        |
+| `changes`                  | Path filters — decides which jobs run at all                      |
+| `lint-and-typecheck`       | Lint, typecheck, the API spec lint, and the repo-guard self-tests |
+| `security-audit`           | Dependency audit; `always()` so it runs on every PR               |
+| `docker-images`            | Builds the shipped server and client images                       |
+| `tia-selection`            | Advisory test-impact selection — never blocks                     |
+| `server-tests`             | Server Vitest suite and coverage, against real Postgres           |
+| `client-tests`             | Client Vitest suite and coverage                                  |
+| `coverage-dashboard-tests` | Dashboard suite, including the custom ESLint rule tests           |
+| `e2e-framework-purity`     | Static guards over `qa/` — framework purity, parity checks        |
+| `e2e-framework-specs`      | Framework unit specs with their own 80% coverage gate             |
+| `e2e-timing-setup`         | Generates LPT shard configs from the timing baseline              |
+| `e2e-functional`           | The sharded functional E2E matrix                                 |
+| `e2e-all-shards-passed`    | Sentinel — fails if any shard failed                              |
+| `e2e-serial`               | `@serial` specs in conflict-free groups, 1-2 workers each         |
+| `e2e-aggregate`            | Merges per-shard JUnit and blob reports                           |
+| `e2e-functional-report`    | Posts the sticky E2E results PR comment                           |
+| `unit-test-report`         | Posts the sticky coverage PR comment                              |
+| `lint-docs`                | markdownlint plus the documentation link guard                    |
+| `update-visual-snapshots`  | Disabled (`if: false`); baselines refresh via manual dispatch     |
+| `ai-evals`                 | Promptfoo evals; skipped on drafts, forks, and dependabot         |
+| `ci-gate`                  | The sentinel described above                                      |
 
 The `Phase N` prefixes in the real job names encode the ordering: Phase 1 jobs depend
 only on `changes`, Phase 2 waits on `lint-and-typecheck`, and the Phase 3 E2E jobs wait
@@ -93,17 +93,17 @@ closes the failure mode above — that is the form to copy if you need one.
 
 ## Reproducing a failure locally
 
-| Failing job                     | Local command                                                                                                                             |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `lint-and-typecheck`            | `npm run lint`, `npm run typecheck`, `npm run lint:api --workspace=minicrm-server`                                                        |
-| `security-audit`                | `bash scripts/npm-audit-gate.sh`                                                                                                          |
-| `server-tests`                  | `npm run test:coverage --workspace=minicrm-server`                                                                                        |
-| `client-tests`                  | `npm run test:coverage --workspace=minicrm-client`                                                                                        |
-| `coverage-dashboard-tests`      | `npm run test:coverage --workspace=minicrm-coverage-dashboard`                                                                            |
-| `e2e-framework-purity`          | `bash qa/scripts/check-framework-purity.sh` and the other `qa/scripts/check-*` guards                                                     |
-| `e2e-framework-specs`           | `npm run test:framework:coverage --workspace=minicrm-qa`                                                                                  |
-| `lint-docs`                     | `npx markdownlint-cli2 "**/*.md" "#node_modules"` and `node qa/scripts/check-doc-links.mjs` (add `--self-test` for the guard's own cases) |
-| `e2e-functional` / `e2e-serial` | See [Running the E2E suite](../operations.md#running-the-e2e-suite)                                                                       |
+| Failing job                     | Local command                                                                                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lint-and-typecheck`            | `npm run lint`, `npm run typecheck`, `npm run lint:api --workspace=minicrm-server`                                                                                       |
+| `security-audit`                | `bash scripts/npm-audit-gate.sh`                                                                                                                                         |
+| `server-tests`                  | `npm run test:coverage --workspace=minicrm-server`                                                                                                                       |
+| `client-tests`                  | `npm run test:coverage --workspace=minicrm-client`                                                                                                                       |
+| `coverage-dashboard-tests`      | `npm run test:coverage --workspace=minicrm-coverage-dashboard`                                                                                                           |
+| `e2e-framework-purity`          | `bash qa/scripts/check-framework-purity.sh`, the other `qa/scripts/check-*` guards, plus `scripts/check-audit-gate-parity.sh` and `scripts/check-gate-pointer-parity.sh` |
+| `e2e-framework-specs`           | `npm run test:framework:coverage --workspace=minicrm-qa`                                                                                                                 |
+| `lint-docs`                     | `npx markdownlint-cli2 "**/*.md" "#node_modules"` and `node scripts/check-doc-links.mjs` (add `--self-test` for the guard's own cases)                                   |
+| `e2e-functional` / `e2e-serial` | See [Running the E2E suite](../operations.md#running-the-e2e-suite)                                                                                                      |
 
 Run the three unit suites together with `npm run unit_test`, which runs them in series.
 **Never run them in parallel or alongside a Playwright run** — they are CPU-bound and
