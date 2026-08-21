@@ -66,6 +66,12 @@ ruleTester.run('require-openapi-tag', rule, {
         { messageId: 'missingOpenapiTag', data: { method: 'POST', path: '/b' } },
       ],
     },
+    // A bare tag with no YAML under it is worse than no tag: swagger-jsdoc consumes the
+    // NEXT annotation, so the following endpoint silently leaves the spec.
+    {
+      code: "/**\n * @openapi\n */\nrouter.post('/x', asyncHandler(h));",
+      errors: [{ messageId: 'missingOpenapiTag', data: { method: 'POST', path: '/x' } }],
+    },
     // A docblock that only mentions the tag in prose is ordinary commentary — the
     // routes/{sso,teams,mfa}.ts file headers do exactly this, and matching the tag
     // anywhere would silence the rule for every handler beneath them.
@@ -108,7 +114,7 @@ ruleTester.run('require-openapi-tag', rule, {
     // One JSDoc block documents one operation: it covers the innermost link only, so
     // the later methods of a chain still report. Otherwise one block hides the rest.
     {
-      code: "/**\n * @openapi\n */\nrouter.route('/a').get(g).post(p);",
+      code: `${OPENAPI_BLOCK}\nrouter.route('/a').get(g).post(p);`,
       errors: [{ messageId: 'missingOpenapiTag', data: { method: 'POST', path: '/a' } }],
     },
     // .all registers every method, so it needs a spec entry more than the others.

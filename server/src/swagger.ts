@@ -1426,7 +1426,7 @@ const componentSchemas = {
       routers: {
         type: 'object',
         description:
-          'Which coverage routers registered their routes at boot, from their COVERAGE_* env vars (MINCRM-685). False means every path under that router returns 404 — the routes do not exist, rather than existing and refusing. Replaced a featureFlags block reporting three feature_flags rows that migration 163 deleted.',
+          'Which coverage routers registered their routes at boot, from their COVERAGE_* env vars. False means every path under that router returns 404 — the routes do not exist, rather than existing and refusing. Replaced a featureFlags block reporting three feature_flags rows that migration 163 deleted.',
         required: ['pipeline', 'mapping', 'reporting'],
         properties: {
           pipeline: { type: 'boolean' },
@@ -1550,12 +1550,12 @@ Endpoints require a valid session cookie obtained by calling \`POST /api/v1/auth
       {
         name: 'Teams',
         description:
-          'Team management with nested hierarchy and membership. Read endpoints are open to all authenticated users; mutations require admin role. (MINCRM-537)',
+          'Team management with nested hierarchy and membership. Read endpoints are open to all authenticated users; mutations require admin role.',
       },
       {
         name: 'Coverage',
         description:
-          'Coverage/TIA control API — drives the backend V8 coverage agent and ingests frontend coverage dumps. Admin only, feature-flag gated, off by default in production. (MINCRM-604, MINCRM-606)',
+          'Coverage/TIA control API — drives the backend V8 coverage agent and ingests frontend coverage dumps. Admin only, feature-flag gated, off by default in production.',
       },
     ],
     components: {
