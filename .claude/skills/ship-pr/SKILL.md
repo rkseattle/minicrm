@@ -22,24 +22,26 @@ after a passing E2E run invalidates it, and that run is expensive to repeat.
 
 ## Step 2 — E2E
 
-Read `.claude/gates/e2e-run.md` and run the gate. Key points, since this is where the
-run usually goes wrong:
+**The push in Step 4 runs it.** The `pre-push` hook resolves the diff to the affected
+specs and attests that they executed against this HEAD. Do not run Playwright by hand
+here and then bypass the hook — see `.claude/gates/pre-push.md`'s bypass section for why,
+and `.claude/gates/e2e-run.md` for the cadence rules that still apply.
 
-- `date` in its own Bash call, first.
-- Rebuild and recreate the test server (`docker-compose.test.yml`) — a stale container silently runs old server code
-  and produces failures that look like test bugs.
-- `rm -rf qa/e2e/test-results/` so stale output cannot influence the verdict.
-- Scope the `--grep` to the domains this branch touched. If you are not confident the
-  blast radius is contained, ask before narrowing — declaring the stop per `deliver`'s
-  invariants, since the phase state is still live until Step 4.
-- Non-serial and serial as two separate runs, `--workers=1` each.
-- Read `qa/e2e/test-results/results.xml` for the counts. Not the console. Not the exit
-  code. If output truncates, read the file — do not re-run.
+Two things are still yours to do before pushing, because the hook cannot:
 
-One run. If it fails, root-cause and fix, then run **once** against just the affected
-specs. Never re-run to see whether a failure goes away. Never dismiss one as a known
-flake, pre-existing, or unrelated, and never compare against `main` to wave it off. If
-you cannot find the root cause, say so explicitly and ask how to proceed, declaring the
+- **Rebuild and recreate the test server** (`docker-compose.test.yml build server`, then
+  `up -d server`, with `GIT_COMMIT_SHA` exported first). A stale container silently runs
+  old server code, and the resulting failures look like test bugs. The hook warns when the
+  running stack's SHA is not HEAD, but it cannot rebuild for you.
+- **Confirm the client is serving** on :5175 (`npm run e2e:client`).
+
+Read the counts from `qa/e2e/test-results/results.xml`, never the console and never the
+exit code. If output truncates, read the file — do not re-run.
+
+One run. If it fails, root-cause and fix, then validate that fix against the specific
+failing spec. Never re-run to see whether a failure goes away, never dismiss one as a
+known flake, pre-existing, or unrelated, and never compare against `main` to wave it off.
+If you cannot find the root cause, say so explicitly and ask how to proceed, declaring the
 stop per `deliver`'s invariants.
 
 ## Step 3 — Clean the working tree
@@ -51,7 +53,7 @@ Pushing these contaminates history. When unsure whether a change was intentional
 ## Step 4 — Push and open the PR
 
 ```bash
-SKIP_TIA_PREPUSH=1 git push -u --force-with-lease origin <branch>
+git push -u --force-with-lease origin <branch>
 gh pr create --title "<ALL ticket IDs> — <summary>" --body "<body>"
 ```
 
@@ -59,19 +61,14 @@ gh pr create --title "<ALL ticket IDs> — <summary>" --body "<body>"
 already pushed will reject a fast-forward push. Never bare `--force`: `--force-with-lease`
 aborts when the remote moved under you instead of overwriting whatever landed there.
 
-`SKIP_TIA_PREPUSH=1` because Step 2 just ran the E2E gate by hand, and the `pre-push`
-hook would otherwise run its own selection over an identical tree — twenty-plus minutes
-to re-derive a verdict you already have. Preferred over `--no-verify`, which skips the
-hook silently; the env var is the hook's own escape hatch and logs each use to
-`.git/tia-prepush-bypass.log`.
-
-Only valid when Step 2 ran **both halves** with zero failures in `results.xml` **and**
-HEAD has not moved since — check `git rev-parse HEAD`, never assume. If anything was
-committed, amended, or rebased after those runs (a fix for something they surfaced
-counts), the result is void: drop the flag, or re-run the gate. See "Not re-running E2E
-in the push hook" in `.claude/gates/pre-push.md` for the full conditions and what the
-bypass gives up. Never use it to get around a failure or a run you'd rather not sit
+**No `SKIP_TIA_PREPUSH=1`.** This push is where the E2E gate runs: the hook selects the
+affected specs, executes them, and attests they ran against this HEAD. Expect it to take
+a while, and let it. The bypass is for a hook that cannot do its job — see "Bypassing the
+push hook" in `.claude/gates/pre-push.md` — not for a run you would rather not sit
 through.
+
+If the hook fails, that is the gate failing. Root-cause it; do not re-push with the
+bypass set.
 
 If the lease check rejects the push, the remote branch has commits your local copy does
 not — someone else pushed, or an earlier run of this skill did. Do not re-force past it.
@@ -94,7 +91,8 @@ Body:
 - What ships, in prose
 - Ticket links
 - Per-ticket acceptance criteria and how each is satisfied
-- Testing performed, including the E2E scope and the counts read from `results.xml`
+- Testing performed: what the hook selected (targeted or full-suite, and why), and the
+  counts read from `results.xml`
 - Migrations, feature flags, and any manual deployment step
 - Anything deliberately deferred, with the reason. Every entry here must already have
   cleared the deferral procedure in `deliver`'s invariants — `commit-adversary` on the
