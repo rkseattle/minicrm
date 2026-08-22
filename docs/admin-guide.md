@@ -2058,3 +2058,156 @@ merge answer `403`.
 
 Threshold changes are audited. Each scan writes a system entry recording how many findings
 were detected and how many were cleared.
+
+---
+
+## 22. Sequences
+
+> **Feature flag:** `sequencing`
+
+A sequence is a numbered list of follow-up steps that MiniCRM turns into tasks and call
+reminders on a schedule. **Authoring a sequence is admin-only** — the **Sequences** page lives
+under the admin navigation and non-admins cannot reach it. Enrolling a contact is not:
+any user with the `sequences:enroll` capability does that from the contact's own page, which
+is where the [user guide](user-guide/sequences.md) picks the story up.
+
+> **No step ever sends an email.** Every step creates an open activity for a person to action
+> — a Call activity for a call reminder, a Task for everything else. An email step writes the
+> subject as `Send email: …` and puts the body in the activity notes so the rep can send it
+> themselves. The flag's own description calls this "automated email cadence", which
+> overstates it.
+
+### Tutorial: build a sequence
+
+#### Step 1 — Create it
+
+Go to **Sequences** and click **New sequence**. Give it a name and an optional description.
+It is created disabled.
+
+#### Step 2 — Add steps
+
+Open the sequence and add steps in order. Each step needs:
+
+- **Action** — one of **Send email**, **Log call reminder**, or **Create task**.
+- **Delay (days)** — whole days after the previous step, counted from enrollment for the
+  first step. `0` means the step is due immediately.
+- **Subject**, and a **body** for email steps or **notes** for the other two.
+
+#### Step 3 — Enable it
+
+A disabled sequence cannot be enrolled into. Toggle it on when the steps are complete.
+
+### How enrollment behaves
+
+Enrollment is refused when the sequence is disabled, has no steps, or already has an active
+enrollment for that contact — one active enrollment per contact per sequence.
+
+Due steps are processed **every fifteen minutes**. Each one creates its activity, owned by
+the **contact's owner** rather than whoever enrolled them, and schedules the next step. When
+no step remains the enrollment is marked completed.
+
+An enrollment leaves in exactly three ways: it completes, someone unenrolls it, or an
+administrator disables the sequence. There is no reply detection, no bounce handling, and no
+unsubscribe — nothing a recipient does can exit a sequence.
+
+> **Disabling a sequence strands its active enrollments rather than ending them.** The
+> processor only picks up enrollments whose sequence is enabled, so they stay `active`
+> indefinitely and resume where they left off if you re-enable it. Unenroll them first if
+> you want them genuinely stopped.
+
+A sequence with active enrollments cannot be deleted; unenroll everyone first.
+
+### Reference
+
+| Endpoint                                    | Method             | Description                                    |
+| ------------------------------------------- | ------------------ | ---------------------------------------------- |
+| `/api/v1/sequences`                         | GET                | List sequences with step and enrollment counts |
+| `/api/v1/sequences`                         | POST               | Create a sequence — **admin**                  |
+| `/api/v1/sequences/:id`                     | GET, PATCH, DELETE | Read, update, delete — writes are **admin**    |
+| `/api/v1/sequences/:id/steps`               | GET, POST          | List and add steps — POST is **admin**         |
+| `/api/v1/sequences/:id/steps/:stepId`       | PATCH, DELETE      | Edit and remove a step — **admin**             |
+| `/api/v1/contacts/:id/sequence-enrollments` | GET, POST          | List and create enrollments                    |
+| `/api/v1/sequence-enrollments/:id`          | GET, DELETE        | Read an enrollment, or unenroll                |
+
+Reading sequences is open to any authenticated user, which is what populates the enrollment
+picker. Enrolling requires `sequences:enroll`, held by every built-in role except `viewer`.
+
+### Audit trail
+
+Sequence and step creation, updates, and deletion are audited, as are enrollment and
+unenrollment. Each processed step is recorded on the enrollment's own log with a success or
+error outcome, so a failed step is visible without reading server logs.
+
+---
+
+## 23. Custom Reports
+
+> **Feature flag:** `reporting`
+
+Custom reports let anyone build a saved query over their CRM data and chart it. Despite
+living beside the admin features in this guide, **this is not an admin-only tool** — the
+`reporting` flag is the only gate, and the endpoints carry no role check. Its role overrides
+name only admin and rep, so every other role falls through to the org-wide setting and gets
+in as well.
+
+Find them at **Reports → Custom Reports**.
+
+### What a report contains
+
+| Part        | Options                                         |
+| ----------- | ----------------------------------------------- |
+| Data source | Contacts, Accounts, Deals, Leads, or Activities |
+| Fields      | Up to 20, from a fixed list per data source     |
+| Filters     | Up to 10, combined with AND                     |
+| Group by    | One field                                       |
+| Aggregate   | Count, or Sum over a numeric field              |
+| Sort        | Any allowed field, ascending or descending      |
+| Chart       | Bar or line                                     |
+
+Filter operators are equals, not equals, greater/less than (or equal), contains, is empty,
+and is not empty. **Sum is effectively deal-only** — deal value and probability are the only
+numeric fields it accepts.
+
+Grouping constrains the rest: an aggregate requires a group-by, and when you group, the only
+field you may select is the one you grouped on.
+
+There is no date-range picker. Filter on a date field with greater/less than instead — and
+note there are no relative dates, so "last 30 days" has to be entered as an actual date.
+
+**Custom fields cannot be reported on.** The field lists are fixed and do not include them.
+
+### Who sees what
+
+Each report has one of three visibility settings:
+
+| Visibility         | Who can view                   | Who can edit or delete         |
+| ------------------ | ------------------------------ | ------------------------------ |
+| Private            | The creator and administrators | The creator and administrators |
+| Public (read-only) | Everyone                       | The creator and administrators |
+| Public             | Everyone                       | **Everyone**                   |
+
+New reports default to **Public**, which means editable by anyone. Set it to public read-only
+if you want a shared report that only its owner changes.
+
+> **Two people running the same report see different numbers, by design.** Results are
+> filtered to records the viewer owns, for everyone except administrators, who see the whole
+> organisation. A shared report is a shared _definition_, not a shared result set.
+>
+> **Results are capped at 1,000 rows.** There is no pagination and no warning when the cap is
+> hit — a report that returns exactly 1,000 rows has probably been truncated. Narrow it with
+> filters rather than treating the total as complete.
+
+### Reference
+
+| Endpoint                                | Method             | Description                        |
+| --------------------------------------- | ------------------ | ---------------------------------- |
+| `/api/v1/reports/custom`                | GET, POST          | List and create saved reports      |
+| `/api/v1/reports/custom/run`            | POST               | Run a definition without saving it |
+| `/api/v1/reports/custom/:id`            | GET, PATCH, DELETE | Read, update, delete               |
+| `/api/v1/reports/custom/:id/run`        | POST               | Run a saved report                 |
+| `/api/v1/reports/custom/:id/export`     | GET                | Download results as CSV            |
+| `/api/v1/reports/custom/:id/export.pdf` | GET                | Download results as PDF            |
+
+### Audit trail
+
+Creating, updating, and deleting a custom report is audited. Running or exporting one is not.
