@@ -1399,11 +1399,13 @@ themselves out.
 
 ### Encryption key rotation
 
-> **Rotating `NODE_ENCRYPTION_KEY` locks every enrolled user out of their authenticator
-> app.** TOTP secrets use the legacy unversioned encryption path, the same one as the SSO
-> certificate, and there is no tooling to re-encrypt them. After a rotation MiniCRM cannot
+> **Replacing the value of `NODE_ENCRYPTION_KEY` locks every enrolled user out of their
+> authenticator app.** TOTP secrets use the legacy unversioned encryption path, the same one
+> as the SSO certificate, and there is no tooling to re-encrypt them. MiniCRM then cannot
 > read the stored secret, and the failure is reported as an invalid code — there is no
-> distinct error to tell you what happened.
+> distinct error to tell you what happened. Adding a new key to the keyring
+> (`ENCRYPTION_KEY_V2`) is safe: the legacy path keeps reading `NODE_ENCRYPTION_KEY`, so
+> leave that variable in place.
 >
 > **Recovery codes still work**, because they are hashed rather than encrypted. That is the
 > way back in: each affected user signs in with a recovery code, disables 2FA with their
@@ -1529,9 +1531,11 @@ it blank is valid and means no extra role — the user is a plain rep. New insta
 it to the built-in `rep` role, which adds nothing beyond the base role.
 
 > **A privileged built-in role cannot be chosen here.** `admin`, `manager`, `viewer`, and
-> `service_account` are rejected, because this setting applies to every account the IdP
-> provisions — picking `admin` would hand full administrative access to everyone who signs
-> in. Grant elevated access per user instead, or define a custom role.
+> `service_account` are rejected with `409 SSO_JIT_ROLE_BUILTIN`, because this setting
+> applies to every account the IdP provisions — picking `admin` would hand full
+> administrative access to everyone who signs in. Grant elevated access per user instead,
+> or define a custom role. A value stored before this rule existed is ignored at
+> provisioning time and shown as unset.
 >
 > If the configured role has since been deleted, the user is still created and can still
 > sign in — with the base `rep` role only, and none of the capabilities you intended. The
@@ -1649,8 +1653,9 @@ have it revoked.
 
 **Only custom roles can be mapped** — the built-in roles (`admin`, `manager`, `rep`,
 `viewer`, `service_account`) are not valid targets, and a mapping that names one is
-rejected. Create a custom role under **Admin Settings → Users & Access → Roles** first. Any
-such mapping stored before this rule existed is ignored at sync time rather than granted.
+rejected with `409 SCIM_MAPPING_BUILTIN_ROLE`. Create a custom role under
+**Admin Settings → Users & Access → Roles** first. Any such mapping stored before this rule
+existed is ignored at sync time rather than granted.
 
 ### How group mapping behaves
 

@@ -477,9 +477,12 @@ export async function findOrProvisionSsoUser(
     const jitRoleId = jitRoleSettingResult.rows[0]?.value ?? null;
 
     if (jitRoleId) {
-      // Validate the role exists before inserting to avoid a FK violation.
+      // Excludes privileged built-ins here as well as on write, so a value stored before
+      // that guard existed cannot still grant admin to every provisioned user.
       const roleExistsResult = await client.query<{ id: string }>(
-        `SELECT id FROM custom_roles WHERE id = $1 LIMIT 1`,
+        `SELECT id FROM custom_roles
+          WHERE id = $1 AND (is_builtin = false OR name = 'rep')
+          LIMIT 1`,
         [jitRoleId],
       );
       if (roleExistsResult.rows[0]) {

@@ -938,7 +938,7 @@
       "disableConfirmPrompt": "This will remove SSO bindings for all users. Continue?",
       "disableConfirmButton": "Yes, disable SSO",
       "jitRoleLabel": "Default Role for New SSO Users",
-      "jitRoleHint": "Role assigned to users provisioned automatically on first SSO login."
+      "jitRoleHint": "Extra role granted to users provisioned on first SSO login, on top of their base rep role. Built-in roles other than rep cannot be selected."
     },
     "scim": {
       "sectionTitle": "SCIM 2.0 Provisioning",

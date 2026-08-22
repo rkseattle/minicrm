@@ -938,7 +938,7 @@
       "disableConfirmPrompt": "¿Eliminar las vinculaciones SSO de todos los usuarios?",
       "disableConfirmButton": "Sí, deshabilitar SSO",
       "jitRoleLabel": "Rol predeterminado para nuevos usuarios SSO",
-      "jitRoleHint": "Rol asignado a usuarios aprovisionados automáticamente en su primer inicio de sesión SSO."
+      "jitRoleHint": "Rol adicional otorgado a los usuarios aprovisionados en su primer inicio de sesión SSO, además de su rol base rep. No se pueden seleccionar roles integrados distintos de rep."
     },
     "scim": {
       "sectionTitle": "Aprovisionamiento SCIM 2.0",

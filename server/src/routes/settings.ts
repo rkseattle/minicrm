@@ -1353,6 +1353,11 @@ router.get(
  *                 type: string
  *               idp_certificate:
  *                 type: string
+ *               jit_default_role_id:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 description: Custom role granted to JIT-provisioned users, in addition to their base rep role. null clears it.
  *     responses:
  *       200:
  *         description: Saved SSO configuration
@@ -1362,6 +1367,8 @@ router.get(
  *         $ref: '#/components/responses/Unauthorized'
  *       403:
  *         $ref: '#/components/responses/Forbidden'
+ *       409:
+ *         description: The role is a privileged built-in and cannot be the JIT default
  */
 router.put(
   '/sso',

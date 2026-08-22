@@ -165,6 +165,22 @@ describe('PUT /api/v1/settings/sso', () => {
     expect(res.body.sso).not.toHaveProperty('idp_certificate');
   });
 
+  it('returns 409 for a privileged built-in JIT default role', async () => {
+    const builtin = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE name = 'admin' AND is_builtin = true`,
+    );
+
+    const res = await request(app).put('/api/v1/settings/sso').set('Cookie', adminCookie).send({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://accounts.google.com/.well-known/openid-configuration',
+      entity_id: 'google-client-id',
+      jit_default_role_id: builtin.rows[0]!.id,
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('SSO_JIT_ROLE_BUILTIN');
+  });
+
   it('returns 400 for missing required fields', async () => {
     const res = await request(app)
       .put('/api/v1/settings/sso')
