@@ -83,10 +83,11 @@ test('custom reports: saving a report adds it to the saved list @functional', as
   await navigateToCustomReports({ page });
 
   const reportName = `E2E Test Report ${Date.now()}`;
-  await saveCustomReport(reportName, { page });
-  await waitForSaveDialogClosed({ page });
 
-  // Wait specifically for the new report name to appear — avoids stale list from prior runs
+  const { status } = await saveCustomReport(reportName, { page });
+  expect(status).toBe(201);
+
+  await waitForSaveDialogClosed({ page });
   await waitForSavedReportByName(reportName, { page });
   await expectSavedReportByNameVisible(reportName, { page });
 });

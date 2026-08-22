@@ -533,28 +533,27 @@ export class ReportsPage {
   }
 
   /**
-   * Waits for a specific report name to appear in the saved-reports sidebar, then
-   * returns a resolved locator for its button.
+   * Resolves the saved-reports sidebar button for a specific report name, waiting
+   * for it to appear.
    *
-   * Prefer this over positional locators so stale reports from prior test runs do
-   * not cause false matches.
+   * Every strategy carries the name. An unscoped fallback would resolve uniquely to
+   * whichever report is already listed while the new one is still refetching —
+   * requireUnique rejects an ambiguous match, never a uniquely wrong one.
    */
   async savedReportByNameLocator(name: string, timeout = 10_000) {
-    const escaped = name.replace(/'/g, "\\'");
-    await this.page.waitForFunction(
-      `Array.from(document.querySelectorAll('[data-testid="saved-reports-list"] li button')).some(b => b.textContent && b.textContent.trim() === '${escaped}')`,
-      undefined,
-      { timeout },
-    );
+    const exact = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return this.page
       .locate(
         [
           {
             type: 'role',
             value: 'button',
-            options: { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) },
+            options: { name: new RegExp(`^${exact}$`) },
           },
-          { type: 'css', value: `[data-testid="saved-reports-list"] li button` },
+          {
+            type: 'css',
+            value: `[data-testid="saved-reports-list"] li button:text-is("${name}")`,
+          },
         ],
         { intent: `saved report button with name "${name}" in the sidebar list` },
       )
