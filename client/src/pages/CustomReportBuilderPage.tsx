@@ -17,6 +17,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ExportMenu } from '@/components/ui/ExportMenu.js';
+import { usePermissions } from '@/hooks/usePermissions.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import {
   listCustomReports,
   runAdHocReport,
@@ -410,6 +412,7 @@ function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogPr
 export function CustomReportBuilderContent() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { can } = usePermissions();
   const queryClient = useQueryClient();
 
   // ── Saved reports list ──────────────────────────────────────────────────────
@@ -570,11 +573,11 @@ export function CustomReportBuilderContent() {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  // Mirrors the capabilities the server checks: reports:create/edit/export are held by
-  // admin and manager, reports:delete by admin alone. Hidden rather than left to 403.
-  const canAuthorReports = user?.role === 'admin' || user?.role === 'manager';
-  const canExportReports = canAuthorReports;
-  const canDeleteReports = user?.role === 'admin';
+  // Read from the effective capability set rather than inferred from the role name, so a
+  // custom role's grants agree with what the server will actually allow.
+  const canAuthorReports = can(Capability.ReportsCreate) && can(Capability.ReportsEdit);
+  const canExportReports = can(Capability.ReportsExport);
+  const canDeleteReports = can(Capability.ReportsDelete);
 
   const activeReport = savedReports?.find((r) => r.id === activeReportId) ?? null;
   const activeReportCanMutate =

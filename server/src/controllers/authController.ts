@@ -13,6 +13,7 @@ import {
   passwordComplexitySchema,
 } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
+import { userCapabilities } from '../services/roleService.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import {
   JWT_IDLE_EXPIRY_SECONDS,
@@ -206,7 +207,11 @@ export async function me(req: Request, res: Response): Promise<void> {
     });
     return;
   }
-  res.status(200).json({ user: sanitizeUser(user) });
+  // The client mirrors several capability checks to decide which controls to render.
+  // Inferring them from the role name is wrong for custom roles, which is why the
+  // effective set is returned rather than left to be guessed.
+  const capabilities = await userCapabilities(user.id);
+  res.status(200).json({ user: sanitizeUser(user), capabilities: [...capabilities].sort() });
 }
 
 /**

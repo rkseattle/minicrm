@@ -23,6 +23,8 @@ export const AUTH_QUERY_KEY = ['auth', 'me'] as const;
 
 interface UseAuthResult {
   user: UserResponse | null;
+  /** The user's effective capabilities, resolved server-side across all their roles. */
+  capabilities: string[];
   isLoading: boolean;
   isAuthenticated: boolean;
 }
@@ -58,6 +60,7 @@ export function useAuth(): UseAuthResult {
 
   return {
     user,
+    capabilities: data?.capabilities ?? [],
     isLoading,
     isAuthenticated: user !== null,
   };

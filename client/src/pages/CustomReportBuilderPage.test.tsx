@@ -479,3 +479,37 @@ describe('CustomReportBuilderContent — authoring capability', () => {
     });
   });
 });
+
+describe('CustomReportBuilderContent — capability-driven controls', () => {
+  it('shows authoring controls to a rep whose custom role grants reports:create', async () => {
+    // The role name says rep, the capability set says otherwise — the server resolves the
+    // union across custom roles, so the UI must follow the set rather than the name.
+    server.use(
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json({
+          user: REP_USER,
+          capabilities: ['reports:view', 'reports:create', 'reports:edit'],
+        }),
+      ),
+    );
+    renderWithProviders(<CustomReportBuilderContent />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-report-button')).toBeInTheDocument();
+    });
+  });
+
+  it('hides authoring controls from a manager whose custom role withholds them', async () => {
+    server.use(
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json({ user: MANAGER_USER, capabilities: ['reports:view'] }),
+      ),
+    );
+    renderWithProviders(<CustomReportBuilderContent />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('run-report-button')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('save-report-button')).not.toBeInTheDocument();
+  });
+});

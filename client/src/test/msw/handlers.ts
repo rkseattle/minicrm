@@ -277,6 +277,44 @@ export const REP_USER: UserResponse = {
   created_at: '2025-01-01T00:00:00.000Z',
 };
 
+/**
+ * Effective capabilities per built-in role, mirroring the seeds in migration 106 for the
+ * subset the UI gates on. GET /api/v1/auth/me returns these, so a test that overrides that
+ * handler must supply them or every capability check reads false.
+ */
+export const ROLE_CAPABILITIES: Record<string, string[]> = {
+  admin: [
+    'reports:view',
+    'reports:create',
+    'reports:edit',
+    'reports:delete',
+    'reports:export',
+    'sequences:view',
+    'sequences:enroll',
+    'dashboards:view',
+  ],
+  manager: [
+    'reports:view',
+    'reports:create',
+    'reports:edit',
+    'reports:export',
+    'sequences:view',
+    'sequences:enroll',
+    'dashboards:view',
+  ],
+  rep: ['reports:view', 'sequences:view', 'sequences:enroll', 'dashboards:view'],
+  viewer: ['reports:view', 'dashboards:view'],
+  service_account: [],
+};
+
+/** Builds a GET /auth/me body for a fixture user, with the capabilities their role holds. */
+export function authMeBody(user: UserResponse): {
+  user: UserResponse;
+  capabilities: string[];
+} {
+  return { user, capabilities: ROLE_CAPABILITIES[user.role] ?? [] };
+}
+
 /** Reusable fixture: viewer — read-only, holds no write capability. */
 export const VIEWER_USER: UserResponse = {
   id: '00000000-0000-0000-0000-000000000007',
@@ -823,7 +861,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
 export const handlers = [
   /** Auth: GET /api/v1/auth/me — returns admin by default */
   http.get('/api/v1/auth/me', () => {
-    return HttpResponse.json({ user: ADMIN_USER });
+    return HttpResponse.json(authMeBody(ADMIN_USER));
   }),
 
   /** Auth: POST /api/v1/auth/login */

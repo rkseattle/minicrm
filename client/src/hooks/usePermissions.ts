@@ -1,9 +1,10 @@
 /**
  * usePermissions hook.
  *
- * Centralises role-based UI permission checks so that individual pages
- * do not need to inline role comparisons. Currently determines write
- * capability: viewers and service accounts are read-only in the UI.
+ * Centralises UI permission checks so pages do not inline their own. `can()` reads the
+ * effective capability set the server resolved, which is the only correct source for a
+ * user holding a custom role — inferring from the role name disagrees with the server
+ * wherever a custom role's grants differ from its name's built-in defaults.
  */
 
 import { useAuth } from '@/hooks/useAuth.js';
@@ -11,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth.js';
 interface UsePermissionsResult {
   /** True when the current user may create, update, or delete CRM records. */
   canWrite: boolean;
+  /** True when the user's effective capability set contains `capability`. */
+  can: (capability: string) => boolean;
 }
 
 /**
@@ -18,8 +21,44 @@ interface UsePermissionsResult {
  * The server enforces these same rules — this hook exists purely to suppress
  * action buttons and forms that a viewer or service account cannot use.
  */
+/** Built-in role grants for the capabilities the UI gates on, mirroring migration 106. */
+const BUILTIN_ROLE_CAPABILITIES: Record<string, readonly string[]> = {
+  admin: [
+    'reports:view',
+    'reports:create',
+    'reports:edit',
+    'reports:delete',
+    'reports:export',
+    'sequences:view',
+    'sequences:enroll',
+    'dashboards:view',
+  ],
+  manager: [
+    'reports:view',
+    'reports:create',
+    'reports:edit',
+    'reports:export',
+    'sequences:view',
+    'sequences:enroll',
+    'dashboards:view',
+  ],
+  rep: ['reports:view', 'sequences:view', 'sequences:enroll', 'dashboards:view'],
+  viewer: ['reports:view', 'dashboards:view'],
+  service_account: [],
+};
+
 export function usePermissions(): UsePermissionsResult {
-  const { user } = useAuth();
+  const { user, capabilities } = useAuth();
   const canWrite = user?.role !== 'viewer' && user?.role !== 'service_account';
-  return { canWrite };
+
+  // An older session's cached /auth/me predates the capabilities field. Falling back to the
+  // built-in grants keeps the UI usable until it refreshes, rather than hiding every gated
+  // control; the server is the authority either way.
+  const effective =
+    capabilities && capabilities.length > 0
+      ? capabilities
+      : (BUILTIN_ROLE_CAPABILITIES[user?.role ?? ''] ?? []);
+  const can = (capability: string): boolean => effective.includes(capability);
+
+  return { canWrite, can };
 }
