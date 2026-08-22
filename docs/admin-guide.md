@@ -1319,3 +1319,114 @@ templates when drafting emails. Write endpoints require the `admin` role.
 
 Every create, update, and delete is recorded in the **Audit Log** under record type
 `email_templates`.
+
+---
+
+## 16. Two-Factor Authentication
+
+MiniCRM supports TOTP two-factor authentication (2FA) using any standard authenticator app
+— Google Authenticator, Authy, 1Password, and similar. Each user enrolls their own device;
+administrators control only whether enrollment is mandatory org-wide.
+
+### Tutorial: require two-factor authentication for everyone
+
+#### Step 1 — Open the setting
+
+1. Go to **Admin Settings → Security & Identity**.
+2. Find the **Two-Factor Authentication** panel at the top.
+
+#### Step 2 — Turn on enforcement
+
+1. Check **Require two-factor authentication**.
+2. The setting saves immediately and a confirmation appears.
+
+### What enforcement actually does
+
+A user who has not yet enrolled is redirected to their **Profile** page immediately after
+sign-in, where a banner reads "Your organisation requires two-factor authentication. Please
+set it up to continue." They enroll from the **Two-Factor Authentication** panel on that
+same page.
+
+Two limits are worth knowing before you turn this on:
+
+- **It prompts; it does not block.** The session cookie is issued as normal, so a user who
+  ignores the banner keeps full access to the application.
+- **The prompt appears once per sign-in.** It is carried in the redirect URL, not in the
+  user's account state, so it disappears as soon as they navigate elsewhere and does not
+  return until their next login.
+
+The redirect also discards wherever the user was originally heading. Treat this setting as
+"prompt everyone to enroll at login", not as a hard gate — if you need enrollment
+guaranteed, follow up out of band.
+
+### The enrollment flow (what your users see)
+
+Enrollment is self-service, from **Profile → Two-Factor Authentication**:
+
+1. The user clicks **Set up two-factor authentication**.
+2. MiniCRM displays a QR code. The user scans it with their authenticator app. The entry
+   appears there labelled with the user's email address, under the issuer name `MiniCRM`
+   (set by the `APP_NAME` environment variable, and separate from the workspace name under
+   **Branding**).
+3. The user enters the current 6-digit code to confirm the app is correctly paired.
+4. MiniCRM shows **eight single-use recovery codes**, once and only once.
+
+### Recovery codes
+
+| Property     | Value                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Count        | 8, generated at enrollment                                                                                                 |
+| Format       | 16 hexadecimal characters                                                                                                  |
+| Reuse        | Single-use — each code is consumed when redeemed                                                                           |
+| Storage      | Hashed; MiniCRM cannot display them again after enrollment                                                                 |
+| Regeneration | Not available — a fresh set requires disabling and re-enrolling, which invalidates the user's existing authenticator entry |
+
+At sign-in a user who cannot reach their authenticator app chooses **Use a recovery code
+instead** and enters one of the eight. The user's own **Two-Factor Authentication** panel
+shows how many remain, which is the easiest way to spot someone at risk of locking
+themselves out.
+
+> **Advise users to store recovery codes before dismissing the dialog.** They are shown
+> exactly once and are stored hashed, so neither the user nor an administrator can recover
+> them afterwards.
+
+### Turning 2FA off
+
+A user disables their own 2FA from **Profile → Two-Factor Authentication** by entering their
+**current account password**. This clears their secret and all remaining recovery codes.
+
+> **There is no administrator reset.** MiniCRM has no admin-side control that clears another
+> user's 2FA enrollment — disabling requires the account holder's own password. A user who
+> loses both their authenticator device and all eight recovery codes cannot be recovered
+> through the application at all. Restoring such an account means clearing
+> `mfa_enabled`, `mfa_secret`, `mfa_pending_secret`, and `mfa_recovery_codes` on their
+> `users` row directly in the database — which, unlike the two events below, writes no audit
+> entry. Plan for this before enabling org-wide enforcement, and make sure users store their
+> recovery codes.
+
+### Reference
+
+| Endpoint                          | Method | Description                                    |
+| --------------------------------- | ------ | ---------------------------------------------- |
+| `/api/v1/settings/mfa-required`   | GET    | Read org-wide enforcement (admin only)         |
+| `/api/v1/settings/mfa-required`   | PATCH  | Set org-wide enforcement (admin only)          |
+| `/api/v1/auth/mfa/status`         | GET    | Whether the caller has 2FA enabled             |
+| `/api/v1/auth/mfa/setup`          | POST   | Begin enrollment; returns the QR code          |
+| `/api/v1/auth/mfa/verify-setup`   | POST   | Confirm the code; returns the recovery codes   |
+| `/api/v1/auth/mfa/disable`        | POST   | Disable own 2FA; requires the account password |
+| `/api/v1/auth/mfa/verify-login`   | POST   | Complete sign-in with an authenticator code    |
+| `/api/v1/auth/mfa/recovery-login` | POST   | Complete sign-in with a recovery code          |
+
+The two sign-in endpoints take no session cookie: they complete a login already in
+progress, using a token issued when the password was accepted, valid for five minutes.
+
+> **These two endpoints are not rate-limited**, unlike `/auth/login` and the password-reset
+> endpoints. Within that five-minute window a 6-digit code or a recovery code can be
+> submitted repeatedly. If your deployment is internet-facing, rate-limit them at the
+> reverse proxy.
+
+### Audit trail
+
+Enrollment and removal are recorded in the **Audit Log** against record type `user`, with
+event types `mfa_enabled` and `mfa_disabled` — filter on those two values to review 2FA
+activity. Because 2FA is always self-service, the actor and the subject are the same person.
