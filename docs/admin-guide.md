@@ -26,6 +26,11 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 17. [Single Sign-On (SSO)](#17-single-sign-on-sso)
 18. [SCIM Provisioning](#18-scim-provisioning)
 19. [Teams](#19-teams)
+20. [CSV Import](#20-csv-import)
+21. [Data Hygiene](#21-data-hygiene)
+22. [Sequences](#22-sequences)
+23. [Custom Reports](#23-custom-reports)
+24. [Insights](#24-insights)
 
 ---
 
