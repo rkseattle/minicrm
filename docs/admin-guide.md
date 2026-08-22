@@ -1857,7 +1857,8 @@ Open **Admin Settings → Data & Platform → Import Data** and pick the **Accou
 #### Step 2 — Upload the file
 
 Drag a `.csv` file onto the drop zone, or click to browse. The file must be **10 MB or
-smaller** and carry a `.csv` extension; both limits are checked before anything is uploaded.
+smaller** and be a CSV — either a `.csv` extension or a CSV content type is accepted. Both
+checks run before anything is uploaded.
 A file with a header row but no data rows is rejected.
 
 #### Step 3 — Map your columns
@@ -1976,21 +1977,21 @@ navigation entry today — reach them by URL.
 
 ### What it detects
 
-| Record      | Issue                    | Raised when                                                                                    |
-| ----------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
-| Contact     | No recent activity       | No activity ever, or none within the contact inactivity window                                 |
-| Contact     | Missing contact info     | Email **or** phone is blank                                                                    |
-| Contact     | Stale job title          | The title has not been updated within the staleness window                                     |
-| Contact     | Unreachable email domain | The domain definitively accepts no mail                                                        |
-| Contact     | Possible duplicate       | Another contact's name matches closely, reinforced by a shared email domain, company, or phone |
-| Account     | No contacts              | No contact references the account                                                              |
-| Account     | No recent activity       | No activity within the account inactivity window                                               |
-| Account     | Unreachable website      | The website returns 404, its host does not resolve, or the URL is malformed or not HTTPS       |
-| Account     | Missing firmographics    | Industry **or** employee range is blank                                                        |
-| Opportunity | No recent activity       | No activity within the opportunity inactivity window                                           |
-| Opportunity | Close date passed        | The close date is in the past and the deal is still open                                       |
-| Opportunity | No contact               | No contact is linked to the deal                                                               |
-| Opportunity | Zero value               | The value is zero or unset                                                                     |
+| Record      | Issue                    | Raised when                                                                                                   |
+| ----------- | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Contact     | No recent activity       | No activity ever, or none within the contact inactivity window                                                |
+| Contact     | Missing contact info     | Email **or** phone is blank                                                                                   |
+| Contact     | Stale job title          | The title has not been updated within the staleness window                                                    |
+| Contact     | Unreachable email domain | The domain definitively accepts no mail                                                                       |
+| Contact     | Possible duplicate       | Another contact has the same first name, last name, and company, and shares enough else to pass the threshold |
+| Account     | No contacts              | No contact references the account                                                                             |
+| Account     | No recent activity       | No activity ever, or none within the account inactivity window                                                |
+| Account     | Unreachable website      | The website returns 404, its host does not resolve, or the URL is malformed or not HTTPS                      |
+| Account     | Missing firmographics    | Industry **or** employee range is blank                                                                       |
+| Opportunity | No recent activity       | No activity ever, or none within the opportunity inactivity window                                            |
+| Opportunity | Close date passed        | The close date is in the past and the deal is still open                                                      |
+| Opportunity | No contact               | No contact is linked to the deal                                                                              |
+| Opportunity | Zero value               | The value is zero or unset                                                                                    |
 
 The four opportunity checks apply to **open deals only** — nothing closed is ever flagged.
 Network checks fail safe: a domain or website that is merely unreachable at scan time is not
@@ -2004,8 +2005,9 @@ Each finding offers four actions:
   clears the finding.
 - **Merge** — offered only on possible duplicates. Choose which contact to keep; the other is
   merged into it.
-- **Archive** — **removes the finding, not the record.** The record is left exactly as it is.
-  Use it when the data is correct as it stands and the check is simply wrong about it.
+- **Archive** — **removes findings, not the record.** The record is left exactly as it is.
+  Note it clears **every** finding on that record, not just the one you clicked. Use it when
+  the data is correct as it stands and the checks are simply wrong about it.
 - **Dismiss** — hides the finding for the suppression window. A reason is required.
 
 Filter the queue by record type using the **All / Contacts / Accounts / Opportunities**
@@ -2013,7 +2015,7 @@ buttons.
 
 ### Configuration
 
-Set under **Admin Settings → AI → Data Hygiene**:
+Set under **Admin Settings → AI → Data Hygiene Assistant**:
 
 | Setting                       | Default | Controls                             |
 | ----------------------------- | ------- | ------------------------------------ |
@@ -2082,7 +2084,10 @@ is where the [user guide](user-guide/sequences.md) picks the story up.
 #### Step 1 — Create it
 
 Go to **Sequences** and click **New sequence**. Give it a name and an optional description.
-It is created disabled.
+
+> **A new sequence is created enabled.** It cannot be enrolled into while it has no steps,
+> but that protection ends the moment you save the first one — so an unfinished sequence is
+> enrollable. Toggle it off while you author it if that matters.
 
 #### Step 2 — Add steps
 
@@ -2093,9 +2098,10 @@ Open the sequence and add steps in order. Each step needs:
   first step. `0` means the step is due immediately.
 - **Subject**, and a **body** for email steps or **notes** for the other two.
 
-#### Step 3 — Enable it
+#### Step 3 — Check it is enabled
 
-A disabled sequence cannot be enrolled into. Toggle it on when the steps are complete.
+A disabled sequence cannot be enrolled into. If you turned it off while authoring, turn it
+back on when the steps are complete.
 
 ### How enrollment behaves
 
@@ -2211,3 +2217,90 @@ if you want a shared report that only its owner changes.
 ### Audit trail
 
 Creating, updating, and deleting a custom report is audited. Running or exporting one is not.
+
+---
+
+## 24. Insights
+
+Three insight pages sit outside the main navigation and are reached directly:
+`/insights/win-loss`, `/insights/churn-expansion`, and `/insights/coaching`. All three read
+from tables refreshed by nightly jobs — nothing is computed when the page loads, so a page
+shows the previous night's results until the next run.
+
+The user guide already covers what the first two show and how to read them:
+[win/loss patterns](user-guide/reports.md#ai-winloss-pattern-analysis) and
+[churn and expansion signals](user-guide/accounts.md#ai-churnexpansion-detection). This
+section covers what an administrator controls.
+
+### What drives each
+
+| Page              | Reads                                                        | Calls a model?                                        |
+| ----------------- | ------------------------------------------------------------ | ----------------------------------------------------- |
+| Win/Loss Patterns | Closed deals, plus their activity and contact history        | **Yes** — to narrate patterns already computed in SQL |
+| Churn/Expansion   | Closed-won accounts with activity, and recent activity notes | **Yes** — the model classifies the signal             |
+| Rep Coaching      | Deals, stage history, and activities per rep                 | **No**                                                |
+
+> **Rep coaching is not AI-powered, despite the flag name.** It is deterministic SQL compared
+> against team averages, with fixed wording per metric. No data leaves the process and no
+> provider is called. It is also deliberately absent from the AI assistant's tool set, so the
+> assistant cannot read one rep's coaching data on another's behalf.
+
+### Who can see them
+
+Win/loss and churn/expansion are open to any authenticated user with the relevant flag, but
+they scope differently, which matters before you enable either. **Win/loss patterns are
+org-wide**: the endpoint takes no account of who is asking, so every user sees patterns
+derived from every closed deal. **Churn and expansion signals are owner-scoped** — a user
+sees signals only for accounts they own, and only administrators see them all.
+
+Coaching is different, and splits by endpoint: a rep may read **their own** insights, which is
+what the dashboard's My Performance section shows, while the team view and any individual
+rep's insights require `admin` or `manager`. Managers see only their own team subtree;
+administrators see everyone.
+
+### Configuration
+
+Win/loss and churn/expansion thresholds are covered by
+[the AI deal-intelligence thresholds table](#9-ai-configuration) above, along with the fact
+that they are set by migration and have no settings screen. Both jobs run on the nightly
+schedule recorded there, and neither has a manual trigger.
+
+Coaching is the exception on both counts — it has a settings screen, at
+**Admin Settings → AI → Rep Coaching Insights**:
+
+| Setting                          | Default | Controls                                                     |
+| -------------------------------- | ------- | ------------------------------------------------------------ |
+| Minimum closed deals             | 10      | How much history a rep needs before any insight is generated |
+| Stage time outlier ratio         | 1.50    | How far above the team average a stage duration must be      |
+| Activity frequency outlier ratio | 0.50    | How far below the team average activity volume must fall     |
+| Response time outlier (hours)    | 48      | The follow-up gap that counts as slow                        |
+| Win rate outlier delta           | 0.150   | How far a win rate must differ from the team's               |
+
+Coaching runs nightly at **06:00 server time**, and **Run now** on the same screen triggers it
+immediately — the only one of the three with that control.
+
+A rep below the minimum closed-deal count simply produces no insights, which is why a new
+starter's page is empty rather than showing poor scores.
+
+### Reference
+
+| Endpoint                               | Method     | Description                               |
+| -------------------------------------- | ---------- | ----------------------------------------- |
+| `/api/v1/insights/win-loss`            | GET        | Cached win/loss patterns                  |
+| `/api/v1/insights/win-loss/export.csv` | GET        | Download patterns as CSV                  |
+| `/api/v1/insights/win-loss/export.pdf` | GET        | Download patterns as PDF                  |
+| `/api/v1/insights/churn-expansion`     | GET        | Current churn and expansion signals       |
+| `/api/v1/insights/coaching/me`         | GET        | The caller's own coaching insights        |
+| `/api/v1/insights/coaching/team`       | GET        | Team insights — **admin or manager**      |
+| `/api/v1/insights/coaching/:repId`     | GET        | One rep's insights — **admin or manager** |
+| `/api/v1/admin/ai/coaching-config`     | GET, PATCH | Read and update coaching thresholds       |
+| `/api/v1/admin/ai/coaching/run`        | POST       | Regenerate coaching insights now          |
+
+Do not confuse `/insights/win-loss` with the **Win/Loss Report** under Reports: the report
+counts and totals closed deals for a date range you choose, while this page looks for
+behaviours that correlate with winning and losing.
+
+### Audit trail
+
+Coaching threshold changes are audited. The nightly runs themselves are not — check the
+server logs if you need to confirm a job ran.

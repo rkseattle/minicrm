@@ -51,10 +51,12 @@ Repeat to add as many steps as you need. A typical prospecting sequence might lo
 | 3    | Email reminder | 5     | Check-in email           |
 | 4    | Create task    | 7     | Final follow-up decision |
 
-### Step 3 — Enable the sequence
+### Step 3 — Check the sequence is enabled
 
-A new sequence starts disabled. Toggle the **Enabled** switch on the sequence detail page
-(or from the sequences list) to activate it before enrolling contacts.
+A new sequence starts **enabled**. It cannot be enrolled into until it has at least one
+step, so an empty sequence is safe — but it becomes enrollable as soon as the first step is
+saved. Use the **Enabled** switch on the sequence detail page (or from the sequences list) to
+turn it off while you finish authoring, and back on when the steps are complete.
 
 ### Step 4 — Enroll a contact
 
