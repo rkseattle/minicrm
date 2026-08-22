@@ -491,9 +491,12 @@ group is disabled, all member flags are blocked for every user who is not in the
 group's own beta list — regardless of each flag's individual enabled state. This makes
 a group the fastest way to shut down an entire feature area in one action.
 
-> **Evaluation order:** A per-user force override (see _Per-user overrides_ below) always
-> wins — even over a disabled group gate. After that, the group gate fires, then
-> flag-level beta enrollment and rollout bucketing.
+> **Evaluation order:** A per-user force override always wins — even over a disabled group
+> gate. Next comes the per-team override, which applies only to AI Lead Routing Suggestion
+> (see [Section 19 — Teams](#19-teams)). After that, the group gate fires, then flag-level
+> beta enrollment and rollout bucketing, and finally the flag's own role settings and
+> enabled state. For any AI sub-feature, a disabled `ai_features` master toggle denies
+> before any of this is consulted.
 
 #### Managing groups
 
@@ -1701,3 +1704,89 @@ SCIM writes audit entries under three record types: `team` for membership change
 
 > None of these three appear in the Audit Log page's record-type filter, so review them in
 > the unfiltered list.
+
+---
+
+## 19. Teams
+
+Teams group users so that record visibility can be scoped to them. A team needs only a
+name; a manager, a parent team, and members are all optional.
+
+### Tutorial: create a team and add members
+
+#### Step 1 — Create the team
+
+1. Go to **Admin Settings → Users & Access**.
+2. In **Team Management**, click **New team**.
+3. Enter a **Team name** (required, and unique regardless of casing).
+4. Optionally choose a **Manager** and a **Parent team**.
+5. Click **Save**.
+
+#### Step 2 — Add members
+
+1. Click **Members** on the team's row.
+2. Click **Add member**, choose a user, and pick their role: **Lead** or **Member**.
+3. Remove someone with **Remove** on their row.
+
+### Hierarchy rules
+
+Teams nest to any depth through **Parent team**, which is what lets a manager's visibility
+reach sub-teams. Two operations are refused:
+
+- **A team cannot become its own ancestor.** Reparenting that would create a loop is
+  rejected.
+- **A team with child teams cannot be deleted.** Reparent or delete the children first.
+
+### How teams affect record visibility
+
+Team membership is what the `team` visibility policy resolves against, and a manager's
+access always follows the team tree they manage — including sub-teams — no matter which
+policy is active. The rules are set out in
+[Section 13 — Data Visibility Scoping](#13-data-visibility-scoping).
+
+Two consequences worth stating here:
+
+- **Team-scoped visibility needs both halves.** A user must hold the `manager` role _and_
+  be named in a team's **Manager** field. Being a member of a team is not the same thing,
+  and the Manager dropdown lists every active user — so naming a rep there is accepted and
+  silently grants them nothing. A manager named on no team sees only their own records.
+- **A manager may only reassign records to someone inside their own team subtree.** Any
+  other target is refused.
+
+### Turning AI lead routing off for one team
+
+One feature can be disabled per team: **AI Lead Routing Suggestion**. Set it under
+**Admin Settings → AI → Lead Routing → Per-Team Overrides**, not in this panel and not on
+the Features page. That team's members fall back to manual assignment.
+
+This is the only per-team feature control that exists — no other flag can be scoped to a
+team — and **only an administrator can set it**, despite the feature being manager-facing.
+
+> **A user on several teams is blocked if _any_ of their teams has it disabled**, which is
+> deliberately the conservative direction. Two things still outrank it: a per-user override,
+> and the `ai_features` master toggle, which disables every AI sub-feature before any team
+> setting is consulted.
+
+### Teams created by SCIM
+
+If you provision groups over SCIM, each mapped IdP group becomes an ordinary team here,
+and appears in this panel alongside teams you created by hand. Editing membership in
+MiniCRM will be overwritten on the next sync from your IdP — change it there instead. See
+[Section 18 — SCIM Provisioning](#18-scim-provisioning).
+
+### Reference
+
+| Endpoint                            | Method | Description                     |
+| ----------------------------------- | ------ | ------------------------------- |
+| `/api/v1/teams`                     | GET    | List teams                      |
+| `/api/v1/teams`                     | POST   | Create a team                   |
+| `/api/v1/teams/:id`                 | GET    | Get one team                    |
+| `/api/v1/teams/:id`                 | PUT    | Update name, manager, or parent |
+| `/api/v1/teams/:id`                 | DELETE | Delete a team                   |
+| `/api/v1/teams/:id/members`         | GET    | List members                    |
+| `/api/v1/teams/:id/members`         | POST   | Add a member                    |
+| `/api/v1/teams/:id/members/:userId` | DELETE | Remove a member                 |
+
+Reading teams and their members requires only an authenticated session. Every write
+requires the `teams:manage` capability, which the built-in `admin` role has and `manager`
+does not — managers work within their teams rather than administering them.
