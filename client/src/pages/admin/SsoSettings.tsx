@@ -1,6 +1,6 @@
 /**
  * SsoSettings — SAML 2.0 / OIDC SSO configuration.
- * Rendered inside IntegrationSettings.
+ * Rendered inside SecuritySettings.
  */
 
 import { useState, useEffect } from 'react';
