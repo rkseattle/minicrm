@@ -13,6 +13,7 @@ import { createUser } from '../services/userService.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
+import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
 
 // group endpoint tests added at bottom of file.
 
@@ -63,15 +64,13 @@ beforeEach(async () => {
        WHEN flag_key IN ('mobile_access', 'demo_data') THEN false
        ELSE true
      END,
-     role_overrides = CASE
-       WHEN flag_key IN ('reporting', 'csv_export') THEN '{"admin":true,"rep":true}'::jsonb
-       ELSE null
-     END,
+     role_overrides = ($1::jsonb) -> flag_key,
      enable_at = null,
      rollout_percentage = null,
      rollout_stages = null,
      updated_by = null,
      updated_at = now()`,
+    [JSON.stringify(SEEDED_ROLE_OVERRIDES)],
   );
 });
 
@@ -88,15 +87,13 @@ afterAll(async () => {
        WHEN flag_key IN ('mobile_access', 'demo_data') THEN false
        ELSE true
      END,
-     role_overrides = CASE
-       WHEN flag_key IN ('reporting', 'csv_export') THEN '{"admin":true,"rep":true}'::jsonb
-       ELSE null
-     END,
+     role_overrides = ($1::jsonb) -> flag_key,
      enable_at = null,
      rollout_percentage = null,
      rollout_stages = null,
      updated_by = null,
      updated_at = now()`,
+    [JSON.stringify(SEEDED_ROLE_OVERRIDES)],
   );
 });
 

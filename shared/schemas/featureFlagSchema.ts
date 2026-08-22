@@ -102,6 +102,19 @@ export const roleOverridesSchema = z.record(z.string().min(1), z.boolean()).null
 
 export type RoleOverrides = z.infer<typeof roleOverridesSchema>;
 
+/**
+ * Seeded role_overrides that a reset must preserve, keyed by flag_key.
+ *
+ * A role key absent from a map resolves to the org-wide `enabled` value, so a DENIAL is the
+ * only kind of map a reset can silently undo — restore it as NULL and the excluded role is
+ * admitted again. The permissive maps are deliberately not listed: their keys grant what the
+ * fall-through grants anyway, and restoring them would defeat the several tests that turn a
+ * flag off with `enabled = false` alone, since a present key is read before `enabled`.
+ */
+export const SEEDED_ROLE_OVERRIDES: Readonly<Partial<Record<FeatureFlagKey, RoleOverrides>>> = {
+  ai_lead_routing_suggestion: { admin: true, manager: true, rep: false },
+} as const;
+
 // ── Rollout ──────────────────────────────────────────────────────
 
 /** A single scheduled rollout advancement step. */

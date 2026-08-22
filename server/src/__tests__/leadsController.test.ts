@@ -11,7 +11,7 @@ import { createLead } from '../services/leadsService.js';
 import { createTeam, addTeamMember } from '../services/teamService.js';
 import { createNote } from '../services/noteService.js';
 import pool from '../db.js';
-import { makeAuthCookie, uid } from './testUtils.js';
+import { makeAuthCookie, uid, restoreLeadRoutingFlag } from './testUtils.js';
 
 function makeNoteDoc(text: string): string {
   return JSON.stringify({
@@ -94,6 +94,9 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  // The routing-suggestion cases read the flag, so this file sets it rather than
+  // inheriting whatever another file's reset last wrote.
+  await restoreLeadRoutingFlag();
   await pool.query(
     'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
@@ -836,7 +839,7 @@ describe('POST /api/v1/leads/routing-suggestion', () => {
     // uncontrolled candidate pool happens to produce.
     const response = await request(app)
       .post('/api/v1/leads/routing-suggestion')
-      .set('Cookie', repCookie)
+      .set('Cookie', adminCookie)
       .send({});
     expect([200, 204]).toContain(response.status);
     if (response.status === 200) {
@@ -850,8 +853,27 @@ describe('POST /api/v1/leads/routing-suggestion', () => {
   it('returns 400 for an invalid body', async () => {
     await request(app)
       .post('/api/v1/leads/routing-suggestion')
-      .set('Cookie', repCookie)
+      .set('Cookie', adminCookie)
       .send({ territory: 123 })
       .expect(400);
+  });
+
+  it('refuses a rep — the flag excludes the role', async () => {
+    await request(app)
+      .post('/api/v1/leads/routing-suggestion')
+      .set('Cookie', repCookie)
+      .send({})
+      .expect(403);
+  });
+
+  it('refuses a rep before validating the body', async () => {
+    // Asserts the error CODE, not just the status: a 403 alone would still pass if the
+    // gate moved after safeParse, since an invalid body is refused either way.
+    const response = await request(app)
+      .post('/api/v1/leads/routing-suggestion')
+      .set('Cookie', repCookie)
+      .send({ territory: 123 })
+      .expect(403);
+    expect(response.body.error.code).toBe('FEATURE_DISABLED');
   });
 });

@@ -7,6 +7,8 @@ import { randomUUID } from 'crypto';
 import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import pool from '../db.js';
+import { __clearCacheForTest } from '../services/featureFlagService.js';
+import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
 
 /** Returns an 8-character random hex string for use in test email addresses. */
 export const uid = () => randomUUID().slice(0, 8);
@@ -397,4 +399,23 @@ export async function expectActorScopingIsolatesForeignRows(
     await client.query('ROLLBACK');
     client.release();
   }
+}
+
+/**
+ * Restores ai_lead_routing_suggestion to its seeded state for a test that reads the flag.
+ *
+ * Resets the three inputs earlier resolution steps would otherwise decide on: the role map,
+ * rollout_percentage (Step 4 returns before the map), and the ai_features master toggle,
+ * which denies every ai_* sub-feature and is left disabled by another serial file. The
+ * service caches flag rows for 60s outside E2E, so the write is invisible without clearing.
+ */
+export async function restoreLeadRoutingFlag(): Promise<void> {
+  await pool.query(
+    `UPDATE feature_flags
+     SET role_overrides = $1::jsonb, enabled = true, rollout_percentage = NULL
+     WHERE flag_key = 'ai_lead_routing_suggestion'`,
+    [JSON.stringify(SEEDED_ROLE_OVERRIDES.ai_lead_routing_suggestion)],
+  );
+  await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'ai_features'`);
+  __clearCacheForTest();
 }
