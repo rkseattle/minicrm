@@ -209,9 +209,13 @@ Your data access in the AI Assistant mirrors your normal CRM permissions:
 - **Viewers** can search and read records but cannot create, update, or delete anything
   via the AI Assistant.
 - **Reps** see and can modify only their own contacts, accounts, leads, and deals.
+- **Managers** get the same tools as reps across the records they can already see, which
+  for a manager includes their team's.
 - **Admins** see all records and can scope reports to any user. Admins also have access
   to read-only tools for pipeline stages, custom field definitions, automation rules,
   webhooks, and email templates.
+- **Service accounts** authenticate by bearer token for API use and are refused the
+  assistant altogether.
 
 The tool set Claude has access to is filtered server-side based on your role — Claude
 never receives tools for operations you are not authorized to perform.
