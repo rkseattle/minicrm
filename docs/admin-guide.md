@@ -1834,3 +1834,227 @@ MiniCRM will be overwritten on the next sync from your IdP — change it there i
 Reading teams and their members requires only an authenticated session. Every write
 requires the `teams:manage` capability, which the built-in `admin` role has and `manager`
 does not — managers work within their teams rather than administering them.
+
+---
+
+## 20. CSV Import
+
+> **Feature flag:** `csv_import`
+>
+> When the flag is off, the **Import Data** section of **Admin Settings → Data & Platform** is
+> visible but greyed out and every control inside it is disabled.
+
+Bulk-import accounts, contacts, and deals from CSV files. Import is **admin-only** — every
+endpoint requires the `admin` role, so a manager or rep cannot reach it even with the flag on.
+
+### Tutorial: import a CSV
+
+#### Step 1 — Choose the entity type
+
+Open **Admin Settings → Data & Platform → Import Data** and pick the **Accounts**,
+**Contacts**, or **Deals** tab. Each tab runs its own independent import.
+
+#### Step 2 — Upload the file
+
+Drag a `.csv` file onto the drop zone, or click to browse. The file must be **10 MB or
+smaller** and carry a `.csv` extension; both limits are checked before anything is uploaded.
+A file with a header row but no data rows is rejected.
+
+#### Step 3 — Map your columns
+
+Your CSV can use any column headings you like. MiniCRM reads the header row and shows one
+dropdown per CRM field, pre-filled where a heading matches the field's name or label
+(case-insensitively). Anything else you map by hand. Required fields are marked with a red
+asterisk, and **Preview** stays disabled until each one is mapped.
+
+Accounts and deals offer an extra checkbox at this step — see **Duplicate handling** below.
+
+#### Step 4 — Preview and run
+
+The preview shows the first five rows as MiniCRM will read them, highlighting cells that are
+empty for a required field. Click **Import** to start. The job runs in the background and
+the page polls it every two seconds, showing a progress bar, live created/skipped/failed
+counts, and elapsed time.
+
+#### Step 5 — Read the result
+
+When the job finishes you get final counts. If any rows failed, **Download error report** returns
+a CSV of just those rows, each with a `row_number` and a `reason` column, so you can correct
+them and re-import only what failed.
+
+### Supported columns
+
+| Entity   | Required                     | Optional                                                               |
+| -------- | ---------------------------- | ---------------------------------------------------------------------- |
+| Accounts | Company Name                 | Industry, Website, Employee Range, Revenue Range                       |
+| Contacts | First Name, Last Name, Email | Phone, Title, Department, Account Name (for lookup)                    |
+| Deals    | Deal Name, Stage             | Value, Close Date (YYYY-MM-DD), Loss Reason, Account Name (for lookup) |
+
+**Account Name** on contacts and deals is a lookup, not a create: MiniCRM matches it
+case-insensitively against existing account names. It never creates an account.
+
+### Validation rules
+
+- A blank required field fails the row. Several problems on one row are reported together,
+  separated by semicolons.
+- **Email** must contain an `@` and a dot in the domain. It is lowercased before saving.
+- **Stage** must match a stage on your default pipeline, case-insensitively — including any
+  stage you have added or renamed. An unrecognised stage fails the row, and the error names
+  the stages that would have been accepted.
+- **Value** may carry currency symbols and thousands separators — `$1,200` is read as
+  `1200`. A negative or non-numeric value fails the row.
+- **Close Date** must be `YYYY-MM-DD`.
+- Deals are created on your **default pipeline**.
+
+### Duplicate handling
+
+The three entity types behave differently, and none of them ever updates an existing record —
+a duplicate is either skipped or inserted alongside the original.
+
+| Entity   | Matched on                     | Behaviour                                                                                 |
+| -------- | ------------------------------ | ----------------------------------------------------------------------------------------- |
+| Accounts | Company name, case-insensitive | **Skip duplicates** checkbox, on by default. Unchecked, the duplicate is imported anyway. |
+| Contacts | Email, case-insensitive        | Always skipped. There is no option to change this.                                        |
+| Deals    | —                              | No duplicate detection at all.                                                            |
+
+Duplicate matching covers rows already in the database _and_ earlier rows in the same file.
+
+Deals have their own checkbox, **Skip rows whose account name does not match any existing
+account**, which is off by default. It is not a duplicate control: left off, a deal whose Account Name matches nothing is
+still imported, just without an account.
+
+### Reference
+
+| Endpoint                              | Method | Description                   |
+| ------------------------------------- | ------ | ----------------------------- |
+| `/api/v1/admin/import/accounts/parse` | POST   | Read headers and preview rows |
+| `/api/v1/admin/import/accounts/run`   | POST   | Start an account import       |
+| `/api/v1/admin/import/contacts/parse` | POST   | Read headers and preview rows |
+| `/api/v1/admin/import/contacts/run`   | POST   | Start a contact import        |
+| `/api/v1/admin/import/deals/parse`    | POST   | Read headers and preview rows |
+| `/api/v1/admin/import/deals/run`      | POST   | Start a deal import           |
+| `/api/v1/admin/import/jobs/:job_id`   | GET    | Poll job status and counts    |
+
+A job moves through `pending` → `running` → `complete`. **`failed` means the job itself
+crashed**, not that some rows were rejected: a job with failed rows still completes, with a
+non-zero failed count. Imports of fewer than 100 rows finish before the first progress write,
+so they go straight from `pending` to `complete`.
+
+Every imported record is owned by the administrator who ran the import. Job records are kept
+for **seven days**, then pruned at the start of the next import.
+
+> **A job left `running` after a server restart never recovers.** Imports run in the
+> application process rather than a durable queue, so a restart mid-import leaves the job
+> stuck. Re-run the import; already-imported rows will be skipped as duplicates for accounts
+> and contacts, but **not** for deals.
+
+### Audit trail
+
+A completed import writes one `system_settings` audit entry named `Import: <type>`, recording
+the created, skipped, and failed counts. **A job that fails outright writes no audit entry** —
+its error message is stored on the job record instead, which is what the errors download
+returns.
+
+---
+
+## 21. Data Hygiene
+
+> **Feature flag:** `ai_data_hygiene_assistant`
+>
+> The flag gates **reading** findings, not producing them. The nightly scan runs and the
+> admin configuration below stays reachable whether it is on or off — turning it off hides
+> the queue, it does not stop detection.
+
+MiniCRM scans your records nightly for thirteen kinds of data quality problem and collects
+them into a queue. Administrators see the whole organisation's findings at `/admin/hygiene`;
+every other user sees only findings on records they own, at `/hygiene`. Neither page has a
+navigation entry today — reach them by URL.
+
+> **There is no hygiene score.** The queue is a list, ordered by when each finding was
+> detected. Nothing is ranked, weighted, or scored, and the configuration below sets
+> detection thresholds rather than scoring weights.
+
+### What it detects
+
+| Record      | Issue                    | Raised when                                                                                    |
+| ----------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| Contact     | No recent activity       | No activity ever, or none within the contact inactivity window                                 |
+| Contact     | Missing contact info     | Email **or** phone is blank                                                                    |
+| Contact     | Stale job title          | The title has not been updated within the staleness window                                     |
+| Contact     | Unreachable email domain | The domain definitively accepts no mail                                                        |
+| Contact     | Possible duplicate       | Another contact's name matches closely, reinforced by a shared email domain, company, or phone |
+| Account     | No contacts              | No contact references the account                                                              |
+| Account     | No recent activity       | No activity within the account inactivity window                                               |
+| Account     | Unreachable website      | The website returns 404, its host does not resolve, or the URL is malformed or not HTTPS       |
+| Account     | Missing firmographics    | Industry **or** employee range is blank                                                        |
+| Opportunity | No recent activity       | No activity within the opportunity inactivity window                                           |
+| Opportunity | Close date passed        | The close date is in the past and the deal is still open                                       |
+| Opportunity | No contact               | No contact is linked to the deal                                                               |
+| Opportunity | Zero value               | The value is zero or unset                                                                     |
+
+The four opportunity checks apply to **open deals only** — nothing closed is ever flagged.
+Network checks fail safe: a domain or website that is merely unreachable at scan time is not
+flagged, only one that definitively rejects mail or returns 404.
+
+### The workflow
+
+Each finding offers four actions:
+
+- **Update** — jumps to the record so you can fix the underlying problem. The next scan
+  clears the finding.
+- **Merge** — offered only on possible duplicates. Choose which contact to keep; the other is
+  merged into it.
+- **Archive** — **removes the finding, not the record.** The record is left exactly as it is.
+  Use it when the data is correct as it stands and the check is simply wrong about it.
+- **Dismiss** — hides the finding for the suppression window. A reason is required.
+
+Filter the queue by record type using the **All / Contacts / Accounts / Opportunities**
+buttons.
+
+### Configuration
+
+Set under **Admin Settings → AI → Data Hygiene**:
+
+| Setting                       | Default | Controls                             |
+| ----------------------------- | ------- | ------------------------------------ |
+| Contact inactivity (days)     | 365     | The contact no-activity check        |
+| Account inactivity (days)     | 365     | The account no-activity check        |
+| Title staleness (days)        | 1095    | The stale job title check            |
+| Opportunity inactivity (days) | 30      | The opportunity no-activity check    |
+| Dismiss suppression (days)    | 90      | How long **Dismiss** hides a finding |
+| Weekly digest                 | Off     | Stored but not yet delivered         |
+
+All six are saved together, and each day value must be at least 1.
+
+**Individual checks cannot be switched off.** Raising a threshold suppresses the four
+day-based checks in practice; the other nine have no off switch short of disabling the
+feature flag, which hides the queue without stopping the scan.
+
+### Running a scan
+
+The scan runs nightly at **06:30 server time**. **Run now** under the same settings section
+triggers one immediately; it returns straight away and the scan continues in the background.
+
+Each scan replaces the queue rather than appending to it: findings that no longer apply are
+removed automatically, so a problem you fix disappears without needing to be archived.
+Dismissed findings are preserved through this until their suppression window ends.
+
+### Reference
+
+| Endpoint                                                    | Method     | Description                               |
+| ----------------------------------------------------------- | ---------- | ----------------------------------------- |
+| `/api/v1/data-hygiene/findings`                             | GET        | List findings; `?scope=all` is admin-only |
+| `/api/v1/data-hygiene/findings/:id/dismiss`                 | POST       | Suppress a finding, with a reason         |
+| `/api/v1/data-hygiene/findings/clear/:entityType/:entityId` | POST       | Clear a record's findings                 |
+| `/api/v1/data-hygiene/findings/merge-contacts`              | POST       | Merge a flagged duplicate pair            |
+| `/api/v1/admin/ai/data-hygiene-config`                      | GET, PATCH | Read and update the thresholds            |
+| `/api/v1/admin/ai/data-hygiene/run`                         | POST       | Trigger a scan immediately                |
+
+Non-administrators are restricted to findings on records they own. **Dismiss** answers `404`
+rather than `403` for a finding they do not own, so the queue cannot be probed; clear and
+merge answer `403`.
+
+### Audit trail
+
+Threshold changes are audited. Each scan writes a system entry recording how many findings
+were detected and how many were cleared.
