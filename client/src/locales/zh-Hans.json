@@ -2363,7 +2363,9 @@
       "settings": "设置",
       "feature_flags": "功能标志",
       "audit_log": "审计日志",
-      "api": "API"
+      "api": "API",
+      "sequences": "序列",
+      "dashboards": "仪表板"
     },
     "capabilityActions": {
       "view": "查看",

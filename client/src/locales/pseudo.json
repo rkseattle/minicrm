@@ -2363,7 +2363,9 @@
       "settings": "[Ŝëttïñgŝ~~~]",
       "feature_flags": "[Fëätürë Flägŝ~~~~]",
       "audit_log": "[Äüdït Lög~~~]",
-      "api": "[ÄPÏ~]"
+      "api": "[ÄPÏ~]",
+      "sequences": "[Ŝëqüëñĉëŝ~~~~]",
+      "dashboards": "[Däŝhböärdŝ~~~~]"
     },
     "capabilityActions": {
       "view": "[Vïëw~~]",

@@ -5,7 +5,6 @@
 
 import { z } from 'zod';
 import { ACTIVITY_TYPES } from './activitySchema.js';
-import { PIPELINE_STAGES } from './dealSchema.js';
 
 // ── Trigger types ──────────────────────────────────────────────────────────────
 
@@ -38,9 +37,16 @@ export type AutomationAssigneeType = (typeof AUTOMATION_ASSIGNEE_TYPES)[number];
 
 // ── Trigger config schemas ─────────────────────────────────────────────────────
 
-/** Config for the deal_stage_changed trigger. */
+/**
+ * Config for the deal_stage_changed trigger.
+ *
+ * Stage is a plain non-empty string, not an enum: pipeline stages are admin-editable, so
+ * validating against the seed constant refused every stage an administrator added and
+ * stranded any rule whose stage was renamed. The name is checked against the live
+ * pipeline_stages table in the service layer, where the table is reachable.
+ */
 export const dealStageChangedConfigSchema = z.object({
-  stage: z.enum(PIPELINE_STAGES, { required_error: 'Stage is required' }),
+  stage: z.string({ required_error: 'Stage is required' }).min(1, 'Stage is required'),
 });
 
 /** Config for triggers with no extra parameters. */

@@ -12,7 +12,8 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -46,7 +47,7 @@ const upload = multer({
 
 // ── Shared middleware ──────────────────────────────────────────────────────────
 router.use(authenticate);
-router.use(requireRole('admin'));
+router.use(requireCapability(Capability.DataImport));
 router.use(requireFeatureEnabled('csv_import'));
 
 /**
