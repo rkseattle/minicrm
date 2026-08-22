@@ -1560,3 +1560,144 @@ a session exists, or are fetched by the IdP itself.
 
 SSO activity is recorded in the **Audit Log** under record type `user`, with event types
 `sso_login`, `sso_provisioned`, `sso_linked`, and `sso_unlinked`.
+
+---
+
+## 18. SCIM Provisioning
+
+MiniCRM implements **SCIM 2.0** so your identity provider can create, update, and
+deactivate users, and keep team membership in sync, without anyone doing it by hand. SCIM
+complements SSO: SSO authenticates people, SCIM manages their accounts and group
+membership.
+
+### Tutorial: connect your IdP to SCIM
+
+#### Step 1 — Issue a bearer token
+
+1. Go to **Admin Settings → Security & Identity**.
+2. In **SCIM 2.0 Provisioning → Bearer Token**, click **Generate Token**.
+3. Copy the token immediately — MiniCRM shows it once and stores only a hash of it.
+
+> **Only one token is active at a time.** Generating a new one revokes the previous token
+> in the same operation, so an IdP still using the old value stops provisioning
+> immediately. Plan the switch-over.
+
+The panel shows when the active token was issued and when it was last used, which is the
+quickest way to confirm your IdP is actually calling MiniCRM.
+
+#### Step 2 — Point your IdP at the SCIM endpoint
+
+| Setting    | Value                     |
+| ---------- | ------------------------- |
+| Base URL   | `<your-api-host>/scim/v2` |
+| Token type | Bearer                    |
+| Token      | The value from Step 1     |
+
+Note the SCIM base URL is `/scim/v2` — it is **not** under `/api/v1` like the rest of the
+API.
+
+#### Step 3 — Map IdP groups to roles
+
+Members of a mapped IdP group are granted the mapped role automatically; members removed
+have it revoked.
+
+> **Mappings are created through the API, not the admin UI.** The **Group-to-Role Mappings**
+> panel lists existing mappings and deletes them, but has no form for adding one. Create a
+> mapping with:
+>
+> ```bash
+> curl -X PUT "https://<your-host>/api/v1/scim/group-role-mappings/<idp-group-id>" \
+>   -H "Content-Type: application/json" \
+>   -b "minicrm_token=<admin-jwt>" \
+>   -d '{"roleId":"<custom-role-uuid>","groupName":"Sales EMEA"}'
+> ```
+
+**Only custom roles can be mapped** — the built-in roles (`admin`, `manager`, `rep`,
+`viewer`, `service_account`) are not valid targets, and a mapping that names one is
+rejected. Create a custom role under **Admin Settings → Users & Access → Roles** first.
+
+### How group mapping behaves
+
+Each SCIM group corresponds to one MiniCRM team — a real team, not a shadow object. When
+your IdP updates a group's membership, MiniCRM adds or removes the matching team
+memberships and applies the mapped role alongside them.
+
+> Because these are ordinary teams, a group sync can widen who sees which records wherever
+> a `team` visibility policy is in force. See
+> [Section 13 — Data Visibility Scoping](#13-data-visibility-scoping).
+>
+> **A role is only revoked when no other mapped group still grants it.** If a user belongs
+> to two IdP groups that both map to the same role, removing them from one leaves the role
+> in place. This prevents an unrelated group change from silently stripping access.
+
+A mapped role is granted _in addition to_ the user's base role, which group mapping never
+changes.
+
+### What role a SCIM-provisioned user gets
+
+Every user created through SCIM is given the base role **rep**. This is fixed and not
+configurable — mapped group roles are granted on top of it.
+
+### What SCIM can and cannot see
+
+Only users provisioned **through SCIM** are visible to the SCIM API. Accounts created
+manually in the admin UI, or automatically by SSO on first login, are deliberately hidden
+from `/scim/v2/Users` so that a bearer token cannot enumerate your whole user directory.
+
+> **Existing accounts cannot be adopted into SCIM management.** If you turn on SCIM after
+> users already exist, your IdP cannot see them — and it cannot re-create them either:
+> provisioning any email that already belongs to an account is rejected with a `409`
+> conflict, which your IdP reports as a sync error. Those accounts stay managed by hand.
+> Plan SCIM adoption before onboarding users, or expect a permanent split between
+> SCIM-managed and manually-managed accounts.
+
+### Administrators cannot be deactivated through SCIM
+
+Deactivating a user who holds the built-in `admin` role has no effect: MiniCRM keeps the
+account active so an administrator always retains a local way in.
+
+> **Your IdP is told the deactivation succeeded.** The request returns `200` with the user
+> still marked active, so the IdP will show the user as deprovisioned when they are not.
+> Deactivate administrators in **Admin → Users**, and check there after any admin
+> offboarding.
+
+### Reference
+
+The IdP-facing endpoints, all under `/scim/v2`:
+
+| Endpoint                 | Methods          | Auth     |
+| ------------------------ | ---------------- | -------- |
+| `/ServiceProviderConfig` | GET              | **None** |
+| `/Users`                 | GET, POST        | Bearer   |
+| `/Users/:id`             | GET, PUT, PATCH  | Bearer   |
+| `/Groups`                | GET, POST        | Bearer   |
+| `/Groups/:id`            | GET, PUT, DELETE | Bearer   |
+
+> `/ServiceProviderConfig` is unauthenticated by design — the SCIM specification expects
+> identity providers to read it during setup, before any credential is configured. It
+> advertises capabilities only and exposes no customer data.
+>
+> The specification's other two discovery endpoints, **`/ResourceTypes` and `/Schemas`, are
+> not implemented.** Identity providers that request them during setup will report an error
+> or fall back to defaults, and SCIM auto-discovery will not complete — configure the
+> connection manually in that case.
+
+The administrative endpoints, under `/api/v1`, all requiring the `integrations:manage`
+capability:
+
+| Endpoint                                        | Method | Description                              |
+| ----------------------------------------------- | ------ | ---------------------------------------- |
+| `/api/v1/scim-token`                            | GET    | Token metadata; never the value          |
+| `/api/v1/scim-token`                            | POST   | Issue a token, revoking any existing one |
+| `/api/v1/scim-token`                            | DELETE | Revoke the active token                  |
+| `/api/v1/scim/group-role-mappings`              | GET    | List mappings                            |
+| `/api/v1/scim/group-role-mappings/:scimGroupId` | PUT    | Create or update a mapping               |
+| `/api/v1/scim/group-role-mappings/:scimGroupId` | DELETE | Remove a mapping                         |
+
+### Audit trail
+
+SCIM writes audit entries under three record types: `team` for membership changes,
+`scim_group_role_mapping` for mapping changes, and `scim_token` for token issue and revoke.
+
+> None of these three appear in the Audit Log page's record-type filter, so review them in
+> the unfiltered list.
