@@ -29,7 +29,8 @@ Dex listens on port 5556. Its discovery document is at
 
 ## Configuring MiniCRM
 
-As an admin, go to **Settings → Integrations → SSO** and enter:
+As an admin, go to **Admin Settings → Security & Identity → Single Sign-On (SSO)** and
+enter:
 
 | Field            | Value                                                        |
 | ---------------- | ------------------------------------------------------------ |

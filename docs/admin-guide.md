@@ -1430,3 +1430,133 @@ progress, using a token issued when the password was accepted, valid for five mi
 Enrollment and removal are recorded in the **Audit Log** against record type `user`, with
 event types `mfa_enabled` and `mfa_disabled` — filter on those two values to review 2FA
 activity. Because 2FA is always self-service, the actor and the subject are the same person.
+
+---
+
+## 17. Single Sign-On (SSO)
+
+MiniCRM can delegate authentication to your identity provider using either **SAML 2.0** or
+**OpenID Connect (OIDC)**. One protocol is active at a time. Users who sign in through the
+IdP are provisioned automatically on first login.
+
+### Tutorial: connect an identity provider
+
+#### Step 1 — Open the SSO panel
+
+1. Go to **Admin Settings → Security & Identity**.
+2. Find the **Single Sign-On (SSO)** panel.
+
+#### Step 2 — Give your IdP MiniCRM's details
+
+Your identity provider needs these before it will accept requests:
+
+| Value              | Where it comes from                                |
+| ------------------ | -------------------------------------------------- |
+| Redirect / ACS URL | `<SSO_CALLBACK_BASE_URL>/api/v1/auth/sso/callback` |
+| SP metadata (SAML) | `<SSO_CALLBACK_BASE_URL>/api/v1/auth/sso/metadata` |
+
+`SSO_CALLBACK_BASE_URL` is an environment variable and **must point at the API server, not
+the front end**. If it is unset, MiniCRM falls back to `APP_BASE_URL` and then to
+`http://localhost:3001`. Getting this wrong is the most common cause of a failed callback.
+
+The SAML metadata document is public and unauthenticated, so your IdP can fetch it
+directly. **Save your configuration before pointing the IdP at it** — until **SP Entity ID**
+is set, the document advertises a placeholder entity ID built from the callback base URL,
+which is not a real endpoint.
+
+#### Step 3 — Enter your IdP's details
+
+| Field                              | Applies to | Notes                                                     |
+| ---------------------------------- | ---------- | --------------------------------------------------------- |
+| **Protocol**                       | Both       | SAML 2.0 or OpenID Connect (OIDC)                         |
+| **IdP Metadata URL**               | Both       | OIDC: the discovery document. SAML: the IdP metadata URL. |
+| **SP Entity ID** / **Client ID**   | Both       | Labelled _SP Entity ID_ for SAML, _Client ID_ for OIDC    |
+| **IdP Certificate (PEM)**          | SAML only  | The X.509 certificate from your IdP; stored encrypted     |
+| **Default Role for New SSO Users** | Both       | Extra role granted to users provisioned on first sign-in  |
+
+Click **Save SSO Configuration**. The login page then offers SSO to your users.
+
+> The IdP certificate is never returned by the API once saved — the panel shows only
+> "Certificate saved — enter a new value to replace it." To change it, paste a new one.
+
+### How users are provisioned
+
+On each SSO sign-in MiniCRM resolves the user in this order:
+
+1. **Known SSO identity** — matched on provider and subject; the user signs in.
+2. **Existing account with the same email that is not already bound to an IdP subject** —
+   the SSO identity is linked to it and the password-change requirement is cleared. An
+   account already bound to a _different_ subject is skipped, and resolution falls through
+   to step 3 — which creates a second account on the same email address.
+3. **Nobody matches** — a new active user is created.
+
+In steps 1 and 2, a deactivated account is refused: the user is returned to the login page
+with an error rather than being reactivated.
+
+#### What role a provisioned user gets
+
+Every JIT-provisioned user is created with the base role **rep**. This is fixed and not
+configurable.
+
+**Default Role for New SSO Users** grants an _additional_ custom role on top of that. Leaving
+it blank is valid and means no extra role — the user is a plain rep. New installations seed
+it to the built-in `rep` role.
+
+> If the configured role has since been deleted, the user is still created and can still
+> sign in — with the base `rep` role only, and none of the capabilities you intended. The
+> misconfiguration is recorded in the audit log under record type **`system_settings`**, not
+> `user`, so it will not appear if you filter the log by the affected account.
+
+#### The administrator escape hatch
+
+> **Administrators can always sign in with a password**, even when SSO is enabled and their
+> account is SSO-linked — a deliberate escape hatch against a misconfigured IdP. It keys off
+> the built-in `admin` role specifically, so a user who holds administrative capabilities
+> only through a custom role does not get it. Keep at least one built-in admin account with
+> a working password.
+
+### Turning SSO off
+
+**Disable SSO** clears the configuration and unlinks every SSO-bound user. Those accounts
+are _not_ deactivated — they remain active.
+
+> **Users who only ever signed in through SSO have no password and will be locked out.**
+> JIT-provisioned accounts are created without a password hash, and MiniCRM refuses a
+> password login for any account that has none. Before disabling SSO, set a password for
+> each such user (**Admin → Users → Set password**), or they cannot get back in.
+
+### Encryption key rotation
+
+> **SSO must be reconfigured after any `NODE_ENCRYPTION_KEY` rotation.** The IdP
+> certificate and MiniCRM's own SAML signing key are protected by the legacy unversioned
+> encryption path, which has no key-version column and no re-encryption tooling. After
+> rotating the key, existing values cannot be decrypted — re-enter the IdP certificate to
+> restore SSO. See [migrations](dev/migrations.md#encryption-key-rotation).
+
+### Testing SSO locally
+
+The repository ships a [Dex](https://dexidp.io/) identity provider behind a Compose profile
+for development use. See [Local SSO testing](dev/local-sso.md) for the full procedure — it
+is development-only, with in-memory storage and a shared hardcoded password.
+
+### Reference
+
+| Endpoint                      | Method | Description                                    |
+| ----------------------------- | ------ | ---------------------------------------------- |
+| `/api/v1/settings/sso`        | GET    | Read the configuration (certificate masked)    |
+| `/api/v1/settings/sso`        | PUT    | Save the configuration                         |
+| `/api/v1/settings/sso`        | DELETE | Disable SSO and unlink all users               |
+| `/api/v1/settings/sso/status` | GET    | Whether SSO is enabled — public, used by login |
+| `/api/v1/auth/sso/login`      | GET    | Start sign-in; redirects to the IdP            |
+| `/api/v1/auth/sso/callback`   | GET    | OIDC callback                                  |
+| `/api/v1/auth/sso/callback`   | POST   | SAML callback (POST binding)                   |
+| `/api/v1/auth/sso/metadata`   | GET    | SAML SP metadata — public, fetched by the IdP  |
+
+The three configuration endpoints require the `settings:manage` capability. The login,
+callback, status, and metadata endpoints are unauthenticated by necessity: they run before
+a session exists, or are fetched by the IdP itself.
+
+### Audit trail
+
+SSO activity is recorded in the **Audit Log** under record type `user`, with event types
+`sso_login`, `sso_provisioned`, `sso_linked`, and `sso_unlinked`.
