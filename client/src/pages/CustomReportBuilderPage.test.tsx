@@ -11,7 +11,7 @@ import { http, HttpResponse } from 'msw';
 import { CustomReportBuilderContent } from './CustomReportBuilderPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { REP_USER } from '../test/msw/handlers.js';
+import { MANAGER_USER, REP_USER } from '../test/msw/handlers.js';
 
 const MOCK_USER_ID = 'user-abc';
 
@@ -341,7 +341,7 @@ describe('CustomReportBuilderContent — saved reports list', () => {
   it('hides delete button for public_read_only reports the user does not own', async () => {
     server.use(
       // Return a rep user so admin bypass doesn't apply
-      http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })),
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ user: MANAGER_USER })),
       http.get('/api/v1/reports/custom', () => {
         return HttpResponse.json({
           reports: [
@@ -413,7 +413,7 @@ describe('CustomReportBuilderContent — saved reports list', () => {
 
   it('hides visibility select for public_read_only reports the user does not own', async () => {
     server.use(
-      http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })),
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ user: MANAGER_USER })),
       http.get('/api/v1/reports/custom', () => {
         return HttpResponse.json({
           reports: [
@@ -455,6 +455,27 @@ describe('CustomReportBuilderContent — saved reports list', () => {
     renderWithProviders(<CustomReportBuilderContent />);
     await waitFor(() => {
       expect(screen.getByTestId('report-visibility-rpt-badge')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('CustomReportBuilderContent — authoring capability', () => {
+  it('hides the save control from a rep, who lacks reports:create', async () => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
+    renderWithProviders(<CustomReportBuilderContent />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('run-report-button')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('save-report-button')).not.toBeInTheDocument();
+  });
+
+  it('shows the save control to a manager, who holds it', async () => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: MANAGER_USER })));
+    renderWithProviders(<CustomReportBuilderContent />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-report-button')).toBeInTheDocument();
     });
   });
 });

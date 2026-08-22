@@ -2345,7 +2345,9 @@
       "reports": "[Rëpörtŝ~~~]",
       "data": "[Dätä~~]",
       "usersAdmin": "[Üŝërŝ & Ädmïñ~~~~]",
-      "api": "[ÄPÏ~]"
+      "api": "[ÄPÏ~]",
+      "sequences": "[Ŝëqüëñĉëŝ~~~~]",
+      "dashboards": "[Däŝhböärdŝ~~~~]"
     },
     "capabilityNamespaces": {
       "contacts": "[Ĉöñtäĉtŝ~~~]",

@@ -1330,10 +1330,9 @@ Capabilities are grouped by domain. The full list is visible in **Admin → Sett
 > `dashboards:manage` and `reports:schedule`, are reserved for features that do not exist
 > yet. Granting them to a custom role is harmless but has no effect today.
 >
-> The role editor's checkbox list does not yet cover every group shown here — `sequences:*`,
-> `dashboards:*`, and the reserved groups have no checkboxes, so those capabilities can only
-> be granted through the API. The built-in roles already hold the sequence and dashboard
-> capabilities they need, so this affects custom roles only.
+> The role editor covers every group that gates something today. The reserved groups —
+> Workflows, Forecasting, Billing — have no checkboxes, since granting them would have no
+> effect.
 
 One further note on what the built-in roles hold.
 
@@ -2390,10 +2389,9 @@ perform the action at all, the visibility decides which reports you may perform 
 > summary endpoint, which needs `dashboards:view`. Grant those capabilities through a
 > custom role if an integration needs them.
 >
-> **The builder's buttons follow visibility, not capability.** A user without
-> `reports:create` or `reports:edit` still sees the Save and Delete controls enabled and
-> only discovers the refusal when the request returns. Reps and viewers can view and run
-> reports; authoring and exporting are a manager or administrator task.
+> **Reps and viewers can view and run reports, not author or export them.** The builder
+> hides the Save, Update, Delete, and Export controls from anyone whose role does not carry
+> the matching capability, so those users see a read-and-run view of the same page.
 
 ### Audit trail
 

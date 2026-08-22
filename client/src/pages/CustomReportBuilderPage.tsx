@@ -624,10 +624,9 @@ export function CustomReportBuilderContent() {
 
         <ul className="space-y-1" data-testid="saved-reports-list">
           {savedReports?.map((report) => {
-            const canMutate =
-              canDeleteReports ||
-              (canAuthorReports &&
-                (report.created_by === user?.id || report.visibility === 'public'));
+            // Deleting needs reports:delete, which only admin holds — ownership and
+            // visibility do not widen it.
+            const canMutate = canDeleteReports;
             return (
               <li key={report.id} className="group flex items-center gap-1 min-w-0">
                 <button
@@ -990,7 +989,7 @@ export function CustomReportBuilderContent() {
               </div>
             )}
 
-            {activeReportId ? (
+            {canAuthorReports && activeReportId ? (
               <>
                 <button
                   type="button"
@@ -1010,7 +1009,7 @@ export function CustomReportBuilderContent() {
                   {t('reports.customReports.saveAsNewButton')}
                 </button>
               </>
-            ) : (
+            ) : canAuthorReports ? (
               <button
                 type="button"
                 className="px-4 py-2 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50"
@@ -1019,9 +1018,9 @@ export function CustomReportBuilderContent() {
               >
                 {t('reports.customReports.saveButton')}
               </button>
-            )}
+            ) : null}
 
-            {activeReportId && result && (
+            {canAuthorReports && activeReportId && result && (
               <ExportMenu
                 label={t('common.export')}
                 testId="custom-reports-export-menu-button"

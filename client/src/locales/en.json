@@ -2345,7 +2345,9 @@
       "reports": "Reports",
       "data": "Data",
       "usersAdmin": "Users & Admin",
-      "api": "API"
+      "api": "API",
+      "sequences": "Sequences",
+      "dashboards": "Dashboards"
     },
     "capabilityNamespaces": {
       "contacts": "Contacts",

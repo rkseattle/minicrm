@@ -145,28 +145,41 @@ describe('listFeatureFlags', () => {
   });
 
   /**
-   * Pins SEEDED_ROLE_OVERRIDES to the table, bidirectionally. The constant exists so a reset
-   * cannot restore a denial as NULL and re-admit the excluded role; that only holds while it
-   * lists every map containing a `false`. Checks both directions because either alone is
-   * silent: a migration seeding a new denial the constant does not carry, or a constant entry
-   * whose stored map has since changed.
+   * Pins SEEDED_ROLE_OVERRIDES against a table this test writes itself from the migration
+   * literal, so the constant is compared to the migration rather than to itself. The
+   * suite's beforeEach projects role_overrides from the constant, which is why reading the
+   * table as-is would prove nothing.
+   *
+   * Bidirectional: a seeded denial the constant omits, and a constant entry whose map has
+   * drifted, both fail. Keep the literal below in sync with the migration that seeds it —
+   * that pairing is the assertion.
    */
-  it('carries every role_overrides map that denies a role, and none that has drifted', async () => {
+  it('carries every role_overrides map that denies a role', async () => {
+    // The maps migrations seed with an explicit deny, transcribed from the migration SQL.
+    const SEEDED_DENIALS: Record<string, Record<string, boolean>> = {
+      ai_lead_routing_suggestion: { admin: true, manager: true, rep: false },
+    };
+
+    // Write them, then read back through the same path production uses.
+    for (const [flagKey, map] of Object.entries(SEEDED_DENIALS)) {
+      await pool.query(`UPDATE feature_flags SET role_overrides = $1::jsonb WHERE flag_key = $2`, [
+        JSON.stringify(map),
+        flagKey,
+      ]);
+    }
+    __clearCacheForTest();
+
     const { rows } = await pool.query<{
       flag_key: string;
       role_overrides: Record<string, boolean>;
     }>(`SELECT flag_key, role_overrides FROM feature_flags WHERE role_overrides IS NOT NULL`);
-
     const denyingInTable = rows
       .filter((r) => Object.values(r.role_overrides).some((granted) => granted === false))
       .map((r) => r.flag_key)
       .sort();
-    expect(denyingInTable).toEqual(Object.keys(SEEDED_ROLE_OVERRIDES).sort());
 
-    for (const [flagKey, expected] of Object.entries(SEEDED_ROLE_OVERRIDES)) {
-      const stored = rows.find((r) => r.flag_key === flagKey);
-      expect(stored?.role_overrides).toEqual(expected);
-    }
+    expect(denyingInTable).toEqual(Object.keys(SEEDED_DENIALS).sort());
+    expect(SEEDED_ROLE_OVERRIDES).toEqual(SEEDED_DENIALS);
   });
 
   it('includes active_user_count (0 when no usage recorded)', async () => {

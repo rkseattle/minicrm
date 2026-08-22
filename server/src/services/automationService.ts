@@ -448,7 +448,17 @@ export async function fireAutomationTrigger(
     // For deal_stage_changed, only fire when the stage matches the rule's configured stage
     if (triggerType === 'deal_stage_changed') {
       const configParsed = dealStageChangedConfigSchema.safeParse(rule.trigger_config);
-      if (!configParsed.success || configParsed.data.stage !== context.newStage) {
+      if (!configParsed.success) {
+        // Distinct from a stage mismatch: the stored stage no longer parses, so the rule can
+        // never fire. Skipping silently made a renamed stage look like a rule that stopped
+        // working for no reason.
+        logger.warn(
+          { ruleId: rule.id, ruleName: rule.name },
+          'automation: deal_stage_changed rule has an unusable stage config and cannot fire',
+        );
+        continue;
+      }
+      if (configParsed.data.stage !== context.newStage) {
         continue;
       }
     }

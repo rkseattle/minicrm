@@ -13,13 +13,16 @@ exports.shorthands = undefined;
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */
 exports.up = (pgm) => {
-  // Only correct the untouched seed: the flag is admin-editable, and a tenant that has
-  // already configured its own map should keep it.
+  // Correct the seeded map and the NULL an E2E reset leaves behind, but not a map an
+  // administrator has configured — NULL is an absent map, not a deliberate choice.
   pgm.sql(`
     UPDATE feature_flags
     SET role_overrides = '{"admin":true,"manager":true,"rep":false}'::jsonb
     WHERE flag_key = 'ai_lead_routing_suggestion'
-      AND role_overrides IS NOT DISTINCT FROM '{"admin":true,"manager":true}'::jsonb
+      AND (
+        role_overrides IS NULL
+        OR role_overrides IS NOT DISTINCT FROM '{"admin":true,"manager":true}'::jsonb
+      )
   `);
 };
 
@@ -29,6 +32,9 @@ exports.down = (pgm) => {
     UPDATE feature_flags
     SET role_overrides = '{"admin":true,"manager":true}'::jsonb
     WHERE flag_key = 'ai_lead_routing_suggestion'
-      AND role_overrides IS NOT DISTINCT FROM '{"admin":true,"manager":true,"rep":false}'::jsonb
+      AND (
+        role_overrides IS NULL
+        OR role_overrides IS NOT DISTINCT FROM '{"admin":true,"manager":true,"rep":false}'::jsonb
+      )
   `);
 };

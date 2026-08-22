@@ -212,6 +212,17 @@ export async function updatePipelineStage(
         existing.name,
         existing.pipeline_id,
       ]);
+
+      // Carry deal_stage_changed rules across with the rename. Without this the stored stage
+      // no longer matches anything, and the rule silently stops firing while still showing
+      // as enabled.
+      await client.query(
+        `UPDATE automation_rules
+         SET trigger_config = jsonb_set(trigger_config, '{stage}', to_jsonb($1::text))
+         WHERE trigger_type = 'deal_stage_changed'
+           AND trigger_config ->> 'stage' = $2`,
+        [params.name, existing.name],
+      );
     }
 
     // Build dynamic SET clause

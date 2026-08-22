@@ -686,6 +686,26 @@ describe('manager and viewer are blocked from admin-only endpoints', () => {
     expect(res.status).toBe(200);
   });
 
+  it("returns 403 AUTH_FORBIDDEN when a viewer reads a contact's sequence enrollments", async () => {
+    // The capability gate answers before the contact is resolved, so the id need not exist.
+    const res = await request(app)
+      .get('/api/v1/contacts/00000000-0000-0000-0000-0000000000ff/sequence-enrollments')
+      .set('Cookie', viewerCookie);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when a viewer creates a sequence', async () => {
+    const res = await request(app)
+      .post('/api/v1/sequences')
+      .set('Cookie', viewerCookie)
+      .send({ name: 'Viewer sequence', description: 'x' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
   it('returns 403 AUTH_FORBIDDEN when manager attempts to change a user role', async () => {
     const res = await request(app)
       .patch(`/api/v1/users/${repAId}/role`)
