@@ -117,6 +117,36 @@ describe('setSsoConfig', () => {
     expect(saved.idp_certificate_set).toBe(false);
   });
 
+  it('refuses a privileged built-in role as the JIT default', async () => {
+    const builtin = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE name = 'admin' AND is_builtin = true`,
+    );
+
+    await expect(
+      setSsoConfig({
+        protocol: 'oidc',
+        idp_metadata_url: 'https://idp.example.com/.well-known/openid-configuration',
+        entity_id: 'client-id',
+        jit_default_role_id: builtin.rows[0]!.id,
+      }),
+    ).rejects.toMatchObject({ code: 'SSO_JIT_ROLE_BUILTIN' });
+  });
+
+  it('allows the built-in rep role, which matches the base role JIT users already get', async () => {
+    const rep = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE name = 'rep' AND is_builtin = true`,
+    );
+
+    const saved = await setSsoConfig({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://idp.example.com/.well-known/openid-configuration',
+      entity_id: 'client-id',
+      jit_default_role_id: rep.rows[0]!.id,
+    });
+
+    expect(saved.jit_default_role_id).toBe(rep.rows[0]!.id);
+  });
+
   it('preserves an existing certificate when idp_certificate is omitted on update', async () => {
     const cert = '-----BEGIN CERTIFICATE-----\nABCDEF\n-----END CERTIFICATE-----';
     await setSsoConfig({

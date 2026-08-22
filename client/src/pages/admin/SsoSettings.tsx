@@ -242,11 +242,13 @@ export default function SsoSettings() {
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               >
                 <option value="">—</option>
-                {rolesData?.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
+                {rolesData
+                  ?.filter((role) => !role.is_builtin || role.name === 'rep')
+                  .map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
               </select>
               <p className="mt-1 text-xs text-gray-500">{t('settings.sso.jitRoleHint')}</p>
             </div>

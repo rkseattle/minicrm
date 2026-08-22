@@ -95,6 +95,8 @@ router.get(
  *         description: Mapping saved
  *       400:
  *         description: roleId is required
+ *       409:
+ *         description: The role is a built-in and cannot be mapped
  */
 router.put(
   '/scim/group-role-mappings/:scimGroupId',

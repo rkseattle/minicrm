@@ -294,8 +294,13 @@ export async function syncScimGroupMembers(
     // 3. Look up the role mapping for this SCIM group (if any)
     let mappedRoleId: string | null = null;
     if (team.scim_group_id) {
+      // Excludes built-ins here as well as on write, so a mapping stored before that
+      // guard existed cannot still grant admin on every sync.
       const mappingResult = await client.query<{ role_id: string }>(
-        `SELECT role_id FROM scim_group_role_mappings WHERE scim_group_id = $1`,
+        `SELECT m.role_id
+           FROM scim_group_role_mappings m
+           JOIN public.custom_roles r ON r.id = m.role_id
+          WHERE m.scim_group_id = $1 AND r.is_builtin = false`,
         [team.scim_group_id],
       );
       if (mappingResult.rows.length > 0) {
