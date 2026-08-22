@@ -22,6 +22,10 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 13. [Data Visibility Scoping](#13-data-visibility-scoping)
 14. [Roles and Capabilities](#14-roles-and-capabilities)
 15. [Email Templates](#15-email-templates)
+16. [Two-Factor Authentication](#16-two-factor-authentication)
+17. [Single Sign-On (SSO)](#17-single-sign-on-sso)
+18. [SCIM Provisioning](#18-scim-provisioning)
+19. [Teams](#19-teams)
 
 ---
 
