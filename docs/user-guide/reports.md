@@ -113,13 +113,19 @@ them for later, and optionally share them with your team.
 
 In the **Data source** dropdown, select one of:
 
-| Option     | Data it queries          |
-| ---------- | ------------------------ |
-| Contacts   | All contact records      |
-| Accounts   | All account records      |
-| Deals      | All deal records         |
-| Leads      | All lead records         |
-| Activities | All activity log entries |
+| Option     | Data it queries      |
+| ---------- | -------------------- |
+| Contacts   | Contact records      |
+| Accounts   | Account records      |
+| Deals      | Deal records         |
+| Leads      | Lead records         |
+| Activities | Activity log entries |
+
+> **You see your own records, not everyone's.** Whichever source you pick, results are
+> limited to records you own — only administrators see the whole organisation. Two people
+> running the same shared report get different rows. Results are also capped at 1,000, with
+> no warning when the cap is reached, so narrow a large report with filters rather than
+> assuming the total is complete.
 
 ### Step 3 — Pick your fields
 
