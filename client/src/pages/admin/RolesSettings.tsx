@@ -91,6 +91,20 @@ const CAPABILITY_GROUPS: Array<{ groupKey: string; caps: Capability[] }> = [
     ],
   },
   {
+    groupKey: 'sequences',
+    caps: [
+      Capability.SequencesView,
+      Capability.SequencesCreate,
+      Capability.SequencesEdit,
+      Capability.SequencesDelete,
+      Capability.SequencesEnroll,
+    ],
+  },
+  {
+    groupKey: 'dashboards',
+    caps: [Capability.DashboardsView],
+  },
+  {
     groupKey: 'api',
     caps: [Capability.ApiAccess],
   },

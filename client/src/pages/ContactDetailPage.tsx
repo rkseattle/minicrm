@@ -135,8 +135,8 @@ export default function ContactDetailPage() {
 
   // Sequence enrollment state
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
-  // Enrolling needs sequences:enroll, which viewers and service accounts lack; the sequence
-  // list they would pick from is refused too, so the picker would render empty.
+  // The enrollment endpoints need sequences:enroll, which viewers and service accounts
+  // lack — reading the list 403s, so the section is hidden rather than shown erroring.
   const { canWrite } = usePermissions();
   const [enrollSequenceId, setEnrollSequenceId] = useState('');
   const [enrollError, setEnrollError] = useState<string | null>(null);
@@ -235,7 +235,7 @@ export default function ContactDetailPage() {
   } = useQuery({
     queryKey: enrollmentsQueryKey,
     queryFn: () => listContactEnrollments(id!),
-    enabled: Boolean(id) && sequencingEnabled,
+    enabled: Boolean(id) && sequencingEnabled && canWrite,
   });
 
   const { data: allSequencesData } = useQuery({
@@ -1486,7 +1486,7 @@ export default function ContactDetailPage() {
             {/* Sequence enrollments — gated by sequencing feature flag */}
             {sequencingLoading ? (
               <div className="mt-8 h-24 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
-            ) : sequencingEnabled ? (
+            ) : sequencingEnabled && canWrite ? (
               <section className="mt-8" aria-labelledby="sequence-enrollments-heading">
                 <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                   <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">

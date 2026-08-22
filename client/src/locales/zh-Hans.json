@@ -2345,7 +2345,9 @@
       "reports": "报告",
       "data": "数据",
       "usersAdmin": "用户与管理",
-      "api": "API"
+      "api": "API",
+      "sequences": "序列",
+      "dashboards": "仪表板"
     },
     "capabilityNamespaces": {
       "contacts": "联系人",

@@ -389,12 +389,12 @@ export async function importDeals(
 
   // Validate against the pipeline's own stages, not the seed constant: an admin who renamed
   // or added a stage had every row rejected, and an error naming stages they do not have.
-  const { rows: stageRows } = await pool.query<{ name: string }>(
-    'SELECT name FROM pipeline_stages WHERE pipeline_id = $1 ORDER BY sort_order',
+  const { rows: stageRows } = await pool.query<{ id: string; name: string }>(
+    'SELECT id, name FROM pipeline_stages WHERE pipeline_id = $1 ORDER BY sort_order',
     [defaultPipelineId],
   );
   const stageNames = stageRows.map((r) => r.name);
-  const stageByLowerName = new Map(stageNames.map((n) => [n.toLowerCase(), n]));
+  const stageByLowerName = new Map(stageRows.map((r) => [r.name.toLowerCase(), r]));
 
   for (let i = 0; i < rows.length; i++) {
     const rowNum = i + 1;
@@ -402,7 +402,8 @@ export async function importDeals(
 
     const name = (csvRow[mapping.name] ?? '').trim();
     const stageRaw = (csvRow[mapping.stage] ?? '').trim();
-    const stage = stageByLowerName.get(stageRaw.toLowerCase());
+    const matchedStage = stageByLowerName.get(stageRaw.toLowerCase());
+    const stage = matchedStage?.name;
 
     const validationErrors: string[] = [];
     if (!name) validationErrors.push('Missing required field: name');
@@ -443,8 +444,8 @@ export async function importDeals(
         const isNegative = /^\s*-/.test(rawValue);
         const stripped = rawValue.replace(/[^0-9.]/g, '');
         const magnitude = stripped.length > 0 ? Number(stripped) : NaN;
-        const parsed = isNegative ? -magnitude : magnitude;
-        if (isNaN(parsed) || parsed < 0) {
+        // Test the magnitude, not the signed value: -0 < 0 is false, so "-0" would pass.
+        if (isNaN(magnitude) || (isNegative && magnitude !== 0) || magnitude < 0) {
           result.failed.push({
             row: rowNum,
             data: csvRow,
@@ -452,7 +453,7 @@ export async function importDeals(
           });
           continue;
         }
-        dealValue = parsed;
+        dealValue = magnitude;
       }
     }
 
@@ -472,14 +473,8 @@ export async function importDeals(
       : null;
 
     try {
-      const stageRow = await pool.query<{ id: string }>(
-        `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
-        [stage, defaultPipelineId],
-      );
-      const importPipelineStageId = stageRow.rows[0]?.id;
-      if (!importPipelineStageId) {
-        throw new Error(`Unknown stage: '${stage}'`);
-      }
+      // matchedStage is non-null here: a row with no stage match failed validation above.
+      const importPipelineStageId = matchedStage!.id;
       await pool.query(
         `INSERT INTO deals (name, stage, value, close_date, loss_reason, account_id, owner_id, pipeline_id, pipeline_stage_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
