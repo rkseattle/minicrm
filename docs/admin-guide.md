@@ -450,10 +450,104 @@ Access is restored immediately for all users.
 
 ### Role overrides
 
-Some flags support per-role configuration. When role overrides are shown, you can
-independently enable or disable a feature for _Admin_ and _Rep_ roles. The flag's
-top-level enabled state acts as the master switch: if the flag is disabled, role overrides
-have no effect.
+Some flags carry per-role settings. The panel shows a checkbox for every role in your
+organisation — all five built-in roles plus any custom role you have defined — not just
+_Admin_ and _Rep_.
+
+> **A role override beats the flag's own on/off switch, not the other way round.** If a
+> role is named in the overrides, that setting decides the answer and the flag's top-level
+> state is never consulted for that role. Turning a flag off does **not** reliably turn the
+> feature off: a role explicitly enabled in its overrides keeps it. To disable a feature for
+> everyone, clear the role overrides as well as the flag.
+
+A role that is **not** named in the overrides falls back to the flag's top-level state — so
+leaving a role out grants it the feature rather than withholding it. See
+[the flag reference](#reference-every-feature-flag) for what each flag ships with.
+
+### Reference: every feature flag
+
+Every flag that ships with MiniCRM, with the state and role settings it is seeded with. A
+flag you have changed since install will differ — this is what a fresh installation starts
+from, not a report of your current configuration.
+
+**Roles** lists the roles a flag names in its overrides. Read it with the rule above in
+mind: a role that is _not_ listed still receives the feature whenever the flag's default is
+on. Only `ai_lead_routing_suggestion` names a role in order to exclude it.
+
+To see what your organisation is running right now, including any changes an administrator
+has made, query the database directly:
+
+```sql
+SELECT flag_key, enabled, role_overrides, rollout_percentage, enable_at
+FROM feature_flags
+ORDER BY category, flag_key;
+```
+
+#### AI
+
+| Key                              | Default | Roles                      |
+| -------------------------------- | ------- | -------------------------- |
+| `ai_activity_summarizer`         | On      | admin, rep                 |
+| `ai_champion_blocker_detection`  | On      | admin, rep                 |
+| `ai_churn_expansion_detection`   | On      | admin, rep                 |
+| `ai_contact_enrichment`          | On      | admin, rep                 |
+| `ai_data_hygiene_assistant`      | On      | admin, manager, rep        |
+| `ai_deal_health_check`           | On      | admin, rep                 |
+| `ai_duplicate_explanation`       | On      | admin, rep                 |
+| `ai_email_draft`                 | On      | admin, rep                 |
+| `ai_features`                    | On      | All roles                  |
+| `ai_followup_timing_suggestions` | On      | admin, rep                 |
+| `ai_lead_routing_suggestion`     | On      | admin, manager (never rep) |
+| `ai_lead_score_narrative`        | On      | admin, rep                 |
+| `ai_lead_scoring`                | On      | admin, rep                 |
+| `ai_meeting_brief`               | On      | admin, rep                 |
+| `ai_nli_page`                    | On      | admin, rep                 |
+| `ai_objection_pattern_matching`  | On      | admin, rep                 |
+| `ai_proposal_draft_generation`   | On      | admin, rep                 |
+| `ai_relationship_health_score`   | On      | admin, rep                 |
+| `ai_rep_coaching_insights`       | On      | admin, manager, rep        |
+| `ai_sentiment_tracking`          | On      | admin, rep                 |
+| `ai_stage_advancement`           | On      | admin, rep                 |
+| `ai_task_suggestions`            | On      | admin, rep                 |
+| `ai_warm_intro_path`             | On      | admin, rep                 |
+| `ai_win_loss_insights`           | On      | admin, rep                 |
+
+#### Core CRM
+
+| Key             | Default | Roles     |
+| --------------- | ------- | --------- |
+| `activities`    | On      | All roles |
+| `mobile_access` | **Off** | All roles |
+| `notes`         | On      | All roles |
+| `tags`          | On      | All roles |
+| `tasks`         | On      | All roles |
+
+#### Data
+
+| Key          | Default | Roles      |
+| ------------ | ------- | ---------- |
+| `csv_export` | On      | admin, rep |
+| `csv_import` | On      | All roles  |
+| `demo_data`  | **Off** | All roles  |
+| `reporting`  | On      | admin, rep |
+
+#### Integrations
+
+| Key                | Default | Roles     |
+| ------------------ | ------- | --------- |
+| `automation_rules` | On      | All roles |
+| `email_templates`  | On      | All roles |
+| `webhooks`         | On      | All roles |
+
+#### Productivity
+
+| Key                   | Default | Roles     |
+| --------------------- | ------- | --------- |
+| `custom_fields`       | On      | All roles |
+| `duplicate_detection` | On      | All roles |
+| `lead_scoring`        | On      | All roles |
+| `multiple_pipelines`  | On      | All roles |
+| `sequencing`          | On      | All roles |
 
 ### Audit trail
 
@@ -501,6 +595,13 @@ a group the fastest way to shut down an entire feature area in one action.
 > beta enrollment and rollout bucketing, and finally the flag's own role settings and
 > enabled state. For any AI sub-feature, a disabled `ai_features` master toggle denies
 > before any of this is consulted.
+>
+> Two consequences worth knowing, because the flag list alone will mislead you on both. A
+> **scheduled enable** that has come due reports the flag as on outright, ahead of the role
+> settings — so a role override cannot hold a scheduled flag back. And because role settings
+> are consulted only for roles they name, **the roles column is not an allowlist**: any role
+> left out of a flag's overrides receives whatever the top-level state says, which is usually
+> on.
 
 #### Managing groups
 
@@ -981,14 +1082,9 @@ when the tokens were originally consumed.
 
 ## 12. AI Role-Based Feature Access
 
-> **Feature flags:** `ai_nli_page`, `ai_activity_summarizer`, `ai_email_draft`,
-> `ai_task_suggestions`, `ai_contact_enrichment`, `ai_duplicate_explanation`,
-> `ai_lead_scoring`, `ai_lead_score_narrative`, `ai_deal_health_check`,
-> `ai_stage_advancement`, `ai_win_loss_insights`, `ai_champion_blocker_detection`,
-> `ai_churn_expansion_detection`, `ai_objection_pattern_matching`,
-> `ai_proposal_draft_generation`, `ai_meeting_brief`, `ai_warm_intro_path`,
-> `ai_sentiment_tracking`, `ai_relationship_health_score`,
-> `ai_followup_timing_suggestions`
+> **Feature flags:** every flag in the AI category — see
+> [the flag reference](#reference-every-feature-flag), which lists them all with the state
+> and roles each ships with.
 
 Individual AI sub-features can be enabled or disabled per role. This lets you roll out
 specific AI capabilities to admins first, or restrict certain features to admins only,
@@ -1018,27 +1114,39 @@ without disabling AI entirely.
 | `ai_sentiment_tracking`          | Per-activity sentiment scoring and Contact/Account trend badges                                   |
 | `ai_relationship_health_score`   | Nightly account relationship health scoring, badge, and trend sparkline                           |
 | `ai_followup_timing_suggestions` | Best-time-to-contact suggestions on the Contact detail page and pre-meeting brief                 |
+| `ai_rep_coaching_insights`       | Per-rep coaching metrics against team averages — deterministic, no model call                     |
+| `ai_lead_routing_suggestion`     | Suggests which rep to assign a new lead to; advisory only, and never offered to reps              |
+| `ai_data_hygiene_assistant`      | The data hygiene findings queue (the nightly scan runs regardless of this flag)                   |
 
 ### How role overrides interact with the master toggle
 
-1. The `ai_features` master flag must be **on** for any AI feature to function.
-2. Each sub-feature flag has its own on/off toggle. When off, the feature is hidden from
-   all users regardless of role overrides.
-3. When a sub-feature flag is on, role overrides determine which roles can access it.
-   If the **Admin** checkbox is unchecked, admins lose access to that sub-feature too.
+1. The `ai_features` master flag must be **on** for any AI feature to function. When it is
+   off, every AI sub-feature is denied for everyone, whatever their own settings say. This
+   is the only reliable way to turn AI off org-wide.
+2. Each sub-feature flag has its own on/off toggle — but turning it **off does not
+   guarantee the feature is hidden**. A role named in that flag's overrides keeps its
+   setting, because role overrides are consulted before the flag's own state. Clear the
+   overrides too, or use the master toggle above.
+3. A role that is not named in the overrides falls back to the flag's top-level state, so
+   omitting a role grants it the feature rather than withholding it. Unchecking **Admin**
+   does remove admin access — the checkbox is an explicit `false`, not an omission.
 
-> **Note:** By default all AI sub-features are enabled for both Admin and Rep. Changes
+> **Note:** Most AI sub-features ship enabled for Admin and Rep, but not all — see
+> [the flag reference](#reference-every-feature-flag) for what each one carries. Changes
 > take effect on the user's next page load (sub-feature access is checked at login).
 
 ### Tutorial: restrict an AI sub-feature to admins only
 
 1. Go to **Admin Settings → Features**.
 2. Locate the AI sub-feature flag (e.g. _Natural-language query page_).
-3. In the **Role overrides** column, uncheck **Rep**.
-4. The checkbox saves immediately — no confirmation dialog.
+3. In the **Role overrides** column, uncheck **every role except Admin** — including
+   Manager, Viewer, Service Account, and any custom role you have created. On an enabled
+   flag every box starts checked, whether or not the role is named in the overrides, so
+   each one you clear writes an explicit deny for that role.
+4. Each checkbox saves immediately — no confirmation dialog.
 
-Reps will no longer see that feature on their next page load. Their existing data is not
-affected.
+Those roles will no longer see that feature on their next page load. Their existing data is
+not affected.
 
 ### AI Natural-Language Interface (NLI) — RBAC-filtered tool set
 
