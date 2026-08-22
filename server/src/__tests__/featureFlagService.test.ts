@@ -38,6 +38,7 @@ import {
   __clearCacheForTest,
 } from '../services/featureFlagService.js';
 import pool from '../db.js';
+import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import { waitUntil } from './testUtils.js';
 
 const FILE_PREFIX = 'ff-svc';
@@ -70,15 +71,13 @@ beforeEach(async () => {
        WHEN flag_key IN ('mobile_access', 'demo_data') THEN false
        ELSE true
      END,
-     role_overrides = CASE
-       WHEN flag_key IN ('reporting', 'csv_export') THEN '{"admin":true,"rep":true}'::jsonb
-       ELSE null
-     END,
+     role_overrides = ($1::jsonb) -> flag_key,
      enable_at = null,
      rollout_percentage = null,
      rollout_stages = null,
      updated_by = null,
      updated_at = now()`,
+    [JSON.stringify(SEEDED_ROLE_OVERRIDES)],
   );
   // Clear the module-level TTL cache so each test reads fresh DB state.
   __clearCacheForTest();
@@ -100,15 +99,13 @@ afterAll(async () => {
        WHEN flag_key IN ('mobile_access', 'demo_data') THEN false
        ELSE true
      END,
-     role_overrides = CASE
-       WHEN flag_key IN ('reporting', 'csv_export') THEN '{"admin":true,"rep":true}'::jsonb
-       ELSE null
-     END,
+     role_overrides = ($1::jsonb) -> flag_key,
      enable_at = null,
      rollout_percentage = null,
      rollout_stages = null,
      updated_by = null,
      updated_at = now()`,
+    [JSON.stringify(SEEDED_ROLE_OVERRIDES)],
   );
   __clearCacheForTest();
 });
@@ -145,6 +142,31 @@ describe('listFeatureFlags', () => {
     expect(flags.filter((f) => f.flag_key.startsWith('coverage_')).map((f) => f.flag_key)).toEqual(
       [],
     );
+  });
+
+  /**
+   * Pins SEEDED_ROLE_OVERRIDES to the table, bidirectionally. The constant exists so a reset
+   * cannot restore a denial as NULL and re-admit the excluded role; that only holds while it
+   * lists every map containing a `false`. Checks both directions because either alone is
+   * silent: a migration seeding a new denial the constant does not carry, or a constant entry
+   * whose stored map has since changed.
+   */
+  it('carries every role_overrides map that denies a role, and none that has drifted', async () => {
+    const { rows } = await pool.query<{
+      flag_key: string;
+      role_overrides: Record<string, boolean>;
+    }>(`SELECT flag_key, role_overrides FROM feature_flags WHERE role_overrides IS NOT NULL`);
+
+    const denyingInTable = rows
+      .filter((r) => Object.values(r.role_overrides).some((granted) => granted === false))
+      .map((r) => r.flag_key)
+      .sort();
+    expect(denyingInTable).toEqual(Object.keys(SEEDED_ROLE_OVERRIDES).sort());
+
+    for (const [flagKey, expected] of Object.entries(SEEDED_ROLE_OVERRIDES)) {
+      const stored = rows.find((r) => r.flag_key === flagKey);
+      expect(stored?.role_overrides).toEqual(expected);
+    }
   });
 
   it('includes active_user_count (0 when no usage recorded)', async () => {

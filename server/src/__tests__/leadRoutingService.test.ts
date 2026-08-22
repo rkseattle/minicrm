@@ -22,8 +22,8 @@ import {
   setTeamRoutingOverride,
 } from '../services/leadRoutingService.js';
 import type { CandidateRep } from '../services/leadRoutingService.js';
-import { isFlagEnabledForUser } from '../services/featureFlagService.js';
-import { uid } from './testUtils.js';
+import { isFlagEnabledForUser, __clearCacheForTest } from '../services/featureFlagService.js';
+import { uid, restoreLeadRoutingFlag } from './testUtils.js';
 
 const FILE_PREFIX = 'lead-routing-svc';
 const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -472,7 +472,21 @@ describe('getLeadRoutingConfig / setLeadRoutingConfig', () => {
   });
 });
 
+describe('rep exclusion in the flag role map', () => {
+  beforeEach(restoreLeadRoutingFlag);
+  afterAll(restoreLeadRoutingFlag);
+
+  it('denies a rep and admits admin and manager', async () => {
+    expect(await isFlagEnabledForUser('ai_lead_routing_suggestion', repAId, 'rep')).toBe(false);
+    expect(await isFlagEnabledForUser('ai_lead_routing_suggestion', repAId, 'manager')).toBe(true);
+    expect(await isFlagEnabledForUser('ai_lead_routing_suggestion', repAId, 'admin')).toBe(true);
+  });
+});
+
 describe('team routing overrides', () => {
+  beforeEach(restoreLeadRoutingFlag);
+  afterAll(restoreLeadRoutingFlag);
+
   it('has no overrides by default', async () => {
     const overrides = await listTeamRoutingOverrides();
     expect(overrides.filter((o) => o.team_name.startsWith(FILE_PREFIX)).length).toBe(0);
@@ -484,23 +498,35 @@ describe('team routing overrides', () => {
 
     await setTeamRoutingOverride(team.id, false, { id: repAId, name: 'Routing Rep A' });
 
-    const enabled = await isFlagEnabledForUser('ai_lead_routing_suggestion', repAId, 'rep');
-    expect(enabled).toBe(false);
+    // Resolved as manager throughout: the role map denies reps outright, so a rep
+    // assertion here would pass with the team-override feature deleted.
+    const blockedManager = await isFlagEnabledForUser(
+      'ai_lead_routing_suggestion',
+      repAId,
+      'manager',
+    );
+    expect(blockedManager).toBe(false);
 
     // Rep B is not on the blocked team — unaffected.
-    const repBEnabled = await isFlagEnabledForUser('ai_lead_routing_suggestion', repBId, 'rep');
-    expect(repBEnabled).toBe(true);
+    const unblockedManager = await isFlagEnabledForUser(
+      'ai_lead_routing_suggestion',
+      repBId,
+      'manager',
+    );
+    expect(unblockedManager).toBe(true);
   });
 
   it('clearing the override (enabled=null) restores the global flag state', async () => {
     const team = await createTeam({ name: `${FILE_PREFIX} Cleared Team` }, ACTOR);
     await addTeamMember(team.id, repAId, 'member', ACTOR);
 
+    // Resolved as a manager: the role map denies reps outright, which would mask whether
+    // clearing the override restored anything.
     await setTeamRoutingOverride(team.id, false, { id: repAId, name: 'Routing Rep A' });
-    expect(await isFlagEnabledForUser('ai_lead_routing_suggestion', repAId, 'rep')).toBe(false);
+    expect(await isFlagEnabledForUser('ai_lead_routing_suggestion', repAId, 'manager')).toBe(false);
 
     await setTeamRoutingOverride(team.id, null, { id: repAId, name: 'Routing Rep A' });
-    expect(await isFlagEnabledForUser('ai_lead_routing_suggestion', repAId, 'rep')).toBe(true);
+    expect(await isFlagEnabledForUser('ai_lead_routing_suggestion', repAId, 'manager')).toBe(true);
   });
 
   it('throws TEAM_NOT_FOUND for a non-existent team', async () => {

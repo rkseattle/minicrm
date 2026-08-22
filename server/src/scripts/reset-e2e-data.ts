@@ -16,9 +16,9 @@
  *   - email_notifications_enabled → true
  *   - tags_restrict_creation → false
  *
- * feature_flags rows are updated (not deleted): enabled → seed default,
- * role_overrides → NULL. Rows must not be deleted because migrations insert them
- * with ON CONFLICT DO NOTHING and won't re-insert if pgmigrations marks them applied.
+ * feature_flags rows are updated (not deleted): enabled and role_overrides are restored
+ * to their seeded values. Rows must not be deleted because migrations insert them with
+ * ON CONFLICT DO NOTHING and won't re-insert if pgmigrations marks them applied.
  *
  * Removes any non-seed pipeline stages (custom stages created by tests).
  *
@@ -37,6 +37,7 @@
 
 import pg from 'pg';
 import { assertTestDatabaseTarget } from './assertTestDatabaseTarget.js';
+import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
 
 const { Pool } = pg;
 
@@ -171,11 +172,14 @@ async function main(adminEmail: string): Promise<void> {
     // mobile_access and demo_data default to false in migrations 066; keep them off.
     // ai_nli_page is enabled in E2E so tests can exercise the full AI feature surface;
     // the flag is synced with ai_configuration.enabled only in production via setAiEnabled.
+    // Flags with a seeded map keep it: NULL would restore the role fall-through that
+    // ai_lead_routing_suggestion's explicit `rep: false` exists to close.
     await client.query(
       `UPDATE feature_flags
        SET enabled = CASE WHEN flag_key IN ('mobile_access', 'demo_data') THEN false ELSE true END,
-           role_overrides = NULL
+           role_overrides = ($1::jsonb) -> flag_key
        WHERE system_flag = true`,
+      [JSON.stringify(SEEDED_ROLE_OVERRIDES)],
     );
 
     // User roles / custom role assignments
