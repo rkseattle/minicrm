@@ -850,6 +850,36 @@ describe('syncScimGroupMembers', () => {
     expect(granted.rows).toHaveLength(0);
   });
 
+  it('still revokes a legacy built-in role when a member is removed', async () => {
+    const group = await makeScimTeam('builtin-role-revoke');
+    const builtin = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE name = 'admin' AND is_builtin = true`,
+    );
+    const roleId = builtin.rows[0]!.id;
+    await pool.query(
+      `INSERT INTO scim_group_role_mappings (scim_group_id, group_name, role_id)
+       VALUES ($1, $2, $3)`,
+      [group.scim_group_id, `${FILE_PREFIX}-builtin-role-revoke`, roleId],
+    );
+
+    // Stands in for the grant made before the write guard existed.
+    const user = await makeUser('builtin-role-revoke-u');
+    await syncScimGroupMembers(group.id, [user.id], ACTOR);
+    await pool.query(
+      `INSERT INTO user_custom_roles (user_id, role_id)
+       VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [user.id, roleId],
+    );
+
+    await syncScimGroupMembers(group.id, [], ACTOR);
+
+    const held = await pool.query(
+      `SELECT 1 FROM user_custom_roles WHERE user_id = $1 AND role_id = $2`,
+      [user.id, roleId],
+    );
+    expect(held.rows).toHaveLength(0);
+  });
+
   it('refuses to map a built-in role to a SCIM group', async () => {
     const group = await makeScimTeam('builtin-role-map');
     const builtin = await pool.query<{ id: string }>(

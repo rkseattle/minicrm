@@ -487,15 +487,15 @@ export async function findOrProvisionSsoUser(
       );
       if (roleExistsResult.rows[0]) {
         await client.query(
-          `INSERT INTO user_custom_roles (user_id, role_id, created_at)
-           VALUES ($1, $2, now())
+          `INSERT INTO user_custom_roles (user_id, role_id)
+           VALUES ($1, $2)
            ON CONFLICT (user_id, role_id) DO NOTHING`,
           [newUser.id, jitRoleId],
         );
       } else {
         logger.warn(
           { jitRoleId },
-          'ssoService: sso_jit_default_role_id points to a non-existent custom_role — skipping role assignment',
+          'ssoService: sso_jit_default_role_id is missing or a privileged built-in — skipping role assignment',
         );
         // Audit the misconfiguration so admins can see it in the audit log.
         await writeAuditEntry(client, {
