@@ -2,8 +2,9 @@
  * SCIM 2.0 routes — mounted at /scim/v2 in app.ts.
  *
  * All resource routes use authenticateScim (Bearer token) — NOT the JWT cookie
- * auth middleware. Discovery endpoints (ServiceProviderConfig, ResourceTypes,
- * Schemas) are public — IdPs fetch them during configuration.
+ * auth middleware. ServiceProviderConfig is public — IdPs fetch it during
+ * configuration. The spec's other two discovery endpoints, ResourceTypes and
+ * Schemas, are not implemented.
  *
  * Handlers do their own try/catch; do NOT wrap in asyncHandler.
  */
