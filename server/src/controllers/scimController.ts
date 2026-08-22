@@ -419,6 +419,16 @@ export async function putScimGroupRoleMappingHandler(req: Request, res: Response
       res.status(400).json({ error: { code: 'INVALID_ROLE_ID', message: 'Role not found' } });
       return;
     }
+    if (
+      err instanceof Error &&
+      'code' in err &&
+      (err as { code: string }).code === 'SCIM_MAPPING_BUILTIN_ROLE'
+    ) {
+      res.status(409).json({
+        error: { code: 'SCIM_MAPPING_BUILTIN_ROLE', message: err.message },
+      });
+      return;
+    }
     throw err;
   }
 }

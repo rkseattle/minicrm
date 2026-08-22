@@ -500,6 +500,22 @@ export async function setScimGroupRoleMapping(
   try {
     await client.query('BEGIN');
 
+    // Built-in roles are rows in custom_roles, so the FK alone would accept one here and
+    // grant it to every member of the IdP group on each sync.
+    const role = await client.query<{ is_builtin: boolean }>(
+      `SELECT is_builtin FROM public.custom_roles WHERE id = $1 FOR SHARE`,
+      [roleId],
+    );
+    if (role.rows[0]?.is_builtin) {
+      const err = new Error('Built-in roles cannot be mapped to a SCIM group') as Error & {
+        statusCode: number;
+        code: string;
+      };
+      err.statusCode = 409;
+      err.code = 'SCIM_MAPPING_BUILTIN_ROLE';
+      throw err;
+    }
+
     const result = await client.query<{ id: string }>(
       `INSERT INTO scim_group_role_mappings (scim_group_id, group_name, role_id)
        VALUES ($1, $2, $3)
