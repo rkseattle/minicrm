@@ -6,7 +6,6 @@
 
 import { parse } from 'csv-parse/sync';
 import pool from '../db.js';
-import { PIPELINE_STAGES } from '@minicrm/shared/schemas/dealSchema.js';
 import { getDefaultPipelineId } from './pipelineService.js';
 
 /** Maximum CSV file size in bytes (10 MB) */
@@ -364,9 +363,6 @@ export type DealMapping = {
   skip_unresolvable_accounts?: boolean;
 };
 
-/** Pipeline stage lookup — case-insensitive */
-const STAGE_MAP = new Map(PIPELINE_STAGES.map((s) => [s.toLowerCase(), s]));
-
 /**
  * Imports deals from parsed CSV rows using the provided column mapping.
  *
@@ -391,13 +387,22 @@ export async function importDeals(
 
   const defaultPipelineId = await getDefaultPipelineId();
 
+  // Validate against the pipeline's own stages, not the seed constant: an admin who renamed
+  // or added a stage had every row rejected, and an error naming stages they do not have.
+  const { rows: stageRows } = await pool.query<{ name: string }>(
+    'SELECT name FROM pipeline_stages WHERE pipeline_id = $1 ORDER BY sort_order',
+    [defaultPipelineId],
+  );
+  const stageNames = stageRows.map((r) => r.name);
+  const stageByLowerName = new Map(stageNames.map((n) => [n.toLowerCase(), n]));
+
   for (let i = 0; i < rows.length; i++) {
     const rowNum = i + 1;
     const csvRow = rows[i];
 
     const name = (csvRow[mapping.name] ?? '').trim();
     const stageRaw = (csvRow[mapping.stage] ?? '').trim();
-    const stage = STAGE_MAP.get(stageRaw.toLowerCase());
+    const stage = stageByLowerName.get(stageRaw.toLowerCase());
 
     const validationErrors: string[] = [];
     if (!name) validationErrors.push('Missing required field: name');
@@ -405,7 +410,7 @@ export async function importDeals(
       validationErrors.push('Missing required field: stage');
     } else if (!stage) {
       validationErrors.push(
-        `Unrecognised stage "${stageRaw}". Must be one of: ${PIPELINE_STAGES.join(', ')}`,
+        `Unrecognised stage "${stageRaw}". Must be one of: ${stageNames.join(', ')}`,
       );
     }
 
@@ -433,9 +438,12 @@ export async function importDeals(
     if (mapping.value) {
       const rawValue = (csvRow[mapping.value] ?? '').trim();
       if (rawValue) {
-        // Strip currency symbols and commas before parsing
+        // Strip currency symbols and separators, but keep a leading sign: stripping it too
+        // turned "-50" into 50 and imported a negative value as positive.
+        const isNegative = /^\s*-/.test(rawValue);
         const stripped = rawValue.replace(/[^0-9.]/g, '');
-        const parsed = stripped.length > 0 ? Number(stripped) : NaN;
+        const magnitude = stripped.length > 0 ? Number(stripped) : NaN;
+        const parsed = isNegative ? -magnitude : magnitude;
         if (isNaN(parsed) || parsed < 0) {
           result.failed.push({
             row: rowNum,

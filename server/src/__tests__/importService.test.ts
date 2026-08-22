@@ -20,6 +20,7 @@ import {
 } from '../services/importService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { getDefaultPipelineId } from '../services/pipelineService.js';
 
 const FILE_PREFIX = 'import-svc';
 
@@ -351,6 +352,54 @@ describe('importDeals', () => {
     const result = await importDeals(rows, mapping, adminId);
     expect(result.failed).toHaveLength(1);
     expect(result.failed[0].reason).toContain('Missing required field: stage');
+  });
+
+  it('rejects a negative value rather than importing its absolute value', async () => {
+    const valueMapping = { ...mapping, value: 'Value' };
+    const rows = [{ Deal: 'Negative', Stage: 'Proposal', Value: '-50' }];
+    const result = await importDeals(rows, valueMapping, adminId);
+
+    expect(result.created).toBe(0);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].reason).toContain('non-negative');
+  });
+
+  it('still strips currency symbols and separators from a positive value', async () => {
+    const valueMapping = { ...mapping, value: 'Value' };
+    const rows = [{ Deal: 'Formatted', Stage: 'Proposal', Value: '$1,200.50' }];
+    const result = await importDeals(rows, valueMapping, adminId);
+
+    expect(result.created).toBe(1);
+    const { rows: dbRows } = await pool.query('SELECT value FROM deals WHERE name = $1', [
+      'Formatted',
+    ]);
+    expect(Number(dbRows[0].value)).toBe(1200.5);
+  });
+
+  it('accepts a stage the admin added to the pipeline, and names it when one is unrecognised', async () => {
+    const pipelineId = await getDefaultPipelineId();
+    await pool.query(
+      `INSERT INTO pipeline_stages (pipeline_id, name, sort_order, probability)
+       VALUES ($1, 'Legal Review', 99, 50)`,
+      [pipelineId],
+    );
+    try {
+      const accepted = await importDeals(
+        [{ Deal: 'Custom stage', Stage: 'legal review' }],
+        mapping,
+        adminId,
+      );
+      expect(accepted.created).toBe(1);
+
+      const rejected = await importDeals([{ Deal: 'Bad', Stage: 'Nope' }], mapping, adminId);
+      expect(rejected.failed[0].reason).toContain('Legal Review');
+    } finally {
+      await pool.query(`DELETE FROM deals WHERE name = $1`, ['Custom stage']);
+      await pool.query(`DELETE FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2`, [
+        'Legal Review',
+        pipelineId,
+      ]);
+    }
   });
 
   it('fails rows with unrecognised stage', async () => {
