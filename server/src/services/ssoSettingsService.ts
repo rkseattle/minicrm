@@ -93,12 +93,24 @@ export async function getSsoConfig(): Promise<SsoConfigPublic | null> {
     return null;
   }
 
+  // A stored privileged built-in is no longer honoured when provisioning, so report it as
+  // unset rather than showing the admin a value that does nothing.
+  const storedJitRoleId = map[SSO_JIT_DEFAULT_ROLE_ID_KEY] ?? null;
+  let jit_default_role_id: string | null = null;
+  if (storedJitRoleId) {
+    const role = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE id = $1 AND (is_builtin = false OR name = 'rep')`,
+      [storedJitRoleId],
+    );
+    jit_default_role_id = role.rows[0]?.id ?? null;
+  }
+
   return {
     protocol,
     idp_metadata_url: map[SSO_IDP_METADATA_URL_KEY] ?? '',
     entity_id: map[SSO_ENTITY_ID_KEY] ?? '',
     idp_certificate_set: Boolean(map[SSO_IDP_CERTIFICATE_ENCRYPTED_KEY]),
-    jit_default_role_id: map[SSO_JIT_DEFAULT_ROLE_ID_KEY] ?? null,
+    jit_default_role_id,
   };
 }
 

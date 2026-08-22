@@ -242,6 +242,34 @@ describe('unlinkAllSsoUsers', () => {
 // ── Binding overwrite protection ──────────────────────────────────────────────
 
 describe('findOrProvisionSsoUser — binding overwrite protection', () => {
+  it('ignores a stored privileged built-in JIT role rather than granting it', async () => {
+    const builtin = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE name = 'admin' AND is_builtin = true`,
+    );
+    // Written directly: setSsoConfig refuses this value, so the only way a deployment
+    // holds it is from before that guard existed.
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ('sso_jit_default_role_id', $1, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [builtin.rows[0]!.id],
+    );
+
+    const user = await findOrProvisionSsoUser('oidc', {
+      subject: 'oidc-builtin-jit-subject',
+      email: 'sso-test-builtin-jit@example.com',
+      name: 'Builtin JIT',
+    });
+
+    const granted = await pool.query(
+      `SELECT 1 FROM user_custom_roles WHERE user_id = $1 AND role_id = $2`,
+      [user.id, builtin.rows[0]!.id],
+    );
+    expect(granted.rows).toHaveLength(0);
+
+    await pool.query(`DELETE FROM system_settings WHERE key = 'sso_jit_default_role_id'`);
+  });
+
   it('rejects a login attempt that would overwrite an existing SSO binding via email match', async () => {
     // First login: SAML IdP binds the user
     const user = await findOrProvisionSsoUser('saml', {

@@ -938,7 +938,7 @@
       "disableConfirmPrompt": "[Thïŝ wïll rëmövë ŜŜÖ bïñdïñgŝ för äll üŝërŝ. Ĉöñtïñüë?~~~~~~~~~~~~~~~~~]",
       "disableConfirmButton": "[Yëŝ, dïŝäblë ŜŜÖ~~~~~]",
       "jitRoleLabel": "[Dëfäült Rölë för Ñëw ŜŜÖ Üŝërŝ~~~~~~~~~]",
-      "jitRoleHint": "[Rölë äŝŝïgñëd tö üŝërŝ prövïŝïöñëd äütömätïĉälly öñ fïrŝt ŜŜÖ lögïñ.~~~~~~~~~~~~~~~~~~~~~]"
+      "jitRoleHint": "[Ëxträ rölë gräñtëd tö üŝërŝ prövïŝïöñëd öñ fïrŝt ŜŜÖ lögïñ, öñ töp öf thëïr bäŝë rëp rölë. Büïlt-ïñ rölëŝ öthër thäñ rëp ĉäññöt bë ŝëlëĉtëd.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]"
     },
     "scim": {
       "sectionTitle": "[ŜĈÏM 2.0 Prövïŝïöñïñg~~~~~~~]",

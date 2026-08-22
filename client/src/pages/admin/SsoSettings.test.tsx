@@ -27,6 +27,18 @@ describe('SsoSettings', () => {
     expect(screen.getByTestId('sso-loading')).toBeInTheDocument();
   });
 
+  // ── JIT role options ─────────────────────────────────────────────────────────
+
+  it('omits privileged built-in roles from the JIT default role picker', async () => {
+    renderWithProviders(<SsoSettings />);
+
+    const select = await screen.findByTestId('sso-jit-role-select');
+    const labels = Array.from(select.querySelectorAll('option')).map((o) => o.textContent);
+
+    expect(labels).not.toContain('admin');
+    expect(labels).toContain('rep');
+  });
+
   // ── Error state ──────────────────────────────────────────────────────────────
 
   it('shows error message when SSO config fails to load', async () => {

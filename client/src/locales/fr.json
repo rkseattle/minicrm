@@ -938,7 +938,7 @@
       "disableConfirmPrompt": "Supprimer les liaisons SSO pour tous les utilisateurs ?",
       "disableConfirmButton": "Oui, désactiver SSO",
       "jitRoleLabel": "Rôle par défaut pour les nouveaux utilisateurs SSO",
-      "jitRoleHint": "Rôle attribué aux utilisateurs provisionnés automatiquement lors de leur première connexion SSO."
+      "jitRoleHint": "Rôle supplémentaire accordé aux utilisateurs provisionnés lors de leur première connexion SSO, en plus de leur rôle de base rep. Les rôles intégrés autres que rep ne peuvent pas être sélectionnés."
     },
     "scim": {
       "sectionTitle": "Approvisionnement SCIM 2.0",

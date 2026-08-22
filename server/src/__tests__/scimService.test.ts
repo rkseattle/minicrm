@@ -827,6 +827,29 @@ describe('syncScimGroupMembers', () => {
     expect(ucr.rows).toHaveLength(1);
   });
 
+  it('ignores a stored built-in role mapping rather than granting it on sync', async () => {
+    const group = await makeScimTeam('builtin-role-sync');
+    const builtin = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE name = 'admin' AND is_builtin = true`,
+    );
+    // Written directly: setScimGroupRoleMapping refuses this, so the only way a
+    // deployment holds such a row is from before that guard existed.
+    await pool.query(
+      `INSERT INTO scim_group_role_mappings (scim_group_id, group_name, role_id)
+       VALUES ($1, $2, $3)`,
+      [group.scim_group_id, `${FILE_PREFIX}-builtin-role-sync`, builtin.rows[0]!.id],
+    );
+
+    const user = await makeUser('builtin-role-sync-u');
+    await syncScimGroupMembers(group.id, [user.id], ACTOR);
+
+    const granted = await pool.query(
+      `SELECT 1 FROM user_custom_roles WHERE user_id = $1 AND role_id = $2`,
+      [user.id, builtin.rows[0]!.id],
+    );
+    expect(granted.rows).toHaveLength(0);
+  });
+
   it('refuses to map a built-in role to a SCIM group', async () => {
     const group = await makeScimTeam('builtin-role-map');
     const builtin = await pool.query<{ id: string }>(
