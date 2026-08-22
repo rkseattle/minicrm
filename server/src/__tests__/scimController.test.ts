@@ -510,6 +510,20 @@ describe('PUT /api/v1/scim/group-role-mappings/:scimGroupId', () => {
       `DELETE FROM scim_group_role_mappings WHERE scim_group_id = 'ctrl-scim-group'`,
     );
   });
+
+  it('returns 409 when the role is a built-in', async () => {
+    const builtin = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE name = 'admin' AND is_builtin = true`,
+    );
+
+    const res = await request(app)
+      .put('/api/v1/scim/group-role-mappings/ctrl-builtin-group')
+      .set('Cookie', adminCookie)
+      .send({ roleId: builtin.rows[0]!.id, groupName: 'Ctrl Builtin Group' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('SCIM_MAPPING_BUILTIN_ROLE');
+  });
 });
 
 describe('DELETE /api/v1/scim/group-role-mappings/:scimGroupId', () => {

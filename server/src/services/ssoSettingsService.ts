@@ -199,6 +199,24 @@ export async function setSsoConfig(
     // When jit_default_role_id is explicitly provided (even null), persist the change.
     // null clears the row so a missing key and an explicit null are indistinguishable to readers.
     if ('jit_default_role_id' in input) {
+      if (input.jit_default_role_id != null) {
+        // Built-in roles are rows in custom_roles, so the FK alone would accept one and
+        // grant it to every user the IdP provisions. rep is exempt: it is already the
+        // hardcoded base role, so granting it adds nothing.
+        const role = await client.query<{ name: string; is_builtin: boolean }>(
+          `SELECT name, is_builtin FROM public.custom_roles WHERE id = $1 FOR SHARE`,
+          [input.jit_default_role_id],
+        );
+        const row = role.rows[0];
+        if (row?.is_builtin && row.name !== 'rep') {
+          const err = new Error(
+            'Built-in roles other than rep cannot be the SSO default role',
+          ) as Error & { statusCode: number; code: string };
+          err.statusCode = 409;
+          err.code = 'SSO_JIT_ROLE_BUILTIN';
+          throw err;
+        }
+      }
       if (input.jit_default_role_id === null) {
         // Remove the key so readers get null via the `?? null` fallback.
         await client.query('DELETE FROM system_settings WHERE key = $1', [

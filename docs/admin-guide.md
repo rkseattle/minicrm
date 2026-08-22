@@ -1397,6 +1397,20 @@ themselves out.
 > exactly once and are stored hashed, so neither the user nor an administrator can recover
 > them afterwards.
 
+### Encryption key rotation
+
+> **Rotating `NODE_ENCRYPTION_KEY` locks every enrolled user out of their authenticator
+> app.** TOTP secrets use the legacy unversioned encryption path, the same one as the SSO
+> certificate, and there is no tooling to re-encrypt them. After a rotation MiniCRM cannot
+> read the stored secret, and the failure is reported as an invalid code — there is no
+> distinct error to tell you what happened.
+>
+> **Recovery codes still work**, because they are hashed rather than encrypted. That is the
+> way back in: each affected user signs in with a recovery code, disables 2FA with their
+> password, and enrolls again. Given there is no administrator reset, plan a rotation around
+> this rather than discovering it afterwards. See
+> [migrations](dev/migrations.md#encryption-key-rotation).
+
 ### Turning 2FA off
 
 A user disables their own 2FA from **Profile → Two-Factor Authentication** by entering their
@@ -1512,8 +1526,13 @@ configurable.
 
 **Default Role for New SSO Users** grants an _additional_ custom role on top of that. Leaving
 it blank is valid and means no extra role — the user is a plain rep. New installations seed
-it to the built-in `rep` role.
+it to the built-in `rep` role, which adds nothing beyond the base role.
 
+> **A privileged built-in role cannot be chosen here.** `admin`, `manager`, `viewer`, and
+> `service_account` are rejected, because this setting applies to every account the IdP
+> provisions — picking `admin` would hand full administrative access to everyone who signs
+> in. Grant elevated access per user instead, or define a custom role.
+>
 > If the configured role has since been deleted, the user is still created and can still
 > sign in — with the base `rep` role only, and none of the capabilities you intended. The
 > misconfiguration is recorded in the audit log under record type **`system_settings`**, not
@@ -1630,7 +1649,8 @@ have it revoked.
 
 **Only custom roles can be mapped** — the built-in roles (`admin`, `manager`, `rep`,
 `viewer`, `service_account`) are not valid targets, and a mapping that names one is
-rejected. Create a custom role under **Admin Settings → Users & Access → Roles** first.
+rejected. Create a custom role under **Admin Settings → Users & Access → Roles** first. Any
+such mapping stored before this rule existed is ignored at sync time rather than granted.
 
 ### How group mapping behaves
 

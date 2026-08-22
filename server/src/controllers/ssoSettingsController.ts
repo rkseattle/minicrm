@@ -51,7 +51,20 @@ export async function putSsoConfigHandler(req: Request, res: Response): Promise<
     return;
   }
 
-  const saved = await setSsoConfig(parsed.data, { id: req.user!.id, name: req.user!.name });
+  let saved;
+  try {
+    saved = await setSsoConfig(parsed.data, { id: req.user!.id, name: req.user!.name });
+  } catch (err: unknown) {
+    if (
+      err instanceof Error &&
+      'code' in err &&
+      (err as { code: string }).code === 'SSO_JIT_ROLE_BUILTIN'
+    ) {
+      res.status(409).json({ error: { code: 'SSO_JIT_ROLE_BUILTIN', message: err.message } });
+      return;
+    }
+    throw err;
+  }
   res.status(200).json({ sso: saved });
 
   void writeAuditEntryBestEffort({
