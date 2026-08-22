@@ -293,19 +293,19 @@ export async function syncScimGroupMembers(
 
     // 3. Look up the role mapping for this SCIM group (if any)
     let mappedRoleId: string | null = null;
+    let mappedRoleIsBuiltin = false;
     if (team.scim_group_id) {
-      // Excludes built-ins here as well as on write, so a mapping stored before that
-      // guard existed cannot still grant admin on every sync.
-      const mappingResult = await client.query<{ role_id: string }>(
-        `SELECT m.role_id
+      const mappingResult = await client.query<{ role_id: string; is_builtin: boolean }>(
+        `SELECT m.role_id, r.is_builtin
            FROM scim_group_role_mappings m
            JOIN public.custom_roles r ON r.id = m.role_id
-          WHERE m.scim_group_id = $1 AND r.is_builtin = false`,
+          WHERE m.scim_group_id = $1`,
         [team.scim_group_id],
       );
       if (mappingResult.rows.length > 0) {
         // Non-null assertion safe: length > 0 guarantees rows[0] exists
         mappedRoleId = mappingResult.rows[0]!.role_id;
+        mappedRoleIsBuiltin = mappingResult.rows[0]!.is_builtin;
       }
     }
 
@@ -319,7 +319,9 @@ export async function syncScimGroupMembers(
         [teamId, ...toAdd],
       );
 
-      if (mappedRoleId) {
+      // Built-ins are refused on write, so one here predates that guard. Skip only the
+      // grant — the revoke below must still run, or members keep a role they already have.
+      if (mappedRoleId && !mappedRoleIsBuiltin) {
         const roleValues = toAdd.map((_, i) => `($${i + 1}, $${toAdd.length + 1})`).join(', ');
         await client.query(
           `INSERT INTO user_custom_roles (user_id, role_id)

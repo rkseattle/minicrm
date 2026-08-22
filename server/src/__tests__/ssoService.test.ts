@@ -242,6 +242,44 @@ describe('unlinkAllSsoUsers', () => {
 // ── Binding overwrite protection ──────────────────────────────────────────────
 
 describe('findOrProvisionSsoUser — binding overwrite protection', () => {
+  it('grants the configured custom JIT role on provision', async () => {
+    const role = await pool.query<{ id: string }>(
+      `INSERT INTO custom_roles (name, description, is_builtin)
+       VALUES ('sso-jit-grant-role', 'JIT grant test', false)
+       ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description
+       RETURNING id`,
+    );
+    const roleId = role.rows[0]!.id;
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ('sso_jit_default_role_id', $1, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [roleId],
+    );
+
+    try {
+      const user = await findOrProvisionSsoUser('oidc', {
+        subject: 'oidc-jit-grant-subject',
+        email: 'sso-test-jit-grant@example.com',
+        name: 'JIT Grant',
+      });
+
+      const granted = await pool.query(
+        `SELECT 1 FROM user_custom_roles WHERE user_id = $1 AND role_id = $2`,
+        [user.id, roleId],
+      );
+      expect(granted.rows).toHaveLength(1);
+    } finally {
+      await pool.query(
+        `INSERT INTO system_settings (key, value, updated_at)
+         SELECT 'sso_jit_default_role_id', r.id::text, now()
+           FROM custom_roles r WHERE r.name = 'rep' AND r.is_builtin = true
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      );
+      await pool.query(`DELETE FROM custom_roles WHERE name = 'sso-jit-grant-role'`);
+    }
+  });
+
   it('ignores a stored privileged built-in JIT role rather than granting it', async () => {
     const builtin = await pool.query<{ id: string }>(
       `SELECT id FROM custom_roles WHERE name = 'admin' AND is_builtin = true`,
@@ -255,19 +293,28 @@ describe('findOrProvisionSsoUser — binding overwrite protection', () => {
       [builtin.rows[0]!.id],
     );
 
-    const user = await findOrProvisionSsoUser('oidc', {
-      subject: 'oidc-builtin-jit-subject',
-      email: 'sso-test-builtin-jit@example.com',
-      name: 'Builtin JIT',
-    });
+    try {
+      const user = await findOrProvisionSsoUser('oidc', {
+        subject: 'oidc-builtin-jit-subject',
+        email: 'sso-test-builtin-jit@example.com',
+        name: 'Builtin JIT',
+      });
 
-    const granted = await pool.query(
-      `SELECT 1 FROM user_custom_roles WHERE user_id = $1 AND role_id = $2`,
-      [user.id, builtin.rows[0]!.id],
-    );
-    expect(granted.rows).toHaveLength(0);
-
-    await pool.query(`DELETE FROM system_settings WHERE key = 'sso_jit_default_role_id'`);
+      const granted = await pool.query(
+        `SELECT 1 FROM user_custom_roles WHERE user_id = $1 AND role_id = $2`,
+        [user.id, builtin.rows[0]!.id],
+      );
+      expect(granted.rows).toHaveLength(0);
+    } finally {
+      // Restore the migration-seeded value rather than deleting the key, so the test DB
+      // still matches a fresh install if this assertion fails.
+      await pool.query(
+        `INSERT INTO system_settings (key, value, updated_at)
+         SELECT 'sso_jit_default_role_id', r.id::text, now()
+           FROM custom_roles r WHERE r.name = 'rep' AND r.is_builtin = true
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      );
+    }
   });
 
   it('rejects a login attempt that would overwrite an existing SSO binding via email match', async () => {

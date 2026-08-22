@@ -23,6 +23,7 @@ const SSO_KEYS = [
   'sso_idp_metadata_url',
   'sso_entity_id',
   'sso_idp_certificate_encrypted',
+  'sso_jit_default_role_id',
 ];
 
 beforeEach(async () => {
@@ -99,6 +100,31 @@ describe('getSsoStatus', () => {
     const status = await getSsoStatus();
     expect(status.enabled).toBe(true);
     expect(status.protocol).toBe('saml');
+  });
+});
+
+// ── getSsoConfig masking ───────────────────────────────────────────────────────
+
+describe('getSsoConfig jit_default_role_id masking', () => {
+  it('reports a stored privileged built-in as unset', async () => {
+    await setSsoConfig({
+      protocol: 'oidc',
+      idp_metadata_url: 'https://idp.example.com/.well-known/openid-configuration',
+      entity_id: 'client-id',
+    });
+    const builtin = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE name = 'admin' AND is_builtin = true`,
+    );
+    // Written directly: setSsoConfig refuses this value.
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ('sso_jit_default_role_id', $1, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [builtin.rows[0]!.id],
+    );
+
+    const config = await getSsoConfig();
+    expect(config?.jit_default_role_id).toBeNull();
   });
 });
 

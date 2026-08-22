@@ -1372,7 +1372,7 @@ Enrollment is self-service, from **Profile → Two-Factor Authentication**:
 
 1. The user clicks **Set up two-factor authentication**.
 2. MiniCRM displays a QR code. The user scans it with their authenticator app. The entry
-   appears there labelled with the user's email address, under the issuer name `MiniCRM`
+   appears there labeled with the user's email address, under the issuer name `MiniCRM`
    (set by the `APP_NAME` environment variable, and separate from the workspace name under
    **Branding**).
 3. The user enters the current 6-digit code to confirm the app is correctly paired.
@@ -1535,7 +1535,10 @@ it to the built-in `rep` role, which adds nothing beyond the base role.
 > applies to every account the IdP provisions — picking `admin` would hand full
 > administrative access to everyone who signs in. Grant elevated access per user instead,
 > or define a custom role. A value stored before this rule existed is ignored at
-> provisioning time and shown as unset.
+> provisioning time and shown as unset, and any role it already granted was revoked on
+> upgrade — except where an administrator had also granted that role deliberately. Those
+> revocations appear in the **Audit Log** as `role_revoked`; review them and re-grant
+> anything that was intended.
 >
 > If the configured role has since been deleted, the user is still created and can still
 > sign in — with the base `rep` role only, and none of the capabilities you intended. The
@@ -1613,7 +1616,7 @@ membership.
 #### Step 1 — Issue a bearer token
 
 1. Go to **Admin Settings → Security & Identity**.
-2. In **SCIM 2.0 Provisioning → Bearer Token**, click **Generate Token** (labelled
+2. In **SCIM 2.0 Provisioning → Bearer Token**, click **Generate Token** (labeled
    **Regenerate Token** once one exists).
 3. Copy the token immediately — MiniCRM shows it once and stores only a hash of it.
 
@@ -1655,7 +1658,9 @@ have it revoked.
 `viewer`, `service_account`) are not valid targets, and a mapping that names one is
 rejected with `409 SCIM_MAPPING_BUILTIN_ROLE`. Create a custom role under
 **Admin Settings → Users & Access → Roles** first. Any such mapping stored before this rule
-existed is ignored at sync time rather than granted.
+existed is ignored at sync time rather than granted, and any role it already granted was
+revoked on upgrade — see the note in the SSO section on reviewing those revocations.
+Removing a member from such a group still revokes the role as it always did.
 
 ### How group mapping behaves
 

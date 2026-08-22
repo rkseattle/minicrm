@@ -12,6 +12,7 @@ import {
 } from '../services/ssoSettingsService.js';
 import { unlinkAllSsoUsers } from '../services/ssoService.js';
 import { setSsoConfigSchema } from '@minicrm/shared/schemas/settingsSchema.js';
+import type { SsoConfigPublic } from '@minicrm/shared/schemas/settingsSchema.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
 
@@ -51,7 +52,7 @@ export async function putSsoConfigHandler(req: Request, res: Response): Promise<
     return;
   }
 
-  let saved;
+  let saved: SsoConfigPublic;
   try {
     saved = await setSsoConfig(parsed.data, { id: req.user!.id, name: req.user!.name });
   } catch (err: unknown) {

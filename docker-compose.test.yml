@@ -154,6 +154,7 @@ services:
       # profiled off.
       APP_URL: ${TEST_APP_URL:-http://localhost:5175}
       APP_BASE_URL: ${TEST_APP_BASE_URL:-http://localhost:5175}
+      APP_NAME: ${APP_NAME:-MiniCRM}
       # This one is the SERVER's own public origin, not a browser origin: the IdP
       # redirects/POSTs back to the Express API, which is published on 3002.
       SSO_CALLBACK_BASE_URL: ${TEST_SSO_CALLBACK_BASE_URL:-http://localhost:3002}

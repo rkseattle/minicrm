@@ -93,7 +93,7 @@ export async function getSsoConfig(): Promise<SsoConfigPublic | null> {
     return null;
   }
 
-  // A stored privileged built-in is no longer honoured when provisioning, so report it as
+  // A stored privileged built-in is no longer honored when provisioning, so report it as
   // unset rather than showing the admin a value that does nothing.
   const storedJitRoleId = map[SSO_JIT_DEFAULT_ROLE_ID_KEY] ?? null;
   let jit_default_role_id: string | null = null;
