@@ -38,7 +38,9 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 1. Go to **Admin → Users** in the navigation.
 2. Click **Invite user**.
 3. Enter the new user's **Email address** and **Full name**.
-4. Choose their **Role**: _Rep_ (standard user) or _Admin_ (full access).
+4. Choose their **Role**. The invite offers all five built-in roles — _Rep_, _Manager_,
+   _Viewer_, _Service Account_, and _Admin_ — described in the table below and in
+   [Section 14 — Roles and Capabilities](#14-roles-and-capabilities).
 5. Click **Send invite**.
 
 The user receives an invitation email with a link to set their password.
@@ -88,10 +90,18 @@ See [Section 7 — Onboarding Checklist](#7-onboarding-checklist).
 | Active   | User can log in                                      |
 | Inactive | User is deactivated; cannot log in                   |
 
-| Role  | Access level                                                                 |
-| ----- | ---------------------------------------------------------------------------- |
-| Rep   | Can manage their own contacts, deals, accounts, activities, leads, and notes |
-| Admin | Everything a rep can do, plus all admin sections                             |
+| Role            | Access level                                                                       |
+| --------------- | ---------------------------------------------------------------------------------- |
+| Rep             | Manages their own contacts, deals, accounts, activities, leads, and notes          |
+| Manager         | Everything a rep can do across their team's records, plus reassignment and exports |
+| Viewer          | Read-only across the organisation; cannot create, edit, or delete anything         |
+| Service Account | Machine-to-machine API access by bearer token; refused on the web UI entirely      |
+| Admin           | Everything a rep can do, plus every admin section                                  |
+
+Capabilities are what actually grant access, and a custom role can hold any combination of
+them — see [Section 14 — Roles and Capabilities](#14-roles-and-capabilities). Note the
+bulk **Change role** action offers four of these five; `service_account` can only be set
+when inviting a user.
 
 ---
 
@@ -1301,9 +1311,11 @@ Capabilities are grouped by domain. The full list is visible in **Admin → Sett
 | Users & Admin | `users:view`, `users:create`, `users:edit`, `users:delete`, `teams:manage`, `integrations:manage`, `settings:manage`, `feature_flags:manage`, `audit_log:view` |
 | API           | `api:access`                                                                                                                                                   |
 
-Capabilities marked as **admin-only** (`contacts:delete`, `deals:delete`, `activities:delete`)
-are not included in the built-in `rep` or `manager` roles and should only be granted to custom
-roles used by trusted personnel.
+> **`contacts:delete`, `deals:delete`, and `activities:delete` are not admin-only.** All
+> three are granted to the built-in `rep` and `manager` roles as well, so a rep can delete
+> records they own. If you need deletion restricted to trusted personnel, build a custom
+> role without those capabilities and assign it instead of `rep` — revoking them from the
+> built-in role is not possible.
 
 ### Tutorial: create a custom role and assign it to a user
 
