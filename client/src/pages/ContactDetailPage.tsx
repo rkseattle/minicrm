@@ -69,6 +69,7 @@ import {
 import { getContactSentimentTrend, contactSentimentTrendQueryKey } from '@/api/sentiment.js';
 import { getFollowUpTiming, followUpTimingQueryKey } from '@/api/followUpTiming.js';
 import FollowUpTimingCard from '@/components/FollowUpTimingCard.js';
+import { usePermissions } from '@/hooks/usePermissions.js';
 
 /**
  * Single contact detail page with view/edit/delete.
@@ -134,6 +135,9 @@ export default function ContactDetailPage() {
 
   // Sequence enrollment state
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  // Enrolling needs sequences:enroll, which viewers and service accounts lack; the sequence
+  // list they would pick from is refused too, so the picker would render empty.
+  const { canWrite } = usePermissions();
   const [enrollSequenceId, setEnrollSequenceId] = useState('');
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [unenrollError, setUnenrollError] = useState<string | null>(null);
@@ -1493,16 +1497,18 @@ export default function ContactDetailPage() {
                     >
                       {t('sequences.enrollments')}
                     </h2>
-                    <button
-                      data-testid="enroll-sequence-button"
-                      onClick={() => {
-                        setIsEnrollModalOpen(true);
-                        setEnrollError(null);
-                      }}
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      {t('sequences.enrollButton')}
-                    </button>
+                    {canWrite && (
+                      <button
+                        data-testid="enroll-sequence-button"
+                        onClick={() => {
+                          setIsEnrollModalOpen(true);
+                          setEnrollError(null);
+                        }}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        {t('sequences.enrollButton')}
+                      </button>
+                    )}
                   </div>
 
                   {enrollmentsLoading && (

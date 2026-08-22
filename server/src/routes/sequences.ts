@@ -1,12 +1,14 @@
 /**
  * Sequence routes — sales sequences and enrollment endpoints.
- * CRUD on sequences and steps requires admin role.
- * Enrolling/unenrolling and viewing enrollments is available to all authenticated users.
+ *
+ * Gated by capability, so a custom role's sequences:* grants are honoured. Of the built-in
+ * roles, admin and manager hold create and edit; only admin holds delete.
  */
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -48,6 +50,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
+  requireCapability(Capability.SequencesView),
   requireFeatureEnabled('sequencing'),
   asyncHandler(listSequencesHandler),
 );
@@ -59,7 +62,7 @@ router.get(
  *     tags: [Sequences]
  *     operationId: createSequence
  *     summary: Create a sequence
- *     description: Admin only.
+ *     description: Requires the sequences:create capability.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -75,7 +78,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole('admin'),
+  requireCapability(Capability.SequencesCreate),
   requireFeatureEnabled('sequencing'),
   asyncHandler(createSequenceHandler),
 );
@@ -105,6 +108,7 @@ router.post(
 router.get(
   '/:id',
   authenticate,
+  requireCapability(Capability.SequencesView),
   requireFeatureEnabled('sequencing'),
   asyncHandler(getSequenceHandler),
 );
@@ -116,7 +120,7 @@ router.get(
  *     tags: [Sequences]
  *     operationId: updateSequence
  *     summary: Update a sequence
- *     description: Admin only.
+ *     description: Requires the sequences:edit capability.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -139,7 +143,7 @@ router.get(
 router.patch(
   '/:id',
   authenticate,
-  requireRole('admin'),
+  requireCapability(Capability.SequencesEdit),
   requireFeatureEnabled('sequencing'),
   asyncHandler(updateSequenceHandler),
 );
@@ -151,7 +155,7 @@ router.patch(
  *     tags: [Sequences]
  *     operationId: deleteSequence
  *     summary: Delete a sequence
- *     description: Admin only. Fails with 409 if active enrollments exist.
+ *     description: Requires the sequences:delete capability. Fails with 409 if active enrollments exist.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -174,7 +178,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('admin'),
+  requireCapability(Capability.SequencesDelete),
   requireFeatureEnabled('sequencing'),
   asyncHandler(deleteSequenceHandler),
 );
@@ -204,6 +208,7 @@ router.delete(
 router.get(
   '/:id/steps',
   authenticate,
+  requireCapability(Capability.SequencesView),
   requireFeatureEnabled('sequencing'),
   asyncHandler(listStepsHandler),
 );
@@ -215,7 +220,7 @@ router.get(
  *     tags: [Sequences]
  *     operationId: createSequenceStep
  *     summary: Add a step to a sequence
- *     description: Admin only.
+ *     description: Requires the sequences:edit capability.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -240,7 +245,7 @@ router.get(
 router.post(
   '/:id/steps',
   authenticate,
-  requireRole('admin'),
+  requireCapability(Capability.SequencesEdit),
   requireFeatureEnabled('sequencing'),
   asyncHandler(createStepHandler),
 );
@@ -252,7 +257,7 @@ router.post(
  *     tags: [Sequences]
  *     operationId: updateSequenceStep
  *     summary: Update a step
- *     description: Admin only.
+ *     description: Requires the sequences:edit capability.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -279,7 +284,7 @@ router.post(
 router.patch(
   '/:id/steps/:stepId',
   authenticate,
-  requireRole('admin'),
+  requireCapability(Capability.SequencesEdit),
   requireFeatureEnabled('sequencing'),
   asyncHandler(updateStepHandler),
 );
@@ -291,7 +296,7 @@ router.patch(
  *     tags: [Sequences]
  *     operationId: deleteSequenceStep
  *     summary: Delete a step
- *     description: Admin only.
+ *     description: Requires the sequences:edit capability.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -316,7 +321,7 @@ router.patch(
 router.delete(
   '/:id/steps/:stepId',
   authenticate,
-  requireRole('admin'),
+  requireCapability(Capability.SequencesEdit),
   requireFeatureEnabled('sequencing'),
   asyncHandler(deleteStepHandler),
 );

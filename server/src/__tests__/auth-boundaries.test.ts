@@ -628,9 +628,62 @@ describe('manager and viewer are blocked from admin-only endpoints', () => {
   });
 
   afterAll(async () => {
+    await pool.query('DELETE FROM sales_sequences WHERE name IN ($1, $2)', [
+      'Manager sequence',
+      'Admin-only delete',
+    ]);
     await pool.query(
       "DELETE FROM users WHERE email IN ('bounds-manager@example.com', 'bounds-viewer@example.com')",
     );
+  });
+
+  // Sequence and custom-report routes gate on capability, so the seeded grants decide these
+  // outcomes rather than the role name.
+  it('lets a manager author a sequence, which requireRole(admin) previously refused', async () => {
+    const res = await request(app)
+      .post('/api/v1/sequences')
+      .set('Cookie', managerCookie)
+      .send({ name: 'Manager sequence', description: 'capability-gated' });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when a manager deletes a sequence', async () => {
+    const created = await request(app)
+      .post('/api/v1/sequences')
+      .set('Cookie', adminCookie)
+      .send({ name: 'Admin-only delete', description: 'x' });
+
+    const res = await request(app)
+      .delete(`/api/v1/sequences/${created.body.sequence.id}`)
+      .set('Cookie', managerCookie);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when a viewer creates a custom report', async () => {
+    const res = await request(app)
+      .post('/api/v1/reports/custom')
+      .set('Cookie', viewerCookie)
+      .send({
+        name: 'Viewer report',
+        entity_type: 'contact',
+        config: { selected_fields: ['id'], filters: [] },
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('still lets a viewer list custom reports, which reports:view allows', async () => {
+    const res = await request(app).get('/api/v1/reports/custom').set('Cookie', viewerCookie);
+    expect(res.status).toBe(200);
+  });
+
+  it('lets a viewer read the dashboard summary, which dashboards:view allows', async () => {
+    const res = await request(app).get('/api/v1/dashboard/summary').set('Cookie', viewerCookie);
+    expect(res.status).toBe(200);
   });
 
   it('returns 403 AUTH_FORBIDDEN when manager attempts to change a user role', async () => {

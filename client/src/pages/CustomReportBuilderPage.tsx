@@ -570,9 +570,15 @@ export function CustomReportBuilderContent() {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  // Authoring needs reports:create / reports:edit, held by admin and manager only. The
+  // server refuses anyone else, so the controls are hidden rather than left to 403.
+  const canAuthorReports = user?.role === 'admin' || user?.role === 'manager';
+  const canDeleteReports = user?.role === 'admin';
+
   const activeReport = savedReports?.find((r) => r.id === activeReportId) ?? null;
   const activeReportCanMutate =
     activeReport !== null &&
+    canAuthorReports &&
     (user?.role === 'admin' ||
       activeReport.created_by === user?.id ||
       activeReport.visibility === 'public');
@@ -619,9 +625,9 @@ export function CustomReportBuilderContent() {
         <ul className="space-y-1" data-testid="saved-reports-list">
           {savedReports?.map((report) => {
             const canMutate =
-              user?.role === 'admin' ||
-              report.created_by === user?.id ||
-              report.visibility === 'public';
+              canDeleteReports ||
+              (canAuthorReports &&
+                (report.created_by === user?.id || report.visibility === 'public'));
             return (
               <li key={report.id} className="group flex items-center gap-1 min-w-0">
                 <button

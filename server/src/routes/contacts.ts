@@ -1915,6 +1915,7 @@ router.post(
 router.get(
   '/:id/sequence-enrollments',
   authenticate,
+  requireCapability(Capability.SequencesEnroll),
   requireFeatureEnabled('sequencing'),
   asyncHandler(listContactEnrollmentsHandler),
 );
