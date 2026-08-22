@@ -22,7 +22,7 @@ import {
   setTeamRoutingOverride,
 } from '../services/leadRoutingService.js';
 import type { CandidateRep } from '../services/leadRoutingService.js';
-import { isFlagEnabledForUser, __clearCacheForTest } from '../services/featureFlagService.js';
+import { isFlagEnabledForUser } from '../services/featureFlagService.js';
 import { uid, restoreLeadRoutingFlag } from './testUtils.js';
 
 const FILE_PREFIX = 'lead-routing-svc';

@@ -2363,7 +2363,9 @@
       "settings": "Einstellungen",
       "feature_flags": "Feature-Flags",
       "audit_log": "Audit-Protokoll",
-      "api": "API"
+      "api": "API",
+      "sequences": "Sequenzen",
+      "dashboards": "Dashboards"
     },
     "capabilityActions": {
       "view": "Anzeigen",

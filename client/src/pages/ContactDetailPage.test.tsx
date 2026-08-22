@@ -9,7 +9,14 @@ import { http, HttpResponse } from 'msw';
 import ContactDetailPage from './ContactDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { CONTACT_1, ACCOUNT_1, ADMIN_USER, REP_USER, DEAL_1 } from '../test/msw/handlers.js';
+import {
+  CONTACT_1,
+  ACCOUNT_1,
+  ADMIN_USER,
+  REP_USER,
+  VIEWER_USER,
+  DEAL_1,
+} from '../test/msw/handlers.js';
 import * as contactsApi from '@/api/contacts.js';
 
 describe('ContactDetailPage', () => {
@@ -1275,6 +1282,34 @@ describe('ContactDetailPage', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('email-draft-panel')).not.toBeInTheDocument();
       });
+    });
+  });
+});
+
+describe('ContactDetailPage — sequence enrollments visibility', () => {
+  it('hides the enrollments section from a viewer, who cannot enroll', async () => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: VIEWER_USER })));
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('contact-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('sequence-enrollments-heading')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('enroll-sequence-button')).not.toBeInTheDocument();
+  });
+
+  it('shows the enrollments section to a rep, who can enroll', async () => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sequence-enrollments-heading')).toBeInTheDocument();
     });
   });
 });

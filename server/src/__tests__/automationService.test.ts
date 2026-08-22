@@ -22,6 +22,7 @@ import {
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
+import { listPipelineStages, updatePipelineStage } from '../services/pipelineStageService.js';
 import type { QueryResult } from 'pg';
 import { waitUntil, clearAuditLogFor } from './testUtils.js';
 
@@ -374,6 +375,52 @@ describe('listRuleLogs', () => {
 
     const logs = await listRuleLogs(rule.id);
     expect(logs).toHaveLength(20);
+  });
+});
+
+// ── deal_stage_changed across a stage rename ──────────────────────────────────
+
+describe('fireAutomationTrigger — deal_stage_changed after a stage rename', () => {
+  it('still fires the rule once the stage it targets has been renamed', async () => {
+    const stages = await listPipelineStages();
+    const prospecting = stages.find((st) => st.name === 'Prospecting')!;
+
+    await createAutomationRule({
+      ...BASE_RULE,
+      name: 'Stage rename rule',
+      trigger_type: 'deal_stage_changed',
+      trigger_config: { stage: 'Prospecting' },
+      created_by: adminId,
+    });
+
+    try {
+      await updatePipelineStage(
+        prospecting.id,
+        { name: 'Initial Outreach' },
+        { id: adminId, name: 'Admin' },
+      );
+
+      // Asserts the rule EXECUTES, not merely that its stored stage changed: validating the
+      // stage against a static enum let the rename update the row while the rule stayed dead.
+      await fireAutomationTrigger('deal_stage_changed', {
+        recordId: dealId,
+        recordType: 'deal',
+        ownerId: adminId,
+        newStage: 'Initial Outreach',
+      });
+
+      const tasks = await pool.query(
+        `SELECT * FROM activities WHERE deal_id = $1 AND type = 'Task'`,
+        [dealId],
+      );
+      expect(tasks.rows).toHaveLength(1);
+    } finally {
+      await updatePipelineStage(
+        prospecting.id,
+        { name: 'Prospecting' },
+        { id: adminId, name: 'Admin' },
+      );
+    }
   });
 });
 

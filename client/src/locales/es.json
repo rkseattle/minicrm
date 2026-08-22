@@ -2363,7 +2363,9 @@
       "settings": "Configuración",
       "feature_flags": "Indicadores de función",
       "audit_log": "Registro de auditoría",
-      "api": "API"
+      "api": "API",
+      "sequences": "Secuencias",
+      "dashboards": "Paneles"
     },
     "capabilityActions": {
       "view": "Ver",

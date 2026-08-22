@@ -570,9 +570,10 @@ export function CustomReportBuilderContent() {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  // Authoring needs reports:create / reports:edit, held by admin and manager only. The
-  // server refuses anyone else, so the controls are hidden rather than left to 403.
+  // Mirrors the capabilities the server checks: reports:create/edit/export are held by
+  // admin and manager, reports:delete by admin alone. Hidden rather than left to 403.
   const canAuthorReports = user?.role === 'admin' || user?.role === 'manager';
+  const canExportReports = canAuthorReports;
   const canDeleteReports = user?.role === 'admin';
 
   const activeReport = savedReports?.find((r) => r.id === activeReportId) ?? null;
@@ -624,8 +625,8 @@ export function CustomReportBuilderContent() {
 
         <ul className="space-y-1" data-testid="saved-reports-list">
           {savedReports?.map((report) => {
-            // Deleting needs reports:delete, which only admin holds — ownership and
-            // visibility do not widen it.
+            // Narrower than it looks: reps previously deleted their own reports, but
+            // reports:delete is admin-only, so ownership no longer grants it.
             const canMutate = canDeleteReports;
             return (
               <li key={report.id} className="group flex items-center gap-1 min-w-0">
@@ -1020,7 +1021,7 @@ export function CustomReportBuilderContent() {
               </button>
             ) : null}
 
-            {canAuthorReports && activeReportId && result && (
+            {canExportReports && activeReportId && result && (
               <ExportMenu
                 label={t('common.export')}
                 testId="custom-reports-export-menu-button"

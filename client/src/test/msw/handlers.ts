@@ -277,6 +277,17 @@ export const REP_USER: UserResponse = {
   created_at: '2025-01-01T00:00:00.000Z',
 };
 
+/** Reusable fixture: viewer — read-only, holds no write capability. */
+export const VIEWER_USER: UserResponse = {
+  id: '00000000-0000-0000-0000-000000000007',
+  email: 'viewer@example.com',
+  name: 'Test Viewer',
+  role: 'viewer',
+  status: 'active',
+  must_change_password: false,
+  created_at: '2025-01-01T00:00:00.000Z',
+};
+
 /** Reusable fixture: manager — holds the reports:* capabilities a rep does not. */
 export const MANAGER_USER: UserResponse = {
   id: '00000000-0000-0000-0000-000000000006',

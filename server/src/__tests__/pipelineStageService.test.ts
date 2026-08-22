@@ -262,41 +262,6 @@ describe('updatePipelineStage', () => {
     expect(updated?.name).toBe('Outreach');
   });
 
-  it('carries deal_stage_changed automation rules across a stage rename', async () => {
-    const stages = await listPipelineStages();
-    const prospecting = stages.find((s) => s.name === 'Prospecting')!;
-
-    const { rows: owner } = await pool.query<{ id: string }>(
-      `INSERT INTO users (email, password_hash, name, role, status)
-       VALUES ($1, 'x', 'Rule Owner', 'admin', 'active')
-       RETURNING id`,
-      [`${FILE_PREFIX}-ruleowner@example.com`],
-    );
-    const { rows } = await pool.query<{ id: string }>(
-      `INSERT INTO automation_rules
-         (name, enabled, trigger_type, trigger_config, action_type, action_config, created_by)
-       VALUES ('stage-rename-rule', true, 'deal_stage_changed', '{"stage":"Prospecting"}'::jsonb,
-               'send_notification', '{"message":"x"}'::jsonb, $1)
-       RETURNING id`,
-      [owner[0].id],
-    );
-    const ruleId = rows[0].id;
-
-    try {
-      await updatePipelineStage(prospecting.id, { name: 'Initial Outreach' }, ACTOR);
-
-      const { rows: after } = await pool.query<{ stage: string }>(
-        `SELECT trigger_config ->> 'stage' AS stage FROM automation_rules WHERE id = $1`,
-        [ruleId],
-      );
-      // Left at 'Prospecting' the rule would still read as enabled and never fire again.
-      expect(after[0].stage).toBe('Initial Outreach');
-    } finally {
-      await pool.query('DELETE FROM automation_rules WHERE id = $1', [ruleId]);
-      await pool.query('DELETE FROM users WHERE id = $1', [owner[0].id]);
-    }
-  });
-
   it('atomically renames deals in the old stage to the new stage name', async () => {
     // Temporarily remove the deals_stage_check constraint to insert test deals
     // (the real app no longer has this constraint after migration 021)

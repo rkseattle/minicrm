@@ -1328,7 +1328,10 @@ Capabilities are grouped by domain. The full list is visible in **Admin → Sett
 >
 > The **Workflows**, **Forecasting**, and **Billing** groups above, along with
 > `dashboards:manage` and `reports:schedule`, are reserved for features that do not exist
-> yet. Granting them to a custom role is harmless but has no effect today.
+> yet. A few others are checked only by the AI assistant's tool filter and not by any API
+> route — `contacts:export`, `deals:reassign`, `pipelines:manage`, `feature_flags:manage`,
+> `audit_log:view`, and `users:create` — so granting one of those to a custom role does not
+> yet open the matching endpoint, which still gates on the `admin` role.
 >
 > The role editor covers every group that gates something today. The reserved groups —
 > Workflows, Forecasting, Billing — have no checkboxes, since granting them would have no
@@ -1989,8 +1992,9 @@ does not — managers work within their teams rather than administering them.
 > When the flag is off, the **Import Data** section of **Admin Settings → Data & Platform** is
 > visible but greyed out and every control inside it is disabled.
 
-Bulk-import accounts, contacts, and deals from CSV files. Import is **admin-only** — every
-endpoint requires the `admin` role, so a manager or rep cannot reach it even with the flag on.
+Bulk-import accounts, contacts, and deals from CSV files. Every endpoint requires the
+`data:import` capability, which the built-in `admin` and `service_account` roles hold — so a
+manager or rep cannot reach it even with the flag on, and a bearer-token integration can.
 
 ### Tutorial: import a CSV
 

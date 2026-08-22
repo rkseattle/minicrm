@@ -78,12 +78,35 @@ export interface TriggerContext {
  * @param actor - User performing the action (for audit log)
  * @returns The inserted rule row
  */
+/**
+ * Throws when a deal_stage_changed rule names a stage no pipeline has. Checked here rather
+ * than in the Zod schema because stages are admin-editable and live in the database, which
+ * a shared schema cannot reach.
+ */
+async function assertStageExists(triggerType: string, triggerConfig: unknown): Promise<void> {
+  if (triggerType !== 'deal_stage_changed') return;
+  const stage = (triggerConfig as { stage?: unknown } | null)?.stage;
+  if (typeof stage !== 'string') return;
+
+  const { rows } = await pool.query<{ exists: boolean }>(
+    'SELECT EXISTS(SELECT 1 FROM pipeline_stages WHERE name = $1) AS exists',
+    [stage],
+  );
+  if (!rows[0]?.exists) {
+    throw Object.assign(new Error(`Unknown pipeline stage: '${stage}'`), {
+      code: 'AUTOMATION_STAGE_NOT_FOUND',
+    });
+  }
+}
+
 export async function createAutomationRule(
   params: CreateAutomationRuleInput & { created_by: string },
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<AutomationRuleRow> {
   const { name, enabled, trigger_type, trigger_config, action_type, action_config, created_by } =
     params;
+
+  await assertStageExists(trigger_type, trigger_config);
 
   const insertResult = await pool.query<{ id: string }>(
     `INSERT INTO automation_rules
