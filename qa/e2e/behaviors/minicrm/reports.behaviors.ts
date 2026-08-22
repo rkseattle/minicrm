@@ -517,19 +517,35 @@ export async function runCustomReport(
 /**
  * Saves the current builder config as a new named report.
  *
+ * Returns the create POST's status: the sidebar updates via a refetch, so a DOM-only
+ * wait cannot tell a failed save from a slow one.
+ *
  * @param name - The name to enter in the save dialog.
+ * @param timeout - How long to wait for the create response.
+ * @returns The status of the create-report response.
  */
 export async function saveCustomReport(
   name: string,
   context: ReportsBehaviorContext,
-): Promise<void> {
+  timeout = 15_000,
+): Promise<{ status: number }> {
   const reportsPage = new ReportsPage(context);
   const saveBtn = await reportsPage.saveReportButtonLocator();
   await saveBtn.click();
   const nameInput = await reportsPage.saveReportNameInputLocator();
   await nameInput.fill(name);
+
+  // Exact path: the same prefix also serves POST /run and POST /:id/run.
+  const responseReceived = context.page.waitForResponse(
+    (res) =>
+      res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/v1/reports/custom',
+    { timeout },
+  );
   const confirmBtn = await reportsPage.saveReportConfirmLocator();
   await confirmBtn.click();
+  const response = await responseReceived;
+
+  return { status: response.status() };
 }
 
 /**
