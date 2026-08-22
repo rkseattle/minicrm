@@ -422,6 +422,53 @@ describe('fireAutomationTrigger — deal_stage_changed after a stage rename', ()
       );
     }
   });
+  it('leaves the rule alone when another pipeline still uses the old stage name', async () => {
+    // Rules match on stage NAME and carry no pipeline of their own, so a rule for a name two
+    // pipelines share is still serving the other one — rewriting it would break that.
+    const { rows: pipelines } = await pool.query<{ id: string }>(
+      `INSERT INTO pipelines (name, is_default) VALUES ('Rename Probe Pipeline', false)
+       RETURNING id`,
+    );
+    const otherPipelineId = pipelines[0].id;
+    await pool.query(
+      `INSERT INTO pipeline_stages (pipeline_id, name, sort_order, probability)
+       VALUES ($1, 'Prospecting', 1, 10)`,
+      [otherPipelineId],
+    );
+
+    const stages = await listPipelineStages();
+    const prospecting = stages.find((st) => st.name === 'Prospecting')!;
+
+    await createAutomationRule({
+      ...BASE_RULE,
+      name: 'Shared stage rule',
+      trigger_type: 'deal_stage_changed',
+      trigger_config: { stage: 'Prospecting' },
+      created_by: adminId,
+    });
+
+    try {
+      await updatePipelineStage(
+        prospecting.id,
+        { name: 'Initial Outreach' },
+        { id: adminId, name: 'Admin' },
+      );
+
+      const { rows } = await pool.query<{ stage: string }>(
+        `SELECT trigger_config ->> 'stage' AS stage FROM automation_rules
+         WHERE name = 'Shared stage rule'`,
+      );
+      expect(rows[0].stage).toBe('Prospecting');
+    } finally {
+      await updatePipelineStage(
+        prospecting.id,
+        { name: 'Prospecting' },
+        { id: adminId, name: 'Admin' },
+      );
+      await pool.query(`DELETE FROM pipeline_stages WHERE pipeline_id = $1`, [otherPipelineId]);
+      await pool.query(`DELETE FROM pipelines WHERE id = $1`, [otherPipelineId]);
+    }
+  });
 });
 
 // ── fireAutomationTrigger — create_task action ─────────────────────────────────

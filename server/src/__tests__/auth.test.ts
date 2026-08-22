@@ -113,6 +113,16 @@ describe('deactivated user mid-session', () => {
     expect(res.status).toBe(200);
     expect(res.body.user.id).toBe(activeUserId);
   });
+
+  it('returns the effective capability set, which the client gates controls on', async () => {
+    const res = await request(app).get('/api/v1/auth/me').set('Cookie', activeCookie);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.capabilities)).toBe(true);
+    // Inferring these from the role name is what the field exists to replace, so it has to
+    // carry the resolved grants rather than be present and empty.
+    expect(res.body.capabilities).toContain('dashboards:view');
+  });
 });
 
 // ── must_change_password enforcement ─────────────────────────────

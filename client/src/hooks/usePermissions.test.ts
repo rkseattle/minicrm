@@ -54,3 +54,32 @@ describe('usePermissions', () => {
     expect(result.current.canWrite).toBe(true);
   });
 });
+
+describe('usePermissions — can()', () => {
+  it('reads the server-resolved capability set, not the role name', () => {
+    mockUseAuth.mockReturnValue({
+      user: { role: 'rep' } as never,
+      capabilities: ['reports:view', 'reports:create'],
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const { result } = renderHook(() => usePermissions());
+    expect(result.current.can('reports:create')).toBe(true);
+    expect(result.current.can('reports:delete')).toBe(false);
+  });
+
+  it('falls back to the built-in grants when the response carries no capabilities', () => {
+    // An older cached /auth/me predates the field; hiding every gated control would be worse
+    // than deferring to the role's defaults until it refreshes.
+    mockUseAuth.mockReturnValue({
+      user: { role: 'admin' } as never,
+      capabilities: [],
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const { result } = renderHook(() => usePermissions());
+    expect(result.current.can('reports:delete')).toBe(true);
+  });
+});

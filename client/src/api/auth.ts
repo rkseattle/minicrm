@@ -8,6 +8,8 @@ import type { UserResponse } from '@shared/schemas/userSchema.js';
 
 interface AuthResponse {
   user: UserResponse;
+  /** Effective capabilities across all the user's roles. Returned by GET /auth/me. */
+  capabilities?: string[];
   mustChangePassword?: boolean;
   /** True when MFA is enabled; session cookie not yet issued. */
   mfaRequired?: boolean;
