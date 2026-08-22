@@ -827,6 +827,28 @@ describe('syncScimGroupMembers', () => {
     expect(ucr.rows).toHaveLength(1);
   });
 
+  it('refuses to map a built-in role to a SCIM group', async () => {
+    const group = await makeScimTeam('builtin-role-map');
+    const builtin = await pool.query<{ id: string }>(
+      `SELECT id FROM custom_roles WHERE name = 'admin' AND is_builtin = true`,
+    );
+
+    await expect(
+      setScimGroupRoleMapping(
+        group.scim_group_id!,
+        `${FILE_PREFIX}-builtin-role-map`,
+        builtin.rows[0]!.id,
+        ACTOR,
+      ),
+    ).rejects.toMatchObject({ code: 'SCIM_MAPPING_BUILTIN_ROLE' });
+
+    const mapping = await pool.query(
+      `SELECT 1 FROM scim_group_role_mappings WHERE scim_group_id = $1`,
+      [group.scim_group_id],
+    );
+    expect(mapping.rows).toHaveLength(0);
+  });
+
   it('revokes the mapped role when removing a member with no other group grant', async () => {
     const group = await makeScimTeam('sync-role-rem');
     const roleId = await makeCustomRole(`${FILE_PREFIX}-sync-role-rem`);

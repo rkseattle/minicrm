@@ -1135,11 +1135,11 @@ Each object type (contacts, deals, activities) has an independently configurable
 
 ### Reassignment restrictions for managers
 
-When a manager changes the `owner` field on a contact or deal, the new owner must belong to one of the manager's teams. Attempting to assign ownership to a user outside the team returns a 403 error. Admins and reps are not subject to this restriction.
+When a manager changes the `owner` field on a contact or deal, the new owner must belong to one of the teams the manager manages, including sub-teams. Attempting to assign ownership to a user outside that subtree returns a 403 error. Admins and reps are not subject to this restriction.
 
 ### Tutorial: restrict contacts to team visibility
 
-1. Go to **Admin Settings → Visibility**.
+1. Go to **Admin Settings → Users & Access**, and find **Visibility**.
 2. In the **Contacts** row, change the policy from _Org_ to _Team_.
 3. Click **Save**.
 
@@ -1147,7 +1147,7 @@ Reps will now only see contacts owned by members of their team. Contacts outside
 
 ### Tutorial: revert to org-wide visibility
 
-1. Go to **Admin Settings → Visibility**.
+1. Go to **Admin Settings → Users & Access**, and find **Visibility**.
 2. Change the policy back to _Org_ for the relevant object type.
 3. Click **Save**.
 
@@ -1435,8 +1435,11 @@ progress, using a token issued when the password was accepted, valid for five mi
 ### Audit trail
 
 Enrollment and removal are recorded in the **Audit Log** against record type `user`, with
-event types `mfa_enabled` and `mfa_disabled` — filter on those two values to review 2FA
-activity. Because 2FA is always self-service, the actor and the subject are the same person.
+event types `mfa_enabled` and `mfa_disabled`. Because 2FA is always self-service, the actor
+and the subject are the same person.
+
+> Neither event type appears in the Audit Log page's event-type filter, so filter by record
+> type `user` and read the results, rather than looking for them in that dropdown.
 
 ---
 
@@ -1493,8 +1496,10 @@ On each SSO sign-in MiniCRM resolves the user in this order:
 1. **Known SSO identity** — matched on provider and subject; the user signs in.
 2. **Existing account with the same email that is not already bound to an IdP subject** —
    the SSO identity is linked to it and the password-change requirement is cleared. An
-   account already bound to a _different_ subject is skipped, and resolution falls through
-   to step 3 — which creates a second account on the same email address.
+   account already bound to a _different_ subject is skipped, and the sign-in is refused
+   with `sso_error=SSO_CALLBACK_FAILED`; the original binding is left untouched. A user
+   whose email is already bound to one identity provider cannot sign in through a second
+   one.
 3. **Nobody matches** — a new active user is created.
 
 In steps 1 and 2, a deactivated account is refused: the user is returned to the login page
@@ -1568,6 +1573,9 @@ a session exists, or are fetched by the IdP itself.
 SSO activity is recorded in the **Audit Log** under record type `user`, with event types
 `sso_login`, `sso_provisioned`, `sso_linked`, and `sso_unlinked`.
 
+> None of those four appear in the Audit Log page's event-type filter, so filter by record
+> type `user` and read the results.
+
 ---
 
 ## 18. SCIM Provisioning
@@ -1582,7 +1590,8 @@ membership.
 #### Step 1 — Issue a bearer token
 
 1. Go to **Admin Settings → Security & Identity**.
-2. In **SCIM 2.0 Provisioning → Bearer Token**, click **Generate Token**.
+2. In **SCIM 2.0 Provisioning → Bearer Token**, click **Generate Token** (labelled
+   **Regenerate Token** once one exists).
 3. Copy the token immediately — MiniCRM shows it once and stores only a hash of it.
 
 > **Only one token is active at a time.** Generating a new one revokes the previous token
@@ -1703,11 +1712,12 @@ capability:
 
 ### Audit trail
 
-SCIM writes audit entries under three record types: `team` for membership changes,
-`scim_group_role_mapping` for mapping changes, and `scim_token` for token issue and revoke.
+SCIM writes audit entries under four record types: `user` for the accounts it provisions
+and updates, `team` for membership changes, `scim_group_role_mapping` for mapping changes,
+and `scim_token` for token issue and revoke.
 
-> None of these three appear in the Audit Log page's record-type filter, so review them in
-> the unfiltered list.
+> Only `user` appears in the Audit Log page's record-type filter. The other three do not —
+> review those in the unfiltered list.
 
 ---
 
