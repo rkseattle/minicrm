@@ -25,6 +25,7 @@ let _repId: string;
 let repCookie: string;
 let _rep2Id: string;
 let rep2Cookie: string;
+let manager2Cookie: string;
 
 async function truncateReports(): Promise<void> {
   await pool.query(`DELETE FROM custom_reports WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
@@ -48,10 +49,13 @@ beforeAll(async () => {
     role: admin.role,
   });
 
+  // The report owner must hold reports:create, which the built-in rep role does not — the
+  // routes are capability-gated. Manager is the non-admin role that can author one, so the
+  // ownership and visibility cases below still exercise a non-admin owner.
   const rep = await createUser({
     email: `${FILE_PREFIX}-rep@example.com`,
-    name: 'CR Ctrl Rep',
-    role: 'rep',
+    name: 'CR Ctrl Owner',
+    role: 'manager',
     status: 'active',
     passwordHash: null,
   });
@@ -67,6 +71,22 @@ beforeAll(async () => {
   });
   _rep2Id = rep2.id;
   rep2Cookie = makeAuthCookie({ id: rep2.id, email: rep2.email, name: rep2.name, role: rep2.role });
+
+  // Holds reports:edit/delete but owns nothing here, so requests reach the service's own
+  // ownership check instead of stopping at the capability gate.
+  const manager2 = await createUser({
+    email: `${FILE_PREFIX}-manager2@example.com`,
+    name: 'CR Ctrl Manager2',
+    role: 'manager',
+    status: 'active',
+    passwordHash: null,
+  });
+  manager2Cookie = makeAuthCookie({
+    id: manager2.id,
+    email: manager2.email,
+    name: manager2.name,
+    role: manager2.role,
+  });
 });
 
 beforeEach(async () => {
@@ -273,6 +293,28 @@ describe('PATCH /api/v1/reports/custom/:id', () => {
       .patch(`/api/v1/reports/custom/${id}`)
       .set('Cookie', rep2Cookie)
       .send({ name: `${FILE_PREFIX}-patch-priv-hijack` });
+    // A rep holds reports:view but not reports:edit, so the capability gate refuses before
+    // the service's ownership check is reached — AUTH_FORBIDDEN rather than REPORT_FORBIDDEN.
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it("returns 403 REPORT_FORBIDDEN when a capable user edits another's private report", async () => {
+    const createRes = await request(app)
+      .post('/api/v1/reports/custom')
+      .set('Cookie', repCookie)
+      .send({
+        name: `${FILE_PREFIX}-svc-ownership`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+        visibility: 'private',
+      });
+
+    const res = await request(app)
+      .patch(`/api/v1/reports/custom/${createRes.body.id as string}`)
+      .set('Cookie', manager2Cookie)
+      .send({ name: `${FILE_PREFIX}-svc-ownership-hijack` });
+
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('REPORT_FORBIDDEN');
   });
@@ -344,8 +386,9 @@ describe('DELETE /api/v1/reports/custom/:id', () => {
     const id = createRes.body.id as string;
 
     const res = await request(app).delete(`/api/v1/reports/custom/${id}`).set('Cookie', rep2Cookie);
+    // reports:delete is admin-only, so this stops at the capability gate.
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('REPORT_FORBIDDEN');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 });
 

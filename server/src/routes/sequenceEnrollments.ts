@@ -6,6 +6,8 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { unenrollContactHandler, getEnrollmentHandler } from '../controllers/sequenceController.js';
 
@@ -36,6 +38,7 @@ const router = Router();
 router.get(
   '/:id',
   authenticate,
+  requireCapability(Capability.SequencesEnroll),
   requireFeatureEnabled('sequencing'),
   asyncHandler(getEnrollmentHandler),
 );
@@ -65,6 +68,7 @@ router.get(
 router.delete(
   '/:id',
   authenticate,
+  requireCapability(Capability.SequencesEnroll),
   requireFeatureEnabled('sequencing'),
   asyncHandler(unenrollContactHandler),
 );

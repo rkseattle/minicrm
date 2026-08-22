@@ -4,6 +4,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { getDashboardSummaryHandler } from '../controllers/dashboardController.js';
 
@@ -62,6 +64,11 @@ const router = Router();
  *                 code: UNAUTHORIZED
  *                 message: Authentication required
  */
-router.get('/summary', authenticate, asyncHandler(getDashboardSummaryHandler));
+router.get(
+  '/summary',
+  authenticate,
+  requireCapability(Capability.DashboardsView),
+  asyncHandler(getDashboardSummaryHandler),
+);
 
 export default router;

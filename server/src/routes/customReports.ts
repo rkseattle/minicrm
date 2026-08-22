@@ -1,11 +1,16 @@
 /**
  * Custom report routes.
- * All endpoints require authentication; no admin restriction (any user can create reports).
+ *
+ * Gated by capability, so a custom role's reports:* grants are honoured. Of the built-in
+ * roles, viewer holds reports:view only and service_account holds no reports capability at
+ * all, so neither can author or export a report.
  */
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   listCustomReportsHandler,
@@ -37,6 +42,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
+  requireCapability(Capability.ReportsView),
   requireFeatureEnabled('reporting'),
   asyncHandler(listCustomReportsHandler),
 );
@@ -72,6 +78,7 @@ router.get(
 router.post(
   '/run',
   authenticate,
+  requireCapability(Capability.ReportsView),
   requireFeatureEnabled('reporting'),
   asyncHandler(runAdHocReportHandler),
 );
@@ -96,6 +103,7 @@ router.post(
 router.post(
   '/',
   authenticate,
+  requireCapability(Capability.ReportsCreate),
   requireFeatureEnabled('reporting'),
   asyncHandler(createCustomReportHandler),
 );
@@ -125,6 +133,7 @@ router.post(
 router.get(
   '/:id',
   authenticate,
+  requireCapability(Capability.ReportsView),
   requireFeatureEnabled('reporting'),
   asyncHandler(getCustomReportHandler),
 );
@@ -156,6 +165,7 @@ router.get(
 router.patch(
   '/:id',
   authenticate,
+  requireCapability(Capability.ReportsEdit),
   requireFeatureEnabled('reporting'),
   asyncHandler(updateCustomReportHandler),
 );
@@ -185,6 +195,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
+  requireCapability(Capability.ReportsDelete),
   requireFeatureEnabled('reporting'),
   asyncHandler(deleteCustomReportHandler),
 );
@@ -214,6 +225,7 @@ router.delete(
 router.post(
   '/:id/run',
   authenticate,
+  requireCapability(Capability.ReportsView),
   requireFeatureEnabled('reporting'),
   asyncHandler(runCustomReportHandler),
 );
@@ -247,6 +259,7 @@ router.post(
 router.get(
   '/:id/export',
   authenticate,
+  requireCapability(Capability.ReportsExport),
   requireFeatureEnabled('reporting'),
   asyncHandler(exportCustomReportHandler),
 );
@@ -281,6 +294,7 @@ router.get(
 router.get(
   '/:id/export.pdf',
   authenticate,
+  requireCapability(Capability.ReportsExport),
   requireFeatureEnabled('reporting'),
   asyncHandler(exportCustomReportPdfHandler),
 );

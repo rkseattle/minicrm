@@ -1308,8 +1308,29 @@ Capabilities are grouped by domain. The full list is visible in **Admin → Sett
 | Pipelines     | `pipelines:view`, `pipelines:manage`                                                                                                                           |
 | Reports       | `reports:view`, `reports:create`, `reports:edit`, `reports:delete`, `reports:export`, `reports:schedule`                                                       |
 | Data          | `data:import`, `data:export`                                                                                                                                   |
+| Sequences     | `sequences:view`, `sequences:create`, `sequences:edit`, `sequences:delete`, `sequences:enroll`                                                                 |
+| Dashboards    | `dashboards:view`, `dashboards:manage`                                                                                                                         |
+| Workflows     | `workflows:view`, `workflows:create`, `workflows:edit`, `workflows:delete`, `workflows:activate`                                                               |
+| Forecasting   | `forecasting:view`, `forecasting:edit`                                                                                                                         |
+| Billing       | `billing:view`, `billing:manage`                                                                                                                               |
 | Users & Admin | `users:view`, `users:create`, `users:edit`, `users:delete`, `teams:manage`, `integrations:manage`, `settings:manage`, `feature_flags:manage`, `audit_log:view` |
 | API           | `api:access`                                                                                                                                                   |
+
+> **A capability grants access only where something checks it.** Most are enforced at the
+> API route, and the AI assistant separately uses them to decide which tools it will expose
+> to you — `reports:view` and `data:export`, for instance, gate assistant tools as well as
+> endpoints (see [Section 12](#12-ai-role-based-feature-access)).
+>
+> The **Workflows**, **Forecasting**, and **Billing** groups above, along with
+> `dashboards:manage` and `reports:schedule`, are reserved for features that do not exist
+> yet. Granting them to a custom role is harmless but has no effect today.
+>
+> The role editor's checkbox list does not yet cover every group shown here — `sequences:*`,
+> `dashboards:*`, and the reserved groups have no checkboxes, so those capabilities can only
+> be granted through the API. The built-in roles already hold the sequence and dashboard
+> capabilities they need, so this affects custom roles only.
+
+One further note on what the built-in roles hold.
 
 > **`contacts:delete`, `deals:delete`, and `activities:delete` are not admin-only.** All
 > three are granted to the built-in `rep` and `manager` roles as well, so a rep can delete
@@ -2245,18 +2266,29 @@ A sequence with active enrollments cannot be deleted; unenroll everyone first.
 
 ### Reference
 
-| Endpoint                                    | Method             | Description                                    |
-| ------------------------------------------- | ------------------ | ---------------------------------------------- |
-| `/api/v1/sequences`                         | GET                | List sequences with step and enrollment counts |
-| `/api/v1/sequences`                         | POST               | Create a sequence — **admin**                  |
-| `/api/v1/sequences/:id`                     | GET, PATCH, DELETE | Read, update, delete — writes are **admin**    |
-| `/api/v1/sequences/:id/steps`               | GET, POST          | List and add steps — POST is **admin**         |
-| `/api/v1/sequences/:id/steps/:stepId`       | PATCH, DELETE      | Edit and remove a step — **admin**             |
-| `/api/v1/contacts/:id/sequence-enrollments` | GET, POST          | List and create enrollments                    |
-| `/api/v1/sequence-enrollments/:id`          | GET, DELETE        | Read an enrollment, or unenroll                |
+| Endpoint                                    | Method        | Capability required |
+| ------------------------------------------- | ------------- | ------------------- |
+| `/api/v1/sequences`                         | GET           | `sequences:view`    |
+| `/api/v1/sequences`                         | POST          | `sequences:create`  |
+| `/api/v1/sequences/:id`                     | GET           | `sequences:view`    |
+| `/api/v1/sequences/:id`                     | PATCH         | `sequences:edit`    |
+| `/api/v1/sequences/:id`                     | DELETE        | `sequences:delete`  |
+| `/api/v1/sequences/:id/steps`               | GET           | `sequences:view`    |
+| `/api/v1/sequences/:id/steps`               | POST          | `sequences:edit`    |
+| `/api/v1/sequences/:id/steps/:stepId`       | PATCH, DELETE | `sequences:edit`    |
+| `/api/v1/contacts/:id/sequence-enrollments` | GET, POST     | `sequences:enroll`  |
+| `/api/v1/sequence-enrollments/:id`          | GET, DELETE   | `sequences:enroll`  |
 
-Reading sequences is open to any authenticated user, which is what populates the enrollment
-picker. Enrolling requires `sequences:enroll`, held by every built-in role except `viewer`.
+These routes are gated by capability, not role. Reading requires `sequences:view` (admin,
+manager, rep); creating and editing require `sequences:create` and `sequences:edit`, which
+admin and manager hold; deleting requires `sequences:delete`, which only admin holds.
+Enrolling requires `sequences:enroll`, held by every built-in role except `viewer`. A custom
+role granting any of these is honoured.
+
+> **The Sequences page itself is still admin-only.** A manager holds the capabilities to
+> author a sequence through the API, but `/admin/sequences` sits behind the admin route
+> guard and its navigation entry is admin-only, so they cannot reach the editor. Until that
+> is aligned, treat sequence authoring as an administrator task in practice.
 
 ### Audit trail
 
@@ -2270,11 +2302,10 @@ error outcome, so a failed step is visible without reading server logs.
 
 > **Feature flag:** `reporting`
 
-Custom reports let anyone build a saved query over their CRM data and chart it. Despite
-living beside the admin features in this guide, **this is not an admin-only tool** — the
-`reporting` flag is the only gate, and the endpoints carry no role check. Its role overrides
-name only admin and rep, so every other role falls through to the org-wide setting and gets
-in as well.
+Custom reports let a user build a saved query over their CRM data and chart it. It is not an
+admin-only tool, but it is not open to everyone either: the endpoints are gated by the
+`reports:*` capabilities, so who can do what follows the role's grants rather than the
+`reporting` flag alone.
 
 Find them at **Reports → Custom Reports**.
 
@@ -2333,6 +2364,31 @@ if you want a shared report that only its owner changes.
 | `/api/v1/reports/custom/:id/run`        | POST               | Run a saved report                 |
 | `/api/v1/reports/custom/:id/export`     | GET                | Download results as CSV            |
 | `/api/v1/reports/custom/:id/export.pdf` | GET                | Download results as PDF            |
+
+### Who can do what
+
+| Action              | Capability       | Built-in roles that hold it |
+| ------------------- | ---------------- | --------------------------- |
+| View, list, and run | `reports:view`   | Admin, Manager, Rep, Viewer |
+| Create              | `reports:create` | Admin, Manager              |
+| Edit                | `reports:edit`   | Admin, Manager              |
+| Delete              | `reports:delete` | Admin                       |
+| Export CSV or PDF   | `reports:export` | Admin, Manager              |
+
+The visibility setting narrows this further — holding `reports:edit` does not let you edit
+someone else's private report. Both checks apply: the capability decides whether you may
+perform the action at all, the visibility decides which reports you may perform it on.
+
+> **Service accounts cannot use custom reports at all.** The built-in `service_account`
+> role holds no `reports:*` capability, so a bearer-token integration is refused every
+> endpoint in the table above, including read and run. The same applies to the dashboard
+> summary endpoint, which needs `dashboards:view`. Grant those capabilities through a
+> custom role if an integration needs them.
+>
+> **The builder's buttons follow visibility, not capability.** A user without
+> `reports:create` or `reports:edit` still sees the Save and Delete controls enabled and
+> only discovers the refusal when the request returns. Reps and viewers can view and run
+> reports; authoring and exporting are a manager or administrator task.
 
 ### Audit trail
 
