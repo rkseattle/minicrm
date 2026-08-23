@@ -12,6 +12,8 @@ import {
   getGdprStatusHandler,
   triggerAiCascadeHandler,
   getAiCascadeLogHandler,
+  triggerLeadAiCascadeHandler,
+  getLeadAiCascadeLogHandler,
 } from '../controllers/gdprController.js';
 
 const router = Router();
@@ -165,6 +167,78 @@ router.get(
   authenticate,
   requireRole('admin'),
   asyncHandler(getAiCascadeLogHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/gdpr/leads/{id}/ai-cascade:
+ *   post:
+ *     tags: [GDPR]
+ *     operationId: triggerLeadAiCascade
+ *     summary: Trigger a manual GDPR AI data cascade re-run for a lead
+ *     description: |
+ *       Asynchronously redacts any remaining PII references from ai_messages and
+ *       user_ai_context for the given lead. Only valid after a GDPR erasure has
+ *       been performed. Returns 202 immediately; check GET ai-cascade for results.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       202:
+ *         description: Cascade accepted and running asynchronously
+ *       400:
+ *         description: Invalid UUID
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Admin role required
+ *       409:
+ *         description: No GDPR erasure found for this lead
+ */
+router.post(
+  '/leads/:id/ai-cascade',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(triggerLeadAiCascadeHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/gdpr/leads/{id}/ai-cascade:
+ *   get:
+ *     tags: [GDPR]
+ *     operationId: getLeadAiCascadeLog
+ *     summary: Get AI data cascade log entries for a lead
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: List of cascade log rows (newest first)
+ *       400:
+ *         description: Invalid UUID
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/leads/:id/ai-cascade',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getLeadAiCascadeLogHandler),
 );
 
 export default router;
