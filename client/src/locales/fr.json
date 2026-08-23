@@ -2144,7 +2144,7 @@
       "heading": "Rétention des sessions",
       "description": "Les sessions de conversation IA et les messages sont définitivement supprimés après ce nombre de jours. Vos préférences de contexte personnelles ne sont pas affectées.",
       "label": "Fenêtre de rétention (jours)",
-      "hint": "Minimum 30 jours. Les modifications prennent effet lors de la prochaine purge nocturne (02h00).",
+      "hint": "Minimum 30 jours. Les modifications prennent effet lors de la prochaine purge nocturne.",
       "save": "Enregistrer",
       "saving": "Enregistrement…",
       "saveSuccess": "Fenêtre de rétention des sessions enregistrée.",

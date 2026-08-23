@@ -2144,7 +2144,7 @@
       "heading": "Retención de sesiones",
       "description": "Las sesiones de conversación de IA y los mensajes se eliminan permanentemente después de este número de días. Tus preferencias de contexto personales no se ven afectadas.",
       "label": "Ventana de retención (días)",
-      "hint": "Mínimo 30 días. Los cambios surten efecto en la próxima purga nocturna (02:00).",
+      "hint": "Mínimo 30 días. Los cambios surten efecto en la próxima purga nocturna.",
       "save": "Guardar",
       "saving": "Guardando…",
       "saveSuccess": "Ventana de retención de sesiones guardada.",

@@ -2144,7 +2144,7 @@
       "heading": "Session Retention",
       "description": "AI conversation sessions and messages are permanently deleted after this many days. Your personal context preferences are not affected.",
       "label": "Retention window (days)",
-      "hint": "Minimum 30 days. Changes take effect at the next nightly purge (02:00).",
+      "hint": "Minimum 30 days. Changes take effect at the next nightly purge.",
       "save": "Save",
       "saving": "Saving…",
       "saveSuccess": "Session retention window saved.",

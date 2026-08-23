@@ -2144,7 +2144,7 @@
       "heading": "Sitzungsaufbewahrung",
       "description": "KI-Konversationssitzungen und Nachrichten werden nach dieser Anzahl von Tagen dauerhaft gelöscht. Ihre persönlichen Kontextpräferenzen sind nicht betroffen.",
       "label": "Aufbewahrungszeitraum (Tage)",
-      "hint": "Mindestens 30 Tage. Änderungen werden bei der nächsten nächtlichen Bereinigung (02:00 Uhr) wirksam.",
+      "hint": "Mindestens 30 Tage. Änderungen werden bei der nächsten nächtlichen Bereinigung wirksam.",
       "save": "Speichern",
       "saving": "Wird gespeichert…",
       "saveSuccess": "Sitzungsaufbewahrungszeitraum gespeichert.",

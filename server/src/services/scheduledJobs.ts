@@ -45,8 +45,13 @@ export type ScheduledJob = ScheduledJobCommon &
   (
     | {
         kind: 'cron';
-        /** Returns false when the tick was skipped, so the caller can stay quiet. */
-        run: () => boolean;
+        /**
+         * Runs the tick. Returns the work's promise so the caller can attach one
+         * rejection handler, or null when a re-entrancy guard skipped the tick.
+         */
+        run: () => Promise<unknown> | null;
+        /** Appended to the failure log where the consequence is not obvious. */
+        failureNote?: string;
         /** node-cron options, e.g. an explicit timezone. */
         options?: { timezone: string };
       }
@@ -59,28 +64,20 @@ export type ScheduledJob = ScheduledJobCommon &
  * Each job gets its own flag via closure — a shared one would let a slow job
  * suppress an unrelated job's tick.
  */
-function skipWhileRunning(label: string, work: () => Promise<unknown>): () => boolean {
+function skipWhileRunning(
+  label: string,
+  work: () => Promise<unknown>,
+): () => Promise<unknown> | null {
   let running = false;
   return () => {
     if (running) {
       logger.warn(`cron: ${label} still in progress — skipping tick`);
-      return false;
+      return null;
     }
     running = true;
-    void work().finally(() => {
+    return work().finally(() => {
       running = false;
     });
-    return true;
-  };
-}
-
-/** Runs `work`, logging a rejection rather than leaving it unhandled. */
-function logRejection(message: string, work: () => Promise<unknown>): () => boolean {
-  return () => {
-    work().catch((err: unknown) => {
-      logger.error({ err }, message);
-    });
-    return true;
   };
 }
 
@@ -99,10 +96,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       displaySchedule: 'Daily, 02:00',
       purpose:
         'Purges automation_rule_logs (>90d), webhook_delivery_logs (>30d), and completed/failed import_jobs (>180d).',
-      run: () => {
-        void runRetentionPurge();
-        return true;
-      },
+      run: () => runRetentionPurge(),
     },
     {
       name: 'Win/loss pattern analysis',
@@ -111,10 +105,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       displaySchedule: 'Daily, 03:00',
       purpose:
         'Replaces deal_win_loss_insights from all closed deals. No-ops when AI is disabled or below the minimum closed-deal threshold.',
-      run: () => {
-        void analyzeWinLossPatterns();
-        return true;
-      },
+      run: () => analyzeWinLossPatterns(),
     },
     {
       name: 'Churn/expansion signal detection',
@@ -123,10 +114,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       displaySchedule: 'Daily, 04:00',
       purpose:
         'Rescans closed-won accounts with activity history for churn-risk or expansion signals. No-ops when AI is disabled.',
-      run: () => {
-        void detectChurnExpansionSignals();
-        return true;
-      },
+      run: () => detectChurnExpansionSignals(),
     },
     {
       name: 'Relationship health scoring',
@@ -135,10 +123,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       displaySchedule: 'Daily, 05:00',
       purpose:
         'Recomputes the cached health score for every account meeting the configured minimum logged activities (default 3). SQL-driven, no AI call.',
-      run: () => {
-        void computeAccountHealthScores();
-        return true;
-      },
+      run: () => computeAccountHealthScores(),
     },
     {
       name: 'Follow-up timing suggestions',
@@ -147,10 +132,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       displaySchedule: 'Daily, 05:30',
       purpose:
         'Recomputes the cached best-time-to-contact suggestion for every contact with 5+ logged interactions.',
-      run: () => {
-        void computeFollowUpTimingSuggestions();
-        return true;
-      },
+      run: () => computeFollowUpTimingSuggestions(),
     },
     {
       name: 'Rep coaching insights',
@@ -159,10 +141,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       displaySchedule: 'Daily, 06:00',
       purpose:
         'Recomputes coaching insights for every rep meeting the minimum closed-deal count. SQL-driven, no AI call.',
-      run: () => {
-        void generateRepCoachingInsights();
-        return true;
-      },
+      run: () => generateRepCoachingInsights(),
     },
     {
       name: 'Data hygiene scan',
@@ -180,9 +159,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       displaySchedule: 'Daily, 07:00',
       purpose:
         'Deletes coverage_units, coverage_test_links, coverage_ingested_dumps, and coverage_sessions rows older than the retention window. Runs regardless of COVERAGE_INSTRUMENTATION.',
-      run: logRejection('cron: coverage retention pruning failed', () =>
-        runCoverageRetentionPruning(coverageRetentionDays),
-      ),
+      run: () => runCoverageRetentionPruning(coverageRetentionDays),
     },
     {
       name: 'Overdue task digest',
@@ -191,10 +168,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       displaySchedule: 'Daily, 08:00',
       purpose:
         'Emails each opted-in user one digest of their open tasks past due, deduplicated so a task is notified once.',
-      run: () => {
-        void sendOverdueDigests();
-        return true;
-      },
+      run: () => sendOverdueDigests(),
     },
     {
       name: 'Sequence step advancement',
@@ -215,10 +189,8 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       options: { timezone: 'UTC' },
       purpose:
         'Pre-creates audit_log partitions for the current month and three ahead, so no write lands on audit_log_default.',
-      run: logRejection(
-        'cron: audit_log partition maintenance failed — rows may route to audit_log_default',
-        ensureAuditLogPartitions,
-      ),
+      run: () => ensureAuditLogPartitions(),
+      failureNote: 'rows may route to audit_log_default',
     },
     {
       name: 'Feature flag rollout advancement',
@@ -252,9 +224,22 @@ export function startScheduledJobs(coverageRetentionDays: number): () => void {
     const task = cron.schedule(
       job.schedule,
       () => {
-        // Logged only when the tick proceeds: a skipped re-entrant tick logging
-        // "running" then "skipping" would over-count runs for anything parsing logs.
-        if (job.run()) logger.info(`cron: running ${job.name}`);
+        const running = job.run();
+        // Null means a re-entrancy guard skipped the tick; logging "running"
+        // there would over-count runs for anything parsing the log.
+        if (running === null) return;
+        logger.info(`cron: running ${job.name}`);
+        // One handler for every job: most of these services let a rejection
+        // escape, and unhandled it reaches the process-level handler with no
+        // job name attached.
+        void running.catch((err: unknown) => {
+          logger.error(
+            { err, job: job.name },
+            job.failureNote
+              ? `cron: ${job.name} failed — ${job.failureNote}`
+              : `cron: ${job.name} failed`,
+          );
+        });
       },
       job.options,
     );
