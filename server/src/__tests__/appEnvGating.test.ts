@@ -150,6 +150,13 @@ describe('NODE_ENV staging', () => {
       .get('/api/v1/auth/mfa/dev/totp-code')
       .set('Cookie', adminCookie);
     expect(totp.status).toBe(404);
+
+    // Runs a background job on demand with no auth of its own, so it belongs
+    // with the credential endpoints rather than with the API docs.
+    const advance = await request(app)
+      .post('/api/v1/test/advance-sequences')
+      .set('Cookie', adminCookie);
+    expect(advance.status).toBe(404);
   });
 });
 

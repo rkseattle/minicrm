@@ -28,16 +28,16 @@ export function isNonProductionEnv(): boolean {
 }
 
 /**
- * True for production and for any value that is not a recognized non-production
- * environment.
+ * True wherever transport security must not be relaxed.
  *
- * The inverse of isNonProductionEnv, for safeguards that must be ON in
- * production. Written as a negation rather than `=== 'production'` for the same
- * reason the others are allowlists: an unset or misspelled NODE_ENV must get the
- * safeguard, not lose it.
+ * The inverse of isAuthBypassEnv, not of isNonProductionEnv: staging serves the
+ * API docs but carries real traffic, so a session cookie without Secure is a
+ * production-grade exposure there for the same reason a reset-token endpoint is.
+ * Written as a negation rather than `=== 'production'` so an unset or misspelled
+ * NODE_ENV gets the safeguard instead of losing it.
  */
 export function isProductionEnv(): boolean {
-  return !isNonProductionEnv();
+  return !isAuthBypassEnv();
 }
 
 /** True only where handing out credentials without authentication is acceptable. */

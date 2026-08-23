@@ -294,6 +294,11 @@ export async function createTestContact(
 ): Promise<TestContact> {
   // phone, title, department are optional (not nullable) in the server schema —
   // omit them entirely rather than sending null, which Zod rejects with 400.
+  //
+  // A spec that erases its contact must override these: erasure fires the AI
+  // cascade, which whole-word matches the name against every ai_messages row
+  // and deletes matching user_ai_context rows instance-wide, so the shared
+  // default would reach other specs' data.
   const payload: Record<string, string | null> = {
     first_name: overrides.first_name ?? 'Test',
     last_name: overrides.last_name ?? 'Contact',

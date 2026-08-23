@@ -168,13 +168,15 @@ describe('session cookie policy', () => {
       expect(cookie.mock.calls[0][2]).toMatchObject({ secure: true });
     });
 
-    it('is off in staging, which serves over TLS-terminating infrastructure', async () => {
+    it('is on in staging, which carries real traffic', async () => {
       process.env.NODE_ENV = 'staging';
       vi.resetModules();
       const mod = await import('../auth/sessionCookie.js');
       const { res, cookie } = mockResponse();
       mod.setSessionCookie(res, 'a.b.c');
-      expect(cookie.mock.calls[0][2]).toMatchObject({ secure: false });
+      // Staging serves the API docs but is a real multi-user deployment, so a
+      // session JWT without Secure is as exposed there as in production.
+      expect(cookie.mock.calls[0][2]).toMatchObject({ secure: true });
     });
   });
 });
