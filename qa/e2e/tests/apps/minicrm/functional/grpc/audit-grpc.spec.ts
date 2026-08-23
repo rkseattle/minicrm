@@ -213,8 +213,14 @@ test('@functional GRPC-7: StreamAuditEvents GDPR masking hides values for erased
 }) => {
   const jwt = await getDevJwt(restClient);
 
-  // Create a contact and immediately erase it.
-  const contact = await createTestContact(testData, restClient);
+  // Create a contact and immediately erase it. The name must be distinctive:
+  // erasure fires the AI cascade, which whole-word matches it against every
+  // ai_messages row and deletes matching user_ai_context rows instance-wide,
+  // so the default "Test Contact" would reach other specs' data.
+  const contact = await createTestContact(testData, restClient, {
+    first_name: 'AuditGrpcErasure',
+    last_name: `Subject${Date.now()}`,
+  });
   await restClient.post(`/api/v1/contacts/${contact.id}/gdpr-erase`, {});
 
   // Open a stream filtered to this record_id.

@@ -63,18 +63,23 @@ export interface GdprDeletionLogRow {
 const GDPR_PLACEHOLDER_EMAIL_SQL = `'gdpr-deleted-' || id || '@gdpr.invalid'`;
 
 /**
- * Bounds on a free-text PII value the cascade will search for.
+ * Shortest free-text value the cascade will search for.
  *
- * Unlike a name or email, free text is not an identity. Below the minimum it is
- * as likely to be a common phrase, which would redact unrelated messages across
- * every user. The maximum is a deliberate margin, not a hard limit: Postgres
- * rejects a pattern as too complex somewhere past 32k characters, and the terms
- * share one alternation, so a single unbounded notes field could abort the whole
- * cascade — name and email included. A term over the bound is skipped and
- * counted, never silently dropped.
+ * Unlike a name or email, free text is not an identity: below this it is as
+ * likely to be a common phrase, which would redact unrelated messages across
+ * every user. Word boundaries do not help against a short phrase.
  */
 const MIN_FREE_TEXT_TERM_LENGTH = 12;
-const MAX_FREE_TEXT_TERM_LENGTH = 200;
+
+/**
+ * Longest single term, and longest assembled pattern, the cascade will build.
+ *
+ * Every term shares one alternation, so one oversized value aborts all of them.
+ * Postgres rejects a pattern as too complex somewhere past 32k characters;
+ * these are deliberate margins well under that, not the hard limit.
+ */
+const MAX_TERM_LENGTH = 200;
+const MAX_PATTERN_LENGTH = 4_000;
 
 /** Which entity an AI cascade was run for. Matches ai_gdpr_cascade_log.record_type. */
 export type CascadeRecordType = 'contact' | 'lead';
@@ -795,28 +800,40 @@ export async function cascadeGdprErasureToAiData(
       return `${leading}${escapeEre(term)}${trailing}`;
     };
 
-    const identity = [originalName, originalEmail].map((value) => (value ?? '').trim());
-    // Free text is not an identity. A notes value of "Follow up" would redact that
-    // phrase from every user's messages, which boundaries do nothing to prevent,
-    // and an unbounded one blows the regex size limit and aborts the whole
-    // cascade. Only distinctive, bounded values are worth the reach.
-    const candidateFreeText = extraIdentifiers.map((value) => (value ?? '').trim());
-    const freeText = candidateFreeText.filter(
-      (value) =>
-        value.length >= MIN_FREE_TEXT_TERM_LENGTH && value.length <= MAX_FREE_TEXT_TERM_LENGTH,
-    );
-    const skippedFreeText = candidateFreeText.filter(
-      (value) => value.length > 0 && !freeText.includes(value),
-    ).length;
-    if (skippedFreeText > 0) {
-      // A skipped term leaves references to it in AI data while the cascade
-      // still reports completed, so the omission has to be visible somewhere.
+    // The cap applies to every term, identity included. leads.first_name,
+    // last_name, and email are unbounded `text` — contacts are varchar(255) and
+    // safe only incidentally — so an oversized name would otherwise abort the
+    // whole cascade with "regular expression is too complex", redacting nothing
+    // while the erasure still reported success. Capped here rather than in the
+    // Zod schema so a row written directly to the database is covered too.
+    const identity = [originalName, originalEmail]
+      .map((value) => (value ?? '').trim())
+      .filter((value) => value.length > 0);
+
+    // Free text is not an identity, so it also carries a minimum: a notes value
+    // of "Follow up" would redact that phrase from every user's messages, which
+    // word boundaries do nothing to prevent.
+    const freeText = extraIdentifiers
+      .map((value) => (value ?? '').trim())
+      .filter((value) => value.length > 0);
+
+    const candidates = [...identity, ...freeText];
+    const searchTerms = [
+      ...identity.filter((value) => value.length <= MAX_TERM_LENGTH),
+      ...freeText.filter(
+        (value) => value.length >= MIN_FREE_TEXT_TERM_LENGTH && value.length <= MAX_TERM_LENGTH,
+      ),
+    ];
+
+    const skipped = candidates.length - searchTerms.length;
+    if (skipped > 0) {
+      // Either bound leaves references to the skipped value in AI data while the
+      // cascade still reports completed, so the omission has to be visible.
       logger.warn(
-        { recordId, recordType, skippedFreeText },
-        'gdpr: cascade skipped free-text identifiers outside the length bounds',
+        { recordId, recordType, skipped },
+        'gdpr: cascade skipped identifiers outside the searchable length bounds',
       );
     }
-    const searchTerms = [...identity, ...freeText].filter((value) => value.length > 0);
 
     // Every erasure path supplies an email, NOT NULL on both contacts and leads,
     // so an empty set means the caller passed nothing searchable. Proceeding would
@@ -829,6 +846,14 @@ export async function cascadeGdprErasureToAiData(
     // text an earlier layer already rewrote, so a term that is a substring of
     // '[redacted]' would mangle the placeholder just written.
     const boundedPattern = searchTerms.map(anchorTerm).join('|');
+
+    // Per-term caps bound the total, but assert it: PG rejects a pattern it
+    // considers too complex, and that rejection aborts every term at once.
+    if (boundedPattern.length > MAX_PATTERN_LENGTH) {
+      throw new Error(
+        `cascade pattern of ${boundedPattern.length} characters exceeds the ${MAX_PATTERN_LENGTH} cap`,
+      );
+    }
     const queryParams = [boundedPattern];
 
     const redactExpression = `regexp_replace(content, $1, '[redacted]', 'gi')`;

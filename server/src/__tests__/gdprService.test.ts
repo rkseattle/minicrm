@@ -283,6 +283,26 @@ describe('eraseLead', () => {
     await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
   });
 
+  it('survives an oversized lead name rather than aborting the whole cascade', async () => {
+    // leads.first_name is unbounded text, and a value this size is insertable.
+    // Unbounded in the pattern it contributes to "regular expression is too
+    // complex", which aborts every term at once — name, email, and notes —
+    // while the erasure still reports success.
+    const hugeName = 'A'.repeat(6_000);
+    const lead = await createLead(
+      { ...makeLead(), owner_id: adminId, first_name: hugeName },
+      adminActor,
+    );
+
+    await eraseLead(lead.id, adminActor);
+    await waitForCascade(lead.id, 'lead');
+
+    const rows = await getAiCascadeLogForRecord(lead.id, 'lead');
+    expect(rows).toHaveLength(1);
+    // The email still identifies the subject, so the cascade proceeds on it.
+    expect(rows[0].status).toBe('completed');
+  });
+
   it('logs when a free-text field is outside the searchable length bounds', async () => {
     const warnSpy = vi.spyOn(logger, 'warn');
     const lead = await createLead(
@@ -296,7 +316,7 @@ describe('eraseLead', () => {
     // "Acme" is below the minimum, so it is never searched — references to it
     // survive an erasure whose cascade row still reads completed.
     const skipped = warnSpy.mock.calls.filter(
-      ([, message]) => typeof message === 'string' && message.includes('skipped free-text'),
+      ([, message]) => typeof message === 'string' && message.includes('skipped identifiers'),
     );
     expect(skipped.length).toBeGreaterThan(0);
     warnSpy.mockRestore();
