@@ -404,6 +404,39 @@ describe('eraseLead', () => {
     await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
   });
 
+  it('anchors a non-ASCII name so it does not match as a substring', async () => {
+    // JavaScript's \w is ASCII-only, so "李明" tested false at both ends and
+    // went into the pattern unanchored — matching inside longer words across
+    // every user's AI data. Postgres itself treats these as word characters.
+    const lead = await createLead(
+      { ...makeLead(), owner_id: adminId, first_name: '李明', last_name: undefined },
+      adminActor,
+    );
+
+    const session = await pool.query<{ id: string }>(
+      `INSERT INTO ai_sessions (user_id, name) VALUES ($1, 'Unicode bystander') RETURNING id`,
+      [adminId],
+    );
+    // Contains the erased name as a substring, but is a different person.
+    const bystanderText = '李明华 attended the review';
+    await pool.query(
+      `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'user', $2)`,
+      [session.rows[0].id, bystanderText],
+    );
+
+    await eraseLead(lead.id, adminActor);
+    await waitForCascade(lead.id, 'lead');
+
+    const messages = await pool.query<{ content: string }>(
+      'SELECT content FROM ai_messages WHERE session_id = $1',
+      [session.rows[0].id],
+    );
+    expect(messages.rows[0].content).toBe(bystanderText);
+
+    await pool.query('DELETE FROM ai_messages WHERE session_id = $1', [session.rows[0].id]);
+    await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
+  });
+
   it('matches a short name on word boundaries, not as a substring', async () => {
     // first_name.min(1) permits a one-character lead name, and the cascade has no
     // ownership predicate to narrow what it scans. Word boundaries are what keep
