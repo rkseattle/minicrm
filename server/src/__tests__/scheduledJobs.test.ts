@@ -94,7 +94,8 @@ describe('buildScheduledJobs', () => {
 
     expect(job?.kind).toBe('cron');
     if (job?.kind !== 'cron') return;
-    expect(job.run()).toBe(true);
+    // A proceeding tick returns the work's promise; null means it was skipped.
+    expect(job.run()).not.toBeNull();
 
     // A job wired to the wrong service still schedules and still logs; only
     // this assertion distinguishes it.
@@ -127,12 +128,12 @@ describe('buildScheduledJobs', () => {
     );
     if (job?.kind !== 'cron') throw new Error('expected a cron job');
 
-    expect(job.run(), 'first tick proceeds').toBe(true);
-    expect(job.run(), 'second tick is skipped while the first is still running').toBe(false);
+    expect(job.run(), 'first tick proceeds').not.toBeNull();
+    expect(job.run(), 'second tick is skipped while the first is still running').toBeNull();
 
     release?.();
     await new Promise<void>((resolve) => setImmediate(resolve));
-    expect(job.run(), 'a tick after the run completes proceeds again').toBe(true);
+    expect(job.run(), 'a tick after the run completes proceeds again').not.toBeNull();
   });
 
   it('keeps each re-entrancy guard private to its own job', () => {
@@ -150,10 +151,10 @@ describe('buildScheduledJobs', () => {
     hygiene.run();
 
     // A guard shared between jobs would let the stalled scan suppress this tick.
-    expect(sequence.run()).toBe(true);
+    expect(sequence.run()).not.toBeNull();
   });
 
-  it('reports a rejected job as run rather than crashing the tick', async () => {
+  it('surfaces a rejection to the caller rather than swallowing it', async () => {
     vi.spyOn(auditPartitionService, 'ensureAuditLogPartitions').mockRejectedValue(
       new Error('partition failure'),
     );
@@ -162,9 +163,9 @@ describe('buildScheduledJobs', () => {
     );
     if (job?.kind !== 'cron') throw new Error('expected a cron job');
 
-    expect(job.run()).toBe(true);
-    // The rejection is caught and logged; an unhandled one would fail the run.
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    // run() hands the rejection back so startScheduledJobs can log it with the
+    // job name; swallowing it here would lose that attribution.
+    await expect(job.run()).rejects.toThrow('partition failure');
   });
 });
 
@@ -213,6 +214,33 @@ describe('startScheduledJobs', () => {
     expect(infoSpy).not.toHaveBeenCalledWith('cron: running Data hygiene scan');
 
     release?.();
+    stop();
+  });
+
+  it('logs a rejecting job by name rather than letting it escape', async () => {
+    const ticks = new Map<string, () => void>();
+    vi.spyOn(cron, 'schedule').mockImplementation(((expression: string, handler: () => void) => {
+      ticks.set(expression, handler);
+      return { stop: vi.fn() };
+    }) as unknown as typeof cron.schedule);
+    const errorSpy = vi.spyOn(logger, 'error');
+    vi.spyOn(auditPartitionService, 'ensureAuditLogPartitions').mockRejectedValue(
+      new Error('partition failure'),
+    );
+
+    const stop = startScheduledJobs(COVERAGE_RETENTION_DAYS);
+    ticks.get('0 0 1 * *')?.();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    // Unhandled, this reaches the process-level handler with no job name. The
+    // consequence note is carried through too.
+    const logged = errorSpy.mock.calls.find(
+      ([, message]) =>
+        typeof message === 'string' && message.includes('Audit log partition maintenance'),
+    );
+    expect(logged, 'the failure must name the job').toBeDefined();
+    expect(String(logged?.[1])).toContain('rows may route to audit_log_default');
+
     stop();
   });
 
