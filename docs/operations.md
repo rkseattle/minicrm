@@ -300,11 +300,12 @@ correctly because `nginx.conf` falls back to `index.html` via `try_files`.
 > **Back up your data before every upgrade.** Follow the [Backup](#backup-and-restore)
 > instructions below before pulling new images.
 
-MiniCRM runs database migrations automatically on server startup. When the server container
-starts, it binds to its port and then immediately calls `runMigrations()`. Already-applied
-migrations are skipped; only pending ones run. If a migration fails the server exits
-immediately with a non-zero status code — do not send traffic until `Migrations complete.`
-appears in the log (see below).
+MiniCRM runs database migrations automatically on server startup, before it accepts any
+traffic. The server migrates, seeds the default admin if none exists, connects the audit
+event bus, and ensures the audit partitions exist — and only then binds its port.
+Already-applied migrations are skipped; only pending ones run. If any of those steps
+fails the server exits with a non-zero status code without ever listening, so a failed
+upgrade refuses connections rather than serving from a half-migrated database.
 
 ### Steps
 
@@ -330,28 +331,36 @@ docker compose --profile web up -d
 
 ### Confirming migrations ran
 
-Monitor the server startup log until you see `Migrations complete.`:
+Monitor the server startup log until you see `listening on port 3001`:
 
 ```bash
 docker compose logs -f server
 ```
 
-The server binds to its port first and then runs migrations, so `listening on port 3001`
-appears before the migration output. A successful startup looks like:
+The `Scheduled <job name>` lines for the background jobs come first — they are
+registered while the startup sequence below is still awaiting the database. The rest is
+sequential, and the listening line is last. A successful startup looks like:
 
 ```
-minicrm-server  | MiniCRM API server listening on port 3001
+minicrm-server  | Scheduled Log table retention purge (0 2 * * *)
+minicrm-server  | ... one line per background job ...
 minicrm-server  | Running database migrations...
 minicrm-server  | Migrations complete.
+minicrm-server  | Running coverage database migrations...
+minicrm-server  | Coverage database migrations complete.
+minicrm-server  | Default admin user already exists, skipping seed: admin@example.com
+minicrm-server  | auditEventBus: LISTEN connection established
+minicrm-server  | auditPartitionService: partition check complete
+minicrm-server  | MiniCRM API server listening on port 3001
 ```
 
-If no migrations were pending (already up to date), you will also see `No migrations to run!`
-between the two lines above — that is expected and successful.
+`No migrations to run!` is logged at debug level, so it does not appear at the default
+`info` level even when the database is already up to date. Its absence says nothing about
+whether migrations ran.
 
-Do not send traffic to the server until `Migrations complete.` appears in the log.
-
-If the server exits without printing `Migrations complete.`, a migration failed.
-Check the full log for the error and follow the rollback procedure below.
+Because the port is not open until every step above has succeeded, a server that accepts
+a connection has already migrated. If the server exits without printing the listening
+line, check the full log for the error and follow the rollback procedure below.
 
 ### Rollback procedure
 
