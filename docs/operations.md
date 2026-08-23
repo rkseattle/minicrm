@@ -170,8 +170,14 @@ never names a dev database.
 
 ## Required Secrets
 
-Two secrets must be set before production use. Both should be generated with a
-cryptographically random source and never reused across deployments.
+Two secrets must be set before production use — `JWT_SECRET` and
+`NODE_ENCRYPTION_KEY`. Both should be generated with a cryptographically random source
+and never reused across deployments.
+
+`NODE_ENCRYPTION_KEY` backs key version 1 of a versioned keyring. Adding a version means
+setting `ENCRYPTION_KEY_V<n>` and `CURRENT_ENCRYPTION_KEY_VERSION`; both are optional and
+neither replaces `NODE_ENCRYPTION_KEY`, which every deployment needs. See
+[Key Rotation](#key-rotation).
 
 ### `JWT_SECRET`
 
@@ -193,8 +199,9 @@ when the server starts, it throws and exits before binding to its port — wheth
 use file storage or SMTP. This mirrors `JWT_SECRET` and catches misconfiguration at
 deployment time rather than at first use.
 
-What it protects: the S3/MinIO secret access key and the SMTP password, encrypted at rest in
-`system_settings` using AES-256-GCM. Must be a 64-character hex string (32 bytes).
+What it protects: every secret MiniCRM encrypts at rest, using AES-256-GCM — see
+[Key Rotation](#key-rotation) for the full inventory and which of them record a key
+version. Must be a 64-character hex string (32 bytes).
 
 A server that exits at startup for this reason prints:
 
@@ -211,34 +218,53 @@ Generate a value the same way as `JWT_SECRET`:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Once set, **treat this key as permanent.** There is no supported way to rotate it that
-preserves existing secrets — see [Key Rotation](#key-rotation) below.
+Once set, **never change this value in place** — see [Key Rotation](#key-rotation) below
+for what is and is not supported.
 
 #### Key Rotation
 
-> **Warning — data loss.** Rotating `NODE_ENCRYPTION_KEY` makes every secret encrypted
-> under it permanently unreadable. No tooling re-encrypts them, and the key itself can
-> never be retired. A step-by-step procedure previously documented here targeted
-> `system_settings` keys that do not exist, so it silently did nothing while implying
-> rotation was safe; it has been removed rather than corrected.
+Two operations get called "rotation" and they have opposite outcomes.
 
-Rotation is necessary only if the key is compromised or a compliance requirement mandates
-periodic rotation. If neither condition applies, do not rotate.
+**Adding a key version is supported and non-destructive, but it covers only two
+secrets.** Set `ENCRYPTION_KEY_V2` to a new 64-character hex value and
+`CURRENT_ENCRYPTION_KEY_VERSION=2`. From then on the **AI provider API key** and the
+**SMTP password** are written under version 2. Existing rows of those two record their
+key version in a separate column and are still decrypted with the key that wrote them,
+so nothing is re-encrypted and nothing becomes unreadable.
 
-The versioned keyring and the full inventory of encrypted values are documented in
-[migrations.md](dev/migrations.md#encryption-key-rotation). In summary:
+Every other encrypted value — the storage secret access key, TOTP MFA secrets, the SSO
+private key and IdP certificate, and webhook signing secrets — always encrypts under
+`NODE_ENCRYPTION_KEY` directly, whatever `CURRENT_ENCRYPTION_KEY_VERSION` says. Adding a
+version does not change how those are written, now or in future.
 
-- Setting `ENCRYPTION_KEY_V2` and `CURRENT_ENCRYPTION_KEY_VERSION=2` makes **new**
-  ciphertexts use version 2. Existing rows are untouched.
-- **No tooling re-encrypts existing secrets.** Every key ever used must stay in the
-  environment permanently.
-- **`NODE_ENCRYPTION_KEY` can never be retired.** It backs key version 1 (there is no
-  `ENCRYPTION_KEY_V1`) and every legacy `encrypt`/`decrypt` secret — the storage secret,
-  TOTP MFA secrets, the SSO private key and IdP certificate, and webhook signing secrets.
+> **Warning — data loss.** **Replacing the value of `NODE_ENCRYPTION_KEY`** is the
+> destructive operation. Every secret written under the old value becomes permanently
+> unreadable, because no tooling re-encrypts existing rows and the old key is then gone.
+> Do it only as the deliberate, credential-by-credential recovery described below.
 
-If the key is compromised, there is no supported rotation path that preserves existing
-secrets. Re-entering each credential through the UI after setting a new key is the only
-route, and it invalidates every enrolled MFA device and webhook signature.
+What follows from that:
+
+- **No key can ever be retired.** Every key that has ever encrypted a row must stay in
+  the environment for as long as that row does. Only the AI key and SMTP password record
+  which version wrote them; for the rest there is no column to inspect, so there is no
+  way to confirm a given key is unused.
+- **`NODE_ENCRYPTION_KEY` in particular is permanent.** It backs key version 1 — there is
+  no `ENCRYPTION_KEY_V1` — plus every legacy `encrypt`/`decrypt` secret: the storage
+  secret, TOTP MFA secrets, the SSO private key and IdP certificate, and webhook signing
+  secrets.
+- **Adding a version does not re-protect existing rows.** Rows already written under a
+  compromised key stay readable by anyone holding it. For the AI key and SMTP password,
+  adding a version at least confines the exposure to what was written before the switch.
+  For everything else it confines nothing: new MFA enrollments, new webhooks, and a
+  re-uploaded IdP certificate all still encrypt under the same `NODE_ENCRYPTION_KEY`.
+
+**If `NODE_ENCRYPTION_KEY` is compromised, adding a version does not contain it.** There
+is no supported path that preserves the existing rows. Replacing the key and re-entering
+each credential through the UI is the only route, and it invalidates every enrolled MFA
+device and webhook signature.
+
+The full inventory of encrypted values is documented in
+[migrations.md](dev/migrations.md#encryption-key-rotation).
 
 ## API Versioning Policy
 
