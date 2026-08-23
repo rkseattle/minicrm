@@ -21,6 +21,7 @@
  */
 
 import type { Response } from 'express';
+import { isProductionEnv } from '../utils/nodeEnv.js';
 
 /**
  * Name of the cookie that holds the JWT.
@@ -76,7 +77,7 @@ export const ABSOLUTE_SESSION_CAP_SECONDS = 8 * 60 * 60;
  */
 export const AUTH_COOKIE_ATTRIBUTES = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: isProductionEnv(),
   sameSite: 'lax',
 } as const;
 

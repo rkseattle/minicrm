@@ -7,6 +7,7 @@
  */
 
 import dns from 'dns';
+import { isProductionEnv } from './nodeEnv.js';
 import ipaddr from 'ipaddr.js';
 
 /**
@@ -76,7 +77,7 @@ export async function assertUrlIsFetchSafe(urlString: string): Promise<void> {
     throw new UrlNotSafeError('invalid_url', 'Invalid URL');
   }
 
-  if (process.env['NODE_ENV'] === 'production' && parsed.protocol !== 'https:') {
+  if (isProductionEnv() && parsed.protocol !== 'https:') {
     throw new UrlNotSafeError('insecure_protocol', 'URL must use HTTPS in production');
   }
 

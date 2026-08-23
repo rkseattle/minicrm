@@ -27,6 +27,19 @@ export function isNonProductionEnv(): boolean {
   return NON_PRODUCTION_ENVS.has(process.env.NODE_ENV ?? '');
 }
 
+/**
+ * True for production and for any value that is not a recognized non-production
+ * environment.
+ *
+ * The inverse of isNonProductionEnv, for safeguards that must be ON in
+ * production. Written as a negation rather than `=== 'production'` for the same
+ * reason the others are allowlists: an unset or misspelled NODE_ENV must get the
+ * safeguard, not lose it.
+ */
+export function isProductionEnv(): boolean {
+  return !isNonProductionEnv();
+}
+
 /** True only where handing out credentials without authentication is acceptable. */
 export function isAuthBypassEnv(): boolean {
   return AUTH_BYPASS_ENVS.has(process.env.NODE_ENV ?? '');

@@ -75,7 +75,14 @@ test.use({ storageState: { cookies: [], origins: [] } });
 // Setup
 // ---------------------------------------------------------------------------
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ page, restClient }) => {
+  // The desktop and mobile-web projects run this file concurrently against the
+  // same singleton ai_configuration row, and serial mode only orders tests
+  // within a project. These assertions are about the settings API and that
+  // shared row, not the viewport, so one project running them is enough.
+  const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+  test.skip(isMobile, 'mutates the singleton ai_configuration row — desktop only');
+
   await loginAsAdmin(restClient);
   await resetAiSettings(restClient);
 });
