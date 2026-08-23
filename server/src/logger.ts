@@ -4,8 +4,11 @@
  */
 
 import pino from 'pino';
+import { isNonProductionEnv } from './utils/nodeEnv.js';
 
-const isDevelopment = process.env.NODE_ENV !== 'production';
+// Allowlist rather than `!== 'production'`: an unset NODE_ENV would otherwise
+// emit debug-level logs from a production deployment.
+const isDevelopment = isNonProductionEnv();
 
 /**
  * Application logger.

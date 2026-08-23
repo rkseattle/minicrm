@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { isAuthBypassEnv, isNonProductionEnv } from '../utils/nodeEnv.js';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/auth.js';
 import {
@@ -18,15 +19,13 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 
 // In E2E/test environments the BVT suite submits multiple logins per run from a
 // single IP. Disable the limiter so the suite does not exhaust the window during
-// a normal run. The NODE_ENV !== 'production' guard ensures this bypass can never
-// activate in production regardless of how E2E is set (e.g. copied .env file).
-const isE2E =
-  process.env.NODE_ENV !== 'production' &&
-  (process.env.NODE_ENV === 'test' || process.env.E2E === 'true');
+// a normal run. The allowlist ensures this bypass cannot activate on an unset or
+// misspelled NODE_ENV, however E2E is set (e.g. a copied .env file).
+const isE2E = isAuthBypassEnv() && (process.env.NODE_ENV === 'test' || process.env.E2E === 'true');
 
 // TEST_RATE_LIMIT=true overrides the E2E bypass so rate-limiter unit tests can
 // verify the limiters actually fire. Never set in production (the isE2E check
-// above already makes this unreachable when NODE_ENV === 'production').
+// above already makes this unreachable outside a recognized non-production env).
 const shouldSkip = (): boolean => isE2E && process.env.TEST_RATE_LIMIT !== 'true';
 
 /** 10 login attempts per IP per 15-minute window (skipped in test/e2e) */
@@ -408,9 +407,9 @@ router.post('/reset-password', resetPasswordLimiter, asyncHandler(resetPassword)
 
 // ── Dev/test-only endpoint ───────────────────────────────────────────────────
 // Returns a plaintext reset token for a given email address.
-// Only available when NODE_ENV !== 'production'.
+// Only available in a recognized non-production environment.
 // Used by E2E tests to bypass the email delivery step.
-if (process.env.NODE_ENV !== 'production') {
+if (isNonProductionEnv()) {
   /**
    * POST /api/v1/auth/dev/reset-token — dev/test only.
    * Creates and returns a plaintext reset token for a given email address.
