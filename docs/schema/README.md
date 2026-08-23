@@ -63,7 +63,7 @@
 | [public.email_templates](public.email_templates.md) | 10 |  | BASE TABLE |
 | [public.user_ai_context](public.user_ai_context.md) | 6 | Per-user key/value context entries injected into every Claude system prompt as a personalisation preamble. (MINCRM-427) | BASE TABLE |
 | [public.lead_tags](public.lead_tags.md) | 3 |  | BASE TABLE |
-| [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) | 10 | Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446) | BASE TABLE |
+| [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) | 12 | Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446) | BASE TABLE |
 | [public.ai_token_usage_daily](public.ai_token_usage_daily.md) | 7 | Per-day, per-feature token usage for the AI usage/cost dashboard. Additive to ai_token_usage, which remains the source of truth for monthly budget enforcement. (MINCRM-459) | BASE TABLE |
 | [public.ai_field_exclusions](public.ai_field_exclusions.md) | 6 | Admin-configurable AI payload exclusion toggles for standard entity fields. Immutable defaults live in code (ALWAYS_EXCLUDED_FIELDS), not here. (MINCRM-461) | BASE TABLE |
 | [public.deal_win_loss_insights](public.deal_win_loss_insights.md) | 9 | Cached nightly AI win/loss pattern analysis results (MINCRM-464). Fully replaced on each run of analyzeWinLossPatterns — not appended. | BASE TABLE |
@@ -877,7 +877,7 @@ erDiagram
 }
 "public.ai_gdpr_cascade_log" {
   uuid id ""
-  uuid contact_id ""
+  uuid contact_id "Superseded by record_id. Mirrors it when record_type is contact, and is NULL otherwise, so a query on this column matches only contacts."
   timestamp_with_time_zone triggered_at ""
   uuid triggered_by FK "NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run."
   integer messages_redacted ""
@@ -886,6 +886,8 @@ erDiagram
   text error_detail ""
   text original_name ""
   text original_email ""
+  varchar_20_ record_type "Which entity was erased. Leads and contacts both cascade to AI data, and their ids share no namespace."
+  uuid record_id "UUID of the erased record, in the table named by record_type. No FK — the row is erased in place, and for leads it is not a contact."
 }
 "public.ai_token_usage_daily" {
   uuid id ""

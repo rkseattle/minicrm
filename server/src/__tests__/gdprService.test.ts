@@ -336,7 +336,9 @@ describe('hasGdprErasureForContact', () => {
 describe('cascadeGdprErasureToAiData', () => {
   beforeEach(async () => {
     await pool.query(
-      'DELETE FROM ai_gdpr_cascade_log WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id = $1)',
+      `DELETE FROM ai_gdpr_cascade_log
+       WHERE (record_type = 'contact' AND record_id IN (SELECT id FROM contacts WHERE owner_id = $1))
+          OR (record_type = 'lead' AND record_id IN (SELECT id FROM leads WHERE owner_id = $1))`,
       [adminId],
     );
     await pool.query('DELETE FROM ai_sessions WHERE user_id = $1', [adminId]);
@@ -360,6 +362,47 @@ describe('cascadeGdprErasureToAiData', () => {
     // PII must be cleared after a successful cascade (GDPR Art. 17).
     expect(rows[0].original_name).toBeNull();
     expect(rows[0].original_email).toBeNull();
+  });
+
+  it('records the erased record type, keeping contact_id in step with record_id', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+
+    await cascadeGdprErasureToAiData(
+      contact.id,
+      'Alice Erasure',
+      `${FILE_PREFIX}-record-type@example.com`,
+      adminActor,
+    );
+
+    const rows = await getAiCascadeLogForContact(contact.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].record_type).toBe('contact');
+    expect(rows[0].record_id).toBe(contact.id);
+    // contact_id is retained for readers that predate the lead cascade.
+    expect(rows[0].contact_id).toBe(contact.id);
+  });
+
+  it('keeps a lead row out of the contact reader and out of the legacy contact column', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+
+    // A lead cascade row, written the way the lead path will write it. Its
+    // record_id deliberately reuses the contact's id: the discriminator, not the
+    // id, is what must keep the two apart.
+    await pool.query(
+      `INSERT INTO ai_gdpr_cascade_log (record_type, record_id, contact_id, original_email)
+       VALUES ('lead', $1, NULL, $2)`,
+      [contact.id, `${FILE_PREFIX}-lead-pii@example.com`],
+    );
+
+    const rows = await getAiCascadeLogForContact(contact.id);
+
+    expect(rows).toHaveLength(0);
+    // A legacy reader keyed on contact_id must never surface another subject's PII.
+    const legacy = await pool.query(
+      'SELECT original_email FROM ai_gdpr_cascade_log WHERE contact_id = $1',
+      [contact.id],
+    );
+    expect(legacy.rows).toHaveLength(0);
   });
 
   it('writes a completed audit entry for the contact record', async () => {
@@ -412,7 +455,9 @@ describe('getAiCascadeLogForContact', () => {
 describe('getOriginalPiiFromCascadeLog', () => {
   beforeEach(async () => {
     await pool.query(
-      'DELETE FROM ai_gdpr_cascade_log WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id = $1)',
+      `DELETE FROM ai_gdpr_cascade_log
+       WHERE (record_type = 'contact' AND record_id IN (SELECT id FROM contacts WHERE owner_id = $1))
+          OR (record_type = 'lead' AND record_id IN (SELECT id FROM leads WHERE owner_id = $1))`,
       [adminId],
     );
   });
@@ -443,9 +488,9 @@ describe('getOriginalPiiFromCascadeLog', () => {
     // Insert a failed cascade log row directly (simulating a failed cascade).
     await pool.query(
       `INSERT INTO ai_gdpr_cascade_log
-         (contact_id, triggered_by, messages_redacted, context_entries_removed, status,
-          error_detail, original_name, original_email)
-       VALUES ($1, $2, 0, 0, 'failed', 'simulated failure', $3, $4)`,
+         (record_type, record_id, contact_id, triggered_by, messages_redacted,
+          context_entries_removed, status, error_detail, original_name, original_email)
+       VALUES ('contact', $1, $1, $2, 0, 0, 'failed', 'simulated failure', $3, $4)`,
       [contact.id, adminId, name, email],
     );
 
@@ -461,7 +506,9 @@ describe('getOriginalPiiFromCascadeLog', () => {
 describe('cascadeGdprErasureToAiData empty-name guard', () => {
   beforeEach(async () => {
     await pool.query(
-      'DELETE FROM ai_gdpr_cascade_log WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id = $1)',
+      `DELETE FROM ai_gdpr_cascade_log
+       WHERE (record_type = 'contact' AND record_id IN (SELECT id FROM contacts WHERE owner_id = $1))
+          OR (record_type = 'lead' AND record_id IN (SELECT id FROM leads WHERE owner_id = $1))`,
       [adminId],
     );
     await pool.query('DELETE FROM user_ai_context WHERE user_id = $1', [adminId]);
