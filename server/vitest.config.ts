@@ -139,6 +139,11 @@ const SERIAL_FILES = [
   // gdprService uses ALTER TABLE audit_log DISABLE TRIGGER in beforeEach/afterAll;
   // running in parallel with auditService races on the trigger's enabled/disabled state.
   'src/__tests__/gdprService.test.ts',
+  // gdprController erases records, and erasure fires the AI cascade, whose
+  // UPDATE/DELETE statements carry no ownership predicate — they scan
+  // ai_messages, ai_sessions, and user_ai_context instance-wide. In parallel it
+  // would both perturb and be perturbed by the aiContext and aiSession suites.
+  'src/__tests__/gdprController.test.ts',
   // activityService, auditService, and leadsService write to audit_log; when
   // noteService/gdprService disable the audit_log_no_modify trigger mid-run,
   // the immutability check fires P0001 on concurrent INSERT attempts.

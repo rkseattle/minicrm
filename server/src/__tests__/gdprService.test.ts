@@ -25,9 +25,9 @@ import {
   listGdprDeletions,
   getGdprStatusForRecord,
   cascadeGdprErasureToAiData,
-  getAiCascadeLogForContact,
+  getAiCascadeLogForRecord,
   getOriginalPiiFromCascadeLog,
-  hasGdprErasureForContact,
+  hasGdprErasureForRecord,
 } from '../services/gdprService.js';
 import { uid, clearAuditLogFor } from './testUtils.js';
 
@@ -75,6 +75,21 @@ afterAll(async () => {
 });
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+/**
+ * Waits for the fire-and-forget AI cascade to write its log row.
+ *
+ * eraseContact/eraseLead return before the cascade runs, so polling the log is
+ * the only way to observe completion without reaching into the promise.
+ */
+async function waitForCascade(recordId: string, recordType: 'contact' | 'lead'): Promise<void> {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const rows = await getAiCascadeLogForRecord(recordId, recordType);
+    if (rows.length > 0) return;
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`cascade log row never appeared for ${recordType} ${recordId}`);
+}
 
 function makeContact() {
   return {
@@ -221,6 +236,218 @@ describe('eraseLead', () => {
       code: 'NOT_FOUND',
     });
   });
+
+  it('cascades to AI data, redacting the lead name and email from ai_messages', async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: adminId }, adminActor);
+    const created = await pool.query<{
+      first_name: string;
+      last_name: string | null;
+      email: string;
+    }>('SELECT first_name, last_name, email FROM leads WHERE id = $1', [lead.id]);
+    const leadName = [created.rows[0].first_name, created.rows[0].last_name]
+      .filter(Boolean)
+      .join(' ');
+    const leadEmail = created.rows[0].email;
+
+    const session = await pool.query<{ id: string }>(
+      `INSERT INTO ai_sessions (user_id, name) VALUES ($1, $2) RETURNING id`,
+      [adminId, `Session about ${leadName}`],
+    );
+    await pool.query(
+      `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'user', $2)`,
+      [session.rows[0].id, `Follow up with ${leadName} at ${leadEmail} tomorrow`],
+    );
+
+    await eraseLead(lead.id, adminActor);
+    await waitForCascade(lead.id, 'lead');
+
+    const messages = await pool.query<{ content: string }>(
+      'SELECT content FROM ai_messages WHERE session_id = $1',
+      [session.rows[0].id],
+    );
+    expect(messages.rows[0].content).not.toContain(leadEmail);
+    expect(messages.rows[0].content).not.toContain(leadName);
+    expect(messages.rows[0].content).toContain('[redacted]');
+
+    const log = await getAiCascadeLogForRecord(lead.id, 'lead');
+    expect(log).toHaveLength(1);
+    expect(log[0].status).toBe('completed');
+    expect(log[0].messages_redacted).toBe(1);
+    // A lead row carries no contact_id, so a contact-keyed reader cannot see it.
+    expect(log[0].contact_id).toBeNull();
+
+    await pool.query('DELETE FROM ai_messages WHERE session_id = $1', [session.rows[0].id]);
+    await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
+  });
+
+  it('redacts the free-text lead fields it scrubs from the row', async () => {
+    const distinctiveNotes = 'Budget approved by the steering committee';
+    const distinctiveCompany = 'Trellis Industrial Holdings, Inc.';
+    const lead = await createLead(
+      {
+        ...makeLead(),
+        owner_id: adminId,
+        company_name: distinctiveCompany,
+        notes: distinctiveNotes,
+      },
+      adminActor,
+    );
+
+    const session = await pool.query<{ id: string }>(
+      `INSERT INTO ai_sessions (user_id, name) VALUES ($1, 'Lead notes session') RETURNING id`,
+      [adminId],
+    );
+    await pool.query(
+      `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'assistant', $2)`,
+      [session.rows[0].id, `Context: ${distinctiveNotes}. Account: ${distinctiveCompany}.`],
+    );
+
+    await eraseLead(lead.id, adminActor);
+    await waitForCascade(lead.id, 'lead');
+
+    // The company name ends in punctuation: \M asserts adjacency to a word
+    // character, so anchoring both ends unconditionally would match nothing here
+    // while still reporting a completed cascade.
+    // erasure_scope claims notes and company_name are erased; the AI copies must go too.
+    const messages = await pool.query<{ content: string }>(
+      'SELECT content FROM ai_messages WHERE session_id = $1',
+      [session.rows[0].id],
+    );
+    expect(messages.rows[0].content).not.toContain(distinctiveNotes);
+    expect(messages.rows[0].content).not.toContain(distinctiveCompany);
+
+    await pool.query('DELETE FROM ai_messages WHERE session_id = $1', [session.rows[0].id]);
+    await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
+  });
+
+  it('ignores a free-text value too generic to identify anyone', async () => {
+    // "Follow up" is a phrase, not an identity. Word boundaries do not help:
+    // it matches the same phrase in every other user's messages.
+    const lead = await createLead(
+      { ...makeLead(), owner_id: adminId, notes: 'Follow up' },
+      adminActor,
+    );
+
+    const session = await pool.query<{ id: string }>(
+      `INSERT INTO ai_sessions (user_id, name) VALUES ($1, 'Generic phrase session') RETURNING id`,
+      [adminId],
+    );
+    const bystanderText = 'Please follow up with the vendor next week';
+    await pool.query(
+      `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'user', $2)`,
+      [session.rows[0].id, bystanderText],
+    );
+
+    await eraseLead(lead.id, adminActor);
+    await waitForCascade(lead.id, 'lead');
+
+    const messages = await pool.query<{ content: string }>(
+      'SELECT content FROM ai_messages WHERE session_id = $1',
+      [session.rows[0].id],
+    );
+    expect(messages.rows[0].content).toBe(bystanderText);
+
+    await pool.query('DELETE FROM ai_messages WHERE session_id = $1', [session.rows[0].id]);
+    await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
+  });
+
+  it('matches a short name on word boundaries, not as a substring', async () => {
+    // first_name.min(1) permits a one-character lead name, and the cascade has no
+    // ownership predicate to narrow what it scans. Word boundaries are what keep
+    // "A" from rewriting every word containing the letter.
+    const lead = await createLead(
+      { ...makeLead(), owner_id: adminId, first_name: 'A', last_name: undefined },
+      adminActor,
+    );
+
+    const session = await pool.query<{ id: string }>(
+      `INSERT INTO ai_sessions (user_id, name) VALUES ($1, 'Bystander session') RETURNING id`,
+      [adminId],
+    );
+    const bystanderText = 'Quarterly planning notes for Acme, an annual ritual';
+    await pool.query(
+      `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'user', $2)`,
+      [session.rows[0].id, bystanderText],
+    );
+    const context = await pool.query<{ id: string }>(
+      `INSERT INTO user_ai_context (user_id, key, value) VALUES ($1, $2, 'unrelated context value')
+       RETURNING id`,
+      [adminId, `${FILE_PREFIX}-short-name`],
+    );
+
+    await eraseLead(lead.id, adminActor);
+    await waitForCascade(lead.id, 'lead');
+
+    // "Acme" and "annual" contain the letter but are not the name.
+    const messages = await pool.query<{ content: string }>(
+      'SELECT content FROM ai_messages WHERE session_id = $1',
+      [session.rows[0].id],
+    );
+    expect(messages.rows[0].content).toBe(bystanderText);
+    const sessionRow = await pool.query<{ name: string }>(
+      'SELECT name FROM ai_sessions WHERE id = $1',
+      [session.rows[0].id],
+    );
+    expect(sessionRow.rows[0].name).toBe('Bystander session');
+    const contextRows = await pool.query('SELECT id FROM user_ai_context WHERE id = $1', [
+      context.rows[0].id,
+    ]);
+    expect(contextRows.rows).toHaveLength(1);
+
+    await pool.query('DELETE FROM user_ai_context WHERE id = $1', [context.rows[0].id]);
+    await pool.query('DELETE FROM ai_messages WHERE session_id = $1', [session.rows[0].id]);
+    await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
+  });
+
+  it('records a failed row when the caller supplies no searchable identifier', async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: adminId }, adminActor);
+
+    await cascadeGdprErasureToAiData(lead.id, 'lead', null, null, adminActor);
+    await waitForCascade(lead.id, 'lead');
+
+    const rows = await getAiCascadeLogForRecord(lead.id, 'lead');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('failed');
+    expect(rows[0].error_detail).toContain('non-empty PII identifier');
+  });
+
+  it("leaves another user's AI data untouched when erasing a lead", async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: adminId }, adminActor);
+
+    const session = await pool.query<{ id: string }>(
+      `INSERT INTO ai_sessions (user_id, name) VALUES ($1, 'Unrelated session') RETURNING id`,
+      [adminId],
+    );
+    const bystanderText = 'Quarterly planning notes with no lead PII in them';
+    await pool.query(
+      `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'user', $2)`,
+      [session.rows[0].id, bystanderText],
+    );
+    const context = await pool.query<{ id: string }>(
+      `INSERT INTO user_ai_context (user_id, key, value) VALUES ($1, $2, $3) RETURNING id`,
+      [adminId, `${FILE_PREFIX}-bystander`, bystanderText],
+    );
+
+    await eraseLead(lead.id, adminActor);
+    await waitForCascade(lead.id, 'lead');
+
+    // The cascade's searches carry no ownership predicate, so anything it
+    // matches is destroyed for every user. This asserts an unrelated row
+    // survives an erasure whose terms do not appear in it.
+    const messages = await pool.query<{ content: string }>(
+      'SELECT content FROM ai_messages WHERE session_id = $1',
+      [session.rows[0].id],
+    );
+    expect(messages.rows[0].content).toBe(bystanderText);
+    const contextRows = await pool.query('SELECT id FROM user_ai_context WHERE id = $1', [
+      context.rows[0].id,
+    ]);
+    expect(contextRows.rows).toHaveLength(1);
+
+    await pool.query('DELETE FROM user_ai_context WHERE id = $1', [context.rows[0].id]);
+    await pool.query('DELETE FROM ai_messages WHERE session_id = $1', [session.rows[0].id]);
+    await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
+  });
 });
 
 // ── Audit log masking ─────────────────────────────────────────────────────────
@@ -314,19 +541,19 @@ describe('getGdprStatusForRecord', () => {
   });
 });
 
-// ── hasGdprErasureForContact ───────────────────────────────────────────────────
+// ── hasGdprErasureForRecord ───────────────────────────────────────────────────
 
-describe('hasGdprErasureForContact', () => {
+describe('hasGdprErasureForRecord', () => {
   it('returns false for a contact that has not been erased', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
-    const result = await hasGdprErasureForContact(contact.id);
+    const result = await hasGdprErasureForRecord(contact.id, 'contact');
     expect(result).toBe(false);
   });
 
   it('returns true after the contact has been erased', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
     await eraseContact(contact.id, adminActor);
-    const result = await hasGdprErasureForContact(contact.id);
+    const result = await hasGdprErasureForRecord(contact.id, 'contact');
     expect(result).toBe(true);
   });
 });
@@ -336,9 +563,10 @@ describe('hasGdprErasureForContact', () => {
 describe('cascadeGdprErasureToAiData', () => {
   beforeEach(async () => {
     await pool.query(
-      `DELETE FROM ai_gdpr_cascade_log
-       WHERE (record_type = 'contact' AND record_id IN (SELECT id FROM contacts WHERE owner_id = $1))
-          OR (record_type = 'lead' AND record_id IN (SELECT id FROM leads WHERE owner_id = $1))`,
+      // Keyed on the actor, not on a subquery over tables this same hook deletes:
+      // the cascade is fire-and-forget, so its INSERT often lands after the
+      // subquery has run and the parent row is already gone.
+      `DELETE FROM ai_gdpr_cascade_log WHERE triggered_by = $1`,
       [adminId],
     );
     await pool.query('DELETE FROM ai_sessions WHERE user_id = $1', [adminId]);
@@ -349,12 +577,13 @@ describe('cascadeGdprErasureToAiData', () => {
 
     await cascadeGdprErasureToAiData(
       contact.id,
+      'contact',
       'Alice Erasure',
       `${FILE_PREFIX}-cascade-test@example.com`,
       adminActor,
     );
 
-    const rows = await getAiCascadeLogForContact(contact.id);
+    const rows = await getAiCascadeLogForRecord(contact.id, 'contact');
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe('completed');
     expect(rows[0].messages_redacted).toBe(0);
@@ -369,12 +598,13 @@ describe('cascadeGdprErasureToAiData', () => {
 
     await cascadeGdprErasureToAiData(
       contact.id,
+      'contact',
       'Alice Erasure',
       `${FILE_PREFIX}-record-type@example.com`,
       adminActor,
     );
 
-    const rows = await getAiCascadeLogForContact(contact.id);
+    const rows = await getAiCascadeLogForRecord(contact.id, 'contact');
     expect(rows).toHaveLength(1);
     expect(rows[0].record_type).toBe('contact');
     expect(rows[0].record_id).toBe(contact.id);
@@ -394,7 +624,7 @@ describe('cascadeGdprErasureToAiData', () => {
       [contact.id, `${FILE_PREFIX}-lead-pii@example.com`],
     );
 
-    const rows = await getAiCascadeLogForContact(contact.id);
+    const rows = await getAiCascadeLogForRecord(contact.id, 'contact');
 
     expect(rows).toHaveLength(0);
     // A legacy reader keyed on contact_id must never surface another subject's PII.
@@ -410,6 +640,7 @@ describe('cascadeGdprErasureToAiData', () => {
 
     await cascadeGdprErasureToAiData(
       contact.id,
+      'contact',
       'Alice Erasure',
       `${FILE_PREFIX}-audit-test@example.com`,
       adminActor,
@@ -426,22 +657,22 @@ describe('cascadeGdprErasureToAiData', () => {
   });
 });
 
-// ── getAiCascadeLogForContact ──────────────────────────────────────────────────
+// ── getAiCascadeLogForRecord ──────────────────────────────────────────────────
 
-describe('getAiCascadeLogForContact', () => {
+describe('getAiCascadeLogForRecord', () => {
   it('returns empty array when no cascade has been run', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
-    const rows = await getAiCascadeLogForContact(contact.id);
+    const rows = await getAiCascadeLogForRecord(contact.id, 'contact');
     expect(rows).toHaveLength(0);
   });
 
   it('returns rows ordered newest-first after multiple cascade runs', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
 
-    await cascadeGdprErasureToAiData(contact.id, 'Alice', 'a@example.com', adminActor);
-    await cascadeGdprErasureToAiData(contact.id, 'Alice', 'a@example.com', adminActor);
+    await cascadeGdprErasureToAiData(contact.id, 'contact', 'Alice', 'a@example.com', adminActor);
+    await cascadeGdprErasureToAiData(contact.id, 'contact', 'Alice', 'a@example.com', adminActor);
 
-    const rows = await getAiCascadeLogForContact(contact.id);
+    const rows = await getAiCascadeLogForRecord(contact.id, 'contact');
     expect(rows.length).toBeGreaterThanOrEqual(2);
     // Newest first
     expect(new Date(rows[0].triggered_at).getTime()).toBeGreaterThanOrEqual(
@@ -455,16 +686,17 @@ describe('getAiCascadeLogForContact', () => {
 describe('getOriginalPiiFromCascadeLog', () => {
   beforeEach(async () => {
     await pool.query(
-      `DELETE FROM ai_gdpr_cascade_log
-       WHERE (record_type = 'contact' AND record_id IN (SELECT id FROM contacts WHERE owner_id = $1))
-          OR (record_type = 'lead' AND record_id IN (SELECT id FROM leads WHERE owner_id = $1))`,
+      // Keyed on the actor, not on a subquery over tables this same hook deletes:
+      // the cascade is fire-and-forget, so its INSERT often lands after the
+      // subquery has run and the parent row is already gone.
+      `DELETE FROM ai_gdpr_cascade_log WHERE triggered_by = $1`,
       [adminId],
     );
   });
 
   it('returns null when no cascade log entry exists', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
-    const result = await getOriginalPiiFromCascadeLog(contact.id);
+    const result = await getOriginalPiiFromCascadeLog(contact.id, 'contact');
     expect(result).toBeNull();
   });
 
@@ -473,10 +705,10 @@ describe('getOriginalPiiFromCascadeLog', () => {
     const name = `Pii-Test-${FILE_PREFIX}`;
     const email = `${FILE_PREFIX}-pii@example.com`;
 
-    await cascadeGdprErasureToAiData(contact.id, name, email, adminActor);
+    await cascadeGdprErasureToAiData(contact.id, 'contact', name, email, adminActor);
 
     // Successful cascade must NULL out original_name/email — PII must not persist.
-    const result = await getOriginalPiiFromCascadeLog(contact.id);
+    const result = await getOriginalPiiFromCascadeLog(contact.id, 'contact');
     expect(result).toBeNull();
   });
 
@@ -494,7 +726,7 @@ describe('getOriginalPiiFromCascadeLog', () => {
       [contact.id, adminId, name, email],
     );
 
-    const result = await getOriginalPiiFromCascadeLog(contact.id);
+    const result = await getOriginalPiiFromCascadeLog(contact.id, 'contact');
     expect(result).not.toBeNull();
     expect(result?.original_name).toBe(name);
     expect(result?.original_email).toBe(email);
@@ -506,9 +738,10 @@ describe('getOriginalPiiFromCascadeLog', () => {
 describe('cascadeGdprErasureToAiData empty-name guard', () => {
   beforeEach(async () => {
     await pool.query(
-      `DELETE FROM ai_gdpr_cascade_log
-       WHERE (record_type = 'contact' AND record_id IN (SELECT id FROM contacts WHERE owner_id = $1))
-          OR (record_type = 'lead' AND record_id IN (SELECT id FROM leads WHERE owner_id = $1))`,
+      // Keyed on the actor, not on a subquery over tables this same hook deletes:
+      // the cascade is fire-and-forget, so its INSERT often lands after the
+      // subquery has run and the parent row is already gone.
+      `DELETE FROM ai_gdpr_cascade_log WHERE triggered_by = $1`,
       [adminId],
     );
     await pool.query('DELETE FROM user_ai_context WHERE user_id = $1', [adminId]);
@@ -526,7 +759,7 @@ describe('cascadeGdprErasureToAiData empty-name guard', () => {
     );
 
     // Cascade with empty name — previously this would produce ILIKE '%%' and wipe all rows
-    await cascadeGdprErasureToAiData(contact.id, '', email, adminActor);
+    await cascadeGdprErasureToAiData(contact.id, 'contact', '', email, adminActor);
 
     const remaining = await pool.query(
       `SELECT id FROM user_ai_context WHERE user_id = $1 AND key = 'keep'`,

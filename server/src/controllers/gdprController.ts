@@ -14,9 +14,11 @@ import {
   listGdprDeletions,
   getGdprStatusForRecord,
   cascadeGdprErasureToAiData,
-  getAiCascadeLogForContact,
-  hasGdprErasureForContact,
+  getAiCascadeLogForRecord,
+  hasGdprErasureForRecord,
   getOriginalPiiFromCascadeLog,
+  gdprPlaceholderEmail,
+  type CascadeRecordType,
 } from '../services/gdprService.js';
 
 /** Schema for the optional notes field in erasure request bodies */
@@ -182,66 +184,78 @@ export async function listGdprDeletionsHandler(req: Request, res: Response): Pro
 }
 
 /**
- * POST /api/v1/gdpr/contacts/:id/ai-cascade
- * Triggers a manual re-run of the GDPR AI data cascade for a contact. Admin only.
+ * POST /api/v1/gdpr/{contacts|leads}/:id/ai-cascade
+ * Triggers a manual re-run of the GDPR AI data cascade for a record. Admin only.
  * Returns immediately — the cascade runs asynchronously.
  */
-export async function triggerAiCascadeHandler(req: Request, res: Response): Promise<void> {
-  const id = String(req.params['id']);
-  const idParsed = uuidSchema.safeParse(id);
-  if (!idParsed.success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
-    return;
-  }
+function makeTriggerAiCascadeHandler(recordType: CascadeRecordType) {
+  return async function triggerAiCascade(req: Request, res: Response): Promise<void> {
+    const id = String(req.params['id']);
+    const idParsed = uuidSchema.safeParse(id);
+    if (!idParsed.success) {
+      res
+        .status(400)
+        .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+      return;
+    }
 
-  const actor = { id: req.user!.id, name: req.user!.name };
+    const actor = { id: req.user!.id, name: req.user!.name };
 
-  // Verify that a GDPR erasure has already been performed for this contact.
-  // The cascade is only meaningful after erasure — running it on a live contact
-  // would redact legitimate messages.
-  const erased = await hasGdprErasureForContact(id);
-  if (!erased) {
-    res.status(409).json({
-      error: {
-        code: 'GDPR_ERASURE_NOT_FOUND',
-        message: 'No GDPR erasure record found for this contact. Cascade requires a prior erasure.',
-      },
-    });
-    return;
-  }
+    // Verify that a GDPR erasure has already been performed for this record.
+    // The cascade is only meaningful after erasure — running it on a live record
+    // would redact legitimate messages.
+    const erased = await hasGdprErasureForRecord(id, recordType);
+    if (!erased) {
+      res.status(409).json({
+        error: {
+          code: 'GDPR_ERASURE_NOT_FOUND',
+          message: `No GDPR erasure record found for this ${recordType}. Cascade requires a prior erasure.`,
+        },
+      });
+      return;
+    }
 
-  // Re-running the cascade: look up the original name and email stored in the
-  // first cascade log entry (written by migration 136). Falls back to the
-  // synthetic redaction placeholder when no prior log entry exists (pre-migration
-  // rows), in which case the re-run can still match the synthetic email pattern.
-  const originalPii = await getOriginalPiiFromCascadeLog(id);
-  const reCascadeName = originalPii?.original_name ?? '[GDPR deleted]';
-  const reCascadeEmail = originalPii?.original_email ?? `gdpr-deleted-${id}@gdpr.invalid`;
+    // Re-running the cascade: recover the original name and email from a failed
+    // log row. With no such row the name is left out rather than defaulting to
+    // the '[GDPR deleted]' placeholder — that string matches itself, and the
+    // cascade's searches are not scoped to one record, so it would rewrite every
+    // other subject's already-redacted rows and count them as this one's. The
+    // synthetic email is unique per record and stands in safely.
+    const originalPii = await getOriginalPiiFromCascadeLog(id, recordType);
+    const reCascadeName = originalPii?.original_name ?? null;
+    const reCascadeEmail = originalPii?.original_email ?? gdprPlaceholderEmail(id);
 
-  void cascadeGdprErasureToAiData(id, reCascadeName, reCascadeEmail, actor);
+    void cascadeGdprErasureToAiData(id, recordType, reCascadeName, reCascadeEmail, actor);
 
-  res.status(202).json({ accepted: true, message: 'AI cascade re-run accepted' });
+    res.status(202).json({ accepted: true, message: 'AI cascade re-run accepted' });
+  };
 }
+
+export const triggerAiCascadeHandler = makeTriggerAiCascadeHandler('contact');
+export const triggerLeadAiCascadeHandler = makeTriggerAiCascadeHandler('lead');
 
 /**
- * GET /api/v1/gdpr/contacts/:id/ai-cascade
- * Returns all ai_gdpr_cascade_log rows for a contact. Admin only.
+ * GET /api/v1/gdpr/{contacts|leads}/:id/ai-cascade
+ * Returns all ai_gdpr_cascade_log rows for a record. Admin only.
  */
-export async function getAiCascadeLogHandler(req: Request, res: Response): Promise<void> {
-  const id = String(req.params['id']);
-  const idParsed = uuidSchema.safeParse(id);
-  if (!idParsed.success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
-    return;
-  }
+function makeGetAiCascadeLogHandler(recordType: CascadeRecordType) {
+  return async function getAiCascadeLog(req: Request, res: Response): Promise<void> {
+    const id = String(req.params['id']);
+    const idParsed = uuidSchema.safeParse(id);
+    if (!idParsed.success) {
+      res
+        .status(400)
+        .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+      return;
+    }
 
-  const rows = await getAiCascadeLogForContact(id);
-  res.status(200).json({ data: rows });
+    const rows = await getAiCascadeLogForRecord(id, recordType);
+    res.status(200).json({ data: rows });
+  };
 }
+
+export const getAiCascadeLogHandler = makeGetAiCascadeLogHandler('contact');
+export const getLeadAiCascadeLogHandler = makeGetAiCascadeLogHandler('lead');
 
 /**
  * GET /api/v1/gdpr/status/:recordType/:recordId
