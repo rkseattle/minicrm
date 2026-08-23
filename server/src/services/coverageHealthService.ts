@@ -21,17 +21,10 @@
  * subsystem has no product-DB dependency to report on, so degrading on a
  * product-DB outage would be reporting someone else's failure; app.ts's own
  * /api/health covers that.
- *
- * Not wrapped in a transaction (BEGIN/COMMIT) around the SET LOCAL
- * statement_timeout call — mirrors app.ts's own /api/health implementation
- * exactly, including that same characteristic: SET LOCAL only actually
- * scopes to a transaction, so outside one this is a session-wide SET that
- * a pooled connection carries until it's reset/released, same as the
- * product health check already does. Not fixed here since this function's
- * job is to match established precedent, not to depart from it.
  */
 
 import coverageDb from '../coverageDb.js';
+import { probeDatabase } from './dbHealthProbe.js';
 import { getCoverageAgent } from '../coverageAgent/coverageAgentRegistry.js';
 import { COVERAGE_ROUTE_GATES_AT_BOOT } from '../coverageAgent/coverageBootGate.js';
 import {
@@ -56,33 +49,9 @@ export interface CoverageHealthReport {
   lastRetentionPrune?: RetentionPruneOutcome;
 }
 
-async function checkCoverageDb(): Promise<{ ok: true } | { ok: false; error: string }> {
-  let client;
-  try {
-    client = await coverageDb.connect();
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: message };
-  }
-
-  try {
-    // SET LOCAL limits this timeout to the current transaction only — see
-    // this module's own docblock for why that guarantee doesn't actually
-    // apply here, matching app.ts's own /api/health precedent.
-    await client.query("SET LOCAL statement_timeout = '2s'");
-    await client.query('SELECT 1');
-    return { ok: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: message };
-  } finally {
-    client.release();
-  }
-}
-
 /** Resolves the current operational health of the Coverage/TIA framework's own services. */
 export async function getCoverageHealth(): Promise<CoverageHealthReport> {
-  const dbResult = await checkCoverageDb();
+  const dbResult = await probeDatabase(coverageDb);
 
   const agentRunning = getCoverageAgent() !== undefined;
   // From the BOOT SNAPSHOT, not a live process.env read. "Did this router

@@ -11,6 +11,7 @@ import morgan from 'morgan';
 import 'dotenv/config';
 import logger from './logger.js';
 import pool from './db.js';
+import { probeDatabase } from './services/dbHealthProbe.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import contactRoutes from './routes/contacts.js';
@@ -257,39 +258,23 @@ for (const prefix of LEGACY_PREFIXES) {
 // ── Health check ───────────────────────────────────────────────────────────────
 // No authentication — must remain public for load balancers and orchestrators.
 app.get('/api/health', async (_req: Request, res: Response) => {
-  const client = await pool.connect().catch((err: unknown) => {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(503).json({
-      status: 'degraded',
-      db: 'error',
-      db_error: message,
-      uptime_seconds: Math.floor(process.uptime()),
-    });
-    return null;
-  });
+  const probe = await probeDatabase(pool);
 
-  if (!client) return;
-
-  try {
-    // SET LOCAL limits this timeout to the current transaction only
-    await client.query("SET LOCAL statement_timeout = '2s'");
-    await client.query('SELECT 1');
+  if (probe.ok) {
     res.status(200).json({
       status: 'ok',
       db: 'ok',
       uptime_seconds: Math.floor(process.uptime()),
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(503).json({
-      status: 'degraded',
-      db: 'error',
-      db_error: message,
-      uptime_seconds: Math.floor(process.uptime()),
-    });
-  } finally {
-    client.release();
+    return;
   }
+
+  res.status(503).json({
+    status: 'degraded',
+    db: 'error',
+    db_error: probe.error,
+    uptime_seconds: Math.floor(process.uptime()),
+  });
 });
 
 // ── API docs (development + staging only) ─────────────────────────────────────
