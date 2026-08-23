@@ -98,9 +98,30 @@ describe('POST /api/v1/gdpr/leads/:id/ai-cascade', () => {
     expect(res.body.error.message).toContain('lead');
   });
 
-  it('returns 202 after the lead has been erased', async () => {
+  it('returns 409 when no failed cascade recorded the original identifiers', async () => {
     const lead = await createLead(makeLeadInput('erased'), adminActor);
     await eraseLead(lead.id, adminActor);
+
+    const res = await request(app)
+      .post(`/api/v1/gdpr/leads/${lead.id}/ai-cascade`)
+      .set('Cookie', adminCookie);
+
+    // The erasure already cleared the row, and a successful cascade clears the
+    // log's copy. Without either, a re-run could only search the synthetic
+    // placeholder — matching nothing while recording a completed cascade.
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('GDPR_CASCADE_PII_UNAVAILABLE');
+  });
+
+  it('returns 202 when a failed cascade left identifiers to search on', async () => {
+    const lead = await createLead(makeLeadInput('retryable'), adminActor);
+    await eraseLead(lead.id, adminActor);
+    await pool.query(
+      `INSERT INTO ai_gdpr_cascade_log
+         (record_type, record_id, triggered_by, status, error_detail, original_name, original_email)
+       VALUES ('lead', $1, $2, 'failed', 'simulated', 'Retryable Lead', $3)`,
+      [lead.id, adminId, `${FILE_PREFIX}-retryable@example.com`],
+    );
 
     const res = await request(app)
       .post(`/api/v1/gdpr/leads/${lead.id}/ai-cascade`)

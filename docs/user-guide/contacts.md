@@ -124,6 +124,9 @@ guessing. The same action is available for accounts — see
 - After erasure the contact still appears in lists (with a placeholder name) so that
   historical deal and activity records are not orphaned.
 - An erasure event is written to the audit log with the requesting admin's name.
+- References to the contact in AI chat history are redacted separately, shortly after
+  the erasure. There is no screen for this; confirming it completed is an API check
+  described in the [GDPR guide](../gdpr.md).
 
 ### AI Champion/Blocker badge
 

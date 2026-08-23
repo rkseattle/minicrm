@@ -91,6 +91,16 @@ Once the lead is qualified:
 - After conversion the lead's status is locked as _Converted_ and cannot be edited.
 - The source lead ID is stored on the new contact and deal for traceability.
 
+### GDPR erasure
+
+- Only admins can erase a lead.
+- After erasure the lead record remains, with its personal fields — name, email, phone,
+  company, and notes — replaced or cleared.
+- An erasure event is written to the audit log with the requesting admin's name.
+- References to the lead in AI chat history are redacted separately, shortly after the
+  erasure. There is no screen for this; confirming it completed is an API check
+  described in the [GDPR guide](../gdpr.md).
+
 ### AI lead score and narrative explanation
 
 > **Feature flags:** `ai_lead_scoring` (the score badge) and
