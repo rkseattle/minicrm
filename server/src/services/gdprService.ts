@@ -65,10 +65,13 @@ const GDPR_PLACEHOLDER_EMAIL_SQL = `'gdpr-deleted-' || id || '@gdpr.invalid'`;
 /**
  * Bounds on a free-text PII value the cascade will search for.
  *
- * Unlike a name or email, free text is not an identity. Too short and it is a
- * common phrase that matches unrelated messages; too long and Postgres rejects
- * the regex as too complex, aborting the whole cascade including the name and
- * email terms.
+ * Unlike a name or email, free text is not an identity. Below the minimum it is
+ * as likely to be a common phrase, which would redact unrelated messages across
+ * every user. The maximum is a deliberate margin, not a hard limit: Postgres
+ * rejects a pattern as too complex somewhere past 32k characters, and the terms
+ * share one alternation, so a single unbounded notes field could abort the whole
+ * cascade — name and email included. A term over the bound is skipped and
+ * counted, never silently dropped.
  */
 const MIN_FREE_TEXT_TERM_LENGTH = 12;
 const MAX_FREE_TEXT_TERM_LENGTH = 200;
@@ -797,12 +800,22 @@ export async function cascadeGdprErasureToAiData(
     // phrase from every user's messages, which boundaries do nothing to prevent,
     // and an unbounded one blows the regex size limit and aborts the whole
     // cascade. Only distinctive, bounded values are worth the reach.
-    const freeText = extraIdentifiers
-      .map((value) => (value ?? '').trim())
-      .filter(
-        (value) =>
-          value.length >= MIN_FREE_TEXT_TERM_LENGTH && value.length <= MAX_FREE_TEXT_TERM_LENGTH,
+    const candidateFreeText = extraIdentifiers.map((value) => (value ?? '').trim());
+    const freeText = candidateFreeText.filter(
+      (value) =>
+        value.length >= MIN_FREE_TEXT_TERM_LENGTH && value.length <= MAX_FREE_TEXT_TERM_LENGTH,
+    );
+    const skippedFreeText = candidateFreeText.filter(
+      (value) => value.length > 0 && !freeText.includes(value),
+    ).length;
+    if (skippedFreeText > 0) {
+      // A skipped term leaves references to it in AI data while the cascade
+      // still reports completed, so the omission has to be visible somewhere.
+      logger.warn(
+        { recordId, recordType, skippedFreeText },
+        'gdpr: cascade skipped free-text identifiers outside the length bounds',
       );
+    }
     const searchTerms = [...identity, ...freeText].filter((value) => value.length > 0);
 
     // Every erasure path supplies an email, NOT NULL on both contacts and leads,
