@@ -310,10 +310,13 @@ Recognized values are `development`, `test`, `staging`, and `production`. Outsid
 message on a 500 instead of a generic one, disables the Content-Security-Policy so the
 docs UI renders, and logs at `debug`. That applies to `staging` too.
 
-Two things are narrower still, and are available in `development` and `test` **only**:
+Three things are narrower still, and apply in `development` and `test` **only**:
 
-- the dev-only endpoints that mint a password-reset token or a live TOTP code
+- the dev-only endpoints that mint a password-reset token or a live TOTP code, and the
+  unauthenticated endpoint that runs the sequence job on demand
 - the `E2E=true` rate-limiter bypass and the `COVERAGE_DASHBOARD_NO_AUTH` auth bypass
+- the session cookie's `Secure` flag and the outbound-fetch HTTPS requirement are
+  **relaxed only here**. Staging keeps both, because it carries real traffic
 
 Anything unrecognized — unset, misspelled, or differently cased — gets the full
 production posture on all of it. That is the safe direction, but it is not a substitute

@@ -15,6 +15,8 @@
 import 'dotenv/config';
 import pool from '../db.js';
 import { vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import logger from '../logger.js';
 import * as sentry from '../sentry.js';
 import { createUser } from '../services/userService.js';
@@ -315,10 +317,19 @@ describe('eraseLead', () => {
 
     // "Acme" is below the minimum, so it is never searched — references to it
     // survive an erasure whose cascade row still reads completed.
+    // The full string, not a substring: docs/gdpr.md tells a DPO to grep for it,
+    // and a reworded message would leave that instruction pointing at nothing.
     const skipped = warnSpy.mock.calls.filter(
-      ([, message]) => typeof message === 'string' && message.includes('skipped identifiers'),
+      ([, message]) =>
+        message === 'gdpr: cascade skipped identifiers outside the searchable length bounds',
     );
     expect(skipped.length).toBeGreaterThan(0);
+
+    const gdprDoc = readFileSync(resolve(__dirname, '../../../docs/gdpr.md'), 'utf8');
+    expect(
+      gdprDoc.replace(/\s+/g, ' '),
+      'docs/gdpr.md must quote the message the code actually logs',
+    ).toContain('gdpr: cascade skipped identifiers outside the searchable length bounds');
     warnSpy.mockRestore();
   });
 

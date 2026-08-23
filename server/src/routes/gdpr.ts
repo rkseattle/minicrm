@@ -127,7 +127,10 @@ router.get(
  *       403:
  *         description: Admin role required
  *       409:
- *         description: No GDPR erasure found for this contact
+ *         description: |
+ *           GDPR_ERASURE_NOT_FOUND when the contact has not been erased, or
+ *           GDPR_CASCADE_PII_UNAVAILABLE when no failed cascade retains the
+ *           identifiers a re-run needs.
  */
 router.post(
   '/contacts/:id/ai-cascade',
@@ -199,7 +202,10 @@ router.get(
  *       403:
  *         description: Admin role required
  *       409:
- *         description: No GDPR erasure found for this lead
+ *         description: |
+ *           GDPR_ERASURE_NOT_FOUND when the lead has not been erased, or
+ *           GDPR_CASCADE_PII_UNAVAILABLE when no failed cascade retains the
+ *           identifiers a re-run needs.
  */
 router.post(
   '/leads/:id/ai-cascade',

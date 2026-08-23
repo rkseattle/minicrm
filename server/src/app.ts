@@ -11,7 +11,7 @@ import morgan from 'morgan';
 import 'dotenv/config';
 import logger from './logger.js';
 import pool from './db.js';
-import { isNonProductionEnv } from './utils/nodeEnv.js';
+import { isAuthBypassEnv, isNonProductionEnv } from './utils/nodeEnv.js';
 import { probeDatabase } from './services/dbHealthProbe.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -285,8 +285,10 @@ if (isNonProductionEnv()) {
 
 // ── Test-only endpoints (non-production) ──────────────────────────────────────
 // These endpoints are used exclusively by the E2E test suite to trigger
-// background jobs synchronously without waiting for the cron schedule.
-if (isNonProductionEnv()) {
+// background jobs synchronously without waiting for the cron schedule. Gated on
+// the narrower list: staging serves the API docs but is a real deployment, and
+// this runs a background job on demand with no authentication of its own.
+if (isAuthBypassEnv()) {
   /**
    * POST /api/v1/test/advance-sequences — dev/test only.
    * Calls advanceDueEnrollments() immediately so E2E tests can verify

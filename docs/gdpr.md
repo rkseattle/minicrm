@@ -84,20 +84,31 @@ company name and notes the erasure also scrubs:
 Matching is on whole words, so erasing a contact named "Ann" does not rewrite the word
 "annual".
 
-The name and email are always searched. The lead's free-text fields — company name and
-notes — are searched only when they are between 12 and 200 characters.
+**Every search term is capped at 200 characters — the name and email included.** A lead's
+free-text fields, its company name and notes, carry a minimum of 12 as well.
 
-Below 12 a value is as likely to be a common phrase as an identifier: a lead whose notes
-read "Follow up" would otherwise have that phrase redacted from every user's chat
-history. The upper bound is a deliberate margin against one oversized field aborting the
-whole cascade, not a technical ceiling.
+The maximum exists because all the terms share one search pattern, so a single oversized
+value would make the pattern fail and abort the cascade for every term at once. It is a
+deliberate margin, not the point at which that happens. The minimum exists because a
+short free-text value is as likely to be a common phrase as an identifier: a lead whose
+notes read "Follow up" would otherwise have that phrase redacted from every user's chat
+history.
 
-**Values outside those bounds are not searched**, so references to them may remain in
-chat history after an erasure that reports success. In practice that means a short
-company name such as "Acme Corp", and a notes field longer than a couple of sentences.
-Each skipped value is logged as `gdpr: cascade skipped free-text identifiers outside the
-length bounds` with a count, so an erasure with residual references is identifiable from
-the server log even though the cascade row still reads `completed`.
+**A value outside those bounds is not searched**, so references to it may remain in chat
+history after an erasure that reports success. In practice that means a short company
+name such as "Acme Corp", a notes field longer than a couple of sentences, and — rarely,
+since lead names have no length limit of their own — an unusually long name or email.
+
+Each skipped value is logged as `gdpr: cascade skipped identifiers outside the searchable
+length bounds` with a count, so an incomplete erasure is identifiable from the server log
+even though the cascade row still reads `completed`.
+
+> **There is no API remedy for this case.** The re-run endpoint requires the identifiers
+> a _failed_ cascade stored, and a cascade that skipped a term still completed, so it has
+> no failed row and the re-run returns `409`. Purging the residual references means
+> reaching the AI tables directly, outside the product.
+
+A cascade can also fail outright, which is a different situation with a different remedy.
 
 > **Warning — a successful erasure does not prove the cascade succeeded.** The cascade
 > cannot fail the erasure that triggered it: errors are caught and logged, never
