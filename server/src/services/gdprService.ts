@@ -794,9 +794,16 @@ export async function cascadeGdprErasureToAiData(
     // \m and \M assert a position adjacent to a word character, so anchoring a
     // term that starts or ends with punctuation ("Acme Corp.") can never match.
     // Anchor each end only where the term actually has a word character there.
+    //
+    // Unicode-aware, matching what Postgres counts as a word character rather
+    // than JavaScript's ASCII-only \w: a name like "李明" tests false on both
+    // ends under \w, so it would go in unanchored and match as a substring —
+    // inside "李明华", and across every user's AI data.
+    const WORD_CHAR_START = /^[\p{L}\p{N}_]/u;
+    const WORD_CHAR_END = /[\p{L}\p{N}_]$/u;
     const anchorTerm = (term: string) => {
-      const leading = /^\w/.test(term) ? '\\m' : '';
-      const trailing = /\w$/.test(term) ? '\\M' : '';
+      const leading = WORD_CHAR_START.test(term) ? '\\m' : '';
+      const trailing = WORD_CHAR_END.test(term) ? '\\M' : '';
       return `${leading}${escapeEre(term)}${trailing}`;
     };
 
