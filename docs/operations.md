@@ -272,6 +272,54 @@ All MiniCRM resource endpoints are served under the `/api/v1/` URL prefix (e.g.
 `GET /api/v1/contacts`). The `/api/health` endpoint is intentionally unversioned — it is an
 infrastructure endpoint, not part of the resource API. (MINCRM-283)
 
+### Health check
+
+`GET /api/health` is the endpoint load balancers and orchestrators poll. It is
+deliberately unauthenticated and unversioned so infrastructure can reach it without
+credentials and without tracking API versions.
+
+```json
+{ "status": "ok", "db": "ok", "uptime_seconds": 1234 }
+```
+
+It returns `200` when a `SELECT 1` against the database succeeds. On failure — the pool
+cannot hand out a connection, or the query errors — it returns `503` with
+`"status": "degraded"`, `"db": "error"`, and a `db_error` field carrying the message:
+
+```json
+{ "status": "degraded", "db": "error", "db_error": "...", "uptime_seconds": 1234 }
+```
+
+Two bounds apply, and a load-balancer timeout should clear their sum. Acquiring a pooled
+connection is capped by `connectionTimeoutMillis` (5 seconds) and the query itself by a
+2-second statement timeout, so the worst case is about 7 seconds before a `503`.
+`uptime_seconds` is process uptime, useful for spotting a container that is
+restart-looping.
+
+Because the port is not open until startup finishes, a connection refused means the
+server is still migrating or has exited; a `503` means it is up but its database is not.
+
+### `NODE_ENV`
+
+**Set `NODE_ENV=production` in every real deployment.** It is not merely a label: it is
+the switch on every production safeguard, and it is checked by allowlist, so an unset or
+misspelled value is treated as production rather than as development.
+
+Recognized values are `development`, `test`, `staging`, and `production`. Outside
+`production` the server serves the API docs at `/api-docs`, returns the underlying error
+message on a 500 instead of a generic one, disables the Content-Security-Policy so the
+docs UI renders, and logs at `debug`. That applies to `staging` too.
+
+Two things are narrower still, and are available in `development` and `test` **only**:
+
+- the dev-only endpoints that mint a password-reset token or a live TOTP code
+- the `E2E=true` rate-limiter bypass and the `COVERAGE_DASHBOARD_NO_AUTH` auth bypass
+
+Anything unrecognized — unset, misspelled, or differently cased — gets the full
+production posture on all of it. That is the safe direction, but it is not a substitute
+for setting the variable, because you cannot tell from behavior alone whether a
+deployment is deliberately production or accidentally unconfigured.
+
 ### Chosen scheme: URL prefix
 
 The URL-prefix approach (`/api/v1/`) was chosen over content negotiation
@@ -404,6 +452,49 @@ Down migrations are **not** a safe recovery strategy in production. If a migrati
 > data and start fresh.
 
 ---
+
+## Environment Reference
+
+`.env.example` is the complete list with inline comments; this section covers the
+variables whose behavior needs more than a line. Secrets are in
+[Required Secrets](#required-secrets); `NODE_ENV` is in [its own section](#node_env);
+the coverage/TIA block is in [coverage.md](dev/coverage.md) — its table of boot-time
+variables, plus the `COVERAGE_DB_*` connection settings documented separately there.
+
+| Variable                    | Default                                  | Notes                                                                                                                                                                                                  |
+| --------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `LOG_LEVEL`                 | `debug` in development, `info` otherwise | pino level.                                                                                                                                                                                            |
+| `LOG_DESTINATION`           | stdout                                   | `stderr` sends logs to fd 2, for scripts whose stdout is a machine-readable contract.                                                                                                                  |
+| `APP_NAME`                  | `MiniCRM`                                | The issuer shown in authenticator apps. Changing it after users enroll leaves their existing entries under the old name — they keep working, but the label no longer matches.                          |
+| `AUTH_COOKIE_NAME`          | `minicrm_token`                          | Session cookie name; see [api.md](api.md) for the cookie's attributes.                                                                                                                                 |
+| `MIGRATION_LOCK_TIMEOUT_MS` | `60000`                                  | How long a starting server waits for the migration advisory lock. A non-positive or non-numeric value silently falls back to the default. See [migrations.md](dev/migrations.md#concurrency--locking). |
+| `SENTRY_DSN`                | unset                                    | Server-side error reporting. Omit to disable.                                                                                                                                                          |
+| `VITE_SENTRY_DSN`           | unset                                    | Client-side error reporting. Baked in at build time, so changing it needs a rebuild.                                                                                                                   |
+
+### `COVERAGE_DASHBOARD_NO_AUTH`
+
+> **Warning — this disables authentication.** It exists so the internal
+> coverage-dashboard app, which has no auth system of its own, can query coverage data.
+> Never set it in a deployment carrying real data.
+
+When set to `true`, three routers drop **both** their authentication and their role
+check:
+
+- `/api/v1/admin/coverage/reporting` — read-only
+- `/api/v1/admin/coverage/mapping` — read-only
+- `/api/v1/admin/coverage/sessions` — **includes writes**: creating a session, ending
+  one, and uploading dumps all become unauthenticated
+
+The pipeline and general coverage routers do not opt in and keep their auth chain.
+
+Two rails limit it. The variable is honored only when `NODE_ENV` is `development` or
+`test` — `staging` and `production` ignore it, as does an unrecognized value. And each of
+those three routers registers only when its own boot variable is set, so with
+`COVERAGE_REPORTING_QUERY` and friends unset the paths 404 regardless.
+
+`VITE_COVERAGE_DASHBOARD_NO_AUTH` is a **separate** variable for the dashboard's own
+frontend, and it has no such rail: it is a Vite build-time constant, so a dashboard built
+with it set skips its login screen and its role check permanently, in any environment.
 
 ## Scheduled Jobs
 

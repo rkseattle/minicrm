@@ -10,15 +10,15 @@
  * that forgot the variable.
  */
 
-/** Environments where the API docs and dev-only test endpoints may be served. */
+/** Environments where the API docs may be served and errors need not be redacted. */
 const NON_PRODUCTION_ENVS = new Set(['development', 'test', 'staging']);
 
 /**
- * Environments where an authentication bypass may be honored.
+ * Environments where credentials may be handed out without authentication.
  *
  * Excludes staging deliberately: it is a real multi-user deployment carrying
- * human traffic, so dropping auth there is a production-grade exposure even
- * though serving the docs there is not.
+ * human traffic, so an endpoint that mints a password-reset token or a live TOTP
+ * code is a production-grade exposure there, even though serving the docs is not.
  */
 const AUTH_BYPASS_ENVS = new Set(['development', 'test']);
 
@@ -27,7 +27,7 @@ export function isNonProductionEnv(): boolean {
   return NON_PRODUCTION_ENVS.has(process.env.NODE_ENV ?? '');
 }
 
-/** True only where dropping an authentication check is acceptable. */
+/** True only where handing out credentials without authentication is acceptable. */
 export function isAuthBypassEnv(): boolean {
   return AUTH_BYPASS_ENVS.has(process.env.NODE_ENV ?? '');
 }

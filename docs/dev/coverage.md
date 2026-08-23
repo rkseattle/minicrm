@@ -331,9 +331,10 @@ false }` immediately, with no `GET /auth/me` call at all. `ProtectedRoute` skips
   role check in this mode too (there is no user to have a role), and `NavLayout` hides
   the "Sign out" button (there is no session to sign out of).
 
-Both are gated on `NODE_ENV !== 'production'` server-side (same hard safety rail as
-`E2E=true`, `.env.example`'s own comment) — a copied `.env` file can never leave
-reporting data open in a real deployment. The two flags are meant to be set together:
+The server honors the server-side flag only when `NODE_ENV` is `development` or `test`
+(same hard safety rail as `E2E=true`) — staging, production, and any unrecognized value
+ignore it, so a copied `.env` file can never leave reporting data open in a real
+deployment. The client flag is a Vite build-time constant and has no such rail. The two flags are meant to be set together:
 the client flag alone still renders the dashboard, but every API call 401s from the
 server's own (still-enforced) auth check; the server flag alone still works for direct
 API/curl access, but the dashboard's own UI keeps redirecting to its login page since
@@ -454,6 +455,7 @@ table.
 | `COVERAGE_RETENTION_DAYS`      | Days a `coverage_units`/`coverage_test_links` row survives before the daily pruning cron removes it                            | `30`                           |
 | `TIA_MIN_CONFIDENCE_THRESHOLD` | Safety-net confidence floor for test selection ([Safety-net selection policy](#safety-net-selection-policy-mincrm-626))        | `0.3`                          |
 | `TIA_MAX_UNMAPPED_RATIO`       | Safety-net unmapped-ratio ceiling before full-suite fallback                                                                   | `0.5`                          |
+| `COVERAGE_SOURCE_ROOT`         | Root that source paths resolve against. `npm run <script> --workspace=<name>` makes `process.cwd()` the workspace directory    | `process.cwd()`                |
 
 `COVERAGE_RETENTION_DAYS`'s default (30 days) matches `webhook_delivery_logs`' own
 retention window (`docs/dev/retention.md`) — the shortest existing precedent in this
