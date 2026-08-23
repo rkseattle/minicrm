@@ -405,6 +405,43 @@ Down migrations are **not** a safe recovery strategy in production. If a migrati
 
 ---
 
+## Scheduled Jobs
+
+The server runs twelve background jobs. They are declared in one place —
+`server/src/services/scheduledJobs.ts` — and registered at startup.
+
+| Job                              | Schedule                  | What it does                                                                                                                                                                             |
+| -------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Log table retention purge        | Daily, 02:00              | Purges `automation_rule_logs` (>90d), `webhook_delivery_logs` (>30d), and completed/failed `import_jobs` (>180d).                                                                        |
+| Win/loss pattern analysis        | Daily, 03:00              | Replaces `deal_win_loss_insights` from all closed deals. No-ops when AI is disabled or below the minimum closed-deal threshold.                                                          |
+| Churn/expansion signal detection | Daily, 04:00              | Rescans closed-won accounts with activity history for churn-risk or expansion signals. No-ops when AI is disabled.                                                                       |
+| Relationship health scoring      | Daily, 05:00              | Recomputes the cached health score for every account meeting the configured minimum logged activities (default 3). SQL-driven, no AI call.                                               |
+| Follow-up timing suggestions     | Daily, 05:30              | Recomputes the cached best-time-to-contact suggestion for every contact with 5+ logged interactions.                                                                                     |
+| Rep coaching insights            | Daily, 06:00              | Recomputes coaching insights for every rep meeting the minimum closed-deal count. SQL-driven, no AI call.                                                                                |
+| Data hygiene scan                | Daily, 06:30              | Checks records for stale or invalid data using MX lookups and website reachability. Skips a tick while the previous scan is still running.                                               |
+| Coverage/TIA retention pruning   | Daily, 07:00              | Deletes `coverage_units`, `coverage_test_links`, `coverage_ingested_dumps`, and `coverage_sessions` rows older than the retention window. Runs regardless of `COVERAGE_INSTRUMENTATION`. |
+| Overdue task digest              | Daily, 08:00              | Emails each opted-in user one digest of their open tasks past due, deduplicated so a task is notified once.                                                                              |
+| Sequence step advancement        | Every 15 minutes          | Advances due sequence enrollments to their next step. Skips a tick while the previous run is still in progress.                                                                          |
+| Audit log partition maintenance  | Monthly, 1st at 00:00 UTC | Pre-creates `audit_log` partitions for the current month and three ahead, so no write lands on `audit_log_default`.                                                                      |
+| Feature flag rollout advancement | Every 60 seconds          | Advances feature flags whose next rollout stage has come due.                                                                                                                            |
+
+All times are the **server container's local time**, with one exception: audit log
+partition maintenance sets an explicit UTC timezone, because partition boundaries are
+UTC and firing on local time would straddle them near a month end.
+
+> **Warning — jobs fire per container.** Each server container runs its own copy of
+> every job. Scaling to two replicas double-fires all of them: two overdue-task digests
+> to the same user, two retention purges, two partition-maintenance runs. Nothing
+> coordinates between containers. Run exactly one server replica, or disable the
+> schedule on all but one.
+
+Jobs are skipped only when `NODE_ENV=test`. **CI is not exempt** — `docker-compose.test.yml`
+sets `NODE_ENV=development`, so the E2E stack schedules every job.
+
+Each job logs `Scheduled <name> (<schedule>)` at startup and `cron: running <name>` when
+a tick begins. A tick skipped by a re-entrancy guard logs a warning instead, and does not
+log `cron: running`.
+
 ## Backup and Restore
 
 MiniCRM data lives in a named Docker volume (`db_data`) attached to the `db` container.
