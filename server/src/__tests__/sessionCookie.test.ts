@@ -147,5 +147,34 @@ describe('session cookie policy', () => {
       mod.setSessionCookie(res, 'a.b.c');
       expect(cookie.mock.calls[0][2]).toMatchObject({ secure: true });
     });
+
+    it.each([
+      ['unset', undefined],
+      ['misspelled', 'producton'],
+      ['differently cased', 'Production'],
+      ['unrecognized', 'qa-box'],
+    ])('is on when NODE_ENV is %s', async (_label, value) => {
+      // A deployment that forgets the variable must not ship the session JWT
+      // over plaintext. Only a recognized non-production value turns this off.
+      if (value === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = value;
+      }
+      vi.resetModules();
+      const mod = await import('../auth/sessionCookie.js');
+      const { res, cookie } = mockResponse();
+      mod.setSessionCookie(res, 'a.b.c');
+      expect(cookie.mock.calls[0][2]).toMatchObject({ secure: true });
+    });
+
+    it('is off in staging, which serves over TLS-terminating infrastructure', async () => {
+      process.env.NODE_ENV = 'staging';
+      vi.resetModules();
+      const mod = await import('../auth/sessionCookie.js');
+      const { res, cookie } = mockResponse();
+      mod.setSessionCookie(res, 'a.b.c');
+      expect(cookie.mock.calls[0][2]).toMatchObject({ secure: false });
+    });
   });
 });

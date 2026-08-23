@@ -99,7 +99,12 @@ export type ResourceKey =
   | 'feature_flags.mobile_access'
   | 'feature_flags.demo_data'
   | 'feature_flags.groups'
-  | 'custom_roles';
+  | 'custom_roles'
+  // The AI chat transcript tables. A GDPR erasure cascades into ai_messages,
+  // ai_sessions, and user_ai_context with no ownership predicate — it matches
+  // every row in the instance — so an erasure spec and a spec that creates AI
+  // sessions must never be co-scheduled.
+  | 'ai_transcripts';
 
 export interface ResourceTouch {
   reads: ResourceKey[];
@@ -264,6 +269,9 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     reads: ['settings.ai_configuration_enabled'],
     writes: [
       'settings.ai_configuration_enabled',
+      // Creates the context entries and sessions a concurrent erasure cascade
+      // rewrites or deletes.
+      'ai_transcripts',
       // setAiEnabled() cascades server-side: aiConfigService writes the
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
@@ -300,6 +308,9 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     writes: [
       'settings.ai_configuration_enabled',
       'settings.ai_session_retention',
+      // Its erasure tests fire the AI cascade, which rewrites ai_messages and
+      // ai_sessions and deletes from user_ai_context across the whole instance.
+      'ai_transcripts',
       // setAiEnabled() cascades to the ai_features flag in the same server-side
       // transaction (aiConfigService.ts:507-515). The spec's own comment at :73
       // already described this cascade while the entry omitted it — exactly the
@@ -312,6 +323,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     reads: ['settings.ai_configuration_enabled'],
     writes: [
       'settings.ai_configuration_enabled',
+      // Creates the sessions and messages a concurrent erasure cascade rewrites.
+      'ai_transcripts',
       // setAiEnabled() cascades server-side: aiConfigService writes the
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
@@ -338,6 +351,9 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     reads: ['settings.ai_configuration_enabled'],
     writes: [
       'settings.ai_configuration_enabled',
+      // Creates the context entries and sessions a concurrent erasure cascade
+      // rewrites or deletes.
+      'ai_transcripts',
       // setAiEnabled() cascades server-side: aiConfigService writes the
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
