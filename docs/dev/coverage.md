@@ -542,8 +542,8 @@ Reports the operational health of the framework's own services —
 - `agentRunning` — whether the backend V8 agent is registered
   (`coverageAgentRegistry.getCoverageAgent()`).
 - `db` — `'ok'` or `'error'`, from a `SELECT 1` against `coverageDb` with a 2-second
-  statement timeout. Reuses `app.ts`'s own `/api/health` implementation pattern
-  verbatim.
+  statement timeout. Shares one implementation with `app.ts`'s `/api/health`:
+  `probeDatabase()` in `server/src/services/dbHealthProbe.ts`.
 - `routers` — which coverage routers registered their routes at boot (MINCRM-685),
   from the `COVERAGE_MAPPING_QUERY`/`COVERAGE_REPORTING_QUERY`/`COVERAGE_PIPELINE_INGESTION`
   snapshot. `false` means every path under that router 404s. Only these three are
