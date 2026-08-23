@@ -46,6 +46,15 @@ afterAll(async () => {
   await pool.end();
 });
 
+/**
+ * Pools created by re-importing app.ts, which pulls in a fresh db.ts each time.
+ *
+ * Each holds up to DB_POOL_MAX connections and nothing else closes them, so
+ * leaving them open exhausts the test database's connection budget for suites
+ * running alongside this one.
+ */
+const loadedPools: Array<{ end: () => Promise<void> }> = [];
+
 /** Loads a fresh app.ts with NODE_ENV set to `value` (or unset when undefined). */
 async function loadAppWithNodeEnv(value: string | undefined): Promise<Express> {
   vi.resetModules();
@@ -55,11 +64,14 @@ async function loadAppWithNodeEnv(value: string | undefined): Promise<Express> {
     process.env.NODE_ENV = value;
   }
   const module = (await import('../app.js')) as { default: Express };
+  const dbModule = (await import('../db.js')) as { default: { end: () => Promise<void> } };
+  loadedPools.push(dbModule.default);
   return module.default;
 }
 
-afterEach(() => {
+afterEach(async () => {
   process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+  await Promise.all(loadedPools.splice(0).map((loaded) => loaded.end().catch(() => undefined)));
   vi.resetModules();
 });
 

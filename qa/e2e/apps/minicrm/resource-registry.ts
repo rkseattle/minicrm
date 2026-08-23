@@ -230,6 +230,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     reads: ['settings.ai_configuration_enabled'],
     writes: [
       'settings.ai_configuration_enabled',
+      // Creates the sessions and messages a concurrent erasure cascade rewrites.
+      'ai_transcripts',
       // setAiEnabled() cascades server-side: aiConfigService writes the
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
@@ -294,6 +296,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     reads: ['settings.ai_configuration_enabled'],
     writes: [
       'settings.ai_configuration_enabled',
+      // Creates the sessions and messages a concurrent erasure cascade rewrites.
+      'ai_transcripts',
       // setAiEnabled() cascades server-side: aiConfigService writes the
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
@@ -367,6 +371,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     reads: ['settings.ai_configuration_enabled'],
     writes: [
       'settings.ai_configuration_enabled',
+      // Creates the sessions and messages a concurrent erasure cascade rewrites.
+      'ai_transcripts',
       // setAiEnabled() cascades server-side: aiConfigService writes the
       // ai_features flag in the SAME transaction as the master toggle
       // (aiConfigService.ts:507-515), so this spec writes that flag too.
