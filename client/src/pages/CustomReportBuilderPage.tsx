@@ -18,7 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ExportMenu } from '@/components/ui/ExportMenu.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
-import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
+import { Capability } from '@shared/schemas/capabilitySchema.js';
 import {
   listCustomReports,
   runAdHocReport,
