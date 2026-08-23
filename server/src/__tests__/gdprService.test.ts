@@ -14,6 +14,8 @@
 
 import 'dotenv/config';
 import pool from '../db.js';
+import { vi } from 'vitest';
+import * as sentry from '../sentry.js';
 import { createUser } from '../services/userService.js';
 import { createContact } from '../services/contactService.js';
 import { createLead } from '../services/leadsService.js';
@@ -397,6 +399,45 @@ describe('eraseLead', () => {
     await pool.query('DELETE FROM user_ai_context WHERE id = $1', [context.rows[0].id]);
     await pool.query('DELETE FROM ai_messages WHERE session_id = $1', [session.rows[0].id]);
     await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
+  });
+
+  it('escalates a cascade failure to Sentry and still records the failed row', async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: adminId }, adminActor);
+    const captureSpy = vi.spyOn(sentry, 'captureException');
+    const connectSpy = vi.spyOn(pool, 'connect');
+    try {
+      // Fails inside the transaction, then fails the ROLLBACK too: without the
+      // guard the rollback error escapes and no failure row is ever written.
+      connectSpy.mockResolvedValueOnce({
+        // Only query and release are reached on this path.
+        query: async (sql: string) => {
+          if (/ai_messages/i.test(sql)) throw new Error('simulated redaction failure');
+          if (/ROLLBACK/i.test(sql)) throw new Error('connection already gone');
+          return { rows: [], rowCount: 0 };
+        },
+        release: () => {},
+      } as never);
+
+      // Fire-and-forget contract: the caller never learns the cascade failed.
+      await expect(
+        cascadeGdprErasureToAiData(lead.id, 'lead', 'Failure Path', 'fail@example.com', adminActor),
+      ).resolves.toBeUndefined();
+
+      const rows = await getAiCascadeLogForRecord(lead.id, 'lead');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].status).toBe('failed');
+      expect(rows[0].error_detail).toContain('simulated redaction failure');
+
+      // An incomplete Art. 17 erasure is a compliance incident; nothing else
+      // escalates one, so a log line alone would leave it unnoticed.
+      const escalated = captureSpy.mock.calls.map(([err]) =>
+        err instanceof Error ? err.message : String(err),
+      );
+      expect(escalated).toContain('simulated redaction failure');
+    } finally {
+      connectSpy.mockRestore();
+      captureSpy.mockRestore();
+    }
   });
 
   it('records a failed row when the caller supplies no searchable identifier', async () => {

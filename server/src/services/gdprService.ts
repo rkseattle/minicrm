@@ -11,6 +11,7 @@
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
+import { captureException } from '../sentry.js';
 import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
 import { setRlsUserId } from './rlsContextService.js';
 import type { AuditActor, AuditLogRow } from './auditService.js';
@@ -918,11 +919,14 @@ export async function cascadeGdprErasureToAiData(
 
     await client.query('COMMIT');
   } catch (err) {
+    // A throwing ROLLBACK would escape before the failure row is written.
     if (client) {
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK').catch((rollbackErr: unknown) => {
+        logger.error({ err: rollbackErr, recordId, recordType }, 'gdpr: cascade rollback failed');
+      });
     }
 
-    // Log the error and record it in the cascade log (best-effort, outside tx).
+    // Record the failure in the cascade log (best-effort, outside tx).
     // original_name/original_email are stored on failed rows so a re-run can
     // locate the same PII — they remain populated until a successful cascade
     // NULLs them out (Step 4b above).
@@ -943,11 +947,20 @@ export async function cascadeGdprErasureToAiData(
           recordType === 'contact' ? recordId : null,
         ],
       );
-    } catch {
-      // Best-effort — if even the error log insert fails, we just log it.
+    } catch (logErr) {
+      // Nothing recorded the failure, so the log is the only remaining trace:
+      // an absent row is indistinguishable from a cascade that never ran.
+      logger.error(
+        { err: logErr, recordId, recordType },
+        'gdpr: AI cascade failure could not be recorded',
+      );
+      captureException(logErr);
     }
-    // Errors are intentionally not re-thrown — this is fire-and-forget.
+    // An incomplete Art. 17 erasure is a compliance incident and nothing else
+    // escalates one. captureException sends the error alone and redactPiiFromEvent
+    // drops `extra`, so no subject PII leaves the process.
     logger.error({ err, recordId, recordType }, 'gdpr: AI cascade failed');
+    captureException(err);
   } finally {
     client?.release();
   }
