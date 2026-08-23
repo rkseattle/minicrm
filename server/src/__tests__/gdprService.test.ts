@@ -588,9 +588,16 @@ describe('cascadeGdprErasureToAiData', () => {
     expect(rows[0].status).toBe('completed');
     expect(rows[0].messages_redacted).toBe(0);
     expect(rows[0].context_entries_removed).toBe(0);
-    // PII must be cleared after a successful cascade (GDPR Art. 17).
-    expect(rows[0].original_name).toBeNull();
-    expect(rows[0].original_email).toBeNull();
+    // PII must be cleared after a successful cascade (GDPR Art. 17). Read from
+    // the table directly: the reader deliberately never returns these columns.
+    const stored = await pool.query<{
+      original_name: string | null;
+      original_email: string | null;
+    }>('SELECT original_name, original_email FROM ai_gdpr_cascade_log WHERE record_id = $1', [
+      contact.id,
+    ]);
+    expect(stored.rows[0].original_name).toBeNull();
+    expect(stored.rows[0].original_email).toBeNull();
   });
 
   it('records the erased record type, keeping contact_id in step with record_id', async () => {

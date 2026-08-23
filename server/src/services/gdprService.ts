@@ -82,8 +82,15 @@ const MAX_FREE_TEXT_TERM_LENGTH = 200;
 /** Which entity an AI cascade was run for. Matches ai_gdpr_cascade_log.record_type. */
 export type CascadeRecordType = 'contact' | 'lead';
 
-/** Row returned from the ai_gdpr_cascade_log table */
-export interface AiGdprCascadeLogRow {
+/**
+ * Cascade outcome as reported to an admin.
+ *
+ * Deliberately omits original_name/original_email. A failed cascade retains them
+ * so a re-run can find the same rows, which means the erased subject's real name
+ * and email are still in the table — returning those over the API would hand
+ * back the very PII the erasure was performed to remove.
+ */
+export interface AiGdprCascadeLogEntry {
   id: string;
   record_type: CascadeRecordType;
   record_id: string;
@@ -95,6 +102,10 @@ export interface AiGdprCascadeLogRow {
   context_entries_removed: number;
   status: 'completed' | 'failed';
   error_detail: string | null;
+}
+
+/** Full ai_gdpr_cascade_log row, including the retained-for-retry PII columns. */
+export interface AiGdprCascadeLogRow extends AiGdprCascadeLogEntry {
   original_name: string | null;
   original_email: string | null;
 }
@@ -952,9 +963,12 @@ export async function cascadeGdprErasureToAiData(
 export async function getAiCascadeLogForRecord(
   recordId: string,
   recordType: CascadeRecordType,
-): Promise<AiGdprCascadeLogRow[]> {
-  const result = await pool.query<AiGdprCascadeLogRow>(
-    `SELECT * FROM ai_gdpr_cascade_log
+): Promise<AiGdprCascadeLogEntry[]> {
+  // Explicit columns: original_name and original_email must not leave the server.
+  const result = await pool.query<AiGdprCascadeLogEntry>(
+    `SELECT id, record_type, record_id, contact_id, triggered_at, triggered_by,
+            messages_redacted, context_entries_removed, status, error_detail
+     FROM ai_gdpr_cascade_log
      WHERE record_type = $2 AND record_id = $1
      ORDER BY triggered_at DESC`,
     [recordId, recordType],
@@ -974,8 +988,8 @@ export async function getAiCascadeLogForRecord(
 export async function getOriginalPiiFromCascadeLog(
   recordId: string,
   recordType: CascadeRecordType,
-): Promise<{ original_name: string | null; original_email: string | null } | null> {
-  const result = await pool.query<{ original_name: string | null; original_email: string | null }>(
+): Promise<Pick<AiGdprCascadeLogRow, 'original_name' | 'original_email'> | null> {
+  const result = await pool.query<Pick<AiGdprCascadeLogRow, 'original_name' | 'original_email'>>(
     `SELECT original_name, original_email
      FROM ai_gdpr_cascade_log
      WHERE record_type = $2 AND record_id = $1

@@ -159,6 +159,36 @@ describe('GET /api/v1/gdpr/leads/:id/ai-cascade', () => {
     expect(res.body.data).toEqual([]);
   });
 
+  it('never returns the retained PII columns, even on a failed row', async () => {
+    // No erasure here: the reader filters on record_type/record_id alone, and a
+    // real erasure would fire a cascade whose Step 4b NULLs these columns —
+    // the test would then pass because the PII was gone, not because it is omitted.
+    const lead = await createLead(makeLeadInput('failedpii'), adminActor);
+    const realName = 'Marguerite Vandenberg';
+    const realEmail = `${FILE_PREFIX}-real@example.com`;
+    // A failed cascade keeps the subject's real name and email so a re-run can
+    // find the same rows — which is exactly why the endpoint must not echo them.
+    await pool.query(
+      `INSERT INTO ai_gdpr_cascade_log
+         (record_type, record_id, triggered_by, status, error_detail, original_name, original_email)
+       VALUES ('lead', $1, $2, 'failed', 'simulated', $3, $4)`,
+      [lead.id, adminId, realName, realEmail],
+    );
+
+    const res = await request(app)
+      .get(`/api/v1/gdpr/leads/${lead.id}/ai-cascade`)
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].status).toBe('failed');
+    expect(res.body.data[0]).not.toHaveProperty('original_name');
+    expect(res.body.data[0]).not.toHaveProperty('original_email');
+    const serialized = JSON.stringify(res.body);
+    expect(serialized).not.toContain(realName);
+    expect(serialized).not.toContain(realEmail);
+  });
+
   it('does not return a contact cascade row on the lead route', async () => {
     const contact = await createContact(
       {
