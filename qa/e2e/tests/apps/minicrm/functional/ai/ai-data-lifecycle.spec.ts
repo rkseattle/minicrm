@@ -12,12 +12,15 @@
  *   F-AI-DL-6  — PATCH /admin/ai/session-retention API accepts value in range
  *   F-AI-DL-7  — GET /contacts/:id/ai-cascade returns empty log before erasure
  *   F-AI-DL-8  — POST /contacts/:id/ai-cascade returns 409 before GDPR erasure
- *   F-AI-DL-9  — After GDPR erasure, POST /contacts/:id/ai-cascade returns 202
- *   F-AI-DL-10 — After manual cascade, GET /contacts/:id/ai-cascade returns log entry
+ *   F-AI-DL-9  — After GDPR erasure, POST /contacts/:id/ai-cascade returns 409
+ *   F-AI-DL-10 — After erasure, GET /contacts/:id/ai-cascade returns log entry
  *   F-AI-DL-11 — AI settings panel shows session/message retention stats
  *   F-AI-DL-12 — Admin can manually trigger a purge and see an accepted state
  *   F-AI-DL-13 — POST /admin/ai/retention/purge returns 202 and writes an audit entry
  *   F-AI-DL-14 — GET /admin/ai/retention-stats returns session/message counts
+ *   F-AI-DL-15 — GET /leads/:id/ai-cascade returns empty log before erasure
+ *   F-AI-DL-16 — POST /leads/:id/ai-cascade returns 409 before GDPR erasure
+ *   F-AI-DL-17 — Erasing a lead writes its own cascade log entry
  *
  * E2E limitations:
  *   - The nightly purge (retentionService) is NOT triggered here; purge logic
@@ -52,7 +55,7 @@ import {
   clickAiPurgeConfirm,
   getAiPurgeAccepted,
 } from '@behaviors/minicrm/settings.behaviors.js';
-import { createTestAdmin, createTestContact } from '@apps/minicrm/helpers.js';
+import { createTestAdmin, createTestContact, createTestLead } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/index.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -60,6 +63,16 @@ test.use({ storageState: { cookies: [], origins: [] } });
 // These tests share the singleton ai_configuration row — run serially to
 // prevent concurrent PATCH /session-retention calls racing each other.
 test.describe.configure({ mode: 'serial' });
+
+// Serial mode orders tests within a project, not across them. The desktop and
+// mobile-web projects run this file concurrently against the same singleton
+// ai_configuration row, so one project's reset lands on top of the value the
+// other just saved. These assertions are about the API and the shared row, not
+// about the viewport, so one project running them is enough.
+test.beforeEach(({ page }) => {
+  const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+  test.skip(isMobile, 'mutates the singleton ai_configuration row — desktop only');
+});
 
 // ---------------------------------------------------------------------------
 // F-AI-DL-1 through F-AI-DL-4 — UI tests
@@ -262,7 +275,7 @@ test.describe('GDPR AI cascade', () => {
   );
 
   test(
-    'F-AI-DL-9: POST /contacts/:id/ai-cascade returns 202 after GDPR erasure @functional @serial',
+    'F-AI-DL-9: POST /contacts/:id/ai-cascade returns 409 when no identifiers survive @functional @serial',
     { tag: ['@functional', '@serial'] },
     async ({ testData, restClient }) => {
       const contact = await createTestContact(testData, restClient, {
@@ -272,16 +285,29 @@ test.describe('GDPR AI cascade', () => {
 
       await restClient.post(`/api/v1/contacts/${contact.id}/gdpr-erase`, {});
 
-      const res = await restClient.post<{ message: string }>(
-        `/api/v1/gdpr/contacts/${contact.id}/ai-cascade`,
-        {},
-      );
-      expect(res.status).toBe(202);
+      // The automatic cascade succeeds and clears the identifiers it stored for
+      // a retry, so a re-run has nothing left to search for. Refusing is the
+      // point: searching the synthetic placeholder would match nothing and still
+      // record a completed cascade.
+      let errorStatus = 0;
+      let errorCode = '';
+      try {
+        await restClient.post(`/api/v1/gdpr/contacts/${contact.id}/ai-cascade`, {});
+      } catch (err) {
+        if (err instanceof RestClientError) {
+          errorStatus = err.status;
+          errorCode = (err.body as { error?: { code?: string } })?.error?.code ?? '';
+        } else {
+          throw err;
+        }
+      }
+      expect(errorStatus).toBe(409);
+      expect(errorCode).toBe('GDPR_CASCADE_PII_UNAVAILABLE');
     },
   );
 
   test(
-    'F-AI-DL-10: after manual cascade trigger, GET /contacts/:id/ai-cascade returns a log entry @functional @serial',
+    'F-AI-DL-10: after erasure, GET /contacts/:id/ai-cascade returns a log entry @functional @serial',
     { tag: ['@functional', '@serial'] },
     async ({ testData, restClient }) => {
       const contact = await createTestContact(testData, restClient, {
@@ -290,9 +316,9 @@ test.describe('GDPR AI cascade', () => {
       });
 
       await restClient.post(`/api/v1/contacts/${contact.id}/gdpr-erase`, {});
-      await restClient.post(`/api/v1/gdpr/contacts/${contact.id}/ai-cascade`, {});
 
-      // The cascade function runs asynchronously — poll until the log entry appears.
+      // The erasure fires the cascade itself; no manual trigger is needed. It
+      // runs asynchronously — poll until the log entry appears.
       let entries: Array<{ status: string; contact_id: string }> = [];
       for (let attempt = 0; attempt < 10; attempt++) {
         const res = await restClient.get<{
@@ -306,6 +332,73 @@ test.describe('GDPR AI cascade', () => {
       expect(entries.length, 'at least one cascade log entry must appear').toBeGreaterThan(0);
       expect(entries[0].status).toMatch(/^(completed|failed)$/);
       expect(entries[0].contact_id).toBe(contact.id);
+    },
+  );
+
+  test(
+    'F-AI-DL-15: GET /leads/:id/ai-cascade returns empty before erasure @functional @serial',
+    { tag: ['@functional', '@serial'] },
+    async ({ testData, restClient }) => {
+      const lead = await createTestLead(testData, restClient, {
+        last_name: `DL15-${Date.now()}`,
+      });
+
+      const res = await restClient.get<{ data: unknown[] }>(
+        `/api/v1/gdpr/leads/${lead.id}/ai-cascade`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual([]);
+    },
+  );
+
+  test(
+    'F-AI-DL-16: POST /leads/:id/ai-cascade returns 409 before GDPR erasure @functional @serial',
+    { tag: ['@functional', '@serial'] },
+    async ({ testData, restClient }) => {
+      const lead = await createTestLead(testData, restClient, {
+        last_name: `DL16-${Date.now()}`,
+      });
+
+      let errorStatus = 0;
+      try {
+        await restClient.post(`/api/v1/gdpr/leads/${lead.id}/ai-cascade`, {});
+      } catch (err) {
+        if (err instanceof RestClientError) {
+          errorStatus = err.status;
+        } else {
+          throw err;
+        }
+      }
+      expect(errorStatus).toBe(409);
+    },
+  );
+
+  test(
+    'F-AI-DL-17: erasing a lead writes its own cascade log entry @functional @serial',
+    { tag: ['@functional', '@serial'] },
+    async ({ testData, restClient }) => {
+      const lead = await createTestLead(testData, restClient, {
+        last_name: `DL17-${Date.now()}`,
+      });
+
+      await restClient.post(`/api/v1/leads/${lead.id}/gdpr-erase`, {});
+
+      // Erasing a lead cascades to AI data the same way a contact does; the row
+      // is typed 'lead' and carries no contact_id.
+      let entries: Array<{ status: string; contact_id: string | null }> = [];
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const res = await restClient.get<{
+          data: Array<{ status: string; contact_id: string | null }>;
+        }>(`/api/v1/gdpr/leads/${lead.id}/ai-cascade`);
+        entries = res.body.data;
+        if (entries.length > 0) break;
+        await new Promise<void>((resolve) => setTimeout(resolve, 500));
+      }
+
+      expect(entries.length, 'a lead erasure must write a cascade log entry').toBeGreaterThan(0);
+      expect(entries[0].status).toMatch(/^(completed|failed)$/);
+      expect(entries[0].contact_id).toBeNull();
     },
   );
 });

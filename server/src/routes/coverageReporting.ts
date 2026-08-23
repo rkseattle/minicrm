@@ -32,7 +32,7 @@
  * unset var means the routes were never registered, so nothing reaches any
  * middleware at all, where the flag was a mutable row an admin could flip from
  * the product UI. isDashboardNoAuthEnabled additionally requires
- * NODE_ENV !== 'production', so this combination cannot exist in a real
+ * a development or test NODE_ENV, so this combination cannot exist in a real
  * deployment. requireFeatureEnabledOrgWide itself is untouched and still
  * covered by its own unit tests; see coverageRouteGating.test.ts for the
  * replacement guard on this exact path.
@@ -46,7 +46,7 @@
  * shared predicate the opting-in routers use.
  *
  * Gated the same way auth.ts's own E2E rate-limit bypass is (see that
- * file's isE2E): NODE_ENV !== 'production' is the hard safety rail so this
+ * file's isE2E): a development or test NODE_ENV is the hard safety rail so this
  * can never activate in a real deployment regardless of how
  * COVERAGE_DASHBOARD_NO_AUTH is set (e.g. a copied .env file) — the env var
  * itself is the explicit local opt-in on top of that rail, not a

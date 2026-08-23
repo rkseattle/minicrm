@@ -214,12 +214,7 @@ function makeTriggerAiCascadeHandler(recordType: CascadeRecordType) {
       return;
     }
 
-    // Re-running the cascade: recover the original name and email from a failed
-    // log row. With no such row the name is left out rather than defaulting to
-    // the '[GDPR deleted]' placeholder — that string matches itself, and the
-    // cascade's searches are not scoped to one record, so it would rewrite every
-    // other subject's already-redacted rows and count them as this one's. The
-    // synthetic email is unique per record and stands in safely.
+    // Re-running the cascade needs the identifiers a failed run stored.
     const originalPii = await getOriginalPiiFromCascadeLog(id, recordType);
     if (!originalPii?.original_name && !originalPii?.original_email) {
       // Without the pre-erasure name or email there is nothing to search for.

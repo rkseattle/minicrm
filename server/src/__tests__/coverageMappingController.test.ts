@@ -167,7 +167,7 @@ describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true', () => {
   // in coverageReportingController.test.ts for the full rationale; the short
   // version is that route registration (COVERAGE_MAPPING_QUERY at boot) is now
   // the gate, which is coarser but harder to defeat, and the bypass still
-  // requires NODE_ENV !== 'production'.
+  // requires a development or test NODE_ENV.
 
   it('never bypasses auth when NODE_ENV=production, regardless of COVERAGE_DASHBOARD_NO_AUTH', async () => {
     // The hard safety rail a copied .env file could not defeat. Mirrors the

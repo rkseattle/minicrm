@@ -139,6 +139,10 @@ const SERIAL_FILES = [
   // gdprService uses ALTER TABLE audit_log DISABLE TRIGGER in beforeEach/afterAll;
   // running in parallel with auditService races on the trigger's enabled/disabled state.
   'src/__tests__/gdprService.test.ts',
+  // appEnvGating deletes and reassigns process.env.NODE_ENV and re-imports app.ts
+  // to observe its module-eval gates. Vitest's fork isolation contains that today,
+  // but the containment is a config default this file should not depend on.
+  'src/__tests__/appEnvGating.test.ts',
   // gdprController erases records, and erasure fires the AI cascade, whose
   // UPDATE/DELETE statements carry no ownership predicate — they scan
   // ai_messages, ai_sessions, and user_ai_context instance-wide. In parallel it

@@ -171,7 +171,7 @@ describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true', () => {
   // UI, but it is not the same guarantee — it cannot be revoked without a
   // restart, and it is all-or-nothing per deployment rather than per request.
   // Acceptable here because isDashboardNoAuthEnabled additionally requires
-  // NODE_ENV !== 'production' (asserted below), so the combination cannot occur
+  // a development or test NODE_ENV (asserted below), so the combination cannot occur
   // in a real deployment.
   //
   // The boot gate itself is covered by coverageRouteGating.test.ts; the bypass
