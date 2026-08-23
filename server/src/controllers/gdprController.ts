@@ -17,7 +17,6 @@ import {
   getAiCascadeLogForRecord,
   hasGdprErasureForRecord,
   getOriginalPiiFromCascadeLog,
-  gdprPlaceholderEmail,
   type CascadeRecordType,
 } from '../services/gdprService.js';
 
@@ -222,10 +221,27 @@ function makeTriggerAiCascadeHandler(recordType: CascadeRecordType) {
     // other subject's already-redacted rows and count them as this one's. The
     // synthetic email is unique per record and stands in safely.
     const originalPii = await getOriginalPiiFromCascadeLog(id, recordType);
-    const reCascadeName = originalPii?.original_name ?? null;
-    const reCascadeEmail = originalPii?.original_email ?? gdprPlaceholderEmail(id);
+    if (!originalPii?.original_name && !originalPii?.original_email) {
+      // Without the pre-erasure name or email there is nothing to search for.
+      // The synthetic placeholder appears in no message by construction, so a
+      // re-run would match nothing and still record a completed cascade — a
+      // receipt for a purge that never happened.
+      res.status(409).json({
+        error: {
+          code: 'GDPR_CASCADE_PII_UNAVAILABLE',
+          message: `No recoverable identifiers for this ${recordType}. A re-run needs the name or email captured by a failed cascade; none is on record.`,
+        },
+      });
+      return;
+    }
 
-    void cascadeGdprErasureToAiData(id, recordType, reCascadeName, reCascadeEmail, actor);
+    void cascadeGdprErasureToAiData(
+      id,
+      recordType,
+      originalPii.original_name,
+      originalPii.original_email,
+      actor,
+    );
 
     res.status(202).json({ accepted: true, message: 'AI cascade re-run accepted' });
   };

@@ -67,6 +67,76 @@ After erasure:
 
 A second erasure request on an already-erased record returns a 409 error.
 
+#### AI data cascade
+
+Erasing a contact or a lead also redacts that person from AI chat data. This runs as a
+separate step after the erasure commits, so its outcome is recorded separately from the
+erasure itself.
+
+What it touches, searching for the erased name and email — plus, for a lead, the
+company name and notes the erasure also scrubs:
+
+- `ai_messages.content` — matching text is replaced with `[redacted]`
+- `ai_messages.pending_action` — cleared when it references the erased person
+- `ai_sessions.name` — replaced with `[GDPR deleted]`
+- `user_ai_context` — matching entries are deleted outright
+
+Matching is on whole words, so erasing a contact named "Ann" does not rewrite the word
+"annual".
+
+The name and email are always searched. The lead's free-text fields are searched only
+when they are between 12 and 200 characters. Below 12 a value is as likely to be a common
+phrase as an identifier — a lead whose notes read "Follow up" would otherwise have that
+phrase redacted from every user's chat history — and above 200 the search pattern grows
+large enough to fail outright. **A short company name such as "Acme Corp" therefore falls
+below the bound and is not searched**, so references to it may remain in chat history
+after erasure.
+
+> **Warning — a successful erasure does not prove the cascade succeeded.** The cascade
+> cannot fail the erasure that triggered it: errors are caught and logged, never
+> propagated. So the erasure returns success, and the manual re-run endpoint returns
+> `202 Accepted`, regardless of the cascade's outcome. Before certifying an Art. 17
+> request as complete, confirm the cascade separately.
+
+##### Verifying a cascade completed
+
+`GET /api/v1/gdpr/contacts/:id/ai-cascade` (or `.../leads/:id/...`) returns the log for
+that record, newest first. A `status` of `completed` means the cascade's transaction
+committed; `failed` means it did not, and `error_detail` carries the reason.
+
+Two limits are worth knowing when signing off:
+
+- **The counts are partial.** `messages_redacted` and `context_entries_removed` are
+  recorded, but the `ai_sessions.name` redaction has no count. A `completed` row tells
+  you the transaction committed, not how much it touched.
+- **No log row at all** means either that the cascade has not finished yet — it runs
+  asynchronously, typically within seconds — or that it failed and could not even record
+  the failure. The server log carries `gdpr: AI cascade failure could not be recorded` in
+  that second case, alongside `gdpr: AI cascade failed`.
+
+If a cascade failed, `POST` to the same path to re-run it. A re-run searches on the name
+and email recovered from the failed row; for a lead, the company name and notes are not
+recovered, because the erasure has already cleared them from the record.
+
+A re-run is possible only while a failed row still holds those identifiers. If none does
+— no cascade has failed, or a later one succeeded and cleared them — the endpoint returns
+`409 GDPR_CASCADE_PII_UNAVAILABLE` rather than running a search with nothing to search
+for, which would record a completed cascade that purged nothing.
+
+The log keeps every attempt, so after a successful re-run the earlier `failed` row is
+still there. The newest row is the current state.
+
+##### Retained identifiers on a failed cascade
+
+A failed cascade stores the erased person's real name and email on its log row, so a
+re-run can find the same records. A successful cascade clears them immediately.
+
+This means a **permanently failing** cascade leaves that name and email in
+`ai_gdpr_cascade_log` indefinitely. They are never returned by the API — the endpoint
+above omits those columns — but they are in the database, and an Art. 17 request is not
+fully satisfied while they remain. Re-run the cascade until it succeeds, which clears
+them.
+
 #### Art. 15 — Right of Access
 
 An admin user can download a complete JSON export of all personal data held for a contact or lead.
@@ -99,6 +169,32 @@ These rights do not require specific software features — they are process or d
 | Records of processing activities               | Art. 30    | Maintain your own Art. 30 register documenting the purposes and lawful basis for processing in MiniCRM.     |
 
 ---
+
+### The erasure log
+
+Every erasure writes one row to `gdpr_deletion_log`, retained indefinitely by design: it
+is the record that the request was honored.
+
+> **Warning — keep personal data out of `notes`.** The optional note on an erasure is
+> free text, stored verbatim, retained with the row forever, and returned by both
+> `GET /api/v1/gdpr/deletions` and the status endpoint. A note naming the data subject
+> — "request from jane.doe@example.com" — leaves their personal data in a table the
+> erasure was performed to clear. Reference the request by ticket number.
+
+Two columns matter when auditing one:
+
+- **`erasure_scope`** — the fields the erasure overwrote, recorded at the time it ran, so
+  a later change to what counts as personal data does not rewrite history. Note it lists
+  the fields cleared by name and omits `email`, which is always replaced with the
+  synthetic address whatever the scope says.
+- **`completed_at`** — `NULL` until every write in the erasure has succeeded. Because the
+  whole erasure is one transaction, a row visible with `completed_at` still `NULL` means
+  the erasure did not commit. It also drives the audit-log masking: only records with a
+  completed erasure have their `old_value` and `new_value` replaced with
+  `[GDPR deleted]` in exports.
+
+`GET /api/v1/gdpr/deletions` lists these rows; `GET /api/v1/gdpr/status/:recordType/:recordId`
+returns the one for a single record.
 
 ## Recommended retention policy template
 
@@ -138,6 +234,10 @@ All GDPR endpoints require admin authentication.
 | `GET`  | `/api/v1/leads/:id/gdpr-export`             | Download full data export for a lead      |
 | `GET`  | `/api/v1/gdpr/deletions`                    | Paginated list of all erasure log entries |
 | `GET`  | `/api/v1/gdpr/status/:recordType/:recordId` | Check erasure status for a record         |
+| `POST` | `/api/v1/gdpr/contacts/:id/ai-cascade`      | Re-run the AI cascade for a contact       |
+| `GET`  | `/api/v1/gdpr/contacts/:id/ai-cascade`      | Read the AI cascade log for a contact     |
+| `POST` | `/api/v1/gdpr/leads/:id/ai-cascade`         | Re-run the AI cascade for a lead          |
+| `GET`  | `/api/v1/gdpr/leads/:id/ai-cascade`         | Read the AI cascade log for a lead        |
 
 The erasure endpoint accepts an optional body: `{ "notes": "string" }` for recording a reference note in the deletion log.
 
