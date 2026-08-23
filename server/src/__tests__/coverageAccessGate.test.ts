@@ -334,6 +334,30 @@ describe('buildCoverageAccessGate — COVERAGE_DASHBOARD_NO_AUTH bypass scope', 
     expect(status).toHaveBeenCalledWith(401);
   });
 
+  it.each([
+    ['unset', undefined],
+    ['misspelled', 'producton'],
+    ['differently cased', 'Production'],
+    ['unrecognized', 'staging'],
+  ])(
+    'does NOT bypass when NODE_ENV is %s — the rail is an allowlist, not a not-production check',
+    async (_label, value) => {
+      if (value === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = value;
+      }
+      process.env.COVERAGE_DASHBOARD_NO_AUTH = 'true';
+      const gate = buildCoverageAccessGate();
+      const { req, res, next, status } = invoke();
+
+      gate(req, res, next as unknown as NextFunction);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(status).toHaveBeenCalledWith(401);
+    },
+  );
+
   it('does NOT bypass when COVERAGE_DASHBOARD_NO_AUTH is unset', async () => {
     process.env.NODE_ENV = 'test';
     delete process.env.COVERAGE_DASHBOARD_NO_AUTH;

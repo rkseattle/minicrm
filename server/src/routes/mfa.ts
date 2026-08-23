@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { isNonProductionEnv } from '../utils/nodeEnv.js';
 import { authenticate } from '../middleware/auth.js';
 import {
   getMfaStatus,
@@ -242,10 +243,10 @@ router.post('/recovery-login', asyncHandler(verifyMfaRecoveryLogin));
 
 // ── Dev/test-only endpoint ──────────────────────────────────────────────────
 // Returns the current TOTP code for the authenticated user's active secret.
-// Only available when NODE_ENV !== 'production'.
+// Only available in a recognized non-production environment.
 // Used by E2E tests to complete the MFA login flow without a real authenticator
 // app. Follows the same pattern as /auth/dev/reset-token.
-if (process.env.NODE_ENV !== 'production') {
+if (isNonProductionEnv()) {
   /**
    * GET /api/v1/auth/mfa/dev/totp-code — dev/test only.
    * Returns the current TOTP code for the authenticated user's active or pending

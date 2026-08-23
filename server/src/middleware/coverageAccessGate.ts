@@ -20,6 +20,7 @@
  */
 
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import { isAuthBypassEnv } from '../utils/nodeEnv.js';
 import { requireRole, requireCapability } from './requireRole.js';
 import { authenticate } from './auth.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
@@ -50,7 +51,7 @@ import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
  * default than the flag it replaces, at the cost of no longer being flippable
  * without a restart. See coverageReporting.ts for the fuller rationale.
  *
- * NODE_ENV !== 'production' is the hard safety rail, same as E2E=true's own
+ * A development or test NODE_ENV is the hard safety rail, same as E2E=true's own
  * precedent in auth.ts — a copied .env file can never leave this open in a
  * real deployment regardless of how COVERAGE_DASHBOARD_NO_AUTH is set.
  *
@@ -61,7 +62,7 @@ import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
  * would not support the same pattern for this flag.
  */
 export function isDashboardNoAuthEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && process.env.COVERAGE_DASHBOARD_NO_AUTH === 'true';
+  return isAuthBypassEnv() && process.env.COVERAGE_DASHBOARD_NO_AUTH === 'true';
 }
 
 const requireRoleAdmin = requireRole('admin');
@@ -135,7 +136,7 @@ export const coverageAccessGate: RequestHandler = async (
  * check that was their last per-request gate.
  *
  * Accepted for the same reasons the rest of the bypass is: isDashboardNoAuthEnabled
- * requires NODE_ENV !== 'production', each router only registers at all when its
+ * requires a non-production NODE_ENV, each router only registers at all when its
  * own boot-time env var is set, and the data behind them is CI/dev coverage
  * output rather than product data. Called out explicitly so the next reader does
  * not infer a read-only guarantee this gate does not provide — and so that

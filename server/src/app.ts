@@ -11,6 +11,7 @@ import morgan from 'morgan';
 import 'dotenv/config';
 import logger from './logger.js';
 import pool from './db.js';
+import { isNonProductionEnv } from './utils/nodeEnv.js';
 import { probeDatabase } from './services/dbHealthProbe.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -72,9 +73,7 @@ app.set('trust proxy', 1);
 // ── Security headers ───────────────────────────────────────────────────────────
 // In non-production, disable CSP so Swagger UI (inline scripts) renders correctly.
 // Production keeps the full helmet defaults including a strict CSP.
-app.use(
-  process.env.NODE_ENV === 'production' ? helmet() : helmet({ contentSecurityPolicy: false }),
-);
+app.use(isNonProductionEnv() ? helmet({ contentSecurityPolicy: false }) : helmet());
 
 // ── CORS ───────────────────────────────────────────────────────────────────────
 // CORS_ORIGIN is a comma-separated list of allowed origins.
@@ -277,17 +276,17 @@ app.get('/api/health', async (_req: Request, res: Response) => {
   });
 });
 
-// ── API docs (development + staging only) ─────────────────────────────────────
+// ── API docs (non-production only) ───────────────────────────────────────────
 // Mounted before the 404 handler so /api-docs routes are reachable.
 // swagger-jsdoc is a production dependency so this import is always safe.
-if (process.env.NODE_ENV !== 'production') {
+if (isNonProductionEnv()) {
   setupSwagger(app);
 }
 
 // ── Test-only endpoints (non-production) ──────────────────────────────────────
 // These endpoints are used exclusively by the E2E test suite to trigger
 // background jobs synchronously without waiting for the cron schedule.
-if (process.env.NODE_ENV !== 'production') {
+if (isNonProductionEnv()) {
   /**
    * POST /api/v1/test/advance-sequences — dev/test only.
    * Calls advanceDueEnrollments() immediately so E2E tests can verify
@@ -344,7 +343,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({
     error: {
       code: 'INTERNAL_ERROR',
-      message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message,
+      message: isNonProductionEnv() ? err.message : 'An unexpected error occurred',
     },
   });
 });
