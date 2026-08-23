@@ -423,15 +423,28 @@ describe('eraseLead', () => {
       `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'user', $2)`,
       [session.rows[0].id, bystanderText],
     );
+    // The subject themselves, as a standalone word.
+    const subjectText = '李明 confirmed the renewal';
+    await pool.query(
+      `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'assistant', $2)`,
+      [session.rows[0].id, subjectText],
+    );
 
     await eraseLead(lead.id, adminActor);
     await waitForCascade(lead.id, 'lead');
 
-    const messages = await pool.query<{ content: string }>(
-      'SELECT content FROM ai_messages WHERE session_id = $1',
+    const messages = await pool.query<{ role: string; content: string }>(
+      'SELECT role, content FROM ai_messages WHERE session_id = $1',
       [session.rows[0].id],
     );
-    expect(messages.rows[0].content).toBe(bystanderText);
+    const byRole = new Map(messages.rows.map((row) => [row.role, row.content]));
+
+    // Both halves matter. Without the bystander assertion an unanchored pattern
+    // passes; without the subject assertion a pattern that matches nothing at
+    // all passes, and the erasure silently redacts none of the subject's data.
+    expect(byRole.get('user')).toBe(bystanderText);
+    expect(byRole.get('assistant')).not.toContain('李明');
+    expect(byRole.get('assistant')).toContain('[redacted]');
 
     await pool.query('DELETE FROM ai_messages WHERE session_id = $1', [session.rows[0].id]);
     await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
