@@ -879,7 +879,7 @@ the **Session Retention** section under **Admin Settings → AI**.
 The current count of sessions and messages currently stored is shown alongside the input,
 so you can gauge the impact of a change before it takes effect.
 
-Changes take effect on the **next nightly purge** (02:00 server time), not immediately:
+Changes take effect on the **next nightly purge** (see [Scheduled Jobs](operations.md#scheduled-jobs)), not immediately:
 
 - If you **shorten** the window (e.g. 90 → 60 days), the next nightly purge immediately
   deletes any sessions older than the new window.
@@ -935,10 +935,12 @@ values from the AI configuration:
 Two of the AI deal-intelligence features run as nightly background jobs rather than
 on demand:
 
-| Job                          | Schedule                 | What it does                                                                                                                                                                                   |
-| ---------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AI Win/Loss Pattern Analysis | Daily, 03:00 server time | Recomputes win/loss behavioral patterns from all closed deals and refreshes `/insights/win-loss`. No-ops if AI is disabled or the org has fewer closed deals than the minimum threshold above. |
-| AI Churn/Expansion Detection | Daily, 04:00 server time | Rescans closed-won accounts with activity history for churn-risk or expansion signals and refreshes `/insights/churn-expansion`. No-ops if AI is disabled.                                     |
+**AI Win/Loss Pattern Analysis** recomputes win/loss behavioral patterns from all closed
+deals and refreshes `/insights/win-loss`. **AI Churn/Expansion Detection** rescans
+closed-won accounts with activity history and refreshes `/insights/churn-expansion`. Both
+no-op if AI is disabled, and win/loss also no-ops below the minimum closed-deal threshold
+above. For when they run, see
+[Scheduled Jobs](operations.md#scheduled-jobs) in the operations guide.
 
 Both jobs run automatically — there is no manual "run now" trigger for either, unlike
 the AI session retention purge above. A failed run leaves the previous night's results
@@ -973,10 +975,11 @@ admin-tunable via `GET`/`PATCH /api/v1/settings/relationship-health-config`
 
 ### AI relationship health / follow-up timing nightly jobs
 
-| Job                             | Schedule                 | What it does                                                                                     |
-| ------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------ |
-| AI Relationship Health Scoring  | Daily, 05:00 server time | Recomputes the health score for every account with at least the minimum logged activities above. |
-| AI Follow-Up Timing Suggestions | Daily, 05:30 server time | Recomputes the best-time-to-contact suggestion for every contact with 5+ logged interactions.    |
+**AI Relationship Health Scoring** recomputes the health score for every account with at
+least the minimum logged activities above. **AI Follow-Up Timing Suggestions** recomputes
+the best-time-to-contact suggestion for every contact with 5+ logged interactions. For
+when they run, see [Scheduled Jobs](operations.md#scheduled-jobs) in the operations
+guide.
 
 Both jobs run automatically with no manual trigger. The follow-up timing suggestion
 also recomputes lazily on read if new interaction data has accumulated since the last
@@ -2183,7 +2186,8 @@ feature flag, which hides the queue without stopping the scan.
 
 ### Running a scan
 
-The scan runs nightly at **06:30 server time**. **Run now** under the same settings section
+The scan runs nightly; see
+[Scheduled Jobs](operations.md#scheduled-jobs). **Run now** under the same settings section
 triggers one immediately; it returns straight away and the scan continues in the background.
 
 Each scan replaces the queue rather than appending to it: findings that no longer apply are
@@ -2459,8 +2463,9 @@ Coaching is the exception on both counts — it has a settings screen, at
 | Response time outlier (hours)    | 48      | The follow-up gap that counts as slow                        |
 | Win rate outlier delta           | 0.150   | How far a win rate must differ from the team's               |
 
-Coaching runs nightly at **06:00 server time**, and **Run now** on the same screen triggers it
-immediately — the only one of the three with that control.
+Coaching runs nightly — see [Scheduled Jobs](operations.md#scheduled-jobs) — and
+**Run now** on the same screen triggers it immediately, the only one of the three with
+that control.
 
 A rep below the minimum closed-deal count simply produces no insights, which is why a new
 starter's page is empty rather than showing poor scores.

@@ -471,8 +471,8 @@ check never trigger (the computed ratio can never itself exceed 1).
 
 ### Scheduled retention pruning
 
-`coverageRetentionScheduler.runCoverageRetentionPruning()` runs daily at 07:00 server
-time (`server.ts`'s cron block), calling two independent prune functions — a rejection
+`coverageRetentionScheduler.runCoverageRetentionPruning()` runs on the schedule in
+[Scheduled Jobs](../operations.md#scheduled-jobs), calling two independent prune functions — a rejection
 in one does not prevent the other from running, and their counts are aggregated into
 one `lastRetentionPrune` outcome:
 

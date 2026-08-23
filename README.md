@@ -637,7 +637,7 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 
 ### Email Notifications
 
-- **Overdue task digest**: A daily cron job runs at 08:00 server time. For each active user who has opted in to overdue task notifications, it sends one HTML email listing all open Tasks past their due date that have not previously been notified. Deduplication is tracked in the `overdue_task_notifications` table — each task is notified at most once.
+- **Overdue task digest**: A daily cron job (see [Scheduled Jobs](docs/operations.md#scheduled-jobs)). For each active user who has opted in to overdue task notifications, it sends one HTML email listing all open Tasks past their due date that have not previously been notified. Deduplication is tracked in the `overdue_task_notifications` table — each task is notified at most once.
 - **Assignment notifications**: When a contact, account, or deal is reassigned, the new owner receives an email if they have assignments notifications enabled. Multiple assignment events within a 2-minute window are batched into a single email per recipient.
 - **User notification preferences**: Every authenticated user can configure three per-category toggles on the `/profile` page: overdue task digests, assignment notifications, and deal stage change notifications. Admins additionally have a global kill switch on the **Admin Settings** page that suppresses all notification emails regardless of individual preferences.
 - API endpoints:

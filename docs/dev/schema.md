@@ -70,7 +70,7 @@ audit_log                              ← append-only; DB-enforced; monthly ran
   Partition naming: audit_log_y{YYYY}m{MM} (e.g. audit_log_y2026m06)
   Default partition audit_log_default catches rows outside the managed range
   PK is (id, created_at) — PG16 requires partition key in all unique constraints
-  ensureAuditLogPartitions() called at startup + monthly cron (0 0 1 * *) to pre-create 3 months ahead
+  ensureAuditLogPartitions() called at startup + a monthly cron to pre-create 3 months ahead
   Historical rows (pre-partition era) live in audit_log_default; this is intentional
   Triggers (append-only, NOTIFY) are defined on the parent and cloned to child partitions automatically
   event_type also includes: note_created, note_updated, note_deleted, gdpr_erasure

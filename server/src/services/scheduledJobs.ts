@@ -29,6 +29,8 @@ interface ScheduledJobCommon {
   name: string;
   /** Cron expression, or a human interval for the interval kind. */
   schedule: string;
+  /** The same schedule as the operations guide states it, so the two can be pinned. */
+  displaySchedule: string;
   /** What the job does, in one line, for the operations guide. */
   purpose: string;
 }
@@ -94,6 +96,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Log table retention purge',
       kind: 'cron',
       schedule: '0 2 * * *',
+      displaySchedule: 'Daily, 02:00',
       purpose:
         'Purges automation_rule_logs (>90d), webhook_delivery_logs (>30d), and completed/failed import_jobs (>180d).',
       run: () => {
@@ -105,6 +108,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Win/loss pattern analysis',
       kind: 'cron',
       schedule: '0 3 * * *',
+      displaySchedule: 'Daily, 03:00',
       purpose:
         'Replaces deal_win_loss_insights from all closed deals. No-ops when AI is disabled or below the minimum closed-deal threshold.',
       run: () => {
@@ -116,6 +120,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Churn/expansion signal detection',
       kind: 'cron',
       schedule: '0 4 * * *',
+      displaySchedule: 'Daily, 04:00',
       purpose:
         'Rescans closed-won accounts with activity history for churn-risk or expansion signals. No-ops when AI is disabled.',
       run: () => {
@@ -127,8 +132,9 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Relationship health scoring',
       kind: 'cron',
       schedule: '0 5 * * *',
+      displaySchedule: 'Daily, 05:00',
       purpose:
-        'Recomputes the cached health score for every account with at least one logged activity. SQL-driven, no AI call.',
+        'Recomputes the cached health score for every account meeting the configured minimum logged activities (default 3). SQL-driven, no AI call.',
       run: () => {
         void computeAccountHealthScores();
         return true;
@@ -138,8 +144,9 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Follow-up timing suggestions',
       kind: 'cron',
       schedule: '30 5 * * *',
+      displaySchedule: 'Daily, 05:30',
       purpose:
-        'Recomputes the cached best-time-to-contact suggestion for every contact whose interaction history changed.',
+        'Recomputes the cached best-time-to-contact suggestion for every contact with 5+ logged interactions.',
       run: () => {
         void computeFollowUpTimingSuggestions();
         return true;
@@ -149,6 +156,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Rep coaching insights',
       kind: 'cron',
       schedule: '0 6 * * *',
+      displaySchedule: 'Daily, 06:00',
       purpose:
         'Recomputes coaching insights for every rep meeting the minimum closed-deal count. SQL-driven, no AI call.',
       run: () => {
@@ -160,6 +168,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Data hygiene scan',
       kind: 'cron',
       schedule: '30 6 * * *',
+      displaySchedule: 'Daily, 06:30',
       purpose:
         'Checks records for stale or invalid data using MX lookups and website reachability. Skips a tick while the previous scan is still running.',
       run: skipWhileRunning('data hygiene scan', runDataHygieneScan),
@@ -168,8 +177,9 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Coverage/TIA retention pruning',
       kind: 'cron',
       schedule: '0 7 * * *',
+      displaySchedule: 'Daily, 07:00',
       purpose:
-        'Deletes coverage_units and coverage_test_links rows older than the retention window. Runs regardless of COVERAGE_INSTRUMENTATION.',
+        'Deletes coverage_units, coverage_test_links, coverage_ingested_dumps, and coverage_sessions rows older than the retention window. Runs regardless of COVERAGE_INSTRUMENTATION.',
       run: logRejection('cron: coverage retention pruning failed', () =>
         runCoverageRetentionPruning(coverageRetentionDays),
       ),
@@ -178,6 +188,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Overdue task digest',
       kind: 'cron',
       schedule: '0 8 * * *',
+      displaySchedule: 'Daily, 08:00',
       purpose:
         'Emails each opted-in user one digest of their open tasks past due, deduplicated so a task is notified once.',
       run: () => {
@@ -189,6 +200,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Sequence step advancement',
       kind: 'cron',
       schedule: '*/15 * * * *',
+      displaySchedule: 'Every 15 minutes',
       purpose:
         'Advances due sequence enrollments to their next step. Skips a tick while the previous run is still in progress.',
       run: skipWhileRunning('sequence advancement', advanceDueEnrollments),
@@ -197,6 +209,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Audit log partition maintenance',
       kind: 'cron',
       schedule: '0 0 1 * *',
+      displaySchedule: 'Monthly, 1st at 00:00 UTC',
       // The only job with an explicit timezone: partition boundaries are UTC, so
       // firing on server local time would straddle them near month end.
       options: { timezone: 'UTC' },
@@ -211,6 +224,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       name: 'Feature flag rollout advancement',
       kind: 'interval',
       schedule: 'every 60 seconds',
+      displaySchedule: 'Every 60 seconds',
       purpose: 'Advances feature flags whose next rollout stage has come due.',
       start: startRolloutScheduler,
       stop: stopRolloutScheduler,

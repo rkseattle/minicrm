@@ -1,6 +1,6 @@
 # Log Table Retention Policies
 
-Purged daily at 02:00 by `runRetentionPurge()` in `retentionService.ts` (scheduled via `node-cron`).
+Purged by `runRetentionPurge()` in `retentionService.ts`, on the schedule in [Scheduled Jobs](../operations.md#scheduled-jobs).
 
 | Table                   | Retention                         | Timestamp column | Condition                               |
 | ----------------------- | --------------------------------- | ---------------- | --------------------------------------- |
@@ -15,7 +15,7 @@ In-progress import jobs are never purged. `sequence_enrollment_logs` is retained
 personalisation data (user-defined term definitions), not conversation transcripts.
 
 The AI session retention window is configurable by admins at **Admin → AI Settings → Session Retention**.
-Changes take effect on the next nightly run at 02:00. Minimum window: 30 days. Maximum: 3650 days (10 years).
+Changes take effect on the next nightly run. Minimum window: 30 days. Maximum: 3650 days (10 years).
 Each purge writes one audit entry recording the session count and retention window applied.
 
 Admins can also trigger an immediate purge outside the nightly schedule via the **Purge now**

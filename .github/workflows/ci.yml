@@ -68,6 +68,7 @@ jobs:
       coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
       attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
       redirect-status-docs: ${{ steps.filter.outputs.redirect-status-docs }}
+      scheduled-jobs-docs: ${{ steps.filter.outputs.scheduled-jobs-docs }}
       env-example-parity: ${{ steps.filter.outputs.env-example-parity }}
       playwright-version: ${{ steps.filter.outputs.playwright-version }}
       shared-testing: ${{ steps.filter.outputs.shared-testing }}
@@ -370,6 +371,20 @@ jobs:
             redirect-status-docs:
               - 'docs/api.md'
               - 'docs/operations.md'
+
+            # Single-purpose output for scheduledJobsDocumentation.test.ts, which pins
+            # the Scheduled Jobs table to buildScheduledJobs() and sweeps the docs that
+            # describe a job without owning its schedule. The inventory side of that
+            # pin is carried by the `server` filter, which matches scheduledJobs.ts;
+            # this output covers the docs side, which no other filter reaching
+            # server-tests matches. OR'd into server-tests alone.
+            scheduled-jobs-docs:
+              - 'docs/operations.md'
+              - 'docs/admin-guide.md'
+              - 'docs/dev/retention.md'
+              - 'docs/dev/schema.md'
+              - 'docs/dev/coverage.md'
+              - 'README.md'
 
             # Single-purpose filter, deliberately NOT folded into `qa`.
             #
@@ -888,7 +903,8 @@ jobs:
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
       (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true' ||
-        needs.changes.outputs.redirect-status-docs == 'true' || needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true')
+        needs.changes.outputs.redirect-status-docs == 'true' || needs.changes.outputs.scheduled-jobs-docs == 'true' ||
+        needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true')
     runs-on: ubuntu-latest
 
     services:
