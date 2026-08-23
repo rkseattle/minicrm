@@ -168,7 +168,9 @@ custom_field_definitions.pii_excluded (bool, migration 125)
   Value stripped from AI payloads when true; definition metadata (name, field_type) retained.
 
 ai_gdpr_cascade_log                    ← GDPR Art. 17 cascade tracking for AI data (MINCRM-446)
-  contact_id   triggered_by nullable (NULL = system-initiated)
+  record_type(contact|lead) + record_id  ← identifies the erased record
+  contact_id nullable  ← superseded by record_id; NULL for non-contact rows
+  triggered_by nullable (NULL = system-initiated)
   messages_redacted int   context_entries_removed int   status(completed|failed)
   original_name/original_email nullable  ← cleared after successful cascade
 
@@ -210,7 +212,7 @@ Do not add new values to these ENUMs — use `varchar + CHECK` for all new const
 
 ## Polymorphic FK Pattern
 
-Five tables use `(type, id)` discriminator pairs instead of typed FK columns. Reference integrity is enforced at the application layer.
+Six tables use `(type, id)` discriminator pairs instead of typed FK columns. Reference integrity is enforced at the application layer.
 
 | Table                 | Type column                        | Valid type values                    | Orphan cleanup?         |
 | --------------------- | ---------------------------------- | ------------------------------------ | ----------------------- |
@@ -219,6 +221,7 @@ Five tables use `(type, id)` discriminator pairs instead of typed FK columns. Re
 | `notes`               | `entity_type`                      | `contact`, `account`, `deal`, `lead` | Yes — required          |
 | `gdpr_deletion_log`   | `record_type`                      | any erasable entity type             | No — retained by design |
 | `audit_log`           | `record_type`                      | see migration 076                    | No — retained by design |
+| `ai_gdpr_cascade_log` | `record_type`                      | `contact`, `lead`                    | No — retained by design |
 
 When hard-deleting a parent entity, clean up polymorphic dependents in the same transaction:
 

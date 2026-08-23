@@ -55,10 +55,16 @@ export interface GdprDeletionLogRow {
   notes: string | null;
 }
 
+/** Record type written to ai_gdpr_cascade_log by the contact erasure path. */
+const CASCADE_RECORD_TYPE_CONTACT = 'contact';
+
 /** Row returned from the ai_gdpr_cascade_log table */
 export interface AiGdprCascadeLogRow {
   id: string;
-  contact_id: string;
+  record_type: 'contact' | 'lead';
+  record_id: string;
+  /** NULL for non-contact rows. */
+  contact_id: string | null;
   triggered_at: Date;
   triggered_by: string | null;
   messages_redacted: number;
@@ -821,9 +827,9 @@ export async function cascadeGdprErasureToAiData(
     // is no longer needed for re-runs and must not persist (GDPR Art. 17).
     await client.query(
       `INSERT INTO ai_gdpr_cascade_log
-         (contact_id, triggered_by, messages_redacted, context_entries_removed, status,
-          original_name, original_email)
-       VALUES ($1, $2, $3, $4, 'completed', $5, $6)`,
+         (record_type, record_id, contact_id, triggered_by, messages_redacted,
+          context_entries_removed, status, original_name, original_email)
+       VALUES ($7, $1, $1, $2, $3, $4, 'completed', $5, $6)`,
       [
         contactId,
         actor?.id ?? null,
@@ -831,18 +837,19 @@ export async function cascadeGdprErasureToAiData(
         contextEntriesRemoved,
         contactName || null,
         contactEmail || null,
+        CASCADE_RECORD_TYPE_CONTACT,
       ],
     );
 
-    // Step 4b — clear original PII from ALL cascade log rows for this contact now
+    // Step 4b — clear original PII from ALL cascade log rows for this record now
     // that a successful cascade has completed. The data was only needed to support
-    // a retry; retaining it after success would leave the erased contact's real
+    // a retry; retaining it after success would leave the erased subject's real
     // name and email in a table with no retention policy (GDPR Art. 17 violation).
     await client.query(
       `UPDATE ai_gdpr_cascade_log
        SET original_name = NULL, original_email = NULL
-       WHERE contact_id = $1`,
-      [contactId],
+       WHERE record_type = $2 AND record_id = $1`,
+      [contactId, CASCADE_RECORD_TYPE_CONTACT],
     );
 
     // Step 5 — audit entry on the contact record.
@@ -869,10 +876,17 @@ export async function cascadeGdprErasureToAiData(
     try {
       await pool.query(
         `INSERT INTO ai_gdpr_cascade_log
-           (contact_id, triggered_by, messages_redacted, context_entries_removed, status,
-            error_detail, original_name, original_email)
-         VALUES ($1, $2, 0, 0, 'failed', $3, $4, $5)`,
-        [contactId, actor?.id ?? null, errorMessage, contactName || null, contactEmail || null],
+           (record_type, record_id, contact_id, triggered_by, messages_redacted,
+            context_entries_removed, status, error_detail, original_name, original_email)
+         VALUES ($6, $1, $1, $2, 0, 0, 'failed', $3, $4, $5)`,
+        [
+          contactId,
+          actor?.id ?? null,
+          errorMessage,
+          contactName || null,
+          contactEmail || null,
+          CASCADE_RECORD_TYPE_CONTACT,
+        ],
       );
     } catch {
       // Best-effort — if even the error log insert fails, we just log it.
@@ -893,7 +907,7 @@ export async function cascadeGdprErasureToAiData(
 export async function getAiCascadeLogForContact(contactId: string): Promise<AiGdprCascadeLogRow[]> {
   const result = await pool.query<AiGdprCascadeLogRow>(
     `SELECT * FROM ai_gdpr_cascade_log
-     WHERE contact_id = $1
+     WHERE record_type = 'contact' AND record_id = $1
      ORDER BY triggered_at DESC`,
     [contactId],
   );
@@ -915,7 +929,7 @@ export async function getOriginalPiiFromCascadeLog(
   const result = await pool.query<{ original_name: string | null; original_email: string | null }>(
     `SELECT original_name, original_email
      FROM ai_gdpr_cascade_log
-     WHERE contact_id = $1
+     WHERE record_type = 'contact' AND record_id = $1
        AND status = 'failed'
        AND (original_name IS NOT NULL OR original_email IS NOT NULL)
      ORDER BY triggered_at DESC

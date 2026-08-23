@@ -529,7 +529,7 @@ erDiagram
 }
 "public.ai_gdpr_cascade_log" {
   uuid id ""
-  uuid contact_id ""
+  uuid contact_id "Superseded by record_id. Mirrors it when record_type is contact, and is NULL otherwise, so a query on this column matches only contacts."
   timestamp_with_time_zone triggered_at ""
   uuid triggered_by FK "NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run."
   integer messages_redacted ""
@@ -538,6 +538,8 @@ erDiagram
   text error_detail ""
   text original_name ""
   text original_email ""
+  varchar_20_ record_type "Which entity was erased. Leads and contacts both cascade to AI data, and their ids share no namespace."
+  uuid record_id "UUID of the erased record, in the table named by record_type. No FK — the row is erased in place, and for leads it is not a contact."
 }
 "public.ai_token_usage_daily" {
   uuid id ""
