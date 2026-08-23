@@ -64,22 +64,20 @@ test.use({ storageState: { cookies: [], origins: [] } });
 // prevent concurrent PATCH /session-retention calls racing each other.
 test.describe.configure({ mode: 'serial' });
 
-// Serial mode orders tests within a project, not across them. The desktop and
-// mobile-web projects run this file concurrently against the same singleton
-// ai_configuration row, so one project's reset lands on top of the value the
-// other just saved. These assertions are about the API and the shared row, not
-// about the viewport, so one project running them is enough.
-test.beforeEach(({ page }) => {
-  const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
-  test.skip(isMobile, 'mutates the singleton ai_configuration row — desktop only');
-});
-
 // ---------------------------------------------------------------------------
 // F-AI-DL-1 through F-AI-DL-4 — UI tests
 // ---------------------------------------------------------------------------
 
 test.describe('AI session retention UI', () => {
-  test.beforeEach(async ({ restClient }) => {
+  test.beforeEach(async ({ page, restClient }) => {
+    // These save a retention value and read it back. Serial mode orders tests
+    // within a project, and the desktop and mobile-web projects run this file
+    // concurrently against the same singleton ai_configuration row, so the other
+    // project's reset lands between the save and the read. The rendering these
+    // cover is asserted on desktop; only the read-back is unsafe to duplicate.
+    const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+    test.skip(isMobile, 'saves and reads back the singleton ai_configuration row');
+
     await loginAsAdmin(restClient);
     await resetAiSettings(restClient);
     // resetAiSettings disables AI (ai_configuration.enabled: false), which now
@@ -408,11 +406,18 @@ test.describe('GDPR AI cascade', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('AI session retention stats and manual purge UI', () => {
-  test.beforeEach(async ({ restClient }) => {
+  test.beforeEach(async ({ page, restClient }) => {
+    // Enables AI and then depends on it staying enabled: the controls live in a
+    // fieldset the panel disables whenever ai_features is off. The other
+    // project's resetAiSettings turns it off mid-test, and the control then
+    // resolves but never becomes clickable, so the test times out rather than
+    // failing fast. Desktop asserts the rendering.
+    const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+    test.skip(isMobile, 'depends on the singleton ai_configuration row staying enabled');
+
     await loginAsAdmin(restClient);
     await resetAiSettings(restClient);
-    // See the identical comment in the 'AI session retention UI' describe block
-    // above — the purge button lives inside the same ai_features-gated fieldset.
+    // The purge controls live inside the same ai_features-gated fieldset.
     await setAiEnabled(restClient, true);
   });
 

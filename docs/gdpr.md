@@ -84,13 +84,20 @@ company name and notes the erasure also scrubs:
 Matching is on whole words, so erasing a contact named "Ann" does not rewrite the word
 "annual".
 
-The name and email are always searched. The lead's free-text fields are searched only
-when they are between 12 and 200 characters. Below 12 a value is as likely to be a common
-phrase as an identifier — a lead whose notes read "Follow up" would otherwise have that
-phrase redacted from every user's chat history — and above 200 the search pattern grows
-large enough to fail outright. **A short company name such as "Acme Corp" therefore falls
-below the bound and is not searched**, so references to it may remain in chat history
-after erasure.
+The name and email are always searched. The lead's free-text fields — company name and
+notes — are searched only when they are between 12 and 200 characters.
+
+Below 12 a value is as likely to be a common phrase as an identifier: a lead whose notes
+read "Follow up" would otherwise have that phrase redacted from every user's chat
+history. The upper bound is a deliberate margin against one oversized field aborting the
+whole cascade, not a technical ceiling.
+
+**Values outside those bounds are not searched**, so references to them may remain in
+chat history after an erasure that reports success. In practice that means a short
+company name such as "Acme Corp", and a notes field longer than a couple of sentences.
+Each skipped value is logged as `gdpr: cascade skipped free-text identifiers outside the
+length bounds` with a count, so an erasure with residual references is identifiable from
+the server log even though the cascade row still reads `completed`.
 
 > **Warning — a successful erasure does not prove the cascade succeeded.** The cascade
 > cannot fail the erasure that triggered it: errors are caught and logged, never

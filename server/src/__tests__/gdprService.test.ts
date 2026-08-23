@@ -15,6 +15,7 @@
 import 'dotenv/config';
 import pool from '../db.js';
 import { vi } from 'vitest';
+import logger from '../logger.js';
 import * as sentry from '../sentry.js';
 import { createUser } from '../services/userService.js';
 import { createContact } from '../services/contactService.js';
@@ -280,6 +281,25 @@ describe('eraseLead', () => {
 
     await pool.query('DELETE FROM ai_messages WHERE session_id = $1', [session.rows[0].id]);
     await pool.query('DELETE FROM ai_sessions WHERE id = $1', [session.rows[0].id]);
+  });
+
+  it('logs when a free-text field is outside the searchable length bounds', async () => {
+    const warnSpy = vi.spyOn(logger, 'warn');
+    const lead = await createLead(
+      { ...makeLead(), owner_id: adminId, company_name: 'Acme' },
+      adminActor,
+    );
+
+    await eraseLead(lead.id, adminActor);
+    await waitForCascade(lead.id, 'lead');
+
+    // "Acme" is below the minimum, so it is never searched — references to it
+    // survive an erasure whose cascade row still reads completed.
+    const skipped = warnSpy.mock.calls.filter(
+      ([, message]) => typeof message === 'string' && message.includes('skipped free-text'),
+    );
+    expect(skipped.length).toBeGreaterThan(0);
+    warnSpy.mockRestore();
   });
 
   it('redacts the free-text lead fields it scrubs from the row', async () => {
