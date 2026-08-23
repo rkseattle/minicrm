@@ -7,30 +7,19 @@
 
 import 'dotenv/config';
 import http from 'http';
-import cron from 'node-cron';
 import app from './app.js';
 import logger from './logger.js';
 import { initSentry, captureException } from './sentry.js';
 import { runMigrations, runCoverageMigrations } from './migrate.js';
 import { seedDefaultAdmin } from './services/userService.js';
-import { sendOverdueDigests } from './services/notificationService.js';
-import { advanceDueEnrollments } from './services/sequenceService.js';
-import { runRetentionPurge } from './services/retentionService.js';
-import { analyzeWinLossPatterns } from './services/winLossAnalysisService.js';
-import { detectChurnExpansionSignals } from './services/churnExpansionService.js';
-import { computeAccountHealthScores } from './services/relationshipHealthService.js';
-import { computeFollowUpTimingSuggestions } from './services/followUpTimingService.js';
-import { generateRepCoachingInsights } from './services/repCoachingService.js';
-import { runDataHygieneScan } from './services/dataHygieneService.js';
 import { ensureAuditLogPartitions } from './services/auditPartitionService.js';
-import { startRolloutScheduler, stopRolloutScheduler } from './services/featureFlagService.js';
+import { startScheduledJobs } from './services/scheduledJobs.js';
 import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
 import { NodeV8CoverageAgent } from './coverageAgent/NodeV8CoverageAgent.js';
 import { COVERAGE_DUMPS_ROOT, resolveCoverageConfig } from './coverageAgent/coverageConfig.js';
 import { resolveCoveragePolicy } from './coverageAgent/coveragePolicyConfig.js';
 import { SDK_VERSION } from './coverageAgent/sdk/CoverageAgentPlugin.js';
-import { runCoverageRetentionPruning } from './coverageAgent/coverageRetentionScheduler.js';
 import { registerCoverageAgent } from './coverageAgent/coverageAgentRegistry.js';
 
 /** Default port for the API server */
@@ -242,174 +231,13 @@ void (async () => {
   });
 })();
 
-// Daily overdue task digest — runs at 08:00 server time every day.
-// In test/CI environments the cron is skipped to avoid side effects.
+// Background jobs. The inventory lives in services/scheduledJobs.ts so the
+// schedule is one enumerable list rather than twelve inline registrations.
+//
+// Skipped only when NODE_ENV=test. CI is not exempt: docker-compose.test.yml sets
+// NODE_ENV=development, so the E2E stack does schedule every job.
 if (process.env.NODE_ENV !== 'test') {
-  const overdueDigestCron = cron.schedule('0 8 * * *', () => {
-    logger.info('cron: running overdue task digest');
-    void sendOverdueDigests();
-  });
-  logger.info('Overdue task digest cron scheduled (daily at 08:00)');
-
-  // Stop the cron task when the process shuts down so it is garbage-collected.
-  process.once('SIGTERM', () => overdueDigestCron.stop());
-  process.once('SIGINT', () => overdueDigestCron.stop());
-
-  // Sequence step advancement — runs every 15 minutes.
-  // Re-entrancy guard: if the previous run is still in progress, skip the tick.
-  let sequenceCronRunning = false;
-  const sequenceCron = cron.schedule('*/15 * * * *', () => {
-    if (sequenceCronRunning) {
-      logger.warn('cron: sequence advancement still in progress — skipping tick');
-      return;
-    }
-    sequenceCronRunning = true;
-    logger.info('cron: advancing due sequence enrollments');
-    void advanceDueEnrollments().finally(() => {
-      sequenceCronRunning = false;
-    });
-  });
-  logger.info('Sequence enrollment cron scheduled (every 15 minutes)');
-
-  process.once('SIGTERM', () => sequenceCron.stop());
-  process.once('SIGINT', () => sequenceCron.stop());
-
-  // Log table retention purge — runs daily at 02:00 server time.
-  // Purges automation_rule_logs (>90d), webhook_delivery_logs (>30d),
-  // and completed/failed import_jobs (>180d).
-  const retentionCron = cron.schedule('0 2 * * *', () => {
-    logger.info('cron: running log table retention purge');
-    void runRetentionPurge();
-  });
-  logger.info('Log table retention cron scheduled (daily at 02:00)');
-
-  process.once('SIGTERM', () => retentionCron.stop());
-  process.once('SIGINT', () => retentionCron.stop());
-
-  // Win/loss pattern analysis — runs daily at 03:00 server time.
-  // No-ops below the admin-configured minimum closed-deal threshold or when AI is
-  // not enabled; replaces the full deal_win_loss_insights table contents on each run.
-  const winLossAnalysisCron = cron.schedule('0 3 * * *', () => {
-    logger.info('cron: running win/loss pattern analysis');
-    void analyzeWinLossPatterns();
-  });
-  logger.info('Win/loss pattern analysis cron scheduled (daily at 03:00)');
-
-  process.once('SIGTERM', () => winLossAnalysisCron.stop());
-  process.once('SIGINT', () => winLossAnalysisCron.stop());
-
-  // Churn/expansion signal detection — runs daily at 04:00 server time.
-  // Scans closed-won accounts with activity history; no-ops when AI is not enabled.
-  const churnExpansionCron = cron.schedule('0 4 * * *', () => {
-    logger.info('cron: running churn/expansion signal detection');
-    void detectChurnExpansionSignals();
-  });
-  logger.info('Churn/expansion signal detection cron scheduled (daily at 04:00)');
-
-  process.once('SIGTERM', () => churnExpansionCron.stop());
-  process.once('SIGINT', () => churnExpansionCron.stop());
-
-  // Relationship health scoring — runs daily at 05:00 server time.
-  // Deterministic/SQL-driven (no AI call) — scores every account with at least
-  // one logged activity; the read path always serves the cached result.
-  const relationshipHealthCron = cron.schedule('0 5 * * *', () => {
-    logger.info('cron: running relationship health scoring');
-    void computeAccountHealthScores();
-  });
-  logger.info('Relationship health scoring cron scheduled (daily at 05:00)');
-
-  process.once('SIGTERM', () => relationshipHealthCron.stop());
-  process.once('SIGINT', () => relationshipHealthCron.stop());
-
-  // Follow-up timing suggestions — runs daily at 05:30 server time.
-  // Recomputes the cached best-time-to-contact suggestion for every contact
-  // whose interaction history changed since the last run.
-  const followUpTimingCron = cron.schedule('30 5 * * *', () => {
-    logger.info('cron: running follow-up timing suggestion refresh');
-    void computeFollowUpTimingSuggestions();
-  });
-  logger.info('Follow-up timing suggestion cron scheduled (daily at 05:30)');
-
-  process.once('SIGTERM', () => followUpTimingCron.stop());
-  process.once('SIGINT', () => followUpTimingCron.stop());
-
-  // Rep coaching insights — runs daily at 06:00 server time.
-  // Deterministic/SQL-driven (no AI call) — recomputes coaching insights for
-  // every rep with at least min_closed_deals closed deals; the read path
-  // always serves the cached result.
-  const repCoachingCron = cron.schedule('0 6 * * *', () => {
-    logger.info('cron: running rep coaching insights generation');
-    void generateRepCoachingInsights();
-  });
-  logger.info('Rep coaching insights cron scheduled (daily at 06:00)');
-
-  process.once('SIGTERM', () => repCoachingCron.stop());
-  process.once('SIGINT', () => repCoachingCron.stop());
-
-  // Data hygiene assistant — runs daily at 06:30 server time.
-  // Unlike the other nightly jobs above, this one does real per-record network
-  // I/O (MX lookups, website reachability checks), so a re-entrancy guard
-  // prevents overlapping runs if a scan takes longer than 24 hours on a large
-  // dataset — mirrors the 15-minute sequence-enrollment cron's guard pattern.
-  let dataHygieneScanRunning = false;
-  const dataHygieneCron = cron.schedule('30 6 * * *', () => {
-    if (dataHygieneScanRunning) {
-      logger.warn('dataHygiene: previous scan still in progress — skipping this tick');
-      return;
-    }
-    logger.info('cron: running data hygiene scan');
-    dataHygieneScanRunning = true;
-    void runDataHygieneScan().finally(() => {
-      dataHygieneScanRunning = false;
-    });
-  });
-  logger.info('Data hygiene scan cron scheduled (daily at 06:30)');
-
-  process.once('SIGTERM', () => dataHygieneCron.stop());
-  process.once('SIGINT', () => dataHygieneCron.stop());
-
-  // audit_log partition maintenance — runs at midnight UTC on the 1st of each month.
-  // Pre-creates audit_log_y{YYYY}m{MM} partitions for the current month + 3 months ahead,
-  // ensuring no writes ever land on audit_log_default due to a missing partition.
-  // timezone: 'UTC' ensures the cron fires at 00:00 UTC regardless of server local time,
-  // keeping the fire time aligned with UTC-based partition boundaries.
-  const auditPartitionCron = cron.schedule(
-    '0 0 1 * *',
-    () => {
-      logger.info('cron: running audit_log partition maintenance');
-      ensureAuditLogPartitions().catch((err: unknown) => {
-        logger.error(
-          { err },
-          'cron: audit_log partition maintenance failed — rows may route to audit_log_default',
-        );
-      });
-    },
-    { timezone: 'UTC' },
-  );
-  logger.info('Audit log partition cron scheduled (monthly on the 1st at 00:00 UTC)');
-
-  process.once('SIGTERM', () => auditPartitionCron.stop());
-  process.once('SIGINT', () => auditPartitionCron.stop());
-
-  // Rollout stage advancement — checks every 60 seconds for flags with due stages.
-  startRolloutScheduler();
-  process.once('SIGTERM', () => stopRolloutScheduler());
-  process.once('SIGINT', () => stopRolloutScheduler());
-
-  // Coverage/TIA retention pruning — runs daily at 07:00 server time.
-  // Deletes coverage_units/coverage_test_links rows older than the resolved
-  // policy's retention window. Runs regardless of COVERAGE_INSTRUMENTATION —
-  // the coverage database is populated by the pipeline/mapping ingestion
-  // path, which can run with the backend V8 agent off. coverageRetentionDays
-  // is resolved once above, at boot — not re-resolved inside this closure.
-  const coverageRetentionCron = cron.schedule('0 7 * * *', () => {
-    logger.info('cron: running coverage retention pruning');
-    runCoverageRetentionPruning(coverageRetentionDays).catch((err: unknown) => {
-      logger.error({ err }, 'cron: coverage retention pruning failed');
-    });
-  });
-  logger.info('Coverage retention pruning cron scheduled (daily at 07:00)');
-
-  process.once('SIGTERM', () => coverageRetentionCron.stop());
-  process.once('SIGINT', () => coverageRetentionCron.stop());
+  const stopScheduledJobs = startScheduledJobs(coverageRetentionDays);
+  process.once('SIGTERM', stopScheduledJobs);
+  process.once('SIGINT', stopScheduledJobs);
 }
