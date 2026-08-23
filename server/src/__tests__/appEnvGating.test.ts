@@ -114,6 +114,33 @@ describe.each(UNRECOGNIZED_ENVS)('NODE_ENV %s', (_label, value) => {
   });
 });
 
+describe('NODE_ENV staging', () => {
+  it('serves the API docs', async () => {
+    const app = await loadAppWithNodeEnv('staging');
+
+    const res = await request(app).get('/api-docs/');
+
+    expect(res.status).not.toBe(404);
+  });
+
+  it('does not mount the endpoints that hand out credentials', async () => {
+    const app = await loadAppWithNodeEnv('staging');
+
+    // Staging carries real traffic. Serving the docs there is fine; minting a
+    // password-reset token or a live TOTP code for any account is not.
+    const resetToken = await request(app)
+      .post('/api/v1/auth/dev/reset-token')
+      .set('Cookie', adminCookie)
+      .send({ email: `${FILE_PREFIX}-admin@example.com` });
+    expect(resetToken.status).toBe(404);
+
+    const totp = await request(app)
+      .get('/api/v1/auth/mfa/dev/totp-code')
+      .set('Cookie', adminCookie);
+    expect(totp.status).toBe(404);
+  });
+});
+
 describe('NODE_ENV development', () => {
   it('serves the API docs', async () => {
     const app = await loadAppWithNodeEnv('development');

@@ -3,7 +3,7 @@
  */
 
 import { Router } from 'express';
-import { isAuthBypassEnv, isNonProductionEnv } from '../utils/nodeEnv.js';
+import { isAuthBypassEnv } from '../utils/nodeEnv.js';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/auth.js';
 import {
@@ -407,9 +407,9 @@ router.post('/reset-password', resetPasswordLimiter, asyncHandler(resetPassword)
 
 // ── Dev/test-only endpoint ───────────────────────────────────────────────────
 // Returns a plaintext reset token for a given email address.
-// Only available in a recognized non-production environment.
+// Only available in development and test — never staging or production.
 // Used by E2E tests to bypass the email delivery step.
-if (isNonProductionEnv()) {
+if (isAuthBypassEnv()) {
   /**
    * POST /api/v1/auth/dev/reset-token — dev/test only.
    * Creates and returns a plaintext reset token for a given email address.
