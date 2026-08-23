@@ -22,7 +22,7 @@
  * where the org-wide flag took effect immediately. Acceptable because these
  * are internal CI/dev surfaces whose exposure is a deploy-time decision, and
  * because isDashboardNoAuthEnabled additionally requires
- * NODE_ENV !== 'production', so that combination cannot exist in a real
+ * a development or test NODE_ENV, so that combination cannot exist in a real
  * deployment. requireFeatureEnabledOrgWide itself is untouched and still
  * covered by its own unit tests.
  *

@@ -57,16 +57,9 @@ export interface GdprDeletionLogRow {
 }
 
 /**
- * Placeholder email written over an erased record's real one.
- *
- * The SQL that writes it and the re-run path that searches for it must agree,
- * so both derive it here. `id` is a UUID, so the result is unique per record.
+ * Placeholder email written over an erased record's real one, shared by the
+ * contact and lead erasure UPDATEs. `id` is a UUID, so it is unique per record.
  */
-export function gdprPlaceholderEmail(id: string): string {
-  return `gdpr-deleted-${id}@gdpr.invalid`;
-}
-
-/** SQL producing the same value as gdprPlaceholderEmail, for the erasure UPDATEs. */
 const GDPR_PLACEHOLDER_EMAIL_SQL = `'gdpr-deleted-' || id || '@gdpr.invalid'`;
 
 /**

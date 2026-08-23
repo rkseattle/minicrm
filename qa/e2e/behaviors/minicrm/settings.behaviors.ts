@@ -644,24 +644,29 @@ export async function restoreAiDefaultsAfterTest(restClient: RestClient): Promis
  * @param restClient - Admin-authenticated RestClient.
  */
 export async function resetAiSettings(restClient: RestClient): Promise<void> {
-  await Promise.all([
-    restClient.patch('/api/v1/admin/ai/master-toggle', { enabled: false }).catch(() => undefined),
-    restClient
-      .post('/api/v1/admin/ai/dpa-acknowledgment', { acknowledged: false, custom_dpa_url: '' })
-      .catch(() => undefined),
-    restClient
-      .patch('/api/v1/admin/ai/config', {
-        provider: 'anthropic',
-        model: 'claude-haiku-4-5-20251001',
-        deployment_mode: 'cloud_api',
-        base_url: '',
-        custom_dpa_url: '',
-      })
-      .catch(() => undefined),
-    restClient
-      .patch('/api/v1/admin/ai/session-retention', { ai_session_retention_days: 90 })
-      .catch(() => undefined),
-  ]);
+  // Sequential, not Promise.all: all four write the singleton ai_configuration
+  // row, and concurrently they interleave. A retention reset still in flight
+  // from a previous hook has landed on top of a value the current test had
+  // already saved and verified through the UI, so the test read back the
+  // default instead of what it set.
+  await restClient
+    .patch('/api/v1/admin/ai/master-toggle', { enabled: false })
+    .catch(() => undefined);
+  await restClient
+    .post('/api/v1/admin/ai/dpa-acknowledgment', { acknowledged: false, custom_dpa_url: '' })
+    .catch(() => undefined);
+  await restClient
+    .patch('/api/v1/admin/ai/config', {
+      provider: 'anthropic',
+      model: 'claude-haiku-4-5-20251001',
+      deployment_mode: 'cloud_api',
+      base_url: '',
+      custom_dpa_url: '',
+    })
+    .catch(() => undefined);
+  await restClient
+    .patch('/api/v1/admin/ai/session-retention', { ai_session_retention_days: 90 })
+    .catch(() => undefined);
 }
 
 /** Default cost rates as seeded by db/migrations/137_add_ai_cost_rate_config.js. */
