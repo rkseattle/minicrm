@@ -4,9 +4,11 @@
 > navigation item is missing, contact your admin to enable the **Reporting & Dashboards**
 > feature flag.
 
-MiniCRM includes four built-in report views accessible from the **Reports** navigation
-item. Each view has a **My View** / **Team View** toggle (where applicable) and a
-date-range selector.
+MiniCRM includes four report views, reached from the **Reports** navigation item. They are
+tabs on a single page — **Win/Loss**, **Activity Volume**, **Pipeline Stage**, and **Custom
+Reports** — not separate pages. The filters differ per tab, and the **My View** / **Team
+View** toggle and **Owner** dropdown appear only for admins, on the Win/Loss and Activity
+Volume tabs.
 
 ---
 
@@ -26,14 +28,15 @@ Shows closed deal performance over a selected period.
 | Lost value  | Total value of lost deals in your org currency |
 | Win rate    | Won ÷ (Won + Lost) as a percentage             |
 
-Below the headline numbers, a **Per-rep breakdown** table shows the same columns for
-each rep. A **Loss reason breakdown** table lists the reasons entered on lost deals.
+A **Loss reason breakdown** table lists the reasons entered on lost deals. Admins in Team
+View also get a **Per-rep breakdown** table showing the same columns for each rep.
 
 **Filtering:**
 
 - **Date range** — choose _This month_, _This quarter_, or a custom range.
-- **My View / Team View** — toggle between your own deals and all reps.
-- **Owner** (Team View only) — filter to a specific rep.
+- **My View / Team View** (admins only) — toggle between your own deals and all reps.
+- **Owner** (admins only) — filter to a specific rep. It has no effect in My View, which
+  always shows your own deals.
 
 ---
 
@@ -43,17 +46,16 @@ Shows how many activities each rep has logged, broken down by type.
 
 **Columns:** Rep, Note, Call, Email, Meeting, Task, Total.
 
-The **Per-rep breakdown** table lists each rep's counts for the period. Use this report
-to track outreach volume and coaching needs.
+For admins in Team View, a **Per-rep breakdown** table lists each rep's counts for the
+period. Use this report to track outreach volume and coaching needs.
 
 **Filtering:**
 
 - **Date range** — choose _This week_, _This month_, _This quarter_, or a custom range.
-- **My View / Team View** toggle.
-- **Owner** (Team View only).
+- **My View / Team View** toggle (admins only).
+- **Owner** (admins only) — no effect in My View.
 
-You can export the table as a CSV or PDF file using the **Export CSV** or **Export PDF**
-button.
+To export the table, click **Export** and choose **Export CSV** or **Export PDF**.
 
 ---
 
@@ -69,23 +71,28 @@ stage means deals tend to die there.
 
 **Filtering:**
 
-- **Date range** — choose _Last 30 days_, _Last 60 days_, or _Last 90 days_.
+- **Date range** — choose _Last 30 days_, _Last 60 days_, or _Last 90 days_. This tab has
+  no view toggle and no owner filter.
 
 ---
 
-## Tutorial: run a Win/Loss report and export it
+## Tutorial: run a Win/Loss report
 
 ### Step 1 — Open the report
 
 1. Click **Reports** in the navigation.
-2. Select the **Win/Loss** tab.
+2. Select the **Win/Loss** tab. This tab has no export — to take the numbers away, use the
+   **Activity Volume** or **Custom Reports** tab, or build a custom report over deals.
 
 ### Step 2 — Set the date range
 
 1. In the **Date range** selector, choose _This quarter_ (or set a custom range).
 2. The headline numbers update automatically.
 
-### Step 3 — Switch to Team View
+### Step 3 — Switch to Team View (admins only)
+
+The view toggle and owner filter appear only for admins. If you do not see them, the report
+is already scoped to your own deals and this step does not apply.
 
 1. Click **Team View** at the top of the report.
 2. The per-rep breakdown table now shows all reps.
@@ -208,9 +215,9 @@ to the configuration, or **Save as new** to create a new copy.
 
 ### Exporting results
 
-The results table can be exported as a CSV or PDF file using the **Export CSV** or
-**Export PDF** button (visible after running a saved report). Requires the
-**CSV Export** feature flag to be enabled.
+To export the results table, click **Export** and choose **Export CSV** or **Export PDF**
+(available after running a saved report). Requires the **CSV Export** feature flag to be
+enabled.
 
 ### Sharing reports
 
@@ -240,8 +247,8 @@ Once your organisation has enough closed deal history, the page shows three sect
 If your organisation does not yet have enough closed deals, the page shows how many
 more are needed instead of any patterns.
 
-Use **Export CSV** or **Export PDF** at the top of the page to download the current set
-of insights.
+Click **Export** at the top of the page and choose **Export CSV** or **Export PDF** to
+download the current set of insights.
 
 > **AI-generated observations, not statistical proof.** These patterns are correlations
 > found in your historical data and narrated by AI — they are not a controlled

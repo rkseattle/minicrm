@@ -13,15 +13,18 @@ to close. The pipeline board gives you a Kanban view of every open deal by stage
 
 ### Step 1 — Create the deal
 
-1. Click **Deals** in the navigation, then click **New Deal** (top-right).
-   Alternatively, open a contact or account and click **New deal** there — the
-   contact or account will be pre-linked.
+1. Click **Deals** in the navigation, then click **New Deal** (top-right). This is the only
+   place a deal is created directly — contact and account pages have no **New deal**
+   button. (Converting a lead can also create one; see [Leads](leads.md).)
 2. Enter a **Deal name** (required) and **Value** (the expected revenue amount).
 3. Choose a **Currency** if your organisation works in multiple currencies.
 4. Select a **Stage** — this is where the deal sits on the pipeline board.
-5. Optionally set an **Owner**, link an **Account** and one or more **Contacts**,
-   and add a **Close date**.
-6. Click **Save**.
+5. Choose an **Account** — required on this form.
+6. Optionally set an **Owner** and a **Close date**.
+7. Click **Save**.
+
+Contacts are not on the create form. Link them afterwards from the deal's own page: pick a
+contact under **Linked Contacts** and click **Link contact**. **Unlink** removes one.
 
 ### Step 2 — Move the deal through the pipeline
 
@@ -33,20 +36,30 @@ to close. The pipeline board gives you a Kanban view of every open deal by stage
 
 **From the deal detail page:**
 
-1. Open the deal.
-2. Click **Edit**.
-3. Change the **Stage** dropdown.
-4. Click **Save**.
+1. Open the deal and click **Edit**.
+2. Change the **Stage** dropdown, then click **Save changes**.
+
+Choosing _Closed Won_ or _Closed Lost_ opens the close dialog as soon as you pick it —
+there is no separate save for that step. See Step 3.
+
+> The dialog belongs to the board and the edit form. Picking a terminal stage on the **New
+> Deal** form creates the deal closed without prompting, so there is nowhere to record a
+> loss reason — create the deal in an open stage and close it afterwards.
 
 ### Step 3 — Record a close (Won or Lost)
 
-When the deal reaches a terminal stage:
+Moving an existing deal to either terminal stage — from the board or the edit form — opens
+a **Close as …** dialog:
 
-- **Closed Won** — drag or set the stage to _Closed Won_. The deal's probability
-  becomes 100% automatically.
-- **Closed Lost** — drag or set the stage to _Closed Lost_. You will be prompted
-  to enter a **Loss reason** (optional but useful for reporting). Probability
-  becomes 0%.
+- **Closed Won** — the dialog asks for a **Close date**, pre-filled with today. It is
+  required and cannot be in the future, so leave it or pick an earlier date; clearing it
+  makes the close fail. The deal then shows the Closed Won stage's default probability of
+  100%, unless you had set a probability on the deal by hand.
+- **Closed Lost** — the same required **Close date**, plus a free-text **Loss reason** box.
+  The reason is optional but useful for reporting. Probability follows the same rule,
+  showing the stage default of 0% unless overridden.
+
+Click **Confirm close** to finish.
 
 ---
 
@@ -64,7 +77,7 @@ When the deal reaches a terminal stage:
 | Close date  | Expected or actual close date                                                          |
 | Owner       | The rep responsible; defaults to the creator                                           |
 | Account     | The company this deal is with                                                          |
-| Contacts    | One or more contacts involved in this deal                                             |
+| Contacts    | Linked from the deal's detail page after it is created, not on the create form         |
 | Pipeline    | Which pipeline this deal belongs to (admins can create multiple pipelines)             |
 
 ### Pipeline stages
@@ -87,9 +100,10 @@ _Closed Won_ and _Closed Lost_ are fixed stages that cannot be renamed or delete
 
 - Each stage has a default probability (set by your admin).
 - You can override it manually on any deal by editing the **Probability** field.
-- A manual override is preserved when you move the deal to a new stage.
-- Setting the stage to _Closed Won_ or _Closed Lost_ always forces probability to
-  100% or 0% respectively.
+- A manual override is preserved when you move the deal to a new stage, including to
+  _Closed Won_ or _Closed Lost_. Those stages default to 100% and 0%, so a deal without an
+  override shows those figures once closed — but an overridden deal keeps its own value.
+- Click **Reset to stage default** next to the field to go back to inheriting it.
 
 ### Multi-currency
 
@@ -102,8 +116,9 @@ _Closed Won_ and _Closed Lost_ are fixed stages that cannot be renamed or delete
 
 ### Loss reason
 
-When closing a deal as _Lost_ you can optionally record why. This appears in the
-deal's audit history and can help identify patterns across lost deals.
+When closing a deal as _Lost_ you can optionally record why, as free text — there is no
+predefined list to pick from. It appears in the deal's audit history, in the Win/Loss
+report's loss-reason breakdown, and can help identify patterns across lost deals.
 
 ### AI Deal Health Check
 
