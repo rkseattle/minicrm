@@ -72,9 +72,6 @@ beforeEach(async () => {
   await pool.query('DELETE FROM gdpr_deletion_log WHERE requested_by = $1', [adminId]);
   await pool.query('DELETE FROM notes WHERE created_by = $1', [adminId]);
   await pool.query('DELETE FROM leads WHERE owner_id = $1', [adminId]);
-  // Notes outlive the contact they hang off — no FK on entity_id — so they have to go
-  // first or the user delete in afterAll trips notes_created_by_fkey.
-  await pool.query('DELETE FROM notes WHERE created_by = $1', [adminId]);
   await pool.query('DELETE FROM contacts WHERE owner_id = $1', [adminId]);
   // Audit log cleanup uses a single connection to ensure DISABLE TRIGGER takes effect.
   await clearAuditLogFor(adminId);
@@ -650,7 +647,7 @@ describe('getGdprExportForContact', () => {
     expect(exportData.audit_history.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('omits private notes but includes team and public ones', async () => {
+  it('includes private notes — Art. 15 covers all data held about the subject', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
     await pool.query(
       `INSERT INTO notes (entity_type, entity_id, body, body_text, visibility, created_by)
@@ -663,9 +660,9 @@ describe('getGdprExportForContact', () => {
 
     const bodies = exportData.notes.map((note) => note.body_text);
     expect(bodies).toContain('team note');
-    // The export is handed to the data subject; a private note is readable by nobody
-    // but its author anywhere else in the product.
-    expect(bodies).not.toContain('private note');
+    // Note visibility is an internal access control, not a carve-out from the subject's
+    // right of access.
+    expect(bodies).toContain('private note');
   });
 
   it('erasure scrubs a soft-deleted note, which no other job purges', async () => {
@@ -685,7 +682,7 @@ describe('getGdprExportForContact', () => {
     expect(after.rows[0]!.body_text).toBe('[GDPR deleted]');
   });
 
-  it('erasure still scrubs a private note the export omits', async () => {
+  it('erasure scrubs a private note', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
     await pool.query(
       `INSERT INTO notes (entity_type, entity_id, body, body_text, visibility, created_by)

@@ -52,11 +52,11 @@ Moving an existing deal to either terminal stage — from the board or the edit 
 a **Close as …** dialog:
 
 - **Closed Won** — the dialog asks for a **Close date**, pre-filled with today. It is
-  required and cannot be in the future, so leave it or pick an earlier date; clearing it
-  makes the close fail. The deal then shows the Closed Won stage's default probability of
-  100%, unless you had set a probability on the deal by hand.
-- **Closed Lost** — the same required **Close date**, plus a free-text **Loss reason** box.
-  The reason is optional but useful for reporting. Probability follows the same rule,
+  optional, but it cannot be in the future, so keep the default or pick an earlier date.
+  The deal then shows the Closed Won stage's default probability of 100%, unless you had
+  set a probability on the deal by hand.
+- **Closed Lost** — the same **Close date**, plus a free-text **Loss reason** box. Both
+  are optional; the reason is useful for reporting. Probability follows the same rule,
   showing the stage default of 0% unless overridden.
 
 Click **Confirm close** to finish.

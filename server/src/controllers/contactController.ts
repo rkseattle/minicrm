@@ -618,7 +618,7 @@ export async function deleteContactHandler(req: Request, res: Response): Promise
 /**
  * POST /api/v1/contacts/:id/merge
  * Merges the contact identified by :id (the winner) with a specified loser contact.
- * Only admins and the winner's owner may perform a merge.
+ * A merge requires ownership of both records, or admin.
  * Body: { loserId: string, fieldChoices: Record<field, 'winner'|'loser'> }
  */
 export async function mergeContactHandler(req: Request, res: Response): Promise<void> {

@@ -517,11 +517,10 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
          FROM notes n
          JOIN users creator ON creator.id = n.created_by
          LEFT JOIN users updater ON updater.id = n.updated_by
-         -- A private note is its author's own working record, readable by nobody else
-         -- in the product. Handing it to the data subject would disclose it more widely
-         -- than any rep can see it. Erasure still reaches these rows.
+         -- Private notes are included: Art. 15 entitles the subject to all personal data
+         -- held about them, and note visibility is an internal access control, not a
+         -- carve-out from that right.
          WHERE n.entity_type = 'contact' AND n.entity_id = $1 AND n.deleted_at IS NULL
-           AND n.visibility != 'private'
          ORDER BY n.created_at DESC`,
         [id],
       ),
@@ -623,9 +622,9 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
        FROM notes n
        JOIN users creator ON creator.id = n.created_by
        LEFT JOIN users updater ON updater.id = n.updated_by
-       -- Same as the contact export: private notes are author-only everywhere else.
+       -- Private notes included, as on the contact export: Art. 15 covers all personal
+       -- data held about the subject.
        WHERE n.entity_type = 'lead' AND n.entity_id = $1 AND n.deleted_at IS NULL
-         AND n.visibility != 'private'
        ORDER BY n.created_at DESC`,
       [id],
     ),

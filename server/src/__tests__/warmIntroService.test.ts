@@ -46,6 +46,7 @@ const OWNER_USER = {
 };
 
 let ownerId: string;
+let otherAuthorId: string;
 let defaultPipelineId: string;
 
 function makeNoteDoc(text: string): string {
@@ -88,6 +89,12 @@ beforeAll(async () => {
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
+  const otherAuthor = await createUser({
+    ...OWNER_USER,
+    email: `${FILE_PREFIX}-other-author@example.com`,
+    name: 'Other Author',
+  });
+  otherAuthorId = otherAuthor.id;
   defaultPipelineId = await getDefaultPipelineId();
 });
 
@@ -258,6 +265,33 @@ describe('findWarmIntroPaths', () => {
     expect(result?.paths[0].suggested_introduction_message).toContain(
       result?.paths[0].links[1].first_name ?? '',
     );
+  });
+
+  it("does not match another author's private note", async () => {
+    const targetId = await createTestContact();
+    const knownId = await createTestContact();
+    await createActivity(
+      { type: 'Call', subject: 'Call', contact_id: knownId, owner_id: ownerId },
+      { id: ownerId, name: OWNER_USER.name },
+    );
+    const target = await pool.query('SELECT first_name, last_name FROM contacts WHERE id = $1', [
+      targetId,
+    ]);
+    const targetFullName = `${target.rows[0].first_name} ${target.rows[0].last_name}`;
+    // Surfacing this path would reveal that someone else's private note names the target.
+    await createNote(
+      'contact',
+      knownId,
+      {
+        body: makeNoteDoc(`Private: knows ${targetFullName} well.`),
+        visibility: 'private',
+        tags: [],
+      },
+      { id: otherAuthorId, name: 'Other Author' },
+    );
+
+    const result = await findWarmIntroPaths(targetId, ownerId, 'rep');
+    expect(result?.paths.some((p) => p.links[0].contact_id === knownId)).toBe(false);
   });
 
   it('finds a path via a best-effort notes mention', async () => {

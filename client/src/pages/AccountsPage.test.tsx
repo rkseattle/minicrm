@@ -40,8 +40,8 @@ describe('AccountsPage', () => {
       );
     });
 
-    // parent_account_id is picked through a search widget rather than a plain control,
-    // so assert the payload carries the key rather than driving the picker.
+    // The picker is a search widget, so driving it here would test the widget rather than
+    // the payload. Key presence is what the omission bug looked like.
     const [payload] = createSpy.mock.calls[0]!;
     expect(Object.keys(payload)).toContain('parent_account_id');
   });

@@ -165,7 +165,7 @@ An admin user can download a complete JSON export of all personal data held for 
 1. Navigate to the contact or lead record.
 2. Scroll to the **GDPR & Privacy** section.
 3. Click **Download data export**.
-4. The browser downloads a JSON file containing: the contact/lead record, all linked activities, all linked deals, all linked notes, all custom field values, and the full audit history for the record (with GDPR masking applied if erasure has occurred).
+4. The browser downloads a JSON file containing: the contact/lead record, all linked activities, all linked deals, all linked notes (private ones included — see below), all custom field values, and the full audit history for the record (with GDPR masking applied if erasure has occurred).
 5. Provide this file to the data subject.
 
 #### Art. 20 — Right to Data Portability

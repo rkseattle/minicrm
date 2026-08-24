@@ -5,10 +5,10 @@
 
 Notes are rich-text comments attached to a contact, account, deal, or lead. Unlike
 activity log entries, notes are designed for longer contextual commentary — background
-on a relationship, meeting summaries, or internal team discussions. There is no button
-that sends a note to a customer — but three features read notes regardless of visibility,
-and two of them can put the text in front of one. See **Where notes can be disclosed**
-before writing anything you would not want quoted back.
+on a relationship, meeting summaries, or internal team discussions. No note is sent to a
+customer, and **Private** holds across the AI features too — but a data subject's GDPR
+export includes them. See **Where notes can be disclosed** before writing anything you
+would not want quoted back.
 
 ---
 
@@ -63,9 +63,9 @@ New notes default to **Team**.
 and neither is restricted to your team. Choose between them as a signal to colleagues
 about the nature of the note, not as an access control.
 
-**Private** is the only level that restricts anything, and it restricts it in the Notes
-section and in search _only_ — see **Where notes can be disclosed** for the three paths
-that read a private note's text anyway. Other users still see that the note exists, but in place of its
+**Private** is the only level that restricts anything, and it restricts the note's text
+rather than its existence — see **Where notes can be disclosed** for the one path that
+reads it anyway. Other users still see that the note exists, but in place of its
 content they get a single line — "Private note by \<author\>" with a relative time — and no
 **Edit** or **Delete** buttons. This applies to admins too: the check is authorship, with
 no role exemption.
@@ -77,27 +77,16 @@ sharing more widely.
 
 ### Where notes can be disclosed
 
-Visibility governs the **Notes** section and search. Three other paths read notes without
-consulting it, so **Private** does not contain a note's text on any of them:
+**Private** withholds a note's text everywhere a rep can read notes, and from the AI
+features that read them: proposal drafting and warm-introduction matching both skip
+private notes written by anyone else, so nothing you mark private reaches a customer
+document or surfaces you as an introduction route.
 
-- **GDPR data export.** An admin clicking **Download data export** on a contact or lead
-  gets every note on that record in full — title and body, whoever wrote it, private or
-  not. The export exists to be handed to the data subject, so a private note about a
-  person can be disclosed to that person.
-- **AI Proposal Draft Generation** (on a deal, flag `ai_proposal_draft_generation`) reads
-  the ten most recent notes on that deal, private ones included, and they feed every
-  section of the draft — not just one. The rep exports the draft and sends it themselves;
-  MiniCRM never sends anything automatically. See
-  [Deals — AI Proposal Draft Generation](deals.md#ai-proposal-draft-generation).
-- **AI warm introduction paths** (flag `ai_warm_intro_path`) searches the notes on contacts
-  you own or have worked with for the **target contact's name**. The note's text is never
-  displayed, but a private note naming the target can cause that contact to be suggested
-  as an introduction route — revealing that some note of yours links the two. See
-  [Contacts — AI warm introduction paths](contacts.md#ai-warm-introduction-paths).
-
-Two rules follow. Do not put anything in a note on a **deal** that would embarrass you in
-a customer proposal. Do not put anything in a note about a **person** that would embarrass
-you if that person requested their data.
+One deliberate exception: a **GDPR data export** includes every note on the record,
+private ones included. That export exists to answer a data subject's right-of-access
+request, and the law entitles them to all personal data held about them — an internal
+visibility setting does not change that. Write notes about a person on the assumption they
+could one day read them.
 
 ### Searching notes
 
