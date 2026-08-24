@@ -15,27 +15,45 @@ gives you a full picture of your relationship with that company.
 
 1. Click **Accounts** in the navigation.
 2. Click **New Account** (top-right).
-3. Enter the **Account name** (required).
-4. Choose an **Account type** from the dropdown (see reference below).
-5. Optionally add website, phone, industry, and address.
-6. Click **Save**.
+3. Enter the **Company name** (required).
+4. Optionally add industry, website, employee count, and revenue range — and use the
+   **Contacts** field to link contacts right away, which saves doing Step 2 separately.
+5. Click **Save**.
+
+> **Account type** and **Parent account** appear on this form but are not saved when
+> creating. Set them afterwards: open the account, click **Edit**, choose them there, and
+> click **Save changes**.
 
 ### Step 2 — Link a contact to the account
 
-1. Open the account's detail page.
-2. In the **Contacts** section, click **Add contact**.
-3. Search for an existing contact by name or email and select them.
-4. The contact now appears under this account. Their contact record also shows the
-   account in its **Account** field.
+Contacts are linked through a form on either side. The account's **Linked Contacts** list
+is a read-only view of the result.
 
-> You can also set the account when creating or editing a contact directly from the
-> Contacts page.
+**From the account** — good for attaching several contacts at once:
+
+1. Open the account's detail page and click **Edit**.
+2. In the **Contacts** field, search by name or email and select each contact.
+3. Click **Save changes**. They now appear under **Linked Contacts**.
+
+**From the contact** — the only way to _move_ a contact between accounts:
+
+1. Open the contact and click **Edit**.
+2. Choose the account in the **Account** dropdown, then save.
+
+> The account-side **Contacts** field only picks up contacts that are unlinked or already
+> on this account. Selecting one that belongs to a different account does nothing, with no
+> error — reassign it from the contact's own **Account** field instead. Removing a contact
+> from this field unlinks it, so keep the existing selections unless you mean to detach
+> them.
 
 ### Step 3 — Link a deal to the account
 
-1. On the account detail page, in the **Deals** section, click **New deal**.
-2. Fill in the deal details — the account is pre-filled.
-3. Save. The deal appears under the account and on the pipeline board.
+Deals are created from the Deals page and pointed at the account:
+
+1. Click **Deals** in the navigation, then **New Deal**.
+2. Fill in the deal details, choosing this account in the **Account** field.
+3. Save. The deal appears on the pipeline board. To see an account's deals, open one of
+   its contacts — the contact detail page lists the deals it is linked to.
 
 ### Step 4 — Set a parent account (subsidiaries)
 
@@ -43,7 +61,8 @@ If this account is a subsidiary of a larger company:
 
 1. Open the account and click **Edit**.
 2. In the **Parent account** field, search for and select the parent.
-3. Save. The parent account's detail page will list this account under **Subsidiaries**.
+3. Click **Save changes**. The parent account's detail page now lists this account under
+   **Subsidiary Accounts**.
 
 ---
 
@@ -51,15 +70,16 @@ If this account is a subsidiary of a larger company:
 
 ### Fields
 
-| Field          | Notes                                         |
-| -------------- | --------------------------------------------- |
-| Account name   | Required                                      |
-| Account type   | Optional; see type list below                 |
-| Website        | Optional                                      |
-| Phone          | Optional                                      |
-| Industry       | Optional free-text                            |
-| Owner          | The rep responsible; defaults to the creator  |
-| Parent account | Links this account as a subsidiary of another |
+| Field          | Notes                                                              |
+| -------------- | ------------------------------------------------------------------ |
+| Company name   | Required                                                           |
+| Account type   | Optional; see type list below. Set it after creating, via **Edit** |
+| Industry       | Optional free-text                                                 |
+| Website        | Optional                                                           |
+| Employee count | Optional free-text; e.g. `51-200`                                  |
+| Revenue range  | Optional free-text; e.g. `10M-50M`                                 |
+| Owner          | The rep responsible; defaults to the creator                       |
+| Parent account | Links this account as a subsidiary of another                      |
 
 ### Account types
 
