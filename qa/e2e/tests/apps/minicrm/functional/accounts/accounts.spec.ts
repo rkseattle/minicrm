@@ -386,7 +386,7 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
 
   await expectAccountLinkedContactVisible(contact.id, { page });
 
-  // accounts.md sends the reader to this heading by name.
+  // The heading accounts.md quotes; userGuideLabels.test.ts pins it to the doc.
   await expectDocumentedTextVisible(
     'linked-contacts-heading',
     t('accounts.linkedContactsHeading'),
