@@ -149,26 +149,25 @@ export async function setAccountContacts(
   );
 
   if (contactIds.length > 0) {
-    // A contact already linked to a different account is not stolen silently: the
-    // caller is told which ones, so the selection can be corrected from the contact.
-    const conflicting = await client.query<{ id: string }>(
-      `SELECT id FROM contacts
-       WHERE id = ANY($2::uuid[]) AND account_id IS NOT NULL AND account_id != $1`,
-      [accountId, contactIds],
-    );
-    if (conflicting.rows.length > 0) {
-      throw Object.assign(new Error('Contact is already linked to a different account'), {
-        code: 'CONTACT_LINKED_ELSEWHERE',
-        conflictingContactIds: conflicting.rows.map((row) => row.id),
-      });
-    }
-
-    await client.query(
+    // The guard stays on the write so a concurrent link cannot be stolen between a
+    // check and an unguarded update; the conflict is derived from what it refused.
+    const linked = await client.query<{ id: string }>(
       `UPDATE contacts
        SET account_id = $1, updated_at = now()
-       WHERE id = ANY($2::uuid[])`,
+       WHERE id = ANY($2::uuid[])
+         AND (account_id IS NULL OR account_id = $1)
+       RETURNING id`,
       [accountId, contactIds],
     );
+
+    if (linked.rows.length < contactIds.length) {
+      const linkedIds = new Set(linked.rows.map((row) => row.id));
+      throw Object.assign(new Error('Contact is already linked to a different account'), {
+        code: 'CONTACT_LINKED_ELSEWHERE',
+        // Not surfaced in the response — kept for server logs when diagnosing a refusal.
+        conflictingContactIds: contactIds.filter((id) => !linkedIds.has(id)),
+      });
+    }
   }
 }
 

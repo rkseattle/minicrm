@@ -40,7 +40,7 @@ is a read-only view of the result.
 
 > The account-side **Contacts** field only accepts contacts that are unlinked or already
 > on this account. Selecting one that belongs to a different account is refused with an
-> error naming it — move it from the contact's own **Account** field instead. Removing a
+> error — move it from the contact's own **Account** field instead. Removing a
 > contact from this field unlinks it, so keep the existing selections unless you mean to
 > detach them.
 

@@ -29,10 +29,12 @@ import { createDeal } from '../services/dealService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { generateProposalDraft } from '../services/proposalDraftService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
+import { createNote } from '../services/noteService.js';
 
 const FILE_PREFIX = 'proposal-draft-svc';
 
 let ownerId: string;
+let otherAuthorId: string;
 let defaultPipelineId: string;
 let accountId: string;
 
@@ -63,6 +65,14 @@ beforeAll(async () => {
     status: 'active',
   });
   ownerId = owner.id;
+  const otherAuthor = await createUser({
+    email: `${FILE_PREFIX}-other@example.com`,
+    name: 'Other Author',
+    role: 'rep',
+    passwordHash: '$2b$12$placeholder',
+    status: 'active',
+  });
+  otherAuthorId = otherAuthor.id;
   defaultPipelineId = await getDefaultPipelineId();
 
   const accountResult = await pool.query<{ id: string }>(
@@ -182,6 +192,49 @@ describe('generateProposalDraft', () => {
 
     const callArgs = mockCreate.mock.calls[0][0];
     expect(callArgs.system).toContain('Focus more on ROI');
+  });
+
+  it("excludes another author's private note from the prompt", async () => {
+    const dealId = await createTestDeal();
+    // The draft is exported and sent to the customer, so a private note must not reach it.
+    await createNote(
+      'deal',
+      dealId,
+      {
+        body: JSON.stringify({
+          type: 'doc',
+          content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'SECRETWALKAWAYPRICE is 40k' }] },
+          ],
+        }),
+        visibility: 'private',
+        tags: [],
+      },
+      { id: otherAuthorId, name: 'Other Author' },
+    );
+
+    mockCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 50 },
+      content: [
+        {
+          type: 'tool_use',
+          name: 'draft_proposal',
+          input: {
+            executive_summary: 'Summary.',
+            problem_statement: 'Problem.',
+            proposed_solution: 'Solution.',
+            pricing_line_items: [{ description: 'Core package', amount: 25000 }],
+            next_steps: 'Next steps.',
+            prepared_for: 'Jane Doe',
+          },
+        },
+      ],
+    });
+
+    await generateProposalDraft(dealId, ownerId, 'Proposal Owner');
+
+    const callArgs = mockCreate.mock.calls[0][0];
+    expect(JSON.stringify(callArgs)).not.toContain('SECRETWALKAWAYPRICE');
   });
 
   it('records token usage against the requesting user with the proposal_draft feature tag', async () => {

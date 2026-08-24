@@ -101,7 +101,6 @@ export async function createAccountHandler(req: Request, res: Response): Promise
     if ((err as { code?: string }).code === 'CONTACT_LINKED_ELSEWHERE') {
       res.status(409).json({
         error: { code: 'CONTACT_LINKED_ELSEWHERE', message: (err as Error).message },
-        conflictingContactIds: (err as { conflictingContactIds?: string[] }).conflictingContactIds,
       });
       return;
     }
@@ -275,7 +274,6 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
     if (code === 'CONTACT_LINKED_ELSEWHERE') {
       res.status(409).json({
         error: { code, message: (err as Error).message },
-        conflictingContactIds: (err as { conflictingContactIds?: string[] }).conflictingContactIds,
       });
       return;
     }
