@@ -203,12 +203,15 @@ describe('setAccountContacts', () => {
       client1.release();
     }
 
-    // Try to link the same contact to accountA
+    // Try to link the same contact to accountA — refused rather than silently skipped,
+    // so the caller learns their selection was not applied.
     const client2: PoolClient = await pool.connect();
     try {
       await client2.query('BEGIN');
-      await setAccountContacts(accountA.id, [contactForB], client2);
-      await client2.query('COMMIT');
+      await expect(setAccountContacts(accountA.id, [contactForB], client2)).rejects.toMatchObject({
+        code: 'CONTACT_LINKED_ELSEWHERE',
+      });
+      await client2.query('ROLLBACK');
     } finally {
       client2.release();
     }

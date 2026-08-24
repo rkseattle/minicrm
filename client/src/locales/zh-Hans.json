@@ -1411,7 +1411,8 @@
     "fieldMergeChoiceLabel": "选择要为 {{field}} 保留的值",
     "fieldMergeSaveResolved": "保存解决方案",
     "fieldMergeDiscard": "放弃我的更改",
-    "fieldMergeNoChanges": "未找到冲突字段。"
+    "fieldMergeNoChanges": "未找到冲突字段。",
+    "CONTACT_LINKED_ELSEWHERE": "该联系人已关联到其他客户。请从联系人处更改。"
   },
   "search": {
     "inputLabel": "搜索",

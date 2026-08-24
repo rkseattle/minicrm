@@ -1376,7 +1376,8 @@
     "fieldMergeChoiceLabel": "Choose value to keep for {{field}}",
     "fieldMergeSaveResolved": "Save resolved",
     "fieldMergeDiscard": "Discard my changes",
-    "fieldMergeNoChanges": "No conflicting fields found."
+    "fieldMergeNoChanges": "No conflicting fields found.",
+    "CONTACT_LINKED_ELSEWHERE": "That contact is already linked to a different account. Change it from the contact instead."
   },
   "search": {
     "inputLabel": "Search",

@@ -133,7 +133,10 @@ interface ProposalDraftContext {
  * summary, open task count, and non-PII-excluded custom fields. Returns null
  * when the deal does not exist so the controller can return 404.
  */
-async function gatherProposalContext(dealId: string): Promise<ProposalDraftContext | null> {
+async function gatherProposalContext(
+  dealId: string,
+  requestingUserId: string,
+): Promise<ProposalDraftContext | null> {
   const deal = await findDealById(dealId);
   if (!deal) return null;
 
@@ -151,10 +154,13 @@ async function gatherProposalContext(dealId: string): Promise<ProposalDraftConte
       ),
       withRlsQuery((client) =>
         client.query<{ body_text: string | null }>(
+          // A private note is readable only by its author, and this text can reach a
+          // customer through the exported draft.
           `SELECT body_text FROM notes
            WHERE entity_type = 'deal' AND entity_id = $1 AND deleted_at IS NULL
+             AND (visibility != 'private' OR created_by = $2)
            ORDER BY created_at DESC LIMIT 10`,
-          [dealId],
+          [dealId, requestingUserId],
         ),
       ),
       withRlsQuery((client) =>
@@ -226,7 +232,7 @@ export async function generateProposalDraft(
   userName: string,
   focusNotes?: string,
 ): Promise<GenerateProposalDraftResponse | null> {
-  const context = await gatherProposalContext(dealId);
+  const context = await gatherProposalContext(dealId, userId);
   if (!context) return null;
 
   // IS_E2E must short-circuit before the ai_configuration.enabled check —

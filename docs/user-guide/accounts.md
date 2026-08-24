@@ -38,11 +38,11 @@ is a read-only view of the result.
 1. Open the contact and click **Edit**.
 2. Choose the account in the **Account** dropdown, then save.
 
-> The account-side **Contacts** field only picks up contacts that are unlinked or already
-> on this account. Selecting one that belongs to a different account does nothing, with no
-> error — reassign it from the contact's own **Account** field instead. Removing a contact
-> from this field unlinks it, so keep the existing selections unless you mean to detach
-> them.
+> The account-side **Contacts** field only accepts contacts that are unlinked or already
+> on this account. Selecting one that belongs to a different account is refused with an
+> error naming it — move it from the contact's own **Account** field instead. Removing a
+> contact from this field unlinks it, so keep the existing selections unless you mean to
+> detach them.
 
 ### Step 3 — Link a deal to the account
 

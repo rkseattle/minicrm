@@ -972,8 +972,8 @@ export async function mergeContacts(
     // Re-link the loser's polymorphic children (step 4b). No FK means the DELETE
     // below cannot cascade, and a row left on the dead id is unreachable by every
     // list query AND by a later GDPR erasure, which keys on the survivor's id.
-    // Soft-deleted notes move too: they still hold PII, and erasure only ever
-    // reaches rows attached to a live contact.
+    // Soft-deleted notes move too: they still hold PII, and a row left on the dead id
+    // is unreachable by a later erasure of the survivor.
     await client.query(
       `UPDATE notes SET entity_id = $1 WHERE entity_type = 'contact' AND entity_id = $2`,
       [winnerId, loserId],

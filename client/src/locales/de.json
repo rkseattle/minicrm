@@ -1411,7 +1411,8 @@
     "fieldMergeChoiceLabel": "Wählen Sie den zu behaltenden Wert für {{field}}",
     "fieldMergeSaveResolved": "Auflösung speichern",
     "fieldMergeDiscard": "Meine Änderungen verwerfen",
-    "fieldMergeNoChanges": "Keine Konflikte gefunden."
+    "fieldMergeNoChanges": "Keine Konflikte gefunden.",
+    "CONTACT_LINKED_ELSEWHERE": "Dieser Kontakt ist bereits mit einem anderen Konto verknüpft. Ändern Sie ihn über den Kontakt."
   },
   "search": {
     "inputLabel": "Suche",

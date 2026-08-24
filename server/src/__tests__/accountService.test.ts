@@ -566,6 +566,31 @@ describe('createAccount — account_type and parent_account_id', () => {
   });
 });
 
+describe('setAccountContacts — cross-account links', () => {
+  it('refuses a contact already linked to a different account', async () => {
+    const stamp = Date.now();
+    const owning = await createAccount({ name: `Owning ${stamp}`, owner_id: ownerId });
+    const other = await createAccount({ name: `Other ${stamp}`, owner_id: ownerId });
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id, account_id)
+       VALUES ('Linked', 'Elsewhere', $1, $2, $3) RETURNING id`,
+      [`${FILE_PREFIX}-link-${stamp}@example.com`, ownerId, owning.id],
+    );
+    const contactId = contactResult.rows[0]!.id;
+
+    // Silently skipping would lose the user's selection with a 200 response.
+    await expect(
+      updateAccount(other.id, { contact_ids: [contactId], version: other.version }),
+    ).rejects.toMatchObject({ code: 'CONTACT_LINKED_ELSEWHERE' });
+
+    const after = await pool.query<{ account_id: string }>(
+      'SELECT account_id FROM contacts WHERE id = $1',
+      [contactId],
+    );
+    expect(after.rows[0]!.account_id).toBe(owning.id);
+  });
+});
+
 describe('updateAccount — account_type and parent_account_id', () => {
   it('updates account_type', async () => {
     const account = await createAccount({ name: 'Typecheck Corp', owner_id: ownerId });

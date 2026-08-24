@@ -39,6 +39,11 @@ describe('AccountsPage', () => {
         expect.anything(),
       );
     });
+
+    // parent_account_id is picked through a search widget rather than a plain control,
+    // so assert the payload carries the key rather than driving the picker.
+    const [payload] = createSpy.mock.calls[0]!;
+    expect(Object.keys(payload)).toContain('parent_account_id');
   });
 
   it('renders the New Account button', async () => {
