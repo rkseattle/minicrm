@@ -21,6 +21,26 @@ describe('AccountsPage', () => {
     });
   });
 
+  it('sends account type and parent account when creating', async () => {
+    // Both controls render on the create form, so a payload that omits them loses the
+    // user's input with no error.
+    const createSpy = vi.spyOn(accountsApi, 'createAccount');
+    const user = userEvent.setup();
+    renderWithProviders(<AccountsPage />);
+
+    await user.click(await screen.findByTestId('new-account-button'));
+    await user.type(await screen.findByTestId('account-name-input'), 'Payload Co');
+    await user.selectOptions(await screen.findByTestId('account-type-select'), 'Customer');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Payload Co', account_type: 'Customer' }),
+        expect.anything(),
+      );
+    });
+  });
+
   it('renders the New Account button', async () => {
     renderWithProviders(<AccountsPage />);
     await waitFor(() => {

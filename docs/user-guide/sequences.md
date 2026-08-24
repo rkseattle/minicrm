@@ -105,9 +105,7 @@ fired yet does reach contacts already enrolled. Steps that have already fired ar
 unaffected, and a step that an enrollment is currently waiting on cannot be deleted at
 all.
 
-### Placeholders are not substituted
+### Personalization
 
-The step-authoring form suggests `{{contact_name}}` in its example text, but nothing
-replaces it — the subject and body reach your task exactly as an admin typed them. Edit
-the text yourself before sending, or ask your admin to leave placeholders out of the
-sequence.
+An admin can write `{{contact_name}}` into a step's subject or body. It is replaced with
+the contact's full name when the step fires, so the task you pick up already names them.

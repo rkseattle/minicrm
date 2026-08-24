@@ -784,6 +784,7 @@ export {
   waitForMyTasksHeading,
   clickOverdueTasksStatCard,
   expectOverdueFilterChipVisible,
+  expectDocumentedTextVisible,
   waitForNewContactButton,
   waitForNewAccountButton,
   waitForNewLeadButton,

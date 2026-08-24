@@ -187,6 +187,8 @@ export default function AccountsPage() {
           website: values.website || undefined,
           employee_range: values.employee_range || undefined,
           revenue_range: values.revenue_range || undefined,
+          account_type: values.account_type || undefined,
+          parent_account_id: values.parent_account_id || undefined,
           contact_ids: values.contact_ids.length > 0 ? values.contact_ids : undefined,
         },
         force,

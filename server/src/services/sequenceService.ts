@@ -840,7 +840,10 @@ async function processEnrollmentStep(row: {
     await client.query('BEGIN');
 
     // Execute the action — create a Task or Call activity on the contact
-    const activitySubject = buildActivitySubject(row.action_type, row.action_config);
+    const activitySubject = fillPlaceholders(
+      buildActivitySubject(row.action_type, row.action_config),
+      row.contact_name,
+    );
     const activityType = row.action_type === 'log_call_reminder' ? 'Call' : 'Task';
 
     await client.query(
@@ -849,7 +852,10 @@ async function processEnrollmentStep(row: {
       [
         activityType,
         activitySubject,
-        buildActivityNotes(row.action_type, row.action_config),
+        fillPlaceholders(
+          buildActivityNotes(row.action_type, row.action_config) ?? '',
+          row.contact_name,
+        ) || null,
         row.contact_id,
         row.contact_owner_id,
       ],
@@ -911,6 +917,15 @@ async function processEnrollmentStep(row: {
   } finally {
     client.release();
   }
+}
+
+/**
+ * Replaces the placeholders a step author may write. The step-authoring form offers
+ * {{contact_name}} in its own example text, so leaving it unsubstituted puts the raw
+ * token in front of whoever works the task.
+ */
+function fillPlaceholders(text: string, contactName: string): string {
+  return text.replace(/\{\{\s*contact_name\s*\}\}/g, contactName);
 }
 
 /** Returns the activity subject line for a given step action. */

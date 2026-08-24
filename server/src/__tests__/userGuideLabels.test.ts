@@ -99,7 +99,7 @@ describe('user guide quotes control names that exist', () => {
       // Not the words "New Deal" — that button is real, on the Deals page. The defect
       // was placing it in a Deals section of the account page, which does not exist.
       page: 'docs/user-guide/accounts.md',
-      absent: /\*\*Deals\*\*\s+(section|area|list)/i,
+      absent: /\*\*Deals\*\*\s+(section|area|list|panel|tab)|under \*\*Deals\*\*/i,
       why: 'the account page does not list deals',
     },
   ];

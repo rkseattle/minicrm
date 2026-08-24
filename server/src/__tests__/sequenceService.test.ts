@@ -783,6 +783,38 @@ describe('advanceDueEnrollments', () => {
     void step1; // referenced above to satisfy linter
   });
 
+  it('substitutes {{contact_name}} in the subject and notes', async () => {
+    const seq = await createSequence(
+      { name: 'Placeholder seq', enabled: true, created_by: adminId },
+      { id: adminId, name: 'Sequence Admin' },
+    );
+    // The step-authoring form suggests this token in its own placeholder text.
+    await createStep(seq.id, {
+      sort_order: 1,
+      action_type: 'send_email',
+      action_config: { subject: 'Follow up with {{contact_name}}', body: 'Hi {{contact_name}},' },
+      delay_days: 0,
+    });
+
+    const enrollment = await enrollContact(seq.id, contactId, {
+      id: adminId,
+      name: 'Sequence Admin',
+    });
+    await pool.query(
+      `UPDATE sequence_enrollments SET next_action_at = now() - interval '1 second' WHERE id = $1`,
+      [enrollment.id],
+    );
+
+    await advanceDueEnrollments();
+
+    const activity = await pool.query<{ subject: string; notes: string | null }>(
+      `SELECT subject, notes FROM activities WHERE contact_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [contactId],
+    );
+    expect(activity.rows[0].subject).toBe('Send email: Follow up with Seq TestContact');
+    expect(activity.rows[0].notes).toBe('Hi Seq TestContact,');
+  });
+
   it('marks enrollment completed when the last step is processed', async () => {
     const seq = await createSequence(
       { name: 'Complete seq', enabled: true, created_by: adminId },
