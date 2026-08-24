@@ -35,6 +35,8 @@ import {
   getContactEmailFieldText,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { getRecordAuditLog } from '@behaviors/minicrm/notes.behaviors.js';
+import { expectDocumentedTextVisible } from '@behaviors/minicrm/layout.behaviors.js';
+import { t } from '@framework/i18n/locale.js';
 
 // The word the UI requires the user to type to confirm erasure
 const CONFIRM_WORD = 'ERASE';
@@ -62,6 +64,26 @@ test(
     });
 
     await navigateToContactDetail(contact.id, { page });
+
+    // contacts.md quotes these three strings by name.
+    await expectDocumentedTextVisible(
+      'gdpr-privacy-heading',
+      t('gdpr.sectionTitle'),
+      'privacy section heading the erasure walkthrough starts from',
+      { page },
+    );
+    await expectDocumentedTextVisible(
+      'gdpr-erase-button',
+      t('gdpr.eraseButton'),
+      'button that opens the erasure confirmation dialog',
+      { page },
+    );
+    await expectDocumentedTextVisible(
+      'gdpr-export-button',
+      t('gdpr.exportButton'),
+      'button that downloads the subject-access export',
+      { page },
+    );
 
     await performGdprErasure(CONFIRM_WORD, { page });
 

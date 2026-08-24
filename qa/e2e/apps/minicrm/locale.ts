@@ -93,6 +93,10 @@ const MINICRM_EN: LocaleMap = {
   'accounts.newAccount': 'New Account',
   'accounts.empty': 'No accounts yet. Add one to get started.',
   'accounts.linkedContactsEmpty': 'No contacts linked to this account.',
+  'accounts.linkedContactsHeading': 'Linked Contacts',
+  'gdpr.sectionTitle': 'GDPR & Privacy',
+  'gdpr.eraseButton': 'Erase personal data',
+  'gdpr.exportButton': 'Download data export',
   'accounts.searchPlaceholder': 'Search by company name…',
 
   // Leads
@@ -202,6 +206,10 @@ const MINICRM_ES: LocaleMap = {
   'accounts.newAccount': 'Nueva cuenta',
   'accounts.empty': 'Aún no hay cuentas. Agrega una para empezar.',
   'accounts.linkedContactsEmpty': 'No hay contactos vinculados a esta cuenta.',
+  'accounts.linkedContactsHeading': 'Contactos vinculados',
+  'gdpr.sectionTitle': 'RGPD y Privacidad',
+  'gdpr.eraseButton': 'Borrar datos personales',
+  'gdpr.exportButton': 'Descargar exportación de datos',
   'accounts.searchPlaceholder': 'Buscar por nombre de empresa…',
 
   // Leads
@@ -311,6 +319,10 @@ const MINICRM_FR: LocaleMap = {
   'accounts.newAccount': 'Nouveau compte',
   'accounts.empty': "Aucun compte pour l'instant. Ajoutez-en un pour commencer.",
   'accounts.linkedContactsEmpty': 'Aucun contact associé à ce compte.',
+  'accounts.linkedContactsHeading': 'Contacts associés',
+  'gdpr.sectionTitle': 'RGPD & Confidentialité',
+  'gdpr.eraseButton': 'Effacer les données personnelles',
+  'gdpr.exportButton': "Télécharger l'export des données",
   'accounts.searchPlaceholder': "Rechercher par nom d'entreprise…",
 
   // Leads
@@ -420,6 +432,10 @@ const MINICRM_DE: LocaleMap = {
   'accounts.newAccount': 'Neues Konto',
   'accounts.empty': 'Noch keine Konten. Fügen Sie eines hinzu.',
   'accounts.linkedContactsEmpty': 'Keine Kontakte mit diesem Konto verknüpft.',
+  'accounts.linkedContactsHeading': 'Verknüpfte Kontakte',
+  'gdpr.sectionTitle': 'DSGVO & Datenschutz',
+  'gdpr.eraseButton': 'Personenbezogene Daten löschen',
+  'gdpr.exportButton': 'Datenexport herunterladen',
   'accounts.searchPlaceholder': 'Nach Firmenname suchen…',
 
   // Leads
@@ -529,6 +545,10 @@ const MINICRM_ZH_HANS: LocaleMap = {
   'accounts.newAccount': '新建客户',
   'accounts.empty': '暂无客户，请添加。',
   'accounts.linkedContactsEmpty': '此客户暂无关联联系人。',
+  'accounts.linkedContactsHeading': '关联联系人',
+  'gdpr.sectionTitle': 'GDPR 与隐私',
+  'gdpr.eraseButton': '删除个人数据',
+  'gdpr.exportButton': '下载数据导出',
   'accounts.searchPlaceholder': '按公司名称搜索…',
 
   // Leads

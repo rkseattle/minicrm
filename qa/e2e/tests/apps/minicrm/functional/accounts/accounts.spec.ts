@@ -67,6 +67,8 @@ import {
   createTestRep,
   navigateToAccount,
 } from '@apps/minicrm/helpers.js';
+import { expectDocumentedTextVisible } from '@behaviors/minicrm/layout.behaviors.js';
+import { t } from '@framework/i18n/locale.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -383,6 +385,14 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
   // The linked contacts list should contain the contact.
 
   await expectAccountLinkedContactVisible(contact.id, { page });
+
+  // accounts.md sends the reader to this heading by name.
+  await expectDocumentedTextVisible(
+    'linked-contacts-heading',
+    t('accounts.linkedContactsHeading'),
+    'heading over the read-only list of contacts on this account',
+    { page },
+  );
 });
 
 test('@functional F3-A2: account with zero contacts shows empty contacts section, not an error', async ({
