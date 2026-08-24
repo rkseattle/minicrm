@@ -222,7 +222,7 @@ describe('MyTasksPage', () => {
   describe('?filter=overdue query param', () => {
     it('shows only overdue tasks when filter=overdue is in the URL', async () => {
       // MY_TASK_1 has a future due date (not overdue); MY_TASK_OVERDUE is overdue
-      renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
+      renderWithProviders(<MyTasksPage />, { initialEntries: ['/tasks?filter=overdue'] });
 
       await waitFor(() => {
         expect(screen.getByTestId(`task-row-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
@@ -238,7 +238,7 @@ describe('MyTasksPage', () => {
         ),
       );
 
-      renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
+      renderWithProviders(<MyTasksPage />, { initialEntries: ['/tasks?filter=overdue'] });
 
       await waitFor(() => {
         expect(screen.getByTestId('my-tasks-empty-state')).toBeInTheDocument();
@@ -259,7 +259,7 @@ describe('MyTasksPage', () => {
     });
 
     it('hides the "Show completed" toggle when the overdue filter is active', async () => {
-      renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
+      renderWithProviders(<MyTasksPage />, { initialEntries: ['/tasks?filter=overdue'] });
 
       await waitFor(() => {
         expect(screen.getByTestId(`task-row-${MY_TASK_OVERDUE.id}`)).toBeInTheDocument();
@@ -269,7 +269,7 @@ describe('MyTasksPage', () => {
     });
 
     it('shows the overdue filter chip when filter=overdue is active', async () => {
-      renderWithProviders(<MyTasksPage />, { initialEntries: ['/my-tasks?filter=overdue'] });
+      renderWithProviders(<MyTasksPage />, { initialEntries: ['/tasks?filter=overdue'] });
 
       await waitFor(() => {
         expect(screen.getByTestId('filter-chip-overdue')).toBeInTheDocument();

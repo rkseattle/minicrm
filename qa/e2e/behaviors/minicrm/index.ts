@@ -233,6 +233,7 @@ export type {
 
 export {
   navigateToMyTasks,
+  expectMyTasksListSettled,
   taskIsVisible,
   completeTask,
   showCompletedTasks,
@@ -781,6 +782,8 @@ export {
   navigateToPath,
   waitForDashboardStatCards,
   waitForMyTasksHeading,
+  clickOverdueTasksStatCard,
+  expectOverdueFilterChipVisible,
   waitForNewContactButton,
   waitForNewAccountButton,
   waitForNewLeadButton,

@@ -5,6 +5,7 @@
  * DB-2: After creating a deal via API the open pipeline value stat is > 0.
  * DB-3: After creating an overdue task the overdue-tasks stat is ≥ 1.
  * DB-4: After creating an activity it appears in the recent-activity feed.
+ * DB-5: A rep clicking the overdue-tasks stat card lands on the tasks page, filtered.
  *
  * Framework conventions:
  *   - All tests tagged @functional
@@ -20,7 +21,15 @@ import {
   createTestDeal,
   createTestActivity,
   createTestAdmin,
+  createTestRep,
+  loginAndVerify,
+  registerAdminTeardown,
 } from '@apps/minicrm/helpers.js';
+import {
+  createActivityViaApi,
+  expectOverdueTaskBadgeVisible,
+} from '@behaviors/minicrm/activities.behaviors.js';
+import { expectMyTasksListSettled } from '@behaviors/minicrm/tasks.behaviors.js';
 import {
   navigateToPath,
   waitForDashboardStatCards,
@@ -28,6 +37,8 @@ import {
   expectDashboardStatCardVisible,
   getDashboardStatCardValue,
   isRecentActivityEntryVisible,
+  clickOverdueTasksStatCard,
+  expectOverdueFilterChipVisible,
   countElements,
 } from '@behaviors/minicrm/layout.behaviors.js';
 
@@ -168,5 +179,55 @@ test(
         0,
       );
     }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// DB-5 — Overdue stat card navigates a rep to the filtered tasks page
+// ---------------------------------------------------------------------------
+
+// The card is a link only for non-admins, so this test drives a rep.
+test(
+  'DB-5: a rep clicking the overdue stat card lands on the tasks page with the overdue filter @functional',
+  { tag: ['@functional'] },
+  async ({ page, testData, restClient }) => {
+    const rep = await createTestRep(testData, restClient);
+
+    const account = await createTestAccount(testData, restClient, {
+      name: `DB5-Account-${Date.now()}`,
+    });
+
+    // The activity endpoint takes its owner from the caller, not the payload.
+    await loginAndVerify(restClient, rep.email, rep.password);
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const task = await createActivityViaApi(restClient, {
+      type: 'Task',
+      subject: `DB5-Overdue-${Date.now()}`,
+      account_id: account.id,
+      due_date: yesterday,
+    });
+    registerAdminTeardown(
+      testData,
+      restClient,
+      'activity',
+      task.id,
+      `/api/v1/activities/${task.id}`,
+    );
+    // Teardown runs as whoever the test left logged in, and the account above is
+    // admin-owned — deleting it as the rep takes a 403.
+    await loginAsAdmin(restClient);
+
+    await loginViaBrowser(rep.email, rep.password, { page });
+    await navigateToPath('/', { page });
+    await waitForDashboardStatCards({ page });
+
+    await clickOverdueTasksStatCard({ page });
+
+    await expectMyTasksListSettled({ page });
+    // The route string is the regression under test: a redirect added later would
+    // satisfy the chip and the list while leaving the dashboard link wrong.
+    expect(page.url()).toContain('/tasks?filter=overdue');
+    await expectOverdueFilterChipVisible({ page });
+    await expectOverdueTaskBadgeVisible(task.id, { page });
   },
 );

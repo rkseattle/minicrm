@@ -4,10 +4,9 @@
  * Behaviors that verify layout-level properties of the UI — viewport fill,
  * container sizing, responsive structure — shared across multiple page domains.
  *
- * Behaviors do NOT contain assertions (no expect() calls). They return typed
- * result objects that test specs assert against.
- *
- *
+ * Measurement behaviors return typed result objects for the spec to assert against.
+ * The expect* behaviors here assert directly, so a locator failure names the element
+ * that was missing rather than surfacing as a null in the spec.
  */
 
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
@@ -203,7 +202,11 @@ export async function waitForDashboardStatCards(context: LayoutBehaviorContext):
   await locator.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
-/** Waits for the "my tasks" page heading to become visible — page-ready anchor. */
+/**
+ * Waits for the "my tasks" page heading to become visible. This confirms the shell
+ * mounted and nothing about the task list, which renders below the isLoading gate —
+ * use expectMyTasksListSettled when the list itself matters.
+ */
 export async function waitForMyTasksHeading(context: LayoutBehaviorContext): Promise<void> {
   const locator = await context.page
     .locate(
@@ -419,6 +422,39 @@ export async function isRecentActivityEntryVisible(
     .locate([{ type: 'testId', value: `recent-activity-${activityId}` }])
     .resolve();
   return locator.isVisible().catch(() => false);
+}
+
+/** Clicks the overdue-tasks stat card, which links to the tasks page for non-admins. */
+export async function clickOverdueTasksStatCard(context: LayoutBehaviorContext): Promise<void> {
+  // The anchor, not the card wrapper: a click on the wrapper only reaches the link
+  // while the link happens to span the card's center.
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'stat-overdue-tasks-link' },
+        { type: 'css', value: '[data-testid="stat-overdue-tasks-link"]' },
+      ],
+      { intent: 'overdue tasks stat card link to the pre-filtered tasks page' },
+    )
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await locator.click({ timeout: FIRST_INTERACTION_TIMEOUT_MS });
+}
+
+/** Asserts the tasks page is showing the overdue-only filter chip. */
+export async function expectOverdueFilterChipVisible(
+  context: LayoutBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'filter-chip-overdue' },
+        { type: 'css', value: '[data-testid="filter-chip-overdue"]' },
+      ],
+      { intent: 'overdue-only filter chip confirming the tasks page honoured the filter' },
+    )
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await expect(locator).toBeVisible({ timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 /**
