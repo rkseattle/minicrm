@@ -19,9 +19,15 @@ a file, and (if needed) erasing their data.
 
 1. Click **Contacts** in the navigation.
 2. Click **New Contact** (top-right).
-3. Fill in at minimum a **First name** and **Email** — email must be unique across all contacts.
-4. Optionally add: last name, phone, job title, account, owner, and address.
+3. Fill in **First name**, **Last name**, and **Email** — all three are required, and
+   the email must be unique across all contacts.
+4. Optionally add: phone, job title, department, and account. LinkedIn, Twitter/X, and
+   other links are under **Social Profiles**, which starts collapsed — click it to expand.
 5. Click **Save**. You are taken to the new contact's detail page.
+
+> Two fields are not on the create form. **Owner** appears only when you edit an existing
+> contact — a new contact is always owned by whoever created it. **Addresses** are added
+> after saving, via **Add address** while editing the contact.
 
 ### Step 2 — Add a tag
 
@@ -35,9 +41,10 @@ Tags let you group contacts by any label you choose (e.g. "VIP", "Newsletter", "
 ### Step 3 — Attach a file
 
 1. On the contact detail page, scroll to the **Attachments** section.
-2. Click **Upload file** and choose a file from your computer.
-3. The file appears in the list once uploaded. Click its name to download it.
-4. To remove an attachment, click the trash icon next to it.
+2. Click the upload area — **Click or drag and drop a file here** — and choose a file,
+   or drag one onto it.
+3. The file appears in the list once uploaded. Click **Download** to retrieve it.
+4. To remove an attachment, click **Delete** next to it, then confirm in the dialog.
 
 ### Step 4 — Erase a contact's data (GDPR)
 
@@ -45,13 +52,24 @@ If a contact requests erasure of their personal data under GDPR (the "right to b
 forgotten"):
 
 1. Open the contact's detail page.
-2. Click the **⋯ More actions** menu (top-right of the detail panel).
-3. Choose **Erase personal data**.
-4. Confirm the dialog. The contact's personal fields (name, email, phone, address) are
-   blanked and an erasure record is written to the audit log.
+2. Scroll down the detail page to the **GDPR & Privacy** section, below **Change history**.
+3. Click **Erase personal data**.
+4. The dialog lists exactly what will be erased and what is preserved. Type `ERASE` to
+   confirm, optionally recording a reference note (e.g. a request number), then click
+   **Erase personal data**.
+
+Erasure reaches further than the contact's own record. Along with their name, email,
+phone, department, and social links, it **deletes every address and every custom field
+value** on the contact, and clears the **subject and notes of every linked activity** and
+the **title and body of every linked note**. Meeting write-ups, call notes, and anything
+captured in a custom field do not survive — export what you need before erasing.
 
 > **Note:** Erasure is irreversible. The contact record remains (with a placeholder name)
-> so that linked deals and activities retain their history. Only an admin can trigger erasure.
+> so that linked deals and activities retain their history. Only an admin can trigger
+> erasure, and the **GDPR & Privacy** section is visible only to admins.
+
+The same section offers **Download data export**, which produces a complete export of the
+personal data held for the record — the GDPR right of access.
 
 ---
 
@@ -59,17 +77,22 @@ forgotten"):
 
 ### Fields
 
-| Field       | Notes                                                         |
-| ----------- | ------------------------------------------------------------- |
-| First name  | Required                                                      |
-| Last name   | Optional                                                      |
-| Email       | Required; must be unique across all contacts                  |
-| Phone       | Optional                                                      |
-| Job title   | Optional                                                      |
-| Account     | Links the contact to a company record                         |
-| Owner       | The rep responsible for this contact; defaults to the creator |
-| Address     | Street, city, state/region, postal code, country              |
-| Source lead | Read-only; set automatically when a lead is converted         |
+| Field       | Notes                                                                 |
+| ----------- | --------------------------------------------------------------------- |
+| First name  | Required                                                              |
+| Last name   | Required                                                              |
+| Email       | Required; must be unique across all contacts                          |
+| Phone       | Optional                                                              |
+| Job title   | Optional                                                              |
+| Department  | Optional                                                              |
+| Account     | Optional; links the contact to a company record                       |
+| Owner       | The rep responsible; set to the creator, editable afterwards¹         |
+| Address     | Street, city, state/region, postal code, country; added while editing |
+| Source lead | Read-only; set automatically when a lead is converted                 |
+
+¹ Admins can reassign a contact to anyone. A **manager** can only reassign to members of
+their own team, or to themselves; a manager belonging to no team cannot reassign at all.
+The save fails with a generic error when this happens.
 
 ### AI contact enrichment from pasted text
 
@@ -93,14 +116,24 @@ manually instead of guessing.
 
 ### Attachments
 
-- Supported file types and size limits are set by your admin.
+- Six file types are accepted: PDF, `.docx`, `.xlsx`, `.png`, `.jpg`, and `.txt`.
+- Each file may be up to **25 MB**, and one record may hold **100 MB** of attachments in
+  total. Past that, uploads are refused with "The record has reached the 100 MB attachment
+  limit."
+- These limits are fixed in the application — an admin cannot raise them. What an admin
+  does configure is where files are stored; until that is set up, the section reads
+  "File attachments are not configured — contact your admin."
 - Files are stored securely; only authenticated users can download them.
 
 ### Merging duplicates
 
-If you have two contact records for the same person, an admin can merge them.
-The surviving contact keeps the data you choose for each field, and all linked
-deals, activities, and notes are moved to the winner automatically.
+If you have two contact records for the same person, an admin — or the contact's own
+owner — can merge them. Click **Merge with another contact** on the contact detail page,
+search for the duplicate, then choose which value to keep for each conflicting field.
+The surviving contact keeps the data you choose, the other record is deleted, and its
+linked deals, activities, notes, attachments, and addresses all move to the winner
+automatically. Custom fields move too, except where both records had a value for the same
+field — there the winner's own value is kept.
 
 #### AI duplicate detection explanation
 

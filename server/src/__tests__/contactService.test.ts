@@ -30,6 +30,8 @@ import pool from '../db.js';
 import { uid } from './testUtils.js';
 
 const FILE_PREFIX = 'contact-svc';
+/** Custom field definitions this file creates, namespaced so cleanup cannot touch others' rows */
+const MERGE_FIELD_PREFIX = 'contact_svc_merge_';
 
 /** Minimal user fixture used as contact owner */
 const OWNER_USER = {
@@ -104,6 +106,15 @@ afterAll(async () => {
     'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
+  // attachments.uploader_id is ON DELETE SET NULL and record_id has no FK, so nothing
+  // else removes these rows.
+  await pool.query(
+    'DELETE FROM attachments WHERE uploader_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  // custom_field_definitions is a global table the parallel project shares; leaving rows
+  // behind breaks the exact-count assertions in customFieldService.test.ts.
+  await pool.query(`DELETE FROM custom_field_definitions WHERE name LIKE '${MERGE_FIELD_PREFIX}%'`);
   await pool.query(
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
@@ -1014,6 +1025,105 @@ describe('mergeContacts', () => {
 
     const found = await findContactById(loser.id);
     expect(found).toBeNull();
+  });
+
+  it("re-links the loser's notes to the winner", async () => {
+    const winner = await createContact({ ...makeContact(), owner_id: ownerId });
+    const loser = await createContact({ ...makeContact(), owner_id: ownerId });
+
+    await pool.query(
+      `INSERT INTO notes (entity_type, entity_id, body, body_text, created_by)
+       VALUES ('contact', $1, '{"type":"doc"}', 'loser note', $2)`,
+      [loser.id, ownerId],
+    );
+    // A soft-deleted note still holds PII, and a GDPR erasure of the winner only
+    // reaches rows attached to it — so this must move as well.
+    await pool.query(
+      `INSERT INTO notes (entity_type, entity_id, body, body_text, created_by, deleted_at)
+       VALUES ('contact', $1, '{"type":"doc"}', 'loser soft-deleted note', $2, now())`,
+      [loser.id, ownerId],
+    );
+
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, getActor());
+
+    const onWinner = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM notes
+       WHERE entity_type = 'contact' AND entity_id = $1 AND deleted_at IS NULL`,
+      [winner.id],
+    );
+    expect(parseInt(onWinner.rows[0]!.count, 10)).toBe(1);
+
+    // A row left on the deleted loser is unreachable by every list query and by a
+    // later GDPR erasure of the survivor.
+    const stranded = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM notes WHERE entity_type = 'contact' AND entity_id = $1`,
+      [loser.id],
+    );
+    expect(parseInt(stranded.rows[0]!.count, 10)).toBe(0);
+  });
+
+  it("re-links the loser's attachments to the winner", async () => {
+    const winner = await createContact({ ...makeContact(), owner_id: ownerId });
+    const loser = await createContact({ ...makeContact(), owner_id: ownerId });
+
+    await pool.query(
+      `INSERT INTO attachments
+         (record_type, record_id, filename, file_size, mime_type, storage_key, uploader_id)
+       VALUES ('contact', $1, 'loser.pdf', 1024, 'application/pdf', $2, $3)`,
+      [loser.id, `merge-test/${loser.id}.pdf`, ownerId],
+    );
+
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, getActor());
+
+    const onWinner = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM attachments WHERE record_type = 'contact' AND record_id = $1`,
+      [winner.id],
+    );
+    expect(parseInt(onWinner.rows[0]!.count, 10)).toBe(1);
+
+    const stranded = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM attachments WHERE record_type = 'contact' AND record_id = $1`,
+      [loser.id],
+    );
+    expect(parseInt(stranded.rows[0]!.count, 10)).toBe(0);
+  });
+
+  it("keeps the winner's custom field value and drops the loser's duplicate", async () => {
+    const winner = await createContact({ ...makeContact(), owner_id: ownerId });
+    const loser = await createContact({ ...makeContact(), owner_id: ownerId });
+
+    const shared = await pool.query<{ id: string }>(
+      `INSERT INTO custom_field_definitions (entity_type, name, field_type)
+       VALUES ('contact', $1, 'text') RETURNING id`,
+      [`${MERGE_FIELD_PREFIX}shared_${uid()}`],
+    );
+    const loserOnly = await pool.query<{ id: string }>(
+      `INSERT INTO custom_field_definitions (entity_type, name, field_type)
+       VALUES ('contact', $1, 'text') RETURNING id`,
+      [`${MERGE_FIELD_PREFIX}loser_${uid()}`],
+    );
+
+    await pool.query(
+      `INSERT INTO custom_field_values (definition_id, record_id, value)
+       VALUES ($1, $2, 'winner value'), ($1, $3, 'loser value'), ($4, $3, 'carried over')`,
+      [shared.rows[0].id, winner.id, loser.id, loserOnly.rows[0].id],
+    );
+
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, getActor());
+
+    const kept = await pool.query<{ definition_id: string; value: string }>(
+      `SELECT definition_id, value FROM custom_field_values WHERE record_id = $1`,
+      [winner.id],
+    );
+    const byDefinition = new Map(kept.rows.map((r) => [r.definition_id, r.value]));
+    expect(byDefinition.get(shared.rows[0].id)).toBe('winner value');
+    expect(byDefinition.get(loserOnly.rows[0].id)).toBe('carried over');
+
+    const stranded = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM custom_field_values WHERE record_id = $1`,
+      [loser.id],
+    );
+    expect(parseInt(stranded.rows[0]!.count, 10)).toBe(0);
   });
 
   it('winner contact still exists after merge', async () => {

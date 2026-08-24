@@ -863,7 +863,8 @@ const MERGEABLE_FIELDS = [
  *   1. Apply field choices to the winner record.
  *   2. Re-link loser's activities to the winner.
  *   3. Re-link loser's deals (deal_contacts) to the winner (skip if winner already linked).
- *   4. Copy loser's account association to winner if winner has none.
+ *   4. Copy loser's account association to winner if winner has none, and re-link the
+ *      loser's addresses, notes, attachments, and custom field values.
  *   5. Delete the loser record.
  *   6. Write an audit entry on the winner: "merged" with loser name.
  *   7. Create a system activity note on the winner's timeline.
@@ -967,6 +968,43 @@ export async function mergeContacts(
       winnerId,
       loserId,
     ]);
+
+    // Re-link the loser's polymorphic children (step 4b). No FK means the DELETE
+    // below cannot cascade, and a row left on the dead id is unreachable by every
+    // list query AND by a later GDPR erasure, which keys on the survivor's id.
+    // Soft-deleted notes move too: they still hold PII, and erasure only ever
+    // reaches rows attached to a live contact.
+    await client.query(
+      `UPDATE notes SET entity_id = $1 WHERE entity_type = 'contact' AND entity_id = $2`,
+      [winnerId, loserId],
+    );
+    await client.query(
+      `UPDATE attachments SET record_id = $1 WHERE record_type = 'contact' AND record_id = $2`,
+      [winnerId, loserId],
+    );
+    // The winner's own value wins where both records filled the same field; the
+    // loser's losing row is dropped rather than left orphaned.
+    await client.query(
+      `UPDATE custom_field_values SET record_id = $1
+       WHERE record_id = $2
+         AND definition_id IN (
+           SELECT id FROM custom_field_definitions WHERE entity_type = 'contact'
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM custom_field_values existing
+           WHERE existing.record_id = $1
+             AND existing.definition_id = custom_field_values.definition_id
+         )`,
+      [winnerId, loserId],
+    );
+    await client.query(
+      `DELETE FROM custom_field_values
+       WHERE record_id = $1
+         AND definition_id IN (
+           SELECT id FROM custom_field_definitions WHERE entity_type = 'contact'
+         )`,
+      [loserId],
+    );
 
     // Fetch the final winner state before deleting the loser
     const updatedWinnerResult = await client.query<ContactRow>(
