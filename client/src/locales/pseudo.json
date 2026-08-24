@@ -1377,7 +1377,8 @@
     "fieldMergeSaveResolved": "[Ŝävë rëŝölvëd~~~~]",
     "fieldMergeDiscard": "[Dïŝĉärd my ĉhäñgëŝ~~~~~~]",
     "fieldMergeNoChanges": "[Ñö ĉöñflïĉtïñg fïëldŝ föüñd.~~~~~~~~~]",
-    "CONTACT_LINKED_ELSEWHERE": "[!! Ţhàţ çòñţàçţ ìş àĺŕèàδý ĺìñķèδ ţò à δìƒƒèŕèñţ àççòùñţ !!]"
+    "CONTACT_LINKED_ELSEWHERE": "[!! Ţhàţ çòñţàçţ ìş àĺŕèàδý ĺìñķèδ ţò à δìƒƒèŕèñţ àççòùñţ !!]",
+    "CONTACT_NOT_LINKABLE": "[!! Ţhàţ çòñţàçţ çòùĺδ ñòţ ßè ĺìñķèδ !!]"
   },
   "search": {
     "inputLabel": "[Ŝëärĉh~~]",

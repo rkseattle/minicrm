@@ -1412,7 +1412,8 @@
     "fieldMergeSaveResolved": "Enregistrer la résolution",
     "fieldMergeDiscard": "Ignorer mes modifications",
     "fieldMergeNoChanges": "Aucun champ en conflit trouvé.",
-    "CONTACT_LINKED_ELSEWHERE": "Ce contact est déjà associé à un autre compte. Modifiez-le depuis le contact."
+    "CONTACT_LINKED_ELSEWHERE": "Ce contact est déjà associé à un autre compte. Modifiez-le depuis le contact.",
+    "CONTACT_NOT_LINKABLE": "Ce contact n'a pas pu être associé : il n'existe plus ou ne vous appartient pas."
   },
   "search": {
     "inputLabel": "Rechercher",

@@ -160,13 +160,33 @@ export async function setAccountContacts(
       [accountId, contactIds],
     );
 
-    if (linked.rows.length < contactIds.length) {
-      const linkedIds = new Set(linked.rows.map((row) => row.id));
-      throw Object.assign(new Error('Contact is already linked to a different account'), {
-        code: 'CONTACT_LINKED_ELSEWHERE',
-        // Not surfaced in the response — kept for server logs when diagnosing a refusal.
-        conflictingContactIds: contactIds.filter((id) => !linkedIds.has(id)),
-      });
+    // Every id the write refused is a refusal, never a silent drop — that silent drop
+    // is the defect this replaced. A duplicate id is not refused: ANY matches its row
+    // once, so the id is in linkedIds even though the array was longer.
+    const linkedIds = new Set(linked.rows.map((row) => row.id));
+    const unlinked = contactIds.filter((id) => !linkedIds.has(id));
+    if (unlinked.length > 0) {
+      // Which ones are visibly held elsewhere, versus gone or hidden by RLS from this
+      // caller — the same predicate hides a row from this SELECT and from the UPDATE
+      // above, so an unlinked id that does not appear here is unknowable, not absent.
+      const conflicting = await client.query<{ id: string }>(
+        `SELECT id FROM contacts
+         WHERE id = ANY($2::uuid[]) AND account_id IS NOT NULL AND account_id != $1`,
+        [accountId, unlinked],
+      );
+      const conflictingIds = conflicting.rows.map((row) => row.id);
+      throw Object.assign(
+        new Error(
+          conflictingIds.length > 0
+            ? 'Contact is already linked to a different account'
+            : 'Contact could not be linked — it no longer exists or is not yours to link',
+        ),
+        {
+          code: conflictingIds.length > 0 ? 'CONTACT_LINKED_ELSEWHERE' : 'CONTACT_NOT_LINKABLE',
+          // Not surfaced in the response — kept for server logs when diagnosing a refusal.
+          conflictingContactIds: conflictingIds.length > 0 ? conflictingIds : unlinked,
+        },
+      );
     }
   }
 }
