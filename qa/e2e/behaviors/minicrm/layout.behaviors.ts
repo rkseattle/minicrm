@@ -467,3 +467,25 @@ export async function countElements(
 ): Promise<number> {
   return context.page.count(strategies, { intent });
 }
+
+/**
+ * Asserts the element at `testId` carries exactly the text the user guide quotes.
+ *
+ * @param testId - Stable testId of the element the documentation points at.
+ * @param text   - Exact visible text the documentation tells the reader to look for.
+ * @param intent - What the element is, for the locator failure message.
+ */
+export async function expectDocumentedTextVisible(
+  testId: string,
+  text: string,
+  intent: string,
+  context: LayoutBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // eslint-disable-next-line local/require-locator-fallback -- a text fallback would heal past the renamed testId and pass
+  const locator = await context.page
+    .locate([{ type: 'testId', value: testId }], { intent })
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await expect(locator).toBeVisible({ timeout: FIRST_INTERACTION_TIMEOUT_MS });
+  await expect(locator).toHaveText(text, { timeout: FIRST_INTERACTION_TIMEOUT_MS });
+}
