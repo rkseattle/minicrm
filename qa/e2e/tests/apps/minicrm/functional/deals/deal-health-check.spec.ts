@@ -55,11 +55,8 @@ test.beforeEach(async ({ restClient, testData, page }) => {
   // Enable AI explicitly rather than inheriting whatever the previous spec left
   // behind. The health-check panel only renders when the SERVER reports AI on,
   // and withFlags() cannot supply that — it intercepts the client's flag fetch
-  // and never reaches ai_configuration.enabled. data-hygiene's
-  // restoreAiDefaultsAfterTest leaves it false, so when the scheduler placed
-  // that file immediately before this one, F7-DH4 failed with "HealingLocator:
-  // all strategies exhausted". Verified all four tests depend on it: with AI
-  // off, DH1 and DH2 fail too.
+  // and never reaches ai_configuration.enabled. Verified all four tests depend
+  // on it: with AI off, DH1 and DH2 fail too.
   //
   // These hooks are file-scoped, so EVERY test here writes the shared AI
   // toggle — which is why all four are @serial rather than just F7-DH4. The
