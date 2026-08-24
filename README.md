@@ -716,12 +716,12 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 
 ### Home Dashboard
 
-- Stat cards on the dashboard home page: overdue tasks, tasks due today, open deal count, and total open pipeline value
-- Overdue task count is clickable and navigates to **My Tasks** pre-filtered to show only overdue tasks (`/my-tasks?filter=overdue`)
+- Stat cards on the dashboard home page: overdue tasks, tasks due today, open deal count, total open pipeline value, and weighted pipeline value
+- Overdue task count is clickable for non-admins and navigates to **My Tasks** pre-filtered to show only overdue tasks (`/tasks?filter=overdue`)
 - Per-stage breakdown table showing open deal count and total value for each active pipeline stage (Closed Won / Closed Lost excluded)
 - Admins see team-wide metrics; reps see their own data only — enforced server-side
 - Data is always fresh on page load (React Query `staleTime: 0`)
-- API endpoint: `GET /api/v1/dashboard/summary` — returns `{ overdueTasks, tasksDueToday, openDealCount, openPipelineValue, stageBreakdown }` (auth required)
+- API endpoint: `GET /api/v1/dashboard/summary` — returns `{ overdueTasks, tasksDueToday, openDealCount, openPipelineValue, weightedPipelineValue, mixedCurrencies, currency, stageBreakdown, recentActivities }` plus home-currency conversion fields (auth required)
 
 ### Automation Rules
 

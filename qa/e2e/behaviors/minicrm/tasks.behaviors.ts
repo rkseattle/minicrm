@@ -51,6 +51,19 @@ export async function navigateToMyTasks(
   return { loaded, finalUrl };
 }
 
+/**
+ * Asserts the My Tasks list has finished loading, for callers that arrived by
+ * clicking rather than navigating. The page heading and filter chip both render
+ * above the isLoading gate, so neither says anything about the list itself.
+ *
+ * @param context - Playwright fixture context.
+ */
+export async function expectMyTasksListSettled(context: TasksBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const loaded = await new MyTasksPage(context).isLoaded();
+  expect(loaded, 'my tasks list must finish loading').toBe(true);
+}
+
 // ---------------------------------------------------------------------------
 // taskIsVisible()
 // ---------------------------------------------------------------------------

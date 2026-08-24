@@ -62,13 +62,14 @@ describe('DashboardPage', () => {
   });
 
   describe('stat cards', () => {
-    it('renders all four stat cards', async () => {
+    it('renders all five stat cards', async () => {
       renderWithProviders(<DashboardPage />);
       await waitFor(() => {
         expect(screen.getByTestId('stat-overdue-tasks')).toBeInTheDocument();
         expect(screen.getByTestId('stat-tasks-due-today')).toBeInTheDocument();
         expect(screen.getByTestId('stat-open-deals')).toBeInTheDocument();
         expect(screen.getByTestId('stat-pipeline-value')).toBeInTheDocument();
+        expect(screen.getByTestId('stat-weighted-pipeline-value')).toBeInTheDocument();
       });
     });
 
@@ -112,7 +113,7 @@ describe('DashboardPage', () => {
       renderWithProviders(<DashboardPage />);
       await waitFor(() => {
         const link = screen.getByTestId('stat-overdue-tasks-link');
-        expect(link).toHaveAttribute('href', '/my-tasks?filter=overdue');
+        expect(link).toHaveAttribute('href', '/tasks?filter=overdue');
       });
     });
 
