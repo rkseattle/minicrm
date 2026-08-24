@@ -1,5 +1,7 @@
 # Leads
 
+> **Feature flag:** The **Notes** section on a lead requires the **Notes** feature flag.
+
 Leads are potential customers who have not yet been qualified. When a lead is ready,
 you convert them into a contact, account, and deal in one step — no copy-pasting required.
 
@@ -11,39 +13,50 @@ you convert them into a contact, account, and deal in one step — no copy-pasti
 
 1. Click **Leads** in the navigation.
 2. Click **New Lead** (top-right).
-3. Enter the lead's **First name** (required) and optionally last name, email, phone,
-   company name, and job title.
-4. Choose a **Lead source** so you can track where your leads come from.
-5. The **Status** defaults to _New_.
-6. Click **Save**.
+3. Enter the lead's **First name** and **Email address** — both are required. Last name is
+   optional here, unlike on a contact, because inbound leads often arrive without one — but
+   you will have to supply one before the lead can be converted.
+4. Optionally add phone, company, territory, industry, and company size.
+5. Choose a **Lead source** so you can track where your leads come from.
+6. Click **Save**. The form is inline on the Leads list, so the new lead simply appears
+   there, with status _New_ — there is no status field on the form. If the email matches an
+   existing lead you are warned first and must confirm with **Create anyway**.
 
 ### Step 2 — Work the lead (Contacted → Qualified)
 
 As you reach out and learn more:
 
-1. Open the lead and click **Edit**.
-2. Update the **Status**:
+1. Open the **Leads** list.
+2. Click the status badge on the lead's row and pick the new status. It saves immediately —
+   there is no status field on the lead's own edit form. This works on leads you own; an
+   admin can change any lead's status.
    - _Contacted_ — you have reached out.
    - _Qualified_ — the lead meets your criteria and is ready to convert.
-   - _Disqualified_ — the lead is not a fit; enter a **Disqualification reason**.
-3. Use the **Activities** timeline on the lead to log calls, emails, and notes as you go.
-4. Click **Save**.
+   - _Disqualified_ — the lead is not a fit.
+3. Record what you learn in the lead's **Notes** field, or in the **Notes** section on its
+   detail page. Leads have no activity timeline; calls and meetings are logged against a
+   contact, account, or deal.
 
 ### Step 3 — Convert the lead
 
-Once the lead is qualified:
+Any lead that has not been converted or disqualified can be converted, though normally you
+would qualify it first:
 
 1. Open the lead detail page.
-2. Click **Convert lead** (top-right button).
-3. A conversion dialog appears. Choose what to create:
-   - **Contact** — always created; pre-filled from the lead's data; you can edit the fields.
-   - **Account** — optional; create a new company or link to an existing one.
-   - **Deal** — optional; pre-fill a deal name, value, and stage.
-4. Click **Convert**. MiniCRM creates the selected records and marks the lead as _Converted_.
+2. Click **Convert Lead** (top-right button).
+3. A conversion dialog appears. All three records are created — there is no way to skip
+   one:
+   - **Contact** — pre-filled from the lead's data; you can edit the fields. A **Last name**
+     is required here even though the lead itself did not need one.
+   - **Account** — choose **Create new** and give it a name, or **Link existing** and search
+     for one.
+   - **Deal** — a **Deal name** is required; value and close date are optional.
+4. Click **Convert**. MiniCRM creates the three records and marks the lead as converted.
 5. You are redirected to the new contact's detail page.
 
-> All activities and notes on the lead are accessible from the lead's history even after
-> conversion. The lead record is kept for reference.
+> The lead record is kept for reference after conversion, along with its notes and status
+> history. Leads never had activities of their own — calls and meetings logged after
+> conversion belong to the new contact, account, or deal.
 
 ---
 
@@ -51,18 +64,20 @@ Once the lead is qualified:
 
 ### Fields
 
-| Field                   | Notes                                                     |
-| ----------------------- | --------------------------------------------------------- |
-| First name              | Required                                                  |
-| Last name               | Optional                                                  |
-| Email                   | Optional but recommended                                  |
-| Phone                   | Optional                                                  |
-| Company name            | Optional; pre-fills the account name on conversion        |
-| Job title               | Optional; pre-fills the contact's job title on conversion |
-| Lead source             | Where this lead came from (see source list below)         |
-| Status                  | Current stage in the lead lifecycle                       |
-| Disqualification reason | Required when status is _Disqualified_                    |
-| Owner                   | The rep responsible; defaults to the creator              |
+| Field                   | Notes                                                          |
+| ----------------------- | -------------------------------------------------------------- |
+| First name              | Required                                                       |
+| Last name               | Optional, but required to convert the lead                     |
+| Email                   | Required                                                       |
+| Phone                   | Optional                                                       |
+| Company name            | Optional; pre-fills the account name on conversion             |
+| Territory               | Optional free-text; feeds AI lead routing (admin, flagged)     |
+| Industry                | Optional free-text; feeds AI lead routing (admin, flagged)     |
+| Company size            | Optional free-text; e.g. `51-200`                              |
+| Lead source             | Where this lead came from (see source list below)              |
+| Status                  | Current stage in the lead lifecycle; starts at _New_           |
+| Disqualification reason | Shown on the detail page when set, but no screen collects it   |
+| Owner                   | Defaults to the creator; its owner or an admin can reassign it |
 
 ### Lead sources
 
@@ -85,17 +100,18 @@ Once the lead is qualified:
 
 ### Conversion rules
 
-- Converting a lead creates a contact and optionally an account and a deal.
-- If you choose not to create a deal at conversion time, you can always add one later
-  from the contact or account detail page.
-- After conversion the lead's status is locked as _Converted_ and cannot be edited.
+- Converting a lead always creates a contact, an account, and a deal together.
+- Further deals are created from the Deals page and linked to the account there.
+- After conversion the lead's status becomes _Qualified_ and the lead is badged
+  **Converted** on its detail page. It cannot be converted a second time.
 - The source lead ID is stored on the new contact and deal for traceability.
 
 ### GDPR erasure
 
 - Only admins can erase a lead.
 - After erasure the lead record remains, with its personal fields — name, email, phone,
-  company, and notes — replaced or cleared.
+  company, and notes — replaced or cleared. The title and body of every note linked to the
+  lead are cleared too, so anything captured there does not survive.
 - An erasure event is written to the audit log with the requesting admin's name.
 - References to the lead in AI chat history are redacted separately, shortly after the
   erasure. There is no screen for this; confirming it completed is an API check
