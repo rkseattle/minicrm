@@ -44,7 +44,13 @@ let adminId: string;
 let adminActor: { id: string; name: string };
 
 beforeAll(async () => {
-  // Clean up any leftover rows from failed prior runs
+  // Clean up any leftover rows from failed prior runs. Notes carry a real FK to their
+  // author and no FK to the record they hang off, so they outlive both and block the
+  // user delete unless they go first.
+  await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const admin = await createUser({
@@ -64,7 +70,11 @@ beforeEach(async () => {
   // clearing it, repeated erasure tests on the same record would fail unexpectedly.
   // Leads and contacts are also cleared since each test creates fresh records.
   await pool.query('DELETE FROM gdpr_deletion_log WHERE requested_by = $1', [adminId]);
+  await pool.query('DELETE FROM notes WHERE created_by = $1', [adminId]);
   await pool.query('DELETE FROM leads WHERE owner_id = $1', [adminId]);
+  // Notes outlive the contact they hang off — no FK on entity_id — so they have to go
+  // first or the user delete in afterAll trips notes_created_by_fkey.
+  await pool.query('DELETE FROM notes WHERE created_by = $1', [adminId]);
   await pool.query('DELETE FROM contacts WHERE owner_id = $1', [adminId]);
   // Audit log cleanup uses a single connection to ensure DISABLE TRIGGER takes effect.
   await clearAuditLogFor(adminId);
@@ -72,6 +82,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await pool.query('DELETE FROM gdpr_deletion_log WHERE requested_by = $1', [adminId]);
+  await pool.query('DELETE FROM notes WHERE created_by = $1', [adminId]);
   await pool.query('DELETE FROM leads WHERE owner_id = $1', [adminId]);
   await pool.query('DELETE FROM contacts WHERE owner_id = $1', [adminId]);
   await clearAuditLogFor(adminId);
@@ -637,6 +648,58 @@ describe('getGdprExportForContact', () => {
     expect(Array.isArray(exportData.audit_history)).toBe(true);
     // The 'created' audit entry written by createContact should appear
     expect(exportData.audit_history.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('omits private notes but includes team and public ones', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    await pool.query(
+      `INSERT INTO notes (entity_type, entity_id, body, body_text, visibility, created_by)
+       VALUES ('contact', $1, '{"type":"doc"}', 'team note', 'team', $2),
+              ('contact', $1, '{"type":"doc"}', 'private note', 'private', $2)`,
+      [contact.id, adminId],
+    );
+
+    const exportData = await getGdprExportForContact(contact.id);
+
+    const bodies = exportData.notes.map((note) => note.body_text);
+    expect(bodies).toContain('team note');
+    // The export is handed to the data subject; a private note is readable by nobody
+    // but its author anywhere else in the product.
+    expect(bodies).not.toContain('private note');
+  });
+
+  it('erasure scrubs a soft-deleted note, which no other job purges', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    await pool.query(
+      `INSERT INTO notes (entity_type, entity_id, body, body_text, created_by, deleted_at)
+       VALUES ('contact', $1, '{"type":"doc"}', 'deleted note', $2, now())`,
+      [contact.id, adminId],
+    );
+
+    await eraseContact(contact.id, adminActor);
+
+    const after = await pool.query<{ body_text: string }>(
+      `SELECT body_text FROM notes WHERE entity_type = 'contact' AND entity_id = $1`,
+      [contact.id],
+    );
+    expect(after.rows[0]!.body_text).toBe('[GDPR deleted]');
+  });
+
+  it('erasure still scrubs a private note the export omits', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    await pool.query(
+      `INSERT INTO notes (entity_type, entity_id, body, body_text, visibility, created_by)
+       VALUES ('contact', $1, '{"type":"doc"}', 'private note', 'private', $2)`,
+      [contact.id, adminId],
+    );
+
+    await eraseContact(contact.id, adminActor);
+
+    const after = await pool.query<{ body_text: string }>(
+      `SELECT body_text FROM notes WHERE entity_type = 'contact' AND entity_id = $1`,
+      [contact.id],
+    );
+    expect(after.rows[0]!.body_text).toBe('[GDPR deleted]');
   });
 });
 

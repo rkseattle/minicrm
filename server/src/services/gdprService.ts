@@ -266,10 +266,11 @@ export async function eraseContact(
       [id],
     );
 
-    // Step 7 — scrub linked notes (only non-deleted rows)
+    // Step 7 — scrub linked notes. Soft-deleted rows are included: the row still holds
+    // the subject's personal data, and nothing else ever purges it.
     await client.query(
       `UPDATE notes SET title = NULL, body = '[GDPR deleted]', body_text = '[GDPR deleted]'
-       WHERE entity_type = 'contact' AND entity_id = $1 AND deleted_at IS NULL`,
+       WHERE entity_type = 'contact' AND entity_id = $1`,
       [id],
     );
 
@@ -408,7 +409,7 @@ export async function eraseLead(
     // Step 5 — scrub linked notes (only non-deleted rows)
     await client.query(
       `UPDATE notes SET title = NULL, body = '[GDPR deleted]', body_text = '[GDPR deleted]'
-       WHERE entity_type = 'lead' AND entity_id = $1 AND deleted_at IS NULL`,
+       WHERE entity_type = 'lead' AND entity_id = $1`,
       [id],
     );
 
@@ -516,7 +517,11 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
          FROM notes n
          JOIN users creator ON creator.id = n.created_by
          LEFT JOIN users updater ON updater.id = n.updated_by
+         -- A private note is its author's own working record, readable by nobody else
+         -- in the product. Handing it to the data subject would disclose it more widely
+         -- than any rep can see it. Erasure still reaches these rows.
          WHERE n.entity_type = 'contact' AND n.entity_id = $1 AND n.deleted_at IS NULL
+           AND n.visibility != 'private'
          ORDER BY n.created_at DESC`,
         [id],
       ),
@@ -618,7 +623,9 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
        FROM notes n
        JOIN users creator ON creator.id = n.created_by
        LEFT JOIN users updater ON updater.id = n.updated_by
+       -- Same as the contact export: private notes are author-only everywhere else.
        WHERE n.entity_type = 'lead' AND n.entity_id = $1 AND n.deleted_at IS NULL
+         AND n.visibility != 'private'
        ORDER BY n.created_at DESC`,
       [id],
     ),

@@ -32,9 +32,9 @@ badge.
 1. Find the note you want to change.
 2. Click **Edit** — shown only to the note's author and to admins.
 3. Update the text. **Only the note's author can change its visibility level.** If an
-   admin editing someone else's note submits a changed **Visibility**, the whole save
-   fails — text edits included — with a generic "Failed to save note" error. Setting it
-   back to its original value before saving works fine.
+   admin editing someone else's note submits a changed **Visibility**, the save is
+   refused and the text edit is not applied either — leave the dropdown alone to save
+   the text.
 4. Click **Save note**.
 
 ### Step 3 — Delete a note

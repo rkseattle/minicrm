@@ -653,6 +653,13 @@ export async function mergeContactHandler(req: Request, res: Response): Promise<
     return;
   }
 
+  // The merge hard-deletes the loser and moves its notes, attachments, and custom field
+  // values onto the winner, so owning the winner alone must not authorize it.
+  if (loser.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+    return;
+  }
+
   if (winnerId === loserId) {
     res.status(400).json({
       error: { code: 'VALIDATION_ERROR', message: 'Cannot merge a contact with itself' },

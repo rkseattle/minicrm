@@ -233,6 +233,9 @@ async function findNotesMentionCandidates(
        WHERE n.deleted_at IS NULL
          AND c.id != $3
          AND n.body_text ILIKE $1
+         -- Matching another author's private note would reveal that it mentions the
+         -- target, which is the one thing private is meant to withhold.
+         AND (n.visibility != 'private' OR n.created_by = $2)
          AND (c.owner_id = $2 OR ra.contact_id IS NOT NULL)
          ${visClause}
        LIMIT 20`,

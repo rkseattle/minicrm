@@ -1376,7 +1376,8 @@
     "fieldMergeChoiceLabel": "[Ĉhööŝë välüë tö këëp för {{field}}~~~~~~~~~~~]",
     "fieldMergeSaveResolved": "[Ŝävë rëŝölvëd~~~~]",
     "fieldMergeDiscard": "[Dïŝĉärd my ĉhäñgëŝ~~~~~~]",
-    "fieldMergeNoChanges": "[Ñö ĉöñflïĉtïñg fïëldŝ föüñd.~~~~~~~~~]"
+    "fieldMergeNoChanges": "[Ñö ĉöñflïĉtïñg fïëldŝ föüñd.~~~~~~~~~]",
+    "CONTACT_LINKED_ELSEWHERE": "[!! Ţhàţ çòñţàçţ ìş àĺŕèàδý ĺìñķèδ ţò à δìƒƒèŕèñţ àççòùñţ !!]"
   },
   "search": {
     "inputLabel": "[Ŝëärĉh~~]",

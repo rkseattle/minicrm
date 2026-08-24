@@ -1411,7 +1411,8 @@
     "fieldMergeChoiceLabel": "Elige el valor a conservar para {{field}}",
     "fieldMergeSaveResolved": "Guardar resolución",
     "fieldMergeDiscard": "Descartar mis cambios",
-    "fieldMergeNoChanges": "No se encontraron campos en conflicto."
+    "fieldMergeNoChanges": "No se encontraron campos en conflicto.",
+    "CONTACT_LINKED_ELSEWHERE": "Ese contacto ya está vinculado a otra cuenta. Cámbielo desde el contacto."
   },
   "search": {
     "inputLabel": "Buscar",

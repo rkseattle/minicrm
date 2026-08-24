@@ -20,6 +20,7 @@ import {
 } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { resolveApiError } from '@/utils/apiError.js';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -479,7 +480,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
       setSaveError(null);
       onSaved();
     },
-    onError: () => setSaveError(t('notes.saveError')),
+    onError: (error) => setSaveError(resolveApiError(error, t, 'notes.saveError')),
   });
 
   const updateMutation = useMutation({
@@ -490,7 +491,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
       setSaveError(null);
       onSaved();
     },
-    onError: () => setSaveError(t('notes.saveError')),
+    onError: (error) => setSaveError(resolveApiError(error, t, 'notes.saveError')),
   });
 
   const isPending = createMutation.isPending || updateMutation.isPending;

@@ -36,6 +36,7 @@ const makeContact = () => ({
 
 let repId: string;
 let repCookie: string;
+let otherRepId: string;
 let otherRepCookie: string;
 let adminCookie: string;
 
@@ -71,6 +72,7 @@ beforeAll(async () => {
     passwordHash: '$2b$12$placeholder',
     status: 'active',
   });
+  otherRepId = otherRep.id;
   otherRepCookie = makeAuthCookie({
     id: otherRep.id,
     email: otherRep.email,
@@ -141,6 +143,24 @@ describe('PATCH /api/v1/contacts/:id — ownership', () => {
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it("returns 403 when a rep merges in another rep's contact", async () => {
+    const winner = await createContact({ ...makeContact(), owner_id: repId });
+    const loser = await createContact({ ...makeContact(), owner_id: otherRepId });
+
+    // Merge hard-deletes the loser and moves its notes, attachments, and custom field
+    // values onto the winner, so owning the winner alone must not authorize it.
+    const res = await request(app)
+      .post(`/api/v1/contacts/${winner.id}/merge`)
+      .set('Cookie', repCookie)
+      .send({ loserId: loser.id, fieldChoices: {} });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+
+    const survivor = await pool.query('SELECT id FROM contacts WHERE id = $1', [loser.id]);
+    expect(survivor.rowCount, 'the loser must not be deleted by a refused merge').toBe(1);
   });
 
   it('allows an admin to update any contact', async () => {

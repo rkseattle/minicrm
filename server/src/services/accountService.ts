@@ -149,14 +149,24 @@ export async function setAccountContacts(
   );
 
   if (contactIds.length > 0) {
-    // Link the specified contacts to this account.
-    // Only contacts that are currently unlinked or already linked to this account
-    // are updated — contacts owned by a different account are left untouched.
+    // A contact already linked to a different account is not stolen silently: the
+    // caller is told which ones, so the selection can be corrected from the contact.
+    const conflicting = await client.query<{ id: string }>(
+      `SELECT id FROM contacts
+       WHERE id = ANY($2::uuid[]) AND account_id IS NOT NULL AND account_id != $1`,
+      [accountId, contactIds],
+    );
+    if (conflicting.rows.length > 0) {
+      throw Object.assign(new Error('Contact is already linked to a different account'), {
+        code: 'CONTACT_LINKED_ELSEWHERE',
+        conflictingContactIds: conflicting.rows.map((row) => row.id),
+      });
+    }
+
     await client.query(
       `UPDATE contacts
        SET account_id = $1, updated_at = now()
-       WHERE id = ANY($2::uuid[])
-         AND (account_id IS NULL OR account_id = $1)`,
+       WHERE id = ANY($2::uuid[])`,
       [accountId, contactIds],
     );
   }

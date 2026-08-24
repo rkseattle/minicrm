@@ -91,11 +91,22 @@ export async function createAccountHandler(req: Request, res: Response): Promise
     }
   }
 
-  const account = await createAccount(
-    { ...parsed.data, owner_id: req.user!.id },
-    { id: req.user!.id, name: req.user!.name },
-  );
-  res.status(201).json({ account });
+  try {
+    const account = await createAccount(
+      { ...parsed.data, owner_id: req.user!.id },
+      { id: req.user!.id, name: req.user!.name },
+    );
+    res.status(201).json({ account });
+  } catch (err) {
+    if ((err as { code?: string }).code === 'CONTACT_LINKED_ELSEWHERE') {
+      res.status(409).json({
+        error: { code: 'CONTACT_LINKED_ELSEWHERE', message: (err as Error).message },
+        conflictingContactIds: (err as { conflictingContactIds?: string[] }).conflictingContactIds,
+      });
+      return;
+    }
+    throw err;
+  }
 }
 
 /**
@@ -259,6 +270,13 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
     const code = (err as { code?: string }).code;
     if (code === 'CIRCULAR_PARENT') {
       res.status(400).json({ error: { code, message: (err as Error).message } });
+      return;
+    }
+    if (code === 'CONTACT_LINKED_ELSEWHERE') {
+      res.status(409).json({
+        error: { code, message: (err as Error).message },
+        conflictingContactIds: (err as { conflictingContactIds?: string[] }).conflictingContactIds,
+      });
       return;
     }
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
