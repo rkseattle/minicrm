@@ -604,12 +604,19 @@ export async function setAiEnabled(
  *
  * WHY THIS EXISTS
  * ----------------------------
- * A spec that calls setAiEnabled(restClient, true) writes the shared
- * ai_configuration_enabled row AND cascades to the ai_features feature flag,
- * which the server updates in the SAME transaction as the master toggle
- * (aiConfigService.ts:507-515). Leaving it on outlives the file: conflict
- * groups run sequentially against one database, so the next group starts with
- * AI unexpectedly enabled.
+ * A spec that toggles AI writes the shared ai_configuration_enabled row AND
+ * cascades to the ai_features feature flag, which the server updates in the SAME
+ * transaction as the master toggle (aiConfigService.ts:507-515). Whatever it
+ * leaves behind outlives the file: conflict groups run sequentially against one
+ * database, so the next group inherits it.
+ *
+ * Restore to ENABLED, which is the seeded default (000_baseline.js:1561) and what
+ * reset-e2e-data.ts sets. Restoring to disabled instead leaves ai_features off,
+ * and featureFlagService.ts:700-707 denies every ai_* sub-flag before consulting
+ * its own rules — so every later spec reading an AI-gated control finds nothing
+ * rendered. That is invisible in ci.yml, which runs the serial specs that toggle
+ * AI in a different job and database from the non-serial specs that read it, and
+ * shows up only in the unsharded record-mode run.
  *
  * Eight ai/ specs previously relied on aiSettings.spec.ts resetting the toggle
  * "just before, alphabetically" — an ordering the conflict-graph scheduler
@@ -634,7 +641,7 @@ export async function restoreAiDefaultsAfterTest(restClient: RestClient): Promis
   // runs in an afterEach, so a throw here turns a passing test red for a cleanup
   // problem rather than a real one — and in ai-permissions.spec.ts it is reached
   // only after three prior awaits that can each throw first.
-  await setAiEnabled(restClient, false).catch(() => undefined);
+  await setAiEnabled(restClient, true).catch(() => undefined);
 }
 
 /**
