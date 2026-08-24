@@ -94,7 +94,10 @@ _Closed Won_ and _Closed Lost_ are fixed stages that cannot be renamed or delete
 ### Multi-currency
 
 - Each deal stores its own currency.
-- Dashboard totals convert all deal values to the org default currency for display.
+- When your open deals span more than one currency, the dashboard value cards say
+  "Multiple currencies — values not summed" rather than adding them together.
+- Once an admin has configured exchange rates, the dashboard also shows a converted total
+  in the org's home currency, whether or not more than one currency is in play.
 - Conversion rates are informational — MiniCRM does not fetch live exchange rates.
 
 ### Loss reason

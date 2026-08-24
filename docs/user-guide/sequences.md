@@ -72,8 +72,8 @@ delay). Subsequent steps fire automatically as each prior step is completed.
 
 ## Completing sequence steps
 
-When a sequence step fires, a task appears in the contact's activity timeline and in your
-**My Tasks** dashboard section.
+When a sequence step fires, a task appears in the contact's activity timeline and on your
+**My Tasks** page.
 
 1. Complete the task (call the contact, send the email, etc.).
 2. Mark the task as complete in MiniCRM.

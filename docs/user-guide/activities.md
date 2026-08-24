@@ -1,8 +1,9 @@
 # Activities
 
-> **Feature flags:** Activities and Tasks can be independently disabled by your admin.
-> If the activity timeline or task list is missing, contact your admin to check the
-> **Activities** and **Tasks** feature flags.
+> **Feature flag:** The **Activities** flag hides the activity timeline on contact,
+> account, and deal detail pages. It also disables the task list: the **My Tasks**
+> navigation entry stays visible, but the page can only show an error while the flag is
+> off. If you hit that, ask your admin to check the **Activities** flag.
 
 Activities are records of interactions with contacts — calls, emails, meetings, and
 tasks. They build up a timeline on each contact, account, and deal so everyone on the
@@ -35,7 +36,7 @@ team can see the history at a glance.
 
 When you finish the follow-up:
 
-1. Open the activity from the timeline, or find it in **My Tasks** on the dashboard.
+1. Open the activity from the timeline, or find it on the **My Tasks** page.
 2. Click **Mark complete** (or edit the activity and set **Status** to _Complete_).
 
 ---
@@ -67,8 +68,11 @@ When you finish the follow-up:
 
 ### My Tasks
 
-The **My Tasks** section on the dashboard shows all open Task-type activities
-assigned to you, ordered by due date. Overdue tasks are highlighted.
+**My Tasks** in the navigation opens a page listing the open Task-type activities assigned
+to you, with overdue ones highlighted, where you can mark them complete. The list is
+paginated, and the overdue filter applies to the page you are on — so with more than one
+page of tasks it can show fewer than the dashboard's **Overdue tasks** count. The dashboard
+shows counts only, and its overdue card links through to this page.
 
 ### Overdue notifications
 
