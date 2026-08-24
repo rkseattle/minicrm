@@ -1,72 +1,53 @@
 # Sequences
 
-> **Feature flag:** Sequences can be disabled by your admin. If the Sequences navigation
-> item is missing, contact your admin to enable the **Sequencing** feature flag.
+> **Feature flag:** Sequences require the **Sequencing** feature flag.
+>
+> **Authoring sequences is an admin task.** The **Sequences** page lives under the admin
+> navigation and non-admins cannot reach it — see
+> [Admin guide — Sequences](../admin-guide.md#22-sequences) for creating one and adding
+> steps. This page covers the half any rep can do: enrolling a contact and following the
+> tasks that result.
 
 Sequences are multi-step cadences that schedule follow-up tasks for a contact
-automatically. Each step fires a day or more after the previous one completes, keeping
-outreach consistent without manual reminders.
+automatically. Each step fires a set number of days after the previous one **fired** —
+elapsed time, not your progress — so the cadence keeps running whether or not you have
+worked the earlier tasks. Every step is owned by the contact's owner, not by whoever
+enrolled them.
 
 **What sequences can do:**
 
-| Step type           | What it creates                                                  |
-| ------------------- | ---------------------------------------------------------------- |
-| Send email reminder | Reminds you to send an email with the specified subject and body |
-| Log call reminder   | Reminds you to log a call with the specified subject             |
-| Create task         | Creates a general task linked to the contact with the subject    |
+| Step type           | What it creates                                                 |
+| ------------------- | --------------------------------------------------------------- |
+| Send email reminder | An open **Task** on the contact, subject prefixed `Send email:` |
+| Log call reminder   | An open **Call** activity on the contact                        |
+| Create task         | An open **Task** on the contact                                 |
 
 > Steps create tasks and reminders in MiniCRM — they do not send emails or make calls
-> automatically. You complete each step manually, which triggers the next one.
+> automatically. You do the work yourself; marking a task complete records that you did,
+> and does not affect when the next step fires.
 
 ---
 
-## Tutorial: create a sequence and enroll a contact
+## Tutorial: enroll a contact
 
-### Step 1 — Create the sequence
+### Step 1 — Open the contact
 
-1. Click **Sequences** in the navigation.
-2. Click **New sequence**.
-3. Enter a **Sequence name** (e.g. "New prospect follow-up") and an optional description.
-4. Click **Create sequence**. The sequence detail page opens.
+Open the contact you want to enroll and scroll to the **Active Sequences** section. If it
+is missing, ask an admin to enable the **Sequencing** feature flag; viewers and service
+accounts do not see it at all.
 
-### Step 2 — Add steps
+### Step 2 — Enroll
 
-1. On the sequence detail page, click **Add step**.
-2. Choose an **Action** type (Send email reminder, Log call reminder, or Create task).
-3. Fill in the action details:
-   - **Email reminder** — enter a subject and body. Use `{{contact_name}}` to personalise.
-   - **Call reminder** — enter a subject and optional notes.
-   - **Task** — enter a subject and optional notes.
-4. Set **Delay (days)** — the number of days after the previous step completes before
-   this step fires. Use `0` to fire immediately after the prior step.
-5. Set a **Step #** (sort order) — steps run in ascending order.
-6. Click **Save**.
+1. Click **Enroll in sequence**.
+2. Pick the sequence from the dropdown and click **Enroll**.
 
-Repeat to add as many steps as you need. A typical prospecting sequence might look like:
+The contact is now enrolled and the first step is scheduled, its delay counted from now —
+so a first step with no delay fires on the next quarter-hour tick. A sequence has to be
+enabled and have at least one step before it accepts enrollments, and a contact can only
+hold one active enrollment per sequence.
 
-| Step | Action         | Delay | Subject                  |
-| ---- | -------------- | ----- | ------------------------ |
-| 1    | Email reminder | 0     | Introduction email       |
-| 2    | Call reminder  | 3     | Follow-up call           |
-| 3    | Email reminder | 5     | Check-in email           |
-| 4    | Create task    | 7     | Final follow-up decision |
-
-### Step 3 — Check the sequence is enabled
-
-A new sequence starts **enabled**. It cannot be enrolled into until it has at least one
-step, so an empty sequence is safe — but it becomes enrollable as soon as the first step is
-saved. Use the **Enabled** switch on the sequence detail page (or from the sequences list) to
-turn it off while you finish authoring, and back on when the steps are complete.
-
-### Step 4 — Enroll a contact
-
-1. Open the contact's detail page.
-2. Scroll to the **Active Sequences** section.
-3. Click **Enroll in sequence**.
-4. Select the sequence from the dropdown and click **Enroll**.
-
-The contact is now enrolled. The first step fires immediately (or after its configured
-delay). Subsequent steps fire automatically as each prior step is completed.
+> Enrolling is available to every role except viewer and service account. Creating and
+> editing the sequences themselves is admin-only.
 
 ---
 
@@ -78,7 +59,10 @@ When a sequence step fires, a task appears in the contact's activity timeline an
 1. Complete the task (call the contact, send the email, etc.).
 2. Mark the task as complete in MiniCRM.
 
-Marking the step's task complete triggers the next step after its configured delay.
+Marking the task complete records your work; it does not move the sequence along. A
+background job advances due enrollments every 15 minutes, and each step's delay is counted
+from the moment the previous step fired — so the next task arrives on schedule even if the
+last one is still sitting open.
 
 ---
 
@@ -102,29 +86,28 @@ _Unenrolled_ for reference.
 | Status     | Meaning                                                      |
 | ---------- | ------------------------------------------------------------ |
 | Active     | The contact is enrolled and steps are still firing           |
-| Completed  | All steps have been completed                                |
+| Completed  | Every step has fired; the last task may still be open        |
 | Unenrolled | Manually unenrolled before completion; no further steps fire |
 
-### Sequence list columns
+### If a sequence stops
 
-| Column           | Meaning                                                      |
-| ---------------- | ------------------------------------------------------------ |
-| Sequence name    | The name you gave the sequence                               |
-| Steps            | Total number of steps in the sequence                        |
-| Active Sequences | Number of contacts currently actively enrolled               |
-| Enabled          | Whether the sequence is active and accepting new enrollments |
+An enrollment ends in one of two ways: every step fires, or someone unenrolls the contact.
+Nothing the recipient does — replying, bouncing, unsubscribing — affects it, because
+MiniCRM never sends the messages itself.
 
-### Deleting a sequence
+Disabling a sequence does not end its active enrollments; they stop advancing and resume
+if it is re-enabled. Unenroll the contact yourself if you need it genuinely stopped.
 
-A sequence can only be deleted if it has no active enrollments. Unenroll all contacts
-first, then delete from the sequences list using the **Delete** button.
+### Editing a live sequence
 
-### Editing steps
+Each step's text is read when it comes due, so an admin's edit to a step that has not
+fired yet does reach contacts already enrolled. Steps that have already fired are
+unaffected, and a step that an enrollment is currently waiting on cannot be deleted at
+all.
 
-You can add, edit, or remove steps at any time. Changes to steps do not affect contacts
-who are already enrolled — they continue on the original step schedule.
+### Placeholders are not substituted
 
-### Personalisation
-
-In email and call reminder bodies you can use `{{contact_name}}` as a placeholder. It
-is replaced with the contact's full name when the step fires.
+The step-authoring form suggests `{{contact_name}}` in its example text, but nothing
+replaces it — the subject and body reach your task exactly as an admin typed them. Edit
+the text yourself before sending, or ask your admin to leave placeholders out of the
+sequence.
