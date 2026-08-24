@@ -52,8 +52,27 @@ Pushing these contaminates history. When unsure whether a change was intentional
 
 ## Step 4 — Push and open the PR
 
+**Detach the push.** The hook runs E2E inside it, so this command can take an hour — the
+manual procedure in `e2e-run.md` sets `PW_GLOBAL_TIMEOUT_MS=3600000` for the same run, and
+the hook widens to the full suite whenever the diff touches module-scope code it cannot map
+to a function. A foreground `Bash` call cannot outlive that tool's 600s ceiling, and a
+`run_in_background` task dies with the session. Both kill the run mid-suite. `nohup`
+survives both:
+
 ```bash
-git push -u --force-with-lease origin <branch>
+export GIT_COMMIT_SHA=$(git rev-parse HEAD)
+nohup git push -u --force-with-lease origin <branch> > /tmp/push.log 2>&1 &
+```
+
+Then arm a `Monitor` that watches for the remote branch appearing, and stay quiet until it
+reports. Read the counts from `qa/e2e/test-results/results.xml` when it lands.
+
+**A killed run is not a failed run.** No `results.xml` means the suite produced no verdict
+to accept, so starting it again is not a rerun under `e2e-run.md`'s never-rerun rule — that
+rule governs runs that finished and told you something. Confirm HEAD is unchanged, then
+start it again, detached.
+
+```bash
 gh pr create --title "<ALL ticket IDs> — <summary>" --body "<body>"
 ```
 

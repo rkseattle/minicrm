@@ -19,6 +19,13 @@ These four rules stack; none relaxes another.
 3. **Never rerun, for any reason.** Run once, accept the result. Load-induced timeouts
    are not a reason to rerun. If it fails, root-cause and fix, then run **once** after
    the fix.
+
+   **A killed run is not a result.** If the run was interrupted before it wrote
+   `results.xml` — a tool timeout, a stopped background task, a closed session — there is
+   no verdict to accept and nothing was learned. Confirm HEAD is unchanged and start it
+   again, detached. That is not a rerun: this rule governs runs that finished and told
+   you something, and its purpose is to stop you re-rolling a failure you dislike.
+
 4. **Validate a fix narrowly.** The post-fix run targets only the specific failing
    spec(s) with `--grep`. That is the one place a hand-written `--grep` is right: the
    target is a spec you watched fail, not a guess about blast radius. The selected suite
