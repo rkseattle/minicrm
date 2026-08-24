@@ -67,6 +67,7 @@ jobs:
       ai:                ${{ steps.filter.outputs.ai }}
       coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
       attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
+      user-guide-docs:   ${{ steps.filter.outputs.user-guide-docs }}
       redirect-status-docs: ${{ steps.filter.outputs.redirect-status-docs }}
       scheduled-jobs-docs: ${{ steps.filter.outputs.scheduled-jobs-docs }}
       env-example-parity: ${{ steps.filter.outputs.env-example-parity }}
@@ -361,6 +362,21 @@ jobs:
             # that job's comment for why. (MINCRM-691)
             attestation-docs:
               - 'docs/dev/coverage.md'
+
+            # Single-purpose output for userGuideLabels.test.ts, which pins the control
+            # names these pages quote against the strings en.json renders. The invariant
+            # breaks from either side, so a docs-only edit reintroducing a name no screen
+            # renders has to run it. OR'd into server-tests alone, which needs always()
+            # there for the same reason attestation-docs does; `docs` gates only
+            # markdownlint, and `qa` would boot the whole E2E matrix for a string check.
+            user-guide-docs:
+              - 'docs/user-guide/contacts.md'
+              - 'docs/user-guide/accounts.md'
+              - 'docs/user-guide/notes.md'
+              - 'docs/user-guide/sequences.md'
+              - 'docs/user-guide/deals.md'
+              - 'docs/user-guide/reports.md'
+              - 'client/src/locales/en.json'
 
             # Single-purpose output for legacyApiRedirect.test.ts, which pins both docs
             # to LEGACY_REDIRECT_STATUS in app.ts. Without it a docs-only edit changing
@@ -903,6 +919,7 @@ jobs:
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
       (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true' ||
+        needs.changes.outputs.user-guide-docs == 'true' ||
         needs.changes.outputs.redirect-status-docs == 'true' || needs.changes.outputs.scheduled-jobs-docs == 'true' ||
         needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true')
     runs-on: ubuntu-latest

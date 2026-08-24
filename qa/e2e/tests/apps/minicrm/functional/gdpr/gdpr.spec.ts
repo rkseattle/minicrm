@@ -65,7 +65,7 @@ test(
 
     await navigateToContactDetail(contact.id, { page });
 
-    // contacts.md quotes these three strings by name.
+    // The strings contacts.md quotes; userGuideLabels.test.ts pins them to the doc.
     await expectDocumentedTextVisible(
       'gdpr-privacy-heading',
       t('gdpr.sectionTitle'),
