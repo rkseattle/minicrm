@@ -1,38 +1,55 @@
 # Dashboard
 
-> **Feature flags:** The pipeline summary and reports sections require the **Reporting &
-> Dashboards** feature flag to be enabled. The My Tasks section requires the **Tasks**
-> feature flag. If either section is missing, contact your admin.
+> **Feature flag:** Only the **My Performance** section is flag-gated
+> (`ai_rep_coaching_insights`). Reaching the page at all needs the `dashboards:view`
+> capability — every built-in role except a service account has it, but a custom role must
+> be granted it explicitly, and without it the page shows only an error.
 
-The dashboard gives you an at-a-glance summary of your pipeline, your open tasks, and
-key activity metrics. It is the first page you see after logging in.
+The dashboard gives you an at-a-glance summary of your pipeline and your workload. It is
+the first page you see after logging in.
 
 ---
 
 ## Tutorial: reading your dashboard
 
-### Pipeline summary
+### Stat cards
 
-The top section shows your deal pipeline:
+Five cards run across the top. Each is prefixed **Team** for an admin, who sees org-wide
+numbers, and **Your** for everyone else:
 
-- **Pipeline value** — total value of all open (non-terminal) deals owned by you.
-- **Deals by stage** — a bar or count breakdown of how many deals sit in each stage.
-  Click a stage to jump to the pipeline board filtered to that stage.
-- **Deals won / lost (this month)** — count and value of deals closed this calendar month.
+- **Overdue tasks** — open tasks past their due date. The count turns red when it is above
+  zero, and for non-admins the card is a link: click it to open the **My Tasks** page
+  filtered to your overdue tasks.
+- **Due today** — open tasks due today.
+- **Open deals** — count of deals not in a terminal stage.
+- **Pipeline value** — total value of those open deals.
+- **Weighted pipeline** — the same total with each deal multiplied by its probability.
 
-### My Tasks
+If your open deals span more than one currency, the value cards say so rather than summing
+across currencies. When exchange rates are configured, a converted total appears below the
+cards in your org's home currency.
 
-The **My Tasks** section lists all open Task-type activities assigned to you, sorted
-by due date (most overdue first).
+### Pipeline by stage
 
-- Tasks past their due date are shown with a red indicator.
-- Click a task to open the linked contact, account, or deal.
-- Mark a task complete directly from the dashboard by clicking the checkbox next to it.
+A table below the cards lists each stage that currently holds open deals, with **Deals**,
+**Value**, and **Weighted Value** columns. Closed Won and Closed Lost are excluded. The
+rows are read-only — to work a stage, open the pipeline board from **Deals** in the
+navigation.
+
+### My Performance
+
+> **Feature flag:** `ai_rep_coaching_insights`.
+
+Appears once you have enough **closed** deals — won or lost — for a comparison to be
+meaningful, and then only where your numbers stand out. The **View all** link opens the
+org-wide coaching view, which only managers and admins can reach; for anyone else it
+returns to the dashboard.
 
 ### Recent Activity
 
-The **Recent Activity** feed shows the latest activity entries (calls, emails, meetings,
-tasks) across all records you own, in reverse chronological order.
+The **Recent Activity** feed shows the ten most recently updated activity entries (calls,
+emails, meetings, tasks, notes) that you own — org-wide for admins — newest first.
+**View all** opens the Activities page.
 
 ---
 
@@ -40,16 +57,21 @@ tasks) across all records you own, in reverse chronological order.
 
 ### What counts as "my pipeline"?
 
-Dashboard pipeline metrics count deals where **you** are the owner. Admins see org-wide
-metrics by default; use the owner filter to scope to an individual.
+Every figure on the dashboard is scoped to deals and tasks **you** own. Admins see
+org-wide numbers instead, which is what the **Team** prefix on each card indicates. There
+is no owner filter on this page — to break numbers down by rep, use
+[Reports](reports.md).
 
 ### Dashboard refresh
 
-Dashboard data is fetched fresh on each page load. It does not auto-refresh in the
-background — reload the page to see the latest numbers.
+Dashboard data refreshes when you open the page and again whenever you return to the
+browser tab, so you do not need to reload to pick up a teammate's changes.
 
 ### Overdue tasks
 
-A task is overdue when its due date is in the past and its status is still _Open_.
-Overdue tasks appear in the My Tasks section with a red badge. If email notifications
-are enabled, you will also receive a daily digest listing your overdue tasks.
+A task is overdue when its due date is in the past and its status is still _Open_. The
+**Overdue tasks** card counts them and shows the count in red; click it to see the tasks
+themselves.
+
+If email notifications are enabled, you will also receive a daily digest listing your
+overdue tasks.
