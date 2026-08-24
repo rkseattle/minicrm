@@ -16,13 +16,11 @@ gives you a full picture of your relationship with that company.
 1. Click **Accounts** in the navigation.
 2. Click **New Account** (top-right).
 3. Enter the **Company name** (required).
-4. Optionally add industry, website, employee count, and revenue range — and use the
-   **Contacts** field to link contacts right away, which saves doing Step 2 separately.
-5. Click **Save**.
-
-> **Account type** and **Parent account** appear on this form but are not saved when
-> creating. Set them afterwards: open the account, click **Edit**, choose them there, and
-> click **Save changes**.
+4. Choose an **Account type** from the dropdown (see reference below).
+5. Optionally add industry, website, employee count, revenue range, and a **Parent
+   account** — and use the **Contacts** field to link contacts right away, which saves
+   doing Step 2 separately.
+6. Click **Save**.
 
 ### Step 2 — Link a contact to the account
 
@@ -70,16 +68,16 @@ If this account is a subsidiary of a larger company:
 
 ### Fields
 
-| Field          | Notes                                                              |
-| -------------- | ------------------------------------------------------------------ |
-| Company name   | Required                                                           |
-| Account type   | Optional; see type list below. Set it after creating, via **Edit** |
-| Industry       | Optional free-text                                                 |
-| Website        | Optional                                                           |
-| Employee count | Optional free-text; e.g. `51-200`                                  |
-| Revenue range  | Optional free-text; e.g. `10M-50M`                                 |
-| Owner          | The rep responsible; defaults to the creator                       |
-| Parent account | Links this account as a subsidiary of another                      |
+| Field          | Notes                                         |
+| -------------- | --------------------------------------------- |
+| Company name   | Required                                      |
+| Account type   | Optional; see type list below                 |
+| Industry       | Optional free-text                            |
+| Website        | Optional                                      |
+| Employee count | Optional free-text; e.g. `51-200`             |
+| Revenue range  | Optional free-text; e.g. `10M-50M`            |
+| Owner          | The rep responsible; defaults to the creator  |
+| Parent account | Links this account as a subsidiary of another |
 
 ### Account types
 

@@ -377,6 +377,9 @@ jobs:
               - 'docs/user-guide/deals.md'
               - 'docs/user-guide/reports.md'
               - 'client/src/locales/en.json'
+              # The guard asserts every page it reads is listed here, so an edit to this
+              # filter has to run it — otherwise dropping a page silently disables it.
+              - '.github/workflows/ci.yml'
 
             # Single-purpose output for legacyApiRedirect.test.ts, which pins both docs
             # to LEGACY_REDIRECT_STATUS in app.ts. Without it a docs-only edit changing
