@@ -42,7 +42,7 @@ export enum Capability {
   PipelinesView = 'pipelines:view',
   PipelinesManage = 'pipelines:manage',
 
-  // Sequences (future — no enforcing routes yet)
+  // Sequences
   SequencesView = 'sequences:view',
   SequencesCreate = 'sequences:create',
   SequencesEdit = 'sequences:edit',
