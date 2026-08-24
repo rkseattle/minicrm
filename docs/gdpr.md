@@ -59,7 +59,8 @@ After erasure:
 - All personal data fields on the record are replaced with `[GDPR deleted]`.
 - The email address is replaced with a synthetic non-exposing address (`gdpr-deleted-<id>@gdpr.invalid`).
 - Subject and notes on all linked activities are scrubbed.
-- Title, body, and body_text on all linked notes are scrubbed.
+- Title, body, and body_text on all linked notes are scrubbed. Notes already deleted are
+  left untouched, since erasure only reaches live rows.
 - All custom field values for the record are deleted.
 - The audit log continues to show that events occurred, but old_value and new_value are masked with `[GDPR deleted]`.
 - A `gdpr_erasure` entry is added to the audit log recording that the erasure was performed, by whom, and when.
