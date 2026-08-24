@@ -2,8 +2,9 @@
 /**
  * check-settings-mutations
  *
- * CI lint step enforcing two independent invariants about which spec files must
- * carry the `@serial` tag.
+ * CI lint step enforcing three independent invariants about spec files: two
+ * about which must carry the `@serial` tag, and one about specs that DEPEND on
+ * a shared setting they never establish.
  *
  * WHAT THIS CHECKS
  * ----------------
@@ -19,6 +20,18 @@
  *   appear in SELF_SERIAL_ALLOWLIST with a written reason. describe.serial
  *   orders tests WITHIN a file; it gives no cross-file protection, so a file
  *   relying on it while running in the parallel matrix is a live race.
+ *
+ * INVARIANT C — depends on AI-gated UI => establishes it, or allow-listed.
+ *   A spec that drives an `ai_*`-flag-gated control but never enables AI itself
+ *   is reading AMBIENT state. Invariants A and B both police the WRITER; this
+ *   one polices the READER, which is the half that stayed invisible.
+ *
+ *   ai_features is a master switch: featureFlagService denies every ai_* sub-
+ *   feature flag before consulting that flag's own targeting rules, so one spec
+ *   leaving the master toggle off makes every AI-gated control stop rendering
+ *   suite-wide. A reader that never establishes the precondition then fails with
+ *   StrategyExhaustedError — pointing at its own locator rather than at the spec
+ *   that actually flipped the toggle.
  *
  * WHY THIS EXISTS
  * ---------------
@@ -37,6 +50,15 @@
  * data-hygiene.spec.ts escaped the same way via setAiEnabled(), whose own
  * docblock argued no @serial was needed while reasoning about a different
  * resource than the one it actually writes.
+ *
+ * Invariant C exists because a cleanup helper restored the AI master toggle to
+ * `false` when the seeded default is `true`. Every writer was correctly tagged
+ * and cleaned up, so A and B both passed — the defect was that the RESTORE
+ * target was wrong, and 30 tests across 13 specs failed for ten consecutive
+ * record-mode runs. None of those specs was at fault in a way either existing
+ * invariant could express: each merely assumed AI was on. ci.yml cannot see this
+ * class at all, because it runs the serial specs that toggle AI in a different
+ * job and database from the non-serial specs that read it.
  *
  * WHY NODE AND NOT BASH
  * ---------------------
@@ -67,6 +89,18 @@
  * Invariant B:
  *   Either tag the block's tests @serial (and register the file), or add the
  *   block to SELF_SERIAL_ALLOWLIST below with a reason from the accepted set.
+ *
+ * Invariant C:
+ *   Preferred: add the file to AMBIENT_AI_ALLOWLIST with a written reason. That
+ *   is not a rubber stamp — it records that a human checked the dependency and
+ *   accepted it, which is the whole point, since the failure it prevents is a
+ *   silent assumption nobody knew was there.
+ *
+ *   Do NOT reflexively add setAiEnabled() to make this pass. setAiEnabled is a
+ *   shared-settings write, so Invariant A would then require @serial — moving
+ *   roughly fifteen more files out of the parallel matrix, which was measured
+ *   and rejected as too costly. Establish the precondition only where the spec
+ *   genuinely needs to own the toggle (deal-health-check.spec.ts does).
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -155,12 +189,7 @@ const SELF_SERIAL_ALLOWLIST = [
   },
 ];
 
-const ALLOWED_REASONS = new Set([
-  'caller-scoped',
-  'choreography',
-  'framework-spec',
-  'not-live',
-]);
+const ALLOWED_REASONS = new Set(['caller-scoped', 'choreography', 'framework-spec', 'not-live']);
 
 // ---------------------------------------------------------------------------
 // Invariant A — file-level exemptions.
@@ -188,6 +217,200 @@ const MUTATION_EXEMPT = [
     // accessibility and reports-nav.
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Invariant C — readers of AI-gated UI.
+//
+// Behavior-layer functions that drive a control rendered only when an `ai_*`
+// sub-feature flag is enabled.
+//
+// Hand-maintained, for the same reason UI_DRIVEN_MUTATORS is: the alternative
+// was tried and does not hold up. Deriving the set from the client — resolving
+// each useFeatureFlag('ai_*') variable to the testids it guards, then following
+// those testids through the Page Objects into the behavior layer — collapses on
+// real code. The gates are compound (`{flagVar && data && !dismissed && (`) and
+// several wrap a shared child component, so widening the match far enough to
+// catch them attributes every generic testid in that component to the flag:
+// one such component put ai_lead_routing_suggestion on 89 of 97 specs. Narrowing
+// until the false positives disappear silently drops most flags instead, which
+// is fail-open — the one failure mode this guard cannot have.
+//
+// So the list is explicit, and the staleness check in main() is what keeps it
+// honest: an entry naming a function the behavior layer no longer exports fails
+// the run rather than quietly matching nothing.
+//
+// To extend: add the behavior function a new AI-gated spec drives. The name is
+// the whole signal — these functions are one-to-one with an AI feature's UI.
+// ---------------------------------------------------------------------------
+const AI_GATED_BEHAVIORS = [
+  // Contact detail / create form.
+  'enrichContactFromTextViaUI',
+  'applyContactEnrichment',
+  'explainContactDuplicate',
+  'getContactDuplicateExplanationText',
+  'draftEmailFromContactDetail',
+  'isDraftEmailButtonVisible',
+  'getEmailDraftPanelValues',
+  'selectEmailDraftTone',
+  'isEmailDraftPanelVisible',
+  'clickFindWarmPath',
+  'expectWarmPathResultsVisible',
+  'expectWarmPathEmptyMessageVisible',
+  'isFindWarmPathButtonVisible',
+  'isFollowUpTimingCardVisible',
+  'isSentimentTrendVisible',
+  'isChampionBlockerBadgeVisible',
+  // Deal detail.
+  'clickGenerateProposalDraft',
+  'waitForProposalDraftEditor',
+  'isGenerateProposalDraftButtonVisible',
+  'isStageAdvancementIndicatorVisible',
+  'isObjectionCategoryBadgeVisible',
+  // deal-health-check.spec.ts drives these and DOES establish the precondition
+  // itself, so it is deliberately absent from the allow-list below: it is the
+  // worked example of the other remedy.
+  'runDealHealthCheck',
+  'waitForDealHealthResult',
+  'isDealHealthResultVisible',
+  'isDealHealthHeadingVisible',
+  // Account detail.
+  'isAccountHealthBadgeVisible',
+  'isChurnRiskBannerVisible',
+  'isExpansionSignalBannerVisible',
+  'navigateToChurnExpansionInsights',
+  'waitForChurnExpansionInsightsHeading',
+  // Activity timeline.
+  'summarizeActivityNotes',
+  'applyActivitySummary',
+  'isSummarizeButtonVisible',
+  // Reporting pages that exist only behind a flag.
+  'navigateToWinLossInsights',
+  'waitForWinLossInsightsHeading',
+  'navigateToCoachingInsights',
+  'waitForCoachingInsightsHeading',
+  'selectCoachingRep',
+];
+
+/**
+ * Calls that ESTABLISH the AI precondition rather than assume it.
+ *
+ * setAiEnabled(client, true) writes the master toggle. restoreAiDefaultsAfterTest
+ * restores it to the seeded default, which is enabled. Either one makes the
+ * dependency explicit and self-contained.
+ *
+ * Direction matters: `setAiEnabled(restClient, false)` is the opposite
+ * precondition, and a spec doing only that is still assuming ambient state for
+ * whatever it asserts afterwards.
+ */
+// restoreAiDefaultsAfterTest is deliberately NOT accepted. It runs in afterEach,
+// so it cannot establish state the test body already needed — a file whose only
+// AI call is that cleanup is exactly the ambient-state reader this invariant
+// exists to surface.
+const AI_PRECONDITION_CALL = /\bsetAiEnabled\s*\([^;]*,\s*true\s*\)/;
+
+/**
+ * A positive-direction withFlags() override for an ai_* sub-feature flag.
+ *
+ * withFlags MERGES over the server's real response, so `{ ai_x: true }` pins the
+ * flag for this context regardless of what the database holds — a genuine
+ * precondition. `{ ai_x: false }` is the negative-direction case that every
+ * flagged spec today already uses to assert the disabled state; it pins nothing
+ * for the spec's positive assertions, which is exactly the gap this invariant
+ * closes.
+ */
+const AI_FLAG_FORCED_ON = /\bai_[a-z_]+\s*:\s*true\b/;
+
+// ---------------------------------------------------------------------------
+// Invariant C allow-list.
+//
+// Every entry records a REVIEWED dependency on ambient AI state — not a waiver.
+// The remedy this guard wants is usually an entry here, because the alternative
+// (calling setAiEnabled) is a shared-settings write that Invariant A would then
+// force to @serial, at a cost that was measured and rejected.
+//
+// The accepted reasons are:
+//   seeded-default — the spec reads an AI-gated control and relies on ai_features
+//                    being enabled by the seed. Correct as long as every writer
+//                    restores that default, which is what Invariants A and B
+//                    enforce on the writing side.
+// ---------------------------------------------------------------------------
+const AMBIENT_AI_ALLOWLIST = [
+  {
+    file: 'apps/minicrm/functional/contacts/contact-enrichment.spec.ts',
+    reason: 'seeded-default',
+    // Drives the "Enrich from text" button, gated on ai_contact_enrichment.
+  },
+  {
+    file: 'apps/minicrm/functional/contacts/duplicate-explanation.spec.ts',
+    reason: 'seeded-default',
+    // Drives the duplicate-warning "Explain" action, gated on
+    // ai_duplicate_explanation.
+  },
+  {
+    file: 'apps/minicrm/functional/contacts/email-draft.spec.ts',
+    reason: 'seeded-default',
+    // Its one withFlags() call forces ai_email_draft OFF for the negative case;
+    // the positive cases read the seeded default.
+  },
+  {
+    file: 'apps/minicrm/functional/contacts/warm-intro-path.spec.ts',
+    reason: 'seeded-default',
+    // Same shape: withFlags() off for the hidden-button case only.
+  },
+  {
+    file: 'apps/minicrm/functional/contacts/followup-timing-suggestion.spec.ts',
+    reason: 'seeded-default',
+    // Reads the passive follow-up timing card, gated on
+    // ai_followup_timing_suggestions.
+  },
+  {
+    file: 'apps/minicrm/functional/contacts/sentiment-tracking.spec.ts',
+    reason: 'seeded-default',
+    // Reads the sentiment trend on contact detail.
+  },
+  {
+    file: 'apps/minicrm/functional/deals/proposal-draft-generation.spec.ts',
+    reason: 'seeded-default',
+  },
+  {
+    file: 'apps/minicrm/functional/deals/win-loss-insights.spec.ts',
+    reason: 'seeded-default',
+    // The whole page is behind ai_win_loss_insights, so navigation itself is the
+    // flag-gated step.
+  },
+  {
+    file: 'apps/minicrm/functional/deals/churn-expansion-detection.spec.ts',
+    reason: 'seeded-default',
+  },
+  {
+    file: 'apps/minicrm/functional/deals/stage-advancement.spec.ts',
+    reason: 'seeded-default',
+  },
+  {
+    file: 'apps/minicrm/functional/deals/objection-pattern-matching.spec.ts',
+    reason: 'seeded-default',
+  },
+  {
+    file: 'apps/minicrm/functional/deals/champion-blocker-detection.spec.ts',
+    reason: 'seeded-default',
+  },
+  {
+    file: 'apps/minicrm/functional/accounts/relationship-health-score.spec.ts',
+    reason: 'seeded-default',
+  },
+  {
+    file: 'apps/minicrm/functional/activities/activity-summarizer.spec.ts',
+    reason: 'seeded-default',
+  },
+  {
+    file: 'apps/minicrm/functional/insights/coaching.spec.ts',
+    reason: 'seeded-default',
+    // The coaching FEATURE is SQL-driven rather than an Anthropic call, but its
+    // page is still behind ai_rep_coaching_insights.
+  },
+];
+
+const AMBIENT_AI_REASONS = new Set(['seeded-default']);
 
 // ---------------------------------------------------------------------------
 // Behavior-layer derivation (Invariant A).
@@ -507,10 +730,11 @@ function collectSpecFiles(dir) {
 }
 
 /**
- * Scans one spec file for both invariants. `wrappers` is the derived set of
- * mutating behavior-function names.
+ * Scans one spec file for all three invariants. `wrappers` is the derived set of
+ * mutating behavior-function names. `ambientAllowlist` is injectable so the
+ * self-test can exercise a bad-reason entry without mutating the real list.
  */
-export function scanSpec(displayPath, source, wrappers) {
+export function scanSpec(displayPath, source, wrappers, ambientAllowlist = AMBIENT_AI_ALLOWLIST) {
   const findings = [];
   const clean = stripComments(source);
   const decls = findTestDeclarations(source);
@@ -543,6 +767,30 @@ export function scanSpec(displayPath, source, wrappers) {
         ? `  ${displayPath}\n    ${where} but tags @serial ONLY via the options object.\n    gen-conflict-group-configs.ts and CI both match TITLES, so the file is still\n    scheduled in the parallel matrix. Add @serial to each test's title too.`
         : `  ${displayPath}\n    ${where}, but no test is tagged @serial and it is not allow-listed.\n    Self-serialization orders tests within the file only — it gives no cross-file\n    protection. Tag + register the file, or allow-list it with a reason.`,
     );
+  }
+
+  // ---- Invariant C: reading AI-gated UI requires establishing the flag.
+  // Runs BEFORE Invariant A's exemption return so a mutation-exempt file is
+  // still checked as a reader — the two exemptions answer different questions.
+  const aiBehaviorsUsed = AI_GATED_BEHAVIORS.filter((name) =>
+    new RegExp(`\\b${name}\\s*\\(`).test(clean),
+  );
+  if (aiBehaviorsUsed.length > 0) {
+    const establishes = AI_PRECONDITION_CALL.test(clean) || AI_FLAG_FORCED_ON.test(clean);
+    const allowed = ambientAllowlist.find((a) => a.file === displayPath);
+    if (allowed && !AMBIENT_AI_REASONS.has(allowed.reason)) {
+      findings.push(
+        `  ${displayPath}\n    ambient-AI allow-list entry has unrecognized reason "${allowed.reason}".`,
+      );
+    } else if (!establishes && !allowed) {
+      // Named individually: which control is flag-gated is the fact a reader
+      // needs to check the claim, and it is not obvious from the spec.
+      const shown = aiBehaviorsUsed.slice(0, 3).join(', ');
+      const more = aiBehaviorsUsed.length > 3 ? `, +${aiBehaviorsUsed.length - 3} more` : '';
+      findings.push(
+        `  ${displayPath}\n    drives AI-gated UI (${shown}${more}) but never establishes that AI is on.\n    ai_features gates every ai_* sub-flag, so this spec passes only while some\n    OTHER spec leaves the master toggle enabled — and fails with\n    StrategyExhaustedError pointing at its own locator when one does not.\n    FIX: add it to AMBIENT_AI_ALLOWLIST with a reason. Do NOT add setAiEnabled()\n    just to pass — that is a shared-settings write, so Invariant A would then\n    require @serial, which was measured and rejected for this set of files.`,
+      );
+    }
   }
 
   // ---- Invariant A: mutating wrapper calls require cleanup + @serial.
@@ -788,7 +1036,8 @@ export async function resetAiSettings(restClient) {
   // above pin the behaviour that matters.
   const expectAlwaysReset = ['resetToTopNav', 'resetAiFieldExclusion'];
   const resetMismatch =
-    JSON.stringify([...derived.alwaysReset].sort()) !== JSON.stringify([...expectAlwaysReset].sort());
+    JSON.stringify([...derived.alwaysReset].sort()) !==
+    JSON.stringify([...expectAlwaysReset].sort());
 
   const cases = [
     {
@@ -867,7 +1116,7 @@ export async function resetAiSettings(restClient) {
       expect: 0,
     },
     {
-      name: "reset ARGUMENT at the call site is not a mutation (the leads shape)",
+      name: 'reset ARGUMENT at the call site is not a mutation (the leads shape)',
       path: 'apps/minicrm/functional/l/l.spec.ts',
       src: `test.beforeEach(async ({ restClient }) => {
         await setSystemDefaultLanguage(restClient, 'en').catch(() => null);
@@ -998,7 +1247,7 @@ export async function resetAiSettings(restClient) {
       expect: 1,
     },
     {
-      name: "describe.configure serial WITH a title tag passes",
+      name: 'describe.configure serial WITH a title tag passes',
       path: 'apps/minicrm/functional/ps2/ps2.spec.ts',
       src: `test.describe.configure({ mode: 'serial' });
       test('@functional @serial PS2: reorders stages', async () => {});`,
@@ -1036,6 +1285,108 @@ export async function resetAiSettings(restClient) {
       });`,
       expect: 0,
     },
+    // ---- Invariant C ----------------------------------------------------
+    {
+      name: 'C: AI-gated reader with no precondition is reported (the leak shape)',
+      path: 'apps/minicrm/functional/contacts/x-warm.spec.ts',
+      src: `test('@functional W1: shows the warm path', async ({ page }) => {
+        expect(await isFindWarmPathButtonVisible({ page })).toBe(true);
+      });`,
+      expect: 1,
+    },
+    {
+      name: 'C: setAiEnabled(_, true) establishes the precondition',
+      path: 'apps/minicrm/functional/deals/x-dhc.spec.ts',
+      src: `test.beforeEach(async ({ restClient }) => { await setAiEnabled(restClient, true); });
+      test('@functional D1: runs the check', async ({ page }) => {
+        await runDealHealthCheck({ page });
+      });`,
+      // Also proves Invariant C does not double-report a file Invariant A is
+      // already reporting for the same setAiEnabled call: the mutation arm needs
+      // cleanup + @serial, which this fixture has via the reset helper below.
+      expect: 1,
+    },
+    {
+      name: 'C: restoreAiDefaultsAfterTest is cleanup, not a precondition',
+      path: 'apps/minicrm/functional/deals/x-dhc2.spec.ts',
+      src: `test.afterEach(async ({ restClient }) => { await restoreAiDefaultsAfterTest(restClient); });
+      test('@functional D2: runs the check', async ({ page }) => {
+        await runDealHealthCheck({ page });
+      });`,
+      // afterEach runs after the body, so it cannot establish what the body needed.
+      expect: 1,
+    },
+    {
+      name: 'C: setAiEnabled(_, false) is the WRONG direction and does not establish it',
+      path: 'apps/minicrm/functional/deals/x-dhc3.spec.ts',
+      src: `test('@functional @serial D3: hides the check', async ({ page, restClient }) => {
+        await setAiEnabled(restClient, false);
+        expect(await isDealHealthHeadingVisible({ page })).toBe(false);
+      });`,
+      // Two findings, deliberately: Invariant A for the uncleaned mutation, and
+      // Invariant C because a disable establishes nothing for a positive read.
+      expect: 2,
+    },
+    {
+      name: 'C: positive withFlags override establishes it',
+      path: 'apps/minicrm/functional/contacts/x-wf.spec.ts',
+      src: `test('@functional W2: shows the warm path', async ({ page }) => {
+        await withFlags(page, { ai_warm_intro_path: true });
+        expect(await isFindWarmPathButtonVisible({ page })).toBe(true);
+      });`,
+      expect: 0,
+    },
+    {
+      name: 'C: negative-only withFlags does NOT establish it (today’s 13-spec shape)',
+      path: 'apps/minicrm/functional/contacts/x-wf2.spec.ts',
+      src: `test('@functional W3: hides the button', async ({ page }) => {
+        await withFlags(page, { ai_warm_intro_path: false });
+        expect(await isFindWarmPathButtonVisible({ page })).toBe(false);
+      });`,
+      expect: 1,
+    },
+    {
+      name: 'C: allow-listed reader passes',
+      path: 'apps/minicrm/functional/insights/coaching.spec.ts',
+      src: `test('@functional CO1: shows insights', async ({ page }) => {
+        await navigateToCoachingInsights({ page });
+      });`,
+      expect: 0,
+    },
+    {
+      name: 'C: allow-list entry with an unrecognized reason is reported',
+      path: 'apps/minicrm/functional/bad/bad-ai.spec.ts',
+      src: `test('@functional B1: reads', async ({ page }) => {
+        await navigateToWinLossInsights({ page });
+      });`,
+      expect: 1,
+      ambientAllowlist: [{ file: 'apps/minicrm/functional/bad/bad-ai.spec.ts', reason: 'because' }],
+    },
+    {
+      name: 'C: a spec driving NO AI-gated behavior is not reported (ai-usage-dashboard shape)',
+      path: 'apps/minicrm/functional/ai/x-usage.spec.ts',
+      src: `test('@functional U1: reads cost rates', async ({ page }) => {
+        const rates = { ai_input_cost_per_million_cents: 250 };
+        expect(rates.ai_input_cost_per_million_cents).toBe(250);
+      });`,
+      expect: 0,
+    },
+    {
+      name: 'C: an ai_ key used as TEST DATA is not a gated read (audit-grpc shape)',
+      path: 'apps/minicrm/functional/grpc/x-audit.spec.ts',
+      src: `test('@functional G1: audits', async ({ restClient }) => {
+        const row = await restClient.get('/api/v1/audit?entity=ai_messages');
+        expect(row.status).toBe(200);
+      });`,
+      expect: 0,
+    },
+    {
+      name: 'C: a behavior name inside a COMMENT does not count as a read',
+      path: 'apps/minicrm/functional/cmt/x-cmt.spec.ts',
+      src: `// await isFindWarmPathButtonVisible({ page });
+      test('@functional C1: unrelated', async () => {});`,
+      expect: 0,
+    },
     {
       name: 'commented-out serial block is ignored',
       path: 'apps/minicrm/functional/c/c.spec.ts',
@@ -1048,7 +1399,7 @@ export async function resetAiSettings(restClient) {
 
   let failures = 0;
   for (const c of cases) {
-    const found = scanSpec(c.path, c.src, c.wrappers ?? wrappers);
+    const found = scanSpec(c.path, c.src, c.wrappers ?? wrappers, c.ambientAllowlist);
     if (found.length !== c.expect) {
       console.error(`SELF-TEST FAIL [${c.name}]: expected ${c.expect}, got ${found.length}`);
       found.forEach((f) => console.error(f));
@@ -1127,23 +1478,37 @@ function main() {
   // here because it fails safe on its own: the entry stops matching, so the
   // block is reported as unallow-listed and the operator is told. It is the
   // missing FILE that is silent, because there is then no block to report.
-  const staleAllowlist = [...SELF_SERIAL_ALLOWLIST, ...MUTATION_EXEMPT].filter(
-    (entry) => !existsSync(join(testsDir, entry.file)),
+  const staleAllowlist = [
+    ...SELF_SERIAL_ALLOWLIST,
+    ...MUTATION_EXEMPT,
+    ...AMBIENT_AI_ALLOWLIST,
+  ].filter((entry) => !existsSync(join(testsDir, entry.file)));
+
+  // Same staleness hazard as UI_DRIVEN_MUTATORS, and the same consequence: a
+  // renamed behavior function would leave an entry here matching nothing, so the
+  // specs driving it would stop being checked without anyone being told.
+  const staleAiBehaviors = AI_GATED_BEHAVIORS.filter(
+    (name) => !new RegExp(`export\\s+async\\s+function\\s+${name}\\b`).test(behaviorSource),
   );
 
   // Both lists carry a `reason`; both are held to the same vocabulary. An
   // unrecognised reason means an exemption was added without one of the verified
   // justifications, which is the shape this guard exists to make impossible.
-  const badReasons = [...SELF_SERIAL_ALLOWLIST, ...MUTATION_EXEMPT].filter(
-    (entry) => !ALLOWED_REASONS.has(entry.reason),
-  );
+  const badReasons = [
+    ...[...SELF_SERIAL_ALLOWLIST, ...MUTATION_EXEMPT].filter(
+      (entry) => !ALLOWED_REASONS.has(entry.reason),
+    ),
+    ...AMBIENT_AI_ALLOWLIST.filter((entry) => !AMBIENT_AI_REASONS.has(entry.reason)),
+  ];
   if (badReasons.length > 0) {
     console.error(
       `FAIL: allow-list entr(ies) with an unrecognised reason: ${badReasons
         .map((e) => `${e.file} (${e.reason})`)
         .join(', ')}.`,
     );
-    console.error(`Accepted reasons: ${[...ALLOWED_REASONS].join(', ')}.`);
+    console.error(
+      `Accepted reasons: ${[...ALLOWED_REASONS].join(', ')} (ambient-AI: ${[...AMBIENT_AI_REASONS].join(', ')}).`,
+    );
     process.exit(1);
   }
   if (staleAllowlist.length > 0) {
@@ -1161,6 +1526,19 @@ function main() {
       `FAIL: UI_DRIVEN_MUTATORS names no-longer-exported function(s): ${staleUiMutators.join(', ')}.`,
     );
     console.error('Rename them in the list, or remove them if the behavior is gone.');
+    process.exit(1);
+  }
+
+  if (staleAiBehaviors.length > 0) {
+    console.error(
+      `FAIL: AI_GATED_BEHAVIORS names no-longer-exported function(s): ${staleAiBehaviors.join(', ')}.`,
+    );
+    console.error('Rename them in the list, or remove them if the AI feature is gone.');
+    process.exit(1);
+  }
+
+  if (AI_GATED_BEHAVIORS.length === 0) {
+    console.error('FAIL: AI_GATED_BEHAVIORS is empty — readers of AI-gated UI would be invisible.');
     process.exit(1);
   }
 
@@ -1186,7 +1564,7 @@ function main() {
   }
 
   console.log(
-    `PASS: settings mutations are tagged and cleaned up; every describe.serial block is tagged or allow-listed (${wrappers.mutating.length} mutating wrappers derived + ${UI_DRIVEN_MUTATORS.length} UI-driven, ${wrappers.alwaysReset.length} reset-only).`,
+    `PASS: settings mutations are tagged and cleaned up; every describe.serial block is tagged or allow-listed; every reader of AI-gated UI establishes it or is allow-listed (${wrappers.mutating.length} mutating wrappers derived + ${UI_DRIVEN_MUTATORS.length} UI-driven, ${wrappers.alwaysReset.length} reset-only, ${AI_GATED_BEHAVIORS.length} AI-gated behaviors).`,
   );
 }
 
