@@ -589,6 +589,52 @@ describe('setAccountContacts — cross-account links', () => {
     );
     expect(after.rows[0]!.account_id).toBe(owning.id);
   });
+
+  it('refuses an id that no longer exists, distinctly from a real conflict', async () => {
+    const stamp = Date.now();
+    const account = await createAccount({ name: `Stale ${stamp}`, owner_id: ownerId });
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Stale', 'Contact', $1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-stale-${stamp}@example.com`, ownerId],
+    );
+    const contactId = contactResult.rows[0]!.id;
+    // Silently dropping it is the defect this replaced, so it still refuses — but not
+    // as CONTACT_LINKED_ELSEWHERE, which would send the user hunting for an account
+    // that does not hold it.
+    const missingId = '00000000-0000-0000-0000-0000000000ff';
+
+    await expect(
+      updateAccount(account.id, {
+        contact_ids: [contactId, missingId],
+        version: account.version,
+      }),
+    ).rejects.toMatchObject({ code: 'CONTACT_NOT_LINKABLE' });
+  });
+
+  it('accepts a duplicate contact id rather than reporting a conflict', async () => {
+    const stamp = Date.now();
+    const account = await createAccount({ name: `Dup ${stamp}`, owner_id: ownerId });
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Dup', 'Contact', $1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-dup-${stamp}@example.com`, ownerId],
+    );
+    const contactId = contactResult.rows[0]!.id;
+
+    // The guarded UPDATE returns one row for two identical ids, so a short row count
+    // is not on its own evidence that anything was refused.
+    await updateAccount(account.id, {
+      contact_ids: [contactId, contactId],
+      version: account.version,
+    });
+
+    const after = await pool.query<{ account_id: string }>(
+      'SELECT account_id FROM contacts WHERE id = $1',
+      [contactId],
+    );
+    expect(after.rows[0]!.account_id).toBe(account.id);
+  });
 });
 
 describe('updateAccount — account_type and parent_account_id', () => {

@@ -1412,7 +1412,8 @@
     "fieldMergeSaveResolved": "Auflösung speichern",
     "fieldMergeDiscard": "Meine Änderungen verwerfen",
     "fieldMergeNoChanges": "Keine Konflikte gefunden.",
-    "CONTACT_LINKED_ELSEWHERE": "Dieser Kontakt ist bereits mit einem anderen Konto verknüpft. Ändern Sie ihn über den Kontakt."
+    "CONTACT_LINKED_ELSEWHERE": "Dieser Kontakt ist bereits mit einem anderen Konto verknüpft. Ändern Sie ihn über den Kontakt.",
+    "CONTACT_NOT_LINKABLE": "Dieser Kontakt konnte nicht verknüpft werden – er existiert nicht mehr oder gehört Ihnen nicht."
   },
   "search": {
     "inputLabel": "Suche",

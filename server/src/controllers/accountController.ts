@@ -98,10 +98,9 @@ export async function createAccountHandler(req: Request, res: Response): Promise
     );
     res.status(201).json({ account });
   } catch (err) {
-    if ((err as { code?: string }).code === 'CONTACT_LINKED_ELSEWHERE') {
-      res.status(409).json({
-        error: { code: 'CONTACT_LINKED_ELSEWHERE', message: (err as Error).message },
-      });
+    const linkCode = (err as { code?: string }).code;
+    if (linkCode === 'CONTACT_LINKED_ELSEWHERE' || linkCode === 'CONTACT_NOT_LINKABLE') {
+      res.status(409).json({ error: { code: linkCode, message: (err as Error).message } });
       return;
     }
     throw err;
@@ -271,7 +270,7 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
       res.status(400).json({ error: { code, message: (err as Error).message } });
       return;
     }
-    if (code === 'CONTACT_LINKED_ELSEWHERE') {
+    if (code === 'CONTACT_LINKED_ELSEWHERE' || code === 'CONTACT_NOT_LINKABLE') {
       res.status(409).json({
         error: { code, message: (err as Error).message },
       });
