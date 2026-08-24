@@ -77,6 +77,19 @@ In order, all green, before every `git push`:
    bypass the hook; that replaces reviewed selection with a guess and a proof with an
    eyeball. See `.claude/gates/e2e-run.md` for the cadence rules and for the manual
    procedure, which is what the hook's safety net falls back to.
+
+   **Detach the push.** The hook runs the suite inside it, so the command can take an
+   hour — and widens to the full suite whenever the diff touches module-scope code the
+   change-unit resolver cannot map to a function. An agent's foreground tool call cannot
+   outlive its own ceiling, and a session-scoped background task dies with the session;
+   both kill the run mid-suite and leave no `results.xml`. `nohup … &` survives both.
+   See `.claude/skills/ship-pr/SKILL.md` Step 4 for the exact invocation.
+
+   Before pushing, confirm the E2E stack is actually set up — `npm run e2e:setup` seeds
+   the storage config that the attachment specs need, and globalSetup's "run
+   'npm run e2e:setup'" line is a real warning, not noise. A stack that never had it
+   fails every F10 spec on a missing `attachments-list`.
+
 7. `git status` — scan for tracked files with local modifications that are **not** part
    of the intended commit set. Restore artifacts (`qa/e2e/heal-trends.json`, test
    results, generated outputs) with `git restore <file>`. When unsure whether a change
