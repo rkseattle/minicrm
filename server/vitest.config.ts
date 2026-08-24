@@ -159,6 +159,10 @@ const SERIAL_FILES = [
   // running simultaneously with the parallel project.
   'src/__tests__/customFieldService.test.ts',
   'src/__tests__/customFieldController.test.ts',
+  // contactService's merge tests create contact-scoped custom_field_definitions to prove
+  // merge re-links their values. customFieldService.test.ts truncates that global table in
+  // beforeEach and asserts exact counts, so the two race in both directions.
+  'src/__tests__/contactService.test.ts',
   // contactController's send-email tests check that an Email activity is created;
   // smtpSettingsService running in parallel can set smtp_host mid-test which causes
   // the activity query to return 0 results if the write races with the read.
