@@ -2872,6 +2872,9 @@ export async function resetDemo(): Promise<{ reset: boolean }> {
   const client = await pool.connect();
   let svcToken: string | undefined;
   try {
+    // Same lock as removeDemo, for the same reason: this path deletes demo records too,
+    // so a producer run still in flight would write findings for the rows it just removed.
+    await client.query('SELECT pg_advisory_lock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
     await client.query('BEGIN');
     await setRlsUserId(client);
     // getAdminUserId runs inside the transaction so any error triggers a clean ROLLBACK.
@@ -2884,6 +2887,7 @@ export async function resetDemo(): Promise<{ reset: boolean }> {
     await client.query('ROLLBACK');
     throw err;
   } finally {
+    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
     client.release();
   }
 
