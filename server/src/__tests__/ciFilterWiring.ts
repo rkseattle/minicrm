@@ -96,8 +96,28 @@ export function expectJobGatesOn(job: string, outputs: readonly string[]): void 
 }
 
 /**
+ * Directory prefixes from filter entries that cover a whole subtree.
+ *
+ * Only a `dir/**` suffix yields a usable prefix. A leading wildcard (`**.md`) would strip
+ * to the empty string, which every path starts with, marking every file covered; and
+ * picomatch's single `*` does not cross `/`, so it matches one segment, not a subtree.
+ *
+ * @param listed - Every path a filter output lists, literals included.
+ * @returns Prefixes ending in `/`, in listed order.
+ */
+export function coveringSubtrees(listed: readonly string[]): string[] {
+  return listed
+    .filter((path) => path.endsWith('/**') && !path.slice(0, -3).includes('*'))
+    .map((path) => path.slice(0, -2));
+}
+
+/**
  * Asserts both halves of a guard's trigger: the filter output lists exactly the files the
  * guard reads, and the job that runs it consults that output.
+ *
+ * A `dir/**` entry covers files that do not exist yet, which an enumeration cannot: a page
+ * added with no ci.yml edit matches no literal, so the job would not run on the addition
+ * the guard exists to catch.
  *
  * @param options.output - Filter output name in ci.yml.
  * @param options.job - Job whose `if:` must reference the output.
@@ -109,16 +129,21 @@ export function expectGuardIsTriggered(options: {
   filesRead: readonly string[];
 }): void {
   const { output, job, filesRead } = options;
-  const listed = new Set(filterPaths(output));
+  const listed = filterPaths(output);
+  const literals = new Set(listed.filter((path) => !path.includes('*')));
+  const subtrees = coveringSubtrees(listed);
 
   for (const file of filesRead) {
-    expect(listed, `${WORKFLOW} ${output} must list ${file}, which the guard reads`).toContain(
-      file,
-    );
+    const covered = literals.has(file) || subtrees.some((prefix) => file.startsWith(prefix));
+    expect(
+      covered,
+      `${WORKFLOW} ${output} must cover ${file}, which the guard reads — no literal entry ` +
+        'and no dir/** subtree matches it.',
+    ).toBe(true);
   }
   // The other direction: a listed path the guard never reads boots the job to assert
   // nothing, and hides that the entry was meant for a check that no longer exists.
-  for (const path of listed) {
+  for (const path of literals) {
     expect(
       new Set(filesRead),
       `${WORKFLOW} ${output} lists ${path}, which the guard never reads`,

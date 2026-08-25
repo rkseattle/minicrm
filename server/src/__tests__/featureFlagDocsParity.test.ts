@@ -191,8 +191,9 @@ describe('admin guide documents every feature flag', () => {
 
   // The sibling doc-parity guards sharing this job assert their filter lists but not the
   // clause that consults them, so each could be unwired without any test noticing. Their
-  // read-sets differ; the OR clause does not, so it is pinned here for all of them.
-  it('server-tests still gates on every doc-parity filter output', () => {
+  // read-sets differ, so this covers only the clause. A guard that pins its own wiring
+  // through expectGuardIsTriggered needs no entry here.
+  it('server-tests still gates on every unpinned doc-parity filter output', () => {
     expectJobGatesOn('server-tests', [
       'attestation-docs',
       'user-guide-docs',
