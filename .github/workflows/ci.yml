@@ -89,6 +89,7 @@ jobs:
       gate-pointer-parity: ${{ steps.filter.outputs.gate-pointer-parity }}
       feature-flag-docs: ${{ steps.filter.outputs.feature-flag-docs }}
       user-guide-routes: ${{ steps.filter.outputs.user-guide-routes }}
+      guard-invocation: ${{ steps.filter.outputs.guard-invocation }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -193,6 +194,18 @@ jobs:
               - 'qa/migrations/**'
               - 'scripts/strip-work-item-ids.ts'
               - 'scripts/check-comments-only-diff.ts'
+
+            # Single-purpose output for check-guard-invocation.mjs, which fails when a
+            # check-* script is run by no job. Both sides of the invariant: adding a guard
+            # without a step, and deleting the step that ran one, each re-run it.
+            #
+            # Only the scripts/ globs are here. `qa` already matches qa/scripts/**/*.sh
+            # and **/*.mjs and gates this job, so listing those would narrow nothing —
+            # the job runs on the union and the narrow entry never decides.
+            guard-invocation:
+              - '.github/workflows/ci.yml'
+              - 'scripts/check-*.sh'
+              - 'scripts/check-*.mjs'
 
             # Single-purpose output for check-ci-filter-globs.mjs. Its subject IS
             # ci.yml, so the workflow has to trigger it; `config` would also match but
@@ -565,7 +578,7 @@ jobs:
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
     needs: changes
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true' || needs.changes.outputs.ci-filter-globs == 'true' || needs.changes.outputs.api-path-versioning == 'true' || needs.changes.outputs.claude-hooks == 'true'
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true' || needs.changes.outputs.ci-filter-globs == 'true' || needs.changes.outputs.guard-invocation == 'true' || needs.changes.outputs.api-path-versioning == 'true' || needs.changes.outputs.claude-hooks == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -588,6 +601,13 @@ jobs:
 
       - name: Work-item-ID codemod self-test
         run: npx tsx scripts/strip-work-item-ids.ts --self-test
+
+      # A guard no job runs still reads as coverage, and nothing else reports it.
+      - name: Guard-invocation self-test
+        run: node scripts/check-guard-invocation.mjs --self-test
+
+      - name: Every guard script is invoked by a CI job
+        run: node scripts/check-guard-invocation.mjs
 
       # A filter naming a path that moved stops triggering with no error — the exact
       # failure a guard relocation creates, and one a green run looks identical to.

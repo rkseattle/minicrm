@@ -37,12 +37,16 @@ bash qa/scripts/check-sha-pattern-parity.sh
 bash qa/scripts/check-grep-invert-parity.sh
 bash qa/scripts/check-framework-spec-titles.sh
 bash qa/scripts/check-e2e-cleanup.sh
+bash qa/scripts/check-e2e-beforeall.sh
+bash qa/scripts/check-token-refresh-parity.sh
+bash qa/scripts/check-coverage-map-exit-code-parity.sh
 node qa/scripts/check-locator-timeout-forwarding.mjs
 
 # 6. Repo-wide guards — these live in scripts/, not qa/, and are not QA-scoped
 bash scripts/check-audit-gate-parity.sh
 bash scripts/check-gate-pointer-parity.sh
 node scripts/check-ci-filter-globs.mjs
+node scripts/check-guard-invocation.mjs
 node scripts/check-api-path-versioning.mjs
 ```
 
