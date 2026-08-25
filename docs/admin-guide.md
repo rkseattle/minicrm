@@ -485,9 +485,8 @@ Every flag that ships with MiniCRM, with the state and role settings it is seede
 flag you have changed since install will differ — this is what a fresh installation starts
 from, not a report of your current configuration.
 
-Keeping this list complete is not left to reviewers: an automated check reads the tables
-below and fails the build if a flag is missing, if a row names a flag that no longer
-exists, or if the category groupings stop matching the code.
+This list is verified against the product's own flag registry on every release, so it
+covers every flag that exists — not a subset someone remembered to write down.
 
 **Roles** lists the roles a flag names in its overrides. Read it with the rule above in
 mind: a role that is _not_ listed still receives the feature whenever the flag's default is

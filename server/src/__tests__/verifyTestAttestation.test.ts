@@ -94,6 +94,7 @@ import {
 } from '../scripts/verify-test-attestation.js';
 import { findCoverageSessionDumpsByBuildSha } from '../services/coverageSessionService.js';
 import type { CoverageSessionDump } from '@minicrm/shared/schemas/coverageSessionSchema.js';
+import { expectGuardIsTriggered } from './ciFilterWiring.js';
 
 /** Builds a JUnitTestCase with the fields these tests care about. */
 function testCase(overrides: Partial<JUnitTestCase>): JUnitTestCase {
@@ -1910,6 +1911,14 @@ describe('verify-test-attestation.ts', () => {
       );
 
       expect(undocumented, 'reasons missing from the operator troubleshooting list').toEqual([]);
+    });
+
+    it('the files read here trigger the job that runs this guard', () => {
+      expectGuardIsTriggered({
+        output: 'attestation-docs',
+        job: 'server-tests',
+        filesRead: ['docs/dev/coverage.md'],
+      });
     });
   });
 

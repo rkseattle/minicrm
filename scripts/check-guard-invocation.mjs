@@ -11,10 +11,11 @@
  * names the script, never whether that step is correct — check-ci-filter-globs.mjs covers
  * stale filter paths, and each guard's own assertions cover what it checks.
  *
- * Two bounds, each deliberate and each a hole if it stops holding: only ci.yml is read
- * (no other workflow invokes a guard today), and a step must name the path, so converting
- * one to `npm run lint:framework-purity` would read as uninvoked — qa/package.json wraps
- * four guards that way, all also invoked by path today.
+ * Three bounds, each deliberate and each a hole if it stops holding: only ci.yml is read
+ * (no other workflow invokes a guard today); a step must name the path, so converting one
+ * to `npm run lint:framework-purity` would read as uninvoked (qa/package.json wraps four
+ * guards that way, all also invoked by path today); and discovery keys on the check-*
+ * name and the extensions below, so a guard named verify-* or written as .py is invisible.
  *
  * Run: node scripts/check-guard-invocation.mjs [--self-test]
  */
@@ -59,11 +60,11 @@ const NOT_RUN_IN_CI = new Set();
  * @returns {string[]} Repo-relative paths, sorted.
  */
 export function guardScripts(root = REPO_ROOT) {
-  // :(glob) pins `*` to not cross '/', matching how picomatch reads the filter globs.
-  // Verified identical to the default today; explicit so discovery cannot start finding
-  // a nested guard the filter entry naming it would never trigger on.
+  // Recursive, so a guard in a subdirectory is discovered rather than silently exempt.
+  // The `qa` filter already globs qa/scripts/** and would trigger on such a file, so
+  // a non-crossing scan here would leave exactly that guard unwatched.
   const patterns = GUARD_DIRS.flatMap((dir) =>
-    GUARD_EXTENSIONS.map((extension) => `:(glob)${dir}/check-*.${extension}`),
+    GUARD_EXTENSIONS.map((extension) => `:(glob)${dir}/**/check-*.${extension}`),
   );
   const out = execFileSync('git', ['-C', root, 'ls-files', '-z', ...patterns], {
     encoding: 'utf8',
@@ -177,7 +178,7 @@ export function findWiringProblems(workflow) {
     const listed = new Set([...block[2].matchAll(/- '([^']+)'/g)].map((match) => match[1]));
     for (const dir of FILTERED_GUARD_DIRS) {
       for (const extension of GUARD_EXTENSIONS) {
-        const glob = `${dir}/check-*.${extension}`;
+        const glob = `${dir}/**/check-*.${extension}`;
         if (!listed.has(glob)) {
           problems.push(`${WORKFLOW} guard-invocation must list '${glob}', a discovery pattern`);
         }
@@ -275,9 +276,9 @@ function selfTest() {
   const declaredOnly = [
     '',
     '            guard-invocation:',
-    "              - 'scripts/check-*.sh'",
-    "              - 'scripts/check-*.mjs'",
-    "              - 'scripts/check-*.ts'",
+    "              - 'scripts/**/check-*.sh'",
+    "              - 'scripts/**/check-*.mjs'",
+    "              - 'scripts/**/check-*.ts'",
     '',
   ].join('\n');
   const consumedOnly = "    if: needs.changes.outputs.guard-invocation == 'true'";

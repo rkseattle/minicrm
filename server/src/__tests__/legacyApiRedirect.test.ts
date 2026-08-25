@@ -11,6 +11,7 @@
 
 import 'dotenv/config';
 import { readFileSync } from 'fs';
+import { expectGuardIsTriggered } from './ciFilterWiring.js';
 import { join } from 'path';
 import request from 'supertest';
 import app, { LEGACY_REDIRECT_STATUS } from '../app.js';
@@ -88,5 +89,13 @@ describe('legacy /api → /api/v1 redirects', () => {
     const stated = [...doc.matchAll(/(\d{3}) Permanent Redirect/g)].map((m) => Number(m[1]));
     expect(stated).not.toHaveLength(0);
     expect([...new Set(stated)]).toEqual([LEGACY_REDIRECT_STATUS]);
+  });
+
+  it('the files read here trigger the job that runs this guard', () => {
+    expectGuardIsTriggered({
+      output: 'redirect-status-docs',
+      job: 'server-tests',
+      filesRead: ['docs/api.md', 'docs/operations.md'],
+    });
   });
 });

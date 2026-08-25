@@ -13,6 +13,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildScheduledJobs } from '../services/scheduledJobs.js';
+import { expectGuardIsTriggered } from './ciFilterWiring.js';
 
 const REPO_ROOT = resolve(__dirname, '../../..');
 const COVERAGE_RETENTION_DAYS = 30;
@@ -120,5 +121,13 @@ describe('Scheduled Jobs documentation', () => {
 
     // These docs describe the jobs; operations.md owns when they run.
     expect(offenders, `${relative} should link to Scheduled Jobs instead`).toEqual([]);
+  });
+
+  it('the files read here trigger the job that runs this guard', () => {
+    expectGuardIsTriggered({
+      output: 'scheduled-jobs-docs',
+      job: 'server-tests',
+      filesRead: ['docs/operations.md', ...NO_SCHEDULE_LITERAL_DOCS],
+    });
   });
 });
