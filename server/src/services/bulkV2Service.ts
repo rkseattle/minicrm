@@ -21,6 +21,7 @@ import { findUserById } from './userService.js';
 import { getStageNames } from './pipelineStageService.js';
 import { writeDealStageHistoryEntry } from './dealService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
+import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import { fireAutomationTrigger } from './automationService.js';
 import logger from '../logger.js';
@@ -432,6 +433,7 @@ export async function bulkDeleteContacts(
         await client.query(`SAVEPOINT ${sp}`);
 
         await softDeleteNotesByEntity(client, 'contact', id);
+        await deleteFindingsForDeletedEntity(client, 'contact', id);
         await client.query(`DELETE FROM contacts WHERE id = $1`, [id]);
 
         await writeAuditEntry(client, {
@@ -671,6 +673,7 @@ export async function bulkDeleteDeals(
         await client.query(`SAVEPOINT ${sp}`);
 
         await softDeleteNotesByEntity(client, 'deal', id);
+        await deleteFindingsForDeletedEntity(client, 'opportunity', id);
         await client.query(`DELETE FROM deals WHERE id = $1`, [id]);
 
         await writeAuditEntry(client, {

@@ -16,6 +16,7 @@ import { getDefaultPipelineId } from './pipelineService.js';
 import { findPipelineStageByNameAndPipeline } from './pipelineStageService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
+import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -701,6 +702,8 @@ export async function deleteDeal(
 
     // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'deal', id);
+    // Hygiene calls deals 'opportunity' — the schema's own term for the entity type.
+    await deleteFindingsForDeletedEntity(client, 'opportunity', id);
 
     // Use a CTE so we can JOIN pipeline_stages on the deleted row, keeping the returned
     // DealRow consistent with every other query path.
