@@ -114,6 +114,10 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
   },
   { page: 'docs/user-guide/dashboard.md', localeKey: 'dashboard.myPerformanceHeading' },
   { page: 'docs/user-guide/dashboard.md', localeKey: 'dashboard.myPerformanceViewAll' },
+  { page: 'docs/user-guide/index.md', localeKey: 'search.inputLabel' },
+  { page: 'docs/user-guide/index.md', localeKey: 'bulk.reassignButton' },
+  { page: 'docs/user-guide/index.md', localeKey: 'bulk.changeStageButton' },
+  { page: 'docs/user-guide/index.md', localeKey: 'bulk.seeDetails' },
 ];
 
 describe('user guide quotes control names that exist', () => {

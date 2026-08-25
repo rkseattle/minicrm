@@ -723,17 +723,19 @@ export default function AccountsPage() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10 bg-gray-50">
                   <tr className="border-b border-gray-200">
-                    {/* Bulk select-all checkbox */}
-                    <th className="w-10 ps-4 py-3">
-                      <input
-                        type="checkbox"
-                        data-testid="bulk-select-all"
-                        checked={allVisibleSelected}
-                        onChange={toggleSelectAll}
-                        aria-label={t('bulk.selectAll')}
-                        className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
-                    </th>
+                    {/* Same gate as the action bar: no selection a viewer cannot act on. */}
+                    {canWrite && (
+                      <th className="w-10 ps-4 py-3">
+                        <input
+                          type="checkbox"
+                          data-testid="bulk-select-all"
+                          checked={allVisibleSelected}
+                          onChange={toggleSelectAll}
+                          aria-label={t('bulk.selectAll')}
+                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      </th>
+                    )}
                     <th
                       className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
                       aria-sort={sortDir}
@@ -795,16 +797,18 @@ export default function AccountsPage() {
                       className={`group hover:bg-gray-50 transition-colors${selectedIds.has(account.id) ? ' bg-primary-50' : ''}`}
                     >
                       {/* Row checkbox */}
-                      <td className="w-10 ps-4 py-3">
-                        <input
-                          type="checkbox"
-                          data-testid={`bulk-select-${account.id}`}
-                          checked={selectedIds.has(account.id)}
-                          onChange={() => toggleRow(account.id)}
-                          aria-label={account.name}
-                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        />
-                      </td>
+                      {canWrite && (
+                        <td className="w-10 ps-4 py-3">
+                          <input
+                            type="checkbox"
+                            data-testid={`bulk-select-${account.id}`}
+                            checked={selectedIds.has(account.id)}
+                            onChange={() => toggleRow(account.id)}
+                            aria-label={account.name}
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3 font-medium text-primary-600">
                         <Link
                           to={`/accounts/${account.id}`}
@@ -875,19 +879,21 @@ export default function AccountsPage() {
             ) : (
               /* Mobile card view */
               <>
-                <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
-                  <input
-                    type="checkbox"
-                    data-testid="bulk-select-all"
-                    checked={allVisibleSelected}
-                    onChange={toggleSelectAll}
-                    aria-label={t('bulk.selectAll')}
-                    className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                  <span className="text-xs text-gray-500">
-                    {t('bulk.selectedCount', { count: selectedIds.size })}
-                  </span>
-                </div>
+                {canWrite && (
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
+                    <input
+                      type="checkbox"
+                      data-testid="bulk-select-all"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                      aria-label={t('bulk.selectAll')}
+                      className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-xs text-gray-500">
+                      {t('bulk.selectedCount', { count: selectedIds.size })}
+                    </span>
+                  </div>
+                )}
                 <ul className="divide-y divide-gray-100">
                   {accounts.map((account) => (
                     <li
@@ -895,14 +901,16 @@ export default function AccountsPage() {
                       className={`px-4 py-3 flex items-start gap-3${selectedIds.has(account.id) ? ' bg-primary-50' : ''}`}
                       data-testid={`account-card-${account.id}`}
                     >
-                      <input
-                        type="checkbox"
-                        data-testid={`bulk-select-${account.id}`}
-                        checked={selectedIds.has(account.id)}
-                        onChange={() => toggleRow(account.id)}
-                        aria-label={account.name}
-                        className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
+                      {canWrite && (
+                        <input
+                          type="checkbox"
+                          data-testid={`bulk-select-${account.id}`}
+                          checked={selectedIds.has(account.id)}
+                          onChange={() => toggleRow(account.id)}
+                          aria-label={account.name}
+                          className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      )}
                       <div className="min-w-0 flex-1">
                         <Link
                           to={`/accounts/${account.id}`}
