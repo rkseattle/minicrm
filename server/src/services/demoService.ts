@@ -6,11 +6,15 @@
  */
 
 import bcrypt from 'bcryptjs';
-import { utcDayOffset } from '../utils/utcDate.js';
+import { utcDayOffset, ONE_DAY_MS } from '../utils/utcDate.js';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import pool from '../db.js';
+import { writeDealStageHistoryEntry } from './dealService.js';
+import { runDataHygieneScan } from './dataHygieneService.js';
+import { generateRepCoachingInsights } from './repCoachingService.js';
+import logger from '../logger.js';
 import { encrypt } from './cryptoService.js';
 import { setRlsUserId } from './rlsContextService.js';
 import { syncEntityTagsWithinTransaction } from './tagService.js';
@@ -1500,6 +1504,41 @@ const DEMO_HYGIENE_DEALS = [
   },
 ];
 
+/**
+ * Closed deals seeded per rep, above `min_closed_deals` (default 10) so coaching produces
+ * insights instead of "insufficient data".
+ *
+ * Owned explicitly rather than appended to DEMO_DEALS, whose ownership is assigned by
+ * index and which four other fixture arrays reference positionally.
+ */
+const DEMO_COACHING_DEAL_COUNT = 12;
+
+/** Loss on every Nth deal counting from the first, cycled per rep so win rates differ. */
+const DEMO_COACHING_LOSS_INTERVALS = [3, 4, 2, 5, 6, 3];
+
+const DEMO_COACHING_FIRST_CLOSE_DAYS_AGO = 14;
+const DEMO_COACHING_CLOSE_SPACING_DAYS = 7;
+const DEMO_COACHING_BASE_VALUE = 20000;
+const DEMO_COACHING_VALUE_STEP = 2500;
+const DEMO_COACHING_CURRENCY = 'USD';
+
+/**
+ * Days each stage lasted, oldest first, per pace band.
+ *
+ * The terminal row's span is open-ended (`COALESCE(next_entered_at, now())`) and runs
+ * from the same close date for every band, so it dilutes all reps equally rather than
+ * separating them — the inter-stage gaps below are what set a rep apart. They are far
+ * apart because that shared dilution shrinks the ratio, and because the slow rep also
+ * pulls up the team average it is measured against.
+ */
+const DEMO_COACHING_STAGE_DAYS: Record<string, number[]> = {
+  fast: [3, 5, 4],
+  typical: [7, 11, 9],
+  // Wide enough to clear the 1.5x stage-time outlier ratio against a team average this
+  // rep also pulls upward — a modest gap leaves the Outlier badge unreachable.
+  slow: [30, 55, 45],
+};
+
 // Demo pipeline added by seed to demonstrate multi-pipeline support.
 // This is a second, non-default pipeline so evaluators can see that pipelines are
 // configurable beyond the built-in "Default" one.
@@ -1594,6 +1633,23 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
   `);
 
   await deleteDemoHygieneFindings(client);
+
+  // Coaching rows for the demo users cascade when those users are deleted below. The
+  // seed's generator also writes rows for any real rep who happened to be eligible, and
+  // those have no cascade — but a real rep's insights are legitimate data, so only reps
+  // with no non-demo closed deals are cleared. Ownership of a demo deal alone is not
+  // enough: bulk reassign can hand one to a real rep.
+  const demoOnlyReps = `
+    SELECT DISTINCT d.owner_id FROM deals d
+    WHERE d.is_demo = true
+      AND NOT EXISTS (
+        SELECT 1 FROM deals other
+        WHERE other.owner_id = d.owner_id
+          AND other.is_demo = false
+          AND other.stage IN ('Closed Won', 'Closed Lost')
+      )`;
+  await client.query(`DELETE FROM rep_coaching_insight_history WHERE rep_id IN (${demoOnlyReps})`);
+  await client.query(`DELETE FROM rep_coaching_insights WHERE rep_id IN (${demoOnlyReps})`);
 
   // Custom field values reference demo contacts and deals
   await client.query(`
@@ -1750,6 +1806,22 @@ async function resolvePipelineStageId(
     throw new Error(`Demo seed: unknown stage '${stageName}' in pipeline ${pipelineId}`);
   }
   return stageId;
+}
+
+/**
+ * Throws unless the named stage exists in the pipeline. For values recorded somewhere
+ * without a foreign key, where a typo would otherwise persist unnoticed.
+ *
+ * @param client - Active DB client, inside the caller's transaction.
+ * @param stageName - Stage name to check.
+ * @param pipelineId - Pipeline the stage must belong to.
+ */
+async function assertPipelineStageExists(
+  client: pg.PoolClient,
+  stageName: string,
+  pipelineId: string,
+): Promise<void> {
+  await resolvePipelineStageId(client, stageName, pipelineId);
 }
 
 /**
@@ -2428,7 +2500,87 @@ async function insertDemoData(
     [svcId, svcTokenHash],
   );
 
-  // 23. Data hygiene fixtures. Owned by the admin deliberately: /hygiene is scope="mine"
+  // 23. Rep coaching history. Must follow 22b, which is where the rep and manager ids
+  // below are resolved.
+  // Managers are included because listReps and getCoachingTeamOverview both select
+  // role IN ('rep','manager') — a manager with no deals renders as insufficient data in
+  // the same selector the page defaults into.
+  const coachingReps: Array<{ id: string; pace: keyof typeof DEMO_COACHING_STAGE_DAYS }> = [
+    { id: repId, pace: 'typical' },
+    { id: rep1Id, pace: 'fast' },
+    { id: rep2Id, pace: 'typical' },
+    { id: rep3Id, pace: 'slow' },
+    { id: westMgrId, pace: 'fast' },
+    { id: eastMgrId, pace: 'typical' },
+  ];
+
+  // deal_stage_history.stage is bare text with no FK, so a renamed stage would be
+  // recorded silently rather than failing.
+  const coachingStages = ['Prospecting', 'Qualification', 'Proposal'];
+  for (const stageName of coachingStages) {
+    await assertPipelineStageExists(client, stageName, defaultPipelineId);
+  }
+  // Invariant across every deal below, so resolved once rather than per row.
+  const wonStageId = await resolvePipelineStageId(client, 'Closed Won', defaultPipelineId);
+  const lostStageId = await resolvePipelineStageId(client, 'Closed Lost', defaultPipelineId);
+
+  for (const [repIndex, rep] of coachingReps.entries()) {
+    const stageDays = DEMO_COACHING_STAGE_DAYS[rep.pace];
+    // Varied per rep so win rate has a spread; a shared ratio makes every win-rate
+    // metric identical and no outlier can ever surface.
+    const lossEvery = DEMO_COACHING_LOSS_INTERVALS[repIndex % DEMO_COACHING_LOSS_INTERVALS.length];
+    for (let i = 0; i < DEMO_COACHING_DEAL_COUNT; i++) {
+      const won = i % lossEvery !== 0;
+      const finalStage = won ? 'Closed Won' : 'Closed Lost';
+      const stageId = won ? wonStageId : lostStageId;
+      const closedDaysAgo =
+        DEMO_COACHING_FIRST_CLOSE_DAYS_AGO + i * DEMO_COACHING_CLOSE_SPACING_DAYS;
+      const dealResult = await client.query<{ id: string }>(
+        `INSERT INTO deals
+           (name, stage, value, probability, currency, close_date, loss_reason, account_id,
+            owner_id, pipeline_id, pipeline_stage_id, is_demo)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE - ($6 || ' days')::interval, $7, $8, $9, $10, $11, true)
+         RETURNING id`,
+        [
+          `${won ? 'Won' : 'Lost'} — Renewal ${i + 1}`,
+          finalStage,
+          DEMO_COACHING_BASE_VALUE + i * DEMO_COACHING_VALUE_STEP,
+          won ? 100 : 0,
+          DEMO_COACHING_CURRENCY,
+          closedDaysAgo,
+          won ? null : 'Budget',
+          accountIds[i % accountIds.length],
+          rep.id,
+          defaultPipelineId,
+          stageId,
+        ],
+      );
+
+      // History walks forward from the deal's start so each stage shows a real duration;
+      // without these rows the stage-time metric has nothing to average.
+      let cursorDaysAgo = closedDaysAgo + stageDays.reduce((sum, days) => sum + days, 0);
+      for (let stageIndex = 0; stageIndex < coachingStages.length; stageIndex++) {
+        const enteredAt = new Date(Date.now() - cursorDaysAgo * ONE_DAY_MS);
+        await writeDealStageHistoryEntry(
+          client,
+          dealResult.rows[0].id,
+          defaultPipelineId,
+          coachingStages[stageIndex],
+          enteredAt,
+        );
+        cursorDaysAgo -= stageDays[stageIndex];
+      }
+      await writeDealStageHistoryEntry(
+        client,
+        dealResult.rows[0].id,
+        defaultPipelineId,
+        finalStage,
+        new Date(Date.now() - closedDaysAgo * ONE_DAY_MS),
+      );
+    }
+  }
+
+  // 24. Data hygiene fixtures. Owned by the admin deliberately: /hygiene is scope="mine"
   // and filters on the caller's own owner_id, and the admin is who the screenshot script
   // and a demo evaluator sign in as. Placed after 22f so the redistribution above cannot
   // reassign them.
@@ -2616,4 +2768,29 @@ export async function resetDemo(): Promise<{ reset: boolean }> {
   console.log(`[DEMO] Token written to ${envDemoPath}`);
 
   return { reset: true };
+}
+
+/**
+ * Runs the producers that turn seeded records into the rows the AI surfaces read.
+ *
+ * The seed shapes contacts, accounts, and deals that exhibit hygiene issues and give each
+ * rep enough closed-deal history, but `data_hygiene_findings` and `rep_coaching_insights`
+ * are written only by these two jobs — without them both pages render empty. Kept outside
+ * `seedDemo`'s transaction because the hygiene scan does DNS and outbound HTTP, which must
+ * not run inside a DB transaction or behind an HTTP response.
+ *
+ * Errors are logged, not thrown: a demo seed that succeeded should not report failure
+ * because an optional enrichment step could not reach the network.
+ */
+export async function runPostSeedProducers(): Promise<void> {
+  try {
+    await runDataHygieneScan();
+  } catch (err) {
+    logger.error({ err }, 'demoService: post-seed hygiene scan failed');
+  }
+  try {
+    await generateRepCoachingInsights();
+  } catch (err) {
+    logger.error({ err }, 'demoService: post-seed coaching generation failed');
+  }
 }

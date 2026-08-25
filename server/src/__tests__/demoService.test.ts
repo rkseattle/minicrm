@@ -20,6 +20,7 @@ import {
   getHygieneConfig,
   runDataHygieneScan,
 } from '../services/dataHygieneService.js';
+import { generateRepCoachingInsights } from '../services/repCoachingService.js';
 
 const FILE_PREFIX = 'demo-svc';
 
@@ -89,6 +90,10 @@ async function cleanDemoData(): Promise<void> {
   );
   // Same predicate the production path uses, so the two cannot drift.
   await deleteDemoHygieneFindings(pool);
+  // The coaching generator this file invokes writes for every eligible rep in the shared
+  // database, so its rows outlive the demo users unless cleared here.
+  await pool.query(`DELETE FROM rep_coaching_insight_history`);
+  await pool.query(`DELETE FROM rep_coaching_insights`);
   await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
     DEMO_CUSTOM_FIELD_NAMES,
   ]);
@@ -1309,6 +1314,91 @@ describe('seedDemo — data hygiene fixtures', () => {
     const fixtureFindings = findings.filter((f) => fixtureIds.has(f.entityId));
     expect(fixtureFindings.length).toBeGreaterThan(0);
     expect(fixtureFindings.every((f) => f.ownerId === adminId)).toBe(true);
+  });
+});
+
+describe('seedDemo — rep coaching fixtures', () => {
+  it('gives every selectable rep enough closed deals to clear the threshold', async () => {
+    await seedDemo();
+
+    // Asserted against the shipped default rather than the live config row: that row is a
+    // globally mutable singleton other specs in this database write to, so reading it here
+    // makes this test's outcome depend on run order. The seed's own contract is a fixed
+    // per-rep count, which is what this pins.
+    const MIGRATION_DEFAULT_MIN_CLOSED_DEALS = 10;
+
+    // The page defaults to the first rep by name, so a rep below the threshold anywhere
+    // in the list can be the one a reader lands on.
+    // LEFT JOIN and the same role pair listReps/getCoachingTeamOverview select: an inner
+    // join drops a user with no deals entirely, which is precisely the case that renders
+    // as insufficient data, and 'rep' alone omits the two managers in that selector.
+    // Scoped to the seed's own users — this database is shared, and a sibling spec's
+    // leftover rep is not this seed's to satisfy.
+    const perRep = await pool.query<{ name: string; closed: string }>(
+      `SELECT u.name, COUNT(d.id) FILTER (WHERE d.stage IN ('Closed Won', 'Closed Lost')) AS closed
+       FROM users u
+       LEFT JOIN deals d ON d.owner_id = u.id
+       WHERE u.role IN ('rep', 'manager') AND u.status = 'active'
+         AND (u.email LIKE '%@demo.minicrm.dev' OR u.email = 'alex.rivera@demo.minicrm.app')
+       GROUP BY u.id, u.name`,
+    );
+    expect(perRep.rowCount).toBeGreaterThan(0);
+    for (const row of perRep.rows) {
+      expect(
+        Number(row.closed),
+        `${row.name} is below the coaching minimum`,
+      ).toBeGreaterThanOrEqual(MIGRATION_DEFAULT_MIN_CLOSED_DEALS);
+    }
+  });
+
+  it('writes stage history with real durations, which the stage-time metric needs', async () => {
+    await seedDemo();
+
+    // entered_at defaults to now(), so history written without explicit timestamps gives
+    // every stage a zero duration. Asserted per rep: a table-wide check passes even when
+    // most reps got no usable history.
+    // LEFT JOIN for the same reason as the test above: an inner join hides the failure.
+    const perRep = await pool.query<{ name: string; avg_days: string | null }>(
+      `WITH durations AS (
+         SELECT d.owner_id,
+                EXTRACT(EPOCH FROM (
+                  LEAD(h.entered_at) OVER (PARTITION BY h.deal_id ORDER BY h.entered_at) - h.entered_at
+                )) / 86400.0 AS days
+         FROM deal_stage_history h
+         JOIN deals d ON d.id = h.deal_id
+         WHERE d.is_demo = true
+       )
+       SELECT u.name, AVG(durations.days)::text AS avg_days
+       FROM users u
+       LEFT JOIN durations ON durations.owner_id = u.id AND durations.days IS NOT NULL
+       WHERE u.role IN ('rep', 'manager') AND u.status = 'active'
+         AND (u.email LIKE '%@demo.minicrm.dev' OR u.email = 'alex.rivera@demo.minicrm.app')
+       GROUP BY u.id, u.name`,
+    );
+    expect(perRep.rowCount).toBeGreaterThan(0);
+    for (const row of perRep.rows) {
+      expect(Number(row.avg_days), `${row.name} has no measurable stage time`).toBeGreaterThan(0);
+    }
+  });
+
+  it('generates coaching insights, which the page reads', async () => {
+    await seedDemo();
+    // The seed shapes the inputs; this generator writes the rows the page renders.
+    await generateRepCoachingInsights();
+
+    // Scoped for the same reason: a sibling spec writes this table too.
+    const perRep = await pool.query<{ name: string; n: string }>(
+      `SELECT u.name, COUNT(i.id) AS n
+       FROM users u
+       LEFT JOIN rep_coaching_insights i ON i.rep_id = u.id
+       WHERE u.role IN ('rep', 'manager') AND u.status = 'active'
+         AND (u.email LIKE '%@demo.minicrm.dev' OR u.email = 'alex.rivera@demo.minicrm.app')
+       GROUP BY u.id, u.name`,
+    );
+    expect(perRep.rowCount).toBeGreaterThan(0);
+    for (const row of perRep.rows) {
+      expect(Number(row.n), `${row.name} has no coaching insights`).toBeGreaterThan(0);
+    }
   });
 });
 

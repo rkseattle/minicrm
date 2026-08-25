@@ -31,6 +31,9 @@ export async function seedDemoHandler(_req: Request, res: Response): Promise<voi
     });
     return;
   }
+  // After commit, never awaited: the hygiene scan reaches the network, and a seed that
+  // succeeded must not report failure because an enrichment step could not.
+  void demoService.runPostSeedProducers();
   res.status(200).json({ success: true });
 }
 
@@ -40,6 +43,7 @@ export async function seedDemoHandler(_req: Request, res: Response): Promise<voi
  */
 export async function resetDemoHandler(_req: Request, res: Response): Promise<void> {
   await demoService.resetDemo();
+  void demoService.runPostSeedProducers();
   res.status(200).json({ success: true });
 }
 
