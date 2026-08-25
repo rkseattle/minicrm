@@ -91,8 +91,8 @@ could one day read them.
 ### Searching notes
 
 The Notes section within a record shows all notes for that record. To find notes
-across all records, use the global search or filter by tag/owner on the respective
-list page.
+across all records, use [the search box in the header](index.md#searching) — note text
+is one of the things it matches — or filter by tag or owner on the relevant list page.
 
 ### Notes vs. Activities
 

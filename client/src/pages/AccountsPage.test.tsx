@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw';
 import AccountsPage from './AccountsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { ACCOUNT_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
+import { ACCOUNT_1, ADMIN_USER, REP_USER, VIEWER_USER } from '../test/msw/handlers.js';
 import * as accountsApi from '../api/accounts.js';
 import * as bulkApi from '../api/bulk.js';
 
@@ -395,6 +395,70 @@ describe('AccountsPage', () => {
     });
 
     const getRowCheckbox = (id: string) => screen.getAllByTestId(`bulk-select-${id}`)[0]!;
+
+    it('offers no checkboxes to a read-only user, who has nothing to act with', async () => {
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: VIEWER_USER })));
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getByText(ACCOUNT_1.name)).toBeInTheDocument();
+      });
+
+      // A selection a viewer cannot act on is worse than none: the mobile header would
+      // report "N selected" beside an action bar that never renders.
+      expect(screen.queryByTestId('bulk-select-all')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(`bulk-select-${ACCOUNT_1.id}`)).not.toBeInTheDocument();
+    });
+
+    it('offers checkboxes to a rep but not a viewer, on the same page', async () => {
+      // Differential: asserting only that a rep sees a checkbox would pass with the gate
+      // deleted, since these rendered unconditionally before it existed.
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      const { unmount } = renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getByText(ACCOUNT_1.name)).toBeInTheDocument();
+      });
+      expect(screen.getAllByTestId('bulk-select-all')[0]).toBeInTheDocument();
+      unmount();
+
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: VIEWER_USER })));
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getByText(ACCOUNT_1.name)).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('bulk-select-all')).not.toBeInTheDocument();
+    });
+
+    it('offers no card checkbox to a read-only user on mobile', async () => {
+      // setup.ts pins matchMedia to desktop, so the mobile subtree never mounts unless a
+      // test overrides it — the card checkbox is otherwise untested at any viewport.
+      const desktopMatchMedia = window.matchMedia;
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+          matches: false,
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+        })),
+      });
+      try {
+        server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: VIEWER_USER })));
+        renderWithProviders(<AccountsPage />);
+        await waitFor(() => {
+          expect(screen.getByTestId(`account-card-${ACCOUNT_1.id}`)).toBeInTheDocument();
+        });
+        expect(screen.queryByTestId(`bulk-select-${ACCOUNT_1.id}`)).not.toBeInTheDocument();
+      } finally {
+        Object.defineProperty(window, 'matchMedia', {
+          writable: true,
+          value: desktopMatchMedia,
+        });
+      }
+    });
 
     it('shows row checkboxes in the account list', async () => {
       renderWithProviders(<AccountsPage />);
