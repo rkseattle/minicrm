@@ -623,6 +623,23 @@ describe('removeDemo', () => {
     expect(Number(orphaned.rows[0]!.n)).toBe(0);
   });
 
+  it('leaves no findings naming deleted records when reset races the producers', async () => {
+    await seedDemo();
+
+    // resetDemo deletes the same records removeDemo does, so it needs the same lock —
+    // a producer run still in flight would otherwise write findings for rows it removed.
+    await Promise.all([runPostSeedProducers(), resetDemo()]);
+
+    const orphaned = await pool.query<{ n: string }>(
+      `SELECT COUNT(*) AS n
+       FROM data_hygiene_findings f
+       WHERE NOT EXISTS (SELECT 1 FROM contacts c WHERE c.id = f.entity_id)
+         AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.id = f.entity_id)
+         AND NOT EXISTS (SELECT 1 FROM deals d WHERE d.id = f.entity_id)`,
+    );
+    expect(Number(orphaned.rows[0]!.n)).toBe(0);
+  });
+
   it('removes all junction rows for demo records and prunes orphaned tags', async () => {
     await seedDemo();
     await removeDemo();
