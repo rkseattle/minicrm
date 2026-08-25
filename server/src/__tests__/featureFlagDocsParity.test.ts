@@ -30,7 +30,7 @@ import {
   FEATURE_FLAG_CATEGORIES,
   SEEDED_ROLE_OVERRIDES,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
-import { expectGuardIsTriggered, expectJobGatesOn, WORKFLOW } from './ciFilterWiring.js';
+import { expectGuardIsTriggered, WORKFLOW } from './ciFilterWiring.js';
 
 const REPO_ROOT = join(__dirname, '../../..');
 
@@ -187,19 +187,5 @@ describe('admin guide documents every feature flag', () => {
       job: 'server-tests',
       filesRead: [ADMIN_GUIDE, FLAG_SCHEMA, WORKFLOW, VITEST_CONFIG],
     });
-  });
-
-  // The sibling doc-parity guards sharing this job assert their filter lists but not the
-  // clause that consults them, so each could be unwired without any test noticing. Their
-  // read-sets differ, so this covers only the clause. A guard that pins its own wiring
-  // through expectGuardIsTriggered needs no entry here.
-  it('server-tests still gates on every unpinned doc-parity filter output', () => {
-    expectJobGatesOn('server-tests', [
-      'attestation-docs',
-      'redirect-status-docs',
-      'scheduled-jobs-docs',
-      'coverage-migrations',
-      'shared-testing',
-    ]);
   });
 });

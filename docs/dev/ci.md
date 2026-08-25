@@ -118,15 +118,9 @@ message naming the file to edit; this is what to do when one fires.
 
 Each carries a single-purpose filter output OR'd into `server-tests`, per the two rules
 above. That wiring has two halves, and a break in either leaves the guard green while it
-no longer runs. The OR clause is asserted for all of them, in `featureFlagDocsParity.test.ts` — so
-deleting one fails there rather than in the guard it disables. The other half — that the
-filter lists every file the guard reads — is asserted by `featureFlagDocsParity`,
-`userGuideRouteParity`, and `userGuideLabels`, all through `expectGuardIsTriggered`.
-
-**`verifyTestAttestation`, `scheduledJobsDocumentation`, and `legacyApiRedirect` keep
-their filter lists in sync by hand.** If you make one of those three read a new doc, add
-that path to its filter output in `ci.yml` yourself — nothing will tell you if you forget,
-and the guard then stays silent on edits to the doc it just took responsibility for.
+no longer runs, so every guard asserts both through `expectGuardIsTriggered`: the output
+must list exactly the files the guard reads, and the job's `if:` must consult the output.
+Add a doc to a guard without adding it to that guard's filter and the guard itself fails.
 
 Whether a filter globs a directory or enumerates files follows from what the guard
 asserts. `userGuideRouteParity` checks completeness against `git ls-files`, so it has to

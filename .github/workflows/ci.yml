@@ -209,9 +209,9 @@ jobs:
             # Only the scripts/ globs are listed for the same reason: `qa` already matches
             # qa/scripts/**, so a narrower duplicate could never be the deciding trigger.
             guard-invocation:
-              - 'scripts/check-*.sh'
-              - 'scripts/check-*.mjs'
-              - 'scripts/check-*.ts'
+              - 'scripts/**/check-*.sh'
+              - 'scripts/**/check-*.mjs'
+              - 'scripts/**/check-*.ts'
 
             # Single-purpose output for check-ci-filter-globs.mjs. Its subject IS
             # ci.yml, so the workflow has to trigger it; `config` would also match but

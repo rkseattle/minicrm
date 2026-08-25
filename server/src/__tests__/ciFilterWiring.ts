@@ -74,28 +74,6 @@ function jobCondition(job: string): string {
 }
 
 /**
- * Asserts a job consults every filter output declared for it.
- *
- * The declaration and the OR clause are separate edits, and only the declaration is
- * visible to check-ci-filter-globs.mjs. Removing a clause leaves the output declared,
- * every guard's own tests passing, and the guard unrun on the paths it names.
- *
- * @param job - The job whose `if:` gates these outputs.
- * @param outputs - Filter output names that must appear in that condition.
- */
-export function expectJobGatesOn(job: string, outputs: readonly string[]): void {
-  const condition = jobCondition(job);
-  for (const output of outputs) {
-    expect(
-      condition,
-      `${WORKFLOW} job ${job} no longer gates on needs.changes.outputs.${output}. The ` +
-        'filter output is still declared, so nothing else reports that the guard it ' +
-        'triggers has stopped running.',
-    ).toContain(`needs.changes.outputs.${output}`);
-  }
-}
-
-/**
  * Directory prefixes from filter entries that cover a whole subtree.
  *
  * Only a `dir/**` suffix yields a usable prefix. A leading wildcard (`**.md`) would strip
