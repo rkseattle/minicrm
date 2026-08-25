@@ -87,6 +87,21 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
     page: 'docs/user-guide/profile.md',
     localeKey: 'profileSettings.notifications.sectionTitle',
   },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.mergeDialogTitle' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.dismissDialogTitle' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.dismissReasonLabel' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.filter.all' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.filter.contact' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.filter.account' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.filter.opportunity' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.actionUpdate' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.actionMerge' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.actionArchive' },
+  { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.actionDismiss' },
+  {
+    page: 'docs/user-guide/data-hygiene.md',
+    localeKey: 'dataHygiene.issue.contact_duplicate',
+  },
 ];
 
 describe('user guide quotes control names that exist', () => {
@@ -128,6 +143,11 @@ describe('user guide quotes control names that exist', () => {
       absent: /\*\*Deals\*\*\s+(section|area|list|panel|tab)|under \*\*Deals\*\*/i,
       why: 'the account page does not list deals',
     },
+    {
+      page: 'docs/user-guide/data-hygiene.md',
+      absent: /confirm(ing|ation)?\s+(the\s+)?(archive|dialog)|archive[^.]{0,40}\bconfirm/i,
+      why: 'Archive fires immediately; no locale rename would catch an invented confirm step',
+    },
   ];
 
   /**
@@ -138,6 +158,13 @@ describe('user guide quotes control names that exist', () => {
     { page: 'docs/user-guide/reports.md', localeKey: 'reports.activityVolume.presetThisWeek' },
     { page: 'docs/user-guide/reports.md', localeKey: 'reports.activityVolume.presetCurrentMonth' },
     { page: 'docs/user-guide/reports.md', localeKey: 'reports.winLoss.presetCurrentQuarter' },
+    { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.emptyTitle' },
+    { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.loadError' },
+    { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.actionError' },
+    { page: 'docs/user-guide/data-hygiene.md', localeKey: 'dataHygiene.notAvailable' },
+    { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.emptyTitle' },
+    { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.filteredEmptyTitle' },
+    { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.emptyCompleted' },
   ];
 
   it.each(QUOTED_OPTIONS)('$page quotes the $localeKey option', ({ page, localeKey }) => {

@@ -2121,8 +2121,9 @@ returns.
 
 MiniCRM scans your records nightly for thirteen kinds of data quality problem and collects
 them into a queue. Administrators see the whole organisation's findings at `/admin/hygiene`;
-every other user sees only findings on records they own, at `/hygiene`. Neither page has a
-navigation entry today — reach them by URL.
+every other user sees only findings on records they own, at `/hygiene` — the user-facing
+walkthrough is in [the Data Hygiene page guide](user-guide/data-hygiene.md). Neither page
+has a navigation entry today — reach them by URL.
 
 > **There is no hygiene score.** The queue is a list, ordered by when each finding was
 > detected. Nothing is ranked, weighted, or scored, and the configuration below sets
