@@ -129,9 +129,11 @@ export function expectGuardIsTriggered(options: {
   }
 
   // Declaring the output is not enough: without the OR clause the job never consults it.
+  // Anchored on the comparison, so a longer output name whose prefix matches this one
+  // cannot satisfy a substring test and vouch for a clause that was renamed away.
   expect(
-    jobCondition(job),
+    new RegExp(`needs\\.changes\\.outputs\\.${escapeRegExp(output)}\\s*==`).test(jobCondition(job)),
     `${WORKFLOW} job ${job} must gate on needs.changes.outputs.${output}, or the ` +
       `${output} filter is declared but never consulted and the guard stops running.`,
-  ).toContain(`needs.changes.outputs.${output}`);
+  ).toBe(true);
 }

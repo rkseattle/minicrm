@@ -16,7 +16,9 @@
       "@pages/*": ["e2e/pages/*"],
       "@behaviors/*": ["e2e/behaviors/*"],
       "@apps/*": ["e2e/apps/*"],
+      "@minicrm/shared/schemas/*.js": ["../shared/schemas/*.ts"],
       "@minicrm/shared/schemas/*": ["../shared/schemas/*"],
+      "@minicrm/shared/testing/*.js": ["../shared/testing/*.ts"],
       "@minicrm/shared/testing/*": ["../shared/testing/*"]
     }
   },

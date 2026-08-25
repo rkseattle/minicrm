@@ -469,22 +469,25 @@ const sharedResolve = {
      * Rewrites the `.js` specifier to the `.ts` source explicitly.
      *
      * A plain directory alias resolves `featureFlagSchema.js` to the literal file of
-     * that name, and `tsc` side-emits one next to every schema when anything builds
-     * from server/ (it is gitignored, so CI never has one and only local runs differ).
-     * Tests asserting runtime behavior tolerate that — code under test resolves the
-     * same stale module, so both sides move together. A parity guard comparing a file
-     * on disk against a registry constant does not: its two sides are supposed to
-     * diverge, and a frozen constant makes it pass while the drift it exists to catch
-     * goes unreported.
+     * that name, and `tsc` side-emits one beside every shared source file when anything
+     * builds from server/ (gitignored, so CI never has one and only local runs differ).
+     * Tests asserting runtime behavior tolerate that — code under test resolves the same
+     * stale module, so both sides move together. Two kinds do not: a parity guard whose
+     * two sides are supposed to diverge, and a test pinning a rule that lives in source
+     * only — shared/testing's dev-port refusal is the second, and gutting its source left
+     * every assertion green.
+     *
+     * Covers all of shared/, not just schemas: testing/ and generated/ resolve the same
+     * way, and narrowing this to one subdirectory is what left that refusal unpinned.
      */
     {
-      find: /^@minicrm\/shared\/schemas\/(.*)\.js$/,
-      replacement: resolve(__dirname, '../shared/schemas') + '/$1.ts',
+      find: /^@minicrm\/shared\/(.*)\.js$/,
+      replacement: resolve(__dirname, '../shared') + '/$1.ts',
     },
     /** Extensionless imports resolve to source on their own. */
     {
-      find: '@minicrm/shared/schemas',
-      replacement: resolve(__dirname, '../shared/schemas'),
+      find: '@minicrm/shared',
+      replacement: resolve(__dirname, '../shared'),
     },
   ],
 };

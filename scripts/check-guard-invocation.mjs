@@ -14,8 +14,10 @@
  * Three bounds, each deliberate and each a hole if it stops holding: only ci.yml is read
  * (no other workflow invokes a guard today); a step must name the path, so converting one
  * to `npm run lint:framework-purity` would read as uninvoked (qa/package.json wraps four
- * guards that way, all also invoked by path today); and discovery keys on the check-*
- * name and the extensions below, so a guard named verify-* or written as .py is invisible.
+ * guards that way, all also invoked by path today); discovery keys on the check-* name and
+ * the extensions below, so a guard named verify-* or written as .py is invisible; and a
+ * --self-test-only invocation counts as invoked, which is why check-comments-only-diff.ts
+ * passes — it takes a base ref and has no standalone mode.
  *
  * Run: node scripts/check-guard-invocation.mjs [--self-test]
  */
