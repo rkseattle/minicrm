@@ -70,7 +70,7 @@ npm run seed:demo
 
 ### Dashboard
 
-![MiniCRM dashboard showing pipeline value, deal counts by stage, and overdue task indicators](docs/screenshots/01-dashboard.png)
+![MiniCRM dashboard showing overdue task and open deal counts, a converted pipeline total, and a pipeline-by-stage table. Deals span several currencies, so the per-currency cards say so rather than summing across them](docs/screenshots/01-dashboard.png)
 
 ### Pipeline Board
 
@@ -86,11 +86,11 @@ npm run seed:demo
 
 ### Contact Detail
 
-![Contact detail page showing rich notes editor, optimistic-lock version indicator, and activity timeline](docs/screenshots/03-contact-detail.png)
+![Contact detail page with the record's fields, its linked account, and the Send Email and Merge actions, above the tags and activity sections](docs/screenshots/03-contact-detail.png)
 
 ### Admin Settings
 
-![Admin Settings page with custom branding section — logo upload, brand color, font, and powered-by badge controls](docs/screenshots/10-admin-settings.png)
+![The Branding tab of Admin Settings — one of ten tabs down the left — with company name, logo, favicon, brand color, and font controls beside a live preview](docs/screenshots/10-admin-settings.png)
 
 ## Tech Stack
 
