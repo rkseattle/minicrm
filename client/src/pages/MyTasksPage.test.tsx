@@ -485,6 +485,31 @@ describe('MyTasksPage', () => {
       });
     });
 
+    it('changing the page size clears the selection, which the new rows invalidate', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<MyTasksPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`));
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+
+      // On page 1 a size change leaves `page` at 1, so the page number alone cannot be
+      // what clears the selection — otherwise a bulk delete would act on rows scrolled
+      // out of the swapped-in result set. Waits on the count first: the refetch this
+      // triggers resolves to the same fixture rows, so the bar's disappearance is the
+      // only observable signal and it lands a tick after the select.
+      await user.selectOptions(screen.getByLabelText(/rows per page/i), '50');
+
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('bulk-action-count')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+    });
+
     it('clear selection hides the bulk action bar', async () => {
       const user = userEvent.setup();
       renderWithProviders(<MyTasksPage />);

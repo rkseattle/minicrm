@@ -18,8 +18,9 @@ Five cards run across the top. Each is prefixed **Team** for an admin, who sees 
 numbers, and **Your** for everyone else:
 
 - **Overdue tasks** — open tasks past their due date. The count turns red when it is above
-  zero, and for non-admins the card is a link: click it to open the **My Tasks** page
-  filtered to your overdue tasks.
+  zero, and for non-admins the card is a link: click it to open
+  [My Tasks](my-tasks.md) filtered to your overdue tasks. This card counts every overdue
+  task you own, while the page filters a page at a time, so the two can differ.
 - **Due today** — open tasks due today.
 - **Open deals** — count of deals not in a terminal stage.
 - **Pipeline value** — total value of those open deals.

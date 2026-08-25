@@ -66,6 +66,13 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
     page: 'docs/user-guide/activities.md',
     localeKey: 'profileSettings.notifications.sectionTitle',
   },
+  { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.showCompleted' },
+  { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.hideCompleted' },
+  { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.markComplete' },
+  { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.overdue' },
+  { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.clearFilters' },
+  { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.filterChipOverdue' },
+  { page: 'docs/user-guide/my-tasks.md', localeKey: 'bulk.deleteButton' },
 ];
 
 describe('user guide quotes control names that exist', () => {

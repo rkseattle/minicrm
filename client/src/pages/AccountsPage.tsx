@@ -262,7 +262,15 @@ export default function AccountsPage() {
       setSelectedIds(new Set());
     }
     reset();
-  }, [debouncedSearch, debouncedIndustry, ownerFilter, accountTypeFilter, page, selectedTagKey]);
+  }, [
+    debouncedSearch,
+    debouncedIndustry,
+    ownerFilter,
+    accountTypeFilter,
+    page,
+    limit,
+    selectedTagKey,
+  ]);
 
   function clearFilters(): void {
     setSearchInput('');

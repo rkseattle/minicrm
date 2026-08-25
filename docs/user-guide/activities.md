@@ -36,7 +36,7 @@ team can see the history at a glance.
 
 When you finish the follow-up:
 
-1. Open the activity from the timeline, or find it on the **My Tasks** page.
+1. Open the activity from the timeline, or find it on [My Tasks](my-tasks.md).
 2. Click **Mark complete** (or edit the activity and set **Status** to _Complete_).
 
 ---
@@ -68,11 +68,8 @@ When you finish the follow-up:
 
 ### My Tasks
 
-**My Tasks** in the navigation opens a page listing the open Task-type activities assigned
-to you, with overdue ones highlighted, where you can mark them complete. The list is
-paginated, and the overdue filter applies to the page you are on — so with more than one
-page of tasks it can show fewer than the dashboard's **Overdue tasks** count. The dashboard
-shows counts only, and its overdue card links through to this page.
+**My Tasks** in the navigation lists the open tasks assigned to you and lets you mark them
+complete. See [My Tasks](my-tasks.md).
 
 ### Overdue notifications
 

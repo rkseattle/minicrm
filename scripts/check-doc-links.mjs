@@ -99,13 +99,24 @@ export function findBrokenLinks(files, root = REPO_ROOT) {
  *
  * Returns findings as {page, problem}.
  */
+/** Directories whose index.md must list every sibling page exactly once. */
+const INDEXED_DOC_DIRS = ['docs/dev', 'docs/user-guide'];
+
 export function findIndexGaps(root = REPO_ROOT) {
-  const indexPath = join(root, 'docs', 'dev', 'index.md');
+  const findings = [];
+  for (const dir of INDEXED_DOC_DIRS) {
+    findings.push(...findIndexGapsIn(root, dir));
+  }
+  return findings;
+}
+
+function findIndexGapsIn(root, dir) {
+  const indexPath = join(root, dir, 'index.md');
   let index;
   try {
     index = readFileSync(indexPath, 'utf8');
   } catch {
-    return [{ page: 'index.md', problem: 'docs/dev/index.md is missing' }];
+    return [{ page: 'index.md', problem: `${dir}/index.md is missing` }];
   }
 
   // Reuse the link parser rather than substring-matching: an anchored or titled link is
@@ -118,25 +129,25 @@ export function findIndexGaps(root = REPO_ROOT) {
     listed.set(target, (listed.get(target) ?? 0) + 1);
   }
 
-  const pages = execFileSync('git', ['-C', root, 'ls-files', '-z', 'docs/dev/*.md'], {
+  const pages = execFileSync('git', ['-C', root, 'ls-files', '-z', `${dir}/*.md`], {
     encoding: 'utf8',
     maxBuffer: 32 * 1024 * 1024,
   })
     .split('\0')
     .filter(Boolean)
-    // Relative to docs/dev/, matching how the index links them. git's `*` crosses '/',
-    // so a nested page arrives here as `nested/deep.md` rather than colliding on its
-    // basename with a top-level page of the same name.
-    .map((p) => p.replace(/^docs\/dev\//, ''))
+    // Relative to the index's own directory, matching how it links them. git's `*`
+    // crosses '/', so a nested page arrives here as `nested/deep.md` rather than
+    // colliding on its basename with a top-level page of the same name.
+    .map((p) => p.slice(dir.length + 1))
     .filter((name) => name !== 'index.md');
 
   const findings = [];
   for (const page of pages) {
     const count = listed.get(page) ?? 0;
     if (count === 0) {
-      findings.push({ page, problem: 'not listed in docs/dev/index.md' });
+      findings.push({ page, problem: `not listed in ${dir}/index.md` });
     } else if (count > 1) {
-      findings.push({ page, problem: `listed ${count} times in docs/dev/index.md` });
+      findings.push({ page, problem: `listed ${count} times in ${dir}/index.md` });
     }
   }
   return findings;
@@ -207,6 +218,11 @@ function selfTest() {
   // rows and fail the anchored and titled ones, so both shapes are must-not-flag cases.
   const idxDir = mkdtempSync(join(tmpdir(), 'docidx-'));
   mkdirSync(join(idxDir, 'docs', 'dev'), { recursive: true });
+  // Every indexed directory must exist in the fixture, or the guard reports the absent
+  // one as missing and the must-not-flag cases below never get evaluated.
+  mkdirSync(join(idxDir, 'docs', 'user-guide'), { recursive: true });
+  writeFileSync(join(idxDir, 'docs', 'user-guide', 'only.md'), '# only');
+  writeFileSync(join(idxDir, 'docs', 'user-guide', 'index.md'), '| [O](only.md) |');
   const writeDev = (name, body) => writeFileSync(join(idxDir, 'docs', 'dev', name), body);
   for (const name of ['alpha.md', 'beta.md', 'gamma.md', 'delta.md']) writeDev(name, '# x');
   // A nested page whose basename collides with a top-level one. git's `*` pathspec
@@ -235,15 +251,22 @@ function selfTest() {
     );
   }
 
-  // Must flag: one page missing a row, and one listed twice on a single line.
+  // Must flag: pages missing a row, and one listed twice on a single line. The unlisted
+  // user-guide page is what proves the second indexed directory is actually scanned —
+  // without it the clean and broken counts are identical whether or not it is configured.
   writeDev('index.md', ['| [A](alpha.md) |', '| [B](beta.md) and [B2](beta.md) |'].join('\n'));
+  writeFileSync(join(idxDir, 'docs', 'user-guide', 'unlisted.md'), '# unlisted');
   execFileSync('git', ['-C', idxDir, 'add', '-A']);
   const badIdx = findIndexGaps(idxDir);
   const missing = badIdx.filter((f) => f.problem.startsWith('not listed')).length;
   const dupes = badIdx.filter((f) => f.problem.includes('listed 2 times')).length;
-  if (missing !== 3 || dupes !== 1) {
+  const userGuideMissing = badIdx.filter((f) =>
+    f.problem.endsWith('docs/user-guide/index.md'),
+  ).length;
+  if (missing !== 4 || dupes !== 1 || userGuideMissing !== 1) {
     failures.push(
-      `expected exactly 3 missing and 1 duplicate index finding, got ${missing} and ${dupes}`,
+      `expected 4 missing (1 in user-guide) and 1 duplicate index finding, got ` +
+        `${missing} missing (${userGuideMissing} in user-guide) and ${dupes} duplicate`,
     );
   }
   rmSync(idxDir, { recursive: true, force: true });
@@ -282,7 +305,7 @@ function main() {
   const findings = findBrokenLinks(files);
 
   if (indexGaps.length > 0) {
-    console.error(`docs/dev/index.md is out of step with the directory: ${indexGaps.length}\n`);
+    console.error(`Index files are out of step with their directories: ${indexGaps.length}\n`);
     for (const gap of indexGaps) {
       console.error(`  ${gap.page}: ${gap.problem}`);
     }
@@ -302,7 +325,7 @@ function main() {
   }
   console.log(
     `OK: every relative Markdown link resolves (${files.length} files checked), ` +
-      `and docs/dev/index.md lists every page exactly once.`,
+      `and every indexed directory lists its pages exactly once.`,
   );
 }
 

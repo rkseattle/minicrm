@@ -54,7 +54,7 @@ hold one active enrollment per sequence.
 ## Completing sequence steps
 
 When a sequence step fires, a task appears in the contact's activity timeline and on your
-**My Tasks** page.
+[My Tasks](my-tasks.md) page.
 
 1. Complete the task (call the contact, send the email, etc.).
 2. Mark the task as complete in MiniCRM.
