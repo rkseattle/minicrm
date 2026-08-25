@@ -188,6 +188,29 @@ describe('generateRepCoachingInsights', () => {
     expect(industryInsight!.rep_value).toBeCloseTo(0.1, 1);
   });
 
+  it('drops an insight it no longer produces rather than leaving it on the page', async () => {
+    await createClosedDeals(repAId, 10, null, 0.5);
+    await generateRepCoachingInsights();
+
+    // A row the generator will not reproduce — the table holds the current set, so
+    // upserting alone would leave this visible until the rep is deleted.
+    await pool.query(
+      `INSERT INTO rep_coaching_insights
+         (rep_id, metric_type, segment, observation, recommended_action, rep_value,
+          team_average_value, is_outlier, closed_deal_count)
+       VALUES ($1, 'stage_conversion_rate', 'Retired Stage', 'stale', 'stale', 0, 0, false, 10)`,
+      [repAId],
+    );
+
+    await generateRepCoachingInsights();
+
+    const rows = await pool.query(
+      `SELECT id FROM rep_coaching_insights WHERE rep_id = $1 AND segment = 'Retired Stage'`,
+      [repAId],
+    );
+    expect(rows.rowCount).toBe(0);
+  });
+
   it('produces no advance-rate insight for a terminal stage', async () => {
     await createClosedDeals(repAId, 10, null, 0.5);
     await createClosedDeals(repBId, 10, null, 0.5);
