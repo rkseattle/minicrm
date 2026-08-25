@@ -139,6 +139,18 @@ selection to just the failures, so clicking the action again retries only those.
 
 ---
 
+## About the screenshots
+
+The images in this guide are captured from a demo instance by `npm run screenshot`,
+which recaptures the whole set in one pass. If a screen changes, rerun it rather than
+editing images by hand.
+
+It needs a running app seeded with `npm run seed:demo` — the seed is what fills the
+hygiene and coaching pages, which otherwise photograph blank — and every feature flag
+on. The script's own header lists the prerequisites in full.
+
+---
+
 ## Getting help
 
 If you encounter an error message you do not understand, note the error code shown in

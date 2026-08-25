@@ -9,6 +9,8 @@
 The AI Assistant gives you a conversational interface to ask questions about your CRM
 data, draft content, and get help with sales tasks — without leaving MiniCRM.
 
+![The AI Assistant, with a session list on the left, the conversation area in the middle, and a My Context panel on the right](../screenshots/15-ai-assistant.png)
+
 ---
 
 ## Tutorial: having a conversation

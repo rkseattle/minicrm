@@ -10,6 +10,8 @@ customer, and **Private** holds across the AI features too — but a data subjec
 export includes them. See **Where notes can be disclosed** before writing anything you
 would not want quoted back.
 
+![The Notes panel on a contact, showing one note with its author, age, and Team visibility badge, and Edit and Delete links](../screenshots/16-notes-panel.png)
+
 ---
 
 ## Tutorial: add a note and adjust its visibility

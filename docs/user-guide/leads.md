@@ -5,6 +5,8 @@
 Leads are potential customers who have not yet been qualified. When a lead is ready,
 you convert them into a contact, account, and deal in one step — no copy-pasting required.
 
+![The leads list, showing each lead’s name, company, source, status, and owner](../screenshots/07-leads.png)
+
 ---
 
 ## Tutorial: capture a lead, qualify it, and convert it

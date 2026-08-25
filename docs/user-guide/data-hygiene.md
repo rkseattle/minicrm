@@ -12,6 +12,8 @@ into a queue. This page is that queue, filtered to the records you own.
 > address. Admins have a separate org-wide view at `/admin/hygiene`, covered in
 > [Admin guide — Data Hygiene](../admin-guide.md#21-data-hygiene).
 
+![The data hygiene queue, with filter chips above a list of findings that each name a record, the problem found, a suggested action, and the Update, Archive, and Dismiss buttons](../screenshots/13-data-hygiene.png)
+
 ---
 
 ## Tutorial: clear your queue

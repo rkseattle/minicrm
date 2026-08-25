@@ -8,6 +8,8 @@
 Contacts are individual people — prospects, customers, or anyone else you interact with.
 Every contact can be linked to an account, a deal, activities, and notes.
 
+![The contacts list, with search and owner filters above a table of names, emails, job titles, owners, and tags, sortable by name and email](../screenshots/02-contacts.png)
+
 ---
 
 ## Tutorial: your first contact end-to-end
@@ -81,6 +83,8 @@ text.
 ---
 
 ## Reference
+
+![A contact's detail page, with the record's fields above its tags and activity sections, and Send Email and Merge actions](../screenshots/03-contact-detail.png)
 
 ### Fields
 

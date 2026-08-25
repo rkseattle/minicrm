@@ -26,6 +26,8 @@ enrolled them.
 > automatically. You do the work yourself; marking a task complete records that you did,
 > and does not affect when the next step fires.
 
+![The Active Sequences panel on a contact, showing one enrollment with its current step and an Unenroll link](../screenshots/17-active-sequences.png)
+
 ---
 
 ## Tutorial: enroll a contact

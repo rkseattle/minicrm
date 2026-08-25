@@ -16,6 +16,8 @@ slower than usual, a win rate well above or below the rest.
 > your own deal and activity history. Nothing is sent to a model, and nothing is
 > inferred — an observation you see is arithmetic on records your team created.
 
+![Rep Coaching Insights, with a rep selector above a list of observations, each paired with a recommended action and one highlighted with an Outlier badge](../screenshots/14-coaching-insights.png)
+
 ---
 
 ## Tutorial: review a rep

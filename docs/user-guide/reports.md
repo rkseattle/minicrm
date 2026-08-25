@@ -10,6 +10,8 @@ Reports** — not separate pages. The filters differ per tab, and the **My View*
 View** toggle and **Owner** dropdown appear only for admins, on the Win/Loss and Activity
 Volume tabs.
 
+![The Win/Loss report, with date-range and owner filters above cards for closed-won and closed-lost counts and values and a win rate, and a loss-reason breakdown below them](../screenshots/09-win-loss-report.png)
+
 ---
 
 ## Built-in reports
