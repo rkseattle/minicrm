@@ -1511,7 +1511,7 @@ const DEMO_HYGIENE_DEALS = [
  * Owned explicitly rather than appended to DEMO_DEALS, whose ownership is assigned by
  * index and which four other fixture arrays reference positionally.
  */
-const DEMO_COACHING_DEAL_COUNT = 12;
+const DEMO_COACHING_MARGIN_DEALS = 2;
 
 /** Loss on every Nth deal counting from the first, cycled per rep so win rates differ. */
 const DEMO_COACHING_LOSS_INTERVALS = [3, 4, 2, 5, 6, 3];
@@ -1531,6 +1531,25 @@ const DEMO_COACHING_CURRENCY = 'USD';
  * apart because that shared dilution shrinks the ratio, and because the slow rep also
  * pulls up the team average it is measured against.
  */
+/**
+ * Activities logged per coaching deal, and the gap between them in hours, per pace band.
+ *
+ * Every non-win-rate coaching metric compares a rep against the team average over the
+ * activities table: frequency per day, hours between consecutive activities on a deal,
+ * and the share whose notes mention an objection. With no activities all three collapse
+ * to "0 vs. a team average of 0", which is what the page then displays.
+ */
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+const DEMO_COACHING_ACTIVITY_SHAPE: Record<
+  string,
+  { perDeal: number; gapHours: number; objectionEvery: number }
+> = {
+  fast: { perDeal: 4, gapHours: 6, objectionEvery: 3 },
+  typical: { perDeal: 3, gapHours: 20, objectionEvery: 4 },
+  slow: { perDeal: 1, gapHours: 96, objectionEvery: 8 },
+};
+
 const DEMO_COACHING_STAGE_DAYS: Record<string, number[]> = {
   fast: [3, 5, 4],
   typical: [7, 11, 9],
@@ -2516,6 +2535,14 @@ async function insertDemoData(
 
   // deal_stage_history.stage is bare text with no FK, so a renamed stage would be
   // recorded silently rather than failing.
+  // Read from the live config rather than the migration default, so an admin raising the
+  // minimum does not silently retire the fixture — same treatment as the stale-title one.
+  const coachingConfig = await client.query<{ min_closed_deals: number }>(
+    `SELECT min_closed_deals FROM rep_coaching_scoring_config LIMIT 1`,
+  );
+  const coachingDealCount =
+    (coachingConfig.rows[0]?.min_closed_deals ?? 0) + DEMO_COACHING_MARGIN_DEALS;
+
   const coachingStages = ['Prospecting', 'Qualification', 'Proposal'];
   for (const stageName of coachingStages) {
     await assertPipelineStageExists(client, stageName, defaultPipelineId);
@@ -2529,7 +2556,7 @@ async function insertDemoData(
     // Varied per rep so win rate has a spread; a shared ratio makes every win-rate
     // metric identical and no outlier can ever surface.
     const lossEvery = DEMO_COACHING_LOSS_INTERVALS[repIndex % DEMO_COACHING_LOSS_INTERVALS.length];
-    for (let i = 0; i < DEMO_COACHING_DEAL_COUNT; i++) {
+    for (let i = 0; i < coachingDealCount; i++) {
       const won = i % lossEvery !== 0;
       const finalStage = won ? 'Closed Won' : 'Closed Lost';
       const stageId = won ? wonStageId : lostStageId;
@@ -2577,6 +2604,28 @@ async function insertDemoData(
         finalStage,
         new Date(Date.now() - closedDaysAgo * ONE_DAY_MS),
       );
+
+      const shape = DEMO_COACHING_ACTIVITY_SHAPE[rep.pace];
+      for (let n = 0; n < shape.perDeal; n++) {
+        const loggedAt = new Date(
+          Date.now() - closedDaysAgo * ONE_DAY_MS + n * shape.gapHours * ONE_HOUR_MS,
+        );
+        const logsObjection = (i * shape.perDeal + n) % shape.objectionEvery === 0;
+        await client.query(
+          `INSERT INTO activities
+             (type, subject, notes, status, direction, deal_id, owner_id, created_at, is_demo)
+           VALUES ('Call', $1, $2, 'complete', 'Outbound', $3, $4, $5, true)`,
+          [
+            `Check-in ${n + 1} — ${won ? 'Won' : 'Lost'} Renewal ${i + 1}`,
+            logsObjection
+              ? 'Raised a pricing objection; walked through the ROI case.'
+              : 'Reviewed scope and next steps.',
+            dealResult.rows[0].id,
+            rep.id,
+            loggedAt,
+          ],
+        );
+      }
     }
   }
 

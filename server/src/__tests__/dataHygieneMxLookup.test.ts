@@ -160,6 +160,33 @@ describe('checkWebsiteStatus', () => {
     return err;
   }
 
+  /**
+   * Reserved names cannot resolve by definition, so NXDOMAIN on one proves nothing about
+   * the site. Without this the demo fixtures — every account website is *.example.com —
+   * are reported to users as broken sites. Mirrors the mail path's exemption above.
+   */
+  it.each([
+    'https://example.com',
+    'https://www.acme-demo.example.com',
+    'https://globex-demo.example.com/path',
+    'https://foo.invalid',
+    'https://deep.nested.example.org',
+  ])('skips the reserved domain %s without probing', async (url) => {
+    // 'unknown' rather than 'reachable': nothing was probed, so nothing is known.
+    await expect(checkWebsiteStatus(url)).resolves.toBe('unknown');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('still probes a domain that merely contains a reserved name', async () => {
+    fetchMock.mockResolvedValue({ status: 200 });
+    await expect(checkWebsiteStatus('https://notexample.com')).resolves.toBe('reachable');
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it('treats an unparseable URL as unreachable rather than throwing', async () => {
+    await expect(checkWebsiteStatus('not a url')).resolves.toBe('unreachable');
+  });
+
   it('reports a 200 as reachable', async () => {
     fetchMock.mockResolvedValue({ status: 200 });
     await expect(checkWebsiteStatus('https://live.test-site.co')).resolves.toBe('reachable');

@@ -14,7 +14,11 @@ import {
   updateContact,
   findContactById,
   deleteContact,
+  mergeContacts,
 } from '../services/contactService.js';
+import { bulkContacts } from '../services/bulkService.js';
+import { bulkDeleteContacts } from '../services/bulkV2Service.js';
+import { deleteFindingsForDeletedEntities } from '../services/dataHygieneService.js';
 import { createAccount, deleteAccount } from '../services/accountService.js';
 import { createDeal, updateDeal, deleteDeal } from '../services/dealService.js';
 import { createActivity } from '../services/activityService.js';
@@ -710,6 +714,99 @@ describe("hard delete clears the entity's findings", () => {
     );
     expect(after.rowCount).toBe(0);
   });
+});
+
+it('leaves no finding behind after a v2 bulk delete', async () => {
+  const contact = await createContact({
+    first_name: 'Bulk',
+    last_name: 'V2 Doomed',
+    email: '',
+    owner_id: ownerId,
+  });
+  await runDataHygieneScan();
+  expect((await listHygieneFindings(ownerId)).some((f) => f.entity_id === contact.id)).toBe(true);
+
+  await bulkDeleteContacts({ ids: [contact.id] }, { id: ownerId, name: 'Owner', role: 'admin' });
+
+  const rows = await pool.query(`SELECT id FROM data_hygiene_findings WHERE entity_id = $1`, [
+    contact.id,
+  ]);
+  expect(rows.rowCount).toBe(0);
+});
+
+it('leaves no finding behind after a legacy bulk delete', async () => {
+  const contact = await createContact({
+    first_name: 'Bulk',
+    last_name: 'Legacy Doomed',
+    email: '',
+    owner_id: ownerId,
+  });
+  await runDataHygieneScan();
+  expect((await listHygieneFindings(ownerId)).some((f) => f.entity_id === contact.id)).toBe(true);
+
+  // The legacy endpoint deletes the whole set in one statement, so it uses the
+  // set-based helper rather than the per-record one the v2 path calls.
+  await bulkContacts(
+    { action: 'delete', ids: [contact.id] },
+    { id: ownerId, name: 'Owner', role: 'admin' },
+  );
+
+  const rows = await pool.query(`SELECT id FROM data_hygiene_findings WHERE entity_id = $1`, [
+    contact.id,
+  ]);
+  expect(rows.rowCount).toBe(0);
+});
+
+it('leaves no finding behind for the loser of a merge', async () => {
+  const account = await createAccount({ name: `${FILE_PREFIX} Merge Co`, owner_id: ownerId });
+  const winner = await createContact({
+    first_name: 'Merge',
+    last_name: 'Winner',
+    email: `mw-${uid()}@example.com`,
+    account_id: account.id,
+    owner_id: ownerId,
+  });
+  const loser = await createContact({
+    first_name: 'Merge',
+    last_name: 'Loser',
+    email: '',
+    account_id: account.id,
+    owner_id: ownerId,
+  });
+  await runDataHygieneScan();
+  expect((await listHygieneFindings(ownerId)).some((f) => f.entity_id === loser.id)).toBe(true);
+
+  await mergeContacts(
+    { winnerId: winner.id, loserId: loser.id, fieldChoices: {} },
+    { id: ownerId, name: 'Owner' },
+  );
+
+  const rows = await pool.query(`SELECT id FROM data_hygiene_findings WHERE entity_id = $1`, [
+    loser.id,
+  ]);
+  expect(rows.rowCount).toBe(0);
+});
+
+it('is a no-op on an empty id list rather than deleting everything', async () => {
+  const contact = await createContact({
+    first_name: 'Untouched',
+    last_name: 'By Empty',
+    email: '',
+    owner_id: ownerId,
+  });
+  await runDataHygieneScan();
+  const before = await pool.query(`SELECT COUNT(*)::int AS n FROM data_hygiene_findings`);
+
+  const client = await pool.connect();
+  try {
+    await deleteFindingsForDeletedEntities(client, 'contact', []);
+  } finally {
+    client.release();
+  }
+
+  const after = await pool.query(`SELECT COUNT(*)::int AS n FROM data_hygiene_findings`);
+  expect(after.rows[0].n).toBe(before.rows[0].n);
+  expect((await listHygieneFindings(ownerId)).some((f) => f.entity_id === contact.id)).toBe(true);
 });
 
 describe('clearFindingsForEntity', () => {
