@@ -923,11 +923,11 @@ export async function deleteFindingsForDeletedEntities(
 }
 
 /**
- * Archives the underlying record for a finding (contacts/accounts/opportunities
- * all support hard delete elsewhere in the app) and removes all of that
- * record's findings. Delegates to the entity's own service so ownership
- * rules, cascades, and audit entries stay consistent with the rest of the app —
- * this function only removes the now-stale hygiene queue rows.
+ * Removes the queue rows listed against one record. The record itself is untouched.
+ *
+ * Matches on entity_id only, so a duplicate finding held by the counterpart contact
+ * survives — unlike deleteFindingsForDeletedEntity, which also clears related_entity_id
+ * because there the record is going away and a pointer to it would dangle.
  *
  * Ownership-scoped: a non-admin caller may only clear findings for an entity
  * they own — otherwise any rep could clear (and thereby permanently hide)

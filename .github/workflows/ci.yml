@@ -378,6 +378,7 @@ jobs:
               - 'docs/user-guide/reports.md'
               - 'docs/user-guide/my-tasks.md'
               - 'docs/user-guide/profile.md'
+              - 'docs/user-guide/data-hygiene.md'
               - 'client/src/locales/en.json'
               # The guard asserts every page it reads is listed here, so an edit to this
               # filter has to run it — otherwise dropping a page silently disables it.
