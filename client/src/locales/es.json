@@ -1515,7 +1515,12 @@
       "reactivated": "{{actor}} reactivó este usuario",
       "ownership_reassigned": "{{actor}} reasignó la propiedad",
       "noOldValue": "(vacío)",
-      "noNewValue": "(vacío)"
+      "noNewValue": "(vacío)",
+      "note_created": "{{actor}} añadió una nota",
+      "note_updated": "{{actor}} editó una nota",
+      "note_visibility_changed": "{{actor}} cambió la visibilidad de una nota",
+      "note_deleted": "{{actor}} eliminó una nota",
+      "merged": "{{actor}} fusionó otro registro con este"
     },
     "pagination": {
       "prev": "Anterior",

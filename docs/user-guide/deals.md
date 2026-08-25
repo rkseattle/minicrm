@@ -120,6 +120,11 @@ When closing a deal as _Lost_ you can optionally record why, as free text — th
 predefined list to pick from. It appears in the deal's audit history, in the Win/Loss
 report's loss-reason breakdown, and can help identify patterns across lost deals.
 
+### Change History
+
+The detail page sidebar carries a **Change History** panel listing who changed what and
+when, newest first — see [Contacts](contacts.md#change-history) for how it behaves.
+
 ### AI Deal Health Check
 
 > **Feature flag:** `ai_deal_health_check`. If the **Deal Health** section is missing

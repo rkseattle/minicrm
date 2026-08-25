@@ -52,7 +52,7 @@ If a contact requests erasure of their personal data under GDPR (the "right to b
 forgotten"):
 
 1. Open the contact's detail page.
-2. Scroll down the detail page to the **GDPR & Privacy** section, below **Change history**.
+2. Scroll down the detail page to the **GDPR & Privacy** section, below **Change History**.
 3. Click **Erase personal data**.
 4. The dialog lists exactly what will be erased and what is preserved. Type `ERASE` to
    confirm, optionally recording a reference note (e.g. a request number), then click
@@ -69,7 +69,14 @@ captured in a custom field do not survive — export what you need before erasin
 > erasure, and the **GDPR & Privacy** section is visible only to admins.
 
 The same section offers **Download data export**, which produces a complete export of the
-personal data held for the record — the GDPR right of access.
+personal data held for the record — the GDPR right of access. It downloads a JSON file
+named after the record, containing the contact's own fields plus every linked activity,
+deal, note, and custom field value, and the record's full change history.
+
+Two things about it are easy to miss. The export stays available after a record has been
+erased, so you can still answer a request about what was held. And in an erased record's
+change history, the before-and-after values read `[GDPR deleted]` rather than the original
+text.
 
 ---
 
@@ -160,6 +167,31 @@ guessing. The same action is available for accounts — see
 - References to the contact in AI chat history are redacted separately, shortly after
   the erasure. There is no screen for this; confirming it completed is an API check
   described in the [GDPR guide](../gdpr.md).
+
+### Change History
+
+The detail page sidebar carries a **Change History** panel listing who changed what and
+when, newest first. It covers the record being created and deleted, field edits with
+their before and after values, ownership reassignments, notes being added, edited, or
+removed, and records merged into this one. An empty field reads _(empty)_ rather than
+being left blank.
+
+It shows the twenty most recent entries, with **Show all** to load the full history and
+**Show less** to collapse it again. Timestamps are relative for the first week — "2 hours ago" — and switch to
+an absolute date after that; hovering any entry shows the exact date and time.
+
+Contacts, accounts, and deals all have this panel. Leads do not.
+
+### Send Email
+
+When a contact has an email address, the Email row on their detail page has a
+**Send Email** button. It opens a small composer with the address pre-filled, and sending
+both delivers the message and logs it as an Email activity on the contact.
+
+> **Check the confirmation.** If your admin has not configured outgoing mail, the send
+> still succeeds and the activity is still logged, but nothing is delivered. The
+> confirmation says which happened: _Email sent to_ the contact means it went out, while
+> _Email logged (SMTP not configured)_ means only the activity was recorded.
 
 ### AI Champion/Blocker badge
 

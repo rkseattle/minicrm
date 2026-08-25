@@ -118,6 +118,12 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
   { page: 'docs/user-guide/index.md', localeKey: 'bulk.reassignButton' },
   { page: 'docs/user-guide/index.md', localeKey: 'bulk.changeStageButton' },
   { page: 'docs/user-guide/index.md', localeKey: 'bulk.seeDetails' },
+  { page: 'docs/user-guide/contacts.md', localeKey: 'auditLog.changeHistory' },
+  { page: 'docs/user-guide/contacts.md', localeKey: 'auditLog.showAll' },
+  { page: 'docs/user-guide/contacts.md', localeKey: 'auditLog.showLess' },
+  { page: 'docs/user-guide/contacts.md', localeKey: 'contacts.sendEmail.buttonLabel' },
+  { page: 'docs/user-guide/accounts.md', localeKey: 'auditLog.changeHistory' },
+  { page: 'docs/user-guide/deals.md', localeKey: 'auditLog.changeHistory' },
 ];
 
 describe('user guide quotes control names that exist', () => {
@@ -167,8 +173,9 @@ describe('user guide quotes control names that exist', () => {
   ];
 
   /**
-   * Selectable values, which the guide italicises where a control is bolded. Pinned
-   * separately so the two markup conventions do not have to be reconciled.
+   * Strings the guide italicises rather than bolds — selectable option values, and the
+   * status and confirmation text a screen displays back. Pinned separately so the two
+   * markup conventions do not have to be reconciled.
    */
   const QUOTED_OPTIONS: ReadonlyArray<{ page: string; localeKey: string }> = [
     { page: 'docs/user-guide/reports.md', localeKey: 'reports.activityVolume.presetThisWeek' },
@@ -186,6 +193,11 @@ describe('user guide quotes control names that exist', () => {
     { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.noRepsAvailable' },
     { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.loadFailed' },
     {
+      page: 'docs/user-guide/contacts.md',
+      localeKey: 'contacts.sendEmail.successNotConfigured',
+    },
+    { page: 'docs/user-guide/contacts.md', localeKey: 'auditLog.summary.noOldValue' },
+    {
       page: 'docs/user-guide/coaching-insights.md',
       localeKey: 'coaching.insufficientDataShort',
     },
@@ -201,6 +213,7 @@ describe('user guide quotes control names that exist', () => {
 
   const QUOTED_PREFIXES: ReadonlyArray<{ page: string; localeKey: string }> = [
     { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.insufficientData' },
+    { page: 'docs/user-guide/contacts.md', localeKey: 'contacts.sendEmail.successDelivered' },
   ];
 
   it.each(QUOTED_PREFIXES)('$page quotes the fixed part of $localeKey', ({ page, localeKey }) => {

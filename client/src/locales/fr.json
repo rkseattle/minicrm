@@ -1515,7 +1515,12 @@
       "reactivated": "{{actor}} a réactivé cet utilisateur",
       "ownership_reassigned": "{{actor}} a réattribué la propriété",
       "noOldValue": "(vide)",
-      "noNewValue": "(vide)"
+      "noNewValue": "(vide)",
+      "note_created": "{{actor}} a ajouté une note",
+      "note_updated": "{{actor}} a modifié une note",
+      "note_visibility_changed": "{{actor}} a modifié la visibilité d’une note",
+      "note_deleted": "{{actor}} a supprimé une note",
+      "merged": "{{actor}} a fusionné un autre enregistrement avec celui-ci"
     },
     "pagination": {
       "prev": "Précédent",

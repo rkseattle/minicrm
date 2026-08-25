@@ -47,7 +47,7 @@ An admin user can erase all personal data fields for a contact or lead while pre
 
 1. Log in as an admin user.
 2. Navigate to the contact or lead record for the data subject.
-3. Scroll down to the **GDPR & Privacy** section, below **Change history**.
+3. Scroll down to the **GDPR & Privacy** section, below **Change History**.
 4. Click **Erase personal data**.
 5. Review the list of fields that will be erased and the note about what will be preserved.
 6. Optionally enter a reference note (e.g., the request ticket number or date the request was received).
