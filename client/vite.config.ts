@@ -28,12 +28,25 @@ export default defineConfig({
       }),
   ].filter(Boolean),
   resolve: {
-    alias: {
+    alias: [
+      /**
+       * Rewrites a `.js` schema specifier to the `.ts` source.
+       *
+       * A directory alias resolves it to the literal file of that name, and `tsc`
+       * side-emits one next to every schema when anything builds from server/. It is
+       * gitignored, so CI never has one and only local runs read it — silently, and
+       * frozen at whenever the build last ran. MSW handlers build flag responses from
+       * FEATURE_FLAG_KEYS, so a stale copy fakes a registry the app no longer has.
+       */
+      {
+        find: /^@shared\/(.*)\.js$/,
+        replacement: path.resolve(__dirname, '../shared') + '/$1.ts',
+      },
       /** @shared resolves to the shared package at the repo root */
-      '@shared': path.resolve(__dirname, '../shared'),
+      { find: '@shared', replacement: path.resolve(__dirname, '../shared') },
       /** @ resolves to ./src for clean internal imports */
-      '@': path.resolve(__dirname, './src'),
-    },
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+    ],
   },
   test: {
     globals: true,
