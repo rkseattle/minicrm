@@ -6,9 +6,20 @@
  */
 
 import 'dotenv/config';
-import { getDemoStatus, seedDemo, removeDemo, resetDemo } from '../services/demoService.js';
+import {
+  getDemoStatus,
+  seedDemo,
+  removeDemo,
+  resetDemo,
+  deleteDemoHygieneFindings,
+} from '../services/demoService.js';
 import pool from '../db.js';
 import { claimAdminResolution } from './testUtils.js';
+import {
+  gatherOfflineHygieneSignals,
+  getHygieneConfig,
+  runDataHygieneScan,
+} from '../services/dataHygieneService.js';
 
 const FILE_PREFIX = 'demo-svc';
 
@@ -76,6 +87,8 @@ async function cleanDemoData(): Promise<void> {
        UNION SELECT id FROM deals WHERE is_demo = true
      )`,
   );
+  // Same predicate the production path uses, so the two cannot drift.
+  await deleteDemoHygieneFindings(pool);
   await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
     DEMO_CUSTOM_FIELD_NAMES,
   ]);
@@ -186,6 +199,9 @@ afterAll(async () => {
     )`,
       [adminId],
     );
+    // Explicit rather than relying on the owner_id cascade from the user delete below,
+    // which only covers findings owned inside this file's email prefix.
+    await deleteDemoHygieneFindings(pool, adminId);
     await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
       DEMO_CUSTOM_FIELD_NAMES,
     ]);
@@ -1149,5 +1165,178 @@ describe('removeDemo — pipeline', () => {
     );
     expect(fixed.rowCount).toBe(2);
     expect(fixed.rows.every((r) => r.is_fixed === true)).toBe(true);
+  });
+});
+
+/**
+ * The seed writes no data_hygiene_findings rows — runDataHygieneScan produces them, and
+ * deletes any finding it does not re-detect, so hand-written rows would not survive.
+ *
+ * These run the REAL gatherers via gatherOfflineHygieneSignals rather than restating
+ * their SQL: a test that copies a predicate stays green while the gatherer drifts away
+ * from it, which is the regression it exists to catch. The two network signals are
+ * excluded from that helper, so no DNS or outbound HTTP enters the test path.
+ */
+describe('seedDemo — data hygiene fixtures', () => {
+  /**
+   * Counts findings per issue type, restricted to demo-flagged records. The gatherers
+   * scan every record in the database, and this file shares minicrm_test with specs
+   * that leave their own fixtures behind — an unrestricted count is theirs to change.
+   */
+  async function seedAndGather(): Promise<Map<string, number>> {
+    await seedDemo();
+    const config = await getHygieneConfig();
+    const findings = await gatherOfflineHygieneSignals(config);
+
+    const demoIds = await pool.query<{ id: string }>(
+      `SELECT id FROM contacts WHERE is_demo = true
+       UNION SELECT id FROM accounts WHERE is_demo = true
+       UNION SELECT id FROM deals WHERE is_demo = true`,
+    );
+    const demoIdSet = new Set(demoIds.rows.map((row) => row.id));
+
+    const byIssue = new Map<string, number>();
+    for (const finding of findings) {
+      if (!demoIdSet.has(finding.entityId)) continue;
+      byIssue.set(finding.issueType, (byIssue.get(finding.issueType) ?? 0) + 1);
+    }
+    return byIssue;
+  }
+
+  it('trips every offline contact signal', async () => {
+    const byIssue = await seedAndGather();
+
+    expect(byIssue.get('contact_missing_contact_info')).toBe(1);
+    expect(byIssue.get('contact_stale_title')).toBe(1);
+    // The seeded pair yields one finding per member.
+    expect(byIssue.get('contact_duplicate')).toBe(2);
+    expect(byIssue.get('contact_no_activity')).toBeGreaterThan(0);
+  });
+
+  it('trips every offline account signal', async () => {
+    const byIssue = await seedAndGather();
+
+    // Both hygiene accounts take no contacts and each omits one firmographic —
+    // overlapping signals on one record are what a real queue looks like.
+    expect(byIssue.get('account_no_contacts')).toBe(2);
+    expect(byIssue.get('account_missing_firmographics')).toBe(2);
+    expect(byIssue.get('account_no_activity')).toBeGreaterThan(0);
+  });
+
+  it('trips every offline opportunity signal', async () => {
+    const byIssue = await seedAndGather();
+
+    expect(byIssue.get('opportunity_zero_value')).toBe(1);
+    expect(byIssue.get('opportunity_close_date_passed')).toBe(1);
+    // Every seeded deal is linked to a contact except these two, which are appended
+    // outside both deal-seeding loops.
+    expect(byIssue.get('opportunity_no_contact')).toBe(2);
+    expect(byIssue.get('opportunity_no_activity')).toBeGreaterThan(0);
+  });
+
+  it('covers every offline signal, so the queue is never empty', async () => {
+    const byIssue = await seedAndGather();
+
+    // The offline helper by construction excludes the two network signals, so this is
+    // the offline set only — the persisted queue is asserted separately below.
+    expect([...byIssue.keys()].sort()).toEqual([
+      'account_missing_firmographics',
+      'account_no_activity',
+      'account_no_contacts',
+      'contact_duplicate',
+      'contact_missing_contact_info',
+      'contact_no_activity',
+      'contact_stale_title',
+      'opportunity_close_date_passed',
+      'opportunity_no_activity',
+      'opportunity_no_contact',
+      'opportunity_zero_value',
+    ]);
+  });
+
+  it('produces no website findings for the reserved demo domains', async () => {
+    await seedDemo();
+    await runDataHygieneScan();
+
+    // Every demo website is a *.example.com name, which cannot resolve by definition.
+    // Treating that as proof of a dead site would report our own fixtures as customer
+    // defects — the same false positive the mail signal already guards against.
+    const website = await pool.query(
+      `SELECT f.id FROM data_hygiene_findings f
+       JOIN accounts a ON a.id = f.entity_id
+       WHERE a.is_demo = true AND f.issue_type = 'account_website_unreachable'`,
+    );
+    expect(website.rowCount).toBe(0);
+  });
+
+  it('gives the duplicate finding a counterpart, so Merge is reachable', async () => {
+    await seedDemo();
+    const config = await getHygieneConfig();
+    const findings = await gatherOfflineHygieneSignals(config);
+
+    const demoContacts = await pool.query<{ id: string }>(
+      `SELECT id FROM contacts WHERE is_demo = true`,
+    );
+    const demoContactIds = new Set(demoContacts.rows.map((row) => row.id));
+    const duplicates = findings.filter(
+      (f) => f.issueType === 'contact_duplicate' && demoContactIds.has(f.entityId),
+    );
+    expect(duplicates).toHaveLength(2);
+    expect(duplicates.every((f) => f.relatedEntityId !== undefined)).toBe(true);
+  });
+
+  it('owns every hygiene fixture as the admin, whose queue /hygiene shows', async () => {
+    await seedDemo();
+    const config = await getHygieneConfig();
+    const findings = await gatherOfflineHygieneSignals(config);
+
+    // The redistribution step reassigns most demo records to reps. /hygiene filters on
+    // the caller's own owner_id, so a fixture that drifted to a rep would vanish from
+    // the admin's queue — asserting on the findings covers all three entity types at once.
+    const admin = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [
+      ADMIN_USER.email,
+    ]);
+    const adminId = admin.rows[0]!.id;
+
+    const fixtureNames = await pool.query<{ id: string }>(
+      `SELECT id FROM accounts WHERE is_demo = true AND name IN ('Northwind Traders', 'Contoso Analytics')
+       UNION SELECT id FROM contacts WHERE is_demo = true AND last_name IN ('Raghunathan', 'Lindqvist', 'Delacroix')
+       UNION SELECT id FROM deals WHERE is_demo = true AND name IN ('Northwind — Unscoped Renewal', 'Contoso — Stalled Pilot')`,
+    );
+    const fixtureIds = new Set(fixtureNames.rows.map((row) => row.id));
+    expect(fixtureIds.size).toBe(8);
+
+    const fixtureFindings = findings.filter((f) => fixtureIds.has(f.entityId));
+    expect(fixtureFindings.length).toBeGreaterThan(0);
+    expect(fixtureFindings.every((f) => f.ownerId === adminId)).toBe(true);
+  });
+});
+
+describe('removeDemo — data hygiene findings', () => {
+  it('removes admin-owned findings, which no foreign key cascades', async () => {
+    await seedDemo();
+
+    // owner_id cascades from users, so a finding owned by a demo user would be deleted
+    // even with the new statement absent. Only an admin-owned one exercises it.
+    const contact = await pool.query<{ id: string; owner_id: string }>(
+      `SELECT c.id, c.owner_id FROM contacts c
+       JOIN users u ON u.id = c.owner_id
+       WHERE c.is_demo = true AND u.role = 'admin' ORDER BY c.id LIMIT 1`,
+    );
+    expect(contact.rowCount).toBe(1);
+    await pool.query(
+      `INSERT INTO data_hygiene_findings
+         (entity_type, entity_id, issue_type, owner_id, suggested_action)
+       VALUES ('contact', $1, 'contact_no_activity', $2, 'Log a call or email.')`,
+      [contact.rows[0].id, contact.rows[0].owner_id],
+    );
+
+    await removeDemo();
+
+    const remaining = await pool.query(
+      `SELECT id FROM data_hygiene_findings WHERE entity_id = $1`,
+      [contact.rows[0].id],
+    );
+    expect(remaining.rowCount).toBe(0);
   });
 });

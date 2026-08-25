@@ -9,6 +9,7 @@
 
 import 'dotenv/config';
 import { seedDemo, getDemoStatus } from '../server/src/services/demoService.js';
+import { runDataHygieneScan } from '../server/src/services/dataHygieneService.js';
 
 const isDryRun = process.argv.includes('--dry-run');
 
@@ -30,6 +31,14 @@ async function main(): Promise<void> {
     return;
   }
   console.log('[seed-demo] Done — demo data seeded successfully.');
+
+  // The seed shapes records that exhibit hygiene issues but writes no findings — only a
+  // scan produces those, and it deletes any finding it did not itself detect. Run from
+  // the CLI rather than inside seedDemo: two of the thirteen signals do DNS and outbound
+  // HTTP, which does not belong behind the POST /admin/demo/seed request that shares it.
+  console.log('[seed-demo] Running the data hygiene scan to populate the findings queue…');
+  await runDataHygieneScan();
+  console.log('[seed-demo] Hygiene queue populated.');
 }
 
 main().catch((err) => {

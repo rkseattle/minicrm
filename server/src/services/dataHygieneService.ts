@@ -33,7 +33,7 @@ import type {
 } from '@minicrm/shared/schemas/dataHygieneSchema.js';
 import type { SetDataHygieneConfigInput } from '@minicrm/shared/schemas/dataHygieneSchema.js';
 
-interface HygieneConfig {
+export interface HygieneConfig {
   contact_inactivity_days: number;
   account_inactivity_days: number;
   title_staleness_days: number;
@@ -42,7 +42,7 @@ interface HygieneConfig {
   weekly_digest_enabled: boolean;
 }
 
-async function getHygieneConfig(): Promise<HygieneConfig> {
+export async function getHygieneConfig(): Promise<HygieneConfig> {
   const result = await pool.query<HygieneConfig>(
     `SELECT contact_inactivity_days, account_inactivity_days, title_staleness_days,
             opportunity_inactivity_days, dismiss_suppression_days, weekly_digest_enabled
@@ -54,7 +54,7 @@ async function getHygieneConfig(): Promise<HygieneConfig> {
 }
 
 /** One raw finding gathered by a signal query, before persistence. */
-interface RawFinding {
+export interface RawFinding {
   entityType: DataHygieneEntityType;
   entityId: string;
   issueType: DataHygieneIssueType;
@@ -131,8 +131,8 @@ const DEFINITIVE_DNS_FAILURE_CODES = new Set(['ENOTFOUND', 'ENODATA']);
 /** `unknown` is not `no-mail`: a resolver that fails to answer is not evidence. */
 export type MailDomainStatus = 'accepts-mail' | 'no-mail' | 'unknown';
 
-/** Reserved domains (RFC 2606/6761) all publish a null MX; flagging seed data is noise. */
-const RESERVED_NON_MAIL_DOMAINS = new Set([
+/** Reserved domains (RFC 2606/6761) never resolve; flagging seed data is noise. */
+const RESERVED_DOMAINS = new Set([
   'example.com',
   'example.net',
   'example.org',
@@ -147,9 +147,12 @@ const RESERVED_NON_MAIL_DOMAINS = new Set([
  * on suffix. Exact-set membership alone misses the seed data it exists to protect:
  * the demo fixtures use `acme-demo.example.com`, whose MX lookup answers ENODATA —
  * which is definitive, so every demo contact would be flagged as having a dead domain.
+ *
+ * Guards both network signals. A reserved name is guaranteed not to resolve, so treating
+ * NXDOMAIN as proof of a dead site reports our own fixtures as a customer's defect.
  */
-function isReservedNonMailDomain(domain: string): boolean {
-  return [...RESERVED_NON_MAIL_DOMAINS].some(
+function isReservedDomain(domain: string): boolean {
+  return [...RESERVED_DOMAINS].some(
     (reserved) => domain === reserved || domain.endsWith(`.${reserved}`),
   );
 }
@@ -157,7 +160,7 @@ function isReservedNonMailDomain(domain: string): boolean {
 export async function resolveMailDomainStatus(email: string): Promise<MailDomainStatus> {
   const domain = email.split('@')[1]?.trim().toLowerCase();
   if (!domain) return 'no-mail';
-  if (isReservedNonMailDomain(domain)) return 'accepts-mail';
+  if (isReservedDomain(domain)) return 'accepts-mail';
   try {
     const records = await withTimeout(dns.promises.resolveMx(domain), NETWORK_SIGNAL_TIMEOUT_MS);
     // RFC 7505 null MX: an empty exchange means the domain takes no mail,
@@ -350,6 +353,16 @@ export type WebsiteStatus = 'reachable' | 'unreachable' | 'unknown';
  * so the classification is only testable through a mocked fetch.
  */
 export async function checkWebsiteStatus(url: string): Promise<WebsiteStatus> {
+  // A reserved name cannot resolve by definition, so NXDOMAIN here proves nothing about
+  // the site. Without this, every demo account's *.example.com website is reported as
+  // broken — the same false positive isReservedDomain already prevents for mail.
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    if (isReservedDomain(hostname)) return 'reachable';
+  } catch {
+    // A URL the parser rejects is handled below, where invalid_url is already classified.
+  }
+
   try {
     await assertUrlIsFetchSafe(url);
   } catch (err) {
@@ -539,6 +552,42 @@ async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promi
 }
 
 /**
+ * Every signal that reaches only the database. Exported so a caller can exercise the
+ * real predicates without DNS or outbound HTTP — a test that restates the SQL instead
+ * stays green while the gatherer it copies drifts away from it.
+ *
+ * @param config - Thresholds the age-based signals compare against.
+ * @returns Findings from the eleven offline signals, in gatherer order.
+ */
+export async function gatherOfflineHygieneSignals(config: HygieneConfig): Promise<RawFinding[]> {
+  const gatherers: Array<() => Promise<RawFinding[]>> = [
+    () => gatherContactNoActivity(config.contact_inactivity_days),
+    () => gatherContactMissingContactInfo(),
+    () => gatherContactStaleTitle(config.title_staleness_days),
+    () => gatherContactDuplicates(),
+    () => gatherAccountNoContacts(),
+    () => gatherAccountNoActivity(config.account_inactivity_days),
+    () => gatherAccountMissingFirmographics(),
+    () => gatherOpportunityNoActivity(config.opportunity_inactivity_days),
+    () => gatherOpportunityCloseDatePassed(),
+    () => gatherOpportunityNoContact(),
+    () => gatherOpportunityZeroValue(),
+  ];
+
+  const findings: RawFinding[] = [];
+  for (const gather of gatherers) {
+    try {
+      findings.push(...(await gather()));
+    } catch (err) {
+      // Same per-signal isolation the scan applies: one failing query must not cost the
+      // other ten their findings.
+      logger.error({ err }, 'dataHygiene: offline signal gatherer failed');
+    }
+  }
+  return findings;
+}
+
+/**
  * Nightly cron entry point (also reused by the manual "run now" admin
  * endpoint). Gathers every signal, per-signal error isolation, then
  * replaces the current findings set: upserts newly/still-detected findings
@@ -549,30 +598,20 @@ export async function runDataHygieneScan(): Promise<void> {
   const config = await getHygieneConfig();
   logger.info('dataHygiene: nightly scan starting');
 
-  const gatherers: Array<() => Promise<RawFinding[]>> = [
-    () => gatherContactNoActivity(config.contact_inactivity_days),
-    () => gatherContactMissingContactInfo(),
-    () => gatherContactStaleTitle(config.title_staleness_days),
+  // The offline helper isolates its own eleven signals; only the two network gatherers
+  // still need wrapping here — a DNS outage affecting every MX lookup must not prevent
+  // the rest of the scan from being recorded.
+  const networkGatherers: Array<() => Promise<RawFinding[]>> = [
     () => gatherContactUnresolvableEmailDomain(),
-    () => gatherContactDuplicates(),
-    () => gatherAccountNoContacts(),
-    () => gatherAccountNoActivity(config.account_inactivity_days),
     () => gatherAccountWebsiteUnreachable(),
-    () => gatherAccountMissingFirmographics(),
-    () => gatherOpportunityNoActivity(config.opportunity_inactivity_days),
-    () => gatherOpportunityCloseDatePassed(),
-    () => gatherOpportunityNoContact(),
-    () => gatherOpportunityZeroValue(),
   ];
 
-  const allFindings: RawFinding[] = [];
-  for (const gather of gatherers) {
+  const allFindings: RawFinding[] = await gatherOfflineHygieneSignals(config);
+  for (const gather of networkGatherers) {
     try {
       allFindings.push(...(await gather()));
     } catch (err) {
-      // Per-signal error isolation — one bad signal (e.g. a DNS outage affecting
-      // every MX lookup) must not prevent the other signals from being recorded.
-      logger.error({ err }, 'dataHygiene: signal gatherer failed');
+      logger.error({ err }, 'dataHygiene: network signal gatherer failed');
     }
   }
 
@@ -834,6 +873,53 @@ export async function dismissHygieneFinding(
       changedByName: actor.name,
     });
   });
+}
+
+/**
+ * Removes hygiene findings that reference an entity being hard-deleted. Call inside the
+ * deleting transaction, alongside softDeleteNotesByEntity.
+ *
+ * entity_id carries no foreign key, so nothing cascades. An orphan is not self-correcting:
+ * the scan's sweep skips rows inside a live dismissal window, so one can outlive its
+ * record by the suppression period and then surface in the queue — and to the AI tool —
+ * under the placeholder name "Unknown". related_entity_id is matched for the same reason:
+ * a duplicate finding on a surviving contact would keep pointing at the deleted one.
+ *
+ * @param client - Active DB client, inside the caller's transaction.
+ * @param entityType - Type of the record being deleted.
+ * @param entityId - Id of the record being deleted.
+ */
+export async function deleteFindingsForDeletedEntity(
+  client: PoolClient,
+  entityType: DataHygieneEntityType,
+  entityId: string,
+): Promise<void> {
+  await client.query(
+    `DELETE FROM data_hygiene_findings
+     WHERE (entity_type = $1 AND entity_id = $2) OR related_entity_id = $2`,
+    [entityType, entityId],
+  );
+}
+
+/**
+ * Set-based counterpart for bulk deletes, which remove many rows in one statement.
+ *
+ * @param client - Active DB client, inside the caller's transaction.
+ * @param entityType - Type of the records being deleted.
+ * @param entityIds - Ids of the records being deleted.
+ */
+export async function deleteFindingsForDeletedEntities(
+  client: PoolClient,
+  entityType: DataHygieneEntityType,
+  entityIds: string[],
+): Promise<void> {
+  if (entityIds.length === 0) return;
+  await client.query(
+    `DELETE FROM data_hygiene_findings
+     WHERE (entity_type = $1 AND entity_id = ANY($2::uuid[]))
+        OR related_entity_id = ANY($2::uuid[])`,
+    [entityType, entityIds],
+  );
 }
 
 /**

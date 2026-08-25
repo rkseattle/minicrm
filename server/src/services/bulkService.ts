@@ -6,6 +6,7 @@
 import pool from '../db.js';
 import type { PoolClient } from 'pg';
 import { writeAuditEntry } from './auditService.js';
+import { deleteFindingsForDeletedEntities } from './dataHygieneService.js';
 import { queueAssignmentNotification } from './notificationService.js';
 import { findUserById } from './userService.js';
 import { fireAutomationTrigger } from './automationService.js';
@@ -136,6 +137,7 @@ export async function bulkContacts(
     const nameMap = new Map(nameResult.rows.map((r) => [r.id, `${r.first_name} ${r.last_name}`]));
 
     if (action === 'delete') {
+      await deleteFindingsForDeletedEntities(client, 'contact', actualIds);
       await client.query('DELETE FROM contacts WHERE id = ANY($1)', [actualIds]);
 
       for (const id of actualIds) {
@@ -238,6 +240,7 @@ export async function bulkAccounts(
     const nameMap = new Map(nameResult.rows.map((r) => [r.id, r.name]));
 
     if (action === 'delete') {
+      await deleteFindingsForDeletedEntities(client, 'account', actualIds);
       await client.query('DELETE FROM accounts WHERE id = ANY($1)', [actualIds]);
 
       for (const id of actualIds) {
@@ -354,6 +357,7 @@ export async function bulkDeals(
     const previousStageMap = new Map(beforeResult.rows.map((r) => [r.id, r.stage]));
 
     if (action === 'delete') {
+      await deleteFindingsForDeletedEntities(client, 'opportunity', actualIds);
       await client.query('DELETE FROM deals WHERE id = ANY($1)', [actualIds]);
 
       for (const id of actualIds) {

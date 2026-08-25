@@ -9,9 +9,14 @@
 import 'dotenv/config';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
-import { createContact, updateContact, findContactById } from '../services/contactService.js';
-import { createAccount } from '../services/accountService.js';
-import { createDeal, updateDeal } from '../services/dealService.js';
+import {
+  createContact,
+  updateContact,
+  findContactById,
+  deleteContact,
+} from '../services/contactService.js';
+import { createAccount, deleteAccount } from '../services/accountService.js';
+import { createDeal, updateDeal, deleteDeal } from '../services/dealService.js';
 import { createActivity } from '../services/activityService.js';
 import { randomUUID } from 'node:crypto';
 import { uid, countAuditRowsFor, expectActorScopingIsolatesForeignRows } from './testUtils.js';
@@ -594,6 +599,116 @@ describe('dismissHygieneFinding', () => {
 
     const afterDismiss = await listHygieneFindings(ownerId);
     expect(afterDismiss.some((f) => f.id === finding.id)).toBe(false);
+  });
+});
+
+describe("hard delete clears the entity's findings", () => {
+  it('leaves no finding behind when a flagged contact is deleted', async () => {
+    const contact = await createContact({
+      first_name: 'Deleted',
+      last_name: 'Contact',
+      email: '',
+      owner_id: ownerId,
+    });
+    await runDataHygieneScan();
+    expect((await listHygieneFindings(ownerId)).some((f) => f.entity_id === contact.id)).toBe(true);
+
+    await deleteContact(contact.id, { id: ownerId, name: 'Owner' });
+
+    const rows = await pool.query(`SELECT id FROM data_hygiene_findings WHERE entity_id = $1`, [
+      contact.id,
+    ]);
+    expect(rows.rowCount).toBe(0);
+  });
+
+  it('clears a dismissed finding too, which no later scan would sweep', async () => {
+    // Asserted against the table rather than listHygieneFindings: that view hides a
+    // dismissed row while it still sits there, so it cannot tell "cleaned up" from
+    // "hidden until the suppression window lapses".
+    const contact = await createContact({
+      first_name: 'Dismissed',
+      last_name: 'Then Deleted',
+      email: '',
+      owner_id: ownerId,
+    });
+    await runDataHygieneScan();
+    const finding = (await listHygieneFindings(ownerId)).find((f) => f.entity_id === contact.id);
+    expect(finding).toBeDefined();
+    await dismissHygieneFinding(finding!.id, 'Not relevant', { id: ownerId, name: 'Owner' }, false);
+
+    await deleteContact(contact.id, { id: ownerId, name: 'Owner' });
+
+    const rows = await pool.query(`SELECT id FROM data_hygiene_findings WHERE entity_id = $1`, [
+      contact.id,
+    ]);
+    expect(rows.rowCount).toBe(0);
+  });
+  it('leaves no finding behind when a flagged account is deleted', async () => {
+    const account = await createAccount({ name: `${FILE_PREFIX} Doomed Co`, owner_id: ownerId });
+    await runDataHygieneScan();
+    expect((await listHygieneFindings(ownerId)).some((f) => f.entity_id === account.id)).toBe(true);
+
+    await deleteAccount(account.id, { id: ownerId, name: 'Owner' });
+
+    const rows = await pool.query(`SELECT id FROM data_hygiene_findings WHERE entity_id = $1`, [
+      account.id,
+    ]);
+    expect(rows.rowCount).toBe(0);
+  });
+
+  it('leaves no finding behind when a flagged deal is deleted', async () => {
+    // Also pins the entity-type translation: hygiene calls deals 'opportunity', and a
+    // mismatched type would silently delete nothing.
+    const deal = await createDeal({
+      name: `${FILE_PREFIX} Doomed Deal`,
+      stage: 'Prospecting',
+      close_date: '2020-01-01',
+      owner_id: ownerId,
+    });
+    await runDataHygieneScan();
+    expect((await listHygieneFindings(ownerId)).some((f) => f.entity_id === deal.id)).toBe(true);
+
+    await deleteDeal(deal.id, { id: ownerId, name: 'Owner' });
+
+    const rows = await pool.query(`SELECT id FROM data_hygiene_findings WHERE entity_id = $1`, [
+      deal.id,
+    ]);
+    expect(rows.rowCount).toBe(0);
+  });
+
+  it('clears a surviving duplicate whose counterpart was deleted', async () => {
+    const account = await createAccount({ name: `${FILE_PREFIX} Twin Co`, owner_id: ownerId });
+    const keeper = await createContact({
+      first_name: 'Twin',
+      last_name: 'Survivor',
+      email: `twin1-${uid()}@example.com`,
+      account_id: account.id,
+      owner_id: ownerId,
+    });
+    const doomed = await createContact({
+      first_name: 'Twin',
+      last_name: 'Survivor',
+      email: `twin2-${uid()}@example.com`,
+      account_id: account.id,
+      owner_id: ownerId,
+    });
+    await runDataHygieneScan();
+
+    const before = await pool.query(
+      `SELECT id FROM data_hygiene_findings WHERE entity_id = $1 AND related_entity_id = $2`,
+      [keeper.id, doomed.id],
+    );
+    expect(before.rowCount).toBe(1);
+
+    await deleteContact(doomed.id, { id: ownerId, name: 'Owner' });
+
+    // The keeper's own finding still points at the deleted contact, so the related_entity_id
+    // arm is what has to catch it — entity_id alone would leave a dangling counterpart.
+    const after = await pool.query(
+      `SELECT id FROM data_hygiene_findings WHERE related_entity_id = $1`,
+      [doomed.id],
+    );
+    expect(after.rowCount).toBe(0);
   });
 });
 

@@ -1398,6 +1398,108 @@ const DEMO_CUSTOM_REPORTS: Array<{
 
 const DEMO_CUSTOM_REPORT_NAMES = DEMO_CUSTOM_REPORTS.map((r) => r.name);
 
+// Records deliberately shaped to trip the data hygiene gatherers, so the findings queue
+// has content without anyone hand-writing findings a later scan would delete as stale.
+// Held separate from DEMO_CONTACTS/DEMO_DEALS because those are indexed positionally by
+// four other fixture arrays.
+//
+// The two network signals are deliberately unfixtured: both exempt reserved domains, so
+// no *.example.com fixture can produce one, and fixturing them would mean depending on a
+// real domain staying dead. The eleven offline signals all fire.
+const DEMO_HYGIENE_CONTACTS = [
+  {
+    // contact_missing_contact_info — phone blank
+    first_name: 'Priyanka',
+    last_name: 'Raghunathan',
+    email: 'priyanka.raghunathan.demo@acme-demo.example.com',
+    phone: null,
+    title: 'Procurement Lead',
+    department: 'Operations',
+    staleTitle: false,
+  },
+  {
+    // contact_stale_title — title_updated_at backdated past the 1095-day threshold
+    first_name: 'Tobias',
+    last_name: 'Lindqvist',
+    email: 'tobias.lindqvist.demo@acme-demo.example.com',
+    phone: '+46-8-555-0177',
+    title: 'Interim Head of IT',
+    department: 'Technology',
+    staleTitle: true,
+  },
+  {
+    // contact_duplicate — same name and account as the entry below
+    first_name: 'Marguerite',
+    last_name: 'Delacroix',
+    email: 'm.delacroix.demo@acme-demo.example.com',
+    phone: '+33-1-55-0188',
+    title: 'Head of Partnerships',
+    department: 'Business Development',
+    staleTitle: false,
+  },
+  {
+    first_name: 'Marguerite',
+    last_name: 'Delacroix',
+    email: 'marguerite.delacroix.demo@acme-demo.example.com',
+    phone: '+33-1-55-0189',
+    title: 'Director of Partnerships',
+    department: 'Business Development',
+    staleTitle: false,
+  },
+];
+
+/**
+ * Margin added to the configured staleness window when backdating title_updated_at.
+ * Derived from the live config rather than the migration default, so an admin widening
+ * the window does not silently retire the contact_stale_title fixture.
+ */
+const DEMO_STALE_TITLE_MARGIN_DAYS = 30;
+
+const DEMO_HYGIENE_ACCOUNTS = [
+  {
+    // account_no_contacts and account_missing_firmographics — blank industry, no contacts
+    name: 'Northwind Traders',
+    industry: null,
+    website: 'https://www.northwind-demo.example.com',
+    employee_range: '11-50',
+    revenue_range: '1M-10M',
+    account_type: 'Prospect',
+  },
+  {
+    // Same two signals via a blank employee_range — overlapping findings on one record
+    name: 'Contoso Analytics',
+    industry: 'Software',
+    website: 'https://www.contoso-demo.example.com',
+    employee_range: null,
+    revenue_range: '10M-50M',
+    account_type: 'Prospect',
+  },
+];
+
+// Open deals on the hygiene accounts. Kept open — every opportunity gatherer filters on
+// the open stages, so a closed deal here would produce nothing.
+const DEMO_HYGIENE_DEALS = [
+  {
+    // opportunity_zero_value; both deals also trip opportunity_no_contact — they are
+    // appended outside both loops that write deal_contacts rows
+    name: 'Northwind — Unscoped Renewal',
+    stage: 'Qualification',
+    value: 0,
+    probability: 25,
+    closeDateDaysFromNow: 45,
+    accountIndex: 0,
+  },
+  {
+    // opportunity_close_date_passed
+    name: 'Contoso — Stalled Pilot',
+    stage: 'Proposal',
+    value: 32000,
+    probability: 50,
+    closeDateDaysFromNow: -21,
+    accountIndex: 1,
+  },
+];
+
 // Demo pipeline added by seed to demonstrate multi-pipeline support.
 // This is a second, non-default pipeline so evaluators can see that pipelines are
 // configurable beyond the built-in "Default" one.
@@ -1490,6 +1592,8 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
       UNION SELECT id FROM leads WHERE is_demo = true
     )
   `);
+
+  await deleteDemoHygieneFindings(client);
 
   // Custom field values reference demo contacts and deals
   await client.query(`
@@ -1590,6 +1694,62 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
   await client.query(`DELETE FROM users WHERE email = ANY($1::text[])`, [
     DEMO_IAM_USERS.map((u) => u.email),
   ]);
+}
+
+/**
+ * Deletes hygiene findings pointing at demo records. Exported because the test suite's
+ * own reset helpers need the identical predicate — a copied one goes stale silently
+ * while this path keeps leaking.
+ *
+ * Must run before the entities themselves: entity_id carries no FK, so once the parent
+ * row is gone the subquery can no longer find it.
+ *
+ * @param client - Active DB client or pool.
+ * @param extraOwnerId - Also match findings whose *entity* is owned by this user, for
+ *   test fixtures that own demo-shaped records without carrying the is_demo flag.
+ */
+export async function deleteDemoHygieneFindings(
+  client: pg.PoolClient | typeof pool,
+  extraOwnerId?: string,
+): Promise<void> {
+  const ownerArm = extraOwnerId ? `OR owner_id = $1` : '';
+  await client.query(
+    `DELETE FROM data_hygiene_findings
+     WHERE entity_id IN (
+       SELECT id FROM contacts WHERE is_demo = true ${ownerArm}
+       UNION SELECT id FROM accounts WHERE is_demo = true ${ownerArm}
+       UNION SELECT id FROM deals WHERE is_demo = true ${ownerArm}
+     )
+     OR related_entity_id IN (SELECT id FROM contacts WHERE is_demo = true ${ownerArm})`,
+    extraOwnerId ? [extraOwnerId] : [],
+  );
+}
+
+/**
+ * Resolves a stage name to its id within one pipeline. deals.pipeline_stage_id is NOT
+ * NULL, so an unmatched name has to fail loudly here rather than as a constraint error
+ * naming a column instead of the stage that was wrong.
+ *
+ * @param client - Active DB client (must already be inside a transaction).
+ * @param stageName - Stage name as it appears in the demo fixture.
+ * @param pipelineId - Pipeline the stage must belong to.
+ * @returns The matching pipeline_stages id.
+ * @throws If the pipeline has no stage by that name.
+ */
+async function resolvePipelineStageId(
+  client: pg.PoolClient,
+  stageName: string,
+  pipelineId: string,
+): Promise<string> {
+  const result = await client.query<{ id: string }>(
+    `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
+    [stageName, pipelineId],
+  );
+  const stageId = result.rows[0]?.id;
+  if (!stageId) {
+    throw new Error(`Demo seed: unknown stage '${stageName}' in pipeline ${pipelineId}`);
+  }
+  return stageId;
 }
 
 /**
@@ -1755,14 +1915,7 @@ async function insertDemoData(
       (deal as { pipeline?: string }).pipeline === 'enterprise'
         ? demoPipelineId
         : defaultPipelineId;
-    const demoStageRow = await client.query<{ id: string }>(
-      `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
-      [deal.stage, pipelineId],
-    );
-    const demoPipelineStageId = demoStageRow.rows[0]?.id;
-    if (!demoPipelineStageId) {
-      throw new Error(`Demo seed: unknown stage '${deal.stage}' in pipeline ${pipelineId}`);
-    }
+    const demoPipelineStageId = await resolvePipelineStageId(client, deal.stage, pipelineId);
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
          (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, pipeline_stage_id, is_demo)
@@ -1928,14 +2081,7 @@ async function insertDemoData(
       (deal as { pipeline?: string }).pipeline === 'enterprise'
         ? demoPipelineId
         : defaultPipelineId;
-    const repDemoStageRow = await client.query<{ id: string }>(
-      `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
-      [deal.stage, pipelineId],
-    );
-    const repDemoPipelineStageId = repDemoStageRow.rows[0]?.id;
-    if (!repDemoPipelineStageId) {
-      throw new Error(`Demo seed: unknown stage '${deal.stage}' in pipeline ${pipelineId}`);
-    }
+    const repDemoPipelineStageId = await resolvePipelineStageId(client, deal.stage, pipelineId);
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
          (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, pipeline_stage_id, is_demo)
@@ -2281,6 +2427,83 @@ async function insertDemoData(
      WHERE id = $1 AND role = 'service_account'`,
     [svcId, svcTokenHash],
   );
+
+  // 23. Data hygiene fixtures. Owned by the admin deliberately: /hygiene is scope="mine"
+  // and filters on the caller's own owner_id, and the admin is who the screenshot script
+  // and a demo evaluator sign in as. Placed after 22f so the redistribution above cannot
+  // reassign them.
+  const hygieneAccountIds: string[] = [];
+  for (const account of DEMO_HYGIENE_ACCOUNTS) {
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO accounts
+         (name, industry, website, employee_range, revenue_range, account_type, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+       RETURNING id`,
+      [
+        account.name,
+        account.industry,
+        account.website,
+        account.employee_range,
+        account.revenue_range,
+        account.account_type,
+        adminId,
+      ],
+    );
+    hygieneAccountIds.push(result.rows[0].id);
+  }
+
+  const staleConfig = await client.query<{ title_staleness_days: number }>(
+    `SELECT title_staleness_days FROM data_hygiene_scoring_config LIMIT 1`,
+  );
+  const staleTitleDays =
+    (staleConfig.rows[0]?.title_staleness_days ?? 0) + DEMO_STALE_TITLE_MARGIN_DAYS;
+
+  // Contacts attach to Acme so the duplicate pair shares a company — gatherContactDuplicates
+  // groups on (name, company), so a null account would not pair them.
+  for (const contact of DEMO_HYGIENE_CONTACTS) {
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO contacts
+         (first_name, last_name, email, phone, title, department, account_id, owner_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+       RETURNING id`,
+      [
+        contact.first_name,
+        contact.last_name,
+        contact.email,
+        contact.phone,
+        contact.title,
+        contact.department,
+        accountIds[0],
+        adminId,
+      ],
+    );
+    if (contact.staleTitle) {
+      await client.query(
+        `UPDATE contacts SET title_updated_at = now() - ($2 || ' days')::interval WHERE id = $1`,
+        [result.rows[0].id, staleTitleDays],
+      );
+    }
+  }
+
+  for (const deal of DEMO_HYGIENE_DEALS) {
+    const stageId = await resolvePipelineStageId(client, deal.stage, defaultPipelineId);
+    await client.query(
+      `INSERT INTO deals
+         (name, stage, value, probability, close_date, account_id, owner_id, pipeline_id, pipeline_stage_id, is_demo)
+       VALUES ($1, $2, $3, $4, CURRENT_DATE + ($5 || ' days')::interval, $6, $7, $8, $9, true)`,
+      [
+        deal.name,
+        deal.stage,
+        deal.value,
+        deal.probability,
+        deal.closeDateDaysFromNow,
+        hygieneAccountIds[deal.accountIndex],
+        adminId,
+        defaultPipelineId,
+        stageId,
+      ],
+    );
+  }
 
   return { svcDemoToken: svcPlainToken };
 }

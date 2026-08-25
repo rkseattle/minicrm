@@ -16,6 +16,7 @@ import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.j
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
+import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -768,6 +769,7 @@ export async function deleteContact(
 
     // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'contact', id);
+    await deleteFindingsForDeletedEntity(client, 'contact', id);
 
     const result = await client.query<ContactRow>(
       'DELETE FROM contacts WHERE id = $1 RETURNING *',
@@ -1015,6 +1017,7 @@ export async function mergeContacts(
     const loserName = `${loser.first_name} ${loser.last_name}`;
 
     // Delete the loser (step 5)
+    await deleteFindingsForDeletedEntity(client, 'contact', loserId);
     await client.query('DELETE FROM contacts WHERE id = $1', [loserId]);
 
     // Audit: merged event on the winner (step 6)
