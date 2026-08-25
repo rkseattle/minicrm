@@ -102,6 +102,18 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
     page: 'docs/user-guide/data-hygiene.md',
     localeKey: 'dataHygiene.issue.contact_duplicate',
   },
+  { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.outlierBadge' },
+  { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.repSelectorLabel' },
+  {
+    page: 'docs/user-guide/coaching-insights.md',
+    localeKey: 'dashboard.myPerformanceHeading',
+  },
+  {
+    page: 'docs/user-guide/coaching-insights.md',
+    localeKey: 'dashboard.myPerformanceViewAll',
+  },
+  { page: 'docs/user-guide/dashboard.md', localeKey: 'dashboard.myPerformanceHeading' },
+  { page: 'docs/user-guide/dashboard.md', localeKey: 'dashboard.myPerformanceViewAll' },
 ];
 
 describe('user guide quotes control names that exist', () => {
@@ -165,7 +177,41 @@ describe('user guide quotes control names that exist', () => {
     { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.emptyTitle' },
     { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.filteredEmptyTitle' },
     { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.emptyCompleted' },
+    { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.notAvailable' },
+    { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.noInsights' },
+    { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.noRepsAvailable' },
+    { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.loadFailed' },
+    {
+      page: 'docs/user-guide/coaching-insights.md',
+      localeKey: 'coaching.insufficientDataShort',
+    },
   ];
+
+  /**
+   * Strings carrying an interpolation placeholder, pinned on the fixed text that precedes
+   * it. A doc cannot quote `{{count}}` verbatim, so the whole-string form above would
+   * force nonsense prose onto the page.
+   */
+  /** Below this, a prefix is too generic to prove the doc quotes the right string. */
+  const MIN_PINNABLE_PREFIX_CHARS = 10;
+
+  const QUOTED_PREFIXES: ReadonlyArray<{ page: string; localeKey: string }> = [
+    { page: 'docs/user-guide/coaching-insights.md', localeKey: 'coaching.insufficientData' },
+  ];
+
+  it.each(QUOTED_PREFIXES)('$page quotes the fixed part of $localeKey', ({ page, localeKey }) => {
+    const rendered = localeString(localeKey);
+    // Trailing punctuation belongs to the placeholder that follows, not the prose.
+    const fixedPart = rendered.split('{{')[0].replace(/[\s(\[,:-]+$/u, '');
+    expect(
+      fixedPart.length,
+      `${localeKey} has no text before its first placeholder to pin`,
+    ).toBeGreaterThan(MIN_PINNABLE_PREFIX_CHARS);
+    expect(
+      doc(page),
+      `${page} must quote "_${fixedPart}_" — the text ${localeKey} renders before its placeholders`,
+    ).toContain(`_${fixedPart}_`);
+  });
 
   it.each(QUOTED_OPTIONS)('$page quotes the $localeKey option', ({ page, localeKey }) => {
     const rendered = localeString(localeKey);
@@ -184,17 +230,31 @@ describe('user guide quotes control names that exist', () => {
   // edit it exists to catch, and check-ci-filter-globs.mjs cannot see the omission.
   it('every page read here triggers the job that runs it', () => {
     const workflow = doc('.github/workflows/ci.yml');
-    const filterBlock = /user-guide-docs:\n((?:\s+- '[^']+'\n)+)/.exec(workflow);
+    // Comments interleave the list, so a pattern matching only entry lines stops at the
+    // first one and silently drops everything after it.
+    const filterBlock = /user-guide-docs:\n((?:[^\S\n]+(?:- '[^']+'|#[^\n]*)\n)+)/.exec(workflow);
     expect(filterBlock, 'ci.yml must declare a user-guide-docs filter output').not.toBeNull();
     const triggered = new Set(
       [...filterBlock![1].matchAll(/- '([^']+)'/g)].map((match) => match[1]),
     );
 
     const pagesRead = new Set(
-      [...QUOTED_CONTROLS, ...QUOTED_OPTIONS, ...RETIRED_INSTRUCTIONS].map((entry) => entry.page),
+      [...QUOTED_CONTROLS, ...QUOTED_OPTIONS, ...QUOTED_PREFIXES, ...RETIRED_INSTRUCTIONS].map(
+        (entry) => entry.page,
+      ),
     );
     for (const page of pagesRead) {
       expect(triggered, `ci.yml user-guide-docs must list ${page}`).toContain(page);
+    }
+
+    // The other direction: a listed page this file never reads boots the whole job to
+    // assert nothing. en.json and ci.yml are inputs rather than pages, so they are exempt.
+    const NON_PAGE_TRIGGERS = new Set(['client/src/locales/en.json', '.github/workflows/ci.yml']);
+    for (const path of triggered) {
+      if (NON_PAGE_TRIGGERS.has(path)) continue;
+      expect(pagesRead, `ci.yml user-guide-docs lists ${path}, which no assertion reads`).toContain(
+        path,
+      );
     }
   });
 });

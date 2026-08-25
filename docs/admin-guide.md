@@ -2444,7 +2444,8 @@ sees signals only for accounts they own, and only administrators see them all.
 
 Coaching is different, and splits by endpoint: a rep may read **their own** insights, which is
 what the dashboard's My Performance section shows, while the team view and any individual
-rep's insights require `admin` or `manager`. Managers see only their own team subtree;
+rep's insights require `admin` or `manager` — the manager-facing walkthrough is in
+[the Coaching Insights page guide](user-guide/coaching-insights.md). Managers see only their own team subtree;
 administrators see everyone.
 
 ### Configuration

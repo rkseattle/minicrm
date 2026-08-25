@@ -42,9 +42,9 @@ navigation.
 > **Feature flag:** `ai_rep_coaching_insights`.
 
 Appears once you have enough **closed** deals — won or lost — for a comparison to be
-meaningful, and then only where your numbers stand out. The **View all** link opens the
-org-wide coaching view, which only managers and admins can reach; for anyone else it
-returns to the dashboard.
+meaningful, and then only where your numbers stand out. The **View all** link opens
+[Coaching Insights](coaching-insights.md), which only managers and admins can reach; for
+anyone else it returns to the dashboard.
 
 ### Recent Activity
 
