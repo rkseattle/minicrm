@@ -30,11 +30,199 @@
 # The script scans each spec file for a multi-line pattern: a beforeAll block
 # containing a loginAsAdmin call. It uses awk to track whether execution is
 # currently inside a beforeAll block and flags loginAsAdmin calls within one.
+#
+# KNOWN GAPS
+# ----------
+# Brace tracking is character-level, with no string or comment awareness, so it
+# leaks both ways: a closing brace inside a string or comment ends the block early
+# and a real call goes unflagged, and an unbalanced opening one keeps it open so a
+# later, valid call is flagged. Each shape is in the --self-test corpus, asserting
+# what the guard does today; closing them means a real parser.
 # ===========================================================================
 
 set -euo pipefail
 
-TESTS_DIR="$(cd "$(dirname "$0")/.." && pwd)/e2e/tests"
+# A typo'd flag must not silently run the real check and report green.
+if [ "$#" -gt 0 ] && [ "${1:-}" != "--self-test" ]; then
+  echo "Unknown argument: $1"
+  echo "Usage: bash qa/scripts/check-e2e-beforeall.sh [--self-test]"
+  exit 2
+fi
+
+# --self-test runs this script against a generated corpus, following check-e2e-cleanup.sh.
+# TESTS_DIR points at a fixture tree because a planted violation living under
+# qa/e2e/tests/ would fail the real run for good.
+if [ "${1:-}" = "--self-test" ]; then
+  self_test_dir="$(mktemp -d)"
+  trap 'rm -rf "$self_test_dir"' EXIT
+
+  # One directory per case, so a run sees exactly one spec.
+  write_case() {
+    mkdir -p "$self_test_dir/$1"
+    cat > "$self_test_dir/$1/x.spec.ts"
+  }
+
+  write_case ok-in-test <<'SPEC'
+test('does the thing', async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+SPEC
+
+  write_case ok-beforeeach <<'SPEC'
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+SPEC
+
+  # The block closed before the call, so tracking must not still consider itself inside.
+  write_case ok-after-beforeall <<'SPEC'
+test.beforeAll(async () => {
+  await seedSomething();
+});
+test('later', async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+SPEC
+
+  write_case ok-suppressed <<'SPEC'
+test.beforeAll(async ({ restClient }) => {
+  await loginAsAdmin(restClient); // MINCRM-368-ok: storageState is insufficient here
+});
+SPEC
+
+  # The non-arrow form: its parameter list holds no braces, so the body brace on the
+  # signature line is the one that opens the block.
+  write_case ok-function-form <<'SPEC'
+test.beforeAll(async function () {
+  await seed();
+});
+test('t', async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+SPEC
+
+  write_case bad-multiline <<'SPEC'
+test.beforeAll(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+SPEC
+
+  # Brace counting is character-level, so a brace inside a string or a comment closes the
+  # block early and the call goes unflagged.
+  write_case known-gap-brace-in-string <<'SPEC'
+test.beforeAll(async ({ restClient }) => {
+  const closing = '}';
+  await loginAsAdmin(restClient);
+});
+SPEC
+
+  write_case known-gap-brace-in-comment <<'SPEC'
+test.beforeAll(async ({ restClient }) => {
+  // the block closes with }
+  await loginAsAdmin(restClient);
+});
+SPEC
+
+  write_case bad-single-line <<'SPEC'
+test.beforeAll(async ({ restClient }) => { await loginAsAdmin(restClient); });
+SPEC
+
+  # Prettier wraps a long fixture list, putting the arrow on a later line — a shape an
+  # author reaches by running the formatter, not by writing anything unusual.
+  write_case bad-wrapped-signature <<'SPEC'
+test.beforeAll(
+  async ({
+    restClient,
+    browserContextFixture,
+    testDataManagerFixture,
+    someOtherLongFixtureName,
+  }) => {
+    await loginAsAdmin(restClient);
+  },
+);
+SPEC
+
+  # The over-reporting direction of the same brace-counting gap: an unbalanced opening
+  # brace keeps the block open, so a call in a later, ordinary test body is flagged.
+  write_case known-gap-opening-brace <<'SPEC'
+test.beforeAll(async () => {
+  const opening = '{';
+  await seed();
+});
+test('t', async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+});
+SPEC
+
+  run_case() {
+    local output
+    output="$(TESTS_DIR="$self_test_dir/$1" bash "$0" 2>&1)" && RUN_CASE_STATUS=0 ||
+      RUN_CASE_STATUS=$?
+    RUN_CASE_FINDINGS="$(printf '%s\n' "$output" |
+      grep -cE ': loginAsAdmin inside test\.beforeAll$' || true)"
+  }
+
+  # Findings AND exit status. Counting alone passes a guard that prints its findings and
+  # still exits 0, which blocks nothing; status alone cannot tell a correct verdict from
+  # one that flagged the wrong line or double-counted a single violation.
+  expect_case() {
+    local case_name="$1" want_findings="$2" want_status="$3"
+    run_case "$case_name"
+    if [ "$RUN_CASE_FINDINGS" -ne "$want_findings" ]; then
+      echo "SELF-TEST FAIL: $case_name expected $want_findings finding(s), got $RUN_CASE_FINDINGS"
+      self_test_failures=$((self_test_failures + 1))
+    fi
+    if [ "$RUN_CASE_STATUS" -ne "$want_status" ]; then
+      echo "SELF-TEST FAIL: $case_name expected exit $want_status, got $RUN_CASE_STATUS"
+      self_test_failures=$((self_test_failures + 1))
+    fi
+  }
+
+  self_test_failures=0
+  self_test_total=0
+  clean_cases="ok-in-test ok-beforeeach ok-after-beforeall ok-suppressed ok-function-form"
+  violation_cases="bad-multiline bad-single-line bad-wrapped-signature"
+
+  for case_name in $clean_cases; do
+    expect_case "$case_name" 0 0
+    self_test_total=$((self_test_total + 1))
+  done
+  for case_name in $violation_cases; do
+    expect_case "$case_name" 1 1
+    self_test_total=$((self_test_total + 1))
+  done
+  for case_name in known-gap-brace-in-string known-gap-brace-in-comment; do
+    expect_case "$case_name" 0 0
+    self_test_total=$((self_test_total + 1))
+  done
+  # Over-reporting direction: an unbalanced opening brace in a string keeps the block open,
+  # so a later call in a normal test body is flagged. Asserted so the header's two-way
+  # claim is backed rather than asserted.
+  expect_case known-gap-opening-brace 1 1
+  self_test_total=$((self_test_total + 1))
+
+  # An empty tree must fail, not report OK — that is the fail-open shape a guard whose
+  # only failure mode is silence has to rule out.
+  mkdir -p "$self_test_dir/empty"
+  if TESTS_DIR="$self_test_dir/empty" bash "$0" >/dev/null 2>&1; then
+    echo "SELF-TEST FAIL: an empty tests directory reported OK"
+    self_test_failures=$((self_test_failures + 1))
+  fi
+
+  if [ "$self_test_failures" -ne 0 ]; then
+    echo "SELF-TEST FAIL: $self_test_failures case(s) wrong."
+    exit 1
+  fi
+  echo "SELF-TEST PASS: $self_test_total cases asserted on findings and exit status," \
+    "empty tree rejected."
+  exit 0
+fi
+
+# Honour a caller-supplied TESTS_DIR (the self-test points it at a fixture tree);
+# otherwise resolve it relative to this script.
+if [ -z "${TESTS_DIR:-}" ]; then
+  TESTS_DIR="$(cd "$(dirname "$0")/.." && pwd)/e2e/tests"
+fi
 
 if [ ! -d "$TESTS_DIR" ]; then
   echo "tests directory not found: $TESTS_DIR"
@@ -42,8 +230,10 @@ if [ ! -d "$TESTS_DIR" ]; then
 fi
 
 FOUND=0
+SCANNED=0
 
 while IFS= read -r file; do
+  SCANNED=$((SCANNED + 1))
   # Use awk to detect loginAsAdmin calls inside beforeAll blocks.
   # Tracks brace depth from the opening of beforeAll to find its closing brace.
   result=$(awk '
@@ -51,16 +241,36 @@ while IFS= read -r file; do
     /test\.beforeAll[[:space:]]*\(/ {
       in_beforeall=1
       depth=0
+      signature_line=1
     }
     in_beforeall && /loginAsAdmin/ && !/MINCRM-368-ok/ {
       found=1
       print FILENAME ":" NR ": loginAsAdmin inside test.beforeAll"
     }
     in_beforeall {
-      # Count opening and closing braces to track block depth.
-      # Checked AFTER the loginAsAdmin test so single-line blocks are caught.
-      for (i=1; i<=length($0); i++) {
-        c = substr($0, i, 1)
+      # Count braces from the arrow onward on the signature line. A destructured
+      # fixture parameter — async ({ restClient }) => { — opens and closes a brace
+      # before the body does, driving depth back to 0 and ending the block on its
+      # own first line, so the body was never scanned.
+      #
+      # Counted AFTER the loginAsAdmin test above so a single-line block is caught.
+      line = $0
+      if (signature_line) {
+        arrow = index(line, "=>")
+        if (arrow) {
+          line = substr(line, arrow)
+          signature_line = 0
+        } else if (line ~ /\)[[:space:]]*\{[[:space:]]*$/) {
+          # The non-arrow form — test.beforeAll(async function () { — whose parameter
+          # list holds no braces, so the body brace on this line is the one to count.
+          signature_line = 0
+        } else {
+          # Arrow on a later line: every brace until then belongs to the parameter list.
+          line = ""
+        }
+      }
+      for (i=1; i<=length(line); i++) {
+        c = substr(line, i, 1)
         if (c == "{") depth++
         if (c == "}") {
           depth--
@@ -92,4 +302,11 @@ if [ "$FOUND" -eq 1 ]; then
   exit 1
 fi
 
-echo "OK: no loginAsAdmin calls found inside test.beforeAll blocks."
+# Scanning nothing is not a pass. An empty or wrong TESTS_DIR would otherwise report OK,
+# which is the fail-open shape this guard exists to prevent.
+if [ "$SCANNED" -eq 0 ]; then
+  echo "FAIL: no spec files found under $TESTS_DIR — nothing was checked."
+  exit 1
+fi
+
+echo "OK: no loginAsAdmin calls found inside test.beforeAll blocks ($SCANNED specs)."

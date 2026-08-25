@@ -361,13 +361,18 @@ node qa/scripts/check-settings-mutations.mjs # @serial + ensureSystemDefaults en
 bash qa/scripts/check-networkidle.sh        # no networkidle in spec files
 bash qa/scripts/check-sha-pattern-parity.sh # coverage build-SHA accept-set parity
 bash qa/scripts/check-e2e-cleanup.sh        # created records registered for teardown
+bash qa/scripts/check-e2e-beforeall.sh      # no loginAsAdmin inside test.beforeAll
+bash qa/scripts/check-env-example-parity.sh # .env*.example templates match their locals
+bash qa/scripts/check-compose-isolation.sh  # dev and test stacks share nothing
 ```
 
-All of these must pass before pushing. They run in the `e2e-framework-purity` CI
-job, alongside `check-compose-isolation.sh` — the job is gated on the `qa` paths
-filter, which includes `docker-compose*.yml`, so a compose-only change still
-triggers it. `check-env-example-parity.sh` and `check-e2e-beforeall.sh` are
-local-only and run in no CI job today.
+All of these must pass before pushing. They run in the `e2e-framework-purity` CI job,
+which is gated on the `qa` paths filter — that includes `docker-compose*.yml`, so a
+compose-only change still triggers it — OR'd with six single-purpose filter outputs, one
+per guard whose subject lives outside `qa/`. `check-env-example-parity.sh` is one of
+those: its `.env*.example` templates are matched by `env-example-parity`, deliberately not
+folded into `qa`, which gates the whole E2E matrix. Give a new guard its own output the
+same way rather than widening `qa`.
 
 ---
 
