@@ -37,7 +37,7 @@ report jobs, and `update-visual-snapshots`, which is `if: false`.
 | `security-audit`           | Dependency audit; `always()` so it runs on every PR               |
 | `docker-images`            | Builds the shipped server and client images                       |
 | `tia-selection`            | Advisory test-impact selection — never blocks                     |
-| `server-tests`             | Server Vitest suite and coverage, against real Postgres           |
+| `server-tests`             | Server Vitest suite and coverage, plus the doc-parity guards      |
 | `client-tests`             | Client Vitest suite and coverage                                  |
 | `coverage-dashboard-tests` | Dashboard suite, including the custom ESLint rule tests           |
 | `e2e-framework-purity`     | Static guards over `qa/` — framework purity, parity checks        |
@@ -80,6 +80,14 @@ Two rules govern how those filters are wired, both documented in CLAUDE.md:
   workspace must make that file trigger the job, or the guard is silent on exactly the
   edit it exists to catch.
 
+This is one reason `server-tests` runs on a PR that touches no server code: the
+doc-parity outputs (`feature-flag-docs`, `user-guide-routes`, `attestation-docs`,
+`user-guide-docs`, `redirect-status-docs`, `scheduled-jobs-docs`) are OR'd into it, so a
+docs-only change still runs the guard that reads that doc — see
+[Documentation parity guards](#documentation-parity-guards). `coverage-migrations`
+(`qa/migrations/**`) and `shared-testing` (`shared/testing/**`) are OR'd in too, for
+tests that exercise those files rather than document them.
+
 `always()` is required on a job whose upstream can itself be skipped, because GitHub
 auto-skips a dependent before evaluating its `if:`. It is **not** appropriate on a job
 that depends only on `changes`, which is unconditional — adding it there would make the
@@ -88,6 +96,52 @@ Two jobs use `always()` on a `changes`-only dependency deliberately, for differe
 reasons. `security-audit` does it so the audit runs on every PR whatever the paths.
 `docker-images` pairs it with an explicit `needs.changes.result == 'success'` check, which
 closes the failure mode above — that is the form to copy if you need one.
+
+---
+
+## Documentation parity guards
+
+Several tests in `server-tests` pin prose in `docs/` to the code it describes. They run
+there because that job already has the `always()` wiring a docs-only PR needs — its
+upstream is skipped when no code changes, and GitHub skips a dependent before evaluating
+its `if:`. That is the thing to reuse when adding a seventh. Each guard fails with a
+message naming the file to edit; this is what to do when one fires.
+
+| Guard                        | Pins                                                              | Fix a failure by                                                                                                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `featureFlagDocsParity`      | `FEATURE_FLAG_KEYS` ↔ the reference tables in `admin-guide.md` §8 | Adding or deleting the flag's row under the matching `####` category heading                                                                                                        |
+| `userGuideRouteParity`       | `App.tsx`'s authenticated routes ↔ `docs/user-guide/`             | Mapping the route in `ROUTE_GUIDE_PAGES`, classifying the page in `ADMIN_ROUTE_PAGES`/`EMBEDDED_FEATURE_PAGES`, deleting a stale entry, or fixing the block bounds if the JSX moved |
+| `userGuideLabels`            | Control names the guide quotes ↔ `en.json`                        | Quoting the string the locale file actually renders                                                                                                                                 |
+| `verifyTestAttestation`      | `ATTESTATION_FAILURE_REASONS` ↔ `docs/dev/coverage.md`            | Documenting the new reason in "Reading a failed run"                                                                                                                                |
+| `scheduledJobsDocumentation` | `buildScheduledJobs()` ↔ `operations.md`'s Scheduled Jobs table   | Updating that table — or deleting the schedule a `NO_SCHEDULE_LITERAL_DOCS` file restated                                                                                           |
+| `legacyApiRedirect`          | `LEGACY_REDIRECT_STATUS` ↔ `api.md` and `operations.md`           | Correcting the status code in the prose                                                                                                                                             |
+
+Each carries a single-purpose filter output OR'd into `server-tests`, per the two rules
+above. That wiring has two halves, and a break in either leaves the guard green while it
+no longer runs. The OR clause is asserted for all of them, in `featureFlagDocsParity.test.ts` — so
+deleting one fails there rather than in the guard it disables. The other half — that the
+filter lists every file the guard reads — is asserted by `featureFlagDocsParity` and
+`userGuideRouteParity` (via `expectGuardIsTriggered`) and by `userGuideLabels` (with its
+own equivalent check).
+
+**`verifyTestAttestation`, `scheduledJobsDocumentation`, and `legacyApiRedirect` keep
+their filter lists in sync by hand.** If you make one of those three read a new doc, add
+that path to its filter output in `ci.yml` yourself — nothing will tell you if you forget,
+and the guard then stays silent on edits to the doc it just took responsibility for.
+
+Whether a filter globs a directory or enumerates files follows from what the guard
+asserts. `userGuideRouteParity` checks completeness against `git ls-files`, so it has to
+run when a page is **added** — and a list only triggers on paths it already names, hence
+`docs/user-guide/**`. `userGuideLabels` reads only the pages it quotes a control from, so
+it enumerates those twelve; globbing would run it on pages it makes no assertion about,
+and its own check rejects a listed path it never reads.
+
+Not every doc-to-code invariant is a test. Route coverage in the generated OpenAPI spec
+is enforced at lint time instead, by the `local-openapi/require-openapi-tag` ESLint rule,
+which fails `lint-and-typecheck` when a route registration carries no `@openapi` block.
+
+Like the jobs table above, this one is maintained by hand — a guard renamed or removed
+leaves its row behind. The tests are the authority.
 
 ---
 
