@@ -1515,7 +1515,12 @@
       "reactivated": "{{actor}} 重新激活了此用户",
       "ownership_reassigned": "{{actor}} 转让了所有权",
       "noOldValue": "（空）",
-      "noNewValue": "（空）"
+      "noNewValue": "（空）",
+      "note_created": "{{actor}} 添加了备注",
+      "note_updated": "{{actor}} 编辑了备注",
+      "note_visibility_changed": "{{actor}} 更改了备注的可见性",
+      "note_deleted": "{{actor}} 删除了备注",
+      "merged": "{{actor}} 将另一条记录合并到此记录"
     },
     "pagination": {
       "prev": "上一页",

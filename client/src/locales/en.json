@@ -1480,7 +1480,12 @@
       "reactivated": "{{actor}} reactivated this user",
       "ownership_reassigned": "{{actor}} reassigned ownership",
       "noOldValue": "(empty)",
-      "noNewValue": "(empty)"
+      "noNewValue": "(empty)",
+      "note_created": "{{actor}} added a note",
+      "note_updated": "{{actor}} edited a note",
+      "note_visibility_changed": "{{actor}} changed a note’s visibility",
+      "note_deleted": "{{actor}} deleted a note",
+      "merged": "{{actor}} merged another record into this one"
     },
     "pagination": {
       "prev": "Previous",

@@ -112,7 +112,19 @@ function buildSummary(
       return t('auditLog.summary.reactivated', { actor });
     case 'ownership_reassigned':
       return t('auditLog.summary.ownership_reassigned', { actor });
+    case 'note_created':
+      return t('auditLog.summary.note_created', { actor });
+    case 'note_updated':
+      return t('auditLog.summary.note_updated', { actor });
+    case 'note_visibility_changed':
+      return t('auditLog.summary.note_visibility_changed', { actor });
+    case 'note_deleted':
+      return t('auditLog.summary.note_deleted', { actor });
+    case 'merged':
+      return t('auditLog.summary.merged', { actor });
     default:
+      // Reached only by an event type with no case above, which renders its raw
+      // identifier — visible to the user, so a new event type must be added here.
       return `${actor} — ${entry.event_type}`;
   }
 }

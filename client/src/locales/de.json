@@ -1515,7 +1515,12 @@
       "reactivated": "{{actor}} hat diesen Benutzer reaktiviert",
       "ownership_reassigned": "{{actor}} hat die Eigentümerschaft übertragen",
       "noOldValue": "(leer)",
-      "noNewValue": "(leer)"
+      "noNewValue": "(leer)",
+      "note_created": "{{actor}} hat eine Notiz hinzugefügt",
+      "note_updated": "{{actor}} hat eine Notiz bearbeitet",
+      "note_visibility_changed": "{{actor}} hat die Sichtbarkeit einer Notiz geändert",
+      "note_deleted": "{{actor}} hat eine Notiz gelöscht",
+      "merged": "{{actor}} hat einen anderen Datensatz mit diesem zusammengeführt"
     },
     "pagination": {
       "prev": "Zurück",

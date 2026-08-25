@@ -55,6 +55,34 @@ describe('ChangeHistory', () => {
     });
   });
 
+  const UNRENDERED_EVENT_TYPES: ReadonlyArray<[AuditLogEntry['event_type'], string]> = [
+    ['note_created', 'added a note'],
+    ['note_updated', 'edited a note'],
+    ['note_visibility_changed', 'visibility'],
+    ['note_deleted', 'deleted a note'],
+    ['merged', 'merged another record'],
+  ];
+
+  it.each(UNRENDERED_EVENT_TYPES)(
+    'renders %s as a sentence, not a raw identifier',
+    async (eventType, expected) => {
+      const entry = makeEntry({ event_type: eventType });
+      server.use(
+        http.get('/api/v1/audit-log/record', () => HttpResponse.json({ entries: [entry] })),
+      );
+      renderWithProviders(<ChangeHistory recordType="contact" recordId={RECORD_ID} />);
+
+      // Note and merge events are written against contacts, accounts, and deals, so an
+      // unhandled case here reaches the user as the literal event_type string.
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(expected, 'i'))).toBeInTheDocument();
+      });
+      // The fallthrough renders "<actor> — <event_type>", so the em dash plus the raw
+      // identifier is the shape to rule out; the identifier alone can be a real substring.
+      expect(screen.queryByText(new RegExp(`— ${eventType}`))).not.toBeInTheDocument();
+    },
+  );
+
   it('renders the timestamp element with data-testid', async () => {
     const entry = makeEntry();
     server.use(http.get('/api/v1/audit-log/record', () => HttpResponse.json({ entries: [entry] })));

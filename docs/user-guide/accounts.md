@@ -182,6 +182,11 @@ every account that needs a check-in.
 > Cooling or At Risk score as a prompt to check in, not as a definitive judgment of the
 > relationship.
 
+### Change History
+
+The detail page sidebar carries a **Change History** panel listing who changed what and
+when, newest first — see [Contacts](contacts.md#change-history) for how it behaves.
+
 ### Notifications
 
 When a churn risk signal is detected with high confidence, MiniCRM sends the account's
