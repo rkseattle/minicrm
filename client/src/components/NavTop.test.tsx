@@ -51,6 +51,36 @@ describe('NavTop', () => {
     expect(screen.queryByTestId('nav-top-settings')).not.toBeInTheDocument();
   });
 
+  it('renders Profile Settings for both roles — it is not admin-gated', async () => {
+    // Anchored on the admin-only Users link, which cannot render until /auth/me has
+    // resolved for this actor. Waiting on the profile link itself would pass while the
+    // query was still pending, since a non-admin entry renders before any user is known.
+    for (const actor of [ADMIN_USER, REP_USER]) {
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: actor })));
+      const { unmount } = renderWithProviders(<NavTop />);
+      if (actor.role === 'admin') {
+        await screen.findByTestId('nav-top-users');
+      } else {
+        await waitFor(() => {
+          expect(screen.queryByTestId('nav-top-users')).not.toBeInTheDocument();
+        });
+        await screen.findByTestId('nav-top-dashboard');
+      }
+      expect(screen.getByTestId('nav-top-profile')).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it('lets the desktop tab row scroll, so overflowing tabs stay reachable', async () => {
+    renderWithProviders(<NavTop />);
+    await screen.findByTestId('nav-top-dashboard');
+
+    // An admin's tab set exceeds the lg breakpoint, and without this the last tabs are
+    // pushed off-screen and the whole page scrolls sideways instead.
+    const tabRow = screen.getByTestId('nav-top-dashboard').closest('nav');
+    expect(tabRow).toHaveClass('overflow-x-auto');
+  });
+
   it('renders the logout button', async () => {
     renderWithProviders(<NavTop />);
     await waitFor(() => {

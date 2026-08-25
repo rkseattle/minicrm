@@ -133,9 +133,10 @@ each listing the one or two contributing factors the AI found and the date the s
 was detected. A signal clears automatically the next time the account shows new,
 contradicting activity — there is nothing to dismiss manually.
 
-For an org-wide view, admins and reps with access can browse every account currently
-flagged at `/insights/churn-expansion`, split into **At-Risk Accounts** and **Expansion
-Opportunities**, each showing a confidence percentage.
+A combined list lives at `/insights/churn-expansion`, split into **At-Risk Accounts** and
+**Expansion Opportunities**, each showing a confidence percentage. You see signals for
+accounts you own; admins see them for every account. That page sits outside the
+navigation — reach it by entering the URL directly, as with the other insight pages.
 
 > Churn/expansion signals are AI-generated from recent notes and activity patterns —
 > treat the confidence percentage and contributing factors as a prompt to check in with

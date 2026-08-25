@@ -61,6 +61,11 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
   { page: 'docs/user-guide/deals.md', localeKey: 'deals.newDeal' },
   { page: 'docs/user-guide/deals.md', localeKey: 'deals.linkContact' },
   { page: 'docs/user-guide/deals.md', localeKey: 'pipeline.closeDeal.confirm' },
+  { page: 'docs/user-guide/activities.md', localeKey: 'nav.profileSettings' },
+  {
+    page: 'docs/user-guide/activities.md',
+    localeKey: 'profileSettings.notifications.sectionTitle',
+  },
 ];
 
 describe('user guide quotes control names that exist', () => {

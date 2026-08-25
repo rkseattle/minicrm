@@ -102,6 +102,31 @@ describe('NavHamburger', () => {
     expect(screen.queryByTestId('nav-hamburger-settings')).not.toBeInTheDocument();
   });
 
+  it('renders Profile Settings for both roles — it is not admin-gated', async () => {
+    const user = userEvent.setup();
+    // Anchored on the admin-only Users link, which cannot render until /auth/me has
+    // resolved for this actor. Waiting on the profile link itself would pass while the
+    // query was still pending, since a non-admin entry renders before any user is known.
+    for (const actor of [ADMIN_USER, REP_USER]) {
+      server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: actor })));
+      const { unmount } = renderNavHamburger();
+      await waitFor(() => {
+        expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('nav-menu-toggle'));
+      if (actor.role === 'admin') {
+        await screen.findByTestId('nav-hamburger-users');
+      } else {
+        await waitFor(() => {
+          expect(screen.queryByTestId('nav-hamburger-users')).not.toBeInTheDocument();
+        });
+        await screen.findByTestId('nav-hamburger-dashboard');
+      }
+      expect(screen.getByTestId('nav-hamburger-profile')).toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it('clicking the close button closes the popover', async () => {
     const user = userEvent.setup();
     renderNavHamburger();

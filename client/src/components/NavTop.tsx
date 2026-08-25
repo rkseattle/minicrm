@@ -147,9 +147,9 @@ export default function NavTop() {
         }}
       />
 
-      {/* Nav tabs row — desktop only */}
-      <nav className="hidden lg:block border-t border-gray-100">
-        <div className="px-6 flex items-center gap-1 py-1.5">
+      {/* Admin tabs overflow at the lg breakpoint; scroll instead of clipping. */}
+      <nav className="hidden lg:block border-t border-gray-100 overflow-x-auto overflow-y-hidden">
+        <div className="px-6 flex items-center gap-1 py-1.5 w-max min-w-full">
           {visibleLinks.map((link) => (
             <div key={link.to} className="flex items-center gap-1">
               {link.sectionLabelKey && (
