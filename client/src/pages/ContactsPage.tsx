@@ -290,7 +290,7 @@ export default function ContactsPage() {
       setSelectedIds(new Set());
     }
     reset();
-  }, [debouncedSearch, debouncedAccountSearch, ownerFilter, page, selectedTagKey]);
+  }, [debouncedSearch, debouncedAccountSearch, ownerFilter, page, limit, selectedTagKey]);
 
   function clearFilters(): void {
     setSearchInput('');

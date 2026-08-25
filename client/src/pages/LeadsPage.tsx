@@ -153,7 +153,7 @@ export default function LeadsPage() {
       setSelectedIds(new Set());
     }
     reset();
-  }, [page, ownerFilter, statusFilter, sourceFilter, includeDisqualified, includeConverted]);
+  }, [page, limit, ownerFilter, statusFilter, sourceFilter, includeDisqualified, includeConverted]);
 
   const allVisibleIds = leads.map((l) => l.id);
   const allVisibleSelected =

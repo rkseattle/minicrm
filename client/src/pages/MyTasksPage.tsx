@@ -127,7 +127,7 @@ export default function MyTasksPage() {
   // Clear selection when page or filters change
   useEffect(() => {
     setSelectedIds(new Set()); // eslint-disable-line react-hooks/set-state-in-effect -- mirrors ContactsPage/DealsPage/ActivitiesPage pattern
-  }, [page, overdueFilter, showCompleted]);
+  }, [page, limit, overdueFilter, showCompleted]);
 
   const allVisibleIds = visibleTasks.map((t) => t.id);
   const allVisibleSelected =
