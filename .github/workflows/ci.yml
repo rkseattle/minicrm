@@ -115,6 +115,10 @@ jobs:
             client:
               - 'client/src/**'
               - 'client/public/**'
+              # The shared-schema alias here decides whether a test reads source or a
+              # gitignored build output, so the config gates the suite it governs.
+              # coverage-dashboard's own filter already matches its config this way.
+              - 'client/vite.config.ts'
             server:
               - 'server/src/**'
             qa:

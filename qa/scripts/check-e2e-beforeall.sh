@@ -34,9 +34,9 @@
 # KNOWN GAPS
 # ----------
 # Brace tracking strips // comments and quoted strings before counting, so a brace
-# in either does not move block depth. It is still not a parser: a brace inside a
-# template literal spanning lines, or one built by concatenation, would miscount.
-# No spec writes either shape today.
+# in either does not move block depth. It is still not a parser: an unbalanced brace
+# inside a regex literal, a template literal spanning lines, or one built by
+# concatenation would miscount. No spec writes any of those shapes today.
 # ===========================================================================
 
 set -euo pipefail
