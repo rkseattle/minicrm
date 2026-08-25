@@ -196,7 +196,6 @@ describe('admin guide documents every feature flag', () => {
   it('server-tests still gates on every unpinned doc-parity filter output', () => {
     expectJobGatesOn('server-tests', [
       'attestation-docs',
-      'user-guide-docs',
       'redirect-status-docs',
       'scheduled-jobs-docs',
       'coverage-migrations',

@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { expectGuardIsTriggered, WORKFLOW } from './ciFilterWiring.js';
 
 const REPO_ROOT = join(__dirname, '../../..');
 
@@ -247,33 +248,16 @@ describe('user guide quotes control names that exist', () => {
   // A page this file reads but ci.yml's user-guide-docs filter does not list is a page
   // whose doc-side edits never run this job — the guard would fail open on exactly the
   // edit it exists to catch, and check-ci-filter-globs.mjs cannot see the omission.
-  it('every page read here triggers the job that runs it', () => {
-    const workflow = doc('.github/workflows/ci.yml');
-    // Comments interleave the list, so a pattern matching only entry lines stops at the
-    // first one and silently drops everything after it.
-    const filterBlock = /user-guide-docs:\n((?:[^\S\n]+(?:- '[^']+'|#[^\n]*)\n)+)/.exec(workflow);
-    expect(filterBlock, 'ci.yml must declare a user-guide-docs filter output').not.toBeNull();
-    const triggered = new Set(
-      [...filterBlock![1].matchAll(/- '([^']+)'/g)].map((match) => match[1]),
-    );
-
+  it('the files read here trigger the job that runs this guard', () => {
     const pagesRead = new Set(
       [...QUOTED_CONTROLS, ...QUOTED_OPTIONS, ...QUOTED_PREFIXES, ...RETIRED_INSTRUCTIONS].map(
         (entry) => entry.page,
       ),
     );
-    for (const page of pagesRead) {
-      expect(triggered, `ci.yml user-guide-docs must list ${page}`).toContain(page);
-    }
-
-    // The other direction: a listed page this file never reads boots the whole job to
-    // assert nothing. en.json and ci.yml are inputs rather than pages, so they are exempt.
-    const NON_PAGE_TRIGGERS = new Set(['client/src/locales/en.json', '.github/workflows/ci.yml']);
-    for (const path of triggered) {
-      if (NON_PAGE_TRIGGERS.has(path)) continue;
-      expect(pagesRead, `ci.yml user-guide-docs lists ${path}, which no assertion reads`).toContain(
-        path,
-      );
-    }
+    expectGuardIsTriggered({
+      output: 'user-guide-docs',
+      job: 'server-tests',
+      filesRead: [...pagesRead, 'client/src/locales/en.json', WORKFLOW],
+    });
   });
 });

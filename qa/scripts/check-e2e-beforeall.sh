@@ -33,11 +33,10 @@
 #
 # KNOWN GAPS
 # ----------
-# Brace tracking is character-level, with no string or comment awareness, so it
-# leaks both ways: a closing brace inside a string or comment ends the block early
-# and a real call goes unflagged, and an unbalanced opening one keeps it open so a
-# later, valid call is flagged. Each shape is in the --self-test corpus, asserting
-# what the guard does today; closing them means a real parser.
+# Brace tracking strips // comments and quoted strings before counting, so a brace
+# in either does not move block depth. It is still not a parser: a brace inside a
+# template literal spanning lines, or one built by concatenation, would miscount.
+# No spec writes either shape today.
 # ===========================================================================
 
 set -euo pipefail
@@ -107,16 +106,16 @@ test.beforeAll(async ({ restClient }) => {
 });
 SPEC
 
-  # Brace counting is character-level, so a brace inside a string or a comment closes the
-  # block early and the call goes unflagged.
-  write_case known-gap-brace-in-string <<'SPEC'
+  # A brace inside a string or comment is not block structure; counting it would end the
+  # block early and let the call through.
+  write_case brace-in-string <<'SPEC'
 test.beforeAll(async ({ restClient }) => {
   const closing = '}';
   await loginAsAdmin(restClient);
 });
 SPEC
 
-  write_case known-gap-brace-in-comment <<'SPEC'
+  write_case brace-in-comment <<'SPEC'
 test.beforeAll(async ({ restClient }) => {
   // the block closes with }
   await loginAsAdmin(restClient);
@@ -142,9 +141,9 @@ test.beforeAll(
 );
 SPEC
 
-  # The over-reporting direction of the same brace-counting gap: an unbalanced opening
-  # brace keeps the block open, so a call in a later, ordinary test body is flagged.
-  write_case known-gap-opening-brace <<'SPEC'
+  # An unbalanced opening brace in a string must not keep the block open past its close,
+  # or a call in a later, ordinary test body is flagged.
+  write_case ok-opening-brace-in-string <<'SPEC'
 test.beforeAll(async () => {
   const opening = '{';
   await seed();
@@ -181,7 +180,8 @@ SPEC
   self_test_failures=0
   self_test_total=0
   clean_cases="ok-in-test ok-beforeeach ok-after-beforeall ok-suppressed ok-function-form"
-  violation_cases="bad-multiline bad-single-line bad-wrapped-signature"
+  violation_cases="bad-multiline bad-single-line bad-wrapped-signature brace-in-string
+    brace-in-comment"
 
   for case_name in $clean_cases; do
     expect_case "$case_name" 0 0
@@ -191,14 +191,7 @@ SPEC
     expect_case "$case_name" 1 1
     self_test_total=$((self_test_total + 1))
   done
-  for case_name in known-gap-brace-in-string known-gap-brace-in-comment; do
-    expect_case "$case_name" 0 0
-    self_test_total=$((self_test_total + 1))
-  done
-  # Over-reporting direction: an unbalanced opening brace in a string keeps the block open,
-  # so a later call in a normal test body is flagged. Asserted so the header's two-way
-  # claim is backed rather than asserted.
-  expect_case known-gap-opening-brace 1 1
+  expect_case ok-opening-brace-in-string 0 0
   self_test_total=$((self_test_total + 1))
 
   # An empty tree must fail, not report OK — that is the fail-open shape a guard whose
@@ -269,6 +262,14 @@ while IFS= read -r file; do
           line = ""
         }
       }
+      # Drop // comments and quoted strings first. A brace inside either is not block
+      # structure, and counting it ends the block early — the under-reporting direction,
+      # where a real call goes unflagged and nothing says so.
+      sub(/\/\/.*$/, "", line)
+      gsub(/'"'"'[^'"'"']*'"'"'/, "", line)
+      gsub(/"[^"]*"/, "", line)
+      gsub(/`[^`]*`/, "", line)
+
       for (i=1; i<=length(line); i++) {
         c = substr(line, i, 1)
         if (c == "{") depth++
