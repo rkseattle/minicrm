@@ -87,6 +87,7 @@ jobs:
       claude-hooks:      ${{ steps.filter.outputs.claude-hooks }}
       doc-links:         ${{ steps.filter.outputs.doc-links }}
       gate-pointer-parity: ${{ steps.filter.outputs.gate-pointer-parity }}
+      feature-flag-docs: ${{ steps.filter.outputs.feature-flag-docs }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -319,6 +320,24 @@ jobs:
               - 'docs/dev/new-endpoint.md'
               - 'docs/operations.md'
               - 'scripts/check-gate-pointer-parity.sh'
+
+            # Single-purpose output for featureFlagDocsParity.test.ts, which pins the
+            # admin guide's flag reference table to FEATURE_FLAG_KEYS. The schema side is
+            # why this output exists: `server` is server/src/** only, so nothing else
+            # reaching server-tests matches shared/. admin-guide.md is already carried by
+            # scheduled-jobs-docs, and is listed anyway because the output names both
+            # sides of the invariant and the test asserts that list matches what it reads.
+            # OR'd into server-tests alone; `docs` gates only markdownlint.
+            feature-flag-docs:
+              - 'docs/admin-guide.md'
+              - 'shared/schemas/featureFlagSchema.ts'
+              # The test asserts every file it reads is listed here, so an edit to this
+              # filter has to run it — otherwise dropping an entry silently disables it.
+              - '.github/workflows/ci.yml'
+              # The guard reads the registry through this file's shared-schema alias, and
+              # a directory alias resolves the gitignored tsc side-emit instead of source.
+              # `config`'s globs are root-level, so nothing else here matches it.
+              - 'server/vitest.config.ts'
             # Single-purpose output for check-grep-invert-parity.sh, which pins
             # the non-serial --grep-invert expression across this workflow, the
             # shared TS constant, and the documented local command. Three of the
@@ -916,6 +935,10 @@ jobs:
     # coverage database those migrations define — including the index the map
     # export's keyset pagination depends on. (MINCRM-703)
     #
+    # feature-flag-docs is OR'd in for featureFlagDocsParity.test.ts: the schema side
+    # (shared/schemas/featureFlagSchema.ts) matches no other filter reaching this job,
+    # so a flag added there would merge with the guard never having run.
+    #
     # always() is required, not decorative: on a docs-only change
     # lint-and-typecheck is itself skipped (its gate is client/server/qa/config/
     # coverage-dashboard, none of which match a .md), and GitHub auto-skips any
@@ -930,7 +953,8 @@ jobs:
       (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true' ||
         needs.changes.outputs.user-guide-docs == 'true' ||
         needs.changes.outputs.redirect-status-docs == 'true' || needs.changes.outputs.scheduled-jobs-docs == 'true' ||
-        needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true')
+        needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true' ||
+        needs.changes.outputs.feature-flag-docs == 'true')
     runs-on: ubuntu-latest
 
     services:

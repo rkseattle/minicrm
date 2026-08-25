@@ -78,13 +78,22 @@ export default defineConfig(({ mode }) => ({
           'import.meta.env.VITE_BUILD_SHA': JSON.stringify(resolveBuildSha()),
         },
   resolve: {
-    alias: {
+    alias: [
+      /**
+       * Rewrites a `.js` schema specifier to the `.ts` source. A directory alias resolves
+       * it to the gitignored tsc side-emit sitting next to the schema, which is frozen at
+       * whenever a build last ran and exists only on developer machines.
+       */
+      {
+        find: /^@shared\/(.*)\.js$/,
+        replacement: path.resolve(__dirname, '../shared') + '/$1.ts',
+      },
       /** @shared resolves to the shared package at the repo root — schemas
        * only, per this app's "no shared codebase" constraint */
-      '@shared': path.resolve(__dirname, '../shared'),
+      { find: '@shared', replacement: path.resolve(__dirname, '../shared') },
       /** @ resolves to ./src for clean internal imports */
-      '@': path.resolve(__dirname, './src'),
-    },
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+    ],
   },
   test: {
     globals: true,

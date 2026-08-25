@@ -464,16 +464,29 @@ const SERIAL_FILES = [
 ];
 
 const sharedResolve = {
-  alias: {
+  alias: [
     /**
-     * Subsumes both Jest moduleNameMapper patterns:
-     *   ^@minicrm/shared/schemas/(.*)\\.js$  (with extension)
-     *   ^@minicrm/shared/schemas/(.*)$       (without extension)
-     * Vitest's Rollup-based resolver treats this as a prefix substitution
-     * so both import forms resolve correctly via the single entry.
+     * Rewrites the `.js` specifier to the `.ts` source explicitly.
+     *
+     * A plain directory alias resolves `featureFlagSchema.js` to the literal file of
+     * that name, and `tsc` side-emits one next to every schema when anything builds
+     * from server/ (it is gitignored, so CI never has one and only local runs differ).
+     * Tests asserting runtime behavior tolerate that — code under test resolves the
+     * same stale module, so both sides move together. A parity guard comparing a file
+     * on disk against a registry constant does not: its two sides are supposed to
+     * diverge, and a frozen constant makes it pass while the drift it exists to catch
+     * goes unreported.
      */
-    '@minicrm/shared/schemas': resolve(__dirname, '../shared/schemas'),
-  },
+    {
+      find: /^@minicrm\/shared\/schemas\/(.*)\.js$/,
+      replacement: resolve(__dirname, '../shared/schemas') + '/$1.ts',
+    },
+    /** Extensionless imports resolve to source on their own. */
+    {
+      find: '@minicrm/shared/schemas',
+      replacement: resolve(__dirname, '../shared/schemas'),
+    },
+  ],
 };
 
 export default defineConfig({
