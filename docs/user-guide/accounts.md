@@ -188,6 +188,7 @@ every account that needs a check-in.
 
 The detail page sidebar carries a **Change History** panel listing who changed what and
 when, newest first — see [Contacts](contacts.md#change-history) for how it behaves.
+Merges are contacts-only, so that entry never appears here.
 
 ### Notifications
 

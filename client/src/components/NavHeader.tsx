@@ -72,16 +72,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
     },
   });
 
-  const { save: saveLanguage } = useLanguagePreference({ optimistic: true });
-
-  /**
-   * Handles language selection.
-   *
-   * @param locale - The selected locale code.
-   */
-  function handleLanguageChange(locale: SupportedLocale): void {
-    saveLanguage(locale);
-  }
+  const { save: handleLanguageChange } = useLanguagePreference({ optimistic: true });
 
   // Destructure hamburger props so the linter doesn't flag plain value accesses
   // as "ref access during render" due to the co-located toggleEl RefObject.
