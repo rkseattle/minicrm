@@ -28,16 +28,22 @@ const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', n
  * bulkService/bulkV2Service's change_stage actions (which bypass updateDeal)
  * can write the same history row. Not called from pipelineStageService's
  * stage-rename path — renaming a stage's label is not a transition.
+ *
+ * @param enteredAt - Overrides the default `now()`. Coaching derives stage durations from
+ *   the gaps between rows, so backdated history is the only way to seed measurable time
+ *   in a stage.
  */
 export async function writeDealStageHistoryEntry(
   client: PoolClient,
   dealId: string,
   pipelineId: string,
   stage: string,
+  enteredAt?: Date,
 ): Promise<void> {
   await client.query(
-    `INSERT INTO deal_stage_history (deal_id, pipeline_id, stage) VALUES ($1, $2, $3)`,
-    [dealId, pipelineId, stage],
+    `INSERT INTO deal_stage_history (deal_id, pipeline_id, stage, entered_at)
+     VALUES ($1, $2, $3, COALESCE($4, now()))`,
+    [dealId, pipelineId, stage, enteredAt ?? null],
   );
 }
 
