@@ -188,6 +188,25 @@ describe('generateRepCoachingInsights', () => {
     expect(industryInsight!.rep_value).toBeCloseTo(0.1, 1);
   });
 
+  it('produces no advance-rate insight for a terminal stage', async () => {
+    await createClosedDeals(repAId, 10, null, 0.5);
+    await createClosedDeals(repBId, 10, null, 0.5);
+
+    await generateRepCoachingInsights();
+
+    // Every deal ends in a terminal stage, so its history carries a Closed Won or Closed
+    // Lost row with nothing after it — a structural 0% that reads as "deals stalling in
+    // Closed Won" once the recommendation text is built from it.
+    const result = await getRepCoachingInsights(repAId);
+    const terminal = result.insights.filter(
+      (i) =>
+        i.metric_type === 'stage_conversion_rate' &&
+        ['Closed Won', 'Closed Lost'].includes(i.segment ?? ''),
+    );
+    expect(terminal).toHaveLength(0);
+    expect(result.insights.some((i) => i.metric_type === 'stage_conversion_rate')).toBe(true);
+  });
+
   it('records average stage days derived from deal_stage_history', async () => {
     await createClosedDeals(repAId, 10, null, 0.5);
     await createClosedDeals(repBId, 10, null, 0.5);

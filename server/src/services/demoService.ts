@@ -1522,15 +1522,8 @@ const DEMO_COACHING_BASE_VALUE = 20000;
 const DEMO_COACHING_VALUE_STEP = 2500;
 const DEMO_COACHING_CURRENCY = 'USD';
 
-/**
- * Days each stage lasted, oldest first, per pace band.
- *
- * The terminal row's span is open-ended (`COALESCE(next_entered_at, now())`) and runs
- * from the same close date for every band, so it dilutes all reps equally rather than
- * separating them — the inter-stage gaps below are what set a rep apart. They are far
- * apart because that shared dilution shrinks the ratio, and because the slow rep also
- * pulls up the team average it is measured against.
- */
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
 /**
  * Activities logged per coaching deal, and the gap between them in hours, per pace band.
  *
@@ -1539,8 +1532,6 @@ const DEMO_COACHING_CURRENCY = 'USD';
  * and the share whose notes mention an objection. With no activities all three collapse
  * to "0 vs. a team average of 0", which is what the page then displays.
  */
-const ONE_HOUR_MS = 60 * 60 * 1000;
-
 const DEMO_COACHING_ACTIVITY_SHAPE: Record<
   string,
   { perDeal: number; gapHours: number; objectionEvery: number }
@@ -1550,6 +1541,15 @@ const DEMO_COACHING_ACTIVITY_SHAPE: Record<
   slow: { perDeal: 1, gapHours: 96, objectionEvery: 8 },
 };
 
+/**
+ * Days each stage lasted, oldest first, per pace band.
+ *
+ * The terminal row's span is open-ended (`COALESCE(next_entered_at, now())`) and runs
+ * from the same close date for every band, so it dilutes all reps equally rather than
+ * separating them — the inter-stage gaps below are what set a rep apart. They are far
+ * apart because that shared dilution shrinks the ratio, and because the slow rep also
+ * pulls up the team average it is measured against.
+ */
 const DEMO_COACHING_STAGE_DAYS: Record<string, number[]> = {
   fast: [3, 5, 4],
   typical: [7, 11, 9],

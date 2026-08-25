@@ -10089,6 +10089,14 @@
             "entity_type",
             "entity_id"
           ]
+        },
+        {
+          "name": "data_hygiene_findings_related_entity_idx",
+          "def": "CREATE INDEX data_hygiene_findings_related_entity_idx ON public.data_hygiene_findings USING btree (related_entity_id) WHERE (related_entity_id IS NOT NULL)",
+          "table": "public.data_hygiene_findings",
+          "columns": [
+            "related_entity_id"
+          ]
         }
       ],
       "constraints": [

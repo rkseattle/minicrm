@@ -40,6 +40,7 @@ Current data hygiene queue (MINCRM-476), one row per flagged record per issue ty
 | data_hygiene_findings_entity_issue_unique | CREATE UNIQUE INDEX data_hygiene_findings_entity_issue_unique ON public.data_hygiene_findings USING btree (entity_type, entity_id, issue_type) |
 | data_hygiene_findings_owner_id_idx | CREATE INDEX data_hygiene_findings_owner_id_idx ON public.data_hygiene_findings USING btree (owner_id) |
 | data_hygiene_findings_entity_idx | CREATE INDEX data_hygiene_findings_entity_idx ON public.data_hygiene_findings USING btree (entity_type, entity_id) |
+| data_hygiene_findings_related_entity_idx | CREATE INDEX data_hygiene_findings_related_entity_idx ON public.data_hygiene_findings USING btree (related_entity_id) WHERE (related_entity_id IS NOT NULL) |
 
 ## Relations
 

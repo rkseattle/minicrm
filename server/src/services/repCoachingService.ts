@@ -219,6 +219,9 @@ async function getStageConversionRateByRep(): Promise<SegmentValue[]> {
      SELECT owner_id, stage,
             (COUNT(*) FILTER (WHERE advanced))::numeric / COUNT(*)::numeric AS rate
      FROM ordered
+     -- A terminal stage has nothing to advance to, so its rate is structurally 0 and the
+     -- advice built from it reads "deals stalling in Closed Won".
+     WHERE stage NOT IN ('Closed Won', 'Closed Lost')
      GROUP BY owner_id, stage`,
   );
   return result.rows.map((r) => ({

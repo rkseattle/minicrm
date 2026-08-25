@@ -27,14 +27,17 @@ async function main(): Promise<void> {
   }
 
   const result = await seedDemo();
-  if (!result.seeded) {
+  if (result.seeded) {
+    console.log('[seed-demo] Done — demo data seeded successfully.');
+  } else {
     console.log(
-      '[seed-demo] Demo data already exists. Run `npm run remove:demo` first to re-seed.',
+      '[seed-demo] Demo data already exists — refreshing the hygiene and coaching queues only.',
     );
-    return;
   }
-  console.log('[seed-demo] Done — demo data seeded successfully.');
 
+  // Runs whether or not the seed inserted anything: the producers are idempotent, and
+  // skipping them on an already-seeded database leaves both AI pages blank on exactly the
+  // re-run the screenshot instructions tell you to make.
   // Awaited, unlike the admin API path: the CLI would otherwise exit mid-run.
   console.log('[seed-demo] Populating the hygiene queue and coaching insights…');
   await runPostSeedProducers();
