@@ -8,6 +8,8 @@
 The dashboard gives you an at-a-glance summary of your pipeline and your workload. It is
 the first page you see after logging in.
 
+![The dashboard, with five stat cards across the top, a converted pipeline total beneath them, and a pipeline-by-stage table below](../screenshots/01-dashboard.png)
+
 ---
 
 ## Tutorial: reading your dashboard

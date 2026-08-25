@@ -10,6 +10,8 @@ out, and a way to tick them off without opening each record.
 Tasks themselves are created from a contact, account, or deal — see
 [Activities](activities.md). This page is only for working the ones you already own.
 
+![The My Tasks list, with overdue due dates shown in red beside an Overdue badge and a Mark complete button on each open task](../screenshots/11-my-tasks.png)
+
 ---
 
 ## Tutorial: work through your tasks

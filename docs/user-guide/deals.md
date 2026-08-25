@@ -7,6 +7,8 @@
 Deals track sales opportunities as they move through your pipeline from first contact
 to close. The pipeline board gives you a Kanban view of every open deal by stage.
 
+![The pipeline board, with a column per stage holding deal cards that each show value, close date, probability, and a stage selector](../screenshots/05-deals-board.png)
+
 ---
 
 ## Tutorial: create a deal and close it
@@ -64,6 +66,14 @@ Click **Confirm close** to finish.
 ---
 
 ## Reference
+
+### Board view and list view
+
+The Deals page opens on the pipeline board. **List view** in the top right swaps it for a
+table of the same deals, which is easier to scan when you have more than a screenful, and
+**Board view** swaps back. Your choice is remembered as you move around the app.
+
+![The same deals in list view, a table of name, stage, value, close date, account, owner, and tags, sortable by name and close date](../screenshots/06-deals-list.png)
 
 ### Fields
 

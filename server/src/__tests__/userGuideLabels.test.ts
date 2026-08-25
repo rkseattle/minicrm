@@ -124,6 +124,8 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
   { page: 'docs/user-guide/contacts.md', localeKey: 'contacts.sendEmail.buttonLabel' },
   { page: 'docs/user-guide/accounts.md', localeKey: 'auditLog.changeHistory' },
   { page: 'docs/user-guide/deals.md', localeKey: 'auditLog.changeHistory' },
+  { page: 'docs/user-guide/deals.md', localeKey: 'deals.viewBoard' },
+  { page: 'docs/user-guide/deals.md', localeKey: 'deals.viewList' },
 ];
 
 describe('user guide quotes control names that exist', () => {

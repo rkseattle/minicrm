@@ -6,6 +6,8 @@ language MiniCRM shows you, which emails it sends you, and two-factor authentica
 Everything here applies to you alone. Nothing on this page changes what your teammates
 see, and nothing on it needs an admin.
 
+![Profile Settings, showing the preferred-language selector and the three email notification checkboxes, each with its own Save button, above the two-factor authentication panel](../screenshots/12-profile-settings.png)
+
 ---
 
 ## Tutorial: set up your account

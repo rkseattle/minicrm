@@ -7,6 +7,8 @@
 Accounts represent companies or organisations. Linking contacts and deals to an account
 gives you a full picture of your relationship with that company.
 
+![The accounts list, showing company names, types, industries, health, and owners, with the bulk-selection checkboxes an editor sees](../screenshots/04-accounts.png)
+
 ---
 
 ## Tutorial: create an account and link your contacts

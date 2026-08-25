@@ -9,6 +9,8 @@ Activities are records of interactions with contacts — calls, emails, meetings
 tasks. They build up a timeline on each contact, account, and deal so everyone on the
 team can see the history at a glance.
 
+![The activities list, with a colored type badge on each row — call, email, meeting, task, or note — beside its subject, linked record, and date](../screenshots/08-activities.png)
+
 ---
 
 ## Tutorial: log a call and create a follow-up task
