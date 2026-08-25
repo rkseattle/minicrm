@@ -136,6 +136,11 @@ run when a page is **added** — and a list only triggers on paths it already na
 it enumerates those twelve; globbing would run it on pages it makes no assertion about,
 and its own check rejects a listed path it never reads.
 
+The guards themselves are guarded: `scripts/check-guard-invocation.mjs`, in
+`lint-and-typecheck`, fails when a `check-*` script in `scripts/` or `qa/scripts/` is run
+by no CI job. One sat unwired long enough to go blind to the shape it existed to catch,
+with only a developer doc — which blocks nothing — recording that it never ran.
+
 Not every doc-to-code invariant is a test. Route coverage in the generated OpenAPI spec
 is enforced at lint time instead, by the `local-openapi/require-openapi-tag` ESLint rule,
 which fails `lint-and-typecheck` when a route registration carries no `@openapi` block.
