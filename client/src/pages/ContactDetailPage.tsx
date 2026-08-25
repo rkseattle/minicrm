@@ -1487,7 +1487,11 @@ export default function ContactDetailPage() {
             {sequencingLoading ? (
               <div className="mt-8 h-24 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
             ) : sequencingEnabled && canWrite ? (
-              <section className="mt-8" aria-labelledby="sequence-enrollments-heading">
+              <section
+                className="mt-8"
+                aria-labelledby="sequence-enrollments-heading"
+                data-testid="sequence-enrollments-section"
+              >
                 <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                   <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                     <h2
