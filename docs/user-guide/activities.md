@@ -78,7 +78,8 @@ shows counts only, and its overdue card links through to this page.
 
 If your admin has enabled email notifications, you will receive a daily digest of
 overdue tasks (tasks past their due date that are still open). You can control this
-in your notification preferences (see the profile menu → Notification preferences).
+in your notification preferences — click **Profile Settings** in the navigation, then
+find the **Email Notifications** section.
 
 ### AI Objection Pattern Matching
 

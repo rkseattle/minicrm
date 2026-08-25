@@ -128,6 +128,7 @@ const REP_DESTINATIONS: Record<string, string> = {
   deals: '/deals',
   tasks: '/tasks',
   reports: '/reports',
+  profile: '/profile',
 };
 
 /**
