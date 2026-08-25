@@ -61,11 +61,6 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
   { page: 'docs/user-guide/deals.md', localeKey: 'deals.newDeal' },
   { page: 'docs/user-guide/deals.md', localeKey: 'deals.linkContact' },
   { page: 'docs/user-guide/deals.md', localeKey: 'pipeline.closeDeal.confirm' },
-  { page: 'docs/user-guide/activities.md', localeKey: 'nav.profileSettings' },
-  {
-    page: 'docs/user-guide/activities.md',
-    localeKey: 'profileSettings.notifications.sectionTitle',
-  },
   { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.showCompleted' },
   { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.hideCompleted' },
   { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.markComplete' },
@@ -73,6 +68,25 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
   { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.clearFilters' },
   { page: 'docs/user-guide/my-tasks.md', localeKey: 'myTasks.filterChipOverdue' },
   { page: 'docs/user-guide/my-tasks.md', localeKey: 'bulk.deleteButton' },
+  { page: 'docs/user-guide/my-tasks.md', localeKey: 'nav.profileSettings' },
+  {
+    page: 'docs/user-guide/my-tasks.md',
+    localeKey: 'profileSettings.notifications.sectionTitle',
+  },
+  { page: 'docs/user-guide/profile.md', localeKey: 'nav.profileSettings' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'profileSettings.languageLabel' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'profileSettings.systemDefault' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'mfa.sectionTitle' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'mfa.enableButton' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'mfa.disableButton' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'mfa.setupModal.verifyButton' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'mfa.recoveryCodesModal.copyButton' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'mfa.recoveryCodesModal.doneButton' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'mfa.loginModal.useRecoveryCode' },
+  {
+    page: 'docs/user-guide/profile.md',
+    localeKey: 'profileSettings.notifications.sectionTitle',
+  },
 ];
 
 describe('user guide quotes control names that exist', () => {

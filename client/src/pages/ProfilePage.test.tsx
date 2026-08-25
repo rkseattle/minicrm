@@ -3,19 +3,24 @@
  *
  * Covers: loading states, language preference form, notification preferences form,
  * save success/error feedback, checkbox toggling, and MFA section.
- *
- *
  */
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import ProfilePage from './ProfilePage.js';
+import i18n from '../i18n.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 
 describe('ProfilePage', () => {
+  // Saving a language mutates the i18next singleton, which outlives the test that did
+  // it — without this, assertions on English strings depend on which tests ran first.
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
   describe('page render', () => {
     it('renders the page heading', async () => {
       renderWithProviders(<ProfilePage />);
@@ -100,6 +105,67 @@ describe('ProfilePage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('profile-lang-success')).toBeInTheDocument();
       });
+    });
+
+    it('sends null for Use system default, which the schema requires', async () => {
+      let sent: unknown;
+      server.use(
+        http.patch('/api/v1/users/me/language', async ({ request }) => {
+          sent = await request.json();
+          return HttpResponse.json({ language: null });
+        }),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-lang-section')).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByTestId('profile-language-select'), '');
+      await user.click(screen.getByTestId('profile-lang-save'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-lang-success')).toBeInTheDocument();
+      });
+      expect(sent).toEqual({ language: null });
+    });
+
+    it('switches the interface on save, not just on the next page load', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-lang-section')).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByTestId('profile-language-select'), 'fr');
+      await user.click(screen.getByTestId('profile-lang-save'));
+
+      await waitFor(() => {
+        expect(i18n.language).toBe('fr');
+      });
+    });
+
+    it('keeps the picked language visible when the save fails', async () => {
+      server.use(
+        http.patch('/api/v1/users/me/language', () =>
+          HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ProfilePage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-lang-section')).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByTestId('profile-language-select'), 'de');
+      await user.click(screen.getByTestId('profile-lang-save'));
+      await waitFor(() => {
+        expect(screen.getByTestId('profile-lang-save-error')).toBeInTheDocument();
+      });
+
+      // Clearing the pending choice before the request settles would discard it here and
+      // force the user to pick again before retrying.
+      expect(screen.getByTestId('profile-language-select')).toHaveValue('de');
     });
 
     it('shows error message when language save fails', async () => {

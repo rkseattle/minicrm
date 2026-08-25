@@ -1519,7 +1519,8 @@ guaranteed, follow up out of band.
 
 ### The enrollment flow (what your users see)
 
-Enrollment is self-service, from **Profile → Two-Factor Authentication**:
+Enrollment is self-service, from **Profile → Two-Factor Authentication** — the user-facing
+walkthrough is in [the Profile page guide](user-guide/profile.md):
 
 1. The user clicks **Set up two-factor authentication**.
 2. MiniCRM displays a QR code. The user scans it with their authenticator app. The entry

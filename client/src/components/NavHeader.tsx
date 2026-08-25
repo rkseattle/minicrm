@@ -6,13 +6,12 @@
  * handled internally so callers don't duplicate that logic.
  */
 
-import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
-import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
+import { useLanguagePreference } from '@/hooks/useLanguagePreference.js';
 import { Button } from '@/components/ui/Button.js';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
 import { LOCALE_NATIVE_NAME } from './navLinks.js';
@@ -63,7 +62,6 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const previousLocaleRef = useRef<string | null>(null);
   const { branding } = useBranding();
 
   const logoutMutation = useMutation({
@@ -74,30 +72,15 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
     },
   });
 
-  const languageMutation = useMutation({
-    mutationFn: (locale: SupportedLocale) => setMyLanguage(locale),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: MY_LANGUAGE_QUERY_KEY });
-      previousLocaleRef.current = null;
-    },
-    onError: () => {
-      if (previousLocaleRef.current) {
-        void i18n.changeLanguage(previousLocaleRef.current);
-        previousLocaleRef.current = null;
-      }
-    },
-  });
+  const { save: saveLanguage } = useLanguagePreference({ optimistic: true });
 
   /**
-   * Handles language selection. Applies the change optimistically and reverts
-   * to the previous locale if the API call fails.
+   * Handles language selection.
    *
    * @param locale - The selected locale code.
    */
   function handleLanguageChange(locale: SupportedLocale): void {
-    previousLocaleRef.current = i18n.language;
-    void i18n.changeLanguage(locale);
-    languageMutation.mutate(locale);
+    saveLanguage(locale);
   }
 
   // Destructure hamburger props so the linter doesn't flag plain value accesses
