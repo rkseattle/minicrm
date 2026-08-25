@@ -594,6 +594,15 @@ async function persistRepInsights(
   scored: ScoredInsight[],
 ): Promise<void> {
   await withTransaction(async (client) => {
+    // The table holds the current set, so an insight this run no longer produces has to
+    // go. Upserting alone leaves a retired metric on the page until the rep is deleted.
+    const keptKeys = scored.map((insight) => `${insight.metricType}:${insight.segment}`);
+    await client.query(
+      `DELETE FROM rep_coaching_insights
+       WHERE rep_id = $1 AND (metric_type || ':' || segment) <> ALL($2::text[])`,
+      [rep.id, keptKeys],
+    );
+
     for (const insight of scored) {
       await client.query(
         `INSERT INTO rep_coaching_insights
