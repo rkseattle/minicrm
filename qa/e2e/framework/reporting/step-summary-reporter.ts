@@ -10,7 +10,12 @@ import type {
   TestStep,
 } from '@playwright/test/reporter';
 import type { HealTrendEntry } from '../healing/heal-trends.js';
-import { readTrends, quarantineCandidates } from '../healing/heal-trends.js';
+import {
+  readTrends,
+  quarantineCandidates,
+  quarantineThreshold,
+  quarantineMaxAgeDays,
+} from '../healing/heal-trends.js';
 import { CLEANUP_FAILED_ANNOTATION, ENVIRONMENT_DRIFT_ANNOTATION } from './cleanup-annotations.js';
 
 // Suite name is injected via SUITE_NAME env var so this file stays domain-agnostic.
@@ -217,7 +222,7 @@ export class StepSummaryReporter implements Reporter {
    * Returns an empty string when no candidates exist or when the trends file is absent.
    */
   private buildQuarantineSection(): string {
-    const threshold = parseInt(process.env['HEAL_QUARANTINE_THRESHOLD'] ?? '3', 10);
+    const threshold = quarantineThreshold();
     let entries: Record<string, HealTrendEntry> = {};
     try {
       entries = readTrends();
@@ -234,7 +239,7 @@ export class StepSummaryReporter implements Reporter {
       )
       .join('');
     return (
-      `\n### Quarantine Candidates (healed ≥ ${threshold} times)\n` +
+      `\n### Quarantine Candidates (healed ≥ ${threshold} times within ${quarantineMaxAgeDays()} days)\n` +
       `| Locator | Original Strategy | Heal Count |\n` +
       `|---------|-------------------|------------|\n` +
       rows

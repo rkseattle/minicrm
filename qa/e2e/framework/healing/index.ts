@@ -33,6 +33,10 @@ export {
   mergeTrends,
   writeTrends,
   quarantineCandidates,
+  quarantineThreshold,
+  quarantineMaxAgeDays,
+  DEFAULT_QUARANTINE_THRESHOLD,
+  DEFAULT_QUARANTINE_MAX_AGE_DAYS,
   buildTrendKey,
 } from './heal-trends.js';
 export type { HealTrendEntry, HealTrendsFile } from './heal-trends.js';
