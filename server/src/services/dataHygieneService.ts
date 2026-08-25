@@ -806,7 +806,7 @@ export async function listHygieneFindings(
             suggested_action, status, dismissed_until, dismissed_reason, detected_at, updated_at
      FROM data_hygiene_findings
      WHERE ${conditions.join(' AND ')}
-     ORDER BY detected_at DESC`,
+     ORDER BY detected_at DESC, issue_type ASC, id ASC`,
     params,
   );
 

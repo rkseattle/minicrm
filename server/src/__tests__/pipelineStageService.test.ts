@@ -294,6 +294,50 @@ describe('updatePipelineStage', () => {
     await pool.query(`DELETE FROM users WHERE id = $1`, [ownerId]);
   });
 
+  it('carries a rename into deal_stage_history, which stores the stage by name', async () => {
+    const stages = await listPipelineStages();
+    const qualification = stages.find((s) => s.name === 'Qualification')!;
+
+    const userResult = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, password_hash, name, role, status)
+       VALUES ($1, 'x', 'History Rename', 'rep', 'active') RETURNING id`,
+      [`${FILE_PREFIX}-history-rename-${randomUUID()}@example.com`],
+    );
+    const ownerId = userResult.rows[0].id;
+
+    const dealResult = await pool.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('History Deal', 'Qualification', $1, $2, $3) RETURNING id`,
+      [ownerId, qualification.pipeline_id, qualification.id],
+    );
+    await pool.query(
+      `INSERT INTO deal_stage_history (deal_id, pipeline_id, stage, entered_at)
+       VALUES ($1, $2, 'Qualification', now())`,
+      [dealResult.rows[0].id, qualification.pipeline_id],
+    );
+
+    try {
+      await updatePipelineStage(qualification.id, { name: 'Discovery' }, ACTOR);
+
+      // An orphaned history row no longer resolves against pipeline_stages, so the
+      // coaching metrics stop recognising it as the stage it belongs to.
+      const history = await pool.query<{ stage: string }>(
+        `SELECT stage FROM deal_stage_history WHERE deal_id = $1`,
+        [dealResult.rows[0].id],
+      );
+      expect(history.rows[0].stage).toBe('Discovery');
+    } finally {
+      // Restoring the shared stage name has to survive a failed assertion, or every later
+      // test in this file looks up 'Qualification' and finds nothing.
+      await updatePipelineStage(qualification.id, { name: 'Qualification' }, ACTOR);
+      await pool.query(`DELETE FROM deal_stage_history WHERE deal_id = $1`, [
+        dealResult.rows[0].id,
+      ]);
+      await pool.query(`DELETE FROM deals WHERE owner_id = $1`, [ownerId]);
+      await pool.query(`DELETE FROM users WHERE id = $1`, [ownerId]);
+    }
+  });
+
   it('updates probability without changing name', async () => {
     const stages = await listPipelineStages();
     const qualification = stages.find((s) => s.name === 'Qualification')!;

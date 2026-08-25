@@ -1485,7 +1485,8 @@
       "note_updated": "{{actor}} edited a note",
       "note_visibility_changed": "{{actor}} changed a note’s visibility",
       "note_deleted": "{{actor}} deleted a note",
-      "merged": "{{actor}} merged another record into this one"
+      "merged": "{{actor}} merged another record into this one",
+      "gdpr_erasure": "{{actor}} erased this record’s personal data"
     },
     "pagination": {
       "prev": "Previous",

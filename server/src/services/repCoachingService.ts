@@ -211,7 +211,7 @@ interface SegmentValue {
 async function getStageConversionRateByRep(): Promise<SegmentValue[]> {
   const result = await pool.query<{ owner_id: string; stage: string; rate: string }>(
     `WITH ordered AS (
-       SELECT h.deal_id, d.owner_id, h.stage, h.entered_at,
+       SELECT h.deal_id, d.owner_id, h.stage, h.pipeline_id, h.entered_at,
               LEAD(h.entered_at) OVER (PARTITION BY h.deal_id ORDER BY h.entered_at) IS NOT NULL AS advanced
        FROM deal_stage_history h
        JOIN deals d ON d.id = h.deal_id
@@ -220,8 +220,14 @@ async function getStageConversionRateByRep(): Promise<SegmentValue[]> {
             (COUNT(*) FILTER (WHERE advanced))::numeric / COUNT(*)::numeric AS rate
      FROM ordered
      -- A terminal stage has nothing to advance to, so its rate is structurally 0 and the
-     -- advice built from it reads "deals stalling in Closed Won".
-     WHERE stage NOT IN ('Closed Won', 'Closed Lost')
+     -- advice built from it reads "deals stalling in Closed Won". Resolved through
+     -- pipeline_stages rather than by name: stages are configurable per pipeline.
+     WHERE NOT EXISTS (
+       SELECT 1 FROM pipeline_stages ps
+       WHERE ps.pipeline_id = ordered.pipeline_id
+         AND ps.name = ordered.stage
+         AND ps.is_terminal = true
+     )
      GROUP BY owner_id, stage`,
   );
   return result.rows.map((r) => ({

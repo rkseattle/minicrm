@@ -1520,7 +1520,8 @@
       "note_updated": "{{actor}} 编辑了备注",
       "note_visibility_changed": "{{actor}} 更改了备注的可见性",
       "note_deleted": "{{actor}} 删除了备注",
-      "merged": "{{actor}} 将另一条记录合并到此记录"
+      "merged": "{{actor}} 将另一条记录合并到此记录",
+      "gdpr_erasure": "{{actor}} 已抹除此记录的个人数据"
     },
     "pagination": {
       "prev": "上一页",

@@ -177,8 +177,8 @@ guessing. The same action is available for accounts — see
 The detail page sidebar carries a **Change History** panel listing who changed what and
 when, newest first. It covers the record being created and deleted, field edits with
 their before and after values, ownership reassignments, notes being added, edited, or
-removed, and records merged into this one. An empty field reads _(empty)_ rather than
-being left blank.
+removed, records merged into this one, and personal data being erased. An empty field
+reads _(empty)_ rather than being left blank.
 
 It shows the twenty most recent entries, with **Show all** to load the full history and
 **Show less** to collapse it again. Timestamps are relative for the first week — "2 hours ago" — and switch to

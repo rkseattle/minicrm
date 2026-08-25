@@ -1520,7 +1520,8 @@
       "note_updated": "{{actor}} a modifié une note",
       "note_visibility_changed": "{{actor}} a modifié la visibilité d’une note",
       "note_deleted": "{{actor}} a supprimé une note",
-      "merged": "{{actor}} a fusionné un autre enregistrement avec celui-ci"
+      "merged": "{{actor}} a fusionné un autre enregistrement avec celui-ci",
+      "gdpr_erasure": "{{actor}} a effacé les données personnelles de cet enregistrement"
     },
     "pagination": {
       "prev": "Précédent",

@@ -1409,7 +1409,9 @@ const DEMO_CUSTOM_REPORT_NAMES = DEMO_CUSTOM_REPORTS.map((r) => r.name);
 //
 // The two network signals are deliberately unfixtured: both exempt reserved domains, so
 // no *.example.com fixture can produce one, and fixturing them would mean depending on a
-// real domain staying dead. The eleven offline signals all fire.
+// real domain staying dead. Every other offline signal fires — except contact_no_activity,
+// which these four are given a recent activity to suppress so each trips only the rule it
+// was built for; the ordinary demo contacts still raise it.
 const DEMO_HYGIENE_CONTACTS = [
   {
     // contact_missing_contact_info — phone blank
@@ -1451,6 +1453,17 @@ const DEMO_HYGIENE_CONTACTS = [
     staleTitle: false,
   },
 ];
+
+/** Subject for the activity that keeps a hygiene fixture out of the no-activity signal. */
+const DEMO_HYGIENE_TOUCH_SUBJECT = 'Quarterly check-in';
+
+/**
+ * The activity is aged to a fraction of the configured inactivity window — comfortably
+ * inside it at any setting — and capped so it still sits below the hand-written demo
+ * activities in the newest-first Activities list.
+ */
+const DEMO_HYGIENE_TOUCH_AGE_DIVISOR = 8;
+const DEMO_HYGIENE_TOUCH_MAX_AGE_DAYS = 45;
 
 /**
  * Margin added to the configured staleness window when backdating title_updated_at.
@@ -1550,6 +1563,18 @@ const DEMO_COACHING_ACTIVITY_SHAPE: Record<
  * apart because that shared dilution shrinks the ratio, and because the slow rep also
  * pulls up the team average it is measured against.
  */
+/**
+ * Every Nth coaching deal is left open, at the offset below. Some deals must not reach a
+ * terminal stage or every stage-conversion rate is exactly 1.0 and the comparison the
+ * page draws is vacuous.
+ */
+const DEMO_COACHING_OPEN_DEAL_INTERVAL = 4;
+const DEMO_COACHING_OPEN_DEAL_OFFSET = 3;
+
+/** Mid-pipeline probability for those open deals, and a close date still ahead of them. */
+const DEMO_COACHING_OPEN_DEAL_PROBABILITY = 60;
+const DEMO_COACHING_OPEN_CLOSE_DAYS_AHEAD = 30;
+
 const DEMO_COACHING_STAGE_DAYS: Record<string, number[]> = {
   fast: [3, 5, 4],
   typical: [7, 11, 9],
@@ -1780,23 +1805,18 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
  * row is gone the subquery can no longer find it.
  *
  * @param client - Active DB client or pool.
- * @param extraOwnerId - Also match findings whose *entity* is owned by this user, for
- *   test fixtures that own demo-shaped records without carrying the is_demo flag.
  */
 export async function deleteDemoHygieneFindings(
   client: pg.PoolClient | typeof pool,
-  extraOwnerId?: string,
 ): Promise<void> {
-  const ownerArm = extraOwnerId ? `OR owner_id = $1` : '';
   await client.query(
     `DELETE FROM data_hygiene_findings
      WHERE entity_id IN (
-       SELECT id FROM contacts WHERE is_demo = true ${ownerArm}
-       UNION SELECT id FROM accounts WHERE is_demo = true ${ownerArm}
-       UNION SELECT id FROM deals WHERE is_demo = true ${ownerArm}
+       SELECT id FROM contacts WHERE is_demo = true
+       UNION SELECT id FROM accounts WHERE is_demo = true
+       UNION SELECT id FROM deals WHERE is_demo = true
      )
-     OR related_entity_id IN (SELECT id FROM contacts WHERE is_demo = true ${ownerArm})`,
-    extraOwnerId ? [extraOwnerId] : [],
+     OR related_entity_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
   );
 }
 
@@ -1825,22 +1845,6 @@ async function resolvePipelineStageId(
     throw new Error(`Demo seed: unknown stage '${stageName}' in pipeline ${pipelineId}`);
   }
   return stageId;
-}
-
-/**
- * Throws unless the named stage exists in the pipeline. For values recorded somewhere
- * without a foreign key, where a typo would otherwise persist unnoticed.
- *
- * @param client - Active DB client, inside the caller's transaction.
- * @param stageName - Stage name to check.
- * @param pipelineId - Pipeline the stage must belong to.
- */
-async function assertPipelineStageExists(
-  client: pg.PoolClient,
-  stageName: string,
-  pipelineId: string,
-): Promise<void> {
-  await resolvePipelineStageId(client, stageName, pipelineId);
 }
 
 /**
@@ -2540,12 +2544,20 @@ async function insertDemoData(
   const coachingConfig = await client.query<{ min_closed_deals: number }>(
     `SELECT min_closed_deals FROM rep_coaching_scoring_config LIMIT 1`,
   );
-  const coachingDealCount =
-    (coachingConfig.rows[0]?.min_closed_deals ?? 0) + DEMO_COACHING_MARGIN_DEALS;
+  const minClosedDeals = coachingConfig.rows[0]?.min_closed_deals;
+  if (minClosedDeals === undefined) {
+    throw new Error('Demo seed: rep_coaching_scoring_config is missing its singleton row');
+  }
+  // The open deals do not count toward the closed-deal minimum, so the fixture has to
+  // seed past them or a rep lands below the threshold and gets no insights at all.
+  const targetClosed = minClosedDeals + DEMO_COACHING_MARGIN_DEALS;
+  const coachingDealCount = Math.ceil(
+    (targetClosed * DEMO_COACHING_OPEN_DEAL_INTERVAL) / (DEMO_COACHING_OPEN_DEAL_INTERVAL - 1),
+  );
 
   const coachingStages = ['Prospecting', 'Qualification', 'Proposal'];
   for (const stageName of coachingStages) {
-    await assertPipelineStageExists(client, stageName, defaultPipelineId);
+    await resolvePipelineStageId(client, stageName, defaultPipelineId);
   }
   // Invariant across every deal below, so resolved once rather than per row.
   const wonStageId = await resolvePipelineStageId(client, 'Closed Won', defaultPipelineId);
@@ -2559,23 +2571,40 @@ async function insertDemoData(
     for (let i = 0; i < coachingDealCount; i++) {
       const won = i % lossEvery !== 0;
       const finalStage = won ? 'Closed Won' : 'Closed Lost';
-      const stageId = won ? wonStageId : lostStageId;
       const closedDaysAgo =
         DEMO_COACHING_FIRST_CLOSE_DAYS_AGO + i * DEMO_COACHING_CLOSE_SPACING_DAYS;
+
+      // "Advanced" means a later history row exists, so a fixture where every deal ends
+      // in a terminal stage gives every rep a rate of exactly 1.0 in every stage — the
+      // page then reads "advances 100% of deals out of Qualification vs. the team average
+      // of 100%", a comparison carrying no information. Leaving some deals open supplies
+      // the variance. A lost deal also exits before Proposal.
+      const staysOpen = i % DEMO_COACHING_OPEN_DEAL_INTERVAL === DEMO_COACHING_OPEN_DEAL_OFFSET;
+      const walkedStages = won ? coachingStages : coachingStages.slice(0, -1);
+
+      // An open deal must look open in `deals` too. A row saying Closed Won whose history
+      // stops in Proposal leaves the final stage unbounded, and the stage-time metric
+      // measures it against now() — inflating the rep's average by months.
+      const openStage = walkedStages[walkedStages.length - 1];
+      const stageId = staysOpen
+        ? await resolvePipelineStageId(client, openStage, defaultPipelineId)
+        : won
+          ? wonStageId
+          : lostStageId;
       const dealResult = await client.query<{ id: string }>(
         `INSERT INTO deals
            (name, stage, value, probability, currency, close_date, loss_reason, account_id,
             owner_id, pipeline_id, pipeline_stage_id, is_demo)
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE - ($6 || ' days')::interval, $7, $8, $9, $10, $11, true)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE + ($6 || ' days')::interval, $7, $8, $9, $10, $11, true)
          RETURNING id`,
         [
-          `${won ? 'Won' : 'Lost'} — Renewal ${i + 1}`,
-          finalStage,
+          staysOpen ? `Open — Renewal ${i + 1}` : `${won ? 'Won' : 'Lost'} — Renewal ${i + 1}`,
+          staysOpen ? openStage : finalStage,
           DEMO_COACHING_BASE_VALUE + i * DEMO_COACHING_VALUE_STEP,
-          won ? 100 : 0,
+          staysOpen ? DEMO_COACHING_OPEN_DEAL_PROBABILITY : won ? 100 : 0,
           DEMO_COACHING_CURRENCY,
-          closedDaysAgo,
-          won ? null : 'Budget',
+          staysOpen ? DEMO_COACHING_OPEN_CLOSE_DAYS_AHEAD : -closedDaysAgo,
+          !staysOpen && !won ? 'Budget' : null,
           accountIds[i % accountIds.length],
           rep.id,
           defaultPipelineId,
@@ -2583,27 +2612,40 @@ async function insertDemoData(
         ],
       );
 
+      // Only open deals are scanned for hygiene problems, so an open fixture with no
+      // contact would raise opportunity_no_contact against every rep.
+      if (staysOpen) {
+        await client.query(
+          `INSERT INTO deal_contacts (deal_id, contact_id)
+           SELECT $1, c.id FROM contacts c WHERE c.account_id = $2 LIMIT 1
+           ON CONFLICT DO NOTHING`,
+          [dealResult.rows[0].id, accountIds[i % accountIds.length]],
+        );
+      }
+
       // History walks forward from the deal's start so each stage shows a real duration;
       // without these rows the stage-time metric has nothing to average.
       let cursorDaysAgo = closedDaysAgo + stageDays.reduce((sum, days) => sum + days, 0);
-      for (let stageIndex = 0; stageIndex < coachingStages.length; stageIndex++) {
+      for (let stageIndex = 0; stageIndex < walkedStages.length; stageIndex++) {
         const enteredAt = new Date(Date.now() - cursorDaysAgo * ONE_DAY_MS);
         await writeDealStageHistoryEntry(
           client,
           dealResult.rows[0].id,
           defaultPipelineId,
-          coachingStages[stageIndex],
+          walkedStages[stageIndex],
           enteredAt,
         );
         cursorDaysAgo -= stageDays[stageIndex];
       }
-      await writeDealStageHistoryEntry(
-        client,
-        dealResult.rows[0].id,
-        defaultPipelineId,
-        finalStage,
-        new Date(Date.now() - closedDaysAgo * ONE_DAY_MS),
-      );
+      if (!staysOpen) {
+        await writeDealStageHistoryEntry(
+          client,
+          dealResult.rows[0].id,
+          defaultPipelineId,
+          finalStage,
+          new Date(Date.now() - closedDaysAgo * ONE_DAY_MS),
+        );
+      }
 
       const shape = DEMO_COACHING_ACTIVITY_SHAPE[rep.pace];
       for (let n = 0; n < shape.perDeal; n++) {
@@ -2653,11 +2695,28 @@ async function insertDemoData(
     hygieneAccountIds.push(result.rows[0].id);
   }
 
-  const staleConfig = await client.query<{ title_staleness_days: number }>(
-    `SELECT title_staleness_days FROM data_hygiene_scoring_config LIMIT 1`,
+  const staleConfig = await client.query<{
+    title_staleness_days: number;
+    contact_inactivity_days: number;
+  }>(
+    `SELECT title_staleness_days, contact_inactivity_days FROM data_hygiene_scoring_config LIMIT 1`,
   );
-  const staleTitleDays =
-    (staleConfig.rows[0]?.title_staleness_days ?? 0) + DEMO_STALE_TITLE_MARGIN_DAYS;
+  const titleStalenessDays = staleConfig.rows[0]?.title_staleness_days;
+  const contactInactivityDays = staleConfig.rows[0]?.contact_inactivity_days;
+  if (titleStalenessDays === undefined || contactInactivityDays === undefined) {
+    throw new Error('Demo seed: data_hygiene_scoring_config is missing its singleton row');
+  }
+
+  // Derived from live config, not a fixed age: an admin narrowing the inactivity window
+  // below a hardcoded age would silently re-trip the signal these four exist to avoid.
+  const hygieneTouchAgeDays = Math.max(
+    1,
+    Math.min(
+      DEMO_HYGIENE_TOUCH_MAX_AGE_DAYS,
+      Math.floor(contactInactivityDays / DEMO_HYGIENE_TOUCH_AGE_DIVISOR),
+    ),
+  );
+  const staleTitleDays = titleStalenessDays + DEMO_STALE_TITLE_MARGIN_DAYS;
 
   // Contacts attach to Acme so the duplicate pair shares a company — gatherContactDuplicates
   // groups on (name, company), so a null account would not pair them.
@@ -2684,6 +2743,15 @@ async function insertDemoData(
         [result.rows[0].id, staleTitleDays],
       );
     }
+
+    // Each of these contacts is built to trip one specific rule. Without a recent
+    // activity they also trip contact_no_activity, which sorts by detected_at above
+    // every other rule and leaves the queue showing one signal repeated.
+    await client.query(
+      `INSERT INTO activities (type, subject, status, contact_id, owner_id, is_demo, created_at)
+       VALUES ('Call', $1, 'complete', $2, $3, true, now() - ($4 || ' days')::interval)`,
+      [DEMO_HYGIENE_TOUCH_SUBJECT, result.rows[0].id, adminId, hygieneTouchAgeDays],
+    );
   }
 
   for (const deal of DEMO_HYGIENE_DEALS) {
