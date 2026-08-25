@@ -88,6 +88,7 @@ jobs:
       doc-links:         ${{ steps.filter.outputs.doc-links }}
       gate-pointer-parity: ${{ steps.filter.outputs.gate-pointer-parity }}
       feature-flag-docs: ${{ steps.filter.outputs.feature-flag-docs }}
+      user-guide-routes: ${{ steps.filter.outputs.user-guide-routes }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -338,6 +339,22 @@ jobs:
               # a directory alias resolves the gitignored tsc side-emit instead of source.
               # `config`'s globs are root-level, so nothing else here matches it.
               - 'server/vitest.config.ts'
+
+            # Single-purpose output for userGuideRouteParity.test.ts, which pins every
+            # authenticated route in App.tsx to the guide page documenting it. `client`
+            # matches App.tsx but gates client-tests, not this job.
+            #
+            # The directory is globbed, not enumerated. The guard asserts completeness
+            # against git ls-files, so it must run when a page is ADDED — and a list can
+            # only ever trigger on paths it already names. Enumerating alongside the glob
+            # would add entries nothing requires: the glob covers a new page, so no author
+            # is ever forced to add one, and the list would drift incomplete unreported.
+            user-guide-routes:
+              - 'client/src/App.tsx'
+              - 'docs/user-guide/**'
+              # The guard reads this file to assert its own wiring, so an edit dropping
+              # the OR clause below has to re-run it.
+              - '.github/workflows/ci.yml'
             # Single-purpose output for check-grep-invert-parity.sh, which pins
             # the non-serial --grep-invert expression across this workflow, the
             # shared TS constant, and the documented local command. Three of the
@@ -954,7 +971,8 @@ jobs:
         needs.changes.outputs.user-guide-docs == 'true' ||
         needs.changes.outputs.redirect-status-docs == 'true' || needs.changes.outputs.scheduled-jobs-docs == 'true' ||
         needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true' ||
-        needs.changes.outputs.feature-flag-docs == 'true')
+        needs.changes.outputs.feature-flag-docs == 'true' ||
+        needs.changes.outputs.user-guide-routes == 'true')
     runs-on: ubuntu-latest
 
     services:
