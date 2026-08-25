@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
-import { getMyLanguage, setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
+import { getMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
 import {
   getMyNotificationPrefs,
   updateMyNotificationPrefs,
@@ -24,7 +24,7 @@ import {
 import type { NotificationPrefs } from '@/api/users.js';
 import { SUPPORTED_LOCALES } from '@shared/schemas/settingsSchema.js';
 import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
-import { getDefaultLanguage, DEFAULT_LANGUAGE_QUERY_KEY } from '@/api/settings.js';
+import { useLanguagePreference } from '@/hooks/useLanguagePreference.js';
 import { getMfaStatus, MFA_STATUS_QUERY_KEY } from '@/api/mfa.js';
 import MfaSetupModal from '@/components/MfaSetupModal.js';
 import MfaRecoveryCodesModal from '@/components/MfaRecoveryCodesModal.js';
@@ -67,31 +67,17 @@ export default function ProfilePage() {
     queryFn: getMyLanguage,
   });
 
-  const { data: defaultLangData } = useQuery({
-    queryKey: DEFAULT_LANGUAGE_QUERY_KEY,
-    queryFn: getDefaultLanguage,
-  });
+  // '' is "Use system default"; null is "nothing picked this visit".
+  const [pendingLanguage, setPendingLanguage] = useState<SupportedLocale | '' | null>(null);
+  // A saved null preference must keep showing "Use system default" rather than falling
+  // through to the concrete default, or the control contradicts what was just stored.
+  const savedLanguage: SupportedLocale | '' = langData ? (langData.language ?? '') : 'en';
+  const selectedLanguage: SupportedLocale | '' = pendingLanguage ?? savedLanguage;
 
-  const [pendingLanguage, setPendingLanguage] = useState<SupportedLocale | null>(null);
-  const [langSuccess, setLangSuccess] = useState(false);
-  const [langSaveError, setLangSaveError] = useState(false);
-
-  const selectedLanguage: SupportedLocale =
-    pendingLanguage ?? langData?.language ?? defaultLangData?.language ?? 'en';
-
-  const langMutation = useMutation({
-    mutationFn: setMyLanguage,
-    onSuccess: (saved) => {
-      queryClient.setQueryData(MY_LANGUAGE_QUERY_KEY, saved);
-      void queryClient.invalidateQueries({ queryKey: MY_LANGUAGE_QUERY_KEY });
-      setPendingLanguage(null);
-      setLangSuccess(true);
-      setLangSaveError(false);
-    },
-    onError: () => {
-      setLangSaveError(true);
-      setLangSuccess(false);
-    },
+  // Not optimistic: this form has an explicit Save button, so the interface should not
+  // switch until the save lands.
+  const languagePreference = useLanguagePreference({
+    onSaved: () => setPendingLanguage(null),
   });
 
   /**
@@ -101,9 +87,10 @@ export default function ProfilePage() {
    */
   function handleLangSubmit(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
-    setLangSuccess(false);
-    setLangSaveError(false);
-    langMutation.mutate(selectedLanguage);
+    languagePreference.reset();
+    // The empty option is "no personal preference", which the API takes as null — an
+    // empty string fails schema validation and surfaces as a save error.
+    languagePreference.save(selectedLanguage === '' ? null : selectedLanguage);
   }
 
   // ── Notification preferences ─────────────────────────────────────────────────
@@ -209,7 +196,7 @@ export default function ProfilePage() {
                 id="profile-language"
                 data-testid="profile-language-select"
                 value={selectedLanguage}
-                onChange={(e) => setPendingLanguage(e.target.value as SupportedLocale)}
+                onChange={(e) => setPendingLanguage(e.target.value as SupportedLocale | '')}
               >
                 <option value="">{t('profileSettings.systemDefault')}</option>
                 {SUPPORTED_LOCALES.map((locale) => (
@@ -220,7 +207,7 @@ export default function ProfilePage() {
               </Select>
             </div>
 
-            {langSuccess && (
+            {languagePreference.isSuccess && (
               <p
                 role="status"
                 className="text-sm text-green-700"
@@ -230,7 +217,7 @@ export default function ProfilePage() {
               </p>
             )}
 
-            {langSaveError && (
+            {languagePreference.isError && (
               <p
                 role="alert"
                 className="text-sm text-red-600"
@@ -246,9 +233,9 @@ export default function ProfilePage() {
                 variant="primary"
                 size="md"
                 data-testid="profile-lang-save"
-                disabled={langMutation.isPending}
+                disabled={languagePreference.isPending}
               >
-                {langMutation.isPending
+                {languagePreference.isPending
                   ? t('profileSettings.saving')
                   : t('profileSettings.saveButton')}
               </Button>

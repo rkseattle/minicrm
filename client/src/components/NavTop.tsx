@@ -12,7 +12,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { useFeatureFlags } from '@/hooks/useFeatureFlag.js';
 import { logout } from '@/api/auth.js';
-import { setMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
+import { useLanguagePreference } from '@/hooks/useLanguagePreference.js';
 import { Button } from '@/components/ui/Button.js';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
 import { NAV_LINKS, DESTINATION_NAME, LOCALE_NATIVE_NAME } from './navLinks.js';
@@ -66,26 +66,7 @@ export default function NavTop() {
     },
   });
 
-  const previousLocaleRef = useRef<string | null>(null);
-  const languageMutation = useMutation({
-    mutationFn: (locale: SupportedLocale) => setMyLanguage(locale),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: MY_LANGUAGE_QUERY_KEY });
-      previousLocaleRef.current = null;
-    },
-    onError: () => {
-      if (previousLocaleRef.current) {
-        void i18n.changeLanguage(previousLocaleRef.current);
-        previousLocaleRef.current = null;
-      }
-    },
-  });
-
-  function handleLanguageChange(locale: SupportedLocale): void {
-    previousLocaleRef.current = i18n.language;
-    void i18n.changeLanguage(locale);
-    languageMutation.mutate(locale);
-  }
+  const { save: handleLanguageChange } = useLanguagePreference({ optimistic: true });
 
   /** Close mobile drawer. */
   const closeMobileMenu = useCallback((): void => {

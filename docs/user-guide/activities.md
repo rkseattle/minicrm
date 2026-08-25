@@ -75,8 +75,7 @@ complete. See [My Tasks](my-tasks.md).
 
 If your admin has enabled email notifications, you will receive a daily digest of
 overdue tasks (tasks past their due date that are still open). You can control this
-in your notification preferences — click **Profile Settings** in the navigation, then
-find the **Email Notifications** section.
+in your notification preferences — see [Profile Settings](profile.md).
 
 ### AI Objection Pattern Matching
 
