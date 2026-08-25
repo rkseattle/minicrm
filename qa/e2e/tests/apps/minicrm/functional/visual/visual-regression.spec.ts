@@ -124,7 +124,7 @@ test.setTimeout(60_000);
 let sharedAdmin: EphemeralUserCredentials;
 
 test.beforeAll(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
+  await loginAsAdmin(restClient); // MINCRM-368-ok: hook-scoped client, not reused by tests
   // Create the shared admin directly — no testData needed since we own teardown
   // in afterAll. testData is test-scoped and unavailable in beforeAll.
   const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;

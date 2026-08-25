@@ -1287,6 +1287,12 @@ jobs:
       - name: Check .env*.example templates match and mirror each other (MINCRM-699)
         run: bash qa/scripts/check-env-example-parity.sh
 
+      - name: Verify the beforeAll guard catches a violation (MINCRM-368)
+        run: bash qa/scripts/check-e2e-beforeall.sh --self-test
+
+      - name: Check no spec calls loginAsAdmin in test.beforeAll (MINCRM-368)
+        run: bash qa/scripts/check-e2e-beforeall.sh
+
       - name: Check the settings-mutation guard itself is correct (MINCRM-705)
         run: node qa/scripts/check-settings-mutations.mjs --self-test
 
