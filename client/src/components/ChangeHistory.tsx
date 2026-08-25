@@ -122,10 +122,12 @@ function buildSummary(
       return t('auditLog.summary.note_deleted', { actor });
     case 'merged':
       return t('auditLog.summary.merged', { actor });
-    default:
-      // Reached only by an event type with no case above, which renders its raw
-      // identifier — visible to the user, so a new event type must be added here.
-      return `${actor} — ${entry.event_type}`;
+    default: {
+      // Unreachable for any schema-admitted value. Typed as never so adding an event
+      // type without a case here fails the build rather than leaking its raw identifier.
+      const unhandled: never = entry.event_type;
+      return `${actor} — ${String(unhandled)}`;
+    }
   }
 }
 

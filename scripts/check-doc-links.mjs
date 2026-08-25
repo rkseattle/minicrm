@@ -89,19 +89,19 @@ export function findBrokenLinks(files, root = REPO_ROOT) {
   return findings;
 }
 
+/** Directories whose index.md must list every sibling page exactly once. */
+const INDEXED_DOC_DIRS = ['docs/dev', 'docs/user-guide'];
+
 /**
- * Every .md in docs/dev/ must appear in docs/dev/index.md exactly once. The index is
- * hand-maintained, and markdownlint sees neither a page added without a row nor a row
- * duplicated by an edit.
+ * Every .md in an indexed directory must appear in that directory's index.md exactly
+ * once. Those indexes are hand-maintained, and markdownlint sees neither a page added
+ * without a row nor a row duplicated by an edit.
  *
  * Enumerates tracked files, so a brand-new page is invisible until `git add`. CI always
  * sees tracked files; locally, stage the page before trusting a pass.
  *
- * Returns findings as {page, problem}.
+ * @returns Findings as {page, problem}.
  */
-/** Directories whose index.md must list every sibling page exactly once. */
-const INDEXED_DOC_DIRS = ['docs/dev', 'docs/user-guide'];
-
 export function findIndexGaps(root = REPO_ROOT) {
   const findings = [];
   for (const dir of INDEXED_DOC_DIRS) {

@@ -42,8 +42,8 @@ Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid r
 
 | Name | Definition |
 | ---- | ---------- |
-| audit_log_no_modify | CREATE TRIGGER audit_log_no_modify BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable() |
 | audit_log_after_insert | CREATE TRIGGER audit_log_after_insert AFTER INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_notify() |
+| audit_log_no_modify | CREATE TRIGGER audit_log_no_modify BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable() |
 
 ## Relations
 

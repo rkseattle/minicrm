@@ -495,6 +495,27 @@ describe('ContactsPage', () => {
       });
     });
 
+    it('changing the page size clears the selection, which the new rows invalidate', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactsPage />);
+      await waitFor(() => {
+        expect(screen.getAllByTestId(`bulk-select-${CONTACT_1.id}`).length).toBeGreaterThan(0);
+      });
+      await user.click(screen.getAllByTestId(`bulk-select-${CONTACT_1.id}`)[0]!);
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+
+      // A size change leaves `page` at 1, so the page number alone cannot clear the
+      // selection — a bulk delete would then act on rows swapped out of view.
+      await user.selectOptions(screen.getByLabelText(/rows per page/i), '50');
+
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('bulk-action-count')).not.toBeInTheDocument();
+        },
+        { timeout: 5000 },
+      );
+    });
+
     it('shows the bulk action bar after selecting a row', async () => {
       const user = userEvent.setup();
       renderWithProviders(<ContactsPage />);

@@ -71,7 +71,9 @@ export default function ProfilePage() {
   const [pendingLanguage, setPendingLanguage] = useState<SupportedLocale | '' | null>(null);
   // A saved null preference must keep showing "Use system default" rather than falling
   // through to the concrete default, or the control contradicts what was just stored.
-  const savedLanguage: SupportedLocale | '' = langData ? (langData.language ?? '') : 'en';
+  // '' while loading too: showing English before the real value arrives makes the
+  // control briefly claim a preference the user may not have.
+  const savedLanguage: SupportedLocale | '' = langData ? (langData.language ?? '') : '';
   const selectedLanguage: SupportedLocale | '' = pendingLanguage ?? savedLanguage;
 
   // Not optimistic: this form has an explicit Save button, so the interface should not

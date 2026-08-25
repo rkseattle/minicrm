@@ -57,7 +57,10 @@ router.get('/status', asyncHandler(getDemoStatusHandler));
  *     tags: [Admin]
  *     operationId: seedDemo
  *     summary: Seed demo data (admin only)
- *     description: Inserts a full set of demo records. Returns 409 if demo data already exists.
+ *     description: >
+ *       Inserts a full set of demo records. Returns 409 if demo data already exists.
+ *       The hygiene scan and coaching generation start after the response and are not
+ *       awaited, so both queues fill shortly after this returns.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -86,7 +89,10 @@ router.post('/seed', asyncHandler(seedDemoHandler));
  *     tags: [Admin]
  *     operationId: resetDemo
  *     summary: Reset demo data (admin only)
- *     description: Removes existing demo data and re-seeds from scratch in a single transaction.
+ *     description: >
+ *       Removes existing demo data and re-seeds from scratch in a single transaction.
+ *       The hygiene scan and coaching generation start after the response and are not
+ *       awaited, so both queues fill shortly after this returns.
  *     security:
  *       - cookieAuth: []
  *     responses:

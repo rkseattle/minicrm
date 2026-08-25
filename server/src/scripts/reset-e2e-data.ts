@@ -147,6 +147,10 @@ async function main(adminEmail: string): Promise<void> {
     // Converted leads → contacts/accounts/deals: delete leads before targets.
     await client.query(`DELETE FROM leads`);
 
+    // Hygiene findings before their entities: entity_id carries no FK, so a finding on
+    // a preserved user's record would outlive the record and render as "Unknown".
+    await client.query(`DELETE FROM data_hygiene_findings`);
+
     // Deal contacts junction
     await client.query(`DELETE FROM deal_contacts`);
 
