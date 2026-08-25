@@ -1400,6 +1400,13 @@ const DEMO_CUSTOM_REPORTS: Array<{
   },
 ];
 
+/**
+ * Serializes the post-seed producers against demo removal. They run outside any seed
+ * transaction and write derived rows, so a removal that overlaps them leaves findings
+ * naming records that no longer exist.
+ */
+const DEMO_PRODUCER_LOCK = 'demo_post_seed_producers';
+
 const DEMO_CUSTOM_REPORT_NAMES = DEMO_CUSTOM_REPORTS.map((r) => r.name);
 
 // Records deliberately shaped to trip the data hygiene gatherers, so the findings queue
@@ -2831,6 +2838,10 @@ export async function seedDemo(): Promise<{ seeded: boolean; reason?: string }> 
 export async function removeDemo(): Promise<{ removed: boolean; reason?: string }> {
   const client = await pool.connect();
   try {
+    // Taken before BEGIN and released in the finally: the producers hold this across
+    // several transactions, so waiting here is what stops a scan already in flight from
+    // rewriting findings for the records this call is about to delete.
+    await client.query('SELECT pg_advisory_lock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
     await client.query('BEGIN');
     await setRlsUserId(client);
     // Check runs inside the transaction so concurrent requests cannot both pass the guard.
@@ -2847,6 +2858,7 @@ export async function removeDemo(): Promise<{ removed: boolean; reason?: string 
     await client.query('ROLLBACK');
     throw err;
   } finally {
+    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
     client.release();
   }
 }
@@ -2900,14 +2912,25 @@ export async function resetDemo(): Promise<{ reset: boolean }> {
  * because an optional enrichment step could not reach the network.
  */
 export async function runPostSeedProducers(): Promise<void> {
+  const client = await pool.connect();
   try {
-    await runDataHygieneScan();
-  } catch (err) {
-    logger.error({ err }, 'demoService: post-seed hygiene scan failed');
-  }
-  try {
-    await generateRepCoachingInsights();
-  } catch (err) {
-    logger.error({ err }, 'demoService: post-seed coaching generation failed');
+    // Session-scoped, not xact-scoped: the two producers below span several transactions
+    // of their own, and the window that matters is the whole run. Without it a removal
+    // landing mid-scan is overwritten by findings for records it just deleted, which then
+    // render as "Unknown" rows linking nowhere until the next scan.
+    await client.query('SELECT pg_advisory_lock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
+    try {
+      await runDataHygieneScan();
+    } catch (err) {
+      logger.error({ err }, 'demoService: post-seed hygiene scan failed');
+    }
+    try {
+      await generateRepCoachingInsights();
+    } catch (err) {
+      logger.error({ err }, 'demoService: post-seed coaching generation failed');
+    }
+  } finally {
+    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
+    client.release();
   }
 }
