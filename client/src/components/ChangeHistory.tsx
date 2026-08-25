@@ -122,9 +122,11 @@ function buildSummary(
       return t('auditLog.summary.note_deleted', { actor });
     case 'merged':
       return t('auditLog.summary.merged', { actor });
+    case 'gdpr_erasure':
+      return t('auditLog.summary.gdpr_erasure', { actor });
     default: {
-      // Unreachable for any schema-admitted value. Typed as never so adding an event
-      // type without a case here fails the build rather than leaking its raw identifier.
+      // Unreachable for any schema-admitted value. Typed as never so adding an event type
+      // without a case here fails the build rather than leaking its raw identifier.
       const unhandled: never = entry.event_type;
       return `${actor} — ${String(unhandled)}`;
     }

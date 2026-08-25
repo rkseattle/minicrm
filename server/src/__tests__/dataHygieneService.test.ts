@@ -1059,3 +1059,46 @@ describe('getDataHygieneConfig / setDataHygieneConfig', () => {
     );
   });
 });
+
+describe('listHygieneFindings — ordering', () => {
+  it('returns a stable order when a scan gives every finding the same detected_at', async () => {
+    // One scan stamps every row from the same statement, so detected_at alone leaves
+    // the order to the planner and it can differ between identical calls.
+    const contacts = await Promise.all(
+      ['Zeta', 'Alpha', 'Mu'].map((name) =>
+        // Unique emails, blank phone: still trips contact_missing_contact_info, without
+        // colliding on the duplicate-email check that rejects a second empty string.
+        createContact({
+          first_name: name,
+          last_name: 'Ordering',
+          email: `${FILE_PREFIX}-${uid()}-${name.toLowerCase()}@example.com`,
+          owner_id: ownerId,
+        }),
+      ),
+    );
+
+    await runDataHygieneScan();
+
+    const ids = contacts.map((c) => c.id);
+    const mine = (await listHygieneFindings(ownerId)).filter((f) => ids.includes(f.entity_id));
+
+    // One scan stamps every row identically, so detected_at cannot be doing the ordering.
+    const distinctTimestamps = await pool.query<{ n: string }>(
+      `SELECT COUNT(DISTINCT detected_at) AS n FROM data_hygiene_findings WHERE entity_id = ANY($1)`,
+      [ids],
+    );
+    expect(Number(distinctTimestamps.rows[0]!.n)).toBe(1);
+
+    // Asserted against the database's own sort rather than a JS .sort() of a composite
+    // key: JS compares code units and PG compares by collation, and they disagree once
+    // one issue type is a prefix of another.
+    const expected = await pool.query<{ id: string }>(
+      `SELECT id FROM data_hygiene_findings
+       WHERE entity_id = ANY($1)
+       ORDER BY detected_at DESC, issue_type ASC, id ASC`,
+      [ids],
+    );
+    expect(expected.rows.length).toBeGreaterThan(1);
+    expect(mine.map((f) => f.id)).toEqual(expected.rows.map((r) => r.id));
+  });
+});

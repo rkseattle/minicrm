@@ -1520,7 +1520,8 @@
       "note_updated": "{{actor}} hat eine Notiz bearbeitet",
       "note_visibility_changed": "{{actor}} hat die Sichtbarkeit einer Notiz geändert",
       "note_deleted": "{{actor}} hat eine Notiz gelöscht",
-      "merged": "{{actor}} hat einen anderen Datensatz mit diesem zusammengeführt"
+      "merged": "{{actor}} hat einen anderen Datensatz mit diesem zusammengeführt",
+      "gdpr_erasure": "{{actor}} hat die personenbezogenen Daten dieses Datensatzes gelöscht"
     },
     "pagination": {
       "prev": "Zurück",

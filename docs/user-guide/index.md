@@ -98,8 +98,8 @@ Either way you are returned to the first page.
 ### Pagination
 
 Every list shows **Showing 1–25 of 60** style counts with **Previous** and **Next**
-buttons. Most also have a **Rows per page** control offering 10, 25, 50, and 100; the
-default is 25, and changing it returns you to the first page. Activities is the
+buttons. Most also have a page-size selector reading **25 per page**, which offers 10,
+25, 50, and 100; changing it returns you to the first page. Activities is the
 exception — it pages at a fixed size with no control.
 
 ### Bulk actions

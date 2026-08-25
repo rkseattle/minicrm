@@ -1520,7 +1520,8 @@
       "note_updated": "{{actor}} editó una nota",
       "note_visibility_changed": "{{actor}} cambió la visibilidad de una nota",
       "note_deleted": "{{actor}} eliminó una nota",
-      "merged": "{{actor}} fusionó otro registro con este"
+      "merged": "{{actor}} fusionó otro registro con este",
+      "gdpr_erasure": "{{actor}} borró los datos personales de este registro"
     },
     "pagination": {
       "prev": "Anterior",

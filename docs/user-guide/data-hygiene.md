@@ -108,6 +108,10 @@ This page shows findings on records **you own**. Admins have a separate page at
 
 ### Nothing here is scored
 
-The queue is a list ordered by when each problem was detected. There is no hygiene
-score, no ranking, and no weighting — a missing phone number and a stale job title sit
-side by side in the order they were found.
+The queue is a list ordered by when each problem was detected, newest first. There is no
+hygiene score, no ranking, and no weighting — a missing phone number and a stale job
+title sit side by side in the order they were found.
+
+A single scan stamps everything it finds at the same moment, so one run's findings are
+grouped by problem type rather than interleaved. That grouping is stable: reloading the
+page does not reshuffle the list.

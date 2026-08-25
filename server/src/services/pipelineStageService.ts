@@ -213,6 +213,14 @@ export async function updatePipelineStage(
         existing.pipeline_id,
       ]);
 
+      // History stores the stage by name with no FK, so a rename orphans its rows. The
+      // coaching metrics resolve them back through pipeline_stages to decide what is
+      // terminal, and an orphan silently counts as a stage deals never advance out of.
+      await client.query(
+        'UPDATE deal_stage_history SET stage = $1 WHERE stage = $2 AND pipeline_id = $3',
+        [params.name, existing.name, existing.pipeline_id],
+      );
+
       // Carry deal_stage_changed rules across with the rename, so a renamed stage does not
       // leave them silently dead. Rules match on stage NAME with no pipeline of their own,
       // so this only applies when no other pipeline still uses the old name — otherwise the

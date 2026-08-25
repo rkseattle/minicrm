@@ -43,6 +43,9 @@ export const AUDIT_EVENT_TYPES = [
   'note_updated',
   'note_deleted',
   'note_visibility_changed',
+  // Written against a contact, so it reaches the record-level Change History panel.
+  // The server's AuditEventType union is broader; these are the ones that surface there.
+  'gdpr_erasure',
 ] as const;
 
 /** A single audit log entry as returned by the API */

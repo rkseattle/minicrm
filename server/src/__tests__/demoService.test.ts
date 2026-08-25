@@ -204,9 +204,17 @@ afterAll(async () => {
     )`,
       [adminId],
     );
-    // Explicit rather than relying on the owner_id cascade from the user delete below,
-    // which only covers findings owned inside this file's email prefix.
-    await deleteDemoHygieneFindings(pool, adminId);
+    // Shared predicate for the demo-flagged half, then this file's own fixtures, which
+    // are demo-shaped without carrying the flag.
+    await deleteDemoHygieneFindings(pool);
+    await pool.query(
+      `DELETE FROM data_hygiene_findings WHERE entity_id IN (
+         SELECT id FROM contacts WHERE owner_id = $1
+         UNION SELECT id FROM accounts WHERE owner_id = $1
+         UNION SELECT id FROM deals WHERE owner_id = $1
+       )`,
+      [adminId],
+    );
     await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
       DEMO_CUSTOM_FIELD_NAMES,
     ]);
@@ -1399,6 +1407,17 @@ describe('seedDemo — rep coaching fixtures', () => {
     for (const row of perRep.rows) {
       expect(Number(row.n), `${row.name} has no coaching insights`).toBeGreaterThan(0);
     }
+
+    // Non-zero counts alone pass on entirely degenerate output — every rep matching the
+    // team average exactly, which is what the page showed before the fixture varied.
+    const varied = await pool.query<{ n: string }>(
+      `SELECT COUNT(*) AS n
+       FROM rep_coaching_insights i
+       JOIN users u ON u.id = i.rep_id
+       WHERE i.metric_type = 'stage_conversion_rate' AND i.rep_value <> 1
+         AND (u.email LIKE '%@demo.minicrm.dev' OR u.email = 'alex.rivera@demo.minicrm.app')`,
+    );
+    expect(Number(varied.rows[0]!.n)).toBeGreaterThan(0);
   });
 });
 

@@ -8,6 +8,7 @@ import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 import ChangeHistory from './ChangeHistory.js';
+import { AUDIT_EVENT_TYPES } from '@shared/schemas/auditSchema.js';
 import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
 
 const RECORD_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -61,6 +62,7 @@ describe('ChangeHistory', () => {
     ['note_visibility_changed', 'visibility'],
     ['note_deleted', 'deleted a note'],
     ['merged', 'merged another record'],
+    ['gdpr_erasure', 'erased'],
   ];
 
   it.each(UNRENDERED_EVENT_TYPES)(
@@ -380,5 +382,21 @@ describe('ChangeHistory', () => {
 
     // After all entries load, the toggle label changes to "Show less"
     expect(screen.getByTestId('change-history-toggle')).toHaveTextContent(/show less/i);
+  });
+
+  // Replaces a `never` exhaustiveness cast that type-checked against a stale enum and so
+  // proved nothing. Every schema-admitted type must render as prose; a new one added to
+  // the schema alone fails here instead of reaching a user as a bare identifier.
+  it.each(AUDIT_EVENT_TYPES)('renders %s without leaking the raw identifier', async (eventType) => {
+    const entry = makeEntry({ event_type: eventType });
+    server.use(http.get('/api/v1/audit-log/record', () => HttpResponse.json({ entries: [entry] })));
+    renderWithProviders(<ChangeHistory recordType="contact" recordId={RECORD_ID} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`change-history-entry-${entry.id}`)).toBeInTheDocument();
+    });
+    // The fallback renders "Actor — event_type"; matching the bare word would flag the
+    // correct prose too, since "created" and "merged" are English words the sentences use.
+    expect(screen.queryByText(new RegExp(`—\\s*${eventType}$`))).not.toBeInTheDocument();
   });
 });
