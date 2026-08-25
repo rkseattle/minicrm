@@ -11,11 +11,10 @@
  * names the script, never whether that step is correct — check-ci-filter-globs.mjs covers
  * stale filter paths, and each guard's own assertions cover what it checks.
  *
- * Three bounds, each deliberate and each a hole if it stops holding: only .sh and .mjs are
- * discovered (scripts/check-comments-only-diff.ts is a wired .ts guard outside the set);
- * only ci.yml is read (no other workflow invokes a guard today); and a step must name the
- * path, so converting one to `npm run lint:framework-purity` would read as uninvoked —
- * qa/package.json wraps four guards that way, all also invoked by path today.
+ * Two bounds, each deliberate and each a hole if it stops holding: only ci.yml is read
+ * (no other workflow invokes a guard today), and a step must name the path, so converting
+ * one to `npm run lint:framework-purity` would read as uninvoked — qa/package.json wraps
+ * four guards that way, all also invoked by path today.
  *
  * Run: node scripts/check-guard-invocation.mjs [--self-test]
  */
@@ -31,8 +30,8 @@ const WORKFLOW = '.github/workflows/ci.yml';
 /** Directories holding guards that a CI job is expected to run. */
 const GUARD_DIRS = ['scripts', 'qa/scripts'];
 
-/** Guard file types discovered. A .ts guard exists but is wired and outside this set. */
-const GUARD_EXTENSIONS = ['sh', 'mjs'];
+/** Guard file types discovered. */
+const GUARD_EXTENSIONS = ['sh', 'mjs', 'ts'];
 
 /**
  * Directories whose guards need a filter entry of their own.
@@ -146,12 +145,13 @@ function stripShellComment(line) {
  *
  * @param {string[]} scripts - Repo-relative guard paths.
  * @param {string} workflow - Contents of the workflow file.
+ * @param {Set<string>} [exempt] - Guards no job runs on purpose.
  * @returns {string[]} The uninvoked subset, excluding documented exemptions.
  */
-export function findUninvokedGuards(scripts, workflow) {
+export function findUninvokedGuards(scripts, workflow, exempt = NOT_RUN_IN_CI) {
   const invocations = runCommands(workflow);
   return scripts.filter((script) => {
-    if (NOT_RUN_IN_CI.has(script)) return false;
+    if (exempt.has(script)) return false;
     const escaped = script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return !new RegExp(`(^|[^\\w/-])${escaped}`, 'm').test(invocations);
   });
@@ -277,6 +277,8 @@ function selfTest() {
     '            guard-invocation:',
     "              - 'scripts/check-*.sh'",
     "              - 'scripts/check-*.mjs'",
+    "              - 'scripts/check-*.ts'",
+    '',
   ].join('\n');
   const consumedOnly = "    if: needs.changes.outputs.guard-invocation == 'true'";
   if (!findWiringProblems(`${declaredOnly}\n`).some((p) => p.includes("no job's if:"))) {
@@ -291,6 +293,17 @@ function selfTest() {
   const realWiring = findWiringProblems(readFileSync(resolve(REPO_ROOT, WORKFLOW), 'utf8'));
   if (realWiring.length !== 0) {
     failures.push(`findWiringProblems on the real workflow: ${realWiring.join('; ')}`);
+  }
+
+  // The exemption path is unexercised in production (the set is empty), so it is asserted
+  // here rather than trusted the first time someone adds an entry.
+  const exempted = findUninvokedGuards(
+    ['qa/scripts/check-missing.sh'],
+    workflow,
+    new Set(['qa/scripts/check-missing.sh']),
+  );
+  if (exempted.length !== 0) {
+    failures.push('an exempt guard was still flagged as uninvoked');
   }
 
   // guardScripts() decides what is examined at all, so an empty result is the silent

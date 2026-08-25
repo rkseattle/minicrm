@@ -172,6 +172,12 @@ jobs:
               - '*.yml'
               - 'Dockerfile*'
               - '.github/**'
+              # Workspace test configs match none of the globs above — those are
+              # root-level only — so an edit to one ran no typecheck at all. The shared
+              # schema aliases they carry decide whether a guard reads source or a
+              # stale build output, which makes them worth compiling.
+              - '*/vitest.config.ts'
+              - '*/vite.config.ts'
             # Single-purpose filter for the ESLint rule set. The `config` filter's
             # root-level '*.json'/'*.yml' globs do not match .mjs, so eslint.config.mjs
             # and eslint-plugins/** were covered by no filter at all: a PR adding a
@@ -196,16 +202,16 @@ jobs:
               - 'scripts/check-comments-only-diff.ts'
 
             # Single-purpose output for check-guard-invocation.mjs, which fails when a
-            # check-* script is run by no job. Both sides of the invariant: adding a guard
-            # without a step, and deleting the step that ran one, each re-run it.
+            # check-* script is run by no job. Adding a guard here re-runs it; the other
+            # side — deleting the step that ran one — is already covered, since `config`
+            # matches .github/** and gates this job.
             #
-            # Only the scripts/ globs are here. `qa` already matches qa/scripts/**/*.sh
-            # and **/*.mjs and gates this job, so listing those would narrow nothing —
-            # the job runs on the union and the narrow entry never decides.
+            # Only the scripts/ globs are listed for the same reason: `qa` already matches
+            # qa/scripts/**, so a narrower duplicate could never be the deciding trigger.
             guard-invocation:
-              - '.github/workflows/ci.yml'
               - 'scripts/check-*.sh'
               - 'scripts/check-*.mjs'
+              - 'scripts/check-*.ts'
 
             # Single-purpose output for check-ci-filter-globs.mjs. Its subject IS
             # ci.yml, so the workflow has to trigger it; `config` would also match but

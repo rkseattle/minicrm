@@ -109,13 +109,17 @@ function protectedRoutePaths(source: string): string[] {
  * `/`, so a nested page arrives as `nested/x.md` and is reported by its path rather than
  * colliding with a top-level page of the same basename.
  */
+let cachedGuidePages: string[] | undefined;
+
 function guidePages(): string[] {
-  return execFileSync('git', ['-C', REPO_ROOT, 'ls-files', '-z', `${GUIDE_DIR}/*.md`], {
+  if (cachedGuidePages) return cachedGuidePages;
+  cachedGuidePages = execFileSync('git', ['-C', REPO_ROOT, 'ls-files', '-z', `${GUIDE_DIR}/*.md`], {
     encoding: 'utf8',
   })
     .split('\0')
     .filter(Boolean)
     .map((path) => path.slice(GUIDE_DIR.length + 1));
+  return cachedGuidePages;
 }
 
 describe('every user-facing route has a user-guide page', () => {

@@ -120,9 +120,8 @@ Each carries a single-purpose filter output OR'd into `server-tests`, per the tw
 above. That wiring has two halves, and a break in either leaves the guard green while it
 no longer runs. The OR clause is asserted for all of them, in `featureFlagDocsParity.test.ts` — so
 deleting one fails there rather than in the guard it disables. The other half — that the
-filter lists every file the guard reads — is asserted by `featureFlagDocsParity` and
-`userGuideRouteParity` (via `expectGuardIsTriggered`) and by `userGuideLabels` (with its
-own equivalent check).
+filter lists every file the guard reads — is asserted by `featureFlagDocsParity`,
+`userGuideRouteParity`, and `userGuideLabels`, all through `expectGuardIsTriggered`.
 
 **`verifyTestAttestation`, `scheduledJobsDocumentation`, and `legacyApiRedirect` keep
 their filter lists in sync by hand.** If you make one of those three read a new doc, add
