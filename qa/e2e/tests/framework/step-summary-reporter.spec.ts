@@ -631,6 +631,12 @@ test.describe('StepSummaryReporter — Quarantine Candidates section', () => {
     return trendsPath;
   }
 
+  // These cases assert table rendering, not recency. The reporter reads the real clock,
+  // so a fixed date would age past the quarantine window and silently empty the section.
+  function daysAgo(n: number): string {
+    return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+  }
+
   test.afterEach(() => {
     delete process.env['HEAL_QUARANTINE_THRESHOLD'];
     resetTrendsFileForTesting();
@@ -647,7 +653,7 @@ test.describe('StepSummaryReporter — Quarantine Candidates section', () => {
           originalStrategyValue: 'save-btn',
           count: 3,
           firstSeenAt: '2026-01-01T00:00:00.000Z',
-          lastSeenAt: '2026-01-03T00:00:00.000Z',
+          lastSeenAt: daysAgo(1),
         },
       });
       const reporter = new StepSummaryReporter();
@@ -671,7 +677,7 @@ test.describe('StepSummaryReporter — Quarantine Candidates section', () => {
           originalStrategyValue: 'x',
           count: 2, // below default threshold of 3
           firstSeenAt: '2026-01-01T00:00:00.000Z',
-          lastSeenAt: '2026-01-02T00:00:00.000Z',
+          lastSeenAt: daysAgo(2),
         },
       });
       const reporter = new StepSummaryReporter();
@@ -704,7 +710,7 @@ test.describe('StepSummaryReporter — Quarantine Candidates section', () => {
           originalStrategyValue: 'x',
           count: 5, // meets threshold=3 but not threshold=10
           firstSeenAt: '2026-01-01T00:00:00.000Z',
-          lastSeenAt: '2026-01-05T00:00:00.000Z',
+          lastSeenAt: daysAgo(1),
         },
       });
       const reporter = new StepSummaryReporter();
@@ -727,7 +733,7 @@ test.describe('StepSummaryReporter — Quarantine Candidates section', () => {
           originalStrategyValue: 'a',
           count: 3,
           firstSeenAt: '2026-01-01T00:00:00.000Z',
-          lastSeenAt: '2026-01-01T00:00:00.000Z',
+          lastSeenAt: daysAgo(3),
         },
         'P::high::testId::b': {
           pageObject: 'P',
@@ -736,7 +742,7 @@ test.describe('StepSummaryReporter — Quarantine Candidates section', () => {
           originalStrategyValue: 'b',
           count: 9,
           firstSeenAt: '2026-01-01T00:00:00.000Z',
-          lastSeenAt: '2026-01-01T00:00:00.000Z',
+          lastSeenAt: daysAgo(3),
         },
       });
       const reporter = new StepSummaryReporter();

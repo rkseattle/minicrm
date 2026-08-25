@@ -261,7 +261,13 @@ test.describe('writeTrends + readTrends', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('quarantineCandidates', () => {
-  function makeEntry(count: number): HealTrendEntry {
+  // Fixed clock so the recency window is asserted against a known point rather than
+  // whenever the suite happens to run.
+  const NOW = new Date('2026-06-01T00:00:00.000Z');
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  function makeEntry(count: number, daysAgo = 0): HealTrendEntry {
+    const lastSeen = new Date(NOW.getTime() - daysAgo * DAY_MS).toISOString();
     return {
       pageObject: 'P',
       method: 'm',
@@ -269,32 +275,59 @@ test.describe('quarantineCandidates', () => {
       originalStrategyValue: 'x',
       count,
       firstSeenAt: '2026-01-01T00:00:00.000Z',
-      lastSeenAt: '2026-01-01T00:00:00.000Z',
+      lastSeenAt: lastSeen,
     };
   }
 
   test('returns entries whose count equals the threshold', () => {
     const entries = { a: makeEntry(3) };
-    const result = quarantineCandidates(entries, 3);
+    const result = quarantineCandidates(entries, 3, 30, NOW);
     expect(result).toHaveLength(1);
   });
 
   test('returns entries whose count exceeds the threshold', () => {
     const entries = { a: makeEntry(7) };
-    const result = quarantineCandidates(entries, 3);
+    const result = quarantineCandidates(entries, 3, 30, NOW);
     expect(result).toHaveLength(1);
     expect(result[0]!.count).toBe(7);
   });
 
   test('excludes entries below threshold', () => {
     const entries = { a: makeEntry(2) };
-    const result = quarantineCandidates(entries, 3);
+    const result = quarantineCandidates(entries, 3, 30, NOW);
     expect(result).toHaveLength(0);
   });
 
   test('returns empty array when all entries are below threshold', () => {
     const entries = { a: makeEntry(1), b: makeEntry(2) };
-    expect(quarantineCandidates(entries, 3)).toEqual([]);
+    expect(quarantineCandidates(entries, 3, 30, NOW)).toEqual([]);
+  });
+
+  test('excludes an entry whose count qualifies but which healed before the window', () => {
+    // The defect this guards: counts accumulate forever, so a locator that broke months
+    // ago and was fixed kept firing the warning on every run.
+    const entries = { a: makeEntry(17, 93) };
+    expect(quarantineCandidates(entries, 3, 30, NOW)).toEqual([]);
+  });
+
+  test('includes an entry that healed on the window boundary', () => {
+    const entries = { a: makeEntry(5, 30) };
+    expect(quarantineCandidates(entries, 3, 30, NOW)).toHaveLength(1);
+  });
+
+  test('excludes an entry one day past the window', () => {
+    const entries = { a: makeEntry(5, 31) };
+    expect(quarantineCandidates(entries, 3, 30, NOW)).toEqual([]);
+  });
+
+  test('keeps an entry whose lastSeenAt is unparseable rather than silencing it', () => {
+    const entry = { ...makeEntry(5), lastSeenAt: 'not-a-date' };
+    expect(quarantineCandidates({ a: entry }, 3, 30, NOW)).toHaveLength(1);
+  });
+
+  test('still excludes a recent entry below the count threshold', () => {
+    const entries = { a: makeEntry(2, 1) };
+    expect(quarantineCandidates(entries, 3, 30, NOW)).toEqual([]);
   });
 
   test('handles empty entries map', () => {
@@ -307,7 +340,7 @@ test.describe('quarantineCandidates', () => {
       at: makeEntry(3),
       above: makeEntry(5),
     };
-    const result = quarantineCandidates(entries, 3);
+    const result = quarantineCandidates(entries, 3, 30, NOW);
     expect(result).toHaveLength(2);
     expect(result.map((e) => e.count).sort((a, b) => a - b)).toEqual([3, 5]);
   });

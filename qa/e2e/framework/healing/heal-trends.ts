@@ -14,6 +14,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { HealEvent } from './healing-registry.js';
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 // Resolve relative to this source file so the path is correct regardless of
 // the working directory from which Playwright is invoked.
 const E2E_DIR = path.resolve(__dirname, '..', '..');
@@ -126,13 +128,52 @@ export function writeTrends(entries: Record<string, HealTrendEntry>): void {
   fs.writeFileSync(trendsFile, JSON.stringify(file, null, 2), 'utf-8');
 }
 
+/** Default quarantine threshold, overridable via HEAL_QUARANTINE_THRESHOLD. */
+export const DEFAULT_QUARANTINE_THRESHOLD = 3;
+
+/** Default recency window in days, overridable via HEAL_QUARANTINE_MAX_AGE_DAYS. */
+export const DEFAULT_QUARANTINE_MAX_AGE_DAYS = 30;
+
+/** Reads the quarantine threshold from the environment. */
+export function quarantineThreshold(): number {
+  const parsed = parseInt(
+    process.env['HEAL_QUARANTINE_THRESHOLD'] ?? String(DEFAULT_QUARANTINE_THRESHOLD),
+    10,
+  );
+  return Number.isFinite(parsed) ? parsed : DEFAULT_QUARANTINE_THRESHOLD;
+}
+
+/** Reads the recency window from the environment. */
+export function quarantineMaxAgeDays(): number {
+  const parsed = parseInt(
+    process.env['HEAL_QUARANTINE_MAX_AGE_DAYS'] ?? String(DEFAULT_QUARANTINE_MAX_AGE_DAYS),
+    10,
+  );
+  return Number.isFinite(parsed) ? parsed : DEFAULT_QUARANTINE_MAX_AGE_DAYS;
+}
+
 /**
- * Returns all trend entries whose accumulated count meets or exceeds the
- * quarantine threshold.
+ * Returns all trend entries whose accumulated count meets or exceeds the quarantine
+ * threshold AND which healed within the recency window.
+ *
+ * Count alone answers "was this locator ever unstable", which is true forever once it
+ * is true once — the warning then fires on every run regardless of current health and
+ * stops carrying information. The window asks "is it unstable now", so a locator that
+ * stops breaking ages out on its own and one that resumes re-enters immediately.
+ *
+ * An unparseable or absent lastSeenAt is treated as in-window: dropping an entry whose
+ * age cannot be established would silence a signal rather than age it out.
  */
 export function quarantineCandidates(
   entries: Record<string, HealTrendEntry>,
   threshold: number,
+  maxAgeDays: number = quarantineMaxAgeDays(),
+  now: Date = new Date(),
 ): HealTrendEntry[] {
-  return Object.values(entries).filter((e) => e.count >= threshold);
+  const cutoff = now.getTime() - maxAgeDays * MS_PER_DAY;
+  return Object.values(entries).filter((e) => {
+    if (e.count < threshold) return false;
+    const lastSeen = Date.parse(e.lastSeenAt);
+    return Number.isNaN(lastSeen) || lastSeen >= cutoff;
+  });
 }

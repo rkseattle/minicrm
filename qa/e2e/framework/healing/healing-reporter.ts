@@ -27,7 +27,14 @@ import { HealingRegistry } from './healing-registry.js';
 import type { HealEvent } from './healing-registry.js';
 import { generatePatchSuggestions } from './patch-suggester.js';
 import type { PatchSuggestion } from './patch-suggester.js';
-import { readTrends, mergeTrends, writeTrends, quarantineCandidates } from './heal-trends.js';
+import {
+  readTrends,
+  mergeTrends,
+  writeTrends,
+  quarantineCandidates,
+  quarantineThreshold,
+  quarantineMaxAgeDays,
+} from './heal-trends.js';
 import type { HealTrendEntry } from './heal-trends.js';
 import { readWorkerArtifact } from '../reporting/worker-artifact-utils.js';
 
@@ -201,7 +208,7 @@ export class HealingReporter implements Reporter {
 
   /** Returns the configured quarantine threshold (default 3). */
   _quarantineThreshold(): number {
-    return parseInt(process.env['HEAL_QUARANTINE_THRESHOLD'] ?? '3', 10);
+    return quarantineThreshold();
   }
 
   /**
@@ -213,11 +220,12 @@ export class HealingReporter implements Reporter {
     if (eligible.length === 0) return;
     const threshold = this._quarantineThreshold();
     console.warn(
-      `\n[HealingReporter] ⚠ ${eligible.length} locator(s) are quarantine-eligible (healed ≥ ${threshold} times across runs):`,
+      `\n[HealingReporter] ⚠ ${eligible.length} locator(s) are quarantine-eligible ` +
+        `(healed ≥ ${threshold} times, most recently within ${quarantineMaxAgeDays()} days):`,
     );
     for (const entry of eligible) {
       console.warn(
-        `  - ${entry.pageObject}.${entry.method} [${entry.originalStrategyType}="${entry.originalStrategyValue}"] — healed ${entry.count} time(s)`,
+        `  - ${entry.pageObject}.${entry.method} [${entry.originalStrategyType}="${entry.originalStrategyValue}"] — healed ${entry.count} time(s), last ${entry.lastSeenAt}`,
       );
     }
     console.warn(
