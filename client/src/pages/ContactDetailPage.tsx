@@ -70,6 +70,7 @@ import { getContactSentimentTrend, contactSentimentTrendQueryKey } from '@/api/s
 import { getFollowUpTiming, followUpTimingQueryKey } from '@/api/followUpTiming.js';
 import FollowUpTimingCard from '@/components/FollowUpTimingCard.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /**
  * Single contact detail page with view/edit/delete.
@@ -610,7 +611,7 @@ export default function ContactDetailPage() {
             className="mb-4 rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800"
             data-testid="converted-from-lead-banner"
           >
-            <Link to={`/leads/${contact.source_lead_id}`} className="font-medium underline">
+            <Link to={recordPath('lead', contact.source_lead_id)} className="font-medium underline">
               {t('contacts.convertedFromLead')}
             </Link>
           </div>
@@ -1007,7 +1008,7 @@ export default function ContactDetailPage() {
                 </span>
               ) : linkedAccount ? (
                 <Link
-                  to={`/accounts/${linkedAccount.id}`}
+                  to={recordPath('account', linkedAccount.id)}
                   data-testid="detail-account"
                   className="text-sm text-primary-600 hover:underline"
                 >
@@ -1419,7 +1420,7 @@ export default function ContactDetailPage() {
                     {linkedDeals.map((deal) => (
                       <li key={deal.id} className="px-6 py-3 flex items-center gap-3">
                         <Link
-                          to={`/deals/${deal.id}`}
+                          to={recordPath('deal', deal.id)}
                           data-testid={`linked-deal-${deal.id}`}
                           className="text-sm font-medium text-primary-600 hover:underline"
                         >

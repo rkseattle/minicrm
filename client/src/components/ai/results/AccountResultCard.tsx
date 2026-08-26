@@ -2,6 +2,7 @@
  * Renders a single account as a summary row in the NLI result block.
  */
 import { Link } from 'react-router-dom';
+import { recordPath } from '@shared/types/recordPath.js';
 
 interface AccountCardData {
   id: string;
@@ -23,7 +24,7 @@ export default function AccountResultCard({ account }: AccountResultCardProps) {
     >
       <div className="min-w-0 flex-1">
         <Link
-          to={`/accounts/${account.id}`}
+          to={recordPath('account', account.id)}
           className="text-sm font-medium text-primary-600 hover:underline truncate block"
           data-testid={`nli-account-card-link-${account.id}`}
         >

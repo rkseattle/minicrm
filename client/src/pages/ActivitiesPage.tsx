@@ -424,7 +424,7 @@ export default function ActivitiesPage() {
               <tbody className="bg-white divide-y divide-gray-100">
                 {activities.map((activity) => {
                   const badge = activityTypeBadge(activity.type);
-                  const recordPath = linkedRecordPath(activity);
+                  const linkPath = linkedRecordPath(activity);
 
                   return (
                     <tr
@@ -464,9 +464,9 @@ export default function ActivitiesPage() {
 
                       {/* Linked record — show record type as the link label */}
                       <td className="px-6 py-4 text-sm">
-                        {recordPath ? (
+                        {linkPath ? (
                           <Link
-                            to={recordPath}
+                            to={linkPath}
                             className="text-primary-600 hover:text-primary-800 hover:underline"
                             data-testid={`activity-record-${activity.id}`}
                           >

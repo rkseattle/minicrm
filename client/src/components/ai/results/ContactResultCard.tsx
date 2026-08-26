@@ -4,6 +4,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import TagBadge from '@/components/TagBadge.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 interface ContactCardData {
   id: string;
@@ -32,7 +33,7 @@ export default function ContactResultCard({ contact }: ContactResultCardProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <Link
-            to={`/contacts/${contact.id}`}
+            to={recordPath('contact', contact.id)}
             className="text-sm font-medium text-primary-600 hover:underline truncate"
             data-testid={`nli-contact-card-link-${contact.id}`}
           >

@@ -31,6 +31,7 @@ import { LEADS_QUERY_KEY } from '@/pages/LeadsPage.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /** Tailwind badge classes by status */
 const STATUS_BADGE: Record<string, string> = {
@@ -435,7 +436,7 @@ export default function LeadDetailPage() {
                 <div className="flex flex-wrap gap-4 text-sm">
                   {lead.converted_contact_id && (
                     <Link
-                      to={`/contacts/${lead.converted_contact_id}`}
+                      to={recordPath('contact', lead.converted_contact_id)}
                       className="text-primary-600 hover:underline"
                       data-testid="converted-contact-link"
                     >
@@ -444,7 +445,7 @@ export default function LeadDetailPage() {
                   )}
                   {lead.converted_account_id && (
                     <Link
-                      to={`/accounts/${lead.converted_account_id}`}
+                      to={recordPath('account', lead.converted_account_id)}
                       className="text-primary-600 hover:underline"
                       data-testid="converted-account-link"
                     >
@@ -453,7 +454,7 @@ export default function LeadDetailPage() {
                   )}
                   {lead.converted_deal_id && (
                     <Link
-                      to={`/deals/${lead.converted_deal_id}`}
+                      to={recordPath('deal', lead.converted_deal_id)}
                       className="text-primary-600 hover:underline"
                       data-testid="converted-deal-link"
                     >
@@ -541,7 +542,7 @@ export default function LeadDetailPage() {
             setIsConvertModalOpen(false);
             void queryClient.invalidateQueries({ queryKey: leadQueryKey });
             void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
-            navigate(`/contacts/${result.contact_id}`);
+            navigate(recordPath('contact', result.contact_id));
           }}
         />
       )}

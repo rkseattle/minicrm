@@ -2,6 +2,7 @@
  * Renders a single lead as a summary card in the NLI result block.
  */
 import { Link } from 'react-router-dom';
+import { recordPath } from '@shared/types/recordPath.js';
 
 interface LeadCardData {
   id: string;
@@ -28,7 +29,7 @@ export default function LeadResultCard({ lead }: LeadResultCardProps) {
     >
       <div className="min-w-0 flex-1">
         <Link
-          to={`/leads/${lead.id}`}
+          to={recordPath('lead', lead.id)}
           className="text-sm font-medium text-primary-600 hover:underline truncate block"
           data-testid={`nli-lead-card-link-${lead.id}`}
         >

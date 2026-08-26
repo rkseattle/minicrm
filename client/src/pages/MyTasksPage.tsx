@@ -372,7 +372,7 @@ export default function MyTasksPage() {
                     <tbody className="bg-white divide-y divide-gray-100">
                       {visibleTasks.map((task) => {
                         const overdue = isOverdue(task);
-                        const recordPath = linkedRecordPath(task);
+                        const linkPath = linkedRecordPath(task);
 
                         return (
                           <tr key={task.id} data-testid={`task-row-${task.id}`}>
@@ -432,9 +432,9 @@ export default function MyTasksPage() {
                               )}
                             </td>
                             <td className="px-6 py-4 text-sm">
-                              {recordPath && task.linked_record_name ? (
+                              {linkPath && task.linked_record_name ? (
                                 <Link
-                                  to={recordPath}
+                                  to={linkPath}
                                   className="text-primary-600 hover:text-primary-800 hover:underline"
                                   data-testid={`task-record-link-${task.id}`}
                                 >
@@ -484,7 +484,7 @@ export default function MyTasksPage() {
                   <ul className="divide-y divide-gray-100" aria-label={t('myTasks.pageTitle')}>
                     {visibleTasks.map((task) => {
                       const overdue = isOverdue(task);
-                      const recordPath = linkedRecordPath(task);
+                      const linkPath = linkedRecordPath(task);
 
                       return (
                         <li key={task.id} className="px-4 py-3" data-testid={`task-row-${task.id}`}>
@@ -537,10 +537,10 @@ export default function MyTasksPage() {
                                   </span>
                                 )}
                               </div>
-                              {recordPath && task.linked_record_name ? (
+                              {linkPath && task.linked_record_name ? (
                                 <p className="text-xs text-gray-500 mt-1">
                                   <Link
-                                    to={recordPath}
+                                    to={linkPath}
                                     className="text-primary-600 hover:underline"
                                     data-testid={`task-record-link-${task.id}`}
                                   >

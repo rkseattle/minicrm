@@ -20,6 +20,7 @@ import {
   objectionPrecedentsQueryKey,
 } from '@/api/objectionMatching.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 interface ObjectionInsightsProps {
   activityId: string;
@@ -131,7 +132,7 @@ export default function ObjectionInsights({ activityId, hasNotes }: ObjectionIns
                     className="border-t border-gray-100 pt-2 first:border-0 first:pt-0"
                   >
                     <Link
-                      to={`/deals/${precedent.deal_id}`}
+                      to={recordPath('deal', precedent.deal_id)}
                       className="font-medium text-primary-600 hover:underline"
                     >
                       {precedent.deal_name}

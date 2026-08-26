@@ -44,6 +44,7 @@ import {
   accountHealthScoreQueryKey,
   accountHealthHistoryQueryKey,
 } from '@/api/relationshipHealth.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /**
  * Single account detail page with view/edit/delete.
@@ -421,7 +422,7 @@ export default function AccountDetailPage() {
                     {t('accounts.parentAccountLabel')}
                   </span>
                   <Link
-                    to={`/accounts/${account.parent_account_id}`}
+                    to={recordPath('account', account.parent_account_id)}
                     data-testid="detail-parent-account"
                     className="text-sm text-primary-600 hover:underline"
                   >
@@ -497,7 +498,7 @@ export default function AccountDetailPage() {
                         {linkedContactsData.data.map((contact) => (
                           <li key={contact.id} className="px-6 py-3 flex items-center gap-3">
                             <Link
-                              to={`/contacts/${contact.id}`}
+                              to={recordPath('contact', contact.id)}
                               data-testid={`linked-contact-${contact.id}`}
                               className="text-sm font-medium text-primary-600 hover:underline"
                             >
@@ -531,7 +532,7 @@ export default function AccountDetailPage() {
                         {childAccounts.map((child) => (
                           <li key={child.id} className="px-6 py-3 flex items-center gap-3">
                             <Link
-                              to={`/accounts/${child.id}`}
+                              to={recordPath('account', child.id)}
                               data-testid={`subsidiary-account-${child.id}`}
                               className="text-sm font-medium text-primary-600 hover:underline"
                             >

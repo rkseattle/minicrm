@@ -49,6 +49,7 @@ import { usePagination } from '@/hooks/usePagination.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { useExportAction } from '@/hooks/useExportAction.js';
 import { explainDuplicate } from '@/api/duplicateExplanation.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /** React Query cache key for the contacts list */
 export const CONTACTS_QUERY_KEY = ['contacts'] as const;
@@ -450,7 +451,7 @@ export default function ContactsPage() {
                 </p>
                 <div className="flex items-center gap-3">
                   <Link
-                    to={`/contacts/${duplicateContact.id}`}
+                    to={recordPath('contact', duplicateContact.id)}
                     data-testid="duplicate-go-to-existing"
                     className="inline-flex items-center px-3 py-1.5 rounded-md border border-yellow-400 bg-white text-yellow-800 text-xs font-medium hover:bg-yellow-50 transition-colors"
                   >
@@ -871,7 +872,7 @@ export default function ContactsPage() {
                       )}
                       <td className="px-4 py-3 font-medium text-primary-600">
                         <Link
-                          to={`/contacts/${contact.id}`}
+                          to={recordPath('contact', contact.id)}
                           data-testid={`contact-link-${contact.id}`}
                           className="hover:underline"
                         >
@@ -957,7 +958,7 @@ export default function ContactsPage() {
                       )}
                       <div className="min-w-0 flex-1">
                         <Link
-                          to={`/contacts/${contact.id}`}
+                          to={recordPath('contact', contact.id)}
                           data-testid={`contact-link-${contact.id}`}
                           className="block font-medium text-primary-600 hover:underline mb-1"
                         >
