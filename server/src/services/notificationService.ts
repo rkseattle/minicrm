@@ -16,6 +16,7 @@ import logger from '../logger.js';
 import { getEmailNotificationsEnabled } from './settingsService.js';
 import { sendOverdueTaskDigest, sendAssignmentNotification } from './emailService.js';
 import type { OverdueTaskItem, AssignmentItem } from './emailService.js';
+import { isRecordLinkType, recordPathOrNull } from '@minicrm/shared/types/recordPath.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -120,24 +121,6 @@ async function flushAssignmentBatch(recipientId: string): Promise<void> {
 // ── Overdue task digest ─────────────────────────────────────────
 
 /**
- * Maps a linked record type to its URL path prefix.
- *
- * @param type - The linked record type string ('contact' | 'account' | 'deal' | null).
- * @param id - The linked record UUID.
- * @returns The path string or null.
- */
-function buildRecordPath(type: string | null, id: string | null): string | null {
-  if (!type || !id) return null;
-  const prefixMap: Record<string, string> = {
-    contact: '/contacts',
-    account: '/accounts',
-    deal: '/deals',
-  };
-  const prefix = prefixMap[type.toLowerCase()];
-  return prefix ? `${prefix}/${id}` : null;
-}
-
-/**
  * Daily job: finds all newly-overdue open tasks, groups them by owner,
  * sends one digest email per owner, and records each task as notified so
  * it is not re-sent on subsequent days.
@@ -203,7 +186,11 @@ export async function sendOverdueDigests(): Promise<void> {
         subject: row.subject,
         due_date: row.due_date,
         linked_record_name: row.linked_record_name,
-        linked_record_path: buildRecordPath(row.linked_record_type, row.linked_record_id),
+        // The SQL CASE emits only contact/account/deal, but the column is text:
+        // the guard keeps an unexpected value out of the path rather than into it.
+        linked_record_path: isRecordLinkType(row.linked_record_type)
+          ? recordPathOrNull(row.linked_record_type, row.linked_record_id)
+          : null,
       });
     }
 

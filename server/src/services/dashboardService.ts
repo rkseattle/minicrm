@@ -5,6 +5,7 @@
  */
 
 import pool from '../db.js';
+import { recordPathOrNull } from '@minicrm/shared/types/recordPath.js';
 
 /** PostgreSQL row shape for the recent-activity query */
 interface RecentActivityRow {
@@ -32,21 +33,6 @@ export interface RecentActivityEntry {
   linkedRecordName: string | null;
   /** Route path for the linked record (e.g. "/contacts/uuid") */
   linkedRecordPath: string | null;
-}
-
-/**
- * Maps a linked_record_type + linked_record_id to a client-side route path.
- *
- * @param type - 'contact', 'account', 'deal', or null
- * @param id   - UUID of the linked record, or null
- * @returns A route path like "/contacts/uuid", or null when either argument is absent
- */
-function toLinkedPath(type: string | null, id: string | null): string | null {
-  if (!type || !id) return null;
-  if (type === 'contact') return `/contacts/${id}`;
-  if (type === 'account') return `/accounts/${id}`;
-  if (type === 'deal') return `/deals/${id}`;
-  return null;
 }
 
 /** PostgreSQL row shape for the task-count aggregation query */
@@ -367,7 +353,7 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
     subject: row.subject,
     updatedAt: row.updated_at,
     linkedRecordName: row.linked_record_name,
-    linkedRecordPath: toLinkedPath(row.linked_record_type, row.linked_record_id),
+    linkedRecordPath: recordPathOrNull(row.linked_record_type, row.linked_record_id),
   }));
 
   const mixedCurrencies = parseInt(dealTotalsRow.currency_count, 10) > 1;

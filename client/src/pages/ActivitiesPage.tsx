@@ -34,6 +34,7 @@ import type { ActiveUser } from '@/api/users.js';
 import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /** Maps activity type to a badge color class. Reuses the same palette as DashboardPage. */
 function activityTypeBadge(type: string): { className: string } {
@@ -57,9 +58,9 @@ function activityTypeBadge(type: string): { className: string } {
  * @param activity - Activity row from the API
  */
 function linkedRecordPath(activity: ActivityResponse): string | null {
-  if (activity.contact_id) return `/contacts/${activity.contact_id}`;
-  if (activity.account_id) return `/accounts/${activity.account_id}`;
-  if (activity.deal_id) return `/deals/${activity.deal_id}`;
+  if (activity.contact_id) return recordPath('contact', activity.contact_id);
+  if (activity.account_id) return recordPath('account', activity.account_id);
+  if (activity.deal_id) return recordPath('deal', activity.deal_id);
   return null;
 }
 

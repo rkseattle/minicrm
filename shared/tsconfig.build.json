@@ -10,6 +10,6 @@
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["schemas/**/*", "generated/**/*", "testing/**/*"],
+  "include": ["schemas/**/*", "generated/**/*", "testing/**/*", "types/**/*"],
   "exclude": ["node_modules"]
 }

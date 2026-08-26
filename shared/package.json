@@ -5,7 +5,8 @@
   "exports": {
     "./schemas/*": "./schemas/*",
     "./generated/*": "./generated/*",
-    "./testing/*": "./testing/*"
+    "./testing/*": "./testing/*",
+    "./types/*": "./types/*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json"

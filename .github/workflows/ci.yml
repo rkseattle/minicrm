@@ -89,6 +89,7 @@ jobs:
       gate-pointer-parity: ${{ steps.filter.outputs.gate-pointer-parity }}
       feature-flag-docs: ${{ steps.filter.outputs.feature-flag-docs }}
       user-guide-routes: ${{ steps.filter.outputs.user-guide-routes }}
+      record-paths:      ${{ steps.filter.outputs.record-paths }}
       guard-invocation: ${{ steps.filter.outputs.guard-invocation }}
     steps:
       - uses: actions/checkout@v4
@@ -377,6 +378,18 @@ jobs:
               - 'docs/user-guide/**'
               # The guard reads this file to assert its own wiring, so an edit dropping
               # the OR clause below has to re-run it.
+              - '.github/workflows/ci.yml'
+
+            # Single-purpose output for recordPath.test.ts, which pins every
+            # record-link type to a route App.tsx declares. `server` is
+            # server/src/** only, so nothing else reaching server-tests matches
+            # shared/ — without this a mapping edit merges with the guard never
+            # having run. App.tsx is listed for the other half of the invariant:
+            # user-guide-routes also lists it, but that output gates a different
+            # guard and could be renamed away.
+            record-paths:
+              - 'shared/types/**'
+              - 'client/src/App.tsx'
               - '.github/workflows/ci.yml'
             # Single-purpose output for check-grep-invert-parity.sh, which pins
             # the non-serial --grep-invert expression across this workflow, the
@@ -1002,7 +1015,8 @@ jobs:
         needs.changes.outputs.redirect-status-docs == 'true' || needs.changes.outputs.scheduled-jobs-docs == 'true' ||
         needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true' ||
         needs.changes.outputs.feature-flag-docs == 'true' ||
-        needs.changes.outputs.user-guide-routes == 'true')
+        needs.changes.outputs.user-guide-routes == 'true' ||
+        needs.changes.outputs.record-paths == 'true')
     runs-on: ubuntu-latest
 
     services:

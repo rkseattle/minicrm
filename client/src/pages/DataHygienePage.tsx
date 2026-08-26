@@ -25,6 +25,7 @@ import type {
   DataHygieneFinding,
   DataHygieneEntityType,
 } from '@shared/schemas/dataHygieneSchema.js';
+import { recordPath, type RecordLinkType } from '@shared/types/recordPath.js';
 
 const ENTITY_TYPE_FILTERS: Array<DataHygieneEntityType | 'all'> = [
   'all',
@@ -33,10 +34,15 @@ const ENTITY_TYPE_FILTERS: Array<DataHygieneEntityType | 'all'> = [
   'opportunity',
 ];
 
+/** The hygiene enum says 'opportunity' where the rest of the app says 'deal'. */
+const HYGIENE_TYPE_TO_RECORD: Readonly<Record<DataHygieneEntityType, RecordLinkType>> = {
+  contact: 'contact',
+  account: 'account',
+  opportunity: 'deal',
+};
+
 function entityLinkPath(finding: DataHygieneFinding): string {
-  if (finding.entity_type === 'contact') return `/contacts/${finding.entity_id}`;
-  if (finding.entity_type === 'account') return `/accounts/${finding.entity_id}`;
-  return `/deals/${finding.entity_id}`;
+  return recordPath(HYGIENE_TYPE_TO_RECORD[finding.entity_type], finding.entity_id);
 }
 
 interface DismissDialogState {
