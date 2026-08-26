@@ -44,6 +44,7 @@ import {
   type PdfTableRow,
 } from '../services/pdfExportService.js';
 import logger from '../logger.js';
+import { recordPath } from '@minicrm/shared/types/recordPath.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -274,7 +275,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'contact',
             recordName: `${contact.first_name} ${contact.last_name}`,
-            recordPath: `/contacts/${contact.id}`,
+            recordPath: recordPath('contact', contact.id),
             assignedByName: req.user!.name,
           });
         }

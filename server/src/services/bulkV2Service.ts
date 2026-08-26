@@ -27,6 +27,7 @@ import { fireAutomationTrigger } from './automationService.js';
 import logger from '../logger.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 import type { UserStatus } from '@minicrm/shared/schemas/userSchema.js';
+import { recordPath } from '@minicrm/shared/types/recordPath.js';
 
 // ── Result shape ──────────────────────────────────────────────────────────────
 
@@ -373,7 +374,7 @@ export async function bulkPatchContacts(
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'contact',
             recordName: row ? `${row.first_name} ${row.last_name}` : '',
-            recordPath: `/contacts/${id}`,
+            recordPath: recordPath('contact', id),
             assignedByName: actor.name,
           });
         }
@@ -589,7 +590,7 @@ export async function bulkPatchDeals(
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'deal',
             recordName: row?.name ?? '',
-            recordPath: `/deals/${id}`,
+            recordPath: recordPath('deal', id),
             assignedByName: actor.name,
           });
         }
@@ -793,7 +794,7 @@ export async function bulkPatchActivities(
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'activity',
             recordName: row?.subject ?? '',
-            recordPath: `/activities/${id}`,
+            recordPath: recordPath('activity', id),
             assignedByName: actor.name,
           });
         }
@@ -974,7 +975,7 @@ export async function bulkPatchLeads(
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'lead',
             recordName,
-            recordPath: `/leads/${id}`,
+            recordPath: recordPath('lead', id),
             assignedByName: actor.name,
           });
         }

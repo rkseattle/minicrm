@@ -49,6 +49,7 @@ import {
   type PdfTableColumn,
   type PdfTableRow,
 } from '../services/pdfExportService.js';
+import { recordPath } from '@minicrm/shared/types/recordPath.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -295,7 +296,7 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'account',
             recordName: account.name,
-            recordPath: `/accounts/${account.id}`,
+            recordPath: recordPath('account', account.id),
             assignedByName: req.user!.name,
           });
         }

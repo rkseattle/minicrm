@@ -32,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth.js';
 import BulkActionBar from '@/components/BulkActionBar.js';
 import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
+import { recordPathOrNull } from '@shared/types/recordPath.js';
 
 /** Returns today's date string in YYYY-MM-DD format, recomputed on each call so overnight sessions stay accurate */
 function getToday(): string {
@@ -62,15 +63,9 @@ function isOverdue(task: MyTaskResponse): boolean {
  * @param task - Task row from the API
  */
 function linkedRecordPath(task: MyTaskResponse): string | null {
-  if (task.linked_record_type === 'contact' && task.contact_id) {
-    return `/contacts/${task.contact_id}`;
-  }
-  if (task.linked_record_type === 'account' && task.account_id) {
-    return `/accounts/${task.account_id}`;
-  }
-  if (task.linked_record_type === 'deal' && task.deal_id) {
-    return `/deals/${task.deal_id}`;
-  }
+  if (task.linked_record_type === 'contact') return recordPathOrNull('contact', task.contact_id);
+  if (task.linked_record_type === 'account') return recordPathOrNull('account', task.account_id);
+  if (task.linked_record_type === 'deal') return recordPathOrNull('deal', task.deal_id);
   return null;
 }
 

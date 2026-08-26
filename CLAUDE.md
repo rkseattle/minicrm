@@ -66,6 +66,16 @@ shared/schemas/  → Zod schemas used by both client and server (.ts only — .j
                    must stay free of any @minicrm/shared/schemas import; there is no
                    qa-local home that avoids the same import. See that file's own docblock.)
 
+shared/types/    → shared TypeScript contracts that are neither Zod schemas nor guard
+                   parity rules. The bar is: both client and server need the same
+                   definition, and expressing it as a runtime schema would be dishonest
+                   because nothing is validated. Created rather than widening the
+                   schemas/ exception, per coverageHarnessAdapterSchema.ts's own
+                   instruction. Today that is recordPath.ts, the record-type →
+                   client-route mapping (MINCRM-726), pinned to App.tsx's route table by
+                   server/src/__tests__/recordPath.test.ts. Keep these dependency-free so
+                   every workspace can import them.
+
 shared/testing/  → pure rules that a SERVER-BUILT file and a qa/ file must run identically.
                    Not Zod, not client-facing — a documented exception to the line above,
                    and deliberately narrow. The bar is: two guards need the same rule,

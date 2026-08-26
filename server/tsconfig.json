@@ -11,7 +11,8 @@
     "paths": {
       "@minicrm/shared/schemas/*": ["../shared/schemas/*"],
       "@minicrm/shared/generated/*": ["../shared/generated/*"],
-      "@minicrm/shared/testing/*": ["../shared/testing/*"]
+      "@minicrm/shared/testing/*": ["../shared/testing/*"],
+      "@minicrm/shared/types/*": ["../shared/types/*"]
     }
   },
   "include": ["src/**/*", "vitest.config.ts"],

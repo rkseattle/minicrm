@@ -30,11 +30,11 @@ current default, so you keep following the org if the admin later changes it.
 
 **Email Notifications** has three checkboxes, all on unless you turn them off:
 
-| Setting            | Sends you                                                    |
-| ------------------ | ------------------------------------------------------------ |
-| Overdue tasks      | A daily digest when you have newly-overdue tasks             |
-| Record assignments | An email when a contact, account, or deal is assigned to you |
-| Deal stage changes | An email when one of your deals moves to a new stage         |
+| Setting            | Sends you                                                                    |
+| ------------------ | ---------------------------------------------------------------------------- |
+| Overdue tasks      | A daily digest when you have newly-overdue tasks                             |
+| Record assignments | An email when a contact, account, deal, lead, or activity is assigned to you |
+| Deal stage changes | An email when one of your deals moves to a new stage                         |
 
 Ticking a box does not save it. Click the **Save** button in this section — it is separate
 from the language one — or your changes are lost when you leave the page.

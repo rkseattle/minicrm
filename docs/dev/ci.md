@@ -85,8 +85,9 @@ doc-parity outputs (`feature-flag-docs`, `user-guide-routes`, `attestation-docs`
 `user-guide-docs`, `redirect-status-docs`, `scheduled-jobs-docs`) are OR'd into it, so a
 docs-only change still runs the guard that reads that doc — see
 [Documentation parity guards](#documentation-parity-guards). `coverage-migrations`
-(`qa/migrations/**`) and `shared-testing` (`shared/testing/**`) are OR'd in too, for
-tests that exercise those files rather than document them.
+(`qa/migrations/**`), `shared-testing` (`shared/testing/**`), and `record-paths`
+(`shared/types/**`) are OR'd in too, for tests that exercise those files rather than
+document them.
 
 `always()` is required on a job whose upstream can itself be skipped, because GitHub
 auto-skips a dependent before evaluating its `if:`. It is **not** appropriate on a job

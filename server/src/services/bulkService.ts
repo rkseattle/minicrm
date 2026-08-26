@@ -15,6 +15,7 @@ import { findDealById, writeDealStageHistoryEntry } from './dealService.js';
 import { getStageNames } from './pipelineStageService.js';
 import type { AuditActor } from './auditService.js';
 import { setRlsUserId } from './rlsContextService.js';
+import { recordPath } from '@minicrm/shared/types/recordPath.js';
 
 /** Valid bulk actions for contacts and accounts */
 const CONTACT_ACCOUNT_ACTIONS: ReadonlySet<string> = new Set(['reassign', 'delete']);
@@ -181,7 +182,7 @@ export async function bulkContacts(
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'contact',
             recordName: nameMap.get(id) ?? '',
-            recordPath: `/contacts/${id}`,
+            recordPath: recordPath('contact', id),
             assignedByName: actor.name,
           });
         }
@@ -283,7 +284,7 @@ export async function bulkAccounts(
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'account',
             recordName: nameMap.get(id) ?? '',
-            recordPath: `/accounts/${id}`,
+            recordPath: recordPath('account', id),
             assignedByName: actor.name,
           });
         }
@@ -431,7 +432,7 @@ export async function bulkDeals(
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'deal',
             recordName: nameMap.get(id) ?? '',
-            recordPath: `/deals/${id}`,
+            recordPath: recordPath('deal', id),
             assignedByName: actor.name,
           });
         }

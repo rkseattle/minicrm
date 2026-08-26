@@ -33,6 +33,9 @@ shared/schemas/*.d.ts
 # the Docker runtime image needs this .js output present alongside the checked-in .ts.
 shared/generated/*.js
 shared/generated/*.d.ts
+# Same for shared/types — build artifacts, not sources.
+shared/types/*.js
+shared/types/*.d.ts
 
 # ─── Generated API spec (produced by npm run generate-spec) ───────────────────
 server/openapi.json

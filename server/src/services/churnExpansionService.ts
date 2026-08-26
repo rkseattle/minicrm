@@ -27,6 +27,7 @@ import type {
   ChurnExpansionListResponse,
   ChurnExpansionSignalType,
 } from '@minicrm/shared/schemas/churnExpansionSchema.js';
+import { recordPath } from '@minicrm/shared/types/recordPath.js';
 
 const IS_E2E = process.env.E2E === 'true';
 
@@ -361,7 +362,7 @@ async function processAccount(
       type: 'churn_risk_detected',
       title: `Churn risk detected: ${account.name}`,
       body: result.factors[0],
-      linkPath: `/accounts/${account.id}`,
+      linkPath: recordPath('account', account.id),
     });
   }
 }

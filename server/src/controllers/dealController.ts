@@ -40,6 +40,7 @@ import {
   type PdfTableRow,
 } from '../services/pdfExportService.js';
 import { z } from 'zod';
+import { recordPath } from '@minicrm/shared/types/recordPath.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -288,7 +289,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
           queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
             recordType: 'deal',
             recordName: deal.name,
-            recordPath: `/deals/${deal.id}`,
+            recordPath: recordPath('deal', deal.id),
             assignedByName: req.user!.name,
           });
         }
