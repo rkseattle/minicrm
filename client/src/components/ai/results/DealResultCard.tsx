@@ -3,6 +3,7 @@
  */
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { recordPath } from '@shared/types/recordPath.js';
 
 interface DealCardData {
   id: string;
@@ -42,7 +43,7 @@ export default function DealResultCard({ deal }: DealResultCardProps) {
     >
       <div className="min-w-0 flex-1">
         <Link
-          to={`/deals/${deal.id}`}
+          to={recordPath('deal', deal.id)}
           className="text-sm font-medium text-primary-600 hover:underline truncate block"
           data-testid={`nli-deal-card-link-${deal.id}`}
         >

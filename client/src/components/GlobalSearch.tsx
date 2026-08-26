@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { globalSearch, type LeadSearchResult } from '@/api/search.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { useOnClickOutside } from '@/hooks/useOnClickOutside.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /** Minimum characters before a search query is sent */
 const MIN_QUERY_LENGTH = 2;
@@ -109,7 +110,7 @@ export default function GlobalSearch() {
                 {data.contacts.map((contact) => (
                   <li key={contact.id}>
                     <Link
-                      to={`/contacts/${contact.id}`}
+                      to={recordPath('contact', contact.id)}
                       data-testid={`search-result-contact-${contact.id}`}
                       onClick={closeDropdown}
                       className="flex flex-col px-4 py-2.5 hover:bg-primary-50 transition-colors min-w-0"
@@ -135,7 +136,7 @@ export default function GlobalSearch() {
                 {data.accounts.map((account) => (
                   <li key={account.id}>
                     <Link
-                      to={`/accounts/${account.id}`}
+                      to={recordPath('account', account.id)}
                       data-testid={`search-result-account-${account.id}`}
                       onClick={closeDropdown}
                       className="block px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-primary-50 transition-colors truncate"
@@ -158,7 +159,7 @@ export default function GlobalSearch() {
                 {data.deals.map((deal) => (
                   <li key={deal.id}>
                     <Link
-                      to={`/deals/${deal.id}`}
+                      to={recordPath('deal', deal.id)}
                       data-testid={`search-result-deal-${deal.id}`}
                       onClick={closeDropdown}
                       className="flex flex-col px-4 py-2.5 hover:bg-primary-50 transition-colors min-w-0"
@@ -184,7 +185,7 @@ export default function GlobalSearch() {
                 {data.leads.map((lead: LeadSearchResult) => (
                   <li key={lead.id}>
                     <Link
-                      to={`/leads/${lead.id}`}
+                      to={recordPath('lead', lead.id)}
                       data-testid={`search-result-lead-${lead.id}`}
                       onClick={closeDropdown}
                       className="flex flex-col px-4 py-2.5 hover:bg-primary-50 transition-colors min-w-0"

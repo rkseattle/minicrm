@@ -62,6 +62,7 @@ import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /** Maps a deal health status to the Badge color variant. */
 const HEALTH_STATUS_VARIANT: Record<DealHealthStatus, 'success' | 'warning' | 'error'> = {
@@ -494,7 +495,7 @@ export default function DealDetailPage() {
             className="mb-4 rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800"
             data-testid="converted-from-lead-banner"
           >
-            <Link to={`/leads/${deal.source_lead_id}`} className="font-medium underline">
+            <Link to={recordPath('lead', deal.source_lead_id)} className="font-medium underline">
               {t('deals.convertedFromLead')}
             </Link>
           </div>
@@ -835,7 +836,7 @@ export default function DealDetailPage() {
                             >
                               <div className="flex items-center gap-3 min-w-0">
                                 <Link
-                                  to={`/contacts/${contact.id}`}
+                                  to={recordPath('contact', contact.id)}
                                   data-testid={`linked-contact-${contact.id}`}
                                   className="text-sm font-medium text-primary-600 hover:underline"
                                 >

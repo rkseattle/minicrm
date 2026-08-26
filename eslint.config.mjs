@@ -183,6 +183,26 @@ const serverConfig = {
   },
 };
 
+// ── Client router paths come from shared/types/recordPath ────────────────────
+// A hardcoded `/contacts/${id}` matches no test against App.tsx's route table,
+// which is how an email shipped a link to /activities/:id — a route the router
+// never declared, so the catch-all bounced the recipient to the dashboard.
+const clientRoutePathConfig = {
+  files: ['client/src/**/*.tsx', 'client/src/**/*.ts'],
+  ignores: ['client/src/**/*.test.tsx', 'client/src/**/*.test.ts', 'client/src/api/**'],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector:
+          'TemplateLiteral[quasis.0.value.raw=/^\\u002F(contacts|accounts|deals|leads|activities)\\u002F$/]',
+        message:
+          'Build record links with recordPath() from @shared/types/recordPath.js — a hardcoded path is pinned to no route table.',
+      },
+    ],
+  },
+};
+
 // ── Where console is the right channel ───────────────────────────────────────
 // CLI scripts run from a terminal, never inside the server process, and their
 // output is what the operator came for. Tests are excluded to match CLAUDE.md's
@@ -382,6 +402,7 @@ export default [
   coverageDashboardTestConfig,
   serverConfig,
   serverScriptsConfig,
+  clientRoutePathConfig,
   swaggerDevConfig,
   routeJsdocConfig,
   routeOpenapiConfig,

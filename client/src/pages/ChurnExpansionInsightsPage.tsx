@@ -11,6 +11,7 @@ import NavBar from '@/components/NavBar.js';
 import { listChurnExpansionSignals, CHURN_EXPANSION_LIST_QUERY_KEY } from '@/api/churnExpansion.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import type { ChurnExpansionAccountSummary } from '@shared/schemas/churnExpansionSchema.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 function AccountSignalRow({ summary }: { summary: ChurnExpansionAccountSummary }) {
   const { t } = useTranslation();
@@ -20,7 +21,7 @@ function AccountSignalRow({ summary }: { summary: ChurnExpansionAccountSummary }
       data-testid={`churn-expansion-account-${summary.account_id}`}
     >
       <Link
-        to={`/accounts/${summary.account_id}`}
+        to={recordPath('account', summary.account_id)}
         className="text-sm font-medium text-primary-600 hover:underline"
       >
         {summary.account_name}

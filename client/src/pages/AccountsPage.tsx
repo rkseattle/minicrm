@@ -47,6 +47,7 @@ import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { useExportAction } from '@/hooks/useExportAction.js';
 import { explainDuplicate } from '@/api/duplicateExplanation.js';
 import AccountHealthBadge from '@/components/AccountHealthBadge.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /** React Query cache key for the accounts list */
 export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
@@ -406,7 +407,7 @@ export default function AccountsPage() {
                 </p>
                 <div className="flex items-center gap-3">
                   <Link
-                    to={`/accounts/${duplicateAccount.id}`}
+                    to={recordPath('account', duplicateAccount.id)}
                     data-testid="duplicate-account-go-to-existing"
                     className="inline-flex items-center px-3 py-1.5 rounded-md border border-yellow-400 bg-white text-yellow-800 text-xs font-medium hover:bg-yellow-50 transition-colors"
                   >
@@ -811,7 +812,7 @@ export default function AccountsPage() {
                       )}
                       <td className="px-4 py-3 font-medium text-primary-600">
                         <Link
-                          to={`/accounts/${account.id}`}
+                          to={recordPath('account', account.id)}
                           data-testid={`account-link-${account.id}`}
                           className="hover:underline"
                         >
@@ -913,7 +914,7 @@ export default function AccountsPage() {
                       )}
                       <div className="min-w-0 flex-1">
                         <Link
-                          to={`/accounts/${account.id}`}
+                          to={recordPath('account', account.id)}
                           data-testid={`account-card-link-${account.id}`}
                           className="block font-medium text-primary-600 hover:underline mb-1"
                         >

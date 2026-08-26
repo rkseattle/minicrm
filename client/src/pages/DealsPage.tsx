@@ -61,6 +61,7 @@ import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { todayIso } from '@/utils/utcDate.js';
 import { usePipelineStages } from '@/hooks/usePipelineStages.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /** Which view is active on the Deals page */
 type ViewMode = 'board' | 'list';
@@ -1260,7 +1261,7 @@ export default function DealsPage() {
                           )}
                           <td className="px-4 py-3 font-medium text-primary-600">
                             <Link
-                              to={`/deals/${deal.id}`}
+                              to={recordPath('deal', deal.id)}
                               data-testid={`deal-link-${deal.id}`}
                               className="hover:underline"
                             >
@@ -1335,7 +1336,7 @@ export default function DealsPage() {
                           )}
                           <div className="min-w-0 flex-1">
                             <Link
-                              to={`/deals/${deal.id}`}
+                              to={recordPath('deal', deal.id)}
                               data-testid={`deal-list-card-link-${deal.id}`}
                               className="block font-medium text-primary-600 hover:underline mb-1"
                             >

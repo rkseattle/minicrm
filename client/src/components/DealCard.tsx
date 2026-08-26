@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/Select.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { usePipelineStages } from '@/hooks/usePipelineStages.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 interface DealCardProps {
   /** The deal record to display */
@@ -73,7 +74,7 @@ export default function DealCard({
       }}
     >
       <Link
-        to={`/deals/${deal.id}`}
+        to={recordPath('deal', deal.id)}
         data-testid={`deal-card-link-${deal.id}`}
         className="font-medium text-sm text-primary-600 hover:underline block mb-1 truncate"
         title={deal.name}

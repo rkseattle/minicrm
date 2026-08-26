@@ -42,6 +42,7 @@ import BulkActionBar from '@/components/BulkActionBar.js';
 import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
 import BulkReassignModal from '@/components/BulkReassignModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
+import { recordPath } from '@shared/types/recordPath.js';
 
 /** React Query cache key for the leads list */
 export const LEADS_QUERY_KEY = ['leads'] as const;
@@ -417,7 +418,7 @@ export default function LeadsPage() {
                 </p>
                 <div className="mt-3 flex gap-3">
                   <Link
-                    to={`/leads/${duplicateLead.id}`}
+                    to={recordPath('lead', duplicateLead.id)}
                     className="text-sm font-medium text-yellow-800 underline"
                     data-testid="duplicate-go-to-existing"
                   >
@@ -703,7 +704,10 @@ export default function LeadsPage() {
                           </td>
                         )}
                         <td className="px-4 py-3 text-sm font-medium text-primary-600">
-                          <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
+                          <Link
+                            to={recordPath('lead', lead.id)}
+                            data-testid={`view-lead-${lead.id}`}
+                          >
                             {lead.first_name}
                             {lead.last_name ? ` ${lead.last_name}` : ''}
                           </Link>
