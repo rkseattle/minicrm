@@ -1,20 +1,23 @@
 /**
  * Unit tests for emailService.
  *
- * All tests run in NODE_ENV=test so the transport is always stubbed — we verify
- * that the functions resolve without throwing and that the dev-stub log path
- * executes. The production transport path is guarded by NODE_ENV checks and is
- * not exercised here.
+ * The transport is always stubbed, so most cases verify only that the functions
+ * resolve without throwing; the real SMTP path is not exercised here.
  *
- *
+ * The exception is the last describe, which sets NODE_ENV per case: the
+ * NO-SMTP branch logs reset and invite URLs, and which environments may see
+ * them is a security boundary rather than a formatting detail.
  */
 
 import 'dotenv/config';
+import { vi, afterEach, describe, it, expect } from 'vitest';
+import logger from '../logger.js';
 import {
   sendPasswordResetEmail,
   sendOverdueTaskDigest,
   sendAssignmentNotification,
   sendContactEmail,
+  sendInviteEmail,
   escapeHtml,
 } from '../services/emailService.js';
 import type { OverdueTaskItem, AssignmentItem } from '../services/emailService.js';
@@ -236,5 +239,64 @@ describe('sendContactEmail', () => {
     await expect(
       sendContactEmail('contact@example.com', '<script>', '<b>xss</b>', "O'Brien"),
     ).resolves.toMatchObject({ delivered: expect.any(Boolean) });
+  });
+});
+
+// ── NO-SMTP logging must not leak account-takeover tokens ─────────────────────
+
+describe('the NO-SMTP branch and credential-bearing fields', () => {
+  const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+
+  afterEach(() => {
+    process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+    vi.restoreAllMocks();
+  });
+
+  /** Captures the bindings object of every logger.debug call. */
+  function captureDebugBindings(): Record<string, unknown>[] {
+    const captured: Record<string, unknown>[] = [];
+    vi.spyOn(logger, 'debug').mockImplementation(((first: unknown) => {
+      if (typeof first === 'object' && first !== null) {
+        captured.push(first as Record<string, unknown>);
+      }
+    }) as typeof logger.debug);
+    return captured;
+  }
+
+  const RESET_URL = 'http://localhost:5173/reset-password?token=super-secret-value';
+  const INVITE_URL = 'http://localhost:5173/set-password?token=another-secret-value';
+
+  it('logs the reset URL where credentials may already be handed out', async () => {
+    process.env.NODE_ENV = 'development';
+    const captured = captureDebugBindings();
+
+    await sendPasswordResetEmail('user@example.com', RESET_URL);
+
+    // Without SMTP this log is the only way to complete the flow locally.
+    expect(captured.some((entry) => entry.resetUrl === RESET_URL)).toBe(true);
+  });
+
+  // staging is the case this guards: its log level is debug, like development,
+  // but it carries real users — so level alone is the wrong boundary.
+  it.each(['staging', 'production'])('withholds the reset URL on %s', async (env) => {
+    process.env.NODE_ENV = env;
+    const captured = captureDebugBindings();
+
+    await sendPasswordResetEmail('user@example.com', RESET_URL);
+
+    expect(captured.some((entry) => 'resetUrl' in entry)).toBe(false);
+    expect(JSON.stringify(captured)).not.toContain('super-secret-value');
+    // The event is still recorded; only the token is withheld.
+    expect(captured.some((entry) => entry.email === 'user@example.com')).toBe(true);
+  });
+
+  it.each(['staging', 'production'])('withholds the invite URL on %s', async (env) => {
+    process.env.NODE_ENV = env;
+    const captured = captureDebugBindings();
+
+    await sendInviteEmail('invitee@example.com', 'Invitee', INVITE_URL);
+
+    expect(captured.some((entry) => 'setPasswordUrl' in entry)).toBe(false);
+    expect(JSON.stringify(captured)).not.toContain('another-secret-value');
   });
 });

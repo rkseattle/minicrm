@@ -270,8 +270,8 @@ export async function changePassword(req: Request, res: Response): Promise<void>
 /** Base URL used to construct the reset link (falls back to localhost in dev) */
 const APP_BASE_URL = process.env.APP_BASE_URL ?? 'http://localhost:5173';
 if (!process.env.APP_BASE_URL && isProductionEnv()) {
-  console.warn(
-    '[authController] APP_BASE_URL is not set — password reset links will point to localhost. Set APP_BASE_URL in production.',
+  logger.warn(
+    'APP_BASE_URL is not set — password reset links will point to localhost. Set APP_BASE_URL in production.',
   );
 }
 

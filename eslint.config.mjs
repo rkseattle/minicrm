@@ -178,6 +178,23 @@ const serverConfig = {
     // Allow TypeScript import extensions — tsx resolves them at runtime
     'n/no-missing-import': 'off',
     'n/no-unsupported-features/es-syntax': 'off',
+    // logger applies a level filter and structured fields; console bypasses both.
+    'no-console': 'error',
+  },
+};
+
+// ── Where console is the right channel ───────────────────────────────────────
+// CLI scripts run from a terminal, never inside the server process, and their
+// output is what the operator came for. Tests are excluded to match CLAUDE.md's
+// rule, which scopes the ban to server/src/ outside tests.
+const serverScriptsConfig = {
+  files: [
+    'server/src/scripts/**/*.ts',
+    'server/src/**/__tests__/**/*.ts',
+    'server/src/**/*.test.ts',
+  ],
+  rules: {
+    'no-console': 'off',
   },
 };
 
@@ -364,6 +381,7 @@ export default [
   coverageDashboardConfig,
   coverageDashboardTestConfig,
   serverConfig,
+  serverScriptsConfig,
   swaggerDevConfig,
   routeJsdocConfig,
   routeOpenapiConfig,
