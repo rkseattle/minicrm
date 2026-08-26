@@ -17,7 +17,8 @@ interface RecentActivityRow {
   /** Name of the linked contact, account, or deal (whichever is set) */
   linked_record_name: string | null;
   /** Which association type provided the linked record name */
-  linked_record_type: 'contact' | 'account' | 'deal' | null;
+  /** A text column; the pool.query generic asserts the shape, it does not check it. */
+  linked_record_type: string | null;
   /** UUID of the linked contact, account, or deal */
   linked_record_id: string | null;
 }
