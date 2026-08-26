@@ -35,6 +35,7 @@ import {
 } from '../services/importJobService.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import { z } from 'zod';
+import logger from '../logger.js';
 
 // ── Parse handlers (Step 1: upload → headers + preview) ───────────────────────
 
@@ -193,7 +194,7 @@ async function startImportJob(
 
   // Prune stale jobs before creating a new one — fire and forget
   void pruneOldJobs().catch((pruneErr: unknown) => {
-    console.error('Failed to prune old import jobs:', pruneErr);
+    logger.error({ err: pruneErr }, 'Failed to prune old import jobs');
   });
 
   const actorId = req.user!.id;

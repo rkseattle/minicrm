@@ -16,6 +16,7 @@ import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import logger from '../logger.js';
 import { getSmtpConfigInternal } from './smtpSettingsService.js';
+import { isAuthBypassEnv } from '../utils/nodeEnv.js';
 
 /** HTML-escape map for the five characters that can break HTML contexts */
 const HTML_ESCAPE_MAP: Record<string, string> = {
@@ -58,7 +59,7 @@ function extractEmail(address: string): string {
  * Priority order:
  *   1. Database SMTP config (smtp_enabled = true and smtp_host set)
  *   2. SMTP_HOST environment variable
- *   3. null → console fallback
+ *   3. null → the caller records it as undelivered
  *
  * A fresh transport is created each call so DB changes take effect without a restart.
  *
@@ -66,7 +67,7 @@ function extractEmail(address: string): string {
  */
 async function resolveTransport(): Promise<Transporter | null> {
   // Never use a live transport in test environments — return null so all
-  // callers take the console-log path regardless of SMTP env vars or DB config.
+  // callers record the message as undelivered regardless of SMTP env vars or DB config.
   if (process.env.NODE_ENV === 'test') return null;
 
   // 1. Database-stored config takes precedence
@@ -98,7 +99,7 @@ async function resolveTransport(): Promise<Transporter | null> {
     });
   }
 
-  // 3. No SMTP configured → caller uses console fallback
+  // 3. No SMTP configured → caller records it as undelivered
   return null;
 }
 
@@ -110,13 +111,36 @@ async function resolveTransport(): Promise<Transporter | null> {
  * @param subject - Email subject line.
  * @param html - HTML body content.
  */
+/**
+ * Records an email that no transport was configured to send.
+ *
+ * `secrets` carries reset and invite URLs, which are single-use account-takeover
+ * tokens. They are logged only where handing out credentials is already
+ * acceptable — which excludes staging, a real deployment with real users, even
+ * though its log level is debug. Without that split the tokens would sit in
+ * staging's log stream, and reading them there is the local-dev affordance this
+ * branch exists for, not a staging one.
+ *
+ * @param what - Human label for the message that was not sent.
+ * @param context - Non-sensitive fields, always logged.
+ * @param secrets - Credential-bearing fields, logged only in dev and test.
+ */
+function logNoSmtp(
+  what: string,
+  context: Record<string, unknown>,
+  secrets: Record<string, unknown> = {},
+): void {
+  logger.debug(
+    isAuthBypassEnv() ? { ...context, ...secrets } : context,
+    `[NO-SMTP] ${what} not delivered; no transport configured`,
+  );
+}
+
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   const transport = await resolveTransport();
 
   if (!transport) {
-    // No SMTP configured — log to console so the notification is not silently lost.
-    logger.info({ to, subject }, '[NO-SMTP] Email (not delivered):');
-    console.log(`\n[NO-SMTP] Email to ${to}:\n  Subject: ${subject}\n  Body (HTML):\n${html}\n`);
+    logNoSmtp('Email', { to, subject });
     return;
   }
 
@@ -140,8 +164,8 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 /**
  * Sends a password reset email to the user.
  *
- * When no SMTP transport is configured, logs the reset URL to the console so
- * developers can copy it directly without needing an SMTP server.
+ * With no SMTP transport, the URL is logged only in development and test, where
+ * it is the only way to complete the flow. See logNoSmtp.
  *
  * @param email - Recipient email address.
  * @param resetUrl - The full reset URL containing the plaintext token.
@@ -155,11 +179,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
 
   const transport = await resolveTransport();
   if (!transport) {
-    logger.info(
-      { email, resetUrl },
-      '[NO-SMTP] Password reset requested. Copy the link below to proceed:',
-    );
-    console.log(`\n[NO-SMTP] Password reset link for ${email}:\n  ${resetUrl}\n`);
+    logNoSmtp('Password reset link', { email }, { resetUrl });
     return;
   }
 
@@ -169,8 +189,8 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
 /**
  * Sends a user invitation email containing the set-password link.
  *
- * When no SMTP transport is configured, logs the invite URL to the console so
- * developers can copy it directly without needing an SMTP server.
+ * With no SMTP transport, the URL is logged only in development and test, where
+ * it is the only way to complete the flow. See logNoSmtp.
  *
  * @param email - Recipient email address.
  * @param name - Recipient's display name.
@@ -190,11 +210,7 @@ export async function sendInviteEmail(
 
   const transport = await resolveTransport();
   if (!transport) {
-    logger.info(
-      { email, setPasswordUrl },
-      '[NO-SMTP] User invited. Copy the link below to proceed:',
-    );
-    console.log(`\n[NO-SMTP] Invite link for ${email}:\n  ${setPasswordUrl}\n`);
+    logNoSmtp('Invite link', { email }, { setPasswordUrl });
     return;
   }
 
@@ -352,7 +368,7 @@ export async function sendContactEmail(
   const transport = await resolveTransport();
 
   if (!transport) {
-    logger.info({ to, subject }, '[NO-SMTP] Contact email (not delivered)');
+    logNoSmtp('Contact email', { to, subject });
     return { delivered: false, reason: 'smtp_not_configured' };
   }
 
