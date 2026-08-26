@@ -117,6 +117,17 @@ describe('record links resolve to declared routes', () => {
     }
   });
 
+  // dashboardService and notificationService both read linked_record_type from a
+  // text column typed only by a pool.query generic. Returning null keeps a stray
+  // value out of the link; an earlier revision threw here instead, turning a
+  // dashboard read into a 500.
+  it('returns null for a value the router has no route for', () => {
+    expect(recordPathOrNull('opportunity', SAMPLE_ID)).toBeNull();
+    expect(recordPathOrNull('', SAMPLE_ID)).toBeNull();
+    expect(recordPathOrNull('CONTACT', SAMPLE_ID)).toBeNull();
+    expect(() => recordPathOrNull('opportunity', SAMPLE_ID)).not.toThrow();
+  });
+
   it('rejects a type with no client route', () => {
     // notificationService reads linked_record_type from a text column, so the
     // guard is what keeps an unmapped value out of a rendered link.
@@ -125,10 +136,13 @@ describe('record links resolve to declared routes', () => {
     expect(isRecordLinkType('deal')).toBe(true);
   });
 
-  it('the files read here trigger the job that runs this guard', () => {
+  // Both halves: the client suites assert the hrefs this mapping produces, so a
+  // record-paths clause that stops gating client-tests silences them on exactly
+  // the edit it exists to catch — and nothing else in the repo would notice.
+  it.each(['server-tests', 'client-tests'])('%s runs on an edit to the files read here', (job) => {
     expectGuardIsTriggered({
       output: 'record-paths',
-      job: 'server-tests',
+      job,
       filesRead: [APP_ROUTES, SHARED_MODULE, WORKFLOW],
     });
   });

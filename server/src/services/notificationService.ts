@@ -16,7 +16,7 @@ import logger from '../logger.js';
 import { getEmailNotificationsEnabled } from './settingsService.js';
 import { sendOverdueTaskDigest, sendAssignmentNotification } from './emailService.js';
 import type { OverdueTaskItem, AssignmentItem } from './emailService.js';
-import { isRecordLinkType, recordPathOrNull } from '@minicrm/shared/types/recordPath.js';
+import { recordPathOrNull } from '@minicrm/shared/types/recordPath.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -186,11 +186,7 @@ export async function sendOverdueDigests(): Promise<void> {
         subject: row.subject,
         due_date: row.due_date,
         linked_record_name: row.linked_record_name,
-        // The SQL CASE emits only contact/account/deal, but the column is text:
-        // the guard keeps an unexpected value out of the path rather than into it.
-        linked_record_path: isRecordLinkType(row.linked_record_type)
-          ? recordPathOrNull(row.linked_record_type, row.linked_record_id)
-          : null,
+        linked_record_path: recordPathOrNull(row.linked_record_type, row.linked_record_id),
       });
     }
 

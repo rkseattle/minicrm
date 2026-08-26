@@ -46,8 +46,15 @@ const ROUTE: Readonly<Record<RecordLinkType, { prefix: string; takesId: boolean 
  * @returns A path the router declares.
  */
 export function recordPath(type: RecordLinkType, id: string): string {
-  const { prefix, takesId } = ROUTE[type];
-  return takesId ? `${prefix}/${id}` : prefix;
+  const route = ROUTE[type];
+  // Only reachable when an unvalidated runtime value was cast into the union.
+  if (!route) throw new Error(`recordPath: no route for record type '${String(type)}'`);
+  return route.takesId ? `${route.prefix}/${id}` : route.prefix;
+}
+
+/** Narrows an arbitrary string to a linkable record type. */
+export function isRecordLinkType(value: string | null | undefined): value is RecordLinkType {
+  return RECORD_LINK_TYPES.includes(value as RecordLinkType);
 }
 
 /**
@@ -61,14 +68,12 @@ export function recordPath(type: RecordLinkType, id: string): string {
  * @returns A path the router declares, or null.
  */
 export function recordPathOrNull(
-  type: RecordLinkType | null | undefined,
+  type: string | null | undefined,
   id: string | null | undefined,
 ): string | null {
-  if (!type || !id) return null;
+  // Accepts `string`, not the union: every caller reads a text column whose type
+  // is asserted by a pool.query generic, not checked. Narrowing here means a
+  // caller cannot forget it — one already did, and threw on the unmapped value.
+  if (!id || !isRecordLinkType(type)) return null;
   return recordPath(type, id);
-}
-
-/** Narrows an arbitrary string to a linkable record type. */
-export function isRecordLinkType(value: string | null | undefined): value is RecordLinkType {
-  return RECORD_LINK_TYPES.includes(value as RecordLinkType);
 }
