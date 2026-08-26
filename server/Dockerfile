@@ -73,8 +73,9 @@ COPY qa/migrations/ ./qa/migrations/
 
 EXPOSE 3001
 
-# server.ts refuses to boot on an unrecognized NODE_ENV. Compose passes its own value;
-# this keeps a bare `docker run` bootable while a typo still fails loudly.
-ENV NODE_ENV=production
+# NODE_ENV is deliberately NOT set here. server.ts refuses to boot without a
+# recognized value, and baking one in would make an unconfigured deployment
+# indistinguishable from a deliberate one — the exact state the guard exists to
+# surface. Compose supplies it; a bare `docker run` must pass -e NODE_ENV.
 
 CMD ["node", "server/dist/server.js"]
