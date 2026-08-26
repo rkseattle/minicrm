@@ -44,3 +44,31 @@ export function isProductionEnv(): boolean {
 export function isAuthBypassEnv(): boolean {
   return AUTH_BYPASS_ENVS.has(process.env.NODE_ENV ?? '');
 }
+
+/**
+ * Every value the safeguards above recognize.
+ *
+ * AUTH_BYPASS_ENVS is a subset of NON_PRODUCTION_ENVS, so it contributes nothing.
+ */
+const RECOGNIZED_ENVS: readonly string[] = [...NON_PRODUCTION_ENVS, 'production'];
+
+/**
+ * Why the current NODE_ENV cannot be trusted, or null when it is recognized.
+ *
+ * The allowlists above fail closed, so an unrecognized value is safe — and
+ * therefore invisible, indistinguishable from a deliberate production
+ * deployment. Boot is where that gets said out loud.
+ *
+ * @returns An operator-facing message, or null when NODE_ENV is recognized.
+ */
+export function unrecognizedEnvMessage(): string | null {
+  const current = process.env.NODE_ENV;
+  if (current && RECOGNIZED_ENVS.includes(current)) return null;
+  return (
+    `NODE_ENV is ${current ? `set to '${current}', which is not recognized` : 'not set'}. ` +
+    `Set it to one of: ${RECOGNIZED_ENVS.join(', ')}. ` +
+    'Every production safeguard is chosen by this value; an unrecognized one gets the ' +
+    'full production posture, which is safe but hides whether that was intended. ' +
+    'See docs/operations.md#node_env.'
+  );
+}

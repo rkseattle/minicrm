@@ -14,6 +14,7 @@ import type { Express } from 'express';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { makeAuthCookie } from './testUtils.js';
+import { UNRECOGNIZED_ENVS } from './nodeEnvCorpus.js';
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 const FILE_PREFIX = 'app-env-gating';
@@ -74,13 +75,6 @@ afterEach(async () => {
   await Promise.all(loadedPools.splice(0).map((loaded) => loaded.end().catch(() => undefined)));
   vi.resetModules();
 });
-
-const UNRECOGNIZED_ENVS: ReadonlyArray<[string, string | undefined]> = [
-  ['unset', undefined],
-  ['misspelled', 'producton'],
-  ['differently cased', 'Production'],
-  ['unrecognized', 'qa-box'],
-];
 
 describe.each(UNRECOGNIZED_ENVS)('NODE_ENV %s', (_label, value) => {
   it('does not serve the API docs', async () => {
