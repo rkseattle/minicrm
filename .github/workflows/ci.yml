@@ -601,7 +601,7 @@ jobs:
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
     needs: changes
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true' || needs.changes.outputs.ci-filter-globs == 'true' || needs.changes.outputs.guard-invocation == 'true' || needs.changes.outputs.api-path-versioning == 'true' || needs.changes.outputs.claude-hooks == 'true'
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true' || needs.changes.outputs.ci-filter-globs == 'true' || needs.changes.outputs.guard-invocation == 'true' || needs.changes.outputs.api-path-versioning == 'true' || needs.changes.outputs.claude-hooks == 'true' || needs.changes.outputs.record-paths == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1138,7 +1138,15 @@ jobs:
   client-tests:
     name: Phase 2 - Client Unit Tests
     needs: [lint-and-typecheck, changes]
-    if: needs.changes.outputs.client == 'true'
+    # record-paths is OR'd in because shared/types/recordPath.ts decides the href of
+    # every record link, and the client suites assert those hrefs — but `client` is
+    # client/src/** only, so a mapping edit would merge with them never having run.
+    # always() is required: lint-and-typecheck's own gate does not match shared/types/**
+    # either, and GitHub auto-skips a job whose needs were skipped before reading if:.
+    if: |
+      always() &&
+      (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
+      (needs.changes.outputs.client == 'true' || needs.changes.outputs.record-paths == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

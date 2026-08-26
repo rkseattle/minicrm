@@ -187,6 +187,8 @@ const serverConfig = {
 // A hardcoded `/contacts/${id}` matches no test against App.tsx's route table,
 // which is how an email shipped a link to /activities/:id — a route the router
 // never declared, so the catch-all bounced the recipient to the dashboard.
+// Template literals only: `'/contacts/' + id` is not matched, so this raises the
+// cost of writing one rather than making it impossible.
 const clientRoutePathConfig = {
   files: ['client/src/**/*.tsx', 'client/src/**/*.ts'],
   ignores: ['client/src/**/*.test.tsx', 'client/src/**/*.test.ts', 'client/src/api/**'],

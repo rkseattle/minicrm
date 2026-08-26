@@ -17,6 +17,7 @@ import type { Transporter } from 'nodemailer';
 import logger from '../logger.js';
 import { getSmtpConfigInternal } from './smtpSettingsService.js';
 import { isAuthBypassEnv } from '../utils/nodeEnv.js';
+import type { RecordLinkType } from '@minicrm/shared/types/recordPath.js';
 
 /** HTML-escape map for the five characters that can break HTML contexts */
 const HTML_ESCAPE_MAP: Record<string, string> = {
@@ -104,22 +105,12 @@ async function resolveTransport(): Promise<Transporter | null> {
 }
 
 /**
- * Sends an email using the resolved transport.
- * Falls back to logging when no SMTP source is configured.
- *
- * @param to - Recipient email address.
- * @param subject - Email subject line.
- * @param html - HTML body content.
- */
-/**
  * Records an email that no transport was configured to send.
  *
  * `secrets` carries reset and invite URLs, which are single-use account-takeover
- * tokens. They are logged only where handing out credentials is already
- * acceptable — which excludes staging, a real deployment with real users, even
- * though its log level is debug. Without that split the tokens would sit in
- * staging's log stream, and reading them there is the local-dev affordance this
- * branch exists for, not a staging one.
+ * tokens. They are logged only where handing out credentials is already acceptable,
+ * which excludes staging — a real deployment with real users, and the reason the
+ * split keys on isAuthBypassEnv() rather than on log level.
  *
  * @param what - Human label for the message that was not sent.
  * @param context - Non-sensitive fields, always logged.
@@ -130,12 +121,23 @@ function logNoSmtp(
   context: Record<string, unknown>,
   secrets: Record<string, unknown> = {},
 ): void {
-  logger.debug(
+  // warn, not debug: a dropped notification is an operational event, and production
+  // logs at info — a debug line would make the drop invisible exactly where it matters.
+  // Redaction is the secrets/context split, not the level.
+  logger.warn(
     isAuthBypassEnv() ? { ...context, ...secrets } : context,
     `[NO-SMTP] ${what} not delivered; no transport configured`,
   );
 }
 
+/**
+ * Sends an email using the resolved transport.
+ * Falls back to logging when no SMTP source is configured.
+ *
+ * @param to - Recipient email address.
+ * @param subject - Email subject line.
+ * @param html - HTML body content.
+ */
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   const transport = await resolveTransport();
 
@@ -289,11 +291,11 @@ export async function sendOverdueTaskDigest(
 
 /** A single record assignment notification item */
 export interface AssignmentItem {
-  /** Record type: 'contact' | 'account' | 'deal' */
-  recordType: string;
+  /** Record type; constrains the path below to a route the router declares. */
+  recordType: RecordLinkType;
   /** Human-readable record name */
   recordName: string;
-  /** URL path to the record (e.g. /contacts/uuid) */
+  /** Build with recordPath(), never by hand — the type is what pins it to a route. */
   recordPath: string;
   /** Display name of the user who performed the assignment */
   assignedByName: string;
