@@ -183,15 +183,25 @@ const serverConfig = {
   },
 };
 
-// ── Client router paths come from shared/types/recordPath ────────────────────
+// ── Router paths come from shared/types/recordPath ───────────────────────────
 // A hardcoded `/contacts/${id}` matches no test against App.tsx's route table,
 // which is how an email shipped a link to /activities/:id — a route the router
-// never declared, so the catch-all bounced the recipient to the dashboard.
+// never declared, so the catch-all bounced the recipient to the dashboard. That
+// literal was server-side, so server/ and shared/ are covered too; tests are not,
+// since a literal there is the expected value being asserted.
 // Template literals only: `'/contacts/' + id` is not matched, so this raises the
 // cost of writing one rather than making it impossible.
 const clientRoutePathConfig = {
-  files: ['client/src/**/*.tsx', 'client/src/**/*.ts'],
-  ignores: ['client/src/**/*.test.tsx', 'client/src/**/*.test.ts', 'client/src/api/**'],
+  files: ['client/src/**/*.tsx', 'client/src/**/*.ts', 'server/src/**/*.ts', 'shared/**/*.ts'],
+  ignores: [
+    '**/*.test.ts',
+    '**/*.test.tsx',
+    '**/__tests__/**',
+    // REST endpoints, not router paths; they share the prefix legitimately.
+    'client/src/api/**',
+    // The mapping itself is where these strings are supposed to live.
+    'shared/types/recordPath.ts',
+  ],
   rules: {
     'no-restricted-syntax': [
       'error',

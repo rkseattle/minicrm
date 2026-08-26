@@ -284,6 +284,17 @@ npm run seed:demo
 This creates a set of demo records flagged with `is_demo = true`. They appear in all
 lists and the pipeline board exactly like real records.
 
+The seed also creates a demo sales rep you can sign in as:
+
+| Field    | Value                          |
+| -------- | ------------------------------ |
+| Email    | `alex.rivera@demo.minicrm.app` |
+| Password | `Demo1234!`                    |
+
+A service-account API token is written to `.env.demo` as `DEMO_SVC_API_TOKEN`. Neither
+is printed to the console — the token is a live credential, and the server log is not
+where one belongs.
+
 #### Step 2 — Remove demo data
 
 To delete all demo records:

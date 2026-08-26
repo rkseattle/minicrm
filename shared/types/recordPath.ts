@@ -54,7 +54,7 @@ export function recordPath(type: RecordLinkType, id: string): string {
 
 /** Narrows an arbitrary string to a linkable record type. */
 export function isRecordLinkType(value: string | null | undefined): value is RecordLinkType {
-  return RECORD_LINK_TYPES.includes(value as RecordLinkType);
+  return (RECORD_LINK_TYPES as readonly (string | null | undefined)[]).includes(value);
 }
 
 /**
@@ -71,9 +71,9 @@ export function recordPathOrNull(
   type: string | null | undefined,
   id: string | null | undefined,
 ): string | null {
-  // Accepts `string`, not the union: every caller reads a text column whose type
-  // is asserted by a pool.query generic, not checked. Narrowing here means a
-  // caller cannot forget it — one already did, and threw on the unmapped value.
+  // Accepts `string`, not the union: every caller reads a text column whose type is
+  // asserted by a pool.query generic, not checked, so the narrowing belongs here
+  // rather than at each call site where it can be omitted.
   if (!id || !isRecordLinkType(type)) return null;
   return recordPath(type, id);
 }

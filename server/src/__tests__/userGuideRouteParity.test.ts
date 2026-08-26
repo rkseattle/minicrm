@@ -17,19 +17,18 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { expectGuardIsTriggered, WORKFLOW } from './ciFilterWiring.js';
+import {
+  APP_ROUTES,
+  expectGuardIsTriggered,
+  protectedRoutePaths,
+  WORKFLOW,
+} from './ciFilterWiring.js';
 
 const REPO_ROOT = join(__dirname, '../../..');
 
-const APP_ROUTES = 'client/src/App.tsx';
 const GUIDE_DIR = 'docs/user-guide';
-
-/** Opens the authenticated block; the admin opener below it closes the scan. */
-const PROTECTED_OPENER = '<Route element={<ProtectedRoute />}>';
-const ADMIN_OPENER = '<Route element={<AdminRoute />}>';
 
 /**
  * Every authenticated non-admin route, and the guide page documenting it.
@@ -83,25 +82,6 @@ const EMBEDDED_FEATURE_PAGES: readonly string[] = ['notes.md'];
  */
 const GUIDE_INDEX = 'index.md';
 
-function repoFile(relative: string): string {
-  return readFileSync(join(REPO_ROOT, relative), 'utf8');
-}
-
-/**
- * Route paths declared in App.tsx's authenticated, non-admin block.
- *
- * Extracts `path=` attributes rather than `<Route path=`: Prettier wraps a long element
- * so the attribute lands on its own line, and three of the redirect routes are written
- * that way. Matching the opener would find twenty of twenty-three and silently drop them.
- */
-function protectedRoutePaths(source: string): string[] {
-  const start = source.indexOf(PROTECTED_OPENER);
-  const end = source.indexOf(ADMIN_OPENER);
-  expect(start, `${APP_ROUTES} no longer contains ${PROTECTED_OPENER}`).toBeGreaterThan(-1);
-  expect(end, `${APP_ROUTES} no longer contains ${ADMIN_OPENER}`).toBeGreaterThan(start);
-  return [...source.slice(start, end).matchAll(/\bpath="([^"]+)"/g)].map((match) => match[1]);
-}
-
 /**
  * Tracked guide pages, relative to the guide directory.
  *
@@ -126,7 +106,7 @@ describe('every user-facing route has a user-guide page', () => {
   // Parsed per test rather than in the describe body: a bound assertion thrown during
   // collection surfaces as a suite-level error, and its message never reaches the JUnit
   // file this repo reads for pass/fail.
-  const routes = (): string[] => protectedRoutePaths(repoFile(APP_ROUTES));
+  const routes = (): string[] => protectedRoutePaths();
 
   // A parse yielding nothing passes every assertion below. Pinning the count turns a JSX
   // refactor into one failure here rather than silence, and catches a bound that ran into

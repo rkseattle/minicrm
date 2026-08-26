@@ -14,43 +14,25 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   RECORD_LINK_TYPES,
   isRecordLinkType,
   recordPath,
   recordPathOrNull,
 } from '@minicrm/shared/types/recordPath.js';
-import { expectGuardIsTriggered, WORKFLOW } from './ciFilterWiring.js';
+import {
+  APP_ROUTES,
+  expectGuardIsTriggered,
+  protectedRoutePaths,
+  WORKFLOW,
+} from './ciFilterWiring.js';
 
-const REPO_ROOT = join(__dirname, '../../..');
-const APP_ROUTES = 'client/src/App.tsx';
 const SHARED_MODULE = 'shared/types/recordPath.ts';
-
-/** Opens the authenticated block; the admin opener below it closes the scan. */
-const PROTECTED_OPENER = '<Route element={<ProtectedRoute />}>';
-const ADMIN_OPENER = '<Route element={<AdminRoute />}>';
 
 /** Authenticated non-admin routes declared today; see userGuideRouteParity for why. */
 const EXPECTED_ROUTE_COUNT = 23;
 
 const SAMPLE_ID = '11111111-2222-3333-4444-555555555555';
-
-/**
- * Route paths declared in App.tsx's authenticated, non-admin block.
- *
- * Matches `path=` rather than `<Route path=`: Prettier wraps long elements so the
- * attribute lands on its own line, and several redirect routes are written that way.
- */
-function protectedRoutePaths(): string[] {
-  const source = readFileSync(join(REPO_ROOT, APP_ROUTES), 'utf8');
-  const start = source.indexOf(PROTECTED_OPENER);
-  const end = source.indexOf(ADMIN_OPENER);
-  expect(start, `${APP_ROUTES} no longer contains ${PROTECTED_OPENER}`).toBeGreaterThan(-1);
-  expect(end, `${APP_ROUTES} no longer contains ${ADMIN_OPENER}`).toBeGreaterThan(start);
-  return [...source.slice(start, end).matchAll(/\bpath="([^"]+)"/g)].map((match) => match[1]);
-}
 
 /** Rewrites a concrete path back to its route shape, so an id matches `:id`. */
 function toRouteShape(path: string): string {
@@ -101,9 +83,9 @@ describe('record links resolve to declared routes', () => {
     expect(recordPath('activity', SAMPLE_ID)).toBe('/activities');
   });
 
-  // Without this, adding /activities/:id later leaves COLLECTION_ONLY stale and every
-  // activity assignment keeps landing on the unfiltered list — a regression the
-  // assertion above would actively vouch for.
+  // Without this, adding /activities/:id later leaves takesId stale and every activity
+  // assignment keeps landing on the unfiltered list — a regression the assertion above
+  // would actively vouch for.
   it('no collection-only type has gained a detail route', () => {
     const declared = new Set(protectedRoutePaths());
     for (const type of RECORD_LINK_TYPES) {
@@ -117,10 +99,9 @@ describe('record links resolve to declared routes', () => {
     }
   });
 
-  // dashboardService and notificationService both read linked_record_type from a
-  // text column typed only by a pool.query generic. Returning null keeps a stray
-  // value out of the link; an earlier revision threw here instead, turning a
-  // dashboard read into a 500.
+  // dashboardService and notificationService read linked_record_type from a text
+  // column typed only by a pool.query generic, so a stray value must yield null
+  // rather than reach the link or throw inside a read path.
   it('returns null for a value the router has no route for', () => {
     expect(recordPathOrNull('opportunity', SAMPLE_ID)).toBeNull();
     expect(recordPathOrNull('', SAMPLE_ID)).toBeNull();
