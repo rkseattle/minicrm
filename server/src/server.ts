@@ -21,6 +21,7 @@ import { COVERAGE_DUMPS_ROOT, resolveCoverageConfig } from './coverageAgent/cove
 import { resolveCoveragePolicy } from './coverageAgent/coveragePolicyConfig.js';
 import { SDK_VERSION } from './coverageAgent/sdk/CoverageAgentPlugin.js';
 import { registerCoverageAgent } from './coverageAgent/coverageAgentRegistry.js';
+import { unrecognizedEnvMessage } from './utils/nodeEnv.js';
 
 /** Default port for the API server */
 const DEFAULT_PORT = 3001;
@@ -35,6 +36,13 @@ const ENCRYPTION_KEY_HEX_LENGTH = 64;
 
 /** Drain timeout in milliseconds before forcing process exit */
 const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+// Boot on a recognized environment or not at all. The allowlists in nodeEnv.ts
+// fail closed, so a typo is safe but silent — this is what makes it audible.
+const envProblem = unrecognizedEnvMessage();
+if (envProblem) {
+  throw new Error(envProblem);
+}
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
 if (

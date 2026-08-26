@@ -4,7 +4,8 @@
  * Builds the OpenAPI 3.0 spec from JSDoc annotations in the route files and
  * exposes a helper to mount Swagger UI on an Express application.
  *
- * Only enabled in development and staging — never in production.
+ * Mounted only for a recognized non-production environment — development,
+ * test, or staging. See server/src/utils/nodeEnv.ts.
  */
 
 import swaggerJsdoc from 'swagger-jsdoc';
@@ -1607,7 +1608,8 @@ export const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 /**
  * Mounts Swagger UI at {@link SWAGGER_UI_PATH} on the provided Express app.
- * Should only be called when NODE_ENV is not 'production'.
+ * Call only when isNonProductionEnv() is true; the allowlist is what keeps an
+ * unset or misspelled NODE_ENV from serving the docs.
  *
  * @param app - Express application instance to mount the docs on.
  */

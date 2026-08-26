@@ -302,8 +302,9 @@ server is still migrating or has exited; a `503` means it is up but its database
 ### `NODE_ENV`
 
 **Set `NODE_ENV=production` in every real deployment.** It is not merely a label: it is
-the switch on every production safeguard, and it is checked by allowlist, so an unset or
-misspelled value is treated as production rather than as development.
+the switch on every production safeguard. **The server refuses to start unless it is one
+of `development`, `test`, `staging`, or `production`** — an unset or misspelled value
+throws at boot, before the port opens, naming the value it got and the ones it accepts.
 
 Recognized values are `development`, `test`, `staging`, and `production`. Outside
 `production` the server serves the API docs at `/api-docs`, returns the underlying error
@@ -318,10 +319,12 @@ Three things are narrower still, and apply in `development` and `test` **only**:
 - the session cookie's `Secure` flag and the outbound-fetch HTTPS requirement are
   **relaxed only here**. Staging keeps both, because it carries real traffic
 
-Anything unrecognized — unset, misspelled, or differently cased — gets the full
-production posture on all of it. That is the safe direction, but it is not a substitute
-for setting the variable, because you cannot tell from behavior alone whether a
-deployment is deliberately production or accidentally unconfigured.
+Anything unrecognized — unset, misspelled, or differently cased — still gets the full
+production posture in the code, so the safeguards themselves fail closed. But the server
+no longer starts in that state: a deployment that is accidentally unconfigured used to
+be indistinguishable from one deliberately in production, and the boot guard is what
+makes the difference visible. If startup fails with a `NODE_ENV` error, set the variable
+to a recognized value rather than working around the check.
 
 ### Chosen scheme: URL prefix
 
