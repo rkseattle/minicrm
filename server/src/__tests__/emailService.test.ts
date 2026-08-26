@@ -10,8 +10,9 @@
  */
 
 import 'dotenv/config';
-import { vi, afterEach, describe, it, expect } from 'vitest';
+import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest';
 import logger from '../logger.js';
+import * as smtpSettingsService from '../services/smtpSettingsService.js';
 import {
   sendPasswordResetEmail,
   sendOverdueTaskDigest,
@@ -147,12 +148,14 @@ describe('sendAssignmentNotification', () => {
   });
 
   it('HTML-escapes user-supplied strings in assignment emails', async () => {
+    // recordType is no longer a vector — it is a union, so a script tag cannot be
+    // constructed. recordName and assignedByName still carry arbitrary user input.
     const items: AssignmentItem[] = [
       {
-        recordType: '<script>',
-        recordName: '"Quoted"',
+        recordType: 'deal',
+        recordName: '<script>alert(1)</script>"Quoted"',
         recordPath: '/deals/uuid',
-        assignedByName: "O'Brien",
+        assignedByName: "O'Brien & <b>Co</b>",
       },
     ];
     await expect(
@@ -246,20 +249,41 @@ describe('sendContactEmail', () => {
 
 describe('the NO-SMTP branch and credential-bearing fields', () => {
   const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+  const ORIGINAL_SMTP_HOST = process.env.SMTP_HOST;
+
+  // These cases move NODE_ENV off 'test', which is what resolveTransport short-circuits
+  // on — so without stubbing, a concurrent smtpSettingsService write would send them
+  // down the real nodemailer path and fail on ENOTFOUND. vitest.config.ts records that
+  // collision. Stubbing the config read also keeps this file off the DB entirely.
+  beforeEach(() => {
+    vi.spyOn(smtpSettingsService, 'getSmtpConfigInternal').mockResolvedValue({
+      smtp_host: '',
+      smtp_port: 587,
+      smtp_user: '',
+      smtp_pass: null,
+      smtp_enabled: false,
+    });
+    delete process.env.SMTP_HOST;
+  });
 
   afterEach(() => {
     process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+    if (ORIGINAL_SMTP_HOST === undefined) {
+      delete process.env.SMTP_HOST;
+    } else {
+      process.env.SMTP_HOST = ORIGINAL_SMTP_HOST;
+    }
     vi.restoreAllMocks();
   });
 
-  /** Captures the bindings object of every logger.debug call. */
-  function captureDebugBindings(): Record<string, unknown>[] {
+  /** Captures the bindings object of every logger.warn call. */
+  function captureWarnBindings(): Record<string, unknown>[] {
     const captured: Record<string, unknown>[] = [];
-    vi.spyOn(logger, 'debug').mockImplementation(((first: unknown) => {
+    vi.spyOn(logger, 'warn').mockImplementation(((first: unknown) => {
       if (typeof first === 'object' && first !== null) {
         captured.push(first as Record<string, unknown>);
       }
-    }) as typeof logger.debug);
+    }) as typeof logger.warn);
     return captured;
   }
 
@@ -268,7 +292,7 @@ describe('the NO-SMTP branch and credential-bearing fields', () => {
 
   it('logs the reset URL where credentials may already be handed out', async () => {
     process.env.NODE_ENV = 'development';
-    const captured = captureDebugBindings();
+    const captured = captureWarnBindings();
 
     await sendPasswordResetEmail('user@example.com', RESET_URL);
 
@@ -280,7 +304,7 @@ describe('the NO-SMTP branch and credential-bearing fields', () => {
   // but it carries real users — so level alone is the wrong boundary.
   it.each(['staging', 'production'])('withholds the reset URL on %s', async (env) => {
     process.env.NODE_ENV = env;
-    const captured = captureDebugBindings();
+    const captured = captureWarnBindings();
 
     await sendPasswordResetEmail('user@example.com', RESET_URL);
 
@@ -292,7 +316,7 @@ describe('the NO-SMTP branch and credential-bearing fields', () => {
 
   it.each(['staging', 'production'])('withholds the invite URL on %s', async (env) => {
     process.env.NODE_ENV = env;
-    const captured = captureDebugBindings();
+    const captured = captureWarnBindings();
 
     await sendInviteEmail('invitee@example.com', 'Invitee', INVITE_URL);
 
