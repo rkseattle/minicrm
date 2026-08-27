@@ -1828,6 +1828,37 @@
     },
     "statusErased": "已删除"
   },
+  "connectedAccounts": {
+    "sectionTitle": "已连接账户",
+    "sectionHint": "连接邮箱后，您的邮件即可与 CRM 记录同步。凭据将加密存储。",
+    "loading": "正在加载已连接账户…",
+    "loadError": "加载已连接账户失败。",
+    "empty": "尚未连接任何邮箱。",
+    "connectGoogle": "连接 Google",
+    "connectMicrosoft": "连接 Outlook",
+    "connectImap": "通过 IMAP 连接",
+    "connectButton": "连接",
+    "connecting": "正在连接…",
+    "connectError": "无法连接该邮箱。请检查信息后重试。",
+    "disconnectButton": "断开连接",
+    "disconnectConfirmPrompt": "要断开此邮箱的连接吗？",
+    "disconnectConfirmButton": "断开连接",
+    "emailLabel": "电子邮件地址",
+    "hostLabel": "IMAP 服务器",
+    "portLabel": "端口",
+    "usernameLabel": "用户名",
+    "passwordLabel": "密码",
+    "providers": {
+      "google": "Google",
+      "microsoft": "Microsoft",
+      "imap": "IMAP"
+    },
+    "statuses": {
+      "active": "已启用",
+      "error": "需要处理",
+      "disconnected": "已断开"
+    }
+  },
   "mfa": {
     "sectionTitle": "双重身份验证",
     "sectionHint": "通过在登录时要求验证器应用提供验证码，为您的账户增加额外的安全保障。",

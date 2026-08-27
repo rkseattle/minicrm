@@ -1,12 +1,13 @@
 # Profile Settings
 
 Click **Profile Settings** in the navigation to open your own account settings: the
-language MiniCRM shows you, which emails it sends you, and two-factor authentication.
+language MiniCRM shows you, which emails it sends you, two-factor authentication, and the
+mailboxes you have connected.
 
 Everything here applies to you alone. Nothing on this page changes what your teammates
 see, and nothing on it needs an admin.
 
-![Profile Settings, showing the preferred-language selector and the three email notification checkboxes, each with its own Save button, above the two-factor authentication panel](../screenshots/12-profile-settings.png)
+![Profile Settings, showing the preferred-language selector and the three email notification checkboxes, each with its own Save button, above the two-factor authentication panel and the connected accounts panel](../screenshots/12-profile-settings.png)
 
 ---
 
@@ -98,3 +99,44 @@ authentication. Please set it up to continue._
 The banner prompts, it does not block: you keep full access whether you enroll or not. It
 is carried in the link that brought you here rather than stored against your account, so
 it disappears as soon as you navigate elsewhere and comes back at your next sign-in.
+
+---
+
+## Connected accounts
+
+Connect a mailbox and MiniCRM can sync your email against the CRM records it belongs to.
+The panel appears only when an administrator has enabled **Email Sync**; if you do not see
+it, ask them.
+
+Your credentials are encrypted before they are stored, and no screen or API response ever
+shows them again — not to you, and not to an administrator.
+
+### Connect a mailbox
+
+**Google or Outlook.** Click **Connect Google** or **Connect Outlook**. You are taken to
+the provider's own sign-in page, where you approve the access MiniCRM is asking for, and
+then returned here. MiniCRM never sees your password on this path.
+
+**Any other provider.** Click **Connect via IMAP** and fill in the address, server, port,
+username, and password your mail provider publishes. Many providers require an
+_app password_ rather than your normal one — check their documentation if your usual
+password is rejected.
+
+MiniCRM tests the connection before saving anything. A mailbox it cannot reach is never
+stored, so a failure here means nothing was written.
+
+### Read the status
+
+| Status              | What it means                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| **Active**          | The mailbox is connected and working.                                                   |
+| **Needs attention** | The provider stopped accepting the stored credentials. Disconnect and connect it again. |
+| **Disconnected**    | The mailbox is no longer in use.                                                        |
+
+### Disconnect a mailbox
+
+Click **Disconnect** and confirm. The stored credentials are deleted, and for providers
+that support it MiniCRM also tells them to revoke the access it was granted.
+
+Disconnecting affects only your own account. Nobody else can see or disconnect your
+mailboxes — an administrator included.

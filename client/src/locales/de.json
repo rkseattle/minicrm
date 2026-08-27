@@ -1828,6 +1828,37 @@
     },
     "statusErased": "Gelöscht"
   },
+  "connectedAccounts": {
+    "sectionTitle": "Verbundene Konten",
+    "sectionHint": "Verbinden Sie ein Postfach, damit Ihre E-Mails mit CRM-Datensätzen synchronisiert werden. Zugangsdaten werden verschlüsselt gespeichert.",
+    "loading": "Verbundene Konten werden geladen…",
+    "loadError": "Fehler beim Laden der verbundenen Konten.",
+    "empty": "Noch keine Postfächer verbunden.",
+    "connectGoogle": "Google verbinden",
+    "connectMicrosoft": "Outlook verbinden",
+    "connectImap": "Über IMAP verbinden",
+    "connectButton": "Verbinden",
+    "connecting": "Wird verbunden…",
+    "connectError": "Dieses Postfach konnte nicht verbunden werden. Prüfen Sie die Angaben und versuchen Sie es erneut.",
+    "disconnectButton": "Trennen",
+    "disconnectConfirmPrompt": "Dieses Postfach trennen?",
+    "disconnectConfirmButton": "Trennen",
+    "emailLabel": "E-Mail-Adresse",
+    "hostLabel": "IMAP-Server",
+    "portLabel": "Port",
+    "usernameLabel": "Benutzername",
+    "passwordLabel": "Passwort",
+    "providers": {
+      "google": "Google",
+      "microsoft": "Microsoft",
+      "imap": "IMAP"
+    },
+    "statuses": {
+      "active": "Aktiv",
+      "error": "Aktion erforderlich",
+      "disconnected": "Getrennt"
+    }
+  },
   "mfa": {
     "sectionTitle": "Zwei-Faktor-Authentifizierung",
     "sectionHint": "Fügen Sie Ihrem Konto eine zusätzliche Sicherheitsebene hinzu, indem Sie beim Anmelden einen Bestätigungscode aus Ihrer Authentifikator-App anfordern.",
