@@ -112,6 +112,98 @@ cases in `qa/evals/` in the same commit. Intent → `nli-intent.yaml`, semantic 
 `nli-semantic.yaml`, RBAC → `nli-rbac.yaml`, PII → `nli-pii.yaml`. Never route PII
 assertions through an LLM judge.
 
+## Cross-cutting obligations — when you touch X, also touch Y
+
+The gates above are commands. These are couplings: things that do not fail any command
+until much later, or fail silently forever. Walk this table against the diff before
+staging. A row whose left side appears in your diff and whose right side does not is
+either a gap or a decision you must be able to state.
+
+| You changed                                            | You must also                                                                                                                                                             | Why it fails silently otherwise                                                                                                                                                                                                          |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A test that reads a file **outside its own workspace** | Add a single-purpose paths-filter output in `ci.yml` naming **both** sides, OR it into the job that runs the test, and keep that job's `always()` + upstream result check | `server` is `server/src/**` and `client` is `client/src/**` — a guard pinning the other workspace never runs on the edit it exists to catch. `check-ci-filter-globs.mjs` only verifies listed paths _exist_; it cannot see a missing one |
+| A new filter output in `ci.yml`                        | Declare it in the `changes` job's `outputs:` block too                                                                                                                    | `actionlint` catches this one — run it, since the pre-commit hook only fires on staged workflow files                                                                                                                                    |
+| A route with no `authenticate`                         | Update the public-endpoint count in `swagger.ts`'s `info.description`                                                                                                     | `swagger.test.ts` asserts the prose count matches `security: []` operations                                                                                                                                                              |
+| Any new route                                          | A real `@openapi` block, plus a `tags:` entry if the tag is new                                                                                                           | `swagger.test.ts` asserts `registrations - operations` stays at its expected shortfall; redocly `lint:api` rejects an undeclared tag                                                                                                     |
+| A new dependency                                       | Check its license and transitive tree, then run the audit gate; re-resolve (`rm -rf node_modules package-lock.json && npm install`) if you added an override              | An incremental install silently ignores overrides for transitive deps                                                                                                                                                                    |
+| A pattern a hook should enforce                        | Update the hook **and** its self-test in `.claude/hooks/`                                                                                                                 | A hook that does not know about a new pattern reports success. Self-tests assert finding _counts_, not exit status                                                                                                                       |
+| A new `@serial` E2E spec                               | Add a `qa/e2e/apps/minicrm/resource-registry.ts` entry, then `npx tsx qa/e2e/scripts/gen-conflict-group-configs.ts`                                                       | A spec in no conflict group is never scheduled — it silently does not run                                                                                                                                                                |
+| A new table                                            | Add it to `reset-e2e-data.ts`                                                                                                                                             | That script enumerates tables one by one; an omitted table accumulates rows across every E2E run                                                                                                                                         |
+| A migration                                            | Regenerate the ERD (`npm run db:erd --workspace=minicrm-server`) in the same commit                                                                                       | Nothing in CI checks ERD staleness                                                                                                                                                                                                       |
+| Behavior a user can see                                | Update `docs/user-guide/`; new pages need an `index.md` row, and a changed page's screenshot and alt text                                                                 | Route parity checks that a page _exists_, never that it is accurate                                                                                                                                                                      |
+
+The table is not exhaustive, and a row is not a substitute for thinking about the
+particular change. When you add a coupling this table does not name, add the row.
+
+### Domain subsystems — ask these of every feature, not just the obvious one
+
+Each of these is cross-cutting: it applies to work that is not "about" it, which is why
+it gets missed. Answer each with a change or a reason it does not apply.
+
+- **i18n** — every user-facing string via `t()`, added to all five locales at matching
+  positions, then `npm run pseudoloc`. `locale-completeness.test.ts` is bidirectional, so
+  an orphaned key fails as loudly as a missing one. RTL needs logical CSS (`ps-`/`pe-`,
+  `ms-`/`me-`, `start-`/`end-`), never physical directions.
+- **GDPR and retention** — does this store personal data? Then erasure must reach it.
+  `gdprService` erases contacts and leads specifically; a new table holding contact or
+  lead data needs a cascade or an explicit note in `docs/dev/retention.md` saying why not.
+  User-owned data usually rides `ON DELETE CASCADE`, but confirm rather than assume.
+- **Feature flags** — a new user-facing surface is gated or explicitly always-on. Admin
+  panels disable-not-hide; end-user surfaces hide. `useFeatureFlag` fails closed by
+  design, so an unknown key silently renders nothing.
+- **RBAC and visibility** — a capability guard at the route, and ownership in the WHERE
+  clause for anything per-user. Adding a capability strands existing **custom roles**
+  unless the migration grants it to `is_builtin = false` rows too.
+- **Audit** — every create/update/delete writes an entry on the same client inside the
+  same transaction. Never log the secret itself; log that it changed.
+- **AI exposure** — a new column holding anything sensitive belongs in
+  `ALWAYS_EXCLUDED_FIELDS`. If a service signature changed, the matching tool schema in
+  `server/src/ai/tools/` changes with it, and NLI behavior changes need `qa/evals/` cases.
+- **Test infrastructure** — new tables reach `reset-e2e-data.ts`; `@serial` specs reach
+  `resource-registry.ts` and the regenerated conflict groups; fixtures clean up by a
+  file-unique prefix so parallel files cannot collide.
+- **TIA/coverage** — a new file class that no coverage unit can represent (a migration, a
+  config, a locale) belongs in `dependencyGraphService`'s rule table, or selection is
+  silently blind to it.
+- **Reporting and gRPC** — a new audit event type reaching the audit Connect service, or
+  a new metric surface, changes `server/src/grpc/proto/` and its handler together.
+
+### Engineering practice — the questions no command asks
+
+- **Deploy compatibility.** Old code runs against the new schema during any rolling
+  deploy, and `down` runs against new code. A column that goes `NOT NULL` in one step
+  breaks inserts from the still-running old version — add nullable, backfill, then
+  constrain, as `167_add_record_type_to_ai_cascade_log.js` does. Renames and drops are two
+  releases, never one.
+- **Idempotency.** Anything retried must be safe to run twice. Webhook delivery retries up
+  to five times, automation triggers fire post-commit unawaited, and notification queueing
+  is fire-and-forget — a handler that is not idempotent turns each of those into duplicate
+  side effects rather than a recovered failure.
+- **Failure modes of a new outbound call.** Every third-party call needs a timeout, a
+  decision about retry, and a statement of what happens when it fails — the request fails,
+  or it degrades. Never inside a transaction holding row locks. `undici` reports every
+  transport failure as the same `TypeError: fetch failed`, so classify on `cause.code`
+  rather than the error name.
+- **Query cost.** A new list endpoint joins or batch-loads rather than issuing N+1, and a
+  new predicate over a large table has an index that covers it. `EXPLAIN` the query rather
+  than assuming the planner cooperates; a partial index needs its `WHERE` to match the
+  query's exactly.
+- **Secrets.** Encrypted at rest via the versioned crypto API, never returned by an
+  endpoint, never written to an audit entry or a log line, and named in
+  `ALWAYS_EXCLUDED_FIELDS`. A new env var is documented in `.env.example` and reaches
+  every compose file that enumerates env keys.
+- **Observability.** A new failure path a user can hit reaches `logger.warn`/`error` with
+  enough context to diagnose it, and anything unexpected reaches Sentry through the global
+  handler rather than being swallowed. Never log a credential, a token, or a full request
+  body.
+- **Rate limiting.** A new unauthenticated endpoint, or one doing meaningful work per
+  call, states whether it is rate-limited and why. `E2E=true` bypasses the limiter.
+- **Accessibility.** Interactive elements are reachable by keyboard, carry an accessible
+  name, and use `role="status"`/`role="alert"` for async outcomes. Color alone never
+  carries meaning — the status-badge variants pair color with text.
+- **Time.** Store `timestamptz`, compare in UTC, format in the viewer's zone. See
+  `docs/dev/dates-and-timezones.md` before writing date arithmetic.
+
 ## Before `git add`
 
 Read the diff and ask: does any block of logic appear more than once — within a file,

@@ -76,6 +76,10 @@ describe('ALWAYS_EXCLUDED_FIELDS', () => {
     expect(ALWAYS_EXCLUDED_FIELDS.has('api_key_encrypted')).toBe(true);
   });
 
+  it('contains auth_encrypted', () => {
+    expect(ALWAYS_EXCLUDED_FIELDS.has('auth_encrypted')).toBe(true);
+  });
+
   it('contains ssn', () => {
     expect(ALWAYS_EXCLUDED_FIELDS.has('ssn')).toBe(true);
   });

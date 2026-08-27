@@ -158,6 +158,13 @@ services:
       # This one is the SERVER's own public origin, not a browser origin: the IdP
       # redirects/POSTs back to the Express API, which is published on 3002.
       SSO_CALLBACK_BASE_URL: ${TEST_SSO_CALLBACK_BASE_URL:-http://localhost:3002}
+      # Deliberately empty: no E2E spec drives a real consent screen, so these exist to
+      # keep the unconfigured path reachable, not to hold credentials.
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      MICROSOFT_OAUTH_CLIENT_ID: ${MICROSOFT_OAUTH_CLIENT_ID:-}
+      MICROSOFT_OAUTH_CLIENT_SECRET: ${MICROSOFT_OAUTH_CLIENT_SECRET:-}
+      MICROSOFT_OAUTH_TENANT: ${MICROSOFT_OAUTH_TENANT:-common}
       NODE_ENCRYPTION_KEY: ${NODE_ENCRYPTION_KEY:-}
       E2E: 'true'
       SMTP_HOST: ${SMTP_HOST:-}

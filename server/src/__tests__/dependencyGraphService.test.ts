@@ -5,6 +5,10 @@
  * repo needed, unlike its sibling diffParser/changeUnitResolver suites.
  */
 
+import { existsSync, readdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import {
   resolveDependencyWidening,
   resolveDependencyWideningForFiles,
@@ -47,9 +51,32 @@ describe('resolveDependencyWidening', () => {
   });
 
   it('widens an i18n locale change to only the i18n scope', () => {
-    const result = resolveDependencyWidening('client/src/i18n/locales/en.json');
+    const result = resolveDependencyWidening('client/src/locales/en.json');
     expect(result.alwaysWiden).toBe(false);
     expect(result.widenedTestScopes).toEqual(['functional:i18n']);
+  });
+
+  // Silent unless client/src/locales/** stays in ci.yml's locale-paths filter: `server`
+  // is server/src/** only, so a directory move would skip server-tests entirely.
+  it('matches the locale directory that actually holds the locale files', () => {
+    const localeDir = 'client/src/locales';
+    // Walk up to the directory that actually contains the locales rather than counting
+    // directories, so moving this file fails the pattern assertion rather than throwing
+    // ENOENT from a stale depth. (server/ carries its own package-lock.json, so a
+    // lockfile is not a repo-root marker here.)
+    let repoRoot = dirname(fileURLToPath(import.meta.url));
+    while (!existsSync(resolve(repoRoot, localeDir))) {
+      const parent = dirname(repoRoot);
+      if (parent === repoRoot) throw new Error(`no ancestor directory contains ${localeDir}`);
+      repoRoot = parent;
+    }
+    const localeFiles = readdirSync(resolve(repoRoot, localeDir));
+    expect(localeFiles).toContain('en.json');
+
+    for (const localeFile of localeFiles.filter((name) => name.endsWith('.json'))) {
+      const result = resolveDependencyWidening(`${localeDir}/${localeFile}`);
+      expect(result.matchedRuleIds).toContain('i18n-locale');
+    }
   });
 
   it('returns no widening for a file matching no rule', () => {

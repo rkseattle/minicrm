@@ -58,6 +58,7 @@ export const ALWAYS_EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   'mfa_secret',
   'otp_backup_codes',
   'secret_hash', // webhook signing secret hash
+  'auth_encrypted', // connected mailbox credentials (OAuth tokens or IMAP password)
   'service_account_token',
   'refresh_token',
   'access_token',

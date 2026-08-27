@@ -1558,6 +1558,11 @@ Endpoints require a valid session cookie obtained by calling \`POST /api/v1/auth
         description:
           'Coverage/TIA control API — drives the backend V8 coverage agent and ingests frontend coverage dumps. Admin only, feature-flag gated, off by default in production.',
       },
+      {
+        name: 'Connected Accounts',
+        description:
+          "Per-user linked mailboxes. Every endpoint is scoped to the calling user's own accounts — an administrator cannot read or delete another user's mailbox credentials.",
+      },
     ],
     components: {
       // Reusable error bodies. Every one is the standard { error: { code, message } }

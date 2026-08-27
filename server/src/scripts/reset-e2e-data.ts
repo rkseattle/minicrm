@@ -126,6 +126,11 @@ async function main(adminEmail: string): Promise<void> {
     await client.query(`DELETE FROM webhook_delivery_logs`);
     await client.query(`DELETE FROM webhook_subscriptions`);
 
+    // Connected mailboxes. States are swept only when a new OAuth flow starts, which no
+    // E2E run does, so a row from a manual flow would outlive every reset.
+    await client.query(`DELETE FROM connected_account_oauth_states`);
+    await client.query(`DELETE FROM connected_accounts`);
+
     // Import jobs
     await client.query(`DELETE FROM import_jobs`);
 

@@ -81,8 +81,20 @@ export async function assertUrlIsFetchSafe(urlString: string): Promise<void> {
     throw new UrlNotSafeError('insecure_protocol', 'URL must use HTTPS in production');
   }
 
-  const hostname = parsed.hostname;
+  await assertHostnameIsSafe(parsed.hostname);
+}
 
+/**
+ * The address half of the check, for destinations that are a bare host rather than a URL
+ * — an IMAP or SMTP server, say, where there is no scheme or path to validate.
+ *
+ * Call it immediately before connecting, never only at input-validation time: a hostname
+ * that resolved publicly a moment ago can resolve to loopback on the next lookup.
+ *
+ * @param hostname - Host to resolve and check against the blocked ranges.
+ * @throws UrlNotSafeError when the name cannot resolve or any address is blocked.
+ */
+export async function assertHostnameIsSafe(hostname: string): Promise<void> {
   let addresses: dns.LookupAddress[];
   try {
     addresses = await dns.promises.lookup(hostname, { all: true });
@@ -101,7 +113,7 @@ export async function assertUrlIsFetchSafe(urlString: string): Promise<void> {
         if (ip.match(cidr)) {
           throw new UrlNotSafeError(
             'blocked_address',
-            `URL resolves to a blocked IP address: ${address}`,
+            `Hostname resolves to a blocked IP address: ${address}`,
           );
         }
       }
@@ -112,7 +124,7 @@ export async function assertUrlIsFetchSafe(urlString: string): Promise<void> {
           if (ip.match(cidr)) {
             throw new UrlNotSafeError(
               'blocked_address',
-              `URL resolves to a blocked IP address: ${address}`,
+              `Hostname resolves to a blocked IP address: ${address}`,
             );
           }
         }
@@ -120,7 +132,7 @@ export async function assertUrlIsFetchSafe(urlString: string): Promise<void> {
         // ipaddr.js may not recognise some IPv6 representations; treat as blocked
         throw new UrlNotSafeError(
           'blocked_address',
-          `URL resolves to an unrecognised IPv6 address: ${address}`,
+          `Hostname resolves to an unrecognised IPv6 address: ${address}`,
         );
       }
     }

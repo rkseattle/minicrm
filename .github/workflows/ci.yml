@@ -90,6 +90,7 @@ jobs:
       feature-flag-docs: ${{ steps.filter.outputs.feature-flag-docs }}
       user-guide-routes: ${{ steps.filter.outputs.user-guide-routes }}
       record-paths:      ${{ steps.filter.outputs.record-paths }}
+      locale-paths:      ${{ steps.filter.outputs.locale-paths }}
       guard-invocation: ${{ steps.filter.outputs.guard-invocation }}
     steps:
       - uses: actions/checkout@v4
@@ -390,6 +391,16 @@ jobs:
             record-paths:
               - 'shared/types/**'
               - 'client/src/App.tsx'
+              - '.github/workflows/ci.yml'
+            # Single-purpose output for dependencyGraphService.test.ts, which reads the
+            # locale directory off disk to pin the i18n-locale rule's path against it.
+            # The locale half is why this exists: `server` is server/src/** only, so
+            # moving or renaming the directory would trigger client-tests, skip
+            # server-tests, and merge with the rule matching nothing again — which is
+            # how it came to point at a directory that never existed.
+            locale-paths:
+              - 'client/src/locales/**'
+              - 'server/src/coverageAgent/testSelection/dependencyGraphService.ts'
               - '.github/workflows/ci.yml'
             # Single-purpose output for check-grep-invert-parity.sh, which pins
             # the non-serial --grep-invert expression across this workflow, the
@@ -1016,7 +1027,8 @@ jobs:
         needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true' ||
         needs.changes.outputs.feature-flag-docs == 'true' ||
         needs.changes.outputs.user-guide-routes == 'true' ||
-        needs.changes.outputs.record-paths == 'true')
+        needs.changes.outputs.record-paths == 'true' ||
+        needs.changes.outputs.locale-paths == 'true')
     runs-on: ubuntu-latest
 
     services:

@@ -81,7 +81,9 @@ export type AuditRecordType =
   /** AI lead routing suggestion decisions */
   | 'lead_routing_decision'
   /** Coverage/TIA testing sessions */
-  | 'coverage_session';
+  | 'coverage_session'
+  /** Per-user linked mailboxes */
+  | 'connected_account';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
@@ -122,7 +124,10 @@ export type AuditEventType =
   | 'routing_overridden'
   /** Coverage/TIA session lifecycle */
   | 'coverage_session_started'
-  | 'coverage_session_ended';
+  | 'coverage_session_ended'
+  /** Mailbox linked to or unlinked from a user account */
+  | 'connected_account_connected'
+  | 'connected_account_disconnected';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {
