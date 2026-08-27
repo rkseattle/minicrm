@@ -461,3 +461,111 @@ describe.sequential('the email_sync feature flag gates every route', () => {
     expect(res.status).toBe(403);
   });
 });
+
+/*
+ * The OAuth legs redirect on every rejection rather than answering JSON, so their guards
+ * are invisible to a status-code assertion alone — the Location value is the only proof
+ * that a specific guard fired.
+ */
+describe.sequential('OAuth routes reject before reaching a provider', () => {
+  function connectCode(location: string | undefined): string | null {
+    if (!location) return null;
+    return new URL(location, 'http://localhost').searchParams.get('connect');
+  }
+
+  it('redirects rather than returning JSON when unauthenticated', async () => {
+    const res = await request(app).get('/api/v1/connected-accounts/oauth/google/start');
+
+    expect(res.status).toBe(302);
+    expect(connectCode(res.headers.location)).toBe('SESSION_EXPIRED');
+    expect(res.text).not.toContain('AUTH_MISSING_TOKEN');
+  });
+
+  it('redirects the callback too when unauthenticated', async () => {
+    const res = await request(app).get(
+      '/api/v1/connected-accounts/oauth/google/callback?state=abc',
+    );
+
+    expect(res.status).toBe(302);
+    expect(connectCode(res.headers.location)).toBe('SESSION_EXPIRED');
+  });
+
+  it('refuses a user whose role lacks the capability', async () => {
+    // viewer is never granted connected_accounts:manage by migration 170.
+    const viewer = await createUser({
+      email: `${FILE_PREFIX}-viewer@example.com`,
+      name: 'Contract Viewer',
+      role: 'viewer',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const viewerCookie = makeAuthCookie({
+      id: viewer.id,
+      email: viewer.email,
+      name: viewer.name,
+      role: viewer.role,
+    });
+
+    const res = await request(app)
+      .get('/api/v1/connected-accounts/oauth/google/start')
+      .set('Cookie', viewerCookie);
+
+    expect(res.status).toBe(302);
+    expect(connectCode(res.headers.location)).toBe('INSUFFICIENT_CAPABILITY');
+
+    const states = await pool.query('SELECT state FROM connected_account_oauth_states');
+    expect(states.rows).toHaveLength(0);
+  });
+
+  it('reports an unconfigured provider without starting a flow', async () => {
+    // The test stack leaves the client IDs empty on purpose.
+    const res = await request(app)
+      .get('/api/v1/connected-accounts/oauth/google/start')
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(302);
+    expect(connectCode(res.headers.location)).toBe('PROVIDER_NOT_CONFIGURED');
+
+    const states = await pool.query('SELECT state FROM connected_account_oauth_states');
+    expect(states.rows).toHaveLength(0);
+  });
+
+  it('rejects an unknown provider', async () => {
+    const res = await request(app)
+      .get('/api/v1/connected-accounts/oauth/yahoo/start')
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(302);
+    expect(connectCode(res.headers.location)).toBe('OAUTH_FAILED');
+  });
+
+  it('rejects a callback whose state row does not exist', async () => {
+    const res = await request(app)
+      .get('/api/v1/connected-accounts/oauth/google/callback?state=never-issued&code=x')
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(302);
+    expect(connectCode(res.headers.location)).toBe('OAUTH_STATE_INVALID');
+  });
+
+  it('rejects a callback with no state at all', async () => {
+    const res = await request(app)
+      .get('/api/v1/connected-accounts/oauth/google/callback?code=x')
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(302);
+    expect(connectCode(res.headers.location)).toBe('OAUTH_STATE_INVALID');
+  });
+
+  it('refuses the OAuth legs when the flag is off', async () => {
+    await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
+    invalidateFeatureFlagCache();
+
+    const res = await request(app)
+      .get('/api/v1/connected-accounts/oauth/google/start')
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(302);
+    expect(connectCode(res.headers.location)).toBe('FEATURE_DISABLED');
+  });
+});

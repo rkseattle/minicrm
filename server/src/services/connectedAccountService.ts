@@ -159,7 +159,7 @@ export async function getConnectedAccountInternal(
   let auth: ConnectedAccountAuth;
   try {
     auth = JSON.parse(
-      decryptVersioned(row.auth_encrypted, row.key_version ?? 1),
+      decryptVersioned(row.auth_encrypted, row.key_version),
     ) as ConnectedAccountAuth;
   } catch (err) {
     logger.error(
@@ -339,7 +339,7 @@ export async function deleteConnectedAccount(
     let auth: ConnectedAccountAuth | null = null;
     try {
       auth = JSON.parse(
-        decryptVersioned(row.auth_encrypted, row.key_version ?? 1),
+        decryptVersioned(row.auth_encrypted, row.key_version),
       ) as ConnectedAccountAuth;
     } catch (err) {
       // The row is already gone and the disconnect succeeded; only revocation is lost.
@@ -393,6 +393,12 @@ async function markAuthExpired(
  * so the loser persists one the provider has already invalidated. The expiry is read after
  * the lock is granted, so the loser sees the winner's refreshed row rather than the stale
  * one it queued on.
+ *
+ * This deliberately holds the lock across a third-party call, which deleteConnectedAccount
+ * avoids doing. The difference is that revocation is fire-and-forget — losing it costs
+ * nothing — whereas the refresh result must be written atomically with the check that
+ * decided to refresh. refreshAccessToken carries its own timeout so a hung provider
+ * cannot hold the lock indefinitely.
  *
  * @param refresh - Injected so the seam is explicit and testable; there is no in-repo
  *   precedent for mocking openid-client.

@@ -1857,6 +1857,16 @@
       "active": "已启用",
       "error": "需要处理",
       "disconnected": "已断开"
+    },
+    "results": {
+      "connected": "邮箱已连接。",
+      "PROVIDER_NOT_CONFIGURED": "此 MiniCRM 未配置该提供商。请联系管理员。",
+      "OAUTH_STATE_INVALID": "该连接请求已过期或已被使用。请重试。",
+      "PROVIDER_NO_EMAIL": "提供商未返回电子邮件地址，因此无法关联该邮箱。",
+      "FEATURE_DISABLED": "您的账户已停用邮箱连接功能。",
+      "SESSION_EXPIRED": "连接完成前您的会话已过期。请重试。",
+      "INSUFFICIENT_CAPABILITY": "您没有连接邮箱的权限。",
+      "OAUTH_FAILED": "无法连接该邮箱。请重试。"
     }
   },
   "mfa": {

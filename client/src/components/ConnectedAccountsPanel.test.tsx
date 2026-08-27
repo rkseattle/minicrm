@@ -188,4 +188,67 @@ describe('ConnectedAccountsPanel', () => {
       '/api/v1/connected-accounts/oauth/microsoft/start',
     );
   });
+
+  it('announces a successful OAuth connect from the redirect', async () => {
+    enableEmailSync();
+    respondWithAccounts([]);
+
+    renderWithProviders(<ConnectedAccountsPanel />, {
+      initialEntries: ['/profile?connect=connected'],
+    });
+
+    const banner = await screen.findByTestId('connected-accounts-connect-result');
+    expect(banner).toHaveTextContent('Mailbox connected.');
+    expect(banner).toHaveAttribute('role', 'status');
+  });
+
+  it('reports an unconfigured provider as an error, not a success', async () => {
+    enableEmailSync();
+    respondWithAccounts([]);
+
+    renderWithProviders(<ConnectedAccountsPanel />, {
+      initialEntries: ['/profile?connect=PROVIDER_NOT_CONFIGURED'],
+    });
+
+    const banner = await screen.findByTestId('connected-accounts-connect-result');
+    expect(banner).toHaveTextContent(/not set up/i);
+    expect(banner).toHaveAttribute('role', 'alert');
+  });
+
+  // An unrecognised code must still say something rather than render a raw key path.
+  it('falls back to the generic message for an unknown code', async () => {
+    enableEmailSync();
+    respondWithAccounts([]);
+
+    renderWithProviders(<ConnectedAccountsPanel />, {
+      initialEntries: ['/profile?connect=something-nobody-defined'],
+    });
+
+    const banner = await screen.findByTestId('connected-accounts-connect-result');
+    expect(banner).toHaveTextContent(/could not be connected/i);
+    expect(banner).not.toHaveTextContent('connectedAccounts.results');
+  });
+
+  it('dismissing the banner removes it', async () => {
+    enableEmailSync();
+    respondWithAccounts([]);
+
+    renderWithProviders(<ConnectedAccountsPanel />, {
+      initialEntries: ['/profile?connect=connected'],
+    });
+
+    await userEvent.click(await screen.findByTestId('connected-accounts-dismiss-result'));
+
+    expect(screen.queryByTestId('connected-accounts-connect-result')).not.toBeInTheDocument();
+  });
+
+  it('shows no banner when the URL carries no result', async () => {
+    enableEmailSync();
+    respondWithAccounts([]);
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await screen.findByTestId('connected-accounts-empty');
+    expect(screen.queryByTestId('connected-accounts-connect-result')).not.toBeInTheDocument();
+  });
 });
