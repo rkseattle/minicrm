@@ -22,6 +22,7 @@ import type {
   ConnectedAccountResponse,
   ConnectedAccountStatus,
   ImapCredentialsInput,
+  OAuthProvider,
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import pool from '../db.js';
@@ -30,6 +31,8 @@ import logger from '../logger.js';
 import type { AuditActor } from './auditService.js';
 import { writeAuditEntry } from './auditService.js';
 import { decryptVersioned, encryptVersioned } from './cryptoService.js';
+import { PROVIDER_AUTH_EXPIRED } from './imapConnectionService.js';
+import type { RefreshedTokens } from './oauthProviderService.js';
 
 // ── Row type ──────────────────────────────────────────────────────────────────
 
@@ -344,6 +347,133 @@ export async function deleteConnectedAccount(
     }
 
     return { provider: row.provider, auth };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** How close to expiry an access token is refreshed rather than used. */
+const TOKEN_EXPIRY_MARGIN_MS = 60_000;
+
+/**
+ * Marks a mailbox unusable because the provider refused its refresh token.
+ *
+ * Audited, unlike the transient probe result `updateAccountStatus` records: this is the
+ * end of the account's working life until the user re-consents, which is exactly the
+ * lifecycle event the connect and disconnect entries exist to sit alongside.
+ */
+async function markAuthExpired(
+  client: PoolClient,
+  account: { id: string; email_address: string },
+  actor: AuditActor,
+): Promise<void> {
+  await client.query(
+    `UPDATE connected_accounts SET status = 'error', status_detail = $1 WHERE id = $2`,
+    [PROVIDER_AUTH_EXPIRED, account.id],
+  );
+  await writeAuditEntry(client, {
+    recordType: 'connected_account',
+    recordId: account.id,
+    recordName: account.email_address,
+    eventType: 'connected_account_disconnected',
+    oldValue: PROVIDER_AUTH_EXPIRED,
+    changedById: actor.id,
+    changedByName: actor.name,
+  });
+}
+
+/**
+ * Returns a usable access token for an OAuth account, refreshing it if it has expired.
+ *
+ * The row is locked for the whole check-and-write. Without that, two concurrent callers
+ * both see an expired token and both spend the refresh token — and Microsoft rotates it,
+ * so the loser persists one the provider has already invalidated. The expiry is read after
+ * the lock is granted, so the loser sees the winner's refreshed row rather than the stale
+ * one it queued on.
+ *
+ * @param refresh - Injected so the seam is explicit and testable; there is no in-repo
+ *   precedent for mocking openid-client.
+ * @returns the access token, or null when the account is absent, not OAuth, or the
+ *   provider refused the refresh — in which case the row is marked `error`.
+ */
+export async function getUsableAccessToken(
+  accountId: string,
+  userId: string,
+  actor: AuditActor,
+  refresh: (provider: OAuthProvider, refreshToken: string) => Promise<RefreshedTokens>,
+): Promise<string | null> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<ConnectedAccountRow>(
+      `SELECT id, provider, email_address, auth_encrypted, key_version FROM connected_accounts
+       WHERE id = $1 AND user_id = $2 FOR UPDATE`,
+      [accountId, userId],
+    );
+    const row = result.rows[0];
+    if (!row) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    let auth: ConnectedAccountAuth;
+    try {
+      auth = JSON.parse(
+        decryptVersioned(row.auth_encrypted, row.key_version),
+      ) as ConnectedAccountAuth;
+    } catch {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    if (auth.kind !== 'oauth') {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const stillValid =
+      auth.expires_at === null || auth.expires_at - TOKEN_EXPIRY_MARGIN_MS > Date.now();
+    if (stillValid) {
+      await client.query('COMMIT');
+      return auth.access_token;
+    }
+
+    if (!auth.refresh_token) {
+      await markAuthExpired(client, row, actor);
+      await client.query('COMMIT');
+      return null;
+    }
+
+    let refreshed: RefreshedTokens;
+    try {
+      refreshed = await refresh(row.provider as OAuthProvider, auth.refresh_token);
+    } catch {
+      await markAuthExpired(client, row, actor);
+      await client.query('COMMIT');
+      return null;
+    }
+
+    const encrypted = encryptVersioned(
+      JSON.stringify({
+        kind: 'oauth',
+        access_token: refreshed.accessToken,
+        refresh_token: refreshed.refreshToken,
+        expires_at: refreshed.expiresAt,
+      } satisfies OAuthAuthPayload),
+    );
+
+    await client.query(
+      `UPDATE connected_accounts
+         SET auth_encrypted = $1, key_version = $2, status = 'active', status_detail = NULL
+       WHERE id = $3`,
+      [encrypted.ciphertext, encrypted.keyVersion, row.id],
+    );
+    await client.query('COMMIT');
+    return refreshed.accessToken;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

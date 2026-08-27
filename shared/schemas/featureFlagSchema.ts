@@ -70,6 +70,7 @@ export const FEATURE_FLAG_KEYS = [
   'ai_rep_coaching_insights',
   'ai_lead_routing_suggestion',
   'ai_data_hygiene_assistant',
+  'email_sync',
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];

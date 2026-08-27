@@ -23,10 +23,20 @@ export interface ImapConnectionCandidate {
   secure: boolean;
 }
 
+/** The provider rejected the stored credentials; the user must supply new ones. */
+export const PROVIDER_AUTH_EXPIRED = 'PROVIDER_AUTH_EXPIRED';
+
+/** The destination could not be reached, or refused the connection. */
+export const CONNECTION_FAILED = 'CONNECTION_FAILED';
+
 /** Outcome of a connection attempt. `code` is absent only when the attempt succeeded. */
 export type ImapConnectionResult =
   | { ok: true }
-  | { ok: false; code: 'CONNECTION_FAILED' | 'PROVIDER_AUTH_EXPIRED'; message: string };
+  | {
+      ok: false;
+      code: typeof CONNECTION_FAILED | typeof PROVIDER_AUTH_EXPIRED;
+      message: string;
+    };
 
 /**
  * Time budget for the whole attempt.
@@ -50,11 +60,11 @@ const AUTH_FAILURE_CODE = 'AUTHENTICATIONFAILED';
  * `authenticationFailed` or an `AUTHENTICATIONFAILED` response code; everything else —
  * DNS, TLS, refused connection, timeout — is a reachability problem.
  */
-function classifyImapError(err: unknown): 'CONNECTION_FAILED' | 'PROVIDER_AUTH_EXPIRED' {
+function classifyImapError(err: unknown): typeof CONNECTION_FAILED | typeof PROVIDER_AUTH_EXPIRED {
   const candidate = err as { authenticationFailed?: boolean; responseText?: string; code?: string };
-  if (candidate.authenticationFailed === true) return 'PROVIDER_AUTH_EXPIRED';
-  if (candidate.code === AUTH_FAILURE_CODE) return 'PROVIDER_AUTH_EXPIRED';
-  return 'CONNECTION_FAILED';
+  if (candidate.authenticationFailed === true) return PROVIDER_AUTH_EXPIRED;
+  if (candidate.code === AUTH_FAILURE_CODE) return PROVIDER_AUTH_EXPIRED;
+  return CONNECTION_FAILED;
 }
 
 /**
@@ -79,7 +89,7 @@ export async function testImapConnection(
       );
       return {
         ok: false,
-        code: 'CONNECTION_FAILED',
+        code: CONNECTION_FAILED,
         message: 'Could not reach that mail server.',
       };
     }
@@ -112,7 +122,7 @@ export async function testImapConnection(
       ok: false,
       code,
       message:
-        code === 'PROVIDER_AUTH_EXPIRED'
+        code === PROVIDER_AUTH_EXPIRED
           ? 'The mail server rejected those credentials.'
           : 'Could not reach that mail server.',
     };
