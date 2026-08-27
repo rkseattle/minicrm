@@ -29,6 +29,7 @@ import { getMfaStatus, MFA_STATUS_QUERY_KEY } from '@/api/mfa.js';
 import MfaSetupModal from '@/components/MfaSetupModal.js';
 import MfaRecoveryCodesModal from '@/components/MfaRecoveryCodesModal.js';
 import MfaDisableModal from '@/components/MfaDisableModal.js';
+import ConnectedAccountsPanel from '@/components/ConnectedAccountsPanel.js';
 
 /**
  * Profile settings page — language preference, email notification toggles, and MFA.
@@ -414,6 +415,8 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        <ConnectedAccountsPanel />
       </main>
 
       <MfaSetupModal

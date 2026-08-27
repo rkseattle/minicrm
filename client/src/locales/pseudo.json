@@ -1377,8 +1377,8 @@
     "fieldMergeSaveResolved": "[Ŝävë rëŝölvëd~~~~]",
     "fieldMergeDiscard": "[Dïŝĉärd my ĉhäñgëŝ~~~~~~]",
     "fieldMergeNoChanges": "[Ñö ĉöñflïĉtïñg fïëldŝ föüñd.~~~~~~~~~]",
-    "CONTACT_LINKED_ELSEWHERE": "[!! Ţhàţ çòñţàçţ ìş àĺŕèàδý ĺìñķèδ ţò à δìƒƒèŕèñţ àççòùñţ !!]",
-    "CONTACT_NOT_LINKABLE": "[!! Ţhàţ çòñţàçţ çòùĺδ ñòţ ßè ĺìñķèδ !!]"
+    "CONTACT_LINKED_ELSEWHERE": "[Thät ĉöñtäĉt ïŝ älrëädy lïñkëd tö ä dïffërëñt äĉĉöüñt. Ĉhäñgë ït fröm thë ĉöñtäĉt ïñŝtëäd.~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "CONTACT_NOT_LINKABLE": "[Thät ĉöñtäĉt ĉöüld ñöt bë lïñkëd — ït ñö löñgër ëxïŝtŝ, ör ït ïŝ ñöt yöürŝ tö lïñk.~~~~~~~~~~~~~~~~~~~~~~~~~]"
   },
   "search": {
     "inputLabel": "[Ŝëärĉh~~]",
@@ -1480,7 +1480,13 @@
       "reactivated": "[{{actor}} rëäĉtïvätëd thïŝ üŝër~~~~~~~~~~]",
       "ownership_reassigned": "[{{actor}} rëäŝŝïgñëd öwñërŝhïp~~~~~~~~~]",
       "noOldValue": "[(ëmpty)~~~]",
-      "noNewValue": "[(ëmpty)~~~]"
+      "noNewValue": "[(ëmpty)~~~]",
+      "note_created": "[{{actor}} äddëd ä ñötë~~~~~~~]",
+      "note_updated": "[{{actor}} ëdïtëd ä ñötë~~~~~~~]",
+      "note_visibility_changed": "[{{actor}} ĉhäñgëd ä ñötë’ŝ vïŝïbïlïty~~~~~~~~~~~~]",
+      "note_deleted": "[{{actor}} dëlëtëd ä ñötë~~~~~~~~]",
+      "merged": "[{{actor}} mërgëd äñöthër rëĉörd ïñtö thïŝ öñë~~~~~~~~~~~~~~]",
+      "gdpr_erasure": "[{{actor}} ëräŝëd thïŝ rëĉörd’ŝ përŝöñäl dätä~~~~~~~~~~~~~~]"
     },
     "pagination": {
       "prev": "[Prëvïöüŝ~~~]",
@@ -1822,6 +1828,37 @@
     },
     "statusErased": "[Ëräŝëd~~]"
   },
+  "connectedAccounts": {
+    "sectionTitle": "[Ĉöññëĉtëd Äĉĉöüñtŝ~~~~~~]",
+    "sectionHint": "[Ĉöññëĉt ä mäïlböx ŝö yöür ëmäïl ĉäñ ŝyñĉ wïth ĈRM rëĉördŝ. Ĉrëdëñtïälŝ ärë ŝtörëd ëñĉryptëd.~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "loading": "[Löädïñg ĉöññëĉtëd äĉĉöüñtŝ…~~~~~~~~~]",
+    "loadError": "[Fäïlëd tö löäd ĉöññëĉtëd äĉĉöüñtŝ.~~~~~~~~~~~]",
+    "empty": "[Ñö mäïlböxëŝ ĉöññëĉtëd yët.~~~~~~~~~]",
+    "connectGoogle": "[Ĉöññëĉt Gööglë~~~~~]",
+    "connectMicrosoft": "[Ĉöññëĉt Öütlöök~~~~~]",
+    "connectImap": "[Ĉöññëĉt vïä ÏMÄP~~~~~]",
+    "connectButton": "[Ĉöññëĉt~~~]",
+    "connecting": "[Ĉöññëĉtïñg…~~~~]",
+    "connectError": "[Ĉöüld ñöt ĉöññëĉt thät mäïlböx. Ĉhëĉk thë dëtäïlŝ äñd try ägäïñ.~~~~~~~~~~~~~~~~~~~~]",
+    "disconnectButton": "[Dïŝĉöññëĉt~~~]",
+    "disconnectConfirmPrompt": "[Dïŝĉöññëĉt thïŝ mäïlböx?~~~~~~~~]",
+    "disconnectConfirmButton": "[Dïŝĉöññëĉt~~~]",
+    "emailLabel": "[Ëmäïl äddrëŝŝ~~~~]",
+    "hostLabel": "[ÏMÄP ŝërvër~~~~]",
+    "portLabel": "[Pört~~]",
+    "usernameLabel": "[Üŝërñämë~~~]",
+    "passwordLabel": "[Päŝŝwörd~~~]",
+    "providers": {
+      "google": "[Gööglë~~]",
+      "microsoft": "[Mïĉröŝöft~~~]",
+      "imap": "[ÏMÄP~~]"
+    },
+    "statuses": {
+      "active": "[Äĉtïvë~~]",
+      "error": "[Ñëëdŝ ättëñtïöñ~~~~~]",
+      "disconnected": "[Dïŝĉöññëĉtëd~~~~]"
+    }
+  },
   "mfa": {
     "sectionTitle": "[Twö-Fäĉtör Äüthëñtïĉätïöñ~~~~~~~~]",
     "sectionHint": "[Ädd äñ ëxträ läyër öf ŝëĉürïty tö yöür äĉĉöüñt by rëqüïrïñg ä vërïfïĉätïöñ ĉödë fröm yöür äüthëñtïĉätör äpp whëñ yöü ŝïgñ ïñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
@@ -2146,7 +2183,7 @@
       "heading": "[Ŝëŝŝïöñ Rëtëñtïöñ~~~~~~]",
       "description": "[ÄÏ ĉöñvërŝätïöñ ŝëŝŝïöñŝ äñd mëŝŝägëŝ ärë përmäñëñtly dëlëtëd äftër thïŝ mäñy däyŝ. Yöür përŝöñäl ĉöñtëxt prëfërëñĉëŝ ärë ñöt äffëĉtëd.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
       "label": "[Rëtëñtïöñ wïñdöw (däyŝ)~~~~~~~]",
-      "hint": "[Mïñïmüm 30 däyŝ. Ĉhäñgëŝ täkë ëffëĉt ät thë ñëxt ñïghtly pürgë.~~~~~~~~~~~~~~~~~~~~~~]",
+      "hint": "[Mïñïmüm 30 däyŝ. Ĉhäñgëŝ täkë ëffëĉt ät thë ñëxt ñïghtly pürgë.~~~~~~~~~~~~~~~~~~~]",
       "save": "[Ŝävë~~]",
       "saving": "[Ŝävïñg…~~~]",
       "saveSuccess": "[Ŝëŝŝïöñ rëtëñtïöñ wïñdöw ŝävëd.~~~~~~~~~~]",
@@ -2348,8 +2385,8 @@
       "data": "[Dätä~~]",
       "usersAdmin": "[Üŝërŝ & Ädmïñ~~~~]",
       "api": "[ÄPÏ~]",
-      "sequences": "[Ŝëqüëñĉëŝ~~~~]",
-      "dashboards": "[Däŝhböärdŝ~~~~]"
+      "sequences": "[Ŝëqüëñĉëŝ~~~]",
+      "dashboards": "[Däŝhböärdŝ~~~]"
     },
     "capabilityNamespaces": {
       "contacts": "[Ĉöñtäĉtŝ~~~]",
@@ -2366,8 +2403,8 @@
       "feature_flags": "[Fëätürë Flägŝ~~~~]",
       "audit_log": "[Äüdït Lög~~~]",
       "api": "[ÄPÏ~]",
-      "sequences": "[Ŝëqüëñĉëŝ~~~~]",
-      "dashboards": "[Däŝhböärdŝ~~~~]"
+      "sequences": "[Ŝëqüëñĉëŝ~~~]",
+      "dashboards": "[Däŝhböärdŝ~~~]"
     },
     "capabilityActions": {
       "view": "[Vïëw~~]",

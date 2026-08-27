@@ -1828,6 +1828,37 @@
     },
     "statusErased": "Borrado"
   },
+  "connectedAccounts": {
+    "sectionTitle": "Cuentas conectadas",
+    "sectionHint": "Conecte un buzón para que su correo se sincronice con los registros del CRM. Las credenciales se almacenan cifradas.",
+    "loading": "Cargando cuentas conectadas…",
+    "loadError": "Error al cargar las cuentas conectadas.",
+    "empty": "Todavía no hay buzones conectados.",
+    "connectGoogle": "Conectar Google",
+    "connectMicrosoft": "Conectar Outlook",
+    "connectImap": "Conectar por IMAP",
+    "connectButton": "Conectar",
+    "connecting": "Conectando…",
+    "connectError": "No se pudo conectar ese buzón. Revise los datos e inténtelo de nuevo.",
+    "disconnectButton": "Desconectar",
+    "disconnectConfirmPrompt": "¿Desconectar este buzón?",
+    "disconnectConfirmButton": "Desconectar",
+    "emailLabel": "Dirección de correo",
+    "hostLabel": "Servidor IMAP",
+    "portLabel": "Puerto",
+    "usernameLabel": "Usuario",
+    "passwordLabel": "Contraseña",
+    "providers": {
+      "google": "Google",
+      "microsoft": "Microsoft",
+      "imap": "IMAP"
+    },
+    "statuses": {
+      "active": "Activa",
+      "error": "Requiere atención",
+      "disconnected": "Desconectada"
+    }
+  },
   "mfa": {
     "sectionTitle": "Autenticación en dos pasos",
     "sectionHint": "Agrega una capa extra de seguridad a tu cuenta requiriendo un código de verificación de tu aplicación autenticadora al iniciar sesión.",

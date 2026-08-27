@@ -1828,6 +1828,37 @@
     },
     "statusErased": "Erased"
   },
+  "connectedAccounts": {
+    "sectionTitle": "Connected Accounts",
+    "sectionHint": "Connect a mailbox so your email can sync with CRM records. Credentials are stored encrypted.",
+    "loading": "Loading connected accounts…",
+    "loadError": "Failed to load connected accounts.",
+    "empty": "No mailboxes connected yet.",
+    "connectGoogle": "Connect Google",
+    "connectMicrosoft": "Connect Outlook",
+    "connectImap": "Connect via IMAP",
+    "connectButton": "Connect",
+    "connecting": "Connecting…",
+    "connectError": "Could not connect that mailbox. Check the details and try again.",
+    "disconnectButton": "Disconnect",
+    "disconnectConfirmPrompt": "Disconnect this mailbox?",
+    "disconnectConfirmButton": "Disconnect",
+    "emailLabel": "Email address",
+    "hostLabel": "IMAP server",
+    "portLabel": "Port",
+    "usernameLabel": "Username",
+    "passwordLabel": "Password",
+    "providers": {
+      "google": "Google",
+      "microsoft": "Microsoft",
+      "imap": "IMAP"
+    },
+    "statuses": {
+      "active": "Active",
+      "error": "Needs attention",
+      "disconnected": "Disconnected"
+    }
+  },
   "mfa": {
     "sectionTitle": "Two-Factor Authentication",
     "sectionHint": "Add an extra layer of security to your account by requiring a verification code from your authenticator app when you sign in.",

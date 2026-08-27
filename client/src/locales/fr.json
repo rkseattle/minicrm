@@ -1828,6 +1828,37 @@
     },
     "statusErased": "Effacé"
   },
+  "connectedAccounts": {
+    "sectionTitle": "Comptes connectés",
+    "sectionHint": "Connectez une boîte mail pour synchroniser vos e-mails avec les fiches du CRM. Les identifiants sont stockés chiffrés.",
+    "loading": "Chargement des comptes connectés…",
+    "loadError": "Échec du chargement des comptes connectés.",
+    "empty": "Aucune boîte mail connectée pour le moment.",
+    "connectGoogle": "Connecter Google",
+    "connectMicrosoft": "Connecter Outlook",
+    "connectImap": "Connecter via IMAP",
+    "connectButton": "Connecter",
+    "connecting": "Connexion…",
+    "connectError": "Impossible de connecter cette boîte mail. Vérifiez les informations et réessayez.",
+    "disconnectButton": "Déconnecter",
+    "disconnectConfirmPrompt": "Déconnecter cette boîte mail ?",
+    "disconnectConfirmButton": "Déconnecter",
+    "emailLabel": "Adresse e-mail",
+    "hostLabel": "Serveur IMAP",
+    "portLabel": "Port",
+    "usernameLabel": "Nom d’utilisateur",
+    "passwordLabel": "Mot de passe",
+    "providers": {
+      "google": "Google",
+      "microsoft": "Microsoft",
+      "imap": "IMAP"
+    },
+    "statuses": {
+      "active": "Active",
+      "error": "Action requise",
+      "disconnected": "Déconnectée"
+    }
+  },
   "mfa": {
     "sectionTitle": "Authentification à deux facteurs",
     "sectionHint": "Ajoutez une couche de sécurité supplémentaire à votre compte en exigeant un code de vérification de votre application d'authentification lors de la connexion.",
