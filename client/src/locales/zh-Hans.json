@@ -1868,7 +1868,8 @@
       "INSUFFICIENT_CAPABILITY": "您没有连接邮箱的权限。",
       "OAUTH_FAILED": "无法连接该邮箱。请重试。"
     },
-    "secureLabel": "连接时使用 TLS（若服务器在 143 端口使用 STARTTLS，请取消勾选）"
+    "secureLabel": "连接时使用 TLS（若服务器在 143 端口使用 STARTTLS，请取消勾选）",
+    "testButton": "测试"
   },
   "mfa": {
     "sectionTitle": "双重身份验证",
@@ -2415,7 +2416,8 @@
       "audit_log": "审计日志",
       "api": "API",
       "sequences": "序列",
-      "dashboards": "仪表板"
+      "dashboards": "仪表板",
+      "connected_accounts": "已连接账户"
     },
     "capabilityActions": {
       "view": "查看",

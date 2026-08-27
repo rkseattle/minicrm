@@ -53,6 +53,7 @@ const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
   { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.connectMicrosoft' },
   { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.connectImap' },
   { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.disconnectButton' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.testButton' },
   { page: 'docs/user-guide/reports.md', localeKey: 'reports.activityVolume.dateRangeLabel' },
   { page: 'docs/user-guide/contacts.md', localeKey: 'gdpr.sectionTitle' },
   { page: 'docs/user-guide/contacts.md', localeKey: 'gdpr.eraseButton' },

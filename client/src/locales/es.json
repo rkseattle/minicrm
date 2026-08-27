@@ -1868,7 +1868,8 @@
       "INSUFFICIENT_CAPABILITY": "No tiene permiso para conectar un buzón.",
       "OAUTH_FAILED": "No se pudo conectar el buzón. Inténtelo de nuevo."
     },
-    "secureLabel": "Usar TLS al conectar (desmarque para servidores que usan STARTTLS en el puerto 143)"
+    "secureLabel": "Usar TLS al conectar (desmarque para servidores que usan STARTTLS en el puerto 143)",
+    "testButton": "Probar"
   },
   "mfa": {
     "sectionTitle": "Autenticación en dos pasos",
@@ -2415,7 +2416,8 @@
       "audit_log": "Registro de auditoría",
       "api": "API",
       "sequences": "Secuencias",
-      "dashboards": "Paneles"
+      "dashboards": "Paneles",
+      "connected_accounts": "Cuentas conectadas"
     },
     "capabilityActions": {
       "view": "Ver",

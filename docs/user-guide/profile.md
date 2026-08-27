@@ -127,10 +127,10 @@ stored, so a failure here means nothing was written.
 
 ### Read the status
 
-| Status              | What it means                                                                           |
-| ------------------- | --------------------------------------------------------------------------------------- |
-| **Active**          | The mailbox is connected and working.                                                   |
-| **Needs attention** | The provider stopped accepting the stored credentials. Disconnect and connect it again. |
+| Status              | What it means                                                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Active**          | The mailbox is connected and working.                                                                                  |
+| **Needs attention** | The provider stopped accepting the stored credentials. Click **Test** to re-check, or disconnect and connect it again. |
 
 ### Disconnect a mailbox
 
