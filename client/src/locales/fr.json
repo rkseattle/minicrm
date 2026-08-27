@@ -1867,7 +1867,8 @@
       "SESSION_EXPIRED": "Votre session a expiré avant la fin de la connexion. Veuillez réessayer.",
       "INSUFFICIENT_CAPABILITY": "Vous n’avez pas l’autorisation de connecter une boîte mail.",
       "OAUTH_FAILED": "La boîte mail n’a pas pu être connectée. Veuillez réessayer."
-    }
+    },
+    "secureLabel": "Utiliser TLS à la connexion (décochez pour les serveurs utilisant STARTTLS sur le port 143)"
   },
   "mfa": {
     "sectionTitle": "Authentification à deux facteurs",

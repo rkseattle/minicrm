@@ -13,6 +13,7 @@ import {
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import logger from '../logger.js';
+import { profileRedirectUrl } from '../utils/oauthRedirect.js';
 
 import {
   consumeOAuthFlowState,
@@ -24,7 +25,6 @@ import {
   updateAccountStatus,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
-import { isFlagEnabledForUser } from '../services/featureFlagService.js';
 import { testImapConnection } from '../services/imapConnectionService.js';
 import {
   OAUTH_STATE_TTL_MS,
@@ -171,28 +171,8 @@ export async function testConnectedAccountHandler(req: Request, res: Response): 
 
 // ── OAuth flow ────────────────────────────────────────────────────────────────
 
-/** Where the browser lands after either leg of the flow, with a result code. */
-const PROFILE_URL = `${process.env.APP_BASE_URL ?? 'http://localhost:5173'}/profile`;
-
-/**
- * Result codes that may appear in a redirect URL.
- *
- * An allowlist, not a passthrough: an unrecognised failure becomes the generic code so a
- * library message or a provider banner can never reach the address bar.
- */
-const SAFE_OAUTH_RESULT_CODES = new Set([
-  'connected',
-  'PROVIDER_NOT_CONFIGURED',
-  'OAUTH_STATE_INVALID',
-  'PROVIDER_NO_EMAIL',
-  'FEATURE_DISABLED',
-  'SESSION_EXPIRED',
-  'INSUFFICIENT_CAPABILITY',
-]);
-
 function redirectToProfile(res: Response, code: string): void {
-  const safe = SAFE_OAUTH_RESULT_CODES.has(code) ? code : 'OAUTH_FAILED';
-  res.redirect(302, `${PROFILE_URL}?connect=${encodeURIComponent(safe)}`);
+  res.redirect(302, profileRedirectUrl(code));
 }
 
 /**
@@ -209,13 +189,6 @@ export async function startOAuthFlowHandler(req: Request, res: Response): Promis
     return;
   }
   const provider = providerParse.data;
-
-  // Checked here rather than as middleware: this route is a top-level navigation, and
-  // requireFeatureEnabled answers with a JSON body that would render as the whole page.
-  if (!(await isFlagEnabledForUser('email_sync', req.user!.id, req.user!.role))) {
-    redirectToProfile(res, 'FEATURE_DISABLED');
-    return;
-  }
 
   if (!isProviderConfigured(provider)) {
     redirectToProfile(res, 'PROVIDER_NOT_CONFIGURED');
@@ -253,14 +226,23 @@ export async function oauthCallbackHandler(req: Request, res: Response): Promise
     return;
   }
 
-  if (!(await isFlagEnabledForUser('email_sync', req.user!.id, req.user!.role))) {
-    redirectToProfile(res, 'FEATURE_DISABLED');
-    return;
-  }
-
   // Consuming the row is what makes the state single-use: a replay finds nothing.
   const flow = await consumeOAuthFlowState(state);
   if (!flow || flow.provider !== providerParse.data) {
+    redirectToProfile(res, 'OAUTH_STATE_INVALID');
+    return;
+  }
+
+  // Both halves are required, and they guard opposite directions. The state row stops a
+  // mailbox landing on whoever holds the browser at callback time; this stops the mirror
+  // case, where someone who obtained a victim's state — it travels in a redirect URL, so
+  // it reaches browser history, Referer headers, and proxy logs — replays it from their
+  // own session to graft their mailbox onto the victim's account.
+  if (flow.userId !== req.user!.id) {
+    logger.warn(
+      { flowUserId: flow.userId, sessionUserId: req.user!.id },
+      'connectedAccountController: OAuth state replayed from a different session',
+    );
     redirectToProfile(res, 'OAUTH_STATE_INVALID');
     return;
   }
@@ -277,7 +259,7 @@ export async function oauthCallbackHandler(req: Request, res: Response): Promise
       flow.pkceVerifier,
     );
 
-    const actor = { id: flow.userId, name: 'OAuth connect' };
+    const actor = { id: req.user!.id, name: req.user!.name };
     const account = await upsertOAuthAccount(
       {
         userId: flow.userId,

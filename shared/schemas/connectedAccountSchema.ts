@@ -14,7 +14,13 @@ export const CONNECTED_ACCOUNT_PROVIDERS = ['google', 'microsoft', 'imap'] as co
 /** Providers reached through an OAuth authorization-code flow rather than a credential form. */
 export const OAUTH_PROVIDERS = ['google', 'microsoft'] as const;
 
-/** Lifecycle states a connected account can be in. */
+/**
+ * Lifecycle states a connected account can be in.
+ *
+ * `disconnected` has no writer yet — disconnecting deletes the row outright. It is in the
+ * CHECK constraint and here for the sync work, which needs to retire a mailbox without
+ * discarding its cursor. Until then it is unreachable, so no user-facing surface claims it.
+ */
 export const CONNECTED_ACCOUNT_STATUSES = ['active', 'error', 'disconnected'] as const;
 
 export type ConnectedAccountProvider = (typeof CONNECTED_ACCOUNT_PROVIDERS)[number];

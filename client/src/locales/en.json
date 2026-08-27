@@ -1867,7 +1867,8 @@
       "SESSION_EXPIRED": "Your session expired before the connection finished. Please try again.",
       "INSUFFICIENT_CAPABILITY": "You do not have permission to connect a mailbox.",
       "OAUTH_FAILED": "The mailbox could not be connected. Please try again."
-    }
+    },
+    "secureLabel": "Use TLS on connect (uncheck for servers that use STARTTLS on port 143)"
   },
   "mfa": {
     "sectionTitle": "Two-Factor Authentication",

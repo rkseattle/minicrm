@@ -1867,7 +1867,8 @@
       "SESSION_EXPIRED": "Ihre Sitzung ist abgelaufen, bevor die Verbindung abgeschlossen war. Bitte versuchen Sie es erneut.",
       "INSUFFICIENT_CAPABILITY": "Sie haben keine Berechtigung, ein Postfach zu verbinden.",
       "OAUTH_FAILED": "Das Postfach konnte nicht verbunden werden. Bitte versuchen Sie es erneut."
-    }
+    },
+    "secureLabel": "TLS beim Verbinden verwenden (abwählen für Server mit STARTTLS auf Port 143)"
   },
   "mfa": {
     "sectionTitle": "Zwei-Faktor-Authentifizierung",

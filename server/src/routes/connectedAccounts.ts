@@ -20,6 +20,7 @@ import { authenticate } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { requireCapability } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { profileRedirectUrl } from '../utils/oauthRedirect.js';
 
 const router = Router();
 
@@ -35,20 +36,31 @@ const router = Router();
 function redirectRejectionsToProfile(guard: RequestHandler, code: string): RequestHandler {
   return (req, res, next) => {
     // Intercepting json() rather than probing status(): a guard rejects by writing a
-    // body, so this catches every rejection path including ones added later, and leaves
-    // next(err) to reach the error handler untouched.
+    // body, so this catches every rejection path including ones added later.
     const sendJson = res.json.bind(res);
-    res.json = (body: unknown) => {
+    const restore = (): void => {
       res.json = sendJson;
+    };
+
+    res.json = (body: unknown) => {
+      restore();
       if (res.statusCode >= 400) {
-        const profileUrl = `${process.env.APP_BASE_URL ?? 'http://localhost:5173'}/profile`;
-        res.redirect(302, `${profileUrl}?connect=${code}`);
+        res.redirect(302, profileRedirectUrl(code));
         return res;
       }
       return sendJson(body);
     };
 
-    void Promise.resolve(guard(req, res, next)).catch(next);
+    // Unconditional, because the override is only self-clearing on the path where the
+    // guard rejects. When it passes, the override would otherwise outlive it for the
+    // whole request and rewrite the error handler's own 500 or 503 as a permission
+    // redirect — telling a user they lack access when the database is down.
+    const proceed = (err?: unknown): void => {
+      restore();
+      next(err);
+    };
+
+    void Promise.resolve(guard(req, res, proceed)).catch(proceed);
   };
 }
 
@@ -57,6 +69,10 @@ const authenticateOrRedirect = redirectRejectionsToProfile(authenticate, 'SESSIO
 const requireOAuthCapability = redirectRejectionsToProfile(
   requireCapability(Capability.ConnectedAccountsManage),
   'INSUFFICIENT_CAPABILITY',
+);
+const requireOAuthFeature = redirectRejectionsToProfile(
+  requireFeatureEnabled('email_sync'),
+  'FEATURE_DISABLED',
 );
 
 /**
@@ -85,6 +101,7 @@ const requireOAuthCapability = redirectRejectionsToProfile(
 router.get(
   '/oauth/:provider/start',
   authenticateOrRedirect,
+  requireOAuthFeature,
   requireOAuthCapability,
   asyncHandler(startOAuthFlowHandler),
 );
@@ -122,6 +139,7 @@ router.get(
 router.get(
   '/oauth/:provider/callback',
   authenticateOrRedirect,
+  requireOAuthFeature,
   requireOAuthCapability,
   asyncHandler(oauthCallbackHandler),
 );
