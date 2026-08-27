@@ -10156,6 +10156,268 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.connected_accounts",
+      "type": "BASE TABLE",
+      "comment": "Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth tokens or IMAP credentials as JSON); it is never returned by any API.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "provider",
+          "type": "varchar(16)",
+          "nullable": false
+        },
+        {
+          "name": "email_address",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "auth_encrypted",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "granted_scopes",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]",
+          "comment": "Scopes the provider actually granted, which may be fewer than were requested."
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "nullable": false,
+          "default": "'active'::character varying"
+        },
+        {
+          "name": "status_detail",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "last_sync_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "sync_cursor",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "key_version",
+          "type": "smallint",
+          "nullable": false,
+          "default": "1",
+          "comment": "Key version used to encrypt auth_encrypted. References ENCRYPTION_KEY_V\u003cn\u003e env var."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "connected_accounts_pkey",
+          "def": "CREATE UNIQUE INDEX connected_accounts_pkey ON public.connected_accounts USING btree (id)",
+          "table": "public.connected_accounts",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "connected_accounts_user_provider_email_unique",
+          "def": "CREATE UNIQUE INDEX connected_accounts_user_provider_email_unique ON public.connected_accounts USING btree (user_id, provider, email_address)",
+          "table": "public.connected_accounts",
+          "columns": [
+            "user_id",
+            "provider",
+            "email_address"
+          ]
+        },
+        {
+          "name": "connected_accounts_user_id_idx",
+          "def": "CREATE INDEX connected_accounts_user_id_idx ON public.connected_accounts USING btree (user_id)",
+          "table": "public.connected_accounts",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "connected_accounts_provider_check",
+          "type": "CHECK",
+          "def": "CHECK (((provider)::text = ANY ((ARRAY['google'::character varying, 'microsoft'::character varying, 'imap'::character varying])::text[])))",
+          "table": "public.connected_accounts",
+          "referenced_table": "",
+          "columns": [
+            "provider"
+          ]
+        },
+        {
+          "name": "connected_accounts_status_check",
+          "type": "CHECK",
+          "def": "CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'error'::character varying, 'disconnected'::character varying])::text[])))",
+          "table": "public.connected_accounts",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "connected_accounts_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.connected_accounts",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "connected_accounts_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.connected_accounts",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "connected_accounts_user_provider_email_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (user_id, provider, email_address)",
+          "table": "public.connected_accounts",
+          "referenced_table": "",
+          "columns": [
+            "user_id",
+            "provider",
+            "email_address"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "connected_accounts_set_updated_at",
+          "def": "CREATE TRIGGER connected_accounts_set_updated_at BEFORE UPDATE ON public.connected_accounts FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.connected_account_oauth_states",
+      "type": "BASE TABLE",
+      "comment": "Single-use OAuth authorization-code state. Binds a flow to the user who started it and holds that flow PKCE verifier until the callback consumes the row.",
+      "columns": [
+        {
+          "name": "state",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "provider",
+          "type": "varchar(16)",
+          "nullable": false
+        },
+        {
+          "name": "pkce_verifier",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "connected_account_oauth_states_pkey",
+          "def": "CREATE UNIQUE INDEX connected_account_oauth_states_pkey ON public.connected_account_oauth_states USING btree (state)",
+          "table": "public.connected_account_oauth_states",
+          "columns": [
+            "state"
+          ]
+        },
+        {
+          "name": "connected_account_oauth_states_expires_at_idx",
+          "def": "CREATE INDEX connected_account_oauth_states_expires_at_idx ON public.connected_account_oauth_states USING btree (expires_at)",
+          "table": "public.connected_account_oauth_states",
+          "columns": [
+            "expires_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "connected_account_oauth_states_provider_check",
+          "type": "CHECK",
+          "def": "CHECK (((provider)::text = ANY ((ARRAY['google'::character varying, 'microsoft'::character varying])::text[])))",
+          "table": "public.connected_account_oauth_states",
+          "referenced_table": "",
+          "columns": [
+            "provider"
+          ]
+        },
+        {
+          "name": "connected_account_oauth_states_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.connected_account_oauth_states",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "connected_account_oauth_states_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (state)",
+          "table": "public.connected_account_oauth_states",
+          "referenced_table": "",
+          "columns": [
+            "state"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -11679,6 +11941,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.connected_accounts",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.connected_account_oauth_states",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

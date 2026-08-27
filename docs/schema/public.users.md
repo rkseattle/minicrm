@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.system_settings](public.system_settings.md) [public.pipelines](public.pipelines.md) [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.notes](public.notes.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.import_jobs](public.import_jobs.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) [public.user_custom_roles](public.user_custom_roles.md) [public.scim_tokens](public.scim_tokens.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) [public.feature_flag_groups](public.feature_flag_groups.md) [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) [public.ai_sessions](public.ai_sessions.md) [public.email_templates](public.email_templates.md) [public.user_ai_context](public.user_ai_context.md) [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) [public.ai_token_usage_daily](public.ai_token_usage_daily.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.notifications](public.notifications.md) [public.activity_meeting_briefs](public.activity_meeting_briefs.md) [public.activity_sentiment_scores](public.activity_sentiment_scores.md) [public.account_health_scoring_config](public.account_health_scoring_config.md) [public.rep_coaching_scoring_config](public.rep_coaching_scoring_config.md) [public.rep_coaching_insights](public.rep_coaching_insights.md) [public.rep_coaching_insight_history](public.rep_coaching_insight_history.md) [public.lead_routing_decisions](public.lead_routing_decisions.md) [public.team_feature_overrides](public.team_feature_overrides.md) [public.lead_routing_scoring_config](public.lead_routing_scoring_config.md) [public.data_hygiene_scoring_config](public.data_hygiene_scoring_config.md) [public.data_hygiene_findings](public.data_hygiene_findings.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.system_settings](public.system_settings.md) [public.pipelines](public.pipelines.md) [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.notes](public.notes.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.import_jobs](public.import_jobs.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) [public.user_custom_roles](public.user_custom_roles.md) [public.scim_tokens](public.scim_tokens.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) [public.feature_flag_groups](public.feature_flag_groups.md) [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) [public.ai_sessions](public.ai_sessions.md) [public.email_templates](public.email_templates.md) [public.user_ai_context](public.user_ai_context.md) [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) [public.ai_token_usage_daily](public.ai_token_usage_daily.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.notifications](public.notifications.md) [public.activity_meeting_briefs](public.activity_meeting_briefs.md) [public.activity_sentiment_scores](public.activity_sentiment_scores.md) [public.account_health_scoring_config](public.account_health_scoring_config.md) [public.rep_coaching_scoring_config](public.rep_coaching_scoring_config.md) [public.rep_coaching_insights](public.rep_coaching_insights.md) [public.rep_coaching_insight_history](public.rep_coaching_insight_history.md) [public.lead_routing_decisions](public.lead_routing_decisions.md) [public.team_feature_overrides](public.team_feature_overrides.md) [public.lead_routing_scoring_config](public.lead_routing_scoring_config.md) [public.data_hygiene_scoring_config](public.data_hygiene_scoring_config.md) [public.data_hygiene_findings](public.data_hygiene_findings.md) [public.connected_accounts](public.connected_accounts.md) [public.connected_account_oauth_states](public.connected_account_oauth_states.md) |  |  |
 | email | varchar(255) |  | false |  |  |  |
 | password_hash | text |  | true |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
@@ -123,6 +123,8 @@ erDiagram
 "public.lead_routing_scoring_config" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.data_hygiene_scoring_config" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.data_hygiene_findings" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.connected_accounts" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.connected_account_oauth_states" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -700,6 +702,29 @@ erDiagram
   text dismissed_reason ""
   timestamp_with_time_zone detected_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.connected_accounts" {
+  uuid id ""
+  uuid user_id FK ""
+  varchar_16_ provider ""
+  text email_address ""
+  text auth_encrypted ""
+  text__ granted_scopes "Scopes the provider actually granted, which may be fewer than were requested."
+  varchar_16_ status ""
+  text status_detail ""
+  timestamp_with_time_zone last_sync_at ""
+  text sync_cursor ""
+  smallint key_version "Key version used to encrypt auth_encrypted. References ENCRYPTION_KEY_V<n> env var."
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.connected_account_oauth_states" {
+  text state ""
+  uuid user_id FK ""
+  varchar_16_ provider ""
+  text pkce_verifier ""
+  timestamp_with_time_zone expires_at ""
+  timestamp_with_time_zone created_at ""
 }
 ```
 

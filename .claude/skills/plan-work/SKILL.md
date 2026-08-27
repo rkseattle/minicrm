@@ -76,6 +76,43 @@ Establish:
 - Existing test coverage and where new coverage lands
 - Relevant ADRs under `docs/adr/` and dev docs under `docs/dev/`
 
+### Enumerate every registry consumer with a command, not from memory
+
+A **registry** is any single source of truth that other files enumerate, switch over,
+render, or assert against. Editing one looks like a one-line change and is not: the line
+is a fan-out point, and the real work is in its consumers.
+
+For every registry the plan will touch, **run the grep and paste the file list into the
+phase that edits it.** Not "consider the blast radius" — run it:
+
+```bash
+grep -rln "<REGISTRY_NAME>" client/src server/src shared qa db docs .github
+```
+
+The registries in this repo, and the consumer class each one hides:
+
+| Registry                                   | Where                                      | Consumers that break silently                                                                                                                                                     |
+| ------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Capability` enum                          | `shared/schemas/capabilitySchema.ts`       | `RolesSettings.tsx`'s `CAPABILITY_GROUPS`; a `role_capabilities` migration; **custom roles**, which `userCapabilities()` resolves _instead of_ the built-in fallback              |
+| `FEATURE_FLAG_KEYS`                        | `shared/schemas/featureFlagSchema.ts`      | `featureFlagDocsParity.test.ts` (three assertions: key present, key registered, **`####` category groupings**); `admin-guide.md`'s reference table; MSW handlers                  |
+| `AUDIT_RECORD_TYPES` / `AUDIT_EVENT_TYPES` | `shared/schemas/auditSchema.ts`            | `ChangeHistory.tsx`'s `never`-terminated switch (**build break**); `ChangeHistory.test.tsx`'s `it.each`; `AuditLogPage.tsx`'s `t('auditLog.recordTypes.<x>')` → 1 key × 5 locales |
+| Env vars                                   | `.env.example`                             | `docker-compose{,.dev,.test}.yml` each enumerate keys individually — an env var absent there is **permanently unset in every container**                                          |
+| Product tables                             | `db/migrations/`                           | `reset-e2e-data.ts` enumerates every table it clears                                                                                                                              |
+| `LEGACY_PREFIXES`                          | `server/src/app.ts`                        | sunset shim — new resources must NOT be added                                                                                                                                     |
+| `ALWAYS_EXCLUDED_FIELDS`                   | `server/src/ai/piiFilter.ts`               | flat set of bare column names, no qualification                                                                                                                                   |
+| Locale keys                                | `client/src/locales/en.json`               | `locale-completeness.test.ts` (bidirectional, 4 locales); `pseudo.json` needs `npm run pseudoloc`                                                                                 |
+| `@serial` E2E specs                        | `qa/e2e/tests/`                            | `check-settings-mutations.mjs`; the 16 generated `playwright.serial-group.*.config.ts` — an unregenerated group means the spec **never runs**                                     |
+| CI paths filters                           | `.github/workflows/ci.yml`                 | `server` is `server/src/**` and `client` is `client/src/**` — a `shared/schemas/**` edit reaches **neither** test job                                                             |
+| `WEBHOOK_EVENT_TYPES`                      | `shared/schemas/webhookSchema.ts`          | `WebhookSettings.tsx`'s event picker; `swagger.ts`'s enum                                                                                                                         |
+| `AuditRecordType` / `AuditEventType`       | `server/src/services/auditService.ts`      | server-only and safe to extend alone; `audit_log`'s CHECK constraints were dropped deliberately, so no migration is needed                                                        |
+| Visibility policies                        | `server/src/services/visibilityService.ts` | every list endpoint's WHERE clause — a new object type needs a policy or it silently returns everything                                                                           |
+
+The table is not exhaustive. When a plan edits a symbol that other files enumerate,
+switch over, or assert against, it is a registry — grep it and list what came back.
+
+**A registry edit is never a one-line phase entry.** State, per consumer, what changes
+there. If the answer is "nothing", say why — the alternative is discovering it in review.
+
 Read the actual code. Do not plan from file names.
 
 ## Step 4 — Write the plan
@@ -96,7 +133,18 @@ Covering tickets, and the PR-group label if the work was resolved from one.
 
 ## Acceptance criteria coverage
 
-| Ticket | AC | Phase |
+| Ticket | AC | Phase | Deviation |
+
+**One row per AC clause, not per AC theme.** Split on commas and semicolons: an AC
+reading "DELETE /x/:id (own only, revokes OAuth token where provider supports it)" is
+three rows — the route, the ownership check, the revocation — because each can be
+independently forgotten, and a theme-level row lets a clause vanish without leaving a
+visible hole. Any clause whose phase cell you cannot fill is a gap in the plan, not a
+gap in the table.
+
+Use the `Deviation` column wherever the plan ships something other than what the AC
+literally says, with a one-line reason. A reader checking coverage must be able to see
+every departure from this table alone, without reading the prose.
 
 ## Approach
 
@@ -181,7 +229,31 @@ too large to review, propose sequenced tickets in the plan and let Rob choose. D
 create those tickets yet — deciding mid-implementation to file a follow-up instead of
 fixing is the failure this exists to prevent.
 
-## Step 5 — Adversarial design review
+## Step 5 — Self-check, then adversarial design review
+
+### Before launching the reviewer, verify your own claims
+
+The reviewer's scarcest output is the finding you could not have found yourself. Spending
+a round on a claim one grep would have settled wastes it. Walk the finished plan and, for
+each item below, either fix it or satisfy yourself it holds:
+
+1. **Every "X currently does Y" claim about existing behavior** — name the command you
+   ran. A claim about what a schema validates, what a middleware returns, what a test
+   asserts, or what a CI filter matches is checkable in seconds, and stating one from
+   memory is how a plan argues confidently for the wrong design. Where a claim rests on
+   something being _absent_, grep for it and count: absence is a claim like any other.
+2. **Every registry the plan edits** — the grep from Step 3 was run and its consumers are
+   listed in the phase that edits it.
+3. **Every AC clause** — has a row and a phase number.
+4. **Every cross-phase reference** — a phase naming a function, error code, or type that a
+   later phase introduces does not compile on its own; either move it or reorder.
+5. **Every "independently committable" claim** — pick the phase you are least sure of and
+   ask what `npm run typecheck` does on it alone.
+
+Findings from this pass are edited in place, silently. They never appear in the plan as
+revision history.
+
+### Then launch the review
 
 Launch the `design-adversary` subagent.
 

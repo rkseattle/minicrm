@@ -96,7 +96,16 @@ whole-file-deletion path already emits `'deleted'` for every unit in a removed f
 The dependency graph rule table for config/resource/migration files is explicitly
 deterministic (a `RegExp`-keyed table), per MINCRM-625's own AC — not a scoring model. Its
 output is always **unioned** into whatever the mapping-based selection already found,
-never subtracted. A file class whose blast radius can't be safely bounded by any targeted
+never subtracted.
+
+**`alwaysWiden` is the half of that union which is wired.** A rule that sets it forces the
+full-suite fallback, and that path is live. `testScopes` is not: `select-tests.ts` prints
+the tags in its rationale and never resolves them to spec files, so a rule with
+`alwaysWiden: false` contributes nothing to `specFiles` today. Both non-widening rules —
+`shared-schema` and `i18n-locale` — are therefore advisory, and the tags they emit
+(`functional:*`, `functional:i18n`) have no consumer anywhere in the repo. Making targeted
+widening real means adding a tag→spec resolver; until then, treat a `testScopes` value as
+documentation of intent rather than as selection behavior. A file class whose blast radius can't be safely bounded by any targeted
 rule (schema migrations, CI workflow files, `.env`/docker-compose files) is flagged
 `alwaysWiden: true`, forcing the safety net's full-suite fallback rather than guessing a
 targeted scope for something the rule table has no confident answer for.

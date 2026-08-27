@@ -23,7 +23,15 @@
 /** A widened selection outcome contributed by one non-source file's change. */
 export interface DependencyWideningResult {
   filePath: string;
-  /** Test-scope tags this file's change widens selection to (e.g. spec-file glob tags, domain names) — empty when only alwaysWiden fired. */
+  /**
+   * Test-scope tags this file's change widens selection to — empty when only alwaysWiden
+   * fired.
+   *
+   * Advisory today: select-tests.ts prints these in its rationale but never joins them
+   * into specFiles, and no runner resolves a tag to spec files, so a rule with
+   * alwaysWiden: false currently selects nothing extra. Wiring a resolver is what would
+   * make targeted widening real.
+   */
   widenedTestScopes: string[];
   /** True when this file class is untrusted for targeted widening — callers must fall back to the full suite regardless of what widenedTestScopes contains. */
   alwaysWiden: boolean;
@@ -101,7 +109,7 @@ const DEPENDENCY_RULES: readonly DependencyRule[] = [
   },
   {
     id: 'i18n-locale',
-    pattern: /(^|\/)client\/src\/i18n\/locales\//,
+    pattern: /(^|\/)client\/src\/locales\//,
     testScopes: ['functional:i18n'],
     alwaysWiden: false,
   },
