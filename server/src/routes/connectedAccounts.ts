@@ -14,8 +14,12 @@ import {
   startOAuthFlowHandler,
   testConnectedAccountHandler,
 } from '../controllers/connectedAccountController.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
+
 import { authenticate } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 
 const router = Router();
 
@@ -105,6 +109,8 @@ router.get('/oauth/:provider/start', authenticateOrRedirect, asyncHandler(startO
 router.get('/oauth/:provider/callback', authenticateOrRedirect, asyncHandler(oauthCallbackHandler));
 
 router.use(authenticate);
+router.use(requireFeatureEnabled('email_sync'));
+router.use(requireCapability(Capability.ConnectedAccountsManage));
 
 /**
  * @openapi

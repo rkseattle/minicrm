@@ -14,6 +14,7 @@ import {
   createImapAccount,
   deleteConnectedAccount,
   getConnectedAccountInternal,
+  getUsableAccessToken,
   listConnectedAccounts,
   updateAccountStatus,
   upsertOAuthAccount,
@@ -323,5 +324,187 @@ describe('user deletion cascade', () => {
       doomed.id,
     ]);
     expect(remaining.rows).toHaveLength(0);
+  });
+});
+
+describe('access token refresh', () => {
+  const EXPIRED = Date.now() - 60_000;
+  const FUTURE = Date.now() + 3_600_000;
+
+  async function seedOAuthAccount(expiresAt: number | null, refreshToken: string | null) {
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-refresh@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'old-access',
+          refresh_token: refreshToken,
+          expires_at: expiresAt,
+        },
+        grantedScopes: [],
+      },
+      REP_A_ACTOR,
+    );
+    return account.id;
+  }
+
+  it('returns the stored token without refreshing when it is still valid', async () => {
+    const id = await seedOAuthAccount(FUTURE, 'refresh-one');
+    let calls = 0;
+
+    const token = await getUsableAccessToken(id, REP_A_ACTOR.id, REP_A_ACTOR, async () => {
+      calls += 1;
+      return { accessToken: 'new-access', refreshToken: 'refresh-two', expiresAt: FUTURE };
+    });
+
+    expect(token).toBe('old-access');
+    expect(calls).toBe(0);
+  });
+
+  it('refreshes an expired token and persists the rotated refresh token', async () => {
+    const id = await seedOAuthAccount(EXPIRED, 'refresh-one');
+
+    const token = await getUsableAccessToken(id, REP_A_ACTOR.id, REP_A_ACTOR, async () => ({
+      accessToken: 'new-access',
+      refreshToken: 'refresh-two',
+      expiresAt: FUTURE,
+    }));
+
+    expect(token).toBe('new-access');
+
+    const internal = await getConnectedAccountInternal(id, REP_A_ACTOR.id);
+    expect(internal!.auth).toMatchObject({
+      access_token: 'new-access',
+      refresh_token: 'refresh-two',
+    });
+  });
+
+  it('marks the account in error when the provider refuses the refresh', async () => {
+    const id = await seedOAuthAccount(EXPIRED, 'refresh-one');
+
+    const token = await getUsableAccessToken(id, REP_A_ACTOR.id, REP_A_ACTOR, () => {
+      throw new Error('invalid_grant');
+    });
+
+    expect(token).toBeNull();
+
+    const [account] = await listConnectedAccounts(REP_A_ACTOR.id);
+    expect(account.status).toBe('error');
+    expect(account.status_detail).toBe('PROVIDER_AUTH_EXPIRED');
+  });
+
+  it('marks the account in error when no refresh token was ever stored', async () => {
+    const id = await seedOAuthAccount(EXPIRED, null);
+
+    await expect(
+      getUsableAccessToken(id, REP_A_ACTOR.id, REP_A_ACTOR, async () => ({
+        accessToken: 'unused',
+        refreshToken: null,
+        expiresAt: FUTURE,
+      })),
+    ).resolves.toBeNull();
+
+    const [account] = await listConnectedAccounts(REP_A_ACTOR.id);
+    expect(account.status).toBe('error');
+  });
+
+  /*
+   * The row lock is the whole point: without FOR UPDATE both callers see the expired
+   * token and both spend the refresh token, and Microsoft rotates it — so the loser
+   * persists one the provider has already invalidated.
+   */
+  it('spends the refresh token exactly once under concurrent callers', async () => {
+    const id = await seedOAuthAccount(EXPIRED, 'refresh-one');
+    let calls = 0;
+
+    const refresh = async () => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return { accessToken: `new-access-${calls}`, refreshToken: 'refresh-two', expiresAt: FUTURE };
+    };
+
+    const [first, second] = await Promise.all([
+      getUsableAccessToken(id, REP_A_ACTOR.id, REP_A_ACTOR, refresh),
+      getUsableAccessToken(id, REP_A_ACTOR.id, REP_A_ACTOR, refresh),
+    ]);
+
+    expect(calls).toBe(1);
+    expect(first).toBe(second);
+  });
+
+  it("returns null for another user's account", async () => {
+    const id = await seedOAuthAccount(FUTURE, 'refresh-one');
+
+    await expect(
+      getUsableAccessToken(id, REP_B_ACTOR.id, REP_B_ACTOR, async () => ({
+        accessToken: 'nope',
+        refreshToken: null,
+        expiresAt: FUTURE,
+      })),
+    ).resolves.toBeNull();
+  });
+});
+
+describe('deleting an OAuth account returns its tokens for revocation', () => {
+  it('hands back the refresh token so the caller can revoke it upstream', async () => {
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-revoke@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'access-to-revoke',
+          refresh_token: 'refresh-to-revoke',
+          expires_at: null,
+        },
+        grantedScopes: [],
+      },
+      REP_A_ACTOR,
+    );
+
+    const deleted = await deleteConnectedAccount(account.id, REP_A_ACTOR.id, REP_A_ACTOR);
+
+    expect(deleted).not.toBeNull();
+    expect(deleted!.provider).toBe('google');
+    expect(deleted!.auth).toMatchObject({
+      kind: 'oauth',
+      refresh_token: 'refresh-to-revoke',
+    });
+  });
+});
+
+describe('audit entries for an expired refresh token', () => {
+  it('records the mailbox as disconnected when the provider refuses the refresh', async () => {
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-expired@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'stale',
+          refresh_token: 'refresh-one',
+          expires_at: Date.now() - 3_600_000,
+        },
+        grantedScopes: [],
+      },
+      REP_A_ACTOR,
+    );
+    await clearAuditLogFor(REP_A_ACTOR.id);
+
+    await getUsableAccessToken(account.id, REP_A_ACTOR.id, REP_A_ACTOR, () => {
+      throw new Error('invalid_grant');
+    });
+
+    const entries = await pool.query<{ event_type: string; old_value: string }>(
+      `SELECT event_type, old_value FROM audit_log WHERE changed_by_id = $1`,
+      [REP_A_ACTOR.id],
+    );
+    expect(entries.rows).toHaveLength(1);
+    expect(entries.rows[0].event_type).toBe('connected_account_disconnected');
+    expect(entries.rows[0].old_value).toBe('PROVIDER_AUTH_EXPIRED');
   });
 });

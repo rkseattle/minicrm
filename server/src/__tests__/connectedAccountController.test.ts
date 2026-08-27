@@ -14,7 +14,8 @@ import request from 'supertest';
 
 import app from '../app.js';
 import pool from '../db.js';
-import { createImapAccount } from '../services/connectedAccountService.js';
+import { createImapAccount, upsertOAuthAccount } from '../services/connectedAccountService.js';
+import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 import { createUser } from '../services/userService.js';
 
 import { makeAuthCookie } from './testUtils.js';
@@ -90,10 +91,16 @@ beforeEach(async () => {
   await pool.query('DELETE FROM connected_accounts WHERE user_id = ANY($1::uuid[])', [
     [repAId, repBId],
   ]);
+  // Seeded off, since a fresh install has no OAuth apps registered. Every test below
+  // exercises the feature itself; the gate has its own describe block.
+  await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'email_sync'`);
+  // The service caches flags for 60s, so the write alone is invisible to the next read.
+  invalidateFeatureFlagCache();
 });
 
 afterAll(async () => {
   await deleteFixtureUsers();
+  await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
   await pool.end();
 });
 
@@ -388,5 +395,69 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
       .set('Cookie', repACookie);
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe('DELETE of an OAuth account', () => {
+  it('deletes it and reaches the revocation branch', async () => {
+    const account = await upsertOAuthAccount(
+      {
+        userId: repAId,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-oauth@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'access-one',
+          refresh_token: 'refresh-one',
+          expires_at: null,
+        },
+        grantedScopes: [],
+      },
+      { id: repAId, name: 'Contract Rep A' },
+    );
+
+    const res = await request(app)
+      .delete(`/api/v1/connected-accounts/${account.id}`)
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(204);
+
+    const remaining = await pool.query('SELECT id FROM connected_accounts WHERE id = $1', [
+      account.id,
+    ]);
+    expect(remaining.rows).toHaveLength(0);
+  });
+});
+
+/*
+ * The flag is a single row every test in this file shares, so these run in sequence and
+ * restore it. Vitest interleaves `it`s within a file, and a parallel block that switched
+ * the flag off turned every other test in the file into a 403.
+ */
+describe.sequential('the email_sync feature flag gates every route', () => {
+  /** The file-level beforeEach turns the flag on, so each test here turns it back off. */
+  async function disableEmailSync(): Promise<void> {
+    await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
+    invalidateFeatureFlagCache();
+  }
+
+  it('returns 403 FEATURE_DISABLED on GET when the flag is off', async () => {
+    await disableEmailSync();
+
+    const res = await request(app).get('/api/v1/connected-accounts').set('Cookie', repACookie);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FEATURE_DISABLED');
+  });
+
+  it('returns 403 on POST when the flag is off, without dialing anything', async () => {
+    await disableEmailSync();
+
+    const res = await request(app)
+      .post('/api/v1/connected-accounts')
+      .set('Cookie', repACookie)
+      .send(VALID_BODY);
+
+    expect(res.status).toBe(403);
   });
 });

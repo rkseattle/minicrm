@@ -565,6 +565,7 @@ ORDER BY category, flag_key;
 | Key                | Default | Roles     |
 | ------------------ | ------- | --------- |
 | `automation_rules` | On      | All roles |
+| `email_sync`       | Off     | All roles |
 | `email_templates`  | On      | All roles |
 | `webhooks`         | On      | All roles |
 

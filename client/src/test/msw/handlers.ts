@@ -3641,7 +3641,7 @@ export const handlers = [
  * Exceptions match migration 066's seed: demo_data and mobile_access ship off.
  */
 export function allFlagsEnabled(): Record<string, boolean> {
-  const FLAGS_OFF_BY_DEFAULT = new Set<string>(['demo_data', 'mobile_access']);
+  const FLAGS_OFF_BY_DEFAULT = new Set<string>(['demo_data', 'mobile_access', 'email_sync']);
   return Object.fromEntries(
     FEATURE_FLAG_KEYS.map((key) => [key, !FLAGS_OFF_BY_DEFAULT.has(key)]),
   ) as Record<string, boolean>;

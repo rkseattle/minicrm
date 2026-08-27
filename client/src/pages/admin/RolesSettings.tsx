@@ -85,6 +85,7 @@ const CAPABILITY_GROUPS: Array<{ groupKey: string; caps: Capability[] }> = [
       Capability.UsersDelete,
       Capability.TeamsManage,
       Capability.IntegrationsManage,
+      Capability.ConnectedAccountsManage,
       Capability.SettingsManage,
       Capability.FeatureFlagsManage,
       Capability.AuditLogView,

@@ -24,6 +24,7 @@ import {
   updateAccountStatus,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
+import { isFlagEnabledForUser } from '../services/featureFlagService.js';
 import { testImapConnection } from '../services/imapConnectionService.js';
 import {
   OAUTH_STATE_TTL_MS,
@@ -31,6 +32,7 @@ import {
   exchangeAuthorizationCode,
   getOAuthCallbackUrl,
   isProviderConfigured,
+  revokeProviderTokens,
 } from '../services/oauthProviderService.js';
 
 /** Path parameter guard — an unvalidated string reaching a uuid column throws a PG error. */
@@ -107,6 +109,13 @@ export async function deleteConnectedAccountHandler(req: Request, res: Response)
   if (!deleted) {
     res.status(404).json(errorBody('NOT_FOUND', 'No such connected account'));
     return;
+  }
+
+  // After the commit and never awaited, like every other third-party call in this repo:
+  // the row is already gone, so the user's intent is satisfied, and a provider outage
+  // must not fail a disconnect or hold a connection open while the request waits.
+  if (deleted.auth?.kind === 'oauth' && deleted.provider !== 'imap') {
+    void revokeProviderTokens(deleted.provider, deleted.auth.refresh_token);
   }
 
   res.status(204).send();
@@ -198,6 +207,13 @@ export async function startOAuthFlowHandler(req: Request, res: Response): Promis
   }
   const provider = providerParse.data;
 
+  // Checked here rather than as middleware: this route is a top-level navigation, and
+  // requireFeatureEnabled answers with a JSON body that would render as the whole page.
+  if (!(await isFlagEnabledForUser('email_sync', req.user!.id, req.user!.role))) {
+    redirectToProfile(res, 'FEATURE_DISABLED');
+    return;
+  }
+
   if (!isProviderConfigured(provider)) {
     redirectToProfile(res, 'PROVIDER_NOT_CONFIGURED');
     return;
@@ -231,6 +247,11 @@ export async function oauthCallbackHandler(req: Request, res: Response): Promise
   const state = typeof req.query.state === 'string' ? req.query.state : null;
   if (!providerParse.success || !state) {
     redirectToProfile(res, 'OAUTH_STATE_INVALID');
+    return;
+  }
+
+  if (!(await isFlagEnabledForUser('email_sync', req.user!.id, req.user!.role))) {
+    redirectToProfile(res, 'FEATURE_DISABLED');
     return;
   }
 

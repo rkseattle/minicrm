@@ -86,6 +86,8 @@ export enum Capability {
   UsersDelete = 'users:delete',
   TeamsManage = 'teams:manage',
   IntegrationsManage = 'integrations:manage',
+  /** Connect and disconnect one's own mailboxes. Scoping to "own" is the service's WHERE clause, not this capability. */
+  ConnectedAccountsManage = 'connected_accounts:manage',
   SettingsManage = 'settings:manage',
   FeatureFlagsManage = 'feature_flags:manage',
 
