@@ -54,6 +54,7 @@ export default function ConnectedAccountsPanel() {
     port: String(DEFAULT_IMAP_PORT),
     username: '',
     password: '',
+    secure: true,
   });
 
   const { data, isLoading, isError } = useQuery({
@@ -74,6 +75,7 @@ export default function ConnectedAccountsPanel() {
         port: String(DEFAULT_IMAP_PORT),
         username: '',
         password: '',
+        secure: true,
       });
     },
     onError: () => setFormError(t('connectedAccounts.connectError')),
@@ -258,7 +260,7 @@ export default function ConnectedAccountsPanel() {
               port: Number(imapForm.port),
               username: imapForm.username,
               password: imapForm.password,
-              secure: true,
+              secure: imapForm.secure,
             });
           }}
         >
@@ -343,6 +345,18 @@ export default function ConnectedAccountsPanel() {
               className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+
+          <label className="flex items-center gap-2 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              data-testid="connected-accounts-imap-secure"
+              checked={imapForm.secure}
+              onChange={(event) =>
+                setImapForm((form) => ({ ...form, secure: event.target.checked }))
+              }
+            />
+            {t('connectedAccounts.secureLabel')}
+          </label>
 
           {formError && (
             <p

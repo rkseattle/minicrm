@@ -131,7 +131,6 @@ stored, so a failure here means nothing was written.
 | ------------------- | --------------------------------------------------------------------------------------- |
 | **Active**          | The mailbox is connected and working.                                                   |
 | **Needs attention** | The provider stopped accepting the stored credentials. Disconnect and connect it again. |
-| **Disconnected**    | The mailbox is no longer in use.                                                        |
 
 ### Disconnect a mailbox
 

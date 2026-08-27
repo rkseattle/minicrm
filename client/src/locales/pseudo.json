@@ -1867,7 +1867,8 @@
       "SESSION_EXPIRED": "[Yöür ŝëŝŝïöñ ëxpïrëd bëförë thë ĉöññëĉtïöñ fïñïŝhëd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~~~~~]",
       "INSUFFICIENT_CAPABILITY": "[Yöü dö ñöt hävë përmïŝŝïöñ tö ĉöññëĉt ä mäïlböx.~~~~~~~~~~~~~~~]",
       "OAUTH_FAILED": "[Thë mäïlböx ĉöüld ñöt bë ĉöññëĉtëd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~]"
-    }
+    },
+    "secureLabel": "[Üŝë TLŜ öñ ĉöññëĉt (üñĉhëĉk för ŝërvërŝ thät üŝë ŜTÄRTTLŜ öñ pört 143)~~~~~~~~~~~~~~~~~~~~~]"
   },
   "mfa": {
     "sectionTitle": "[Twö-Fäĉtör Äüthëñtïĉätïöñ~~~~~~~~]",

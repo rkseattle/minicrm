@@ -569,3 +569,30 @@ describe.sequential('OAuth routes reject before reaching a provider', () => {
     expect(connectCode(res.headers.location)).toBe('FEATURE_DISABLED');
   });
 });
+
+describe.sequential('OAuth state is bound to the session that issued it', () => {
+  it("refuses a state issued to rep A when rep B's session replays it", async () => {
+    const state = 'state-issued-to-rep-a';
+    await pool.query(
+      `INSERT INTO connected_account_oauth_states (state, user_id, provider, pkce_verifier, expires_at)
+       VALUES ($1, $2, 'google', 'verifier', now() + interval '5 minutes')`,
+      [state, repAId],
+    );
+
+    const res = await request(app)
+      .get(`/api/v1/connected-accounts/oauth/google/callback?state=${state}&code=x`)
+      .set('Cookie', repBCookie);
+
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.location, 'http://localhost').searchParams.get('connect')).toBe(
+      'OAUTH_STATE_INVALID',
+    );
+
+    // Neither user gains a mailbox from a replayed state.
+    const rows = await pool.query(
+      'SELECT id FROM connected_accounts WHERE user_id = ANY($1::uuid[])',
+      [[repAId, repBId]],
+    );
+    expect(rows.rows).toHaveLength(0);
+  });
+});

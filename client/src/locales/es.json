@@ -1867,7 +1867,8 @@
       "SESSION_EXPIRED": "Su sesión caducó antes de completar la conexión. Inténtelo de nuevo.",
       "INSUFFICIENT_CAPABILITY": "No tiene permiso para conectar un buzón.",
       "OAUTH_FAILED": "No se pudo conectar el buzón. Inténtelo de nuevo."
-    }
+    },
+    "secureLabel": "Usar TLS al conectar (desmarque para servidores que usan STARTTLS en el puerto 143)"
   },
   "mfa": {
     "sectionTitle": "Autenticación en dos pasos",

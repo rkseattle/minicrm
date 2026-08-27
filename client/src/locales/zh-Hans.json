@@ -1867,7 +1867,8 @@
       "SESSION_EXPIRED": "连接完成前您的会话已过期。请重试。",
       "INSUFFICIENT_CAPABILITY": "您没有连接邮箱的权限。",
       "OAUTH_FAILED": "无法连接该邮箱。请重试。"
-    }
+    },
+    "secureLabel": "连接时使用 TLS（若服务器在 143 端口使用 STARTTLS，请取消勾选）"
   },
   "mfa": {
     "sectionTitle": "双重身份验证",
