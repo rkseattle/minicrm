@@ -1857,6 +1857,16 @@
       "active": "[Äĉtïvë~~]",
       "error": "[Ñëëdŝ ättëñtïöñ~~~~~]",
       "disconnected": "[Dïŝĉöññëĉtëd~~~~]"
+    },
+    "results": {
+      "connected": "[Mäïlböx ĉöññëĉtëd.~~~~~~]",
+      "PROVIDER_NOT_CONFIGURED": "[Thät prövïdër ïŝ ñöt ŝët üp öñ thïŝ MïñïĈRM. Äŝk äñ ädmïñïŝträtör.~~~~~~~~~~~~~~~~~~~~]",
+      "OAUTH_STATE_INVALID": "[Thät ĉöññëĉtïöñ ättëmpt ëxpïrëd ör wäŝ älrëädy üŝëd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~~~~~]",
+      "PROVIDER_NO_EMAIL": "[Thë prövïdër dïd ñöt ŝhärë äñ ëmäïl äddrëŝŝ, ŝö thë mäïlböx ĉöüld ñöt bë lïñkëd.~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "FEATURE_DISABLED": "[Mäïlböx ĉöññëĉtïöñŝ ärë türñëd öff för yöür äĉĉöüñt.~~~~~~~~~~~~~~~~]",
+      "SESSION_EXPIRED": "[Yöür ŝëŝŝïöñ ëxpïrëd bëförë thë ĉöññëĉtïöñ fïñïŝhëd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~~~~~]",
+      "INSUFFICIENT_CAPABILITY": "[Yöü dö ñöt hävë përmïŝŝïöñ tö ĉöññëĉt ä mäïlböx.~~~~~~~~~~~~~~~]",
+      "OAUTH_FAILED": "[Thë mäïlböx ĉöüld ñöt bë ĉöññëĉtëd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~]"
     }
   },
   "mfa": {

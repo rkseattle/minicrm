@@ -9,6 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 
 import type {
   ConnectedAccountResponse,
@@ -39,6 +40,10 @@ export default function ConnectedAccountsPanel() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { enabled: emailSyncEnabled } = useFeatureFlag('email_sync');
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The OAuth legs are full page navigations, so their only channel back is the URL.
+  const connectResult = searchParams.get('connect');
 
   const [showImapForm, setShowImapForm] = useState(false);
   const [confirmingDisconnectId, setConfirmingDisconnectId] = useState<string | null>(null);
@@ -98,6 +103,32 @@ export default function ConnectedAccountsPanel() {
         {t('connectedAccounts.sectionTitle')}
       </h2>
       <p className="text-xs text-gray-500 mb-4">{t('connectedAccounts.sectionHint')}</p>
+
+      {connectResult && (
+        <p
+          role={connectResult === 'connected' ? 'status' : 'alert'}
+          className={`mb-4 text-sm break-words ${
+            connectResult === 'connected' ? 'text-green-700' : 'text-red-600'
+          }`}
+          data-testid="connected-accounts-connect-result"
+        >
+          {t(`connectedAccounts.results.${connectResult}`, {
+            defaultValue: t('connectedAccounts.results.OAUTH_FAILED'),
+          })}{' '}
+          <button
+            type="button"
+            className="underline"
+            data-testid="connected-accounts-dismiss-result"
+            onClick={() => {
+              // Cleared from the URL so a refresh does not re-announce a stale outcome.
+              searchParams.delete('connect');
+              setSearchParams(searchParams, { replace: true });
+            }}
+          >
+            {t('common.dismiss')}
+          </button>
+        </p>
+      )}
 
       {isLoading && (
         <p className="text-sm text-gray-500" data-testid="connected-accounts-loading">

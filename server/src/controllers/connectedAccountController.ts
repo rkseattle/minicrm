@@ -114,8 +114,9 @@ export async function deleteConnectedAccountHandler(req: Request, res: Response)
   // After the commit and never awaited, like every other third-party call in this repo:
   // the row is already gone, so the user's intent is satisfied, and a provider outage
   // must not fail a disconnect or hold a connection open while the request waits.
-  if (deleted.auth?.kind === 'oauth' && deleted.provider !== 'imap') {
-    void revokeProviderTokens(deleted.provider, deleted.auth.refresh_token);
+  const oauthProvider = oauthProviderSchema.safeParse(deleted.provider);
+  if (deleted.auth?.kind === 'oauth' && oauthProvider.success) {
+    void revokeProviderTokens(oauthProvider.data, deleted.auth.refresh_token);
   }
 
   res.status(204).send();
@@ -185,6 +186,8 @@ const SAFE_OAUTH_RESULT_CODES = new Set([
   'OAUTH_STATE_INVALID',
   'PROVIDER_NO_EMAIL',
   'FEATURE_DISABLED',
+  'SESSION_EXPIRED',
+  'INSUFFICIENT_CAPABILITY',
 ]);
 
 function redirectToProfile(res: Response, code: string): void {

@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import type { NextFunction, Request, Response } from 'express';
+import type { RequestHandler } from 'express';
 
 import {
   createConnectedAccountHandler,
@@ -24,32 +24,40 @@ import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 const router = Router();
 
 /**
- * Runs `authenticate`, turning its JSON 401 into a redirect.
+ * Wraps a guard so its JSON rejection becomes a redirect to the profile page.
  *
- * The OAuth legs are entered by top-level browser navigation, where the middleware's
+ * The OAuth legs are entered by top-level browser navigation, where a middleware's
  * `{"error":{"code":"AUTH_MISSING_TOKEN"}}` body renders as a page of text with no way
  * back — a real outcome for anyone whose idle window lapsed while the panel sat open.
- * The session is still required: `req.user` is assigned nowhere else, and the state row
- * has to bind to a real user.
+ * The guards themselves still run unchanged: `req.user` is assigned nowhere but
+ * `authenticate`, and the state row has to bind to a real user.
  */
-function authenticateOrRedirect(req: Request, res: Response, next: NextFunction): void {
-  // A throwaway response collects authenticate's verdict without writing to the real one,
-  // so the 401 body it would have sent is never emitted.
-  const probe = Object.create(res) as Response & { statusCode: number };
-  let rejected = false;
-  probe.status = (code: number) => {
-    if (code === 401 || code === 403) rejected = true;
-    return { json: () => probe } as unknown as Response;
-  };
+function redirectRejectionsToProfile(guard: RequestHandler, code: string): RequestHandler {
+  return (req, res, next) => {
+    // Intercepting json() rather than probing status(): a guard rejects by writing a
+    // body, so this catches every rejection path including ones added later, and leaves
+    // next(err) to reach the error handler untouched.
+    const sendJson = res.json.bind(res);
+    res.json = (body: unknown) => {
+      res.json = sendJson;
+      if (res.statusCode >= 400) {
+        const profileUrl = `${process.env.APP_BASE_URL ?? 'http://localhost:5173'}/profile`;
+        res.redirect(302, `${profileUrl}?connect=${code}`);
+        return res;
+      }
+      return sendJson(body);
+    };
 
-  void authenticate(req, probe, () => {
-    next();
-  }).then(() => {
-    if (!rejected) return;
-    const profileUrl = `${process.env.APP_BASE_URL ?? 'http://localhost:5173'}/profile`;
-    res.redirect(302, `${profileUrl}?connect=SESSION_EXPIRED`);
-  });
+    void Promise.resolve(guard(req, res, next)).catch(next);
+  };
 }
+
+/** Both OAuth legs are entered by top-level navigation, so a JSON body would render as the page. */
+const authenticateOrRedirect = redirectRejectionsToProfile(authenticate, 'SESSION_EXPIRED');
+const requireOAuthCapability = redirectRejectionsToProfile(
+  requireCapability(Capability.ConnectedAccountsManage),
+  'INSUFFICIENT_CAPABILITY',
+);
 
 /**
  * @openapi
@@ -74,7 +82,12 @@ function authenticateOrRedirect(req: Request, res: Response, next: NextFunction)
  *       302:
  *         description: Redirect to the provider, or back to the profile page with a result code
  */
-router.get('/oauth/:provider/start', authenticateOrRedirect, asyncHandler(startOAuthFlowHandler));
+router.get(
+  '/oauth/:provider/start',
+  authenticateOrRedirect,
+  requireOAuthCapability,
+  asyncHandler(startOAuthFlowHandler),
+);
 
 /**
  * @openapi
@@ -106,7 +119,12 @@ router.get('/oauth/:provider/start', authenticateOrRedirect, asyncHandler(startO
  *       302:
  *         description: Redirect to the profile page with a result code
  */
-router.get('/oauth/:provider/callback', authenticateOrRedirect, asyncHandler(oauthCallbackHandler));
+router.get(
+  '/oauth/:provider/callback',
+  authenticateOrRedirect,
+  requireOAuthCapability,
+  asyncHandler(oauthCallbackHandler),
+);
 
 router.use(authenticate);
 router.use(requireFeatureEnabled('email_sync'));

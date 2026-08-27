@@ -1857,6 +1857,16 @@
       "active": "Activa",
       "error": "Requiere atención",
       "disconnected": "Desconectada"
+    },
+    "results": {
+      "connected": "Buzón conectado.",
+      "PROVIDER_NOT_CONFIGURED": "Ese proveedor no está configurado en este MiniCRM. Consulte a un administrador.",
+      "OAUTH_STATE_INVALID": "Ese intento de conexión caducó o ya se usó. Inténtelo de nuevo.",
+      "PROVIDER_NO_EMAIL": "El proveedor no facilitó una dirección de correo, así que no se pudo vincular el buzón.",
+      "FEATURE_DISABLED": "Las conexiones de buzones están desactivadas para su cuenta.",
+      "SESSION_EXPIRED": "Su sesión caducó antes de completar la conexión. Inténtelo de nuevo.",
+      "INSUFFICIENT_CAPABILITY": "No tiene permiso para conectar un buzón.",
+      "OAUTH_FAILED": "No se pudo conectar el buzón. Inténtelo de nuevo."
     }
   },
   "mfa": {

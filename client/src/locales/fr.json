@@ -1857,6 +1857,16 @@
       "active": "Active",
       "error": "Action requise",
       "disconnected": "Déconnectée"
+    },
+    "results": {
+      "connected": "Boîte mail connectée.",
+      "PROVIDER_NOT_CONFIGURED": "Ce fournisseur n’est pas configuré sur ce MiniCRM. Contactez un administrateur.",
+      "OAUTH_STATE_INVALID": "Cette tentative de connexion a expiré ou a déjà été utilisée. Veuillez réessayer.",
+      "PROVIDER_NO_EMAIL": "Le fournisseur n’a pas communiqué d’adresse e-mail, la boîte mail n’a donc pas pu être liée.",
+      "FEATURE_DISABLED": "Les connexions de boîtes mail sont désactivées pour votre compte.",
+      "SESSION_EXPIRED": "Votre session a expiré avant la fin de la connexion. Veuillez réessayer.",
+      "INSUFFICIENT_CAPABILITY": "Vous n’avez pas l’autorisation de connecter une boîte mail.",
+      "OAUTH_FAILED": "La boîte mail n’a pas pu être connectée. Veuillez réessayer."
     }
   },
   "mfa": {

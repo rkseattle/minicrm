@@ -48,6 +48,11 @@ function doc(relative: string): string {
  * key that renders it. Add a row when a walkthrough starts quoting a new control.
  */
 const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
+  { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.connectGoogle' },
+  // The key says Microsoft and the label says Outlook — exactly the drift this pins.
+  { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.connectMicrosoft' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.connectImap' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.disconnectButton' },
   { page: 'docs/user-guide/reports.md', localeKey: 'reports.activityVolume.dateRangeLabel' },
   { page: 'docs/user-guide/contacts.md', localeKey: 'gdpr.sectionTitle' },
   { page: 'docs/user-guide/contacts.md', localeKey: 'gdpr.eraseButton' },

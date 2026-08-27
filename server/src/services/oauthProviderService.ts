@@ -82,6 +82,30 @@ const GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 /** Bound on the revocation call, which runs post-commit and must not hang a request. */
 const REVOKE_TIMEOUT_MS = 5_000;
 
+/** Bound on a token refresh, which runs while its account row is locked. */
+const REFRESH_TIMEOUT_MS = 10_000;
+
+/**
+ * Rejects if a promise outlives its budget.
+ *
+ * openid-client takes no AbortSignal on the grant helpers, so the request itself cannot
+ * be cancelled — this bounds how long a caller waits, which is what matters when the
+ * caller is holding a lock.
+ */
+async function withTimeout<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export function getOAuthCallbackUrl(provider: OAuthProvider): string {
   return `${CALLBACK_BASE_URL}/api/v1/connected-accounts/oauth/${provider}/callback`;
 }
@@ -196,13 +220,23 @@ export interface RefreshedTokens {
   expiresAt: number | null;
 }
 
-/** Exchanges a refresh token for a new access token. */
+/**
+ * Exchanges a refresh token for a new access token.
+ *
+ * Bounded, because the caller holds a row lock across this call — the lock is what stops
+ * two refreshes from both spending a rotating refresh token, so it cannot be released
+ * early, which makes an unbounded provider hang a held lock.
+ */
 export async function refreshAccessToken(
   provider: OAuthProvider,
   refreshToken: string,
 ): Promise<RefreshedTokens> {
   const config = await configurationFor(provider);
-  const tokens = await refreshTokenGrant(config, refreshToken);
+  const tokens = await withTimeout(
+    refreshTokenGrant(config, refreshToken),
+    REFRESH_TIMEOUT_MS,
+    'oauth token refresh',
+  );
 
   return {
     accessToken: tokens.access_token,
