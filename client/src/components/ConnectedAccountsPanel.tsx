@@ -22,10 +22,14 @@ import {
   deleteConnectedAccount,
   getConnectedAccounts,
   oauthStartUrl,
+  testConnectedAccount,
 } from '@/api/connectedAccounts.js';
+import { Capability } from '@shared/schemas/capabilitySchema.js';
+
 import { Badge } from '@/components/ui/Badge.js';
 import { Button } from '@/components/ui/Button.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { usePermissions } from '@/hooks/usePermissions.js';
 
 /** Default IMAPS port, which is what almost every provider expects. */
 const DEFAULT_IMAP_PORT = 993;
@@ -40,6 +44,11 @@ export default function ConnectedAccountsPanel() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { enabled: emailSyncEnabled } = useFeatureFlag('email_sync');
+  const { can } = usePermissions();
+  // Without this a viewer sees the whole panel and every control fails: the OAuth links
+  // bounce back with INSUFFICIENT_CAPABILITY and the IMAP form reports a credentials
+  // problem, which is a lie — the credentials were fine.
+  const canManage = can(Capability.ConnectedAccountsManage);
 
   const [searchParams, setSearchParams] = useSearchParams();
   // The OAuth legs are full page navigations, so their only channel back is the URL.
@@ -60,7 +69,7 @@ export default function ConnectedAccountsPanel() {
   const { data, isLoading, isError } = useQuery({
     queryKey: CONNECTED_ACCOUNTS_QUERY_KEY,
     queryFn: getConnectedAccounts,
-    enabled: emailSyncEnabled,
+    enabled: emailSyncEnabled && canManage,
   });
 
   const connectMutation = useMutation({
@@ -81,6 +90,12 @@ export default function ConnectedAccountsPanel() {
     onError: () => setFormError(t('connectedAccounts.connectError')),
   });
 
+  const testMutation = useMutation({
+    mutationFn: testConnectedAccount,
+    // The row's status is what the server just recorded, so re-read rather than guess.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: CONNECTED_ACCOUNTS_QUERY_KEY }),
+  });
+
   const disconnectMutation = useMutation({
     mutationFn: deleteConnectedAccount,
     onSuccess: () => {
@@ -89,7 +104,7 @@ export default function ConnectedAccountsPanel() {
     },
   });
 
-  if (!emailSyncEnabled) return null;
+  if (!emailSyncEnabled || !canManage) return null;
 
   const accounts: ConnectedAccountResponse[] = data?.accounts ?? [];
 
@@ -205,15 +220,27 @@ export default function ConnectedAccountsPanel() {
                   </Button>
                 </div>
               ) : (
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  data-testid={`connected-account-disconnect-button-${account.id}`}
-                  onClick={() => setConfirmingDisconnectId(account.id)}
-                >
-                  {t('connectedAccounts.disconnectButton')}
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid={`connected-account-test-button-${account.id}`}
+                    disabled={testMutation.isPending}
+                    onClick={() => testMutation.mutate(account.id)}
+                  >
+                    {t('connectedAccounts.testButton')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    data-testid={`connected-account-disconnect-button-${account.id}`}
+                    onClick={() => setConfirmingDisconnectId(account.id)}
+                  >
+                    {t('connectedAccounts.disconnectButton')}
+                  </Button>
+                </>
               )}
             </li>
           ))}

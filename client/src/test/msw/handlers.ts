@@ -292,6 +292,7 @@ export const ROLE_CAPABILITIES: Record<string, string[]> = {
     'sequences:view',
     'sequences:enroll',
     'dashboards:view',
+    'connected_accounts:manage',
   ],
   manager: [
     'reports:view',
@@ -301,8 +302,15 @@ export const ROLE_CAPABILITIES: Record<string, string[]> = {
     'sequences:view',
     'sequences:enroll',
     'dashboards:view',
+    'connected_accounts:manage',
   ],
-  rep: ['reports:view', 'sequences:view', 'sequences:enroll', 'dashboards:view'],
+  rep: [
+    'reports:view',
+    'sequences:view',
+    'sequences:enroll',
+    'dashboards:view',
+    'connected_accounts:manage',
+  ],
   viewer: ['reports:view', 'dashboards:view'],
   service_account: [],
 };

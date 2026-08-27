@@ -1868,7 +1868,8 @@
       "INSUFFICIENT_CAPABILITY": "Vous n’avez pas l’autorisation de connecter une boîte mail.",
       "OAUTH_FAILED": "La boîte mail n’a pas pu être connectée. Veuillez réessayer."
     },
-    "secureLabel": "Utiliser TLS à la connexion (décochez pour les serveurs utilisant STARTTLS sur le port 143)"
+    "secureLabel": "Utiliser TLS à la connexion (décochez pour les serveurs utilisant STARTTLS sur le port 143)",
+    "testButton": "Tester"
   },
   "mfa": {
     "sectionTitle": "Authentification à deux facteurs",
@@ -2415,7 +2416,8 @@
       "audit_log": "Journal d'audit",
       "api": "API",
       "sequences": "Séquences",
-      "dashboards": "Tableaux de bord"
+      "dashboards": "Tableaux de bord",
+      "connected_accounts": "Comptes connectés"
     },
     "capabilityActions": {
       "view": "Voir",

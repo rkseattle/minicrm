@@ -1868,7 +1868,8 @@
       "INSUFFICIENT_CAPABILITY": "Sie haben keine Berechtigung, ein Postfach zu verbinden.",
       "OAUTH_FAILED": "Das Postfach konnte nicht verbunden werden. Bitte versuchen Sie es erneut."
     },
-    "secureLabel": "TLS beim Verbinden verwenden (abwählen für Server mit STARTTLS auf Port 143)"
+    "secureLabel": "TLS beim Verbinden verwenden (abwählen für Server mit STARTTLS auf Port 143)",
+    "testButton": "Testen"
   },
   "mfa": {
     "sectionTitle": "Zwei-Faktor-Authentifizierung",
@@ -2415,7 +2416,8 @@
       "audit_log": "Audit-Protokoll",
       "api": "API",
       "sequences": "Sequenzen",
-      "dashboards": "Dashboards"
+      "dashboards": "Dashboards",
+      "connected_accounts": "Verbundene Konten"
     },
     "capabilityActions": {
       "view": "Anzeigen",

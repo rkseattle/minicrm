@@ -77,8 +77,10 @@ export async function testImapConnection(
   candidate: ImapConnectionCandidate,
 ): Promise<ImapConnectionResult> {
   // The host is attacker-chosen on every call, so without this the endpoint is a port
-  // scanner for loopback, RFC 1918, and cloud metadata. Resolved here rather than at
-  // validation time so a rebound name cannot slip between the check and the connect.
+  // scanner for loopback, RFC 1918, and cloud metadata. Resolved here rather than against
+  // the submitted form value, so the check runs on what the name resolves to now.
+  // imapflow then resolves independently, so this narrows the rebinding window without
+  // closing it — the same limitation every fetch-based caller in this repo has.
   try {
     await assertHostnameIsSafe(candidate.host);
   } catch (err) {

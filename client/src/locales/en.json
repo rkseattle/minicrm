@@ -1868,7 +1868,8 @@
       "INSUFFICIENT_CAPABILITY": "You do not have permission to connect a mailbox.",
       "OAUTH_FAILED": "The mailbox could not be connected. Please try again."
     },
-    "secureLabel": "Use TLS on connect (uncheck for servers that use STARTTLS on port 143)"
+    "secureLabel": "Use TLS on connect (uncheck for servers that use STARTTLS on port 143)",
+    "testButton": "Test"
   },
   "mfa": {
     "sectionTitle": "Two-Factor Authentication",
@@ -2415,7 +2416,8 @@
       "audit_log": "Audit Log",
       "api": "API",
       "sequences": "Sequences",
-      "dashboards": "Dashboards"
+      "dashboards": "Dashboards",
+      "connected_accounts": "Connected accounts"
     },
     "capabilityActions": {
       "view": "View",

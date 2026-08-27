@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
+import rateLimit from 'express-rate-limit';
 
 import {
   createConnectedAccountHandler,
@@ -21,8 +22,36 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { requireCapability } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { profileRedirectUrl } from '../utils/oauthRedirect.js';
+import { isAuthBypassEnv } from '../utils/nodeEnv.js';
 
 const router = Router();
+
+const isE2E = isAuthBypassEnv() && (process.env.NODE_ENV === 'test' || process.env.E2E === 'true');
+const shouldSkip = (): boolean => isE2E && process.env.TEST_RATE_LIMIT !== 'true';
+
+/**
+ * 20 outbound dial attempts per user per 15 minutes.
+ *
+ * Both routes below open a TCP/TLS connection to a host the caller chooses. The SSRF
+ * guard keeps that off the internal network, but nothing otherwise stops an authenticated
+ * rep using this instance to probe or flood *external* hosts at request rate. Keyed by
+ * user rather than IP, since every caller here is authenticated and a shared office IP
+ * would otherwise throttle a whole team.
+ */
+const outboundDialLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => req.user?.id ?? req.ip ?? 'anonymous',
+  skip: shouldSkip,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: {
+      code: 'RATE_LIMITED',
+      message: 'Too many connection attempts, please try again later.',
+    },
+  },
+});
 
 /**
  * Wraps a guard so its JSON rejection becomes a redirect to the profile page.
@@ -221,7 +250,7 @@ router.get('/', asyncHandler(listConnectedAccountsHandler));
  *       409:
  *         description: That mailbox is already connected to this account
  */
-router.post('/', asyncHandler(createConnectedAccountHandler));
+router.post('/', outboundDialLimiter, asyncHandler(createConnectedAccountHandler));
 
 /**
  * @openapi
@@ -282,6 +311,6 @@ router.delete('/:id', asyncHandler(deleteConnectedAccountHandler));
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.post('/:id/test', asyncHandler(testConnectedAccountHandler));
+router.post('/:id/test', outboundDialLimiter, asyncHandler(testConnectedAccountHandler));
 
 export default router;

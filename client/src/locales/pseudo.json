@@ -1868,7 +1868,8 @@
       "INSUFFICIENT_CAPABILITY": "[Yöü dö ñöt hävë përmïŝŝïöñ tö ĉöññëĉt ä mäïlböx.~~~~~~~~~~~~~~~]",
       "OAUTH_FAILED": "[Thë mäïlböx ĉöüld ñöt bë ĉöññëĉtëd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~]"
     },
-    "secureLabel": "[Üŝë TLŜ öñ ĉöññëĉt (üñĉhëĉk för ŝërvërŝ thät üŝë ŜTÄRTTLŜ öñ pört 143)~~~~~~~~~~~~~~~~~~~~~]"
+    "secureLabel": "[Üŝë TLŜ öñ ĉöññëĉt (üñĉhëĉk för ŝërvërŝ thät üŝë ŜTÄRTTLŜ öñ pört 143)~~~~~~~~~~~~~~~~~~~~~]",
+    "testButton": "[Tëŝt~~]"
   },
   "mfa": {
     "sectionTitle": "[Twö-Fäĉtör Äüthëñtïĉätïöñ~~~~~~~~]",
@@ -2415,7 +2416,8 @@
       "audit_log": "[Äüdït Lög~~~]",
       "api": "[ÄPÏ~]",
       "sequences": "[Ŝëqüëñĉëŝ~~~]",
-      "dashboards": "[Däŝhböärdŝ~~~]"
+      "dashboards": "[Däŝhböärdŝ~~~]",
+      "connected_accounts": "[Ĉöññëĉtëd äĉĉöüñtŝ~~~~~~]"
     },
     "capabilityActions": {
       "view": "[Vïëw~~]",

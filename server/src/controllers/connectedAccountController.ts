@@ -248,6 +248,8 @@ export async function oauthCallbackHandler(req: Request, res: Response): Promise
   }
 
   try {
+    // Safe despite qs yielding string | string[]: an array stringifies to "a,b", and
+    // openid-client re-validates state and code against the values we stored anyway.
     const callbackUrl = `${getOAuthCallbackUrl(providerParse.data)}?${new URLSearchParams(
       req.query as Record<string, string>,
     ).toString()}`;

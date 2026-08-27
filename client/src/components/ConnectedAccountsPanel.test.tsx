@@ -13,6 +13,7 @@ import { describe, it, expect } from 'vitest';
 import type { ConnectedAccountResponse } from '@shared/schemas/connectedAccountSchema.js';
 
 import { renderWithProviders } from '@/test/renderWithProviders.js';
+import { ADMIN_USER } from '@/test/msw/handlers.js';
 import { server } from '@/test/setup.js';
 
 import ConnectedAccountsPanel from './ConnectedAccountsPanel.js';
@@ -250,5 +251,41 @@ describe('ConnectedAccountsPanel', () => {
 
     await screen.findByTestId('connected-accounts-empty');
     expect(screen.queryByTestId('connected-accounts-connect-result')).not.toBeInTheDocument();
+  });
+
+  it('renders nothing for a role without connected_accounts:manage', async () => {
+    enableEmailSync();
+    respondWithAccounts([ACCOUNT]);
+    // A viewer: the flag is on, but migration 170 never grants them the capability.
+    server.use(
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json({ user: { ...ADMIN_USER, role: 'viewer' }, capabilities: [] }),
+      ),
+    );
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('connected-accounts-section')).not.toBeInTheDocument();
+    });
+  });
+
+  it('re-tests a mailbox and refreshes its status', async () => {
+    enableEmailSync();
+    respondWithAccounts([{ ...ACCOUNT, status: 'error' }]);
+
+    let testCalls = 0;
+    server.use(
+      http.post(`/api/v1/connected-accounts/${ACCOUNT_ID}/test`, () => {
+        testCalls += 1;
+        return HttpResponse.json({ success: true });
+      }),
+    );
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await userEvent.click(await screen.findByTestId(`connected-account-test-button-${ACCOUNT_ID}`));
+
+    await waitFor(() => expect(testCalls).toBe(1));
   });
 });
