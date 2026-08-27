@@ -86,6 +86,18 @@ const REVOKE_TIMEOUT_MS = 5_000;
 const REFRESH_TIMEOUT_MS = 10_000;
 
 /**
+ * Bound on the authorization-code exchange.
+ *
+ * The callback consumes its single-use state row before reaching this call, so a stall
+ * here is not merely a slow request: the user's retry finds no state and has to restart
+ * the whole flow. Failing fast turns an indefinite hang into one recoverable error.
+ */
+const CODE_EXCHANGE_TIMEOUT_MS = 15_000;
+
+/** Bound on provider metadata discovery, which every OAuth path performs first. */
+const DISCOVERY_TIMEOUT_MS = 10_000;
+
+/**
  * Rejects if a promise outlives its budget.
  *
  * openid-client takes no AbortSignal on the grant helpers, so the request itself cannot
@@ -134,7 +146,13 @@ async function configurationFor(
       code: 'PROVIDER_NOT_CONFIGURED',
     });
   }
-  return discovery(new URL(definition.issuer), clientId, undefined, ClientSecretPost(clientSecret));
+  // Every OAuth path starts here — discovery fetches the provider's .well-known
+  // document, so an unbounded stall would hang the start leg as readily as the callback.
+  return withTimeout(
+    discovery(new URL(definition.issuer), clientId, undefined, ClientSecretPost(clientSecret)),
+    DISCOVERY_TIMEOUT_MS,
+    'oauth provider discovery',
+  );
 }
 
 /**
@@ -189,10 +207,14 @@ export async function exchangeAuthorizationCode(
 ): Promise<AuthorizationResult> {
   const config = await configurationFor(provider);
 
-  const tokens = await authorizationCodeGrant(config, new URL(callbackUrl), {
-    pkceCodeVerifier: pkceVerifier,
-    expectedState,
-  });
+  const tokens = await withTimeout(
+    authorizationCodeGrant(config, new URL(callbackUrl), {
+      pkceCodeVerifier: pkceVerifier,
+      expectedState,
+    }),
+    CODE_EXCHANGE_TIMEOUT_MS,
+    'oauth code exchange',
+  );
 
   const claims = tokens.claims();
   const emailAddress = typeof claims?.email === 'string' ? claims.email : null;
