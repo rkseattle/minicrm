@@ -139,6 +139,17 @@ describe('resolveImpactedSpecs', () => {
     expect(result.specFiles.length).toBeGreaterThan(0);
   });
 
+  // Every locale change in the last 60 commits also touched a functional:* class,
+  // so a short-circuit there means the directory scope never fires for a real diff.
+  it('still resolves narrower scopes when another path is functional:*', () => {
+    const result = resolveImpactedSpecs(
+      ['client/src/locales/en.json', 'server/src/app.ts'],
+      repoRoot(),
+    );
+    expect(result.fullSuite).toBe(true);
+    expect(result.specFiles.some((file) => file.includes('/functional/i18n/'))).toBe(true);
+  });
+
   it('resolves nothing for a path the manifest declares uncovered', () => {
     const result = resolveImpactedSpecs(['docs/dev/coverage.md'], repoRoot());
     expect(result.fullSuite).toBe(false);

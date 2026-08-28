@@ -257,11 +257,11 @@ export function resolveImpactedSpecs(
     }
   }
 
-  if (matchedScopes.includes(ALL_FUNCTIONAL_SCOPE)) {
-    return { fullSuite: true, specFiles: Array.from(selected).sort(), matchedScopes };
-  }
-
-  for (const scope of matchedScopes) {
+  // Directory scopes resolve even when another changed path answered
+  // functional:*. Returning early here dropped them: every locale change in the
+  // last 60 commits also touched a functional:* class, so the narrower answer
+  // would never have reached a real diff.
+  for (const scope of matchedScopes.filter((scope) => scope !== ALL_FUNCTIONAL_SCOPE)) {
     const matching = specFiles.filter((specFile) => directoryScopeOf(specFile) === scope);
     if (matching.length === 0) {
       throw new Error(
@@ -272,7 +272,11 @@ export function resolveImpactedSpecs(
     for (const specFile of matching) selected.add(specFile);
   }
 
-  return { fullSuite: false, specFiles: Array.from(selected).sort(), matchedScopes };
+  return {
+    fullSuite: matchedScopes.includes(ALL_FUNCTIONAL_SCOPE),
+    specFiles: Array.from(selected).sort(),
+    matchedScopes,
+  };
 }
 
 /**
