@@ -1,0 +1,5 @@
+import { test } from '@apps/minicrm/fixtures.js';
+
+const details = { annotation: [{ type: 'impacts', description: 'db/migrations/**' }] };
+
+test('F4: options passed through a variable', details, async () => {});

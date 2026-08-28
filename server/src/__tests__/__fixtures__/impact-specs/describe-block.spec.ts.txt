@@ -1,0 +1,9 @@
+import { test } from '@apps/minicrm/fixtures.js';
+
+test.describe(
+  'cascade delete',
+  { annotation: { type: 'impacts', description: 'shared/schemas/**' } },
+  () => {
+    test('inner', async () => {});
+  },
+);

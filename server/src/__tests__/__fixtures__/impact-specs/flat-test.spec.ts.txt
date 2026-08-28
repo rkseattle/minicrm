@@ -1,0 +1,9 @@
+import { test } from '@apps/minicrm/fixtures.js';
+
+test(
+  'F1: a flat test with tag and annotation',
+  { tag: ['@functional'], annotation: [{ type: 'impacts', description: 'db/migrations/**' }] },
+  async ({ restClient }) => {
+    void restClient;
+  },
+);
