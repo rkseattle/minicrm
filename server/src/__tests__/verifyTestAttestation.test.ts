@@ -1032,6 +1032,7 @@ describe('verify-test-attestation.ts', () => {
           failedTests: [],
           skippedTests: [],
           missingRequiredFiles: [],
+          unreconcilableRequiredFiles: [],
           // Null, not a cause: this return happens before the selection is read
           // at all, so there is nothing to report about it.
           selectionUnreadableReason: null,
@@ -1407,6 +1408,26 @@ describe('verify-test-attestation.ts', () => {
         expect(result.missingRequiredFiles).toEqual(['never-ran.spec.ts']);
       });
 
+      // A page-less spec emits no coverage dump, so it can never appear in the
+      // ran-files set however well it ran. Reported rather than counted, and
+      // NOT as a reason — a reason would fail every push selecting one, which
+      // is the block this exclusion removes.
+      it('reports an unreconcilable required file instead of failing on it', async () => {
+        attestedDumps('ran.spec.ts');
+        await writeResults(PASSING_XML);
+        const pageLess = 'qa/e2e/tests/apps/minicrm/functional/auth/email-delivery.spec.ts';
+        const selectionPath = await writeSelection(
+          JSON.stringify({ mode: 'targeted', specFiles: ['ran.spec.ts', pageLess] }),
+        );
+
+        const result = await attest(attestArgs({ selectionPath }));
+
+        expect(result.reasons).toEqual([]);
+        expect(result.passed).toBe(true);
+        expect(result.missingRequiredFiles).toEqual([]);
+        expect(result.unreconcilableRequiredFiles).toEqual([pageLess]);
+      });
+
       // The documented rule: running MORE than required passes. A superset is not
       // a shortfall, and treating it as one would fail every run that batched
       // extra specs alongside the selection.
@@ -1700,6 +1721,7 @@ describe('verify-test-attestation.ts', () => {
       return {
         passed: false,
         reasons: [],
+        unreconcilableRequiredFiles: [],
         totalTests: 40,
         parsedTestCount: 1,
         failedTests: [{ classname: 'a.spec.ts', name: 'a test', message: 'boom' }],

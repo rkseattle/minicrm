@@ -245,6 +245,18 @@ export type AttestationFailureReason =
 export interface AttestationResult {
   passed: boolean;
   reasons: AttestationFailureReason[];
+  /**
+   * Required files excluded from the shortfall because nothing could have
+   * reconciled them — no planned invocation selects them, or they emit no
+   * coverage dump (see shared/testing/specRunnability.ts).
+   *
+   * Deliberately NOT an AttestationFailureReason: `passed` is
+   * `reasons.length === 0`, so adding one would fail every push that selects a
+   * page-less spec, which is the bug this exclusion exists to fix. Reported so
+   * the gate states its own blind spot in its output rather than only in a
+   * source comment — a silent exclusion is indistinguishable from a clean run.
+   */
+  unreconcilableRequiredFiles: string[];
   /** The reporter's own declared count, from <testsuites tests="N"> — (test, project) pairs. */
   totalTests: number;
   /** How many rows this parser actually recovered. Diverging from totalTests means rows were dropped, which is what 'results-file-unparseable' reports. */
@@ -358,6 +370,7 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
     return {
       passed: false,
       reasons: ['results-file-missing'],
+      unreconcilableRequiredFiles: [],
       totalTests: 0,
       parsedTestCount: 0,
       failedTests: [],
@@ -469,10 +482,14 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
   // planned invocation selects, or that emits no coverage dump, can never appear
   // in ranFiles however well it ran. Counting those as missing fails a push on
   // work nothing could have done — see specRunnability.ts for both cases.
-  const missingRequiredFiles =
-    selection.kind === 'files'
-      ? selection.files.filter((f) => !ranFiles.has(f) && isReconcilable(f, readSpecSource(f)))
-      : [];
+  const unrunRequiredFiles =
+    selection.kind === 'files' ? selection.files.filter((f) => !ranFiles.has(f)) : [];
+  const missingRequiredFiles = unrunRequiredFiles.filter((f) =>
+    isReconcilable(f, readSpecSource(f)),
+  );
+  const unreconcilableRequiredFiles = unrunRequiredFiles.filter(
+    (f) => !isReconcilable(f, readSpecSource(f)),
+  );
   if (missingRequiredFiles.length > 0) {
     reasons.push('missing-required-tests');
   }
@@ -485,6 +502,7 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
     failedTests,
     skippedTests,
     missingRequiredFiles,
+    unreconcilableRequiredFiles,
     selectionUnreadableReason: selection.kind === 'unreadable' ? selection.why : null,
     ranFileCount: ranFiles.size,
   };
@@ -607,6 +625,17 @@ async function main(): Promise<void> {
   try {
     const result = await verifyAttestation(args);
     process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    // Printed on BOTH paths, and before the verdict: the exclusion matters most
+    // on a pass, which is the run nobody reads twice.
+    if (result.unreconcilableRequiredFiles.length > 0) {
+      process.stderr.write(
+        `[verify-test-attestation] NOTE: ${result.unreconcilableRequiredFiles.length} required file(s) ` +
+          'could not be reconciled and were excluded from the shortfall — no planned invocation ' +
+          'selects them, or they emit no coverage dump:\n' +
+          result.unreconcilableRequiredFiles.map((f) => `  - ${f}`).join('\n') +
+          '\n',
+      );
+    }
     if (!result.passed) {
       process.stderr.write(`[verify-test-attestation] FAILED:\n${formatFailureOutput(result)}\n`);
       process.exitCode = 1;
