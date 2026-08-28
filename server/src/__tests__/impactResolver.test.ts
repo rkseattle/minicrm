@@ -122,6 +122,18 @@ describe('resolveImpactedSpecs', () => {
     expect(result.matchedScopes).toEqual([]);
   });
 
+  it('resolves a shared-schema change to the scope the manifest declares', () => {
+    const result = resolveImpactedSpecs(['shared/schemas/dealSchema.ts'], repoRoot());
+    expect(result.matchedScopes).toEqual(['functional:*']);
+    expect(result.fullSuite).toBe(true);
+  });
+
+  it('throws rather than silently selecting nothing for an unmapped path', () => {
+    expect(() => resolveImpactedSpecs(['brandnewtree/thing.ts'], repoRoot())).toThrow(
+      /No impact-manifest entry covers/,
+    );
+  });
+
   it('deduplicates a spec reachable from two changed paths', () => {
     const result = resolveImpactedSpecs(
       ['client/src/locales/en.json', 'client/src/locales/fr.json'],
@@ -133,6 +145,33 @@ describe('resolveImpactedSpecs', () => {
 
 // Built on a temporary tree rather than the real one: with no stale annotation in
 // the repo, an assertion over the real tree passes even if the matcher is deleted.
+// The three cases the ticket names, asserted at the resolver boundary
+// select-tests.ts calls. A locale-only diff selected nothing before this.
+describe("the ticket's motivating diffs", () => {
+  it('resolves a locale-only diff to the i18n specs alone', () => {
+    const result = resolveImpactedSpecs(['client/src/locales/en.json'], repoRoot());
+    expect(result.fullSuite).toBe(false);
+    expect(result.specFiles.every((file) => file.includes('/functional/i18n/'))).toBe(true);
+    expect(result.specFiles.length).toBeGreaterThan(0);
+  });
+
+  it('resolves a shared-schema diff to its declared scope', () => {
+    const result = resolveImpactedSpecs(['shared/schemas/dealSchema.ts'], repoRoot());
+    expect(result.fullSuite).toBe(true);
+  });
+
+  it('keeps a migration diff on the full suite', () => {
+    const result = resolveImpactedSpecs(['db/migrations/999_add_widget.js'], repoRoot());
+    expect(result.fullSuite).toBe(true);
+  });
+
+  it('throws rather than silently selecting nothing for an unmapped path', () => {
+    expect(() => resolveImpactedSpecs(['brandnewtree/thing.ts'], repoRoot())).toThrow(
+      /No impact-manifest entry covers/,
+    );
+  });
+});
+
 describe('findStaleImpactsGlobs', () => {
   let tree: string;
 

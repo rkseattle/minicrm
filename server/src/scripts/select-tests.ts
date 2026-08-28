@@ -53,6 +53,7 @@ import { resolveChangedUnits } from '../coverageAgent/testSelection/changeUnitRe
 import { selectTestsForChangedUnits } from '../coverageAgent/testSelection/testSelectionService.js';
 import { resolveDependencyWideningForFiles } from '../coverageAgent/testSelection/dependencyGraphService.js';
 import { globToRegExp } from '../coverageAgent/testSelection/specGlob.js';
+import { resolveImpactedSpecs } from '../coverageAgent/testSelection/impactResolver.js';
 import {
   applySafetyNetPolicy,
   type FinalSelectedTest,
@@ -90,6 +91,26 @@ export interface SelectTestsResult {
   /** Baseline/selected files whose owning test could not be resolved to a spec file (e.g. attributed before migration 003, or never attributed at all) — surfaced so callers can decide to widen rather than silently under-select. */
   unresolvedTestIds: string[];
   fallbackReasons: FinalSelectionResult['fallbackReasons'];
+  /**
+   * Spec files TIA tier 2 derived from the impact manifest, spec-declared
+   * `impacts` annotations, and the directory convention.
+   *
+   * Reported, not yet required: every specFiles entry is reconciled against
+   * what actually ran (verify-test-attestation.ts), and a spec that emits no
+   * coverage dump would fail that check despite passing. Kept separate until
+   * reconciliation understands which specs are runnable.
+   */
+  scopeResolvedSpecFiles: string[];
+  /**
+   * Why impact resolution produced nothing, when it failed rather than finding
+   * nothing to resolve.
+   *
+   * A machine-readable field, not just a rationale line: an unmapped path class
+   * and a clean diff both yield an empty scopeResolvedSpecFiles, and a consumer
+   * that cannot tell them apart is the silent-empty-selection failure again.
+   * Null when resolution succeeded.
+   */
+  impactResolutionError: string | null;
   rationale: string[];
   baseSha: string;
   headSha: string;
@@ -271,10 +292,21 @@ async function resolveTestFiles(
   return { specFiles: Array.from(specFiles), unresolvedTestIds };
 }
 
-function buildRationale(result: FinalSelectionResult, changedUnitCount: number): string[] {
+export interface ImpactRationaleInput {
+  specFiles: string[];
+  fullSuite: boolean;
+  error: string | null;
+}
+
+function buildRationale(
+  result: FinalSelectionResult,
+  changedUnitCount: number,
+  impactResolution: ImpactRationaleInput,
+): string[] {
   const lines: string[] = [];
   if (result.mode === 'full-suite') {
     lines.push(`Full-suite fallback: ${result.fallbackReasons.join(', ') || 'none reported'}`);
+    lines.push(...impactRationale(impactResolution));
     return lines;
   }
   lines.push(`Targeted selection over ${changedUnitCount} changed unit(s).`);
@@ -289,7 +321,53 @@ function buildRationale(result: FinalSelectionResult, changedUnitCount: number):
   if (result.widenedTestScopes.length > 0) {
     lines.push(`Dependency-graph widened scopes: ${result.widenedTestScopes.join(', ')}`);
   }
+  lines.push(...impactRationale(impactResolution));
   return lines;
+}
+
+/** Reports what tier 2 resolved, including the failure that made it resolve nothing. Exported for direct unit testing. */
+export function impactRationale(impactResolution: ImpactRationaleInput): string[] {
+  if (impactResolution.error !== null) {
+    return [`Impact resolution FAILED (selecting nothing from it): ${impactResolution.error}`];
+  }
+  if (impactResolution.fullSuite) {
+    return ['Impact resolution: full functional suite.'];
+  }
+  if (impactResolution.specFiles.length === 0) {
+    return [];
+  }
+  return [
+    `Impact-resolved ${impactResolution.specFiles.length} spec file(s) (reported, not yet required): ${impactResolution.specFiles.join(', ')}`,
+  ];
+}
+
+/**
+ * Resolves tier-2 impacts for a diff, degrading to "nothing resolved" on a
+ * resolver error rather than aborting selection.
+ *
+ * The resolver throws on an unmapped path, an undeclared scope, or a scope with
+ * no spec file — each a real defect. Selection does not die on one, because it
+ * fronts every developer's push and a stale manifest entry must not block one;
+ * the reason is carried out on impactResolutionError instead, where a CI guard
+ * can fail on it without also blocking local work.
+ */
+function resolveImpactedSpecsForDiff(
+  fileDiffs: readonly { filePath: string }[],
+  cwd: string,
+): { specFiles: string[]; fullSuite: boolean; error: string | null } {
+  try {
+    const resolution = resolveImpactedSpecs(
+      fileDiffs.map((diff) => diff.filePath),
+      cwd,
+    );
+    return { specFiles: resolution.specFiles, fullSuite: resolution.fullSuite, error: null };
+  } catch (err) {
+    return {
+      specFiles: [],
+      fullSuite: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 }
 
 export async function selectTests(
@@ -310,6 +388,11 @@ export async function selectTests(
   const dependencyWideningResults = resolveDependencyWideningForFiles(
     nonSourceFileChanges.map((f) => f.filePath),
   );
+
+  // Over every changed path, not just nonSourceFileChanges: diffParser routes a
+  // path to one bucket or the other, and a .ts never reaches the non-source one.
+  // The dependency rules keep their own input — they answer alwaysWiden, not this.
+  const impactResolution = resolveImpactedSpecsForDiff(fileDiffs, cwd);
 
   const baselineFiles = resolveBaselineFiles(cwd);
   // Baseline tests carry no real testId yet (they're resolved as files, not
@@ -361,7 +444,9 @@ export async function selectTests(
       specFiles: [],
       unresolvedTestIds: [],
       fallbackReasons: selectionResult.fallbackReasons,
-      rationale: buildRationale(selectionResult, changedUnits.length),
+      scopeResolvedSpecFiles: impactResolution.specFiles,
+      impactResolutionError: impactResolution.error,
+      rationale: buildRationale(selectionResult, changedUnits.length, impactResolution),
       baseSha,
       headSha,
     };
@@ -387,7 +472,9 @@ export async function selectTests(
     specFiles: Array.from(new Set([...baselineSpecFiles, ...mappedSpecFiles])),
     unresolvedTestIds,
     fallbackReasons: [],
-    rationale: buildRationale(selectionResult, changedUnits.length),
+    scopeResolvedSpecFiles: impactResolution.specFiles,
+    impactResolutionError: impactResolution.error,
+    rationale: buildRationale(selectionResult, changedUnits.length, impactResolution),
     baseSha,
     headSha,
   };
