@@ -426,10 +426,14 @@ jobs:
             # edit to any of them would not re-run the guard — the
             # bidirectional-invariant rule in CLAUDE.md. Deliberately not folded
             # into `qa`, which gates the whole E2E matrix. (MINCRM-706)
+            # The canonical declaration now lives in shared/testing/, which no
+            # other entry here matches — without it the guard is silent on an
+            # edit to the very constant it pins.
             grep-invert-parity:
               - '.github/workflows/ci.yml'
               - '.claude/gates/e2e-run.md'
               - 'docs/operations.md'
+              - 'shared/testing/specRunnability.ts'
               - 'qa/scripts/targeted-run-plan.ts'
               - 'qa/scripts/check-grep-invert-parity.sh'
             ai:
@@ -985,9 +989,9 @@ jobs:
               SCOPED=$(jq '.scopeResolvedSpecFiles | length' /tmp/tia-selection.json)
               if [ "$SCOPED" -gt 0 ]; then
                 echo ""
-                echo "<details><summary>$SCOPED impact-resolved spec file(s) — reported, not yet run</summary>"
+                echo "<details><summary>$SCOPED impact-resolved spec file(s)</summary>"
                 echo ""
-                echo "_Tier 2 derived these from the impact manifest, \`impacts\` annotations, and the directory convention. They are not part of \`specFiles\` until attestation reconciles which specs are runnable._"
+                echo "_Tier 2 derived these from the impact manifest, \`impacts\` annotations, and the directory convention, and they are unioned into the selection above._"
                 echo ""
                 jq -r '.scopeResolvedSpecFiles[] | "- `" + . + "`"' /tmp/tia-selection.json
                 echo ""

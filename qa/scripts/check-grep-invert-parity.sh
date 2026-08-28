@@ -57,7 +57,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # The one true value, defined in TypeScript and shared by every local caller.
-CONSTANT_FILE="qa/scripts/targeted-run-plan.ts"
+CONSTANT_FILE="shared/testing/specRunnability.ts"
 CONSTANT_NAME="NON_SERIAL_GREP_INVERT"
 
 # `|| true` is load-bearing under `set -euo pipefail`: a non-matching grep exits

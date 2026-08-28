@@ -1217,6 +1217,13 @@ rather than one of the reasons below, so if you see that string, read the stderr
   with `selection-file-unreadable` — an unreadable selection yields no requirement list to
   fall short of.
 
+  A required file is only counted when it could have run at all. Two classes are excluded,
+  both from `shared/testing/specRunnability.ts`: a spec the non-serial invocation's
+  `--grep-invert` excludes by path, and a spec that never destructures Playwright's `page`
+  fixture. Coverage dumps are recorded inside that fixture, so a page-less spec emits none
+  and can never appear in the ran-files set however well it passed — counting it would fail
+  a push on work nothing could have done.
+
 This list must name every member of `AttestationFailureReason`, and that is **enforced**,
 not left to reviewers: `verifyTestAttestation.test.ts` reads this section and fails if any
 reason exported from `ATTESTATION_FAILURE_REASONS` is missing a backticked entry above.

@@ -60,7 +60,12 @@
  */
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
-import { resolve as resolvePath } from 'node:path';
+import { dirname, resolve as resolvePath } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  UNREADABLE_SPEC_FALLBACK_SOURCE,
+  isReconcilable,
+} from '@minicrm/shared/testing/specRunnability.js';
 import { findCoverageSessionDumpsByBuildSha } from '../services/coverageSessionService.js';
 import coverageDb from '../coverageDb.js';
 
@@ -327,6 +332,25 @@ export function readSelectionFiles(selectionPath: string | undefined): Selection
   };
 }
 
+/** Repo root, derived from this module rather than a CLI flag: selection's spec paths are already repo-root-relative. */
+const REPO_ROOT = resolvePath(dirname(fileURLToPath(import.meta.url)), '../../..');
+
+/**
+ * Reads a spec's source for the runnability check, treating an unreadable file
+ * as reconcilable.
+ *
+ * A file that cannot be read is not evidence it emits nothing — erring the
+ * other way would silently exempt it from reconciliation, which is the hole
+ * this check exists to close.
+ */
+function readSpecSource(specFile: string): string {
+  try {
+    return readFileSync(resolvePath(REPO_ROOT, specFile), 'utf-8');
+  } catch {
+    return UNREADABLE_SPEC_FALLBACK_SOURCE;
+  }
+}
+
 export async function verifyAttestation(args: CliArgs): Promise<AttestationResult> {
   const reasons: AttestationFailureReason[] = [];
 
@@ -441,8 +465,14 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
   if (selection.kind === 'unreadable') {
     reasons.push('selection-file-unreadable');
   }
+  // Filtered through runnability, not just membership: a required file that no
+  // planned invocation selects, or that emits no coverage dump, can never appear
+  // in ranFiles however well it ran. Counting those as missing fails a push on
+  // work nothing could have done — see specRunnability.ts for both cases.
   const missingRequiredFiles =
-    selection.kind === 'files' ? selection.files.filter((f) => !ranFiles.has(f)) : [];
+    selection.kind === 'files'
+      ? selection.files.filter((f) => !ranFiles.has(f) && isReconcilable(f, readSpecSource(f)))
+      : [];
   if (missingRequiredFiles.length > 0) {
     reasons.push('missing-required-tests');
   }

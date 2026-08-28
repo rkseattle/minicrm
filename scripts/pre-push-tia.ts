@@ -292,7 +292,7 @@ interface SelectTestsResult {
   specFiles: string[];
   unresolvedTestIds: string[];
   fallbackReasons: string[];
-  /** Tier-2 impact resolution — reported in the rationale, not yet part of specFiles. */
+  /** Tier-2 impact resolution, also unioned into specFiles. */
   scopeResolvedSpecFiles: string[];
   impactResolutionError: string | null;
   rationale: string[];
