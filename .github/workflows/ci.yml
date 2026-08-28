@@ -91,6 +91,7 @@ jobs:
       user-guide-routes: ${{ steps.filter.outputs.user-guide-routes }}
       record-paths:      ${{ steps.filter.outputs.record-paths }}
       locale-paths:      ${{ steps.filter.outputs.locale-paths }}
+      tia-impact:        ${{ steps.filter.outputs.tia-impact }}
       guard-invocation: ${{ steps.filter.outputs.guard-invocation }}
     steps:
       - uses: actions/checkout@v4
@@ -403,6 +404,21 @@ jobs:
               - 'server/src/coverageAgent/testSelection/impactManifest.ts'
               - 'server/src/coverageAgent/testSelection/dependencyGraphService.ts'
               - '.github/workflows/ci.yml'
+            # Single-purpose output for TIA tier 2, covering both directions of
+            # the invariant. Forward: impactResolver.test.ts reads the functional
+            # spec tree off disk, so a spec move must re-run server-tests, which
+            # `server` (server/src/** only) does not catch. Backward: the manifest
+            # and resolver decide what a migration- or schema-only PR selects, and
+            # tia-selection's own gate is server||client||qa, so neither class
+            # reaches the job that renders the result.
+            tia-impact:
+              - 'server/src/coverageAgent/testSelection/impactManifest.ts'
+              - 'server/src/coverageAgent/testSelection/impactResolver.ts'
+              - 'server/src/coverageAgent/testSelection/specGlob.ts'
+              - 'shared/testing/impactAnnotation.ts'
+              - 'qa/e2e/tests/apps/minicrm/functional/**'
+              - 'db/migrations/**'
+              - 'shared/schemas/**'
             # Single-purpose output for check-grep-invert-parity.sh, which pins
             # the non-serial --grep-invert expression across this workflow, the
             # shared TS constant, and the documented local command. Three of the
@@ -839,7 +855,10 @@ jobs:
   tia-selection:
     name: Phase 1 - TIA Selection (advisory)
     needs: [changes]
-    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.qa == 'true'
+    # tia-impact is OR'd in because `server`/`client`/`qa` match none of
+    # db/migrations/** or shared/schemas/**, so the two path classes tier 2
+    # exists for would skip the job that reports what it resolved.
+    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.tia-impact == 'true'
     runs-on: ubuntu-latest
     # Never blocks the PR — a selection-engine failure (e.g. coverage DB
     # briefly unreachable) must not fail CI for something this job only
@@ -963,6 +982,22 @@ jobs:
                 echo ""
                 echo "</details>"
               fi
+              SCOPED=$(jq '.scopeResolvedSpecFiles | length' /tmp/tia-selection.json)
+              if [ "$SCOPED" -gt 0 ]; then
+                echo ""
+                echo "<details><summary>$SCOPED impact-resolved spec file(s) — reported, not yet run</summary>"
+                echo ""
+                echo "_Tier 2 derived these from the impact manifest, \`impacts\` annotations, and the directory convention. They are not part of \`specFiles\` until attestation reconciles which specs are runnable._"
+                echo ""
+                jq -r '.scopeResolvedSpecFiles[] | "- `" + . + "`"' /tmp/tia-selection.json
+                echo ""
+                echo "</details>"
+              fi
+              IMPACT_ERROR=$(jq -r '.impactResolutionError // ""' /tmp/tia-selection.json)
+              if [ -n "$IMPACT_ERROR" ]; then
+                echo ""
+                echo "⚠️ Impact resolution failed, so tier 2 contributed nothing: $IMPACT_ERROR"
+              fi
               UNRESOLVED=$(jq '.unresolvedTestIds | length' /tmp/tia-selection.json)
               if [ "$UNRESOLVED" -gt 0 ]; then
                 echo ""
@@ -1029,7 +1064,8 @@ jobs:
         needs.changes.outputs.feature-flag-docs == 'true' ||
         needs.changes.outputs.user-guide-routes == 'true' ||
         needs.changes.outputs.record-paths == 'true' ||
-        needs.changes.outputs.locale-paths == 'true')
+        needs.changes.outputs.locale-paths == 'true' ||
+        needs.changes.outputs.tia-impact == 'true')
     runs-on: ubuntu-latest
 
     services:

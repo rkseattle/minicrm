@@ -1,7 +1,7 @@
 /**
  * Unit tests for select-tests.ts's pure/filesystem logic. (pr-tia-8)
  *
- * resolveBaselineFiles and parseArgs are exported specifically for
+ * resolveBaselineFiles, parseArgs and impactRationale are exported specifically for
  * this test file — the rest of select-tests.ts (selectTests itself) is a full
  * DB-backed pipeline exercised via manual smoke-testing and the existing
  * server/src/__tests__/testSelectionService.test.ts /
@@ -10,7 +10,7 @@
  */
 
 import { resolve } from 'node:path';
-import { resolveBaselineFiles, parseArgs } from '../scripts/select-tests.js';
+import { resolveBaselineFiles, parseArgs, impactRationale } from '../scripts/select-tests.js';
 
 const REPO_ROOT = resolve(__dirname, '../../..');
 
@@ -117,5 +117,36 @@ describe('parseArgs', () => {
 
   it('detects --force-full-suite', () => {
     expect(parseArgs(['--force-full-suite']).forceFullSuite).toBe(true);
+  });
+});
+
+describe('impactRationale', () => {
+  it('reports the failure rather than an empty result when resolution threw', () => {
+    const lines = impactRationale({ specFiles: [], fullSuite: false, error: 'no entry covers x' });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('FAILED');
+    expect(lines[0]).toContain('no entry covers x');
+  });
+
+  it('reports the full-suite outcome', () => {
+    const lines = impactRationale({ specFiles: [], fullSuite: true, error: null });
+    expect(lines).toEqual(['Impact resolution: full functional suite.']);
+  });
+
+  // A diff that legitimately impacts nothing must stay quiet, or every docs PR
+  // gains a line saying nothing happened.
+  it('says nothing when resolution succeeded and found nothing', () => {
+    expect(impactRationale({ specFiles: [], fullSuite: false, error: null })).toEqual([]);
+  });
+
+  it('lists the resolved files and marks them not yet required', () => {
+    const lines = impactRationale({
+      specFiles: ['qa/e2e/tests/apps/minicrm/functional/i18n/i18n.spec.ts'],
+      fullSuite: false,
+      error: null,
+    });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('not yet required');
+    expect(lines[0]).toContain('i18n.spec.ts');
   });
 });
