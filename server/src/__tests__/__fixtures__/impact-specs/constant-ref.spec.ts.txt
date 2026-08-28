@@ -1,0 +1,11 @@
+import { test } from '@apps/minicrm/fixtures.js';
+import { IMPACTS_ANNOTATION } from '@minicrm/shared/testing/impactAnnotation.js';
+
+test(
+  'F7: declares its type via the imported constant',
+  {
+    tag: ['@functional'],
+    annotation: [{ type: IMPACTS_ANNOTATION, description: 'db/migrations/**' }],
+  },
+  async () => {},
+);

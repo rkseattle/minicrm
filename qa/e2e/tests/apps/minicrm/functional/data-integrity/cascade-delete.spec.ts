@@ -22,6 +22,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+import { IMPACTS_ANNOTATION } from '@minicrm/shared/testing/impactAnnotation.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 import {
   createTestAccount,
@@ -36,178 +37,186 @@ import { getDealById, deleteDeal } from '@behaviors/minicrm/deals.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test.beforeEach(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-});
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Asserts that a GET to the given path returns a 404 RestClientError.
- * Used to confirm records were removed by cascade.
- * The raw restClient.get call here is intentional — it is the mechanism for
- * asserting on a 4xx HTTP error status.
- */
-async function assertDeleted(
-  restClient: Parameters<Parameters<typeof test>[2]>[0]['restClient'],
-  path: string,
-): Promise<void> {
-  let threw = false;
-  try {
-    await restClient.get(path);
-  } catch (err) {
-    threw = true;
-    expect(err).toBeInstanceOf(RestClientError);
-    expect((err as RestClientError).status).toBe(404);
-  }
-  expect(threw, `Expected ${path} to return 404 but it did not throw`).toBe(true);
-}
-
-// ---------------------------------------------------------------------------
-// F11-CD1 — Contact delete cascades to linked activities
-// ---------------------------------------------------------------------------
-
-test(
-  'F11-CD1: deleting a contact removes its linked activities via cascade',
-  { tag: ['@functional'] },
-  async ({ testData, restClient }) => {
-    const contact = await createTestContact(testData, restClient, {
-      first_name: 'CD1',
-      last_name: 'Contact',
-      email: `cd1-contact-${Date.now()}@example.com`,
+// The cascade rules these guard are defined by migrations, which no directory
+// convention or manifest entry can express — declared once for the whole file.
+test.describe(
+  'F11-CD cascade delete',
+  { annotation: [{ type: IMPACTS_ANNOTATION, description: 'db/migrations/**' }] },
+  () => {
+    test.beforeEach(async ({ restClient }) => {
+      await loginAsAdmin(restClient);
     });
 
-    // Create two activities linked to this contact (Task/Note do not require direction)
-    const activityA = await createTestActivity(testData, restClient, {
-      type: 'Task',
-      subject: `CD1-Task-A ${test.info().title}`,
-      contact_id: contact.id,
-    });
-    const activityB = await createTestActivity(testData, restClient, {
-      type: 'Note',
-      subject: `CD1-Note-B ${test.info().title}`,
-      contact_id: contact.id,
-    });
+    // ---------------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------------
 
-    // Delete the contact via API
-    await deleteContact(restClient, contact.id);
+    /**
+     * Asserts that a GET to the given path returns a 404 RestClientError.
+     * Used to confirm records were removed by cascade.
+     * The raw restClient.get call here is intentional — it is the mechanism for
+     * asserting on a 4xx HTTP error status.
+     */
+    async function assertDeleted(
+      restClient: Parameters<Parameters<typeof test>[2]>[0]['restClient'],
+      path: string,
+    ): Promise<void> {
+      let threw = false;
+      try {
+        await restClient.get(path);
+      } catch (err) {
+        threw = true;
+        expect(err).toBeInstanceOf(RestClientError);
+        expect((err as RestClientError).status).toBe(404);
+      }
+      expect(threw, `Expected ${path} to return 404 but it did not throw`).toBe(true);
+    }
 
-    // Contact itself should return 404
-    await assertDeleted(restClient, `/api/v1/contacts/${contact.id}`);
+    // ---------------------------------------------------------------------------
+    // F11-CD1 — Contact delete cascades to linked activities
+    // ---------------------------------------------------------------------------
 
-    // Both activities should have been cascade-deleted with the contact
-    await assertDeleted(restClient, `/api/v1/activities/${activityA.id}`);
-    await assertDeleted(restClient, `/api/v1/activities/${activityB.id}`);
-  },
-);
+    test(
+      'F11-CD1: deleting a contact removes its linked activities via cascade',
+      { tag: ['@functional'] },
+      async ({ testData, restClient }) => {
+        const contact = await createTestContact(testData, restClient, {
+          first_name: 'CD1',
+          last_name: 'Contact',
+          email: `cd1-contact-${Date.now()}@example.com`,
+        });
 
-// ---------------------------------------------------------------------------
-// F11-CD2 — Account delete sets account_id to null on linked contacts (SET NULL)
-// ---------------------------------------------------------------------------
+        // Create two activities linked to this contact (Task/Note do not require direction)
+        const activityA = await createTestActivity(testData, restClient, {
+          type: 'Task',
+          subject: `CD1-Task-A ${test.info().title}`,
+          contact_id: contact.id,
+        });
+        const activityB = await createTestActivity(testData, restClient, {
+          type: 'Note',
+          subject: `CD1-Note-B ${test.info().title}`,
+          contact_id: contact.id,
+        });
 
-test(
-  'F11-CD2: deleting an account unlinks its contacts (account_id SET NULL) rather than deleting them',
-  { tag: ['@functional'] },
-  async ({ testData, restClient }) => {
-    const account = await createTestAccount(testData, restClient, {
-      name: `CD2-Acct ${test.info().title}`,
-    });
+        // Delete the contact via API
+        await deleteContact(restClient, contact.id);
 
-    // Create two contacts linked to this account
-    const contactA = await createTestContact(testData, restClient, {
-      first_name: 'CD2',
-      last_name: 'ContactA',
-      email: `cd2-a-${Date.now()}@example.com`,
-      account_id: account.id,
-    });
-    const contactB = await createTestContact(testData, restClient, {
-      first_name: 'CD2',
-      last_name: 'ContactB',
-      email: `cd2-b-${Date.now()}@example.com`,
-      account_id: account.id,
-    });
+        // Contact itself should return 404
+        await assertDeleted(restClient, `/api/v1/contacts/${contact.id}`);
 
-    // Delete the account
-    await deleteAccount(restClient, account.id);
+        // Both activities should have been cascade-deleted with the contact
+        await assertDeleted(restClient, `/api/v1/activities/${activityA.id}`);
+        await assertDeleted(restClient, `/api/v1/activities/${activityB.id}`);
+      },
+    );
 
-    // Account itself should return 404
-    await assertDeleted(restClient, `/api/v1/accounts/${account.id}`);
+    // ---------------------------------------------------------------------------
+    // F11-CD2 — Account delete sets account_id to null on linked contacts (SET NULL)
+    // ---------------------------------------------------------------------------
 
-    // Contacts should survive but have account_id nulled out (ON DELETE SET NULL)
-    const fetchedA = await getContactById(restClient, contactA.id);
-    expect(fetchedA.account_id).toBeNull();
+    test(
+      'F11-CD2: deleting an account unlinks its contacts (account_id SET NULL) rather than deleting them',
+      { tag: ['@functional'] },
+      async ({ testData, restClient }) => {
+        const account = await createTestAccount(testData, restClient, {
+          name: `CD2-Acct ${test.info().title}`,
+        });
 
-    const fetchedB = await getContactById(restClient, contactB.id);
-    expect(fetchedB.account_id).toBeNull();
-  },
-);
+        // Create two contacts linked to this account
+        const contactA = await createTestContact(testData, restClient, {
+          first_name: 'CD2',
+          last_name: 'ContactA',
+          email: `cd2-a-${Date.now()}@example.com`,
+          account_id: account.id,
+        });
+        const contactB = await createTestContact(testData, restClient, {
+          first_name: 'CD2',
+          last_name: 'ContactB',
+          email: `cd2-b-${Date.now()}@example.com`,
+          account_id: account.id,
+        });
 
-// ---------------------------------------------------------------------------
-// F11-CD3 — Deal delete cascades to linked activities
-// ---------------------------------------------------------------------------
+        // Delete the account
+        await deleteAccount(restClient, account.id);
 
-test(
-  'F11-CD3: deleting a deal removes its linked activities via cascade',
-  { tag: ['@functional'] },
-  async ({ testData, restClient }) => {
-    const account = await createTestAccount(testData, restClient, {
-      name: `CD3-Acct ${test.info().title}`,
-    });
-    const deal = await createTestDeal(testData, restClient, {
-      name: `CD3-Deal ${test.info().title}`,
-      stage: 'Prospecting',
-      value: '500',
-      account_id: account.id,
-    });
+        // Account itself should return 404
+        await assertDeleted(restClient, `/api/v1/accounts/${account.id}`);
 
-    // Create an activity linked only to this deal
-    const activity = await createTestActivity(testData, restClient, {
-      type: 'Meeting',
-      subject: `CD3-Meeting ${test.info().title}`,
-      deal_id: deal.id,
-    });
+        // Contacts should survive but have account_id nulled out (ON DELETE SET NULL)
+        const fetchedA = await getContactById(restClient, contactA.id);
+        expect(fetchedA.account_id).toBeNull();
 
-    // Delete the deal
-    await deleteDeal(restClient, deal.id);
+        const fetchedB = await getContactById(restClient, contactB.id);
+        expect(fetchedB.account_id).toBeNull();
+      },
+    );
 
-    // Deal itself should return 404
-    await assertDeleted(restClient, `/api/v1/deals/${deal.id}`);
+    // ---------------------------------------------------------------------------
+    // F11-CD3 — Deal delete cascades to linked activities
+    // ---------------------------------------------------------------------------
 
-    // Activity linked only to the deleted deal should be cascade-deleted
-    await assertDeleted(restClient, `/api/v1/activities/${activity.id}`);
-  },
-);
+    test(
+      'F11-CD3: deleting a deal removes its linked activities via cascade',
+      { tag: ['@functional'] },
+      async ({ testData, restClient }) => {
+        const account = await createTestAccount(testData, restClient, {
+          name: `CD3-Acct ${test.info().title}`,
+        });
+        const deal = await createTestDeal(testData, restClient, {
+          name: `CD3-Deal ${test.info().title}`,
+          stage: 'Prospecting',
+          value: '500',
+          account_id: account.id,
+        });
 
-// ---------------------------------------------------------------------------
-// F11-CD4 — Account delete sets account_id to null on linked deals (SET NULL)
-// ---------------------------------------------------------------------------
+        // Create an activity linked only to this deal
+        const activity = await createTestActivity(testData, restClient, {
+          type: 'Meeting',
+          subject: `CD3-Meeting ${test.info().title}`,
+          deal_id: deal.id,
+        });
 
-test(
-  'F11-CD4: deleting an account unlinks its deals (account_id SET NULL) rather than deleting them',
-  { tag: ['@functional'] },
-  async ({ testData, restClient }) => {
-    const account = await createTestAccount(testData, restClient, {
-      name: `CD4-Acct ${test.info().title}`,
-    });
-    const deal = await createTestDeal(testData, restClient, {
-      name: `CD4-Deal ${test.info().title}`,
-      stage: 'Qualification',
-      value: '2000',
-      account_id: account.id,
-    });
+        // Delete the deal
+        await deleteDeal(restClient, deal.id);
 
-    // Delete the account
-    await deleteAccount(restClient, account.id);
+        // Deal itself should return 404
+        await assertDeleted(restClient, `/api/v1/deals/${deal.id}`);
 
-    // Account returns 404
-    await assertDeleted(restClient, `/api/v1/accounts/${account.id}`);
+        // Activity linked only to the deleted deal should be cascade-deleted
+        await assertDeleted(restClient, `/api/v1/activities/${activity.id}`);
+      },
+    );
 
-    // Deal survives but account_id is nulled (ON DELETE SET NULL — migration 004).
-    // DealRow.account_id is typed as string but the DB SET NULL rule produces null
-    // here; the cast is safe because we are specifically testing the nulled-out state.
-    const fetched = await getDealById(restClient, deal.id);
-    expect((fetched as unknown as { account_id: string | null }).account_id).toBeNull();
+    // ---------------------------------------------------------------------------
+    // F11-CD4 — Account delete sets account_id to null on linked deals (SET NULL)
+    // ---------------------------------------------------------------------------
+
+    test(
+      'F11-CD4: deleting an account unlinks its deals (account_id SET NULL) rather than deleting them',
+      { tag: ['@functional'] },
+      async ({ testData, restClient }) => {
+        const account = await createTestAccount(testData, restClient, {
+          name: `CD4-Acct ${test.info().title}`,
+        });
+        const deal = await createTestDeal(testData, restClient, {
+          name: `CD4-Deal ${test.info().title}`,
+          stage: 'Qualification',
+          value: '2000',
+          account_id: account.id,
+        });
+
+        // Delete the account
+        await deleteAccount(restClient, account.id);
+
+        // Account returns 404
+        await assertDeleted(restClient, `/api/v1/accounts/${account.id}`);
+
+        // Deal survives but account_id is nulled (ON DELETE SET NULL — migration 004).
+        // DealRow.account_id is typed as string but the DB SET NULL rule produces null
+        // here; the cast is safe because we are specifically testing the nulled-out state.
+        const fetched = await getDealById(restClient, deal.id);
+        expect((fetched as unknown as { account_id: string | null }).account_id).toBeNull();
+      },
+    );
   },
 );

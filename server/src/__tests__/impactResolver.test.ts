@@ -81,6 +81,28 @@ describe('extractImpactsGlobs', () => {
     ]);
   });
 
+  // The convention is to import the constant, so a reader handling only the
+  // literal would skip every spec that follows it — including cascade-delete.
+  it('reads an annotation whose type is the imported constant', () => {
+    expect(extractImpactsGlobs(fixture('constant-ref.spec.ts.txt'), 'const.spec.ts')).toEqual([
+      'db/migrations/**',
+    ]);
+  });
+
+  // Aliasing an import is an established form in this suite, and a reader
+  // matching the export name alone reads an aliased spec as unannotated.
+  it('reads an annotation whose type is an aliased import', () => {
+    expect(extractImpactsGlobs(fixture('aliased-import.spec.ts.txt'), 'alias.spec.ts')).toEqual([
+      'db/migrations/**',
+    ]);
+  });
+
+  it('reads the annotation from the real cascade-delete spec', () => {
+    const specFile = 'qa/e2e/tests/apps/minicrm/functional/data-integrity/cascade-delete.spec.ts';
+    const source = readFileSync(resolve(repoRoot(), specFile), 'utf-8');
+    expect(extractImpactsGlobs(source, specFile)).toContain('db/migrations/**');
+  });
+
   it('returns nothing for a spec with no options object', () => {
     expect(extractImpactsGlobs(fixture('no-options.spec.ts.txt'), 'none.spec.ts')).toEqual([]);
   });
