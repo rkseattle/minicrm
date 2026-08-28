@@ -51,6 +51,10 @@ const DIRECTORY_SCOPE_PREFIX = 'functional:';
  * everything, and a targeted invocation naming every spec is a different
  * execution path from a full-suite run — only the latter carries attestation —
  * so the caller is told the mode, not handed a 98-entry list.
+ *
+ * `specFiles` can be non-empty alongside `fullSuite`: a spec that declared the
+ * changed path via an annotation is reported either way, so the declaration is
+ * visible rather than swallowed by the broader answer.
  */
 export interface ImpactResolution {
   fullSuite: boolean;
@@ -84,15 +88,6 @@ function discoverSpecFiles(repoRoot: string): string[] {
   return found;
 }
 
-/**
- * Reads the string literal from an annotation object's `description` property,
- * when its `type` is `impacts`.
- *
- * Returns null for anything not statically readable — a computed key, a
- * template with substitutions, a value behind a variable. Selection treats that
- * as "no annotation" rather than an error: a legal Playwright form must not
- * fail the run just because this reader cannot see through it.
- */
 /**
  * The local names this file binds the shared annotation constant to.
  *
@@ -195,6 +190,17 @@ function readSpecImpacts(repoRoot: string, specFiles: readonly string[]): SpecIm
   });
 }
 
+/**
+ * Spec files a single directory scope names.
+ *
+ * Exported for the coverage guard: the resolver throws on an empty scope during
+ * selection, but that throw is caught so a stale entry cannot block a push, so
+ * the guard is where it becomes a build failure.
+ */
+export function resolveScopeToSpecFiles(repoRoot: string, scope: string): string[] {
+  return discoverSpecFiles(repoRoot).filter((specFile) => directoryScopeOf(specFile) === scope);
+}
+
 /** `functional:<dir>` for a spec, from the directory it lives in. */
 function directoryScopeOf(specFile: string): string | null {
   const withinFunctional = specFile.startsWith(`${FUNCTIONAL_SPEC_DIR}/`)
@@ -235,12 +241,25 @@ export function resolveImpactedSpecs(
     );
   }
 
-  if (matchedScopes.includes(ALL_FUNCTIONAL_SCOPE)) {
-    return { fullSuite: true, specFiles: [], matchedScopes };
-  }
-
   const specFiles = discoverSpecFiles(repoRoot);
   const selected = new Set<string>();
+
+  // Annotations are collected first, and regardless of scope. A spec declaring
+  // an edge the manifest does not imply is an independent source, so a
+  // manifest answer of "everything" must not shadow it — the declaration is
+  // still the reason that spec is selected once the class is ever narrowed.
+  for (const { specFile, globs } of readSpecImpacts(repoRoot, specFiles)) {
+    for (const glob of globs) {
+      const matcher = globToRegExp(glob);
+      if (changedPaths.some((changedPath) => matcher.test(changedPath))) {
+        selected.add(specFile);
+      }
+    }
+  }
+
+  if (matchedScopes.includes(ALL_FUNCTIONAL_SCOPE)) {
+    return { fullSuite: true, specFiles: Array.from(selected).sort(), matchedScopes };
+  }
 
   for (const scope of matchedScopes) {
     const matching = specFiles.filter((specFile) => directoryScopeOf(specFile) === scope);
@@ -251,15 +270,6 @@ export function resolveImpactedSpecs(
       );
     }
     for (const specFile of matching) selected.add(specFile);
-  }
-
-  for (const { specFile, globs } of readSpecImpacts(repoRoot, specFiles)) {
-    for (const glob of globs) {
-      const matcher = globToRegExp(glob);
-      if (changedPaths.some((changedPath) => matcher.test(changedPath))) {
-        selected.add(specFile);
-      }
-    }
   }
 
   return { fullSuite: false, specFiles: Array.from(selected).sort(), matchedScopes };

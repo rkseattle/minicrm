@@ -85,9 +85,10 @@ function withoutComments(source: string): string {
  * one of them in the spec this ticket annotates, where a wrong `true` blocks the
  * push it was meant to enable.
  *
- * Errs toward "does emit" for anything it cannot see through — a spec reaching
- * `page` via a helper reads as no use here — because a false positive costs one
- * spurious shortfall while a false negative silently exempts a spec forever.
+ * A spec reaching `page` only through a helper reads as no use here, and so is
+ * EXEMPTED from reconciliation rather than merely reported — the exemption is
+ * the permissive direction, and it is why the exempt set is asserted against an
+ * explicit list rather than a loose band: growth must be a deliberate edit.
  */
 export function emitsCoverageDump(specSource: string): boolean {
   return /async\s*\(\s*\{[^}]*\bpage\b[^}]*\}/.test(withoutComments(specSource));
