@@ -61,13 +61,18 @@ describe('manifest table shape', () => {
   // happen is an overlap NO uncovered entry accounts for, so each overlapping
   // path must be named by some uncovered glob. Asked of coveredScopesForPath,
   // not scopesForPath: the latter subtracts, making the question unanswerable.
-  it('accounts for every covered/uncovered overlap with a declared entry', () => {
+  it('suppresses a covered path only when an uncovered entry names it', () => {
+    // Every path the subtraction silences must be named by an uncovered glob.
+    // Asked of coveredScopesForPath, since scopesForPath applies the very
+    // subtraction under test and would make the question unanswerable.
     const uncoveredMatchers = DECLARED_UNCOVERED_PATHS.map(globToRegExp);
-    const unaccounted = trackedFiles().filter(
-      (file) =>
-        coveredScopesForPath(file).length > 0 &&
-        !uncoveredMatchers.some((matcher) => matcher.test(file)) &&
-        isDeclaredUncovered(file),
+    const suppressed = trackedFiles().filter(
+      (file) => coveredScopesForPath(file).length > 0 && scopesForPath(file).length === 0,
+    );
+    expect(suppressed.length).toBeGreaterThan(0);
+
+    const unaccounted = suppressed.filter(
+      (file) => !uncoveredMatchers.some((matcher) => matcher.test(file)),
     );
     expect(unaccounted).toEqual([]);
   });

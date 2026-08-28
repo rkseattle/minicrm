@@ -102,7 +102,9 @@ describe('the real spec tree', () => {
     expect(isReconcilable(specFile, source)).toBe(false);
   });
 
-  it('treats most functional specs as reconcilable', () => {
+  // An explicit list, not a band: exemption is the permissive direction, so a
+  // spec joining it must be a deliberate edit here rather than a number moving.
+  it('exempts exactly the specs that cannot be reconciled', () => {
     const specs = execFileSync(
       'git',
       ['ls-files', 'qa/e2e/tests/apps/minicrm/functional/**/*.spec.ts'],
@@ -111,17 +113,29 @@ describe('the real spec tree', () => {
       .trim()
       .split('\n')
       .filter(Boolean);
-    const unreconcilable = specs.filter(
+
+    const exempt = specs.filter(
       (specFile) => !isReconcilable(specFile, readFileSync(resolve(repoRoot(), specFile), 'utf-8')),
     );
-    // A band tight enough to fail if either half of the predicate is deleted:
-    // dropping the coverage-dump check leaves only the path-excluded spec, and
-    // dropping the path check loses it. Deliberately not an exact list, which
-    // would fail on any new page-less spec rather than on a broken predicate.
-    expect(unreconcilable.length).toBeGreaterThanOrEqual(10);
-    expect(unreconcilable.length).toBeLessThan(specs.length / 2);
-    expect(unreconcilable).toContain(
-      'qa/e2e/tests/apps/minicrm/functional/auth/email-delivery.spec.ts',
+
+    const base = 'qa/e2e/tests/apps/minicrm/functional';
+    expect(exempt.sort()).toEqual(
+      [
+        `${base}/auth/email-delivery.spec.ts`,
+        `${base}/coverage-health/coverage-health.spec.ts`,
+        `${base}/coverage-instrumentation/coverage-instrumentation.spec.ts`,
+        `${base}/coverage-mapping/coverage-mapping.spec.ts`,
+        `${base}/coverage-pipeline/coverage-pipeline.spec.ts`,
+        `${base}/data-integrity/cascade-delete.spec.ts`,
+        `${base}/deals/multi-currency.spec.ts`,
+        `${base}/grpc/audit-grpc.spec.ts`,
+        `${base}/iam/iam-service-account.spec.ts`,
+        `${base}/iam/iam-viewer.spec.ts`,
+        `${base}/iam/teams.spec.ts`,
+        `${base}/import-export/import-export.spec.ts`,
+        `${base}/sequences/sequences.spec.ts`,
+        `${base}/visual/visual-regression.spec.ts`,
+      ].sort(),
     );
   });
 });

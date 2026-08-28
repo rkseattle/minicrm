@@ -406,10 +406,13 @@ jobs:
               - 'server/src/coverageAgent/testSelection/dependencyGraphService.ts'
               - '.github/workflows/ci.yml'
             # The TIA coverage guard's subject is the whole tracked tree, so its
-            # trigger has to be as well: every other output here is rooted at a
+            # trigger has to be as well: every other output is rooted at a
             # directory that already exists, and the class it detects is a NEW
-            # top-level one. Gates only lint-and-typecheck, which boots no
-            # services — the cost of the breadth is one cheap job.
+            # top-level one. The dotfile forms are spelled out because picomatch's
+            # `**` matches none of them, so a bare `**` would miss .circleci/ —
+            # exactly the shape of a new unmapped class. It gates its own job
+            # rather than lint-and-typecheck, so always-on costs a checkout and
+            # one tsx run instead of a three-workspace install and lint.
             tia-tree:
               - '**'
               - '.*'
@@ -641,10 +644,35 @@ jobs:
 
             ⏳ Run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) in progress…
 
+  tia-manifest-coverage:
+    name: Phase 1 - TIA Manifest Coverage
+    needs: changes
+    # Always-on by design: the class this detects is a NEW top-level path, which
+    # no directory-rooted filter can match. Deliberately its own job so that
+    # breadth costs a checkout and one tsx run, not three workspace installs.
+    if: needs.changes.outputs.tia-tree == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # tsx for both invocations: the guard imports the manifest and resolver,
+      # which are TS, so a node-only self-test could pass under a runtime that
+      # can never load what it claims to exercise.
+      - name: TIA manifest coverage self-test
+        run: npx tsx scripts/check-tia-manifest-coverage.mjs --self-test
+
+      - name: TIA manifest covers every tracked path
+        run: npx tsx scripts/check-tia-manifest-coverage.mjs
+
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
     needs: changes
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true' || needs.changes.outputs.ci-filter-globs == 'true' || needs.changes.outputs.guard-invocation == 'true' || needs.changes.outputs.api-path-versioning == 'true' || needs.changes.outputs.claude-hooks == 'true' || needs.changes.outputs.tia-impact == 'true' || needs.changes.outputs.tia-tree == 'true'
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true' || needs.changes.outputs.ci-filter-globs == 'true' || needs.changes.outputs.guard-invocation == 'true' || needs.changes.outputs.api-path-versioning == 'true' || needs.changes.outputs.claude-hooks == 'true' || needs.changes.outputs.tia-impact == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -690,16 +718,6 @@ jobs:
 
       - name: API paths are versioned
         run: node scripts/check-api-path-versioning.mjs
-
-      # A path class nobody mapped selects nothing, which reads the same as one
-      # correctly selecting nothing. tsx for both: the guard imports the manifest
-      # and resolver, so a node-only self-test could pass under a runtime that
-      # can never load what it claims to exercise.
-      - name: TIA manifest coverage self-test
-        run: npx tsx scripts/check-tia-manifest-coverage.mjs --self-test
-
-      - name: TIA manifest covers every tracked path
-        run: npx tsx scripts/check-tia-manifest-coverage.mjs
 
       # The Stop hook's only failure mode is silence, and it is never exercised by CI
       # otherwise. Also the only place the Linux `tac` reversal path runs at all —

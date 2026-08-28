@@ -351,14 +351,16 @@ export function impactRationale(impactResolution: ImpactRationaleInput): string[
  * can fail on it without also blocking local work.
  */
 function resolveImpactedSpecsForDiff(
-  fileDiffs: readonly { filePath: string }[],
+  fileDiffs: readonly { filePath: string; oldFilePath?: string | null }[],
   cwd: string,
 ): { specFiles: string[]; fullSuite: boolean; error: string | null } {
   try {
-    const resolution = resolveImpactedSpecs(
-      fileDiffs.map((diff) => diff.filePath),
-      cwd,
+    // Both sides of a rename: moving a file OUT of a covered class impacts that
+    // class, and passing only the new path would miss it entirely.
+    const changedPaths = fileDiffs.flatMap((diff) =>
+      diff.oldFilePath ? [diff.filePath, diff.oldFilePath] : [diff.filePath],
     );
+    const resolution = resolveImpactedSpecs(changedPaths, cwd);
     return { specFiles: resolution.specFiles, fullSuite: resolution.fullSuite, error: null };
   } catch (err) {
     return {
@@ -437,7 +439,11 @@ export async function selectTests(
     });
   }
 
-  if (selectionResult.mode === 'full-suite') {
+  // Tier 2 resolving to the whole suite is a selection decision, not a note:
+  // a shared/schemas or Dockerfile change has no alwaysWiden rule behind it, so
+  // without this the manifest's answer would be printed and discarded — the
+  // exact "prints them into a rationale string" dead end this work replaces.
+  if (selectionResult.mode === 'full-suite' || impactResolution.fullSuite) {
     return {
       mode: 'full-suite',
       specFiles: [],

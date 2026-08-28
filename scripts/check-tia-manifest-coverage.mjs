@@ -40,11 +40,17 @@ function findUnmappedPaths(paths, isUnmapped) {
 
 /** Loads the manifest and resolver, which are TypeScript and so need tsx. */
 async function loadTiaModules() {
-  const { isUnmapped } =
+  const { isUnmapped, declaredScopes, ALL_FUNCTIONAL_SCOPE } =
     await import('../server/src/coverageAgent/testSelection/impactManifest.ts');
-  const { findStaleImpactsGlobs } =
+  const { findStaleImpactsGlobs, resolveScopeToSpecFiles } =
     await import('../server/src/coverageAgent/testSelection/impactResolver.ts');
-  return { isUnmapped, findStaleImpactsGlobs };
+  return {
+    isUnmapped,
+    declaredScopes,
+    ALL_FUNCTIONAL_SCOPE,
+    findStaleImpactsGlobs,
+    resolveScopeToSpecFiles,
+  };
 }
 
 async function selfTest() {
@@ -121,7 +127,13 @@ async function main() {
     return;
   }
 
-  const { isUnmapped, findStaleImpactsGlobs } = await loadTiaModules();
+  const {
+    isUnmapped,
+    declaredScopes,
+    ALL_FUNCTIONAL_SCOPE,
+    findStaleImpactsGlobs,
+    resolveScopeToSpecFiles,
+  } = await loadTiaModules();
   const tracked = trackedFiles();
 
   // Both checks reported before exiting: they are independent and cheap, and
@@ -146,13 +158,27 @@ async function main() {
     console.error('\nA stale annotation selects nothing while its spec still passes.\n');
   }
 
-  if (unmapped.length > 0 || stale.length > 0) {
+  // Every declared scope must still name at least one spec file. The resolver
+  // throws on this during selection, but that throw is caught so a stale entry
+  // cannot block every push — which leaves this the only place it fails a build.
+  // A directory rename would otherwise disable its scope with everything green.
+  const emptyScopes = Array.from(declaredScopes())
+    .filter((scope) => scope !== ALL_FUNCTIONAL_SCOPE)
+    .filter((scope) => resolveScopeToSpecFiles(REPO_ROOT, scope).length === 0);
+
+  if (emptyScopes.length > 0) {
+    console.error(`FAIL: ${emptyScopes.length} declared scope(s) resolve to no spec file.\n`);
+    for (const scope of emptyScopes) console.error(`  ${scope}`);
+    console.error('\nA scope naming a directory that moved selects nothing, silently.\n');
+  }
+
+  if (unmapped.length > 0 || stale.length > 0 || emptyScopes.length > 0) {
     process.exit(1);
   }
 
   console.log(
-    `OK: all ${tracked.length} tracked paths are mapped or declared uncovered, and every ` +
-      'impacts annotation names a real path.',
+    `OK: all ${tracked.length} tracked paths are mapped or declared uncovered, every ` +
+      'declared scope resolves to a spec file, and every impacts annotation names a real path.',
   );
 }
 
