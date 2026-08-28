@@ -392,14 +392,15 @@ jobs:
               - 'shared/types/**'
               - 'client/src/App.tsx'
               - '.github/workflows/ci.yml'
-            # Single-purpose output for dependencyGraphService.test.ts, which reads the
-            # locale directory off disk to pin the i18n-locale rule's path against it.
+            # Single-purpose output for impactManifest.test.ts, which reads the locale
+            # directory off disk to pin the manifest's locale glob against it.
             # The locale half is why this exists: `server` is server/src/** only, so
             # moving or renaming the directory would trigger client-tests, skip
-            # server-tests, and merge with the rule matching nothing again — which is
+            # server-tests, and merge with the glob matching nothing again — which is
             # how it came to point at a directory that never existed.
             locale-paths:
               - 'client/src/locales/**'
+              - 'server/src/coverageAgent/testSelection/impactManifest.ts'
               - 'server/src/coverageAgent/testSelection/dependencyGraphService.ts'
               - '.github/workflows/ci.yml'
             # Single-purpose output for check-grep-invert-parity.sh, which pins
