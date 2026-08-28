@@ -116,6 +116,14 @@ const DEPENDENCY_RULES: readonly DependencyRule[] = [
 ];
 
 /**
+ * Every scope the rule table emits, so the manifest can be pinned against it:
+ * a rule naming a scope with no declared membership resolves to nothing.
+ */
+export const DEPENDENCY_RULE_TEST_SCOPES: readonly string[] = DEPENDENCY_RULES.flatMap(
+  (rule) => rule.testScopes,
+);
+
+/**
  * Resolves a single non-source file's change against the dependency rule
  * table.
  */

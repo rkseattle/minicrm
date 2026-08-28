@@ -1,7 +1,7 @@
 /**
  * Unit tests for select-tests.ts's pure/filesystem logic. (pr-tia-8)
  *
- * globToRegExp, resolveBaselineFiles and parseArgs are exported specifically for
+ * resolveBaselineFiles and parseArgs are exported specifically for
  * this test file — the rest of select-tests.ts (selectTests itself) is a full
  * DB-backed pipeline exercised via manual smoke-testing and the existing
  * server/src/__tests__/testSelectionService.test.ts /
@@ -10,44 +10,9 @@
  */
 
 import { resolve } from 'node:path';
-import { globToRegExp, resolveBaselineFiles, parseArgs } from '../scripts/select-tests.js';
+import { resolveBaselineFiles, parseArgs } from '../scripts/select-tests.js';
 
 const REPO_ROOT = resolve(__dirname, '../../..');
-
-describe('globToRegExp', () => {
-  it('matches a spec file living DIRECTLY inside the globbed directory (regression: a real bug found via manual smoke-testing)', () => {
-    const re = globToRegExp('tests/apps/minicrm/functional/auth/**/*.spec.ts');
-    expect(re.test('tests/apps/minicrm/functional/auth/auth.spec.ts')).toBe(true);
-  });
-
-  it('matches a spec file nested one level deeper than the globbed directory', () => {
-    const re = globToRegExp('tests/apps/minicrm/functional/auth/**/*.spec.ts');
-    expect(re.test('tests/apps/minicrm/functional/auth/sub/x.spec.ts')).toBe(true);
-  });
-
-  it('matches a spec file nested multiple levels deeper', () => {
-    const re = globToRegExp('tests/apps/minicrm/functional/auth/**/*.spec.ts');
-    expect(re.test('tests/apps/minicrm/functional/auth/a/b/c.spec.ts')).toBe(true);
-  });
-
-  it('does not match a file outside the globbed directory', () => {
-    const re = globToRegExp('tests/apps/minicrm/functional/auth/**/*.spec.ts');
-    expect(re.test('tests/apps/minicrm/functional/deals/deal-creation.spec.ts')).toBe(false);
-  });
-
-  it('does not match a non-.spec.ts file inside the globbed directory', () => {
-    const re = globToRegExp('tests/apps/minicrm/functional/auth/**/*.spec.ts');
-    expect(re.test('tests/apps/minicrm/functional/auth/helpers.ts')).toBe(false);
-  });
-
-  it('escapes regex metacharacters in the literal portions of the glob', () => {
-    const re = globToRegExp('tests/a+b.dir/*.spec.ts');
-    expect(re.test('tests/a+b.dir/x.spec.ts')).toBe(true);
-    // A literal '.' in the glob must not act as a regex wildcard — 'a-bXdir'
-    // must NOT match a glob whose literal directory name is 'a+b.dir'.
-    expect(re.test('tests/aXbXdir/x.spec.ts')).toBe(false);
-  });
-});
 
 describe('resolveBaselineFiles', () => {
   it('returns repo-root-relative paths (including the qa/e2e/ prefix) for real files on disk', () => {

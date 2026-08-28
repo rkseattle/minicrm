@@ -56,14 +56,15 @@ describe('resolveDependencyWidening', () => {
     expect(result.widenedTestScopes).toEqual(['functional:i18n']);
   });
 
-  // Silent unless client/src/locales/** stays in ci.yml's locale-paths filter: `server`
-  // is server/src/** only, so a directory move would skip server-tests entirely.
+  // Stays here until DEPENDENCY_RULES resolve through the manifest: this rule is what
+  // drives selection today, and the manifest's own copy of the assertion cannot pin it
+  // while nothing consults the manifest. Silent unless client/src/locales/** stays in
+  // ci.yml's locale-paths filter — `server` is server/src/** only.
   it('matches the locale directory that actually holds the locale files', () => {
     const localeDir = 'client/src/locales';
     // Walk up to the directory that actually contains the locales rather than counting
     // directories, so moving this file fails the pattern assertion rather than throwing
-    // ENOENT from a stale depth. (server/ carries its own package-lock.json, so a
-    // lockfile is not a repo-root marker here.)
+    // ENOENT from a stale depth.
     let repoRoot = dirname(fileURLToPath(import.meta.url));
     while (!existsSync(resolve(repoRoot, localeDir))) {
       const parent = dirname(repoRoot);
