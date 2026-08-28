@@ -1060,10 +1060,11 @@ under `qa/e2e/tests/apps/minicrm/functional/`. Three sources, unioned by
 2. **`impacts` annotations** declare blast radius a spec's own location does not imply,
    read statically from source with the TypeScript compiler API because selection runs
    before any test does. `data-integrity/cascade-delete.spec.ts` carries the only one
-   today, declaring `db/migrations/**`. Note it does not currently change a selection:
-   migrations map to `functional:*`, and a full-suite scope short-circuits before
-   annotations are consulted. The annotation is what makes the spec selectable if
-   migrations are ever narrowed to a targeted scope.
+   today, declaring `db/migrations/**`. A migration-only change does run that spec — but
+   through the `db-migration` rule's `alwaysWiden: true`, which sends the whole suite,
+   rather than through this declaration. The annotation is what would keep it selected if
+   migrations were ever narrowed to a targeted scope, and it resolves and is reported
+   today, so the path is exercised rather than hypothetical.
 3. **The directory convention** resolves anything else by the directory the spec lives in,
    derived by walking the tree, so a new spec is scoped correctly the day it is written.
 
