@@ -38,11 +38,14 @@ Two things are still yours to do before pushing, because the hook cannot:
 Read the counts from `qa/e2e/test-results/results.xml`, never the console and never the
 exit code. If output truncates, read the file — do not re-run.
 
-One run. If it fails, root-cause and fix, then validate that fix against the specific
-failing spec. Never re-run to see whether a failure goes away, never dismiss one as a
-known flake, pre-existing, or unrelated, and never compare against `main` to wave it off.
-If you cannot find the root cause, say so explicitly and ask how to proceed, declaring the
-stop per `deliver`'s invariants.
+One run. If it fails, root-cause and fix, then validate that fix by running **only the
+failed specs** — and push again with `SKIP_TIA_PREPUSH=1` rather than sitting through a
+second full suite. That is the documented path, not a shortcut: "After the hook's own E2E
+run fails" in `.claude/gates/pre-push.md` sets out the procedure and its bounds. Never
+re-run to see whether a failure goes away, never dismiss one as a known flake,
+pre-existing, or unrelated, and never compare against `main` to wave it off. If you cannot
+find the root cause, say so explicitly and ask how to proceed, declaring the stop per
+`deliver`'s invariants.
 
 ## Step 3 — Clean the working tree
 
@@ -80,14 +83,22 @@ gh pr create --title "<ALL ticket IDs> — <summary>" --body "<body>"
 already pushed will reject a fast-forward push. Never bare `--force`: `--force-with-lease`
 aborts when the remote moved under you instead of overwriting whatever landed there.
 
-**No `SKIP_TIA_PREPUSH=1`.** This push is where the E2E gate runs: the hook selects the
-affected specs, executes them, and attests they ran against this HEAD. Expect it to take
-a while, and let it. The bypass is for a hook that cannot do its job — see "Bypassing the
-push hook" in `.claude/gates/pre-push.md` — not for a run you would rather not sit
-through.
+**No `SKIP_TIA_PREPUSH=1` on the first push.** This push is where the E2E gate runs: the
+hook selects the affected specs, executes them, and attests they ran against this HEAD.
+Expect it to take a while, and let it. The bypass is not for a run you would rather not
+sit through.
 
-If the hook fails, that is the gate failing. Root-cause it; do not re-push with the
-bypass set.
+**If the hook's E2E run fails**, that is the gate doing its job. Root-cause and fix the
+failure, run only the failed specs to confirm the fix, then push again _with_
+`SKIP_TIA_PREPUSH=1` — the full suite already ran against this branch and reported exactly
+those failures, so re-running all of it re-executes hundreds of specs whose verdict has not
+changed. The procedure and its bounds are "After the hook's own E2E run fails" in
+`.claude/gates/pre-push.md`; follow it there rather than improvising here.
+
+**A run that never executed is not a failed run.** A `StaleDataAbortError` from a stale
+E2E database, or a test stack built at the wrong SHA, produces no verdict — fix the
+environment and let the hook run normally. There is nothing to preserve and nothing to
+bypass.
 
 If the lease check rejects the push, the remote branch has commits your local copy does
 not — someone else pushed, or an earlier run of this skill did. Do not re-force past it.
