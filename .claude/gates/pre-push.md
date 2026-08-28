@@ -330,6 +330,8 @@ stale and run again.
 - [ ] E2E spec present for every story's AC
 - [ ] `checkScreenshot()` added or updated for complex visual surfaces
 - [ ] Framework coverage ≥ 80% if `qa/e2e/framework/` touched
+- [ ] A new or moved spec guarding behavior its directory does not imply carries an
+      `impacts` annotation — see [coverage.md](../../docs/dev/coverage.md)
 - [ ] Roles and capabilities scoped for least privilege
 - [ ] AI tool schemas reviewed if `server/src/services/` or `server/src/ai/` changed
 - [ ] Eval tests added or updated in `qa/evals/` if NLI behavior changed

@@ -1042,9 +1042,43 @@ ML, per its own AC) mapping non-source file changes to widened test scopes. DB/Q
 migrations, CI workflow files, docker-compose files, and `.env` files are flagged
 `alwaysWiden: true` — their blast radius can't be safely bounded by any targeted scope, so
 the safety net's full-suite fallback fires regardless of what the mapping-based selection
-otherwise found. Shared Zod schemas and i18n locale files get targeted (non-`alwaysWiden`)
-scope widening instead. Rule results are always unioned into the mapping-based selection,
-never subtracted from it.
+otherwise found. Rule results are always unioned into the mapping-based selection, never
+subtracted from it.
+
+#### The impact manifest and `impacts` annotations
+
+Targeted widening — TIA tier 2 — resolves a diff's changed paths to spec files, for changes
+the coverage map cannot attribute. A **scope** is a tag naming a set of functional specs:
+either `functional:*`, meaning the whole suite, or `functional:<dir>` for one directory
+under `qa/e2e/tests/apps/minicrm/functional/`. Three sources, unioned by
+`impactResolver.ts`:
+
+1. **The impact manifest** (`impactManifest.ts`) maps source globs to scopes, and is the
+   primary declaration. Its second list names path classes that impact no E2E test, each
+   with the reason. Where globs overlap, the more specific entry wins — `client/src/**` also
+   matches a locale file, and unioning would send a locale-only change to the whole suite.
+2. **`impacts` annotations** declare blast radius a spec's own location does not imply,
+   read statically from source with the TypeScript compiler API because selection runs
+   before any test does. `data-integrity/cascade-delete.spec.ts` carries the only one
+   today, declaring `db/migrations/**`. Note it does not currently change a selection:
+   migrations map to `functional:*`, and a full-suite scope short-circuits before
+   annotations are consulted. The annotation is what makes the spec selectable if
+   migrations are ever narrowed to a targeted scope.
+3. **The directory convention** resolves anything else by the directory the spec lives in,
+   derived by walking the tree, so a new spec is scoped correctly the day it is written.
+
+**When to add which.** A manifest entry answers "a change to these paths affects these
+scopes" and belongs there whenever a whole path class shares an impact. An annotation
+answers "this spec guards behavior its directory does not imply" and belongs next to the
+test, so whoever edits the test maintains it. Most work needs neither: a new spec under an
+existing directory is scoped on creation.
+
+**When the guard fails.** `scripts/check-tia-manifest-coverage.mjs` reports a tracked path
+under no manifest entry, and an annotation glob matching no file. Both mean selection
+resolves to nothing for that input while every test still passes — indistinguishable from
+correctly selecting nothing, which is the failure tier 2 exists to remove. Fix a coverage
+failure by adding a covered glob or declaring the class uncovered with its reason; fix a
+stale annotation by updating the glob to the path the file moved to.
 
 ### Safety-net selection policy (MINCRM-626)
 

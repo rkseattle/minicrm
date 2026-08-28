@@ -43,7 +43,7 @@ export interface FinalSelectionResult {
   mode: 'targeted' | 'full-suite';
   /** Populated for 'targeted' mode; empty for 'full-suite' (callers run everything, this list is moot). */
   selectedTests: FinalSelectedTest[];
-  /** Extra test-scope tags to widen targeted selection with, from dependencyGraphService — only meaningful when mode is 'targeted'. */
+  /** Test-scope tags from dependencyGraphService, reported for audit — selection resolves its own scopes via impactResolver. Only meaningful when mode is 'targeted'. */
   widenedTestScopes: string[];
   fallbackReasons: FullSuiteFallbackReason[];
 }
