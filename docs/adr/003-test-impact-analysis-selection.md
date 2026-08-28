@@ -98,17 +98,33 @@ deterministic (a `RegExp`-keyed table), per MINCRM-625's own AC — not a scorin
 output is always **unioned** into whatever the mapping-based selection already found,
 never subtracted.
 
-**`alwaysWiden` is the half of that union which is wired.** A rule that sets it forces the
-full-suite fallback, and that path is live. `testScopes` is not: `select-tests.ts` prints
-the tags in its rationale and never resolves them to spec files, so a rule with
-`alwaysWiden: false` contributes nothing to `specFiles` today. Both non-widening rules —
-`shared-schema` and `i18n-locale` — are therefore advisory, and the tags they emit
-(`functional:*`, `functional:i18n`) have no consumer anywhere in the repo. Making targeted
-widening real means adding a tag→spec resolver; until then, treat a `testScopes` value as
-documentation of intent rather than as selection behavior. A file class whose blast radius can't be safely bounded by any targeted
-rule (schema migrations, CI workflow files, `.env`/docker-compose files) is flagged
-`alwaysWiden: true`, forcing the safety net's full-suite fallback rather than guessing a
-targeted scope for something the rule table has no confident answer for.
+A file class whose blast radius can't be safely bounded by any targeted rule (schema
+migrations, CI workflow files, `.env`/docker-compose files) is flagged `alwaysWiden: true`,
+forcing the safety net's full-suite fallback rather than guessing a targeted scope for
+something the rule table has no confident answer for.
+
+**Targeted widening is now wired (MINCRM-733).** It was not: the tags were printed into a
+rationale string and never resolved to spec files, so a rule with `alwaysWiden: false`
+contributed nothing to `specFiles` — a locale-only change selected no i18n specs at all.
+`impactResolver.ts` resolves a diff's changed paths to spec files from three declared
+sources: the source-path impact manifest (`impactManifest.ts`), `impacts` annotations read
+statically from spec source, and the `functional:<dir>` directory convention derived by
+walking the tree. `select-tests.ts` unions the result into `specFiles`.
+
+Selection reads the manifest directly rather than through the rule table, which keeps its
+own `testScopes` literals — the two are parallel declarations of the same edge, pinned by
+an assertion that every scope a rule emits is one the manifest declares. Substituting one
+for the other is a further step this change does not take.
+
+The declaration is manual by design. Deriving it from observed coverage would hide exactly
+the specs guarding unmapped behavior — a spec that never instantiates the `page` fixture
+emits no coverage at all — and a human must be able to assert an edge the runtime never
+observed. `scripts/check-tia-manifest-coverage.mjs` fails CI on the two decay paths a
+guard can see across the whole tracked tree: a path under no manifest entry, and an
+annotation glob matching no file. The resolver additionally throws on an undeclared scope
+and on a scope matching no spec file, but `select-tests.ts` catches those so a stale entry
+cannot block every push — the reason rides out on `impactResolutionError`, which today
+reaches the advisory PR comment only.
 
 ### 3. Safety net is structurally decoupled from the scorer (MINCRM-626, MINCRM-627)
 

@@ -27,10 +27,9 @@ export interface DependencyWideningResult {
    * Test-scope tags this file's change widens selection to — empty when only alwaysWiden
    * fired.
    *
-   * Advisory today: select-tests.ts prints these in its rationale but never joins them
-   * into specFiles, and no runner resolves a tag to spec files, so a rule with
-   * alwaysWiden: false currently selects nothing extra. Wiring a resolver is what would
-   * make targeted widening real.
+   * Audit output, not the selection input: selection resolves scopes through
+   * impactManifest.ts and impactResolver.ts, reading the manifest directly rather than
+   * this table. These tags are what the rationale and the PR comment report.
    */
   widenedTestScopes: string[];
   /** True when this file class is untrusted for targeted widening — callers must fall back to the full suite regardless of what widenedTestScopes contains. */
