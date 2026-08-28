@@ -36,6 +36,13 @@ shared/generated/*.d.ts
 # Same for shared/types — build artifacts, not sources.
 shared/types/*.js
 shared/types/*.d.ts
+# And shared/testing. These were tracked by accident, which split behavior:
+# vitest aliases @minicrm/shared/*.js to the .ts, while every plain-tsx consumer
+# (verify-test-attestation, assertTestDatabaseTarget, targeted-run-plan,
+# test-stack-db-env) loads the committed .js. A stale artifact therefore runs in
+# the attestation gate and the dev-port refusal while tests assert the source.
+shared/testing/*.js
+shared/testing/*.d.ts
 
 # ─── Generated API spec (produced by npm run generate-spec) ───────────────────
 server/openapi.json
