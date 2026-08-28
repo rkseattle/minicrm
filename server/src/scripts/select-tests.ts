@@ -439,11 +439,12 @@ export async function selectTests(
     });
   }
 
-  // Tier 2 resolving to the whole suite is a selection decision, not a note:
-  // a shared/schemas or Dockerfile change has no alwaysWiden rule behind it, so
-  // without this the manifest's answer would be printed and discarded — the
-  // exact "prints them into a rationale string" dead end this work replaces.
-  if (selectionResult.mode === 'full-suite' || impactResolution.fullSuite) {
+  // Note what is NOT consulted here: impactResolution.fullSuite. A manifest
+  // scope of functional:* means "tier 2 has no narrower answer", not "run
+  // everything", and it covers server/src/** and client/src/** — the classes
+  // tier 1 does attribute. Treating it as a full-suite trigger sent 34 of the
+  // last 40 commits to the full suite. Tier 2 only ever adds files below.
+  if (selectionResult.mode === 'full-suite') {
     return {
       mode: 'full-suite',
       specFiles: [],

@@ -9,6 +9,7 @@
  * calls into, not re-tested here.
  */
 
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { resolveBaselineFiles, parseArgs, impactRationale } from '../scripts/select-tests.js';
 
@@ -148,5 +149,17 @@ describe('impactRationale', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain('Impact-resolved 1 spec file(s)');
     expect(lines[0]).toContain('i18n.spec.ts');
+  });
+});
+
+// The mode decision lives inside DB-backed selectTests, so this pins it at the
+// source level: a reintroduced `|| impactResolution.fullSuite` escalated 34 of
+// the last 40 commits to the full suite, and no unit test covered it.
+describe('mode decision', () => {
+  it('does not let impact resolution escalate the mode', () => {
+    const source = readFileSync(resolve(__dirname, '../scripts/select-tests.ts'), 'utf-8');
+    const index = source.indexOf('if (selectionResult.mode ===');
+    expect(index).toBeGreaterThan(-1);
+    expect(source.slice(index, index + 120)).not.toContain('impactResolution.fullSuite');
   });
 });
