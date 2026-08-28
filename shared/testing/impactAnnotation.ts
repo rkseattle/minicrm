@@ -39,6 +39,15 @@
 export const IMPACTS_ANNOTATION = 'impacts';
 
 /**
+ * The name specs import IMPACTS_ANNOTATION by.
+ *
+ * Declared beside the constant so the static reader resolves an import against
+ * one source of truth: a rename that updated only one of the two would leave
+ * every annotated spec reading as unannotated.
+ */
+export const IMPACTS_ANNOTATION_EXPORT_NAME = 'IMPACTS_ANNOTATION';
+
+/**
  * One `impacts` declaration: a glob over source paths, relative to the repo
  * root.
  *

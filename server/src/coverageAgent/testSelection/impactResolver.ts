@@ -26,7 +26,10 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { relative, resolve as resolvePath } from 'node:path';
 import * as ts from 'typescript';
 
-import { IMPACTS_ANNOTATION } from '@minicrm/shared/testing/impactAnnotation.js';
+import {
+  IMPACTS_ANNOTATION,
+  IMPACTS_ANNOTATION_EXPORT_NAME,
+} from '@minicrm/shared/testing/impactAnnotation.js';
 import {
   ALL_FUNCTIONAL_SCOPE,
   declaredScopes,
@@ -90,31 +93,65 @@ function discoverSpecFiles(repoRoot: string): string[] {
  * as "no annotation" rather than an error: a legal Playwright form must not
  * fail the run just because this reader cannot see through it.
  */
-function impactsGlobFromAnnotationObject(node: ts.ObjectLiteralExpression): string | null {
+/**
+ * The local names this file binds the shared annotation constant to.
+ *
+ * Read from the file's own imports rather than assumed, so an aliased import —
+ * an established form in this suite — is understood instead of silently reading
+ * nothing, which would look exactly like a spec that declares no impacts.
+ */
+function localNamesForAnnotationConstant(sourceFile: ts.SourceFile): Set<string> {
+  const names = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) continue;
+    for (const element of bindings.elements) {
+      const importedName = (element.propertyName ?? element.name).text;
+      if (importedName === IMPACTS_ANNOTATION_EXPORT_NAME) names.add(element.name.text);
+    }
+  }
+  return names;
+}
+
+function impactsGlobFromAnnotationObject(
+  node: ts.ObjectLiteralExpression,
+  constantNames: ReadonlySet<string>,
+): string | null {
   let isImpacts = false;
   let description: string | null = null;
 
   for (const property of node.properties) {
     if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name)) continue;
     const value = property.initializer;
-    if (!ts.isStringLiteralLike(value)) continue;
 
-    if (property.name.text === 'type' && value.text === IMPACTS_ANNOTATION) isImpacts = true;
-    if (property.name.text === 'description') description = value.text;
+    // Both forms are read: the imported constant is the convention, the literal
+    // is what a hand-written annotation tends to use.
+    if (property.name.text === 'type') {
+      const isConstantReference = ts.isIdentifier(value) && constantNames.has(value.text);
+      const isLiteral = ts.isStringLiteralLike(value) && value.text === IMPACTS_ANNOTATION;
+      if (isConstantReference || isLiteral) isImpacts = true;
+    }
+    if (property.name.text === 'description' && ts.isStringLiteralLike(value)) {
+      description = value.text;
+    }
   }
 
   return isImpacts ? description : null;
 }
 
 /** Collects `impacts` globs from an `annotation:` property value, which Playwright accepts as one object or an array. */
-function impactsGlobsFromAnnotationValue(value: ts.Expression): string[] {
+function impactsGlobsFromAnnotationValue(
+  value: ts.Expression,
+  constantNames: ReadonlySet<string>,
+): string[] {
   const objects = ts.isArrayLiteralExpression(value)
     ? value.elements.filter(ts.isObjectLiteralExpression)
     : ts.isObjectLiteralExpression(value)
       ? [value]
       : [];
   return objects
-    .map(impactsGlobFromAnnotationObject)
+    .map((object) => impactsGlobFromAnnotationObject(object, constantNames))
     .filter((glob): glob is string => glob !== null);
 }
 
@@ -128,6 +165,7 @@ function impactsGlobsFromAnnotationValue(value: ts.Expression): string[] {
  */
 export function extractImpactsGlobs(sourceText: string, fileName: string): string[] {
   const sourceFile = ts.createSourceFile(fileName, sourceText, ts.ScriptTarget.Latest, true);
+  const constantNames = localNamesForAnnotationConstant(sourceFile);
   const globs: string[] = [];
 
   function visit(node: ts.Node): void {
@@ -138,7 +176,7 @@ export function extractImpactsGlobs(sourceText: string, fileName: string): strin
           ts.isIdentifier(property.name) &&
           property.name.text === 'annotation'
         ) {
-          globs.push(...impactsGlobsFromAnnotationValue(property.initializer));
+          globs.push(...impactsGlobsFromAnnotationValue(property.initializer, constantNames));
         }
       }
     }

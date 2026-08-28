@@ -1,0 +1,8 @@
+import { test } from '@apps/minicrm/fixtures.js';
+import { IMPACTS_ANNOTATION as IMPACTS } from '@minicrm/shared/testing/impactAnnotation.js';
+
+test(
+  'F8: declares its type via an aliased import',
+  { annotation: [{ type: IMPACTS, description: 'db/migrations/**' }] },
+  async () => {},
+);
