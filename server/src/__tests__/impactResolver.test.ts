@@ -121,7 +121,9 @@ describe('extractImpactsGlobs', () => {
 });
 
 describe('resolveImpactedSpecs', () => {
-  it('reports full-suite for a path whose scope is functional:*', () => {
+  // functional:* reports "no narrower answer", which the caller must not read as
+  // a full-suite trigger — server/src/** is precisely what tier 1 attributes.
+  it('reports no narrower answer for a path whose scope is functional:*', () => {
     const result = resolveImpactedSpecs(['server/src/app.ts'], repoRoot());
     expect(result.fullSuite).toBe(true);
     expect(result.specFiles).toEqual([]);
