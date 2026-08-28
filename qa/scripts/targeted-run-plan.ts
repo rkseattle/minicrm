@@ -36,6 +36,11 @@
 
 import { readFileSync } from 'node:fs';
 
+import {
+  NON_SERIAL_GREP_INVERT,
+  isPathExcludedFromNonSerial,
+} from '@minicrm/shared/testing/specRunnability.js';
+
 /**
  * The grep expression identifying a serial test. Matched by the serial
  * invocation and INVERTED by the non-serial one so the two partition the
@@ -83,7 +88,9 @@ export const SERIAL_GREP = '@functional.*@serial|@serial.*@functional';
  * diffs caused by other tests' seeded data. The serial halves still rely on the
  * tags, so retagging remains the thing that would break the exemption.
  */
-export const NON_SERIAL_GREP_INVERT = 'visual-regression|serial';
+// Re-exported so this module stays the import site its four consumers already
+// use; the declaration itself lives in shared/ because attestation needs it too.
+export { NON_SERIAL_GREP_INVERT };
 
 /** Which half of the split an invocation covers. */
 export type InvocationLabel = 'non-serial' | 'serial';
@@ -130,9 +137,6 @@ export function isSerialTitle(title: string): boolean {
 /** Compiled once; stateless (no `g`/`y` flag, so no lastIndex to carry). */
 const NON_SERIAL_GREP_INVERT_PATTERN = new RegExp(NON_SERIAL_GREP_INVERT);
 
-/** Playwright's testDir, relative to the repo root. */
-const TEST_DIR_PREFIX = 'qa/e2e/tests/';
-
 /**
  * Would the NON-SERIAL invocation actually select this test?
  *
@@ -160,14 +164,9 @@ const TEST_DIR_PREFIX = 'qa/e2e/tests/';
 export function isNonSerialTitle(title: string, specFile?: string): boolean {
   if (NON_SERIAL_GREP_INVERT_PATTERN.test(title)) return false;
 
-  if (specFile !== undefined) {
-    const normalized = specFile.replace(/\\/g, '/');
-    const index = normalized.lastIndexOf(TEST_DIR_PREFIX);
-    // lastIndexOf, and slice to the testDir-relative form: a checkout living
-    // under a directory containing the excluded term must not exclude the suite.
-    const grepped = index === -1 ? normalized : normalized.slice(index + TEST_DIR_PREFIX.length);
-    if (NON_SERIAL_GREP_INVERT_PATTERN.test(grepped)) return false;
-  }
+  // Shared with attestation: the planner and the gate must agree on which files
+  // an invocation can select, or a push fails on one nothing could have run.
+  if (specFile !== undefined && isPathExcludedFromNonSerial(specFile)) return false;
 
   return true;
 }

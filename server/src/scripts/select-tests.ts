@@ -95,10 +95,9 @@ export interface SelectTestsResult {
    * Spec files TIA tier 2 derived from the impact manifest, spec-declared
    * `impacts` annotations, and the directory convention.
    *
-   * Reported, not yet required: every specFiles entry is reconciled against
-   * what actually ran (verify-test-attestation.ts), and a spec that emits no
-   * coverage dump would fail that check despite passing. Kept separate until
-   * reconciliation understands which specs are runnable.
+   * Also unioned into specFiles; kept as its own field so a reader can tell
+   * which producer contributed a file, which is the audit question the mode
+   * and reason labels exist to answer elsewhere.
    */
   scopeResolvedSpecFiles: string[];
   /**
@@ -337,7 +336,7 @@ export function impactRationale(impactResolution: ImpactRationaleInput): string[
     return [];
   }
   return [
-    `Impact-resolved ${impactResolution.specFiles.length} spec file(s) (reported, not yet required): ${impactResolution.specFiles.join(', ')}`,
+    `Impact-resolved ${impactResolution.specFiles.length} spec file(s): ${impactResolution.specFiles.join(', ')}`,
   ];
 }
 
@@ -469,7 +468,12 @@ export async function selectTests(
 
   return {
     mode: 'targeted',
-    specFiles: Array.from(new Set([...baselineSpecFiles, ...mappedSpecFiles])),
+    // Third producer, unioned and deduplicated alongside baseline and mapped
+    // files. Safe now that attestation excludes files nothing could have run:
+    // before that, a page-less or grep-excluded spec here failed the push.
+    specFiles: Array.from(
+      new Set([...baselineSpecFiles, ...mappedSpecFiles, ...impactResolution.specFiles]),
+    ),
     unresolvedTestIds,
     fallbackReasons: [],
     scopeResolvedSpecFiles: impactResolution.specFiles,

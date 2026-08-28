@@ -139,14 +139,14 @@ describe('impactRationale', () => {
     expect(impactRationale({ specFiles: [], fullSuite: false, error: null })).toEqual([]);
   });
 
-  it('lists the resolved files and marks them not yet required', () => {
+  it('lists the resolved spec files with a count', () => {
     const lines = impactRationale({
       specFiles: ['qa/e2e/tests/apps/minicrm/functional/i18n/i18n.spec.ts'],
       fullSuite: false,
       error: null,
     });
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toContain('not yet required');
+    expect(lines[0]).toContain('Impact-resolved 1 spec file(s)');
     expect(lines[0]).toContain('i18n.spec.ts');
   });
 });
