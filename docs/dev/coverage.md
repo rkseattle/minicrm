@@ -1259,6 +1259,14 @@ rather than one of the reasons below, so if you see that string, read the stderr
   and can never appear in the ran-files set however well it passed — counting it would fail
   a push on work nothing could have done.
 
+  Those exclusions are reported, not silent. `unreconcilableRequiredFiles` on the result
+  lists them, and the CLI prints them on a pass as well as a failure — the blind spot
+  matters most on the run nobody reads twice. It is deliberately not a failure reason:
+  `passed` is `reasons.length === 0`, so making it one would restore the block it removes.
+  What it costs is real — for those files a genuinely-did-not-run case is indistinguishable
+  from cannot-be-attested — and closing it means recording a dump for page-less specs,
+  which is a coverage-pipeline change rather than a selection one.
+
 This list must name every member of `AttestationFailureReason`, and that is **enforced**,
 not left to reviewers: `verifyTestAttestation.test.ts` reads this section and fails if any
 reason exported from `ATTESTATION_FAILURE_REASONS` is missing a backticked entry above.
