@@ -18,7 +18,11 @@ These four rules stack; none relaxes another.
    attempted.
 3. **Never rerun, for any reason.** Run once, accept the result. Load-induced timeouts
    are not a reason to rerun. If it fails, root-cause and fix, then run **once** after
-   the fix.
+   the fix — and that run covers the **failed specs only**, not the suite again. The
+   passing specs already reported a verdict the fix does not change, and re-executing
+   hundreds of them is what makes honest confirmation more expensive than dismissing the
+   failure as a flake. When the failing run was the pre-push hook's own, see "After the
+   hook's own E2E run fails" in `.claude/gates/pre-push.md` for how to push the fix.
 
    **A killed run is not a result.** If the run was interrupted before it wrote
    `results.xml` — a tool timeout, a stopped background task, a closed session — there is

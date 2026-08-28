@@ -65,6 +65,11 @@ For every failing job:
    against the merged result. Rebasing rewrites the branch, so this push is
    `--force-with-lease`.
 
+   If the hook's own E2E run fails on the way out, follow "After the hook's own E2E run
+   fails" in that gate: fix, re-run only the failed specs, then push with
+   `SKIP_TIA_PREPUSH=1`. A rebase onto a moved parent voids that allowance — the prior
+   run no longer describes the tree, so the hook runs in full again.
+
 If a fix touched E2E-relevant code, validate narrowly — run only the affected specs
 with `--grep`, once. Do not re-run the whole suite to check a narrow fix.
 

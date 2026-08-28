@@ -148,6 +148,55 @@ not the one to eyeball.
 Never skip the hook to get _around_ a failure, a flake, or a run you'd rather not sit
 through.
 
+### After the hook's own E2E run fails
+
+The one case where a fix commit does NOT restart the gate from step 1.
+
+The hook ran the suite, it failed, and you fixed the cause. Condition 3 above would void
+that run — the fix is a new commit, so nothing has executed against this HEAD. Taken
+literally it means a full suite per fix, which on a branch with two or three E2E failures
+is three or four hours of re-running tests that already told you what they knew. That is
+how a real failure gets rationalised as a flake: the cost of confirming it honestly is
+higher than the cost of pretending it was noise.
+
+So, in this order:
+
+1. **Root-cause and fix the failure.** `.claude/gates/e2e-run.md` still governs: no
+   failure is dismissed as a flake, pre-existing, or unrelated, and a rerun that passes is
+   not a resolution.
+2. **Run only the failed specs**, once, against the fixed tree:
+
+   ```bash
+   cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
+     npx playwright test --config=e2e/playwright.config.ts <spec paths>
+   ```
+
+   Read the counts from the results file, never the console. If a fix touched shared
+   framework code rather than one spec's own logic, the affected set is wider than the
+   specs that failed — run that wider set.
+
+3. **Push with the bypass**, which is now the honest path rather than a shortcut:
+
+   ```bash
+   SKIP_TIA_PREPUSH=1 git push --force-with-lease origin <branch>
+   ```
+
+Conditions 1 and 2 are replaced by the targeted run: the full suite already ran against
+this branch and reported exactly these failures, and re-running everything re-executes
+hundreds of specs whose verdict has not changed. Condition 4 still holds in full — lint,
+typecheck, unit tests, and the audit gate are cheap and cover what E2E does not.
+
+**The bound.** This applies only to a HEAD whose sole delta from the failed run is the
+fix. Add a feature, touch unrelated code, or rebase onto a moved parent, and the prior
+run no longer describes the tree — restart at step 1. If the targeted run fails again, you
+have not fixed it; you are not entitled to the bypass on a second attempt at the same
+failure.
+
+**Applies equally to the setup a run needs.** A run that aborts before executing anything —
+`StaleDataAbortError` from a stale E2E database, a test stack built at the wrong SHA — has
+produced no verdict at all. Fix the environment and let the hook run normally; there is no
+result to preserve and nothing to bypass.
+
 **`SKIP_TIA_PREPUSH=1` does not skip typecheck or the audit gate.** The hook runs both
 (steps 3 and 5) before it consults that variable, so the bypass drops only the E2E leg —
 which is the scope the variable's name describes. Both are seconds against a 20-60 minute
