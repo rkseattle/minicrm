@@ -123,6 +123,27 @@ export const DECLARED_UNCOVERED_PATHS: readonly string[] = [
   'qa/test-results/**',
 ];
 
+/**
+ * True when `inner` is a strictly narrower declaration than `outer` for the
+ * path being resolved.
+ *
+ * Decided by literal prefix rather than by glob length: `client/src/locales/**`
+ * begins with all of `client/src/`'s literal text and adds more, so it is
+ * genuinely nested. A filename pattern like a bare `**` prefix shares no
+ * literal prefix with a directory tree, so the two never override one another
+ * and both contribute — which is the union case.
+ */
+function isNarrowerThan(inner: string, outer: string): boolean {
+  const literalPrefix = (glob: string): string => glob.split(/[*]/)[0] ?? '';
+  const innerPrefix = literalPrefix(inner);
+  const outerPrefix = literalPrefix(outer);
+  return (
+    outerPrefix !== '' &&
+    innerPrefix.length > outerPrefix.length &&
+    innerPrefix.startsWith(outerPrefix)
+  );
+}
+
 const COVERED_MATCHERS = COVERED_PATHS.map((entry) => ({
   matcher: globToRegExp(entry.glob),
   entry,
@@ -140,10 +161,18 @@ const UNCOVERED_MATCHERS = DECLARED_UNCOVERED_PATHS.map(globToRegExp);
  */
 export function coveredScopesForPath(filePath: string): string[] {
   const normalized = filePath.replace(/\\/g, '/');
-  const scopes = COVERED_MATCHERS.filter(({ matcher }) => matcher.test(normalized)).flatMap(
-    ({ entry }) => entry.scopes,
+  const matched = COVERED_MATCHERS.filter(({ matcher }) => matcher.test(normalized));
+  if (matched.length === 0) return [];
+
+  // Drop an entry when another match is strictly contained within it: the
+  // narrower declaration is the more specific answer for this path.
+  const winners = matched.filter(
+    ({ entry }) =>
+      !matched.some(
+        ({ entry: other }) => other.glob !== entry.glob && isNarrowerThan(other.glob, entry.glob),
+      ),
   );
-  return Array.from(new Set(scopes));
+  return Array.from(new Set(winners.flatMap(({ entry }) => entry.scopes)));
 }
 
 /**
@@ -154,12 +183,20 @@ export function declaredScopes(): Set<string> {
 }
 
 /**
- * The scopes a change to this path impacts, unioned across every matching
- * entry and deduplicated.
+ * The scopes a change to this path impacts.
  *
- * Entries overlap by design — `shared/schemas/**` and `shared/**` both match a
- * schema file — and overlapping matches union rather than the most specific
- * winning, matching the rule table's own widen-only semantics.
+ * MOST SPECIFIC ENTRY WINS, then union among equals. A broad entry exists to
+ * catch what no narrower one claims, so unioning it with a narrower match would
+ * make every narrow entry pointless: `client/src/locales/**` declares
+ * `functional:i18n`, but `client/src/**` also matches a locale file, and a
+ * union resolves a locale-only change to the whole suite — which is the silent
+ * over-selection tier 2 exists to replace.
+ *
+ * Specificity is CONTAINMENT, not glob length: an entry loses only when another
+ * match is strictly nested inside it. Length is a tempting proxy and a wrong
+ * one — a filename pattern can be longer than a directory tree while neither
+ * contains the other, and picking by length there would silently discard the
+ * narrower entry's scopes the day the two stop agreeing.
  */
 export function scopesForPath(filePath: string): string[] {
   const normalized = filePath.replace(/\\/g, '/');

@@ -1,0 +1,7 @@
+import { test } from '@apps/minicrm/fixtures.js';
+
+test(
+  'F6: declares a path that no longer exists',
+  { annotation: [{ type: 'impacts', description: 'gone/moved-away/**' }] },
+  async () => {},
+);

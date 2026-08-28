@@ -1,0 +1,3 @@
+import { test } from '@apps/minicrm/fixtures.js';
+
+test('F3: tagged but not annotated', { tag: ['@functional'] }, async () => {});

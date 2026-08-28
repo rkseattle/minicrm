@@ -1,0 +1,14 @@
+import { test } from '@apps/minicrm/fixtures.js';
+
+test(
+  'F5: several impacts on one spec',
+  {
+    tag: ['@functional'],
+    annotation: [
+      { type: 'impacts', description: 'db/migrations/**' },
+      { type: 'other', description: 'ignored' },
+      { type: 'impacts', description: 'qa/migrations/**' },
+    ],
+  },
+  async () => {},
+);

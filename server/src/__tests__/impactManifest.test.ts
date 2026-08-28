@@ -118,9 +118,26 @@ describe('scopesForPath', () => {
     expect(scopesForPath('qa/e2e/.env.example')).toContain(ALL_FUNCTIONAL_SCOPE);
   });
 
-  it('deduplicates scopes when several entries match one path', () => {
-    // shared/schemas/** and shared/** both match, and both carry the same scope.
+  it('deduplicates scopes when equally specific entries match one path', () => {
     expect(scopesForPath('shared/schemas/dealSchema.ts')).toEqual([ALL_FUNCTIONAL_SCOPE]);
+  });
+
+  // The ticket's headline case: client/src/** also matches a locale file, and a
+  // union would resolve a locale-only change to the entire suite.
+  it('lets the most specific entry win over a broader one containing it', () => {
+    expect(scopesForPath('client/src/locales/en.json')).toEqual(['functional:i18n']);
+    expect(scopesForPath('client/src/pages/DealsPage.tsx')).toEqual([ALL_FUNCTIONAL_SCOPE]);
+  });
+
+  // Two entries that merely intersect must both contribute: a filename pattern
+  // and a directory tree share no literal prefix, so neither is the narrower
+  // answer and picking one by length would discard the other's scopes.
+  it('unions entries that overlap without one containing the other', () => {
+    expect(coveredScopesForPath('qa/e2e/package.json')).toEqual([ALL_FUNCTIONAL_SCOPE]);
+    const matching = COVERED_PATHS.filter((entry) =>
+      globToRegExp(entry.glob).test('qa/e2e/package.json'),
+    );
+    expect(matching.length).toBeGreaterThan(1);
   });
 
   it('returns nothing for a path no entry covers', () => {
