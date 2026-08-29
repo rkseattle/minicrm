@@ -105,5 +105,15 @@ Never run a fresh `/code-review` when asked to address existing feedback.
 ## Step 5 — Loop
 
 Push, re-arm the monitor, stay silent. Repeat steps 2–4 until every check passes and no
-comment is unaddressed. Then report: final check status, the commits added, and one
-line per issue fixed with its root cause.
+comment is unaddressed.
+
+Report at the end of each iteration, not only when the loop exits — an iteration is a
+boundary like a phase, and a run that goes quiet for four pushes is one nobody can
+follow. Per iteration: which checks went green and which are still red, the commits
+added, the files they touched, how long the iteration took, and one line per issue fixed
+with its root cause and the sites the pattern-spread grep covered.
+
+When the loop exits, report the full status: final check status, every commit added
+across all iterations, all files changed, total wall-clock, the acceptance criteria table
+with evidence — CI passing is evidence for an AC that a test covers, and now is when it
+becomes available — and the friction from this stage, proposed and not applied.

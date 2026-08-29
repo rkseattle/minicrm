@@ -215,6 +215,20 @@ Then read every comment the diff adds or changes. Cut any that restates the code
 past CLAUDE.md's budget (one line, 15 words for an inline justification), or narrates a
 review round rather than describing the code — the commit message is where history goes.
 
+## After the commit — status report
+
+A phase is not done at the commit. Report status before starting the next one, per
+`implement-phases` step 2e: phases complete and remaining, files modified in this phase
+with the commit SHA, per-phase duration, acceptance criteria met with evidence, gate
+results, and friction.
+
+The costly parts are the ones easiest to skip. `files` comes from `git show --name-only`
+on the commit, never from memory of what you edited — a lint autofix or a regenerated
+lockfile lands in the commit without passing through you. Duration comes from the
+`started_at`/`finished_at` timestamps in `.claude/state/current-plan.json`, never from
+an estimate. And an AC is met only with evidence naming something that fails if the
+behavior regresses; code existing that ought to satisfy it is not evidence.
+
 ## Reading results
 
 Never rely on exit codes or console summaries for test outcomes. Delete stale result

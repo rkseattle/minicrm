@@ -8,6 +8,7 @@ that is a repeatable procedure lives in a gate file or a skill and loads on dema
 | Need                                      | Where                                                  |
 | ----------------------------------------- | ------------------------------------------------------ |
 | Definition of Done, before every commit   | `.claude/gates/definition-of-done.md`                  |
+| Status report at every phase boundary     | `implement-phases` step 2e                             |
 | Pre-push checklist and pre-PR self-review | `.claude/gates/pre-push.md`                            |
 | E2E run procedure and cadence policy      | `.claude/gates/e2e-run.md`                             |
 | New endpoint checklist                    | `docs/dev/new-endpoint.md`                             |
