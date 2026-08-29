@@ -132,14 +132,9 @@ export function UserMenu({ userName }: UserMenuProps) {
           </div>
 
           <div className="border-t border-gray-100 px-4 py-3">
-            <label
-              htmlFor={LANGUAGE_SELECT_ID}
-              className="mb-1 block text-xs font-medium text-gray-500"
-            >
-              {t('nav.languageSelector')}
-            </label>
             <Select
               id={LANGUAGE_SELECT_ID}
+              label={t('nav.languageSelector')}
               data-testid="nav-language-select"
               value={i18n.language}
               onChange={(e) => handleLanguageChange(e.target.value as SupportedLocale)}
