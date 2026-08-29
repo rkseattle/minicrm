@@ -6,12 +6,11 @@
  * the framework's pixel-diff assertion runs.
  *
  * IMPORTANT — Baseline generation:
- *   Snapshots must be generated inside the Linux Docker E2E environment to be
- *   CI-compatible (font rendering differs across OSes). Run:
- *     docker compose -f docker-compose.e2e.yml run --rm playwright \
- *       npx playwright test visual-regression --update-snapshots
- *   Commit the resulting files from qa/e2e/snapshots/ into source control.
- *   See the framework docs for full OS requirement documentation.
+ *   Regenerate through the Update Visual Baselines workflow, dispatched against the
+ *   branch. It runs on the same amd64 Linux runner CI verifies against and commits
+ *   the PNGs back — font rendering and rasterization differ by OS *and* architecture,
+ *   so baselines built on an arm64 Mac land in the -linux slots CI reads and fail
+ *   there while looking right in the diff.
  *
  * Pages covered:
  *   Core Layout
