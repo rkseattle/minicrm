@@ -957,8 +957,16 @@ test.describe('Mobile nav mechanics', () => {
     await expectUserMenuLogoutVisible({ page });
     await expectUserMenuLanguageSelectVisible({ page });
   });
+}); // end Mobile nav mechanics
 
-  test('@functional F8-MN7: user menu — Profile Settings navigates to /profile', async ({
+// ---------------------------------------------------------------------------
+// User menu — the header control that replaced the Profile Settings nav link.
+// Rendered by NavHeader, so it is present under every layout and at every width;
+// nothing here is mobile-specific.
+// ---------------------------------------------------------------------------
+
+test.describe('User menu', () => {
+  test('@functional F8-UM1: user menu — Profile Settings navigates to /profile', async ({
     page,
   }) => {
     await navigateToDashboard(page);
@@ -969,7 +977,7 @@ test.describe('Mobile nav mechanics', () => {
 
     expect(finalPath, 'choosing Profile Settings should land on /profile').toBe('/profile');
   });
-}); // end Mobile nav mechanics
+}); // end User menu
 
 // ---------------------------------------------------------------------------
 // Deep linking — these tests use page.goto and do not touch nav-layout,
