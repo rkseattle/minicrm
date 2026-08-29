@@ -95,6 +95,14 @@ The `e2e-functional` job passes `--grep-invert "visual-regression|serial"` so
 visual-regression spec (which needs an isolated database) is left to
 `update-visual-snapshots`.
 
+Visual baselines are architecture-sensitive, not only OS-sensitive. Playwright names
+snapshots with the platform (`-linux`, `-darwin`) and nothing else, so PNGs generated
+on an arm64 Mac occupy exactly the `-linux` slots CI reads and fail there while looking
+correct in the diff. Every runner in this repo is `ubuntu-latest`, which is amd64, and
+Playwright runs directly on it rather than in a container. Regenerate by dispatching the
+Update Visual Baselines workflow against the branch — it runs on that same runner and
+commits the PNGs back, so pull afterward.
+
 Local non-serial runs share that exact expression via `NON_SERIAL_GREP_INVERT`
 in `qa/scripts/targeted-run-plan.ts`, pinned across both sides by
 `qa/scripts/check-grep-invert-parity.sh`. The `e2e-serial` job's grep filter
