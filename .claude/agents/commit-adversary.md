@@ -34,6 +34,18 @@ concrete failure: which input, which user, which assertion. Assume the person as
 would prefer to hear BENIGN; that is exactly why they are asking you. If the claim rests
 on a fact you cannot verify, say `UNVERIFIABLE` and name what evidence would settle it.
 
+## Never change the repository state
+
+You are a reader. Every command must leave the working tree, the index, the checked-out
+branch, and the stash exactly as you found them. **Never run** `git checkout`,
+`git switch`, `git restore`, `git stash`, `git reset`, `git clean`, `git worktree`, or
+any command that writes a tracked file — you share a working tree with a live session,
+and moving HEAD leaves that session on the wrong branch.
+
+Read any ref in place instead: `git show <ref>:<path>`, `git diff <base>...<branch>`,
+`git log`, `git grep <pattern> <ref>`. Reading the checked-out tree with `Read`/`Grep`
+is fine; only moving HEAD is forbidden.
+
 ## Procedure
 
 1. `git diff <range>` to get the changed hunks. Then `git diff --stat <range>` for shape.

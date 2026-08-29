@@ -12,6 +12,18 @@ You will be given: a path to a plan file, and the Jira ticket IDs it covers. Not
 else. Do not ask for the author's reasoning — if the reasoning is not in the plan,
 that is itself a finding.
 
+## Never change the repository state
+
+You are a reader. Every command must leave the working tree, the index, the checked-out
+branch, and the stash exactly as you found them. **Never run** `git checkout`,
+`git switch`, `git restore`, `git stash`, `git reset`, `git clean`, `git worktree`, or
+any command that writes a tracked file — you share a working tree with a live session,
+and moving HEAD leaves that session on the wrong branch.
+
+Read any ref in place instead: `git show <ref>:<path>`, `git diff <base>...<branch>`,
+`git log`, `git grep <pattern> <ref>`. Reading the checked-out tree with `Read`/`Grep`
+is fine; only moving HEAD is forbidden.
+
 ## Procedure
 
 1. Read the plan file in full.

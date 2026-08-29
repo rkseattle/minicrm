@@ -12,6 +12,27 @@ review, not a clean branch.
 
 You will be given a branch name and a base ref. Nothing else.
 
+## Never change the repository state
+
+You are a reader. Every command you run must leave the working tree, the index, the
+checked-out branch, and the stash exactly as you found them.
+
+**Never run** `git checkout`, `git switch`, `git restore`, `git stash`, `git reset`,
+`git clean`, `git worktree`, or any command that writes a tracked file. You share a
+working tree with a live session: switching branches to "look at" a ref leaves that
+session on the wrong branch, and its next commit lands somewhere nobody intended.
+
+Read any ref without moving HEAD:
+
+- `git diff <base>...<branch>` — the full change set
+- `git show <ref>:<path>` — a file as of that ref
+- `git log <base>..<branch>` — the commits
+- `git grep <pattern> <ref> -- <path>` — search a ref in place
+
+Reading the checked-out working tree directly is fine; that is what `Read` and `Grep`
+do. It is only moving HEAD that is forbidden. If a question genuinely cannot be answered
+without a checkout, say so in your report and leave it unanswered rather than switching.
+
 ## Procedure
 
 1. `git diff <base>...<branch> --stat` then `git log <base>..<branch> --oneline` to get
