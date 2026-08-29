@@ -49,7 +49,7 @@ import {
   filterContactsByTerm,
   waitForContactDetailReadMode,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
+import { setNavLayoutViaAPI, openUserMenu } from '@behaviors/minicrm/nav.behaviors.js';
 import { navigateToContactsPage } from '@behaviors/minicrm/layout.behaviors.js';
 import {
   navigateToLoginPage,
@@ -161,6 +161,20 @@ test('@functional @serial A11Y-N1: main navigation — top layout landmark struc
   // Ensure a known nav layout so the NavBar renders consistently across runs.
   await setNavLayoutViaAPI('top', restClient);
   await navigateToContactsPage({ page });
+
+  await assertNoBlockingViolations(page);
+});
+
+test('@functional @serial A11Y-N2: header user menu — open menu structure', async ({
+  page,
+  restClient,
+}) => {
+  await setNavLayoutViaAPI('top', restClient);
+  await navigateToContactsPage({ page });
+
+  // A11Y-N1 only ever captures this menu closed, so its role, its labelling, and the
+  // language select it wraps are audited nowhere else.
+  await openUserMenu({ page });
 
   await assertNoBlockingViolations(page);
 });

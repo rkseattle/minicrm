@@ -23,6 +23,9 @@ const MINICRM_EN: LocaleMap = {
   'nav.myTasks': 'My Tasks',
   'nav.users': 'Users',
   'nav.logout': 'Log out',
+  'nav.userMenuLabel': 'User menu',
+  'nav.profileSettings': 'Profile Settings',
+  'nav.languageSelector': 'Language',
 
   // Navigation — CRM-specific sections
   'nav.contacts': 'Contacts',
@@ -136,6 +139,9 @@ const MINICRM_ES: LocaleMap = {
   'nav.myTasks': 'Mis tareas',
   'nav.users': 'Usuarios',
   'nav.logout': 'Cerrar sesión',
+  'nav.userMenuLabel': 'Menú de usuario',
+  'nav.profileSettings': 'Configuración de perfil',
+  'nav.languageSelector': 'Idioma',
 
   // Navigation — CRM-specific sections
   'nav.contacts': 'Contactos',
@@ -249,6 +255,9 @@ const MINICRM_FR: LocaleMap = {
   'nav.myTasks': 'Mes tâches',
   'nav.users': 'Utilisateurs',
   'nav.logout': 'Se déconnecter',
+  'nav.userMenuLabel': 'Menu utilisateur',
+  'nav.profileSettings': 'Paramètres du profil',
+  'nav.languageSelector': 'Langue',
 
   // Navigation — CRM-specific sections
   'nav.contacts': 'Contacts',
@@ -362,6 +371,9 @@ const MINICRM_DE: LocaleMap = {
   'nav.myTasks': 'Meine Aufgaben',
   'nav.users': 'Benutzer',
   'nav.logout': 'Abmelden',
+  'nav.userMenuLabel': 'Benutzermenü',
+  'nav.profileSettings': 'Profileinstellungen',
+  'nav.languageSelector': 'Sprache',
 
   // Navigation — CRM-specific sections
   'nav.contacts': 'Kontakte',
@@ -475,6 +487,9 @@ const MINICRM_ZH_HANS: LocaleMap = {
   'nav.myTasks': '我的任务',
   'nav.users': '用户',
   'nav.logout': '退出登录',
+  'nav.userMenuLabel': '用户菜单',
+  'nav.profileSettings': '个人设置',
+  'nav.languageSelector': '语言',
 
   // Navigation — CRM-specific sections
   'nav.contacts': '联系人',

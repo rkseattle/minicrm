@@ -561,24 +561,50 @@ export async function expectMobileNavLinkVisible(
   await expect(locator).toBeVisible();
 }
 
-/** Asserts the mobile logout button is visible in the nav drawer. */
-export async function expectMobileLogoutButtonVisible(context: NavBehaviorContext): Promise<void> {
+/** Opens the header's user menu, which holds the language select and logout. */
+export async function openUserMenu(context: NavBehaviorContext): Promise<void> {
+  await new NavPage(context).openUserMenu();
+}
+
+/** Asserts the logout item is visible in the open user menu. */
+export async function expectUserMenuLogoutVisible(context: NavBehaviorContext): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new NavPage(context).mobileLogoutButtonLocator();
+  const locator = await new NavPage(context).logoutItemLocator();
   await expect(locator).toBeVisible();
 }
 
-/** Asserts the mobile language select is visible in the nav drawer. */
-export async function expectMobileLanguageSelectVisible(
+/** Asserts the language select is visible in the open user menu. */
+export async function expectUserMenuLanguageSelectVisible(
   context: NavBehaviorContext,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new NavPage(context).mobileLanguageSelectLocator();
+  const locator = await new NavPage(context).languageSelectLocator();
   await expect(locator).toBeVisible();
 }
 
 /**
- * Returns a resolved locator for the desktop language select in the nav header.
+ * Opens the user menu, chooses Profile Settings, and waits for /profile.
+ *
+ * Returns the landed pathname so the caller asserts on the outcome rather than on
+ * the click having happened.
+ */
+export async function navigateToProfileViaUserMenu(
+  context: NavBehaviorContext,
+): Promise<{ finalPath: string }> {
+  const NAVIGATION_TIMEOUT_MS = 10_000;
+  const navPage = new NavPage(context);
+  await navPage.openUserMenu();
+  await navPage.clickUserMenuProfile();
+  await context.page
+    .waitForURL((url) => new URL(url).pathname === '/profile', {
+      timeout: NAVIGATION_TIMEOUT_MS,
+    })
+    .catch(() => null);
+  return { finalPath: new URL(context.page.url()).pathname };
+}
+
+/**
+ * Returns a resolved locator for the language select inside the open user menu.
  *
  * Intentionally kept as a raw-locator accessor (exception): this locator
  * is passed as an argument to selectLanguageAndWaitForPatch, which requires a
@@ -586,9 +612,9 @@ export async function expectMobileLanguageSelectVisible(
  * racing. Splitting it into separate behaviors would lose the ability to race the
  * click with the response wait in the same Promise.all call.
  */
-export async function getDesktopLanguageSelectLocator(context: NavBehaviorContext) {
+export async function getLanguageSelectLocator(context: NavBehaviorContext) {
   const navPage = new NavPage(context);
-  return navPage.desktopLanguageSelectLocator();
+  return navPage.languageSelectLocator();
 }
 
 // ---------------------------------------------------------------------------
@@ -922,36 +948,4 @@ export async function expectMobileNavLinkNotHasText(
   const { expect } = await import('@playwright/test');
   const locator = await new NavPage(context).mobileNavLinkLocator(destination);
   await expect(locator).not.toHaveText(text);
-}
-
-/**
- * Selects a language via the mobile nav drawer's language select and waits for
- * the PATCH /api/v1/users/me/language response to settle.
- */
-export async function selectMobileLanguageAndWaitForPatch(
-  locale: string,
-  context: NavBehaviorContext,
-): Promise<void> {
-  const locator = await new NavPage(context).mobileLanguageSelectLocator();
-  const patchDone = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/users/me/language') &&
-      response.request().method() === 'PATCH',
-  );
-  await locator.selectOption(locale);
-  await patchDone;
-}
-
-/**
- * Asserts the mobile nav drawer is visible and the mobile language select is present.
- */
-export async function expectMobileNavDrawerVisibleWithLanguageSelect(
-  context: NavBehaviorContext,
-): Promise<void> {
-  const { expect } = await import('@playwright/test');
-  const drawer = await new NavPage(context).mobileNavDrawerLocator();
-  if (drawer === null) throw new Error('mobile nav drawer not found');
-  await expect(drawer).toBeVisible();
-  const langSelect = await new NavPage(context).mobileLanguageSelectLocator();
-  await expect(langSelect, 'language selector must be present in mobile nav drawer').toBeVisible();
 }

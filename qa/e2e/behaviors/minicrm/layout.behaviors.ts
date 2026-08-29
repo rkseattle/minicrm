@@ -318,21 +318,14 @@ export async function resolveTimestampMasks(
     tryResolve(page, [{ type: 'css', value: '[data-testid^="user-joined-"]' }], {
       intent: 'user management table joined date cells',
     }),
-    // Not timestamps, but resolved here rather than as a separate mask
-    // function since every visual-regression call site already spreads
-    // this same array — E2E admin fixtures mint a randomized display name
-    // per test run (e.g. "VR Admin 1785118878095-..."), so any element
-    // that renders it is inherently non-deterministic across any two
-    // captures, the same class of problem every other mask in this list
-    // solves. Two independent elements render this name — the top-nav
-    // header (NavHeader.tsx, had no data-testid at all until this fix) and
-    // the dashboard's own welcome heading (DashboardPage.tsx, already
-    // carried dashboard-heading) — found via a real visual-regression run:
-    // after regenerating stale baselines, captures still failed by small
-    // pixel counts that looked like noise but traced to these two
-    // unmasked elements.
-    tryResolve(page, [{ type: 'testId', value: 'nav-user-name' }], {
-      intent: 'top-nav user display name (randomized per E2E fixture run)',
+    // Not timestamps, but resolved here rather than as a separate mask function
+    // since every visual-regression call site already spreads this same array.
+    // E2E admin fixtures mint a randomized display name per run, so the two
+    // elements rendering it — the header's user-menu trigger and the dashboard
+    // welcome heading — differ between any two captures by small pixel counts
+    // that read as noise.
+    tryResolve(page, [{ type: 'testId', value: 'nav-user-menu-button' }], {
+      intent: 'user menu trigger, shows the randomized fixture display name',
     }),
     tryResolve(page, [{ type: 'testId', value: 'dashboard-heading' }], {
       intent: 'dashboard welcome heading, embeds the same randomized user display name',
