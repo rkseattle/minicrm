@@ -183,10 +183,18 @@ So, in this order:
    than the fix commit alone and deliberately so.
 
    Run the union of its selection and the specs that failed. A fix in a spec's own logic
-   usually re-runs just that spec; a fix in shared production code, a schema, locale data,
-   or `qa/e2e/framework/` pulls in previously-passing specs the failed set does not name,
-   and those are exactly where a regression in the fix would land. If the selector widens
-   to the full suite, you are not in this exception — let the hook run.
+   usually re-runs just that spec; a fix in shared production code pulls in
+   previously-passing specs the failed set does not name, and those are exactly where a
+   regression in the fix would land. If the selector widens to the full suite, you are not
+   in this exception — let the hook run.
+
+   **Read `Dependency-graph widened scopes` as a warning, not a selection.** The two rules
+   that do not force a full suite — `shared-schema` (`shared/schemas/`) and `i18n-locale`
+   (locale data) — report their scopes in the rationale only; `dependencyGraphService.ts`
+   says so outright, and `select-tests.ts` builds `specFiles` from baseline and mapped
+   tests alone. So a fix to a Zod schema or a locale file leaves those scopes unrun unless
+   you add the specs yourself. When you see that line, either name the affected specs
+   explicitly or hand the push back to the hook — the selector will not do it for you.
 
    Run that set as **two invocations, non-serial then serial** — the same spec list to
    both, partitioned by grep, exactly as `qa/scripts/targeted-run-plan.ts` plans it for the
@@ -248,9 +256,14 @@ So, in this order:
    `playwright test` call clears that directory at startup — and the merged
    `qa/e2e/test-results/results.xml`, the file step 2 tells you to read, lives in it. The
    targeted XML files are written relative to the shell's cwd, so they sit in
-   `qa/test-results/`, a sibling that no run clears. Skip the half your specs have no tests
-   for — Playwright exits 1 on "No tests found", and most selections have no `@serial`
-   tests at all; drop `--expected-files` to 1 when you do.
+   `qa/test-results/`, a sibling that no run clears.
+
+   Skip the half your specs have no tests for — Playwright exits 1 on "No tests found", and
+   most selections have no `@serial` tests at all. When you skip one, **drop its XML from
+   the merge command's argument list as well as dropping `--expected-files` to 1**: the
+   merge reads every path it is given and fails with `Cannot read input JUnit XML file` on
+   one that was never written. `--allow-empty-inputs` forgives a file with no testsuites,
+   not a missing file.
 
    Read the counts from the merged `qa/e2e/test-results/results.xml`, never the console,
    and treat a failure in either half as a failure of the whole step.

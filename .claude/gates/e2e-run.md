@@ -32,10 +32,13 @@ These four rules stack; none relaxes another.
    again, detached. That is not a rerun: this rule governs runs that finished and told
    you something, and its purpose is to stop you re-rolling a failure you dislike.
 
-4. **Validate a fix narrowly.** The post-fix run targets only the specific failing
-   spec(s) with `--grep`. That is the one place a hand-written `--grep` is right: the
-   target is a spec you watched fail, not a guess about blast radius. The selected suite
-   gets its one run at the actual push gate.
+4. **Validate a fix narrowly.** The post-fix run targets the specific failing spec(s)
+   with `--grep`. That is the one place a hand-written `--grep` is right: the target is a
+   spec you watched fail, not a guess about blast radius. The selected suite gets its one
+   run at the actual push gate. When the fix touched shared code rather than the spec's
+   own logic, the failed specs are no longer the whole target — see "After the hook's own
+   E2E run fails" in `.claude/gates/pre-push.md`, which unions them with the selector's
+   own set.
 
 Rules 2, 3, and 4, and the failure-handling section below, apply to anyone running this
 suite. They are documented for humans in
