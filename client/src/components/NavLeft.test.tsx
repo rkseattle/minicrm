@@ -2,7 +2,7 @@
  * Tests for the NavLeft component.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -35,6 +35,12 @@ function renderNavLeft(children: React.ReactNode = <div data-testid="page-conten
       </MemoryRouter>
     </QueryClientProvider>,
   );
+}
+
+/** The header's language and logout controls live behind the user-menu trigger. */
+async function openUserMenu(): Promise<void> {
+  const trigger = await screen.findByTestId('nav-user-menu-button');
+  fireEvent.click(trigger);
 }
 
 describe('NavLeft', () => {
@@ -103,18 +109,16 @@ describe('NavLeft', () => {
     });
   });
 
-  it('renders the logout button', async () => {
+  it('renders the logout item in the user menu', async () => {
     renderNavLeft();
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
-    });
+    await openUserMenu();
+    expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
   });
 
-  it('renders the language selector', async () => {
+  it('renders the language selector in the user menu', async () => {
     renderNavLeft();
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
-    });
+    await openUserMenu();
+    expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
   });
 
   it('renders the global search input in the header', async () => {
@@ -131,10 +135,10 @@ describe('NavLeft', () => {
     });
   });
 
-  it('shows user name', async () => {
+  it('shows user name on the menu trigger', async () => {
     renderNavLeft();
     await waitFor(() => {
-      expect(screen.getByText(ADMIN_USER.name)).toBeInTheDocument();
+      expect(screen.getByTestId('nav-user-menu-button')).toHaveTextContent(ADMIN_USER.name);
     });
   });
 

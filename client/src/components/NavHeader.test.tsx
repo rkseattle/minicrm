@@ -3,9 +3,9 @@
  *
  * Verifies:
  * - Renders brand name
- * - Renders the logged-in user's name
- * - Language selector is present
- * - Logout button calls the logout API
+ * - Renders the logged-in user's name on the user-menu trigger
+ * - Language and logout are reachable through that menu
+ * - Nothing user-specific renders before the auth query resolves
  * - Hamburger toggle is rendered when hamburger prop is provided
  * - Hamburger shows correct aria-label based on isOpen
  * - Hamburger click calls onToggle
@@ -20,6 +20,12 @@ import { renderWithProviders } from '../test/renderWithProviders.js';
 import NavHeader from './NavHeader.js';
 import { ADMIN_USER } from '../test/msw/handlers.js';
 
+/** The user menu only exists once the auth query has resolved a user. */
+async function openUserMenu(): Promise<void> {
+  const trigger = await screen.findByTestId('nav-user-menu-button');
+  fireEvent.click(trigger);
+}
+
 describe('NavHeader', () => {
   it('renders the MiniCRM brand', () => {
     renderWithProviders(<NavHeader />);
@@ -27,27 +33,37 @@ describe('NavHeader', () => {
     expect(screen.getByText('MiniCRM')).toBeInTheDocument();
   });
 
-  it('renders the logged-in user name', async () => {
+  it('renders the logged-in user name on the menu trigger', async () => {
     renderWithProviders(<NavHeader />);
 
     await waitFor(() => {
-      expect(screen.getByText(ADMIN_USER.name)).toBeInTheDocument();
+      expect(screen.getByTestId('nav-user-menu-button')).toHaveTextContent(ADMIN_USER.name);
     });
   });
 
-  it('renders the language selector', () => {
+  it('renders no user menu until the auth query resolves', () => {
     renderWithProviders(<NavHeader />);
+
+    expect(screen.queryByTestId('nav-user-menu-button')).not.toBeInTheDocument();
+  });
+
+  it('renders the language selector inside the user menu', async () => {
+    renderWithProviders(<NavHeader />);
+
+    await openUserMenu();
 
     expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
   });
 
-  it('renders the logout button', () => {
+  it('renders the logout item inside the user menu', async () => {
     renderWithProviders(<NavHeader />);
+
+    await openUserMenu();
 
     expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
   });
 
-  it('logout button calls POST /api/v1/auth/logout', async () => {
+  it('logout item calls POST /api/v1/auth/logout', async () => {
     let logoutCalled = false;
     server.use(
       http.post('/api/v1/auth/logout', () => {
@@ -58,6 +74,7 @@ describe('NavHeader', () => {
 
     renderWithProviders(<NavHeader />);
 
+    await openUserMenu();
     fireEvent.click(screen.getByTestId('nav-logout'));
 
     await waitFor(() => expect(logoutCalled).toBe(true));
@@ -117,6 +134,7 @@ describe('NavHeader', () => {
 
     renderWithProviders(<NavHeader />);
 
+    await openUserMenu();
     fireEvent.change(screen.getByTestId('nav-language-select'), { target: { value: 'fr' } });
 
     await waitFor(() => expect(calledWith).toBe('fr'));
@@ -131,27 +149,13 @@ describe('NavHeader', () => {
 
     renderWithProviders(<NavHeader />);
 
+    await openUserMenu();
     // Change language to trigger the error path — the component should not throw
     fireEvent.change(screen.getByTestId('nav-language-select'), { target: { value: 'fr' } });
 
     // Wait for the mutation to settle (error path clears previousLocaleRef)
     await waitFor(() => {
       expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
-    });
-  });
-
-  it('navigates to /login after successful logout', async () => {
-    server.use(
-      http.post('/api/v1/auth/logout', () => HttpResponse.json({ message: 'Logged out' })),
-    );
-
-    renderWithProviders(<NavHeader />);
-
-    fireEvent.click(screen.getByTestId('nav-logout'));
-
-    // After logout, the auth query is invalidated and the component navigates away
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
     });
   });
 });

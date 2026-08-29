@@ -13,8 +13,9 @@
  * - Outside click closes the menu
  */
 
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import { ExportMenu } from './ExportMenu.js';
 import type { ExportMenuItemConfig } from './ExportMenu.js';
@@ -182,6 +183,41 @@ describe('ExportMenu', () => {
     const link = screen.getByTestId('export-csv-link');
     expect(link.tagName).toBe('A');
     expect(link).toHaveAttribute('href', '/api/export.csv');
+  });
+
+  it('wraps around the visible items after the visible set shrinks', () => {
+    const items: ExportMenuItemConfig[] = [
+      { key: 'a', testId: 'export-a', label: 'A', onClick: vi.fn() },
+      { key: 'b', testId: 'export-b', label: 'B', onClick: vi.fn() },
+      { key: 'c', testId: 'export-c', label: 'C', onClick: vi.fn() },
+    ];
+    const { rerender } = render(
+      <MemoryRouter>
+        <ExportMenu label="Export" testId="reports-export-menu-button" items={items} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByTestId('reports-export-menu-button'));
+
+    // Render three, then hide the last while the menu is open — the shape of a
+    // role-gated item. The ref array keeps its third slot, so a wrap computed from
+    // its length targets an unmounted item and focus stops moving entirely.
+    rerender(
+      <MemoryRouter>
+        <ExportMenu
+          label="Export"
+          testId="reports-export-menu-button"
+          items={[items[0], items[1], { ...items[2], hidden: true }]}
+        />
+      </MemoryRouter>,
+    );
+    const menu = screen.getByRole('menu');
+
+    screen.getByTestId('export-a').focus();
+    fireEvent.keyDown(menu, { key: 'ArrowUp' });
+    expect(screen.getByTestId('export-b')).toHaveFocus();
+
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(screen.getByTestId('export-a')).toHaveFocus();
   });
 
   it('renders a disabled link item as a disabled button, not a navigable anchor', () => {

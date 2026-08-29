@@ -2,7 +2,7 @@
  * Tests for the NavTop component.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -11,6 +11,12 @@ import NavTop from './NavTop.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
+
+/** The header's language and logout controls live behind the user-menu trigger. */
+async function openUserMenu(): Promise<void> {
+  const trigger = await screen.findByTestId('nav-user-menu-button');
+  fireEvent.click(trigger);
+}
 
 describe('NavTop', () => {
   it('renders the MiniCRM brand name', async () => {
@@ -81,18 +87,16 @@ describe('NavTop', () => {
     expect(tabRow).toHaveClass('overflow-x-auto');
   });
 
-  it('renders the logout button', async () => {
+  it('renders the logout item in the user menu', async () => {
     renderWithProviders(<NavTop />);
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
-    });
+    await openUserMenu();
+    expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
   });
 
-  it('renders the language selector', async () => {
+  it('renders the language selector in the user menu', async () => {
     renderWithProviders(<NavTop />);
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
-    });
+    await openUserMenu();
+    expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
   });
 
   it('renders the global search input', async () => {
@@ -102,10 +106,10 @@ describe('NavTop', () => {
     });
   });
 
-  it('shows the logged-in user name', async () => {
+  it('shows the logged-in user name on the menu trigger', async () => {
     renderWithProviders(<NavTop />);
     await waitFor(() => {
-      expect(screen.getByText(ADMIN_USER.name)).toBeInTheDocument();
+      expect(screen.getByTestId('nav-user-menu-button')).toHaveTextContent(ADMIN_USER.name);
     });
   });
 
@@ -185,9 +189,7 @@ describe('NavTop', () => {
         <Route path="/login" element={<div>Login page</div>} />
       </Routes>,
     );
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
-    });
+    await user.click(await screen.findByTestId('nav-user-menu-button'));
     await user.click(screen.getByTestId('nav-logout'));
     await waitFor(() => {
       expect(screen.getByText('Login page')).toBeInTheDocument();

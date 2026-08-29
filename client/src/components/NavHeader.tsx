@@ -1,20 +1,14 @@
 /**
  * NavHeader — shared top-bar header used by all three nav layouts.
  *
- * Renders: brand, search, user name, language selector, logout, and an
- * optional hamburger toggle button. The language and logout mutations are
- * handled internally so callers don't duplicate that logic.
+ * Renders: brand, search, the notification bell, the user menu, and an optional
+ * hamburger toggle button. The language and logout mutations live in UserMenu,
+ * alongside the controls that fire them.
  */
 
-import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
-import { logout } from '@/api/auth.js';
-import { useLanguagePreference } from '@/hooks/useLanguagePreference.js';
-import { Button } from '@/components/ui/Button.js';
-import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
-import { LOCALE_NATIVE_NAME } from './navLinks.js';
+import { useAuth } from '@/hooks/useAuth.js';
+import { UserMenu } from '@/components/ui/UserMenu.js';
 import GlobalSearch from './GlobalSearch.js';
 import { useBranding } from '@/context/BrandingContext.js';
 import PoweredByBadge from './PoweredByBadge.js';
@@ -54,25 +48,12 @@ const HAMBURGER_PATH = 'M4 6h16M4 12h16M4 18h16';
 const CLOSE_PATH = 'M6 18L18 6M6 6l12 12';
 
 /**
- * Shared navigation header bar. Handles language and logout mutations
- * internally; callers only supply hamburger toggle state where needed.
+ * Shared navigation header bar. Callers supply hamburger toggle state where needed.
  */
 export default function NavHeader({ hamburger }: NavHeaderProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { branding } = useBranding();
-
-  const logoutMutation = useMutation({
-    mutationFn: logout,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      navigate('/login', { replace: true });
-    },
-  });
-
-  const { save: handleLanguageChange } = useLanguagePreference({ optimistic: true });
 
   // Destructure hamburger props so the linter doesn't flag plain value accesses
   // as "ref access during render" due to the co-located toggleEl RefObject.
@@ -115,38 +96,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
       {/* Right controls */}
       <div className="flex items-center gap-3 ms-auto">
         {user && <NotificationBell />}
-        {user && (
-          <span
-            data-testid="nav-user-name"
-            className="text-sm text-gray-500 hidden sm:block truncate max-w-[12rem]"
-          >
-            {user.name}
-          </span>
-        )}
-        <select
-          aria-label={t('nav.languageSelector')}
-          data-testid="nav-language-select"
-          value={i18n.language}
-          onChange={(e) => handleLanguageChange(e.target.value as SupportedLocale)}
-          className="hidden lg:block text-sm text-gray-600 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded cursor-pointer"
-        >
-          {SUPPORTED_LOCALES.map((locale) => (
-            <option key={locale} value={locale}>
-              {LOCALE_NATIVE_NAME[locale]}
-            </option>
-          ))}
-        </select>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          data-testid="nav-logout"
-          onClick={() => logoutMutation.mutate()}
-          disabled={logoutMutation.isPending}
-          className="hidden lg:inline-flex"
-        >
-          {t('nav.logout')}
-        </Button>
+        {user && <UserMenu userName={user.name} />}
 
         {/* Powered by badge — only when custom branding is active */}
         {branding?.poweredByEnabled && <PoweredByBadge />}
