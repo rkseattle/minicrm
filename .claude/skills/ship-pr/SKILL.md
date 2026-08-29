@@ -137,5 +137,17 @@ transitions via the Atlassian MCP first and use the ID it returns — never gues
 
 ## Step 6 — Hand off
 
-Report the PR URL and the ticket transitions. Then run `/ci-green` to watch the run
-through to completion.
+Report the PR URL and the ticket transitions, then the stage status in the same shape
+every phase used:
+
+- **Stage table** — which `deliver` stages are complete and which remain, with the
+  wall-clock each took.
+- **Files** — everything on the branch, `git diff --stat main...HEAD`, grouped by
+  workspace, plus anything this stage changed on its own (a restored artifact, a
+  regenerated baseline).
+- **Acceptance criteria** — the full table with evidence. Every AC met, or an explicit
+  statement of which are not and why the PR opens anyway.
+- **Friction** — what cost time in this stage and the config file that would prevent it.
+  Propose; do not apply.
+
+Then run `/ci-green` to watch the run through to completion.

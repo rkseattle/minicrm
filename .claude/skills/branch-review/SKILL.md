@@ -70,6 +70,14 @@ Every fix commit in this skill still runs the full Definition of Done in
 `.claude/gates/definition-of-done.md`, including its "Before `git add`" checks.
 Nothing about being in review mode relaxes the commit gates.
 
+## Report at the end of the stage
+
+Same shape as a phase report: which findings were fixed and which were argued down, the
+files each fix touched, how long the stage took, whether any finding moved an acceptance
+criterion, and the friction worth writing into a config file. A review finding that a
+written rule would have prevented is the highest-value friction item there is — it was
+caught late, by an agent, on work already committed.
+
 ## Validate before reporting
 
 Do not report a fix as complete on reasoning alone. Run the verification — the failing

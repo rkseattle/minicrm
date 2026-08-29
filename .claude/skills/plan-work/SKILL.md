@@ -133,7 +133,14 @@ Covering tickets, and the PR-group label if the work was resolved from one.
 
 ## Acceptance criteria coverage
 
-| Ticket | AC | Phase | Deviation |
+| ID | Ticket | AC | Phase | Deviation |
+
+**Give every row a stable ID** — `AC1`, `AC2`, … in table order, unique across the whole
+document even when the plan covers several tickets. `implement-phases` copies these rows
+into `.claude/state/current-plan.json` and reports met/unmet against them at every phase
+boundary, so the ID is what lets a status report name a criterion without restating it.
+IDs are assigned once and never renumbered: if review adds a clause, it takes the next
+unused number wherever it sits in the table.
 
 **One row per AC clause, not per AC theme.** Split on commas and semicolons: an AC
 reading "DELETE /x/:id (own only, revokes OAuth token where provider supports it)" is
@@ -145,6 +152,11 @@ gap in the table.
 Use the `Deviation` column wherever the plan ships something other than what the AC
 literally says, with a one-line reason. A reader checking coverage must be able to see
 every departure from this table alone, without reading the prose.
+
+If a covering ticket has no Acceptance Criteria section at all, say so here rather than
+writing criteria for it. Inventing ACs to fill the table produces a run that reports
+green against a bar nobody set — raise the gap with Rob instead, per CLAUDE.md's rule
+that every ticket carries Acceptance Criteria.
 
 ## Approach
 

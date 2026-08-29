@@ -107,6 +107,23 @@ exit codes or console output.
 Review after the PR opens. Look up the issue's available transitions via the
 Atlassian MCP first — never guess a transition ID.
 
+**Report full status at every phase and stage boundary.** Finishing a phase or a stage
+is never just a line saying it is done. The report carries: which phases are complete and
+which remain, the files each one modified, how long each took, the acceptance criteria met
+so far with the evidence for each, and the friction worth fixing in these config files.
+`implement-phases` step 2e defines the format; stages 3 through 5 report the same things
+scaled to what they do — a stage that fixes review findings still says which files
+it touched, how long it ran, and which ACs it moved. A boundary crossed without a status
+report is the single most common way a run becomes unreviewable: the information exists
+only while the phase is fresh, and reconstructing it afterward from `git log` loses the
+timing and the friction entirely.
+
+**Process feedback is proposed, never applied on your own initiative.** Friction collected
+during a run is reported at the end with the file and the exact wording it would need —
+then you stop and ask. The reasoning is the same as for work items: a config file that
+grows unprompted stops being read, and these files only work because everything in them
+earned its place. `none` is a valid and common finding.
+
 **Stay quiet while monitors run.** No filler turns, no polling loops, no narrating the
 wait.
 
