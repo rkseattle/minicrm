@@ -705,9 +705,9 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 
 ### User Language Preference
 
-- Any authenticated user can set a personal preferred language from the **Profile** page (`/profile`) or by using the language dropdown in the nav bar
+- Any authenticated user can set a personal preferred language from the **Profile** page (`/profile`) or from the language selector in the header's user menu
 - Personal preference overrides the system-wide default at all times; setting it to "Use system default" clears the preference and falls back to the admin-configured default
-- The language dropdown in the nav bar now persists the selection to the server (previously session-only)
+- The header's language selector persists the selection to the server rather than keeping it for the session
 - On login, the user's stored preference is returned with the `/api/v1/auth/me` response and applied immediately — no language flash
 - API endpoints:
   - `GET /api/v1/users/me/language` — auth required, returns `{ language: SupportedLocale | null }`
@@ -911,7 +911,7 @@ Supported locale codes (BCP 47): `en`, `zh-Hans`, `es`, `fr`, `de`
 
 The active language is resolved in this order (highest precedence first):
 
-1. User's stored personal preference (set via Profile Settings or the nav bar language dropdown)
+1. User's stored personal preference (set via Profile Settings or the user menu's language selector)
 2. System-wide default set by an admin via Admin Settings
 3. English (hard-coded fallback)
 

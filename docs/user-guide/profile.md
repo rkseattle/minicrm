@@ -1,8 +1,8 @@
 # Profile Settings
 
-Click **Profile Settings** in the navigation to open your own account settings: the
-language MiniCRM shows you, which emails it sends you, two-factor authentication, and the
-mailboxes you have connected.
+Click your name in the top-right corner, then **Profile Settings**, to open your own
+account settings: the language MiniCRM shows you, which emails it sends you, two-factor
+authentication, and the mailboxes you have connected.
 
 Everything here applies to you alone. Nothing on this page changes what your teammates
 see, and nothing on it needs an admin.
@@ -22,10 +22,10 @@ or German, then click **Save**. The interface switches immediately.
 for everyone". Choosing it clears your personal preference rather than pinning you to the
 current default, so you keep following the org if the admin later changes it.
 
-> The header bar has a second language selector that saves the same preference. It lists
-> each language in its own script — _Deutsch_ rather than _German_ — and offers no
-> **Use system default** entry, so clearing a personal preference has to be done here.
-> On narrower screens it moves into the menu behind the hamburger icon.
+> The user menu in the top-right corner holds a second language selector, which saves the
+> same preference. It lists each language in its own script — _Deutsch_ rather than
+> _German_ — and offers no **Use system default** entry, so clearing a personal
+> preference has to be done here.
 
 ### Step 2 — Choose which emails you get
 

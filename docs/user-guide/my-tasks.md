@@ -107,4 +107,5 @@ it: moving to another page, changing **Rows per page**, or toggling **Show compl
 ### Overdue email digests
 
 If your admin has enabled email notifications, you also receive a daily digest listing
-your overdue tasks. Turn it off under **Profile Settings** → **Email Notifications**.
+your overdue tasks. Turn it off under your name in the top-right corner →
+**Profile Settings** → **Email Notifications**.
