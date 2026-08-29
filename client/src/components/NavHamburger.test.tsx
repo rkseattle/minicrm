@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import NavHamburger from './NavHamburger.js';
 import { server } from '../test/setup.js';
+import { openUserMenu } from '../test/openUserMenu.js';
 import { ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 
 /**
@@ -30,12 +31,6 @@ function renderNavHamburger() {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-}
-
-/** The header's language and logout controls live behind the user-menu trigger. */
-async function openUserMenu(): Promise<void> {
-  const trigger = await screen.findByTestId('nav-user-menu-button');
-  fireEvent.click(trigger);
 }
 
 describe('NavHamburger', () => {
@@ -108,11 +103,11 @@ describe('NavHamburger', () => {
     expect(screen.queryByTestId('nav-hamburger-settings')).not.toBeInTheDocument();
   });
 
-  it('renders Profile Settings for both roles — it is not admin-gated', async () => {
+  it('renders no Profile Settings nav link for either role — it moved to the user menu', async () => {
     const user = userEvent.setup();
     // Anchored on the admin-only Users link, which cannot render until /auth/me has
-    // resolved for this actor. Waiting on the profile link itself would pass while the
-    // query was still pending, since a non-admin entry renders before any user is known.
+    // resolved for this actor. Asserting absence against an unresolved query would
+    // pass for the wrong reason.
     for (const actor of [ADMIN_USER, REP_USER]) {
       server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: actor })));
       const { unmount } = renderNavHamburger();
@@ -128,7 +123,7 @@ describe('NavHamburger', () => {
         });
         await screen.findByTestId('nav-hamburger-dashboard');
       }
-      expect(screen.getByTestId('nav-hamburger-profile')).toBeInTheDocument();
+      expect(screen.queryByTestId('nav-hamburger-profile')).not.toBeInTheDocument();
       unmount();
     }
   });
@@ -179,6 +174,12 @@ describe('NavHamburger', () => {
     renderNavHamburger();
     await openUserMenu();
     expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
+  });
+
+  it('reaches Profile Settings through the user menu', async () => {
+    renderNavHamburger();
+    await openUserMenu();
+    expect(screen.getByTestId('nav-user-menu-profile')).toBeInTheDocument();
   });
 
   it('renders the global search input in the top bar', async () => {

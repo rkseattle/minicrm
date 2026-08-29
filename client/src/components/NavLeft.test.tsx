@@ -2,7 +2,7 @@
  * Tests for the NavLeft component.
  */
 
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -12,6 +12,7 @@ import { MemoryRouter } from 'react-router-dom';
 import NavLeft from './NavLeft.js';
 import { NavLayoutProvider } from './NavLayoutContext.js';
 import { server } from '../test/setup.js';
+import { openUserMenu } from '../test/openUserMenu.js';
 import { ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 
 /**
@@ -35,12 +36,6 @@ function renderNavLeft(children: React.ReactNode = <div data-testid="page-conten
       </MemoryRouter>
     </QueryClientProvider>,
   );
-}
-
-/** The header's language and logout controls live behind the user-menu trigger. */
-async function openUserMenu(): Promise<void> {
-  const trigger = await screen.findByTestId('nav-user-menu-button');
-  fireEvent.click(trigger);
 }
 
 describe('NavLeft', () => {
@@ -82,10 +77,10 @@ describe('NavLeft', () => {
     expect(screen.queryByTestId('nav-left-settings')).not.toBeInTheDocument();
   });
 
-  it('renders Profile Settings for both roles — it is not admin-gated', async () => {
+  it('renders no Profile Settings nav link for either role — it moved to the user menu', async () => {
     // Anchored on the admin-only Users link, which cannot render until /auth/me has
-    // resolved for this actor. Waiting on the profile link itself would pass while the
-    // query was still pending, since a non-admin entry renders before any user is known.
+    // resolved for this actor. Asserting absence against an unresolved query would
+    // pass for the wrong reason.
     for (const actor of [ADMIN_USER, REP_USER]) {
       server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: actor })));
       const { unmount } = renderNavLeft();
@@ -97,7 +92,7 @@ describe('NavLeft', () => {
         });
         await screen.findByTestId('nav-left-dashboard');
       }
-      expect(screen.getByTestId('nav-left-profile')).toBeInTheDocument();
+      expect(screen.queryByTestId('nav-left-profile')).not.toBeInTheDocument();
       unmount();
     }
   });
@@ -113,6 +108,12 @@ describe('NavLeft', () => {
     renderNavLeft();
     await openUserMenu();
     expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
+  });
+
+  it('reaches Profile Settings through the user menu', async () => {
+    renderNavLeft();
+    await openUserMenu();
+    expect(screen.getByTestId('nav-user-menu-profile')).toBeInTheDocument();
   });
 
   it('renders the language selector in the user menu', async () => {
