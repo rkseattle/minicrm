@@ -1,9 +1,9 @@
 /**
  * Saves the signed-in user's language preference and applies it to the interface.
  *
- * Three controls drive this — the desktop header selector, its counterpart in the mobile
- * drawer, and the Profile Settings form — and each has to persist the choice, switch the
- * running interface, and put the old locale back if the request fails.
+ * Two controls drive this — the header's user menu and the Profile Settings form — and
+ * each has to persist the choice, switch the running interface, and put the old locale
+ * back if the request fails.
  */
 
 import { useRef } from 'react';

@@ -2,21 +2,16 @@
  * Tests for the NavTop component.
  */
 
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { Routes, Route } from 'react-router-dom';
 import NavTop from './NavTop.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
+import { openUserMenu } from '../test/openUserMenu.js';
 import { server } from '../test/setup.js';
 import { ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
-
-/** The header's language and logout controls live behind the user-menu trigger. */
-async function openUserMenu(): Promise<void> {
-  const trigger = await screen.findByTestId('nav-user-menu-button');
-  fireEvent.click(trigger);
-}
 
 describe('NavTop', () => {
   it('renders the MiniCRM brand name', async () => {
@@ -57,10 +52,10 @@ describe('NavTop', () => {
     expect(screen.queryByTestId('nav-top-settings')).not.toBeInTheDocument();
   });
 
-  it('renders Profile Settings for both roles — it is not admin-gated', async () => {
+  it('renders no Profile Settings nav link for either role — it moved to the user menu', async () => {
     // Anchored on the admin-only Users link, which cannot render until /auth/me has
-    // resolved for this actor. Waiting on the profile link itself would pass while the
-    // query was still pending, since a non-admin entry renders before any user is known.
+    // resolved for this actor. Asserting absence against an unresolved query would
+    // pass for the wrong reason.
     for (const actor of [ADMIN_USER, REP_USER]) {
       server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: actor })));
       const { unmount } = renderWithProviders(<NavTop />);
@@ -72,7 +67,7 @@ describe('NavTop', () => {
         });
         await screen.findByTestId('nav-top-dashboard');
       }
-      expect(screen.getByTestId('nav-top-profile')).toBeInTheDocument();
+      expect(screen.queryByTestId('nav-top-profile')).not.toBeInTheDocument();
       unmount();
     }
   });
@@ -91,6 +86,12 @@ describe('NavTop', () => {
     renderWithProviders(<NavTop />);
     await openUserMenu();
     expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
+  });
+
+  it('reaches Profile Settings through the user menu', async () => {
+    renderWithProviders(<NavTop />);
+    await openUserMenu();
+    expect(screen.getByTestId('nav-user-menu-profile')).toBeInTheDocument();
   });
 
   it('renders the language selector in the user menu', async () => {
@@ -160,24 +161,6 @@ describe('NavTop', () => {
       await user.click(screen.getByTestId('nav-menu-toggle'));
       expect(screen.getByTestId('nav-top-contacts-mobile')).toBeInTheDocument();
       expect(screen.getByTestId('nav-top-deals-mobile')).toBeInTheDocument();
-    });
-  });
-
-  it('navigates to /login after the mobile drawer logout button is clicked', async () => {
-    const user = userEvent.setup();
-    renderWithProviders(
-      <Routes>
-        <Route path="/" element={<NavTop />} />
-        <Route path="/login" element={<div>Login page</div>} />
-      </Routes>,
-    );
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-menu-toggle')).toBeInTheDocument();
-    });
-    await user.click(screen.getByTestId('nav-menu-toggle'));
-    await user.click(screen.getByTestId('nav-logout-mobile'));
-    await waitFor(() => {
-      expect(screen.getByText('Login page')).toBeInTheDocument();
     });
   });
 

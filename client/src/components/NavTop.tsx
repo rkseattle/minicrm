@@ -2,20 +2,16 @@
  * NavTop — top navigation bar layout.
  * Desktop: sticky header + tab bar across the top with all nav links visible.
  * Mobile (below lg): hamburger button in the header triggers a full-width
- * slide-down drawer with nav links and search.
+ * slide-down drawer with nav links. Language and logout live in the header's
+ * user menu, which renders at every width.
  */
 
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { useAuth, AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
+import { useAuth } from '@/hooks/useAuth.js';
 import { useFeatureFlags } from '@/hooks/useFeatureFlag.js';
-import { logout } from '@/api/auth.js';
-import { useLanguagePreference } from '@/hooks/useLanguagePreference.js';
-import { Button } from '@/components/ui/Button.js';
-import { SUPPORTED_LOCALES, type SupportedLocale } from '@shared/schemas/settingsSchema.js';
-import { NAV_LINKS, DESTINATION_NAME, LOCALE_NATIVE_NAME } from './navLinks.js';
+import { NAV_LINKS, DESTINATION_NAME } from './navLinks.js';
 import NavHeader from './NavHeader.js';
 
 /**
@@ -50,23 +46,11 @@ function mobileNavLinkClass({ isActive }: { isActive: boolean }): string {
  * Top navigation bar layout component.
  */
 export default function NavTop() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
-
-  const logoutMutation = useMutation({
-    mutationFn: logout,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      navigate('/login', { replace: true });
-    },
-  });
-
-  const { save: handleLanguageChange } = useLanguagePreference({ optimistic: true });
 
   /** Close mobile drawer. */
   const closeMobileMenu = useCallback((): void => {
@@ -207,35 +191,6 @@ export default function NavTop() {
               )}
             </div>
           ))}
-          <div className="pt-2 border-t border-gray-100 space-y-1">
-            <select
-              aria-label={t('nav.languageSelector')}
-              data-testid="nav-language-select-mobile"
-              value={i18n.language}
-              onChange={(e) => handleLanguageChange(e.target.value as SupportedLocale)}
-              className="w-full px-4 py-3 text-base text-gray-700 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded cursor-pointer min-h-[44px]"
-            >
-              {SUPPORTED_LOCALES.map((locale) => (
-                <option key={locale} value={locale}>
-                  {LOCALE_NATIVE_NAME[locale]}
-                </option>
-              ))}
-            </select>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              data-testid="nav-logout-mobile"
-              onClick={() => {
-                closeMobileMenu();
-                logoutMutation.mutate();
-              }}
-              disabled={logoutMutation.isPending}
-              className="w-full justify-start min-h-[44px]"
-            >
-              {t('nav.logout')}
-            </Button>
-          </div>
         </div>
       )}
     </div>
