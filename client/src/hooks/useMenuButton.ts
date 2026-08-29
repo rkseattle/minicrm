@@ -46,9 +46,7 @@ export interface UseMenuButtonResult<TItem extends HTMLElement> {
   /**
    * Escape handler for elements outside the menu list that still sit in the popup.
    * Stops propagation so an ancestor's document-level Escape (NavHamburger's drawer)
-   * does not also fire and steal the focus this restores. ExportMenu inherits that
-   * on extraction; none of its call sites nests inside a component with its own
-   * Escape handler, so nothing there changes behavior.
+   * does not also fire and steal the focus this restores.
    */
   handleEscape: (event: React.KeyboardEvent) => void;
 }

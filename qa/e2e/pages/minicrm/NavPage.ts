@@ -91,10 +91,12 @@ export class NavPage {
       .locate(
         [
           { type: 'testId', value: 'nav-user-menu-button' },
+          // The trigger's accessible name is its aria-label, which interpolates the
+          // signed-in user's name, so match on the fixed prefix before the placeholder.
           {
             type: 'role',
             value: 'button',
-            options: { name: t('nav.userMenuLabel'), exact: false },
+            options: { name: t('nav.userMenuTrigger').split('{{')[0].trim(), exact: false },
           },
         ],
         { intent: 'user menu trigger — force click to bypass search overlap' },

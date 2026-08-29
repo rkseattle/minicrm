@@ -18,6 +18,7 @@
     "profileSettings": "个人设置",
     "languageSelector": "语言",
     "userMenuLabel": "用户菜单",
+    "userMenuTrigger": "{{name}} 的用户菜单",
     "logout": "退出登录",
     "menu": "菜单",
     "close": "关闭",

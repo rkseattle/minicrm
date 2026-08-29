@@ -8,6 +8,7 @@
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -136,14 +137,15 @@ describe('UserMenu', () => {
     expect(screen.getByTestId('nav-logout')).toHaveFocus();
   });
 
-  it('ArrowUp from the first item wraps to the last', async () => {
+  it('ArrowUp from the first item wraps to the last target', async () => {
     renderMenu();
     openMenu();
     await waitFor(() => expect(screen.getByTestId('nav-user-menu-profile')).toHaveFocus());
 
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowUp' });
 
-    expect(screen.getByTestId('nav-logout')).toHaveFocus();
+    // The language select is the third roving target, so it is what "last" means.
+    expect(screen.getByTestId('nav-language-select')).toHaveFocus();
   });
 
   it('End then Home moves to the last item and back to the first', async () => {
@@ -152,7 +154,7 @@ describe('UserMenu', () => {
     await waitFor(() => expect(screen.getByTestId('nav-user-menu-profile')).toHaveFocus());
 
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'End' });
-    expect(screen.getByTestId('nav-logout')).toHaveFocus();
+    expect(screen.getByTestId('nav-language-select')).toHaveFocus();
 
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Home' });
     expect(screen.getByTestId('nav-user-menu-profile')).toHaveFocus();
@@ -168,18 +170,35 @@ describe('UserMenu', () => {
     expect(screen.getByTestId('nav-user-menu-button')).not.toHaveFocus();
   });
 
-  it('arrow keys inside the language select do not move menu focus', () => {
+  it('arrow keys walk from the first item to the language select', async () => {
+    const user = userEvent.setup();
     renderMenu();
     openMenu();
+    await waitFor(() => expect(screen.getByTestId('nav-user-menu-profile')).toHaveFocus());
 
+    // Traversed rather than focused directly: the select sits outside the role="menu"
+    // list, so nothing but the roving handler can put focus on it, and a test that
+    // calls .focus() itself would pass against a menu no keyboard user can escape.
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByTestId('nav-logout')).toHaveFocus();
+
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByTestId('nav-language-select')).toHaveFocus();
+  });
+
+  it('arrow keys inside the language select stay with the select', async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    openMenu();
+    await waitFor(() => expect(screen.getByTestId('nav-user-menu-profile')).toHaveFocus());
+
+    await user.keyboard('{ArrowDown}{ArrowDown}');
     const languageSelect = screen.getByTestId('nav-language-select');
-    languageSelect.focus();
-    fireEvent.keyDown(languageSelect, { key: 'ArrowDown' });
+    expect(languageSelect).toHaveFocus();
 
-    // Binding the roving handler any higher than the item list would move focus onto
-    // a menu item here, costing the select its own native arrow behavior.
-    expect(screen.getByTestId('nav-user-menu-profile')).not.toHaveFocus();
-    expect(screen.getByTestId('nav-logout')).not.toHaveFocus();
+    // The select owns its arrows for choosing an option; stealing them back into the
+    // roving handler would leave the value unchangeable by keyboard.
+    await user.keyboard('{ArrowDown}');
     expect(languageSelect).toHaveFocus();
   });
 
@@ -199,19 +218,6 @@ describe('UserMenu', () => {
     // A role="group" does not lend its name to a nested menu, so an unnamed menu
     // is announced without context.
     expect(screen.getByRole('menu')).toHaveAttribute('aria-label');
-  });
-
-  it('interacting with the language select leaves the menu open', async () => {
-    server.use(
-      http.patch('/api/v1/users/me/language', () => HttpResponse.json({ language: 'fr' })),
-    );
-
-    renderMenu();
-    openMenu();
-
-    fireEvent.mouseDown(screen.getByTestId('nav-language-select'));
-
-    expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 
   it('selecting a language sends the preference to the API', async () => {

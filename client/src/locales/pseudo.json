@@ -18,6 +18,7 @@
     "profileSettings": "[Pröfïlë Ŝëttïñgŝ~~~~~]",
     "languageSelector": "[Läñgüägë~~~]",
     "userMenuLabel": "[Üŝër mëñü~~~]",
+    "userMenuTrigger": "[Üŝër mëñü för {{name}}~~~~~~~]",
     "logout": "[Lög öüt~~~]",
     "menu": "[Mëñü~~]",
     "close": "[Ĉlöŝë~~]",

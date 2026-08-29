@@ -24,6 +24,7 @@ const MINICRM_EN: LocaleMap = {
   'nav.users': 'Users',
   'nav.logout': 'Log out',
   'nav.userMenuLabel': 'User menu',
+  'nav.userMenuTrigger': 'User menu for {{name}}',
   'nav.profileSettings': 'Profile Settings',
   'nav.languageSelector': 'Language',
 
@@ -140,6 +141,7 @@ const MINICRM_ES: LocaleMap = {
   'nav.users': 'Usuarios',
   'nav.logout': 'Cerrar sesión',
   'nav.userMenuLabel': 'Menú de usuario',
+  'nav.userMenuTrigger': 'Menú de usuario de {{name}}',
   'nav.profileSettings': 'Configuración de perfil',
   'nav.languageSelector': 'Idioma',
 
@@ -256,6 +258,7 @@ const MINICRM_FR: LocaleMap = {
   'nav.users': 'Utilisateurs',
   'nav.logout': 'Se déconnecter',
   'nav.userMenuLabel': 'Menu utilisateur',
+  'nav.userMenuTrigger': 'Menu utilisateur de {{name}}',
   'nav.profileSettings': 'Paramètres du profil',
   'nav.languageSelector': 'Langue',
 
@@ -372,6 +375,7 @@ const MINICRM_DE: LocaleMap = {
   'nav.users': 'Benutzer',
   'nav.logout': 'Abmelden',
   'nav.userMenuLabel': 'Benutzermenü',
+  'nav.userMenuTrigger': 'Benutzermenü für {{name}}',
   'nav.profileSettings': 'Profileinstellungen',
   'nav.languageSelector': 'Sprache',
 
@@ -488,6 +492,7 @@ const MINICRM_ZH_HANS: LocaleMap = {
   'nav.users': '用户',
   'nav.logout': '退出登录',
   'nav.userMenuLabel': '用户菜单',
+  'nav.userMenuTrigger': '{{name}} 的用户菜单',
   'nav.profileSettings': '个人设置',
   'nav.languageSelector': '语言',
 
