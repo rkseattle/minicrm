@@ -309,24 +309,11 @@ export interface LogoutResult {
 export async function logout(context: AuthBehaviorContext): Promise<LogoutResult> {
   const LOGOUT_TIMEOUT_MS = 10_000;
 
-  // nav-logout is always present in the DOM for all nav layouts.
-  // For NavTop on mobile (hidden lg:inline-flex) it is not visible — in that
-  // case open the hamburger drawer and click nav-logout-mobile instead.
-  // For NavLeft and NavHamburger, nav-logout is always visible.
+  // Logout lives in the header's user menu, which renders at every width and in all
+  // three nav layouts, so there is one path rather than a desktop/mobile branch.
   const navPage = new NavPage(context);
-  const desktopLogout = await navPage.desktopLogoutLocator();
-  const isDesktopVisible = (await desktopLogout?.isVisible().catch(() => false)) ?? false;
-
-  if (!isDesktopVisible) {
-    // NavTop mobile: click the menu toggle to mount the drawer, wait for the
-    // drawer to be visible, then click the mobile logout button inside it.
-    await navPage.clickMenuToggle();
-    const drawer = await navPage.mobileNavDrawerLocator();
-    await drawer?.waitFor({ state: 'visible', timeout: 5_000 });
-    await navPage.clickMobileLogout();
-  } else {
-    await navPage.clickDesktopLogout();
-  }
+  await navPage.openUserMenu();
+  await navPage.clickLogout();
 
   await context.page
     .waitForURL((url) => new URL(url).pathname === '/login', { timeout: LOGOUT_TIMEOUT_MS })

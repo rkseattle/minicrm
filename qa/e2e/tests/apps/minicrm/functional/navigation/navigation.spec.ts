@@ -68,8 +68,10 @@ import {
   expectMenuToggleVisible,
   focusMenuToggle,
   expectMobileNavLinkVisible,
-  expectMobileLogoutButtonVisible,
-  expectMobileLanguageSelectVisible,
+  openUserMenu,
+  expectUserMenuLogoutVisible,
+  expectUserMenuLanguageSelectVisible,
+  navigateToProfileViaUserMenu,
   reloadCurrentPage,
   waitForNavLink,
   navigateToUrlAndWait,
@@ -128,6 +130,14 @@ const REP_DESTINATIONS: Record<string, string> = {
   deals: '/deals',
   tasks: '/tasks',
   reports: '/reports',
+};
+
+/**
+ * Routes reachable by URL that have no nav link of their own. `/profile` is reached
+ * from the header's user menu, so it belongs in the goto-driven loops but not the
+ * ones that click a nav link.
+ */
+const ROUTE_ONLY_DESTINATIONS: Record<string, string> = {
   profile: '/profile',
 };
 
@@ -246,14 +256,21 @@ test.describe.serial('Layout-mutating tests', () => {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
 
       try {
-        for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
-          if (isMobile) {
+        if (isMobile) {
+          // Mobile has no desktop tab row, so reachability is asserted by URL. The
+          // route-only table rides along here: /profile is reachable but unlinked.
+          for (const [, expectedPath] of Object.entries({
+            ...ALL_ADMIN_DESTINATIONS,
+            ...ROUTE_ONLY_DESTINATIONS,
+          })) {
             await navigateToUrlAndWait(expectedPath, { page });
             const actualPath = new URL(page.url()).pathname;
             expect(actualPath, `route ${expectedPath} should be reachable on mobile-web`).toBe(
               expectedPath,
             );
-          } else {
+          }
+        } else {
+          for (const [destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
             const result = await navigateViaNavLink('top', destination, {
               page,
             });
@@ -389,7 +406,10 @@ test.describe.serial('Layout-mutating tests', () => {
         // F8-HB1 tests route reachability under hamburger layout, not drawer
         // open/close mechanics (those are covered by F8-HM1–HM5). Use page.goto
         // per destination — same approach as F8-TN1 on mobile-web.
-        for (const [_destination, expectedPath] of Object.entries(ALL_ADMIN_DESTINATIONS)) {
+        for (const [_destination, expectedPath] of Object.entries({
+          ...ALL_ADMIN_DESTINATIONS,
+          ...ROUTE_ONLY_DESTINATIONS,
+        })) {
           await navigateToUrlAndWait(expectedPath, { page });
           const actualPath = new URL(page.url()).pathname;
           expect(
@@ -922,7 +942,7 @@ test.describe('Mobile nav mechanics', () => {
     await closeMobileNavViaToggle({ page });
   });
 
-  test('@functional F8-MN6: mobile nav drawer — logout and language selector present', async ({
+  test('@functional F8-MN6: user menu — logout and language selector present on mobile', async ({
     page,
   }) => {
     const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
@@ -930,14 +950,24 @@ test.describe('Mobile nav mechanics', () => {
 
     await navigateToDashboard(page);
 
-    await openMobileNav({ page });
+    // Both controls moved out of the nav drawer into the header's user menu, which
+    // renders at every width.
+    await openUserMenu({ page });
 
-    await expectMobileNavDrawerVisible({ page });
+    await expectUserMenuLogoutVisible({ page });
+    await expectUserMenuLanguageSelectVisible({ page });
+  });
 
-    await expectMobileLogoutButtonVisible({ page });
-    await expectMobileLanguageSelectVisible({ page });
+  test('@functional F8-MN7: user menu — Profile Settings navigates to /profile', async ({
+    page,
+  }) => {
+    await navigateToDashboard(page);
 
-    await closeMobileNavViaToggle({ page });
+    // The only path to /profile now that the nav link is gone, and the one the
+    // goto-driven reachability loops cannot exercise.
+    const { finalPath } = await navigateToProfileViaUserMenu({ page });
+
+    expect(finalPath, 'choosing Profile Settings should land on /profile').toBe('/profile');
   });
 }); // end Mobile nav mechanics
 

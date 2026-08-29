@@ -37,7 +37,7 @@
 #   Greps for `export (async )?function get\w*Locator` in behavior files
 #   under qa/e2e/behaviors/.  Legitimate data-fetch helpers (getAiConfig,
 #   getAiModelOptionCount, etc.) do not match because they don't end in
-#   "Locator".  The sole intentional exception is getDesktopLanguageSelectLocator
+#   "Locator".  The sole intentional exception is getLanguageSelectLocator
 #   in nav.behaviors.ts, which must be passed as a raw locator to
 #   selectLanguageAndWaitForPatch.  All others must be replaced with intent-
 #   bearing click*/fill*/expect*/wait* behavior functions.
@@ -100,7 +100,7 @@ fi
 
 # ---------------------------------------------------------------------------
 # Check 2: no get*Locator exports in behavior files (MINCRM-564)
-# The one intentional exception is getDesktopLanguageSelectLocator in
+# The one intentional exception is getLanguageSelectLocator in
 # nav.behaviors.ts — it must be passed as a raw locator to
 # selectLanguageAndWaitForPatch, so it is allowlisted here.
 # ---------------------------------------------------------------------------
@@ -108,7 +108,7 @@ LOCATOR_VIOLATIONS=$(grep -rn \
   --include="*.behaviors.ts" \
   -E "^export (async )?function get[A-Za-z]+Locator" \
   "$BEHAVIORS_DIR" 2>/dev/null \
-  | grep -v "getDesktopLanguageSelectLocator" \
+  | grep -v "getLanguageSelectLocator" \
   || true)
 
 if [ -n "$LOCATOR_VIOLATIONS" ]; then

@@ -49,9 +49,8 @@ import {
   expectNavLinkNotHasText,
   expectMobileNavLinkHasText,
   expectMobileNavLinkNotHasText,
-  getDesktopLanguageSelectLocator,
-  selectMobileLanguageAndWaitForPatch,
-  expectMobileNavDrawerVisibleWithLanguageSelect,
+  getLanguageSelectLocator,
+  openUserMenu,
   selectLanguageAndWaitForPatch,
 } from '@behaviors/minicrm/nav.behaviors.js';
 import { setUserLanguage, setSystemDefaultLanguage } from '@behaviors/minicrm/setup.behaviors.js';
@@ -321,16 +320,10 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     try {
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
 
-      if (isMobile) {
-        // On mobile the language selector is inside the mobile nav drawer.
-        await openMobileNav({ page });
-        await selectMobileLanguageAndWaitForPatch('es', { page });
-        await closeMobileNavViaToggle({ page });
-      } else {
-        // On desktop the language selector is in the nav header.
-        const langSelect = await getDesktopLanguageSelectLocator({ page });
-        await selectLanguageAndWaitForPatch('es', langSelect, { page });
-      }
+      // One selector at every width now — it lives in the header's user menu.
+      await openUserMenu({ page });
+      const langSelect = await getLanguageSelectLocator({ page });
+      await selectLanguageAndWaitForPatch('es', langSelect, { page });
 
       // Language change should take effect without a page reload.
       setLocale('es');
@@ -374,10 +367,11 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
 
 /**
  * F9-L5: Mobile-web only.
- * The language selector in the mobile nav drawer changes the UI language when
- * a non-English option is selected. Extends F8-MN6 which only checks presence.
+ * The language selector in the header's user menu changes the UI language at a
+ * mobile viewport. F9-L4 covers the same control but is @serial, and e2e-serial
+ * runs --project=desktop only, so this is the sole mobile language coverage.
  */
-test('@functional F9-L5: mobile nav language selector changes UI language', async ({
+test('@functional F9-L5: user menu language selector changes UI language on mobile', async ({
   page,
   restClient,
   testData,
@@ -404,18 +398,13 @@ test('@functional F9-L5: mobile nav language selector changes UI language', asyn
   await navigateToDashboard(page);
 
   try {
-    // Open the mobile nav drawer and verify the drawer + language select are present.
-    await openMobileNav({ page });
-    await expectMobileNavDrawerVisibleWithLanguageSelect({ page });
-
-    // Select French via the mobile language select.
-    await selectMobileLanguageAndWaitForPatch('fr', { page });
-
-    // Close the drawer after language selection.
-    await closeMobileNavViaToggle({ page });
+    // The user menu holds the language select at every width.
+    await openUserMenu({ page });
+    const langSelect = await getLanguageSelectLocator({ page });
+    await selectLanguageAndWaitForPatch('fr', langSelect, { page });
 
     setLocale('fr');
-    // Re-open the drawer to expose the now-translated nav labels.
+    // Open the drawer to expose the now-translated nav labels.
     await openMobileNav({ page });
 
     const frenchDashboardLabel = t('nav.dashboard'); // "Tableau de bord"

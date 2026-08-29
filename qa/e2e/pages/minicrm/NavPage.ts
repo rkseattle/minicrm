@@ -78,17 +78,30 @@ export class NavPage {
   }
 
   /**
-   * Clicks the mobile logout button inside the mobile nav drawer.
-   * Assumes the mobile drawer is already open.
+   * Opens the header's user menu, which holds Profile Settings, the language
+   * preference, and logout at every viewport width. A no-op when already open —
+   * the trigger toggles, so a second click would close it under a caller that
+   * expects an open menu.
+   *
+   * Force-clicked for the same reason as clickMenuToggleForce: the global search
+   * input overlaps this corner of the header on mobile viewports.
    */
-  async clickMobileLogout(): Promise<void> {
-    await this.page.click(
-      [
-        { type: 'testId', value: 'nav-logout-mobile' },
-        { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
-      ],
-      { intent: 'logout button inside the mobile nav drawer' },
-    );
+  async openUserMenu(): Promise<void> {
+    const trigger = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nav-user-menu-button' },
+          {
+            type: 'role',
+            value: 'button',
+            options: { name: t('nav.userMenuLabel'), exact: false },
+          },
+        ],
+        { intent: 'user menu trigger — force click to bypass search overlap' },
+      )
+      .resolve();
+    if ((await trigger.getAttribute('aria-expanded')) === 'true') return;
+    await trigger.click({ force: true });
   }
 
   /**
@@ -106,32 +119,47 @@ export class NavPage {
   }
 
   /**
-   * Returns a resolved locator for the desktop logout button.
-   * Returns null if the button is not in the DOM.
+   * Clicks the Profile Settings item. Assumes the user menu is already open.
    */
-  async desktopLogoutLocator(timeout?: number) {
+  async clickUserMenuProfile(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'nav-user-menu-profile' },
+        {
+          type: 'role',
+          value: 'menuitem',
+          options: { name: t('nav.profileSettings'), exact: false },
+        },
+      ],
+      { intent: 'Profile Settings item inside the user menu' },
+    );
+  }
+
+  /**
+   * Returns a resolved locator for the logout item. Assumes the user menu is open.
+   */
+  async logoutItemLocator(timeout?: number) {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'nav-logout' },
-          { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
+          { type: 'role', value: 'menuitem', options: { name: t('nav.logout'), exact: false } },
         ],
-        { intent: 'desktop logout button in navigation chrome' },
+        { intent: 'logout item inside the user menu' },
       )
-      .resolve(timeout)
-      .catch(() => null);
+      .resolve(timeout);
   }
 
   /**
-   * Clicks the desktop logout button.
+   * Clicks the logout item. Assumes the user menu is already open.
    */
-  async clickDesktopLogout(): Promise<void> {
+  async clickLogout(): Promise<void> {
     await this.page.click(
       [
         { type: 'testId', value: 'nav-logout' },
-        { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
+        { type: 'role', value: 'menuitem', options: { name: t('nav.logout'), exact: false } },
       ],
-      { intent: 'desktop logout button in navigation' },
+      { intent: 'logout item inside the user menu' },
     );
   }
 
@@ -208,46 +236,24 @@ export class NavPage {
   }
 
   /**
-   * Returns a resolved locator for the desktop language select in the nav header.
+   * Returns a resolved locator for the language select. Assumes the user menu is
+   * already open.
+   *
+   * The role fallback resolves its name through t(), like the logout strategies: a
+   * hardcoded English pattern matches nothing in the other four locales.
    */
-  async desktopLanguageSelectLocator(timeout?: number) {
+  async languageSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'nav-language-select' },
-          { type: 'role', value: 'combobox', options: { name: /language/i } },
+          {
+            type: 'role',
+            value: 'combobox',
+            options: { name: t('nav.languageSelector'), exact: false },
+          },
         ],
-        { intent: 'language selector in the desktop nav header' },
-      )
-      .resolve(timeout);
-  }
-
-  /**
-   * Returns a resolved locator for the mobile language select in the nav drawer.
-   */
-  async mobileLanguageSelectLocator(timeout?: number) {
-    return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'nav-language-select-mobile' },
-          { type: 'role', value: 'combobox', options: { name: /language/i } },
-        ],
-        { intent: 'language selector in the mobile nav drawer' },
-      )
-      .resolve(timeout);
-  }
-
-  /**
-   * Returns a resolved locator for the mobile logout button.
-   */
-  async mobileLogoutButtonLocator(timeout?: number) {
-    return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'nav-logout-mobile' },
-          { type: 'role', value: 'button', options: { name: t('nav.logout'), exact: false } },
-        ],
-        { intent: 'logout button in the mobile nav drawer' },
+        { intent: 'language selector inside the user menu' },
       )
       .resolve(timeout);
   }
