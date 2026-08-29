@@ -89,7 +89,7 @@ export default function NotificationBell() {
         <div
           role="menu"
           data-testid="notification-dropdown"
-          className="absolute end-0 z-20 mt-2 w-80 rounded-md border border-gray-200 bg-white shadow-lg"
+          className="absolute end-0 z-40 mt-2 w-80 rounded-md border border-gray-200 bg-white shadow-lg"
         >
           <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
             <span className="text-sm font-semibold text-gray-900">

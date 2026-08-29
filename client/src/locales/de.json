@@ -18,6 +18,7 @@
     "profileSettings": "Profileinstellungen",
     "languageSelector": "Sprache",
     "userMenuLabel": "Benutzermenü",
+    "userMenuTrigger": "Benutzermenü für {{name}}",
     "logout": "Abmelden",
     "menu": "Menü",
     "close": "Schließen",

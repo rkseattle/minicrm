@@ -18,6 +18,7 @@
     "profileSettings": "Paramètres du profil",
     "languageSelector": "Langue",
     "userMenuLabel": "Menu utilisateur",
+    "userMenuTrigger": "Menu utilisateur de {{name}}",
     "logout": "Se déconnecter",
     "menu": "Menu",
     "close": "Fermer",

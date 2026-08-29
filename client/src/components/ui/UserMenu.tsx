@@ -33,8 +33,13 @@ export interface UserMenuProps {
 /** Pairs the language select with its visible label. */
 const LANGUAGE_SELECT_ID = 'nav-user-menu-language';
 
-/** Profile Settings and Log out — the language select is not a menu item. */
-const MENU_ITEM_COUNT = 2;
+/**
+ * Profile Settings, Log out, and the language select. The select is not a menu item —
+ * combobox is not a valid child of role="menu" — but it is a roving target, or arrow
+ * keys would cycle the two items forever and Tab would close the popup before focus
+ * could land on it, leaving it reachable by mouse alone.
+ */
+const ROVING_TARGET_COUNT = 3;
 
 /** Chevron indicating the trigger opens a menu. */
 const CHEVRON_PATH = 'M19 9l-7 7-7-7';
@@ -53,7 +58,7 @@ export function UserMenu({ userName }: UserMenuProps) {
     close,
     handleMenuKeyDown,
     handleEscape,
-  } = useMenuButton<HTMLButtonElement>({ itemCount: MENU_ITEM_COUNT });
+  } = useMenuButton<HTMLElement>({ itemCount: ROVING_TARGET_COUNT });
 
   const { save: handleLanguageChange } = useLanguagePreference({ optimistic: true });
 
@@ -72,6 +77,7 @@ export function UserMenu({ userName }: UserMenuProps) {
         variant="ghost"
         size="sm"
         data-testid="nav-user-menu-button"
+        aria-label={t('nav.userMenuTrigger', { name: userName })}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={toggle}
@@ -94,7 +100,7 @@ export function UserMenu({ userName }: UserMenuProps) {
         <div
           role="group"
           aria-label={t('nav.userMenuLabel')}
-          className="absolute end-0 z-20 mt-1 w-56 rounded-md border border-gray-200 bg-white shadow-md"
+          className="absolute end-0 z-40 mt-1 w-56 rounded-md border border-gray-200 bg-white shadow-md"
         >
           <div
             role="menu"
@@ -133,12 +139,15 @@ export function UserMenu({ userName }: UserMenuProps) {
 
           <div className="border-t border-gray-100 px-4 py-3">
             <Select
+              ref={registerItem(2)}
               id={LANGUAGE_SELECT_ID}
               label={t('nav.languageSelector')}
               data-testid="nav-language-select"
               value={i18n.language}
               onChange={(e) => handleLanguageChange(e.target.value as SupportedLocale)}
               onKeyDown={(e) => {
+                // Escape and Tab behave as they do in the menu list. Arrow keys are
+                // left to the select, which uses them to change the selected option.
                 if (e.key === 'Escape') handleEscape(e);
                 if (e.key === 'Tab') close(false);
               }}

@@ -52,6 +52,26 @@ verdict deny "git clean -fd"                           "clean"
 verdict deny "git worktree add ../wt main"             "worktree add"
 verdict deny "git checkout -- client/src/app.tsx"      "discard a tracked file"
 
+echo "== holes found in review: these must also be denied =="
+verdict deny "git restore client/src/app.tsx"          "restore a tracked file"
+verdict deny "git -C /repo checkout main"              "global -C before the subcommand"
+verdict deny "git --git-dir=/r/.git switch main"       "global --git-dir before the subcommand"
+verdict deny "git checkout main && git checkout feature-branch" "destructive first in a compound"
+verdict deny "npm test && git checkout main"           "destructive second in a compound"
+verdict deny "git stash push -m wip"                   "stash push"
+verdict deny "git stash pop"                           "stash pop"
+
+echo "== command TEXT that only mentions a git command must stay allowed =="
+# The guard's first live failure: a commit whose message documented the guard was
+# refused, because the message names the command the guard blocks.
+verdict allow "git commit -m 'why git checkout main is refused'" "message quoting a command"
+verdict allow 'echo "run git checkout main to compare"'          "echo of a command"
+verdict allow "grep -rn 'git checkout' docs/"                    "grep for the phrase"
+
+echo "== read-only stash subcommands must stay allowed =="
+verdict allow "git stash list"                         "stash list"
+verdict allow "git stash show -p"                      "stash show"
+
 echo "== the same state: reading a ref must still be allowed =="
 verdict allow "git diff main...feature-branch"         "diff two refs"
 verdict allow "git show main:client/src/app.tsx"       "show a file at a ref"

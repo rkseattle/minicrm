@@ -2,6 +2,7 @@
  * Shared select component styled to match the Input component.
  */
 
+import { forwardRef } from 'react';
 import type { SelectHTMLAttributes } from 'react';
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
@@ -26,7 +27,10 @@ const SELECT_ERROR_CLASSES = 'border-red-500 focus:border-transparent focus:ring
  * @param label - Label text rendered above the select
  * @param error - Error message rendered below the select; also applies red-border styling
  */
-export function Select({ label, error, id, className = '', children, ...props }: SelectProps) {
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
+  { label, error, id, className = '', children, ...props },
+  ref,
+) {
   const stateClasses = error ? SELECT_ERROR_CLASSES : SELECT_NORMAL_CLASSES;
 
   return (
@@ -37,6 +41,7 @@ export function Select({ label, error, id, className = '', children, ...props }:
         </label>
       )}
       <select
+        ref={ref}
         id={id}
         className={[SELECT_BASE_CLASSES, stateClasses, className].filter(Boolean).join(' ')}
         {...props}
@@ -46,4 +51,4 @@ export function Select({ label, error, id, className = '', children, ...props }:
       {error !== undefined && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
-}
+});
