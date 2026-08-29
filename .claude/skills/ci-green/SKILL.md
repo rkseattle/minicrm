@@ -66,7 +66,7 @@ For every failing job:
    `--force-with-lease`.
 
    If the hook's own E2E run fails on the way out, follow "After the hook's own E2E run
-   fails" in that gate: fix, re-run only the failed specs, then push with
+   fails" in that gate: fix, re-run the specs the fix affects, then push with
    `SKIP_TIA_PREPUSH=1`. A rebase onto a moved parent voids that allowance — the prior
    run no longer describes the tree, so the hook runs in full again.
 
