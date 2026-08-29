@@ -10,8 +10,7 @@
  * Escape and an outside click close the menu and return focus to the trigger.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useOnClickOutside } from '@/hooks/useOnClickOutside.js';
+import { MENU_ITEM_CLASSES, useMenuButton } from '@/hooks/useMenuButton.js';
 
 interface ExportMenuActionItemConfig {
   /** Unique key for React list rendering — not rendered. */
@@ -67,80 +66,20 @@ export interface ExportMenuProps {
   menuLabel?: string;
 }
 
-const ITEM_BASE_CLASSES =
-  'block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50 ' +
-  'focus:bg-gray-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50';
-
 /**
  * Single "Export" dropdown trigger that reveals a list of export actions.
  *
  * @param props - See ExportMenuProps.
  */
 export function ExportMenu({ label, testId, items, menuLabel }: ExportMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const itemRefs = useRef<Array<HTMLButtonElement | HTMLAnchorElement | null>>([]);
-
   const visibleItems = items.filter((item) => !item.hidden);
+  const firstEnabledIndex = visibleItems.findIndex((item) => !item.disabled);
 
-  const close = useCallback((restoreFocus: boolean) => {
-    setIsOpen(false);
-    if (restoreFocus) {
-      triggerRef.current?.focus();
-    }
-  }, []);
-
-  useOnClickOutside(containerRef, () => close(false));
-
-  // Move focus onto the first enabled item as soon as the menu opens.
-  useEffect(() => {
-    if (!isOpen) return;
-    const firstEnabledIndex = visibleItems.findIndex((item) => !item.disabled);
-    if (firstEnabledIndex >= 0) {
-      itemRefs.current[firstEnabledIndex]?.focus();
-    }
-    // Only re-run when the menu opens/closes — item identity changes shouldn't steal focus back.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
-
-  function focusItemAt(index: number): void {
-    const clamped = (index + visibleItems.length) % visibleItems.length;
-    itemRefs.current[clamped]?.focus();
-  }
-
-  function handleMenuKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
-    const currentIndex = itemRefs.current.findIndex((el) => el === document.activeElement);
-
-    switch (event.key) {
-      case 'Escape':
-        event.preventDefault();
-        close(true);
-        break;
-      case 'ArrowDown':
-        event.preventDefault();
-        focusItemAt(currentIndex < 0 ? 0 : currentIndex + 1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        focusItemAt(currentIndex < 0 ? visibleItems.length - 1 : currentIndex - 1);
-        break;
-      case 'Home':
-        event.preventDefault();
-        focusItemAt(0);
-        break;
-      case 'End':
-        event.preventDefault();
-        focusItemAt(visibleItems.length - 1);
-        break;
-      case 'Tab':
-        // Standard menu-button behavior: Tab closes the menu without trapping focus.
-        close(false);
-        break;
-      default:
-        break;
-    }
-  }
+  const { isOpen, containerRef, triggerRef, registerItem, toggle, close, handleMenuKeyDown } =
+    useMenuButton<HTMLButtonElement | HTMLAnchorElement>({
+      itemCount: visibleItems.length,
+      initialFocusIndex: firstEnabledIndex >= 0 ? firstEnabledIndex : 0,
+    });
 
   return (
     <div ref={containerRef} className="relative inline-block">
@@ -151,7 +90,7 @@ export function ExportMenu({ label, testId, items, menuLabel }: ExportMenuProps)
         className="inline-flex items-center justify-center gap-1.5 rounded-md border font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary-500 border-gray-300 px-3 py-1.5 text-xs min-h-[44px] sm:min-h-0"
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={toggle}
       >
         {label}
       </button>
@@ -172,28 +111,24 @@ export function ExportMenu({ label, testId, items, menuLabel }: ExportMenuProps)
               // must not be an anchor at all.
               <button
                 key={item.key}
-                ref={(el) => {
-                  itemRefs.current[index] = el;
-                }}
+                ref={registerItem(index)}
                 type="button"
                 role="menuitem"
                 data-testid={item.testId}
                 disabled
-                className={[ITEM_BASE_CLASSES, item.className].filter(Boolean).join(' ')}
+                className={[MENU_ITEM_CLASSES, item.className].filter(Boolean).join(' ')}
               >
                 {item.label}
               </button>
             ) : item.href !== undefined ? (
               <a
                 key={item.key}
-                ref={(el) => {
-                  itemRefs.current[index] = el;
-                }}
+                ref={registerItem(index)}
                 href={item.href}
                 download
                 role="menuitem"
                 data-testid={item.testId}
-                className={[ITEM_BASE_CLASSES, item.className].filter(Boolean).join(' ')}
+                className={[MENU_ITEM_CLASSES, item.className].filter(Boolean).join(' ')}
                 onClick={() => close(true)}
               >
                 {item.label}
@@ -201,14 +136,12 @@ export function ExportMenu({ label, testId, items, menuLabel }: ExportMenuProps)
             ) : (
               <button
                 key={item.key}
-                ref={(el) => {
-                  itemRefs.current[index] = el;
-                }}
+                ref={registerItem(index)}
                 type="button"
                 role="menuitem"
                 data-testid={item.testId}
                 disabled={item.disabled}
-                className={[ITEM_BASE_CLASSES, item.className].filter(Boolean).join(' ')}
+                className={[MENU_ITEM_CLASSES, item.className].filter(Boolean).join(' ')}
                 onClick={() => {
                   close(true);
                   item.onClick();

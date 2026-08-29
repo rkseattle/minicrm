@@ -2,7 +2,7 @@
  * Tests for the NavHamburger component.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -30,6 +30,12 @@ function renderNavHamburger() {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+}
+
+/** The header's language and logout controls live behind the user-menu trigger. */
+async function openUserMenu(): Promise<void> {
+  const trigger = await screen.findByTestId('nav-user-menu-button');
+  fireEvent.click(trigger);
 }
 
 describe('NavHamburger', () => {
@@ -163,18 +169,16 @@ describe('NavHamburger', () => {
     expect(screen.queryByTestId('nav-hamburger-drawer')).not.toBeInTheDocument();
   });
 
-  it('renders the language selector in the top bar', async () => {
+  it('renders the language selector in the user menu', async () => {
     renderNavHamburger();
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
-    });
+    await openUserMenu();
+    expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
   });
 
-  it('renders the logout button in the top bar', async () => {
+  it('renders the logout item in the user menu', async () => {
     renderNavHamburger();
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
-    });
+    await openUserMenu();
+    expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
   });
 
   it('renders the global search input in the top bar', async () => {
@@ -184,11 +188,26 @@ describe('NavHamburger', () => {
     });
   });
 
-  it('shows the logged-in user name in the top bar', async () => {
+  it('shows the logged-in user name on the menu trigger', async () => {
     renderNavHamburger();
     await waitFor(() => {
-      expect(screen.getByText(ADMIN_USER.name)).toBeInTheDocument();
+      expect(screen.getByTestId('nav-user-menu-button')).toHaveTextContent(ADMIN_USER.name);
     });
+  });
+
+  it('Escape inside the user menu closes it and leaves the drawer open', async () => {
+    renderNavHamburger();
+
+    fireEvent.click(await screen.findByTestId('nav-menu-toggle'));
+    expect(screen.getByTestId('nav-hamburger-drawer')).toBeInTheDocument();
+
+    await openUserMenu();
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+
+    // The drawer's own Escape is a document-level listener; the menu stops propagation
+    // so the first Escape closes only the menu.
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('nav-hamburger-drawer')).toBeInTheDocument();
   });
 
   it('navigates to /login after logout is clicked', async () => {
@@ -209,9 +228,7 @@ describe('NavHamburger', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    await waitFor(() => {
-      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
-    });
+    await user.click(await screen.findByTestId('nav-user-menu-button'));
     await user.click(screen.getByTestId('nav-logout'));
     await waitFor(() => {
       expect(screen.getByText('Login page')).toBeInTheDocument();
