@@ -38,8 +38,8 @@ Two things are still yours to do before pushing, because the hook cannot:
 Read the counts from `qa/e2e/test-results/results.xml`, never the console and never the
 exit code. If output truncates, read the file — do not re-run.
 
-One run. If it fails, root-cause and fix, then validate that fix by running **only the
-failed specs** — and push again with `SKIP_TIA_PREPUSH=1` rather than sitting through a
+One run. If it fails, root-cause and fix, then validate that fix by running **the specs
+the fix affects** — and push again with `SKIP_TIA_PREPUSH=1` rather than sitting through a
 second full suite. That is the documented path, not a shortcut: "After the hook's own E2E
 run fails" in `.claude/gates/pre-push.md` sets out the procedure and its bounds. Never
 re-run to see whether a failure goes away, never dismiss one as a known flake,
@@ -89,7 +89,7 @@ Expect it to take a while, and let it. The bypass is not for a run you would rat
 sit through.
 
 **If the hook's E2E run fails**, that is the gate doing its job. Root-cause and fix the
-failure, run only the failed specs to confirm the fix, then push again _with_
+failure, run the specs the fix affects to confirm it, then push again _with_
 `SKIP_TIA_PREPUSH=1` — the full suite already ran against this branch and reported exactly
 those failures, so re-running all of it re-executes hundreds of specs whose verdict has not
 changed. The procedure and its bounds are "After the hook's own E2E run fails" in

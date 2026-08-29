@@ -164,22 +164,108 @@ So, in this order:
 1. **Root-cause and fix the failure.** `.claude/gates/e2e-run.md` still governs: no
    failure is dismissed as a flake, pre-existing, or unrelated, and a rerun that passes is
    not a resolution.
-2. **Run only the failed specs**, once, against the fixed tree:
+2. **Re-run the specs the fix affects**, once, against the fixed tree. Which specs those
+   are is a question the selector already answers — ask it rather than assuming the failed
+   set is the whole set:
 
    ```bash
-   cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
-     npx playwright test --config=e2e/playwright.config.ts <spec paths>
+   cd server && DB_PORT=5433 DB_NAME=minicrm_e2e COVERAGE_DB_NAME=minicrm_coverage_e2e \
+     LOG_DESTINATION=stderr npx tsx src/scripts/select-tests.ts \
+     --base=origin/main --head=HEAD
    ```
 
-   Read the counts from the results file, never the console. If a fix touched shared
-   framework code rather than one spec's own logic, the affected set is wider than the
-   specs that failed — run that wider set.
+   The database coordinates are not optional. `select-tests.ts` reads its mappings through
+   `coverageDb.ts`, which imports `dotenv/config` — so from a plain shell it picks up the
+   root `.env` and queries the **dev** coverage database on 5432, which holds no E2E
+   coverage links. It does not fail; it returns a confidently wrong selection. Those are
+   the test stack's own coordinates, hardcoded in `qa/scripts/test-stack-db-env.ts` for
+   this reason. `--base=origin/main` gives the whole branch's affected set, which is wider
+   than the fix commit alone and deliberately so.
+
+   Run the union of its selection and the specs that failed. A fix in a spec's own logic
+   usually re-runs just that spec; a fix in shared production code, a schema, locale data,
+   or `qa/e2e/framework/` pulls in previously-passing specs the failed set does not name,
+   and those are exactly where a regression in the fix would land. If the selector widens
+   to the full suite, you are not in this exception — let the hook run.
+
+   Run that set as **two invocations, non-serial then serial** — the same spec list to
+   both, partitioned by grep, exactly as `qa/scripts/targeted-run-plan.ts` plans it for the
+   hook. Take both grep expressions from that file's `NON_SERIAL_GREP_INVERT` and
+   `SERIAL_GREP`; `.claude/gates/e2e-run.md`'s two full-suite commands show them in place,
+   and a copy here would be a fourth definition to drift.
+
+   ```bash
+   cd qa && rm -f test-results/targeted-non-serial.xml test-results/targeted-serial.xml
+
+   cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
+     PW_GLOBAL_TIMEOUT_MS=3600000 \
+     PLAYWRIGHT_JUNIT_OUTPUT_FILE=test-results/targeted-non-serial.xml \
+     npm run test -- <spec paths> --grep-invert "<NON_SERIAL_GREP_INVERT>" \
+     --output=test-results/targeted-non-serial-artifacts
+
+   cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
+     PW_GLOBAL_TIMEOUT_MS=1500000 \
+     PLAYWRIGHT_JUNIT_OUTPUT_FILE=test-results/targeted-serial.xml \
+     npm run test -- <spec paths> --grep "<SERIAL_GREP>" \
+     --project=desktop --workers=1 --output=test-results/targeted-serial-artifacts
+
+   cd qa && npx tsx scripts/merge-junit-results.ts --output e2e/test-results/results.xml \
+     --allow-empty-inputs --expected-files 2 \
+     test-results/targeted-non-serial.xml test-results/targeted-serial.xml
+   ```
+
+   Delete the two XML files first. They are not in `outputDir`, so nothing else clears
+   them, and an invocation that dies before its reporter writes leaves the previous push's
+   file for the merge to fold into the results you are about to trust — the hook does the
+   same delete for the same reason.
+
+   Partition by **grep, not by hand**. `concurrency.spec.ts` is serial by
+   `test.describe.serial` with no `@serial` tag on any test, so eyeballing the paths puts
+   it in the wrong half; a file with both tagged and untagged tests cannot go in either
+   half intact. Feeding the same list to both invocations and letting the greps decide is
+   what makes that impossible to get wrong. `--workers=1` belongs on the serial half only
+   — the hook leaves the non-serial half at the config's local default of 2.
+
+   `PW_GLOBAL_TIMEOUT_MS` is required on both, for the reason `e2e-run.md` gives: past the
+   config's 20-minute default a run is **truncated, not failed** — Playwright marks what it
+   never reached as skipped, `results.xml` reports `failures="0"`, and the merged file
+   reads green. A selection widened by a shared-code fix is exactly the case that reaches
+   that cap.
+
+   `--project=desktop` on the serial half is **not optional**, per `e2e-run.md`: without it
+   the `@serial` specs also run under mobile-web, which CI never does, and desktop-only
+   surfaces fail with "HealingLocator: all strategies exhausted" — a false regression that
+   costs a full investigation to dismiss. The hook omits it; that is the hook's deviation,
+   not a licence to copy it here. The non-serial half deliberately passes no `--project`,
+   because `e2e-functional` genuinely runs both. Note the attestation gate cannot catch a
+   wrongly narrowed invocation either way — it reconciles only the projects _present in the
+   results file_ and cannot know which were intended.
+
+   The per-invocation `PLAYWRIGHT_JUNIT_OUTPUT_FILE` and `--output` are what let the second
+   invocation exist at all, and they solve two different problems. The env var overrides
+   the config's single fixed `outputFile`, so the serial run does not overwrite the
+   non-serial run's XML. `--output` moves the run's `outputDir` aside, because every
+   `playwright test` call clears that directory at startup — and the merged
+   `qa/e2e/test-results/results.xml`, the file step 2 tells you to read, lives in it. The
+   targeted XML files are written relative to the shell's cwd, so they sit in
+   `qa/test-results/`, a sibling that no run clears. Skip the half your specs have no tests
+   for — Playwright exits 1 on "No tests found", and most selections have no `@serial`
+   tests at all; drop `--expected-files` to 1 when you do.
+
+   Read the counts from the merged `qa/e2e/test-results/results.xml`, never the console,
+   and treat a failure in either half as a failure of the whole step.
 
 3. **Push with the bypass**, which is now the honest path rather than a shortcut:
 
    ```bash
    SKIP_TIA_PREPUSH=1 git push --force-with-lease origin <branch>
    ```
+
+**What this still gives up.** The hook's `attestOrThrow` binds a results file to the
+exact HEAD SHA through coverage-session attribution; a hand-run does not. So the merged
+`results.xml` above proves these specs passed, not that they passed against this commit —
+that part is on you, which is why "the sole delta is the fix" is the bound to be strict
+about rather than eyeball.
 
 Conditions 1 and 2 are replaced by the targeted run: the full suite already ran against
 this branch and reported exactly these failures, and re-running everything re-executes
