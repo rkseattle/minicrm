@@ -12,6 +12,8 @@
 # a hook that blocks on its own bug is worse than no hook.
 set -uo pipefail
 
+[ "${1:-}" = "--self-test" ] && exec bash "$(dirname "$0")/protect-plan-branch.self-test.sh"
+
 allow() { printf '{"continue": true}\n'; exit 0; }
 
 command -v jq >/dev/null 2>&1 || allow
@@ -51,19 +53,32 @@ GIT_GLOBAL_OPTS='([[:space:]]+(-[cC][[:space:]]*[^[:space:]]+|--(git-dir|work-tr
 # A branch switch names a ref. `--` marks everything after it as paths, and a bare
 # `-` means "the previous branch", which is still a switch.
 BRANCH_SWITCH="(checkout|switch)([[:space:]]+-[[:alnum:]-]+)*[[:space:]]+(-([[:space:]]|$)|[^-[:space:]][^[:space:]]*)"
-DESTRUCTIVE="${BRANCH_SWITCH}|reset|clean|worktree|stash[[:space:]]+(push|pop|apply|drop|clear|branch|create|store)|stash([[:space:]]*$|[[:space:]]+-)"
+# `rebase` moves HEAD and rewrites the branch. `restore --source=<ref>` overwrites the
+# working tree from another ref, which is the wholesale discard this guard covers even
+# though plain path-scoped `restore` is not. `worktree list` and a bare `reset`
+# (unstage only) move neither HEAD nor the tree, so both stay allowed.
+DESTRUCTIVE="${BRANCH_SWITCH}|rebase|restore[^;|&]*--source|reset[[:space:]]+(--hard|--merge|--keep|[^-])|clean[[:space:]]+-|worktree[[:space:]]+(add|remove|move|prune)|stash[[:space:]]+(push|pop|apply|drop|clear|branch|create|store)|stash([[:space:]]*$|[[:space:]]+-)"
 
 DESTRUCTIVE_RE="(^|[^[:alnum:]_-])git${GIT_GLOBAL_OPTS}[[:space:]]+(${DESTRUCTIVE})"
 
-# Match against executable text only. A commit message, a heredoc body, or any quoted
-# string can legitimately contain the words "git checkout" — a guard that reads those
-# as invocations blocks the commit that documents the guard, which is how this one
-# first failed. Everything from a heredoc operator to end of input is dropped, as are
-# single- and double-quoted runs.
+# Match against executable text only. A commit message, a heredoc body, or a grep
+# pattern can legitimately contain the words "git checkout" — reading those as
+# invocations blocked the commit that documented this guard.
+#
+# Only the ARGUMENT OF A MESSAGE-BEARING FLAG is removed, never quoting in general:
+# stripping every quoted run also strips the branch argument, which let
+# `git checkout "main"` through — the guard's defense against one failure mode
+# opening a hole in the one it exists for.
 scannable=$(printf '%s' "$cmd" \
-  | sed -e 's/<<-\{0,1\}[[:space:]]*[A-Za-z_'"'"'"][A-Za-z0-9_]*.*$//' \
-        -e "s/'[^']*'//g" \
-        -e 's/"[^"]*"//g')
+  | sed -E \
+      -e 's/<<-?[[:space:]]*['"'"'"]?[A-Za-z_][A-Za-z0-9_]*.*$//' \
+      -e 's/(-m|-F|--message|--file)[[:space:]]*'"'"'[^'"'"']*'"'"'//g' \
+      -e 's/(-m|-F|--message|--file)[[:space:]]*"[^"]*"//g' \
+      -e 's/(grep|rg|ack)([[:space:]]+-[[:alnum:]-]+)*[[:space:]]+'"'"'[^'"'"']*'"'"'//g' \
+      -e 's/(grep|rg|ack)([[:space:]]+-[[:alnum:]-]+)*[[:space:]]+"[^"]*"//g' \
+      -e 's/(echo|printf)[[:space:]]+'"'"'[^'"'"']*'"'"'//g' \
+      -e 's/(echo|printf)[[:space:]]+"[^"]*"//g' \
+  | tr -d '"'"'"'"')
 [ -n "$scannable" ] || allow
 
 # Count destructive invocations, then count the subset that are a return to the plan's

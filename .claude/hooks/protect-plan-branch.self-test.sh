@@ -61,6 +61,21 @@ verdict deny "npm test && git checkout main"           "destructive second in a 
 verdict deny "git stash push -m wip"                   "stash push"
 verdict deny "git stash pop"                           "stash pop"
 
+echo "== bypasses found in review: quoting must not defeat the match =="
+# Stripping every quoted run to avoid false positives also stripped the branch
+# argument, so `git checkout "main"` left nothing for the ref token to match.
+verdict deny 'git checkout "main"'                     "double-quoted branch"
+verdict deny "git checkout 'main'"                     "single-quoted branch"
+verdict deny "git rebase main"                         "rebase moves HEAD and rewrites"
+verdict deny "git restore --source=main --worktree ."  "restore --source overwrites the tree"
+
+echo "== verbs that move neither HEAD nor the tree stay allowed =="
+verdict allow "git worktree list"                      "worktree list is a read"
+verdict allow "git reset"                              "bare reset only unstages"
+# A soft reset keeps the tree but still moves HEAD to another commit, which is the
+# thing this guard protects — so it is denied, unlike a bare `git reset`.
+verdict deny "git reset HEAD~1 --soft"                 "soft reset still moves HEAD"
+
 echo "== path-scoped reverts cannot move HEAD, so they stay allowed =="
 # Restoring a file the tooling touched incidentally is routine; the guard protects the
 # branch, not every destructive-looking verb.
