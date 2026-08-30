@@ -42,7 +42,28 @@ VALUE_OPTIONS = {"-c", "-C", "--git-dir", "--work-tree", "--namespace", "--exec-
 # Denying --abort would trap the session inside the broken rebase it needs to escape.
 REBASE_RECOVERY = {"--abort", "--continue", "--skip", "--quit", "--edit-todo"}
 
-SHELL_WRAPPERS = {"sh", "bash", "zsh", "dash", "env", "xargs", "nohup", "time", "sudo"}
+SHELL_WRAPPERS = {
+    "sh", "bash", "zsh", "dash", "env", "xargs", "nohup", "time", "sudo", "timeout",
+    "stdbuf", "setsid", "ionice", "nice", "doas",
+}
+# A wrapper's own value-taking options, per wrapper. Skipping only the flag and then
+# treating its VALUE as the wrapped program made `sudo -u root git checkout main` read
+# as the program `root`, and the git command after it was never examined.
+WRAPPER_VALUE_OPTIONS = {
+    "sudo": {"-u", "-g", "-C", "-p", "-r", "-t", "-U", "-h"},
+    "doas": {"-u", "-C"},
+    "env": {"-u", "-C", "-S", "--unset", "--chdir", "--split-string"},
+    "xargs": {"-I", "-n", "-L", "-P", "-s", "-E", "-d", "-a", "--replace", "--max-args"},
+    "timeout": {"-s", "-k", "--signal", "--kill-after"},
+    "nice": {"-n", "--adjustment"},
+    "ionice": {"-c", "-n", "-p", "--class", "--classdata"},
+    "stdbuf": {"-i", "-o", "-e", "--input", "--output", "--error"},
+    "setsid": set(),
+    "time": {"-f", "-o", "--format", "--output"},
+}
+# Wrappers that take a POSITIONAL argument before the program. `timeout 5 git ...`
+# has no flag to key off, so the duration would otherwise be read as the program.
+WRAPPER_POSITIONAL_ARGS = {"timeout": 1}
 # Unescaped shell separators, longest first so `&&` is not split as two `&`.
 SEPARATOR_PATTERN = re.compile(r"(?<!\\)(?:&&|\|\||[;|&\n])")
 # Grouping and control-flow tokens that wrap a real command.
@@ -57,11 +78,23 @@ def program_name(token):
 
 
 def strip_grouping(command):
-    """Drops subshell/control-flow tokens so `(git checkout main)` is seen as a command."""
+    """Drops subshell/control-flow tokens so `(git checkout main)` is seen as a command.
+
+    Only leading/trailing brackets are shed, and only when what remains still looks like
+    a word: `xargs -I{}` must keep its `{}`, or the option is read as taking the next
+    token — which is the git command — as its value.
+    """
     stripped = []
     for token in command:
-        token = token.strip(GROUPING_CHARS)
-        if token and token not in GROUPING:
+        if token in GROUPING:
+            continue
+        bare = token.strip(GROUPING_CHARS)
+        # A token that is only brackets carries no command; one that starts with a
+        # bracket is a grouped command (`(git`). Anything else keeps its brackets.
+        if bare and (token[0] in GROUPING_CHARS or token[-1] in GROUPING_CHARS):
+            if token[0] in GROUPING_CHARS:
+                token = bare
+        if token:
             stripped.append(token)
     return stripped
 
@@ -77,9 +110,29 @@ def moves_head(command, want_branch):
     #   sibling — `sudo git checkout main`, the command as the tokens that follow
     if program_name(command[0]) in SHELL_WRAPPERS:
         rest = command[1:]
+        wrapper = program_name(command[0])
+        value_options = WRAPPER_VALUE_OPTIONS.get(wrapper, set())
+        positionals_left = WRAPPER_POSITIONAL_ARGS.get(wrapper, 0)
+        skip_next = False
         for position, token in enumerate(rest):
+            if skip_next:
+                skip_next = False
+                continue
             # `FOO=1` is an env assignment, not the program; keep looking.
             if token.startswith("-") or "=" in program_name(token):
+                # `-u FOO` takes its value as a separate token; `-uFOO` and
+                # `--unset=FOO` carry it inline and consume nothing further.
+                # A short option may carry its value glued on (`-I{}`, `-n1`, `-o0`),
+                # in which case nothing further is consumed.
+                if token in value_options:
+                    skip_next = True
+                elif len(token) > 2 and not token.startswith("--"):
+                    pass  # inline value, e.g. -I{}
+                continue
+            # A wrapper's own positional argument (timeout's duration) precedes the
+            # program, so consume it before treating a token as the program.
+            if positionals_left:
+                positionals_left -= 1
                 continue
             try:
                 inner = shlex.split(token)
