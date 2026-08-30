@@ -254,10 +254,19 @@ output, never the exit code. If output is truncated, read the file — do not re
 
 ## Failure handling
 
+This is the full policy. Everywhere else — `CLAUDE.md`, the stage skills, the review
+agents — points here rather than restating it.
+
 Every failure gets root-caused. Never label one a known flake, flaky, pre-existing, or
 unrelated as grounds to stop investigating. Whether the test has failed before is
-irrelevant. Never compare against `main` to dismiss a failure. If root cause isn't
-found, say so explicitly and ask how to proceed.
+irrelevant. Never compare against `main` to dismiss a failure. Never re-run to see whether
+a failure goes away: a rerun that passes is not a resolution, and a defense resting on the
+test having failed before is rejected. If root cause isn't found, say so explicitly and ask
+how to proceed.
+
+A run that produced no verdict is not a failure and none of this applies to it — a killed
+run, a `StaleDataAbortError`, a stack built at the wrong SHA. There is nothing to
+root-cause; fix the environment and run it again.
 
 For a healed-locator failure, download the run's `healing-report.json` artifact —
 `gh api .../artifacts/<id>/zip` — which shows the exact original → healed strategy per

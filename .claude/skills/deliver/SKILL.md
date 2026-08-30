@@ -58,12 +58,42 @@ reasoning, never a summary of what you changed, never a hint about where the ris
 Their entire value is having no implementation context; anything you add spends it.
 Cap every review loop at three rounds, then escalate the disagreement to Rob.
 
+**A round that finds defects in the previous round's fix means revert, not iterate.** The
+three-round cap counts rounds; it does not notice what they are about. Before starting any
+round after the first, ask what the last round's findings were against: the code the branch
+set out to change, or the code the previous round wrote to satisfy a finding. When it is
+predominantly the latter, stop. Revert that fix and take a different approach — or bring
+the disagreement to Rob if no other approach is apparent.
+
+Two consecutive rounds finding defects in each other's output is not convergence, and a
+third round will not reach it. It means the fix is the wrong shape: the reviewer is
+exploring a design that should not exist rather than a defect that should be gone. Each
+further round adds surface for the next one to find, which is why these loops end at the
+cap rather than at APPROVE.
+
 **Industry-standard patterns only.** Never the simplest, quickest, or easiest solution.
 Follow in-repo precedent where it exists; justify every departure in writing.
 
 **Root cause, then pattern spread.** Every fix — plan finding, review finding, test
 failure, CI failure, PR comment — gets root-caused, and the codebase gets grepped for
 other instances of that same cause. Fix all live instances in the same pass.
+
+**Enforcement machinery is never built inside a feature branch.** Fixing an instance is
+this branch's job; building the guard that would catch the next one is not. If a finding
+argues for new machinery — a hook, a check script, a CI job or filter, a lint rule, a
+self-test harness — fix the instance and every live instance of its root cause, then
+propose the guard to Rob as its own ticket. Do not build it here.
+
+The reason is measured, not theoretical. A guard written under review pressure is written
+without a plan and without a design review, and then the review rounds turn on the guard:
+MINCRM-734 shipped its feature in one commit and spent seven more rewriting a branch guard
+four times, each round closing a bypass the previous round opened. The Stop hook reached
+503 lines across nine rounds the same way. Both were built mid-branch to prevent something
+cheaper than what they cost.
+
+This binds regardless of how small the guard looks or how confident the finding is. "It's
+twenty lines" is how both of those started. A guard is a program with its own failure
+modes, and its only failure mode is silence — which is exactly what a rushed one produces.
 
 **Fixing is the default; deferring is the exception that needs permission.** An instance
 of a root cause this work already fixes is excluded only when it is **benign in its
@@ -94,9 +124,8 @@ someone else can no longer see. Ask, and say what happens to the work it tracked
 a ticket through its normal workflow states — In Progress, In Review — is a routine step
 and needs no permission.
 
-**No failure is ever a known flake.** Not pre-existing, not unrelated, not flaky. A
-rerun that passes is not a resolution. If the root cause is undeterminable, say so and
-ask.
+**No failure is ever a known flake.** Full policy, including what does not count as a
+failure at all: `.claude/gates/e2e-run.md`.
 
 **Gates are unconditional.** Definition of Done before every commit
 (`.claude/gates/definition-of-done.md`). Pre-push checklist and E2E before every push
@@ -123,6 +152,30 @@ during a run is reported at the end with the file and the exact wording it would
 then you stop and ask. The reasoning is the same as for work items: a config file that
 grows unprompted stops being read, and these files only work because everything in them
 earned its place. `none` is a valid and common finding.
+
+**These files have a line budget, and it is already spent.** Every run is asked for
+friction and no run is asked what to remove, so the corpus ratchets in one direction —
+which is why it now stands at ~2,900 lines that are read on every run. Each file has a cap:
+
+| File                          | Cap |
+| ----------------------------- | --- |
+| `CLAUDE.md`                   | 400 |
+| `gates/pre-push.md`           | 360 |
+| `gates/e2e-run.md`            | 280 |
+| `gates/definition-of-done.md` | 250 |
+| Any skill `SKILL.md`          | 300 |
+| Any agent definition          | 130 |
+
+The caps sit just above today's sizes deliberately: the next addition to a near-full file
+has to displace something. **A proposal that would breach a cap must name what comes out**
+— the rule it replaces, narrows, or makes redundant — and that removal is part of the same
+proposal, not a follow-up. If nothing can come out, the proposal is that the rule matters
+more than what is already there; say so and let Rob weigh them against each other.
+
+Prefer replacing to appending in every case, cap or no cap. A new rule covering the same
+ground as an existing one produces two rules that drift, and the drift is invisible until
+a run follows the stale one. Raising a cap is a decision for Rob, and it is the answer only
+when the file genuinely covers more ground than it used to.
 
 **Stay quiet while monitors run.** No filler turns, no polling loops, no narrating the
 wait.

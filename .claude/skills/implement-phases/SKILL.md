@@ -113,10 +113,9 @@ something already written down somewhere, a convention discovered by being corre
 rather than by reading it. That is what 2e's Friction line reports, and noticing it
 afterward does not work — by then the cost is invisible.
 
-Industry-standard patterns only. Never the simplest, quickest, or easiest solution that
-happens to work here. Where the repo has an established precedent, follow it; where you
-depart from it, put the reason in the commit message — that is where a reviewer looks for
-why a change was made, and it does not go stale the way an inline defense does.
+Industry-standard patterns only, per `deliver`'s invariant. Put the reason for any
+departure from in-repo precedent in the commit message — that is where a reviewer looks,
+and it does not go stale the way an inline defense does.
 
 While implementing, catch cross-cutting impact in the same pass rather than waiting for
 runtime to surface it. Any time you rename a file, change a signature, change a script
@@ -127,11 +126,8 @@ have bitten this repo before.
 
 When a grep reveals a class of problem rather than a single instance, fix every
 instance in that pass. "Only these are failing CI" is not the same as "only these are
-bugs." Exclude an instance only when it is **benign in its context** — it cannot produce
-a wrong result for any user or any test. A different feature, workspace, or ticket owner
-is not benign. Before deferring, and before creating any work item, follow the deferral
-procedure in `deliver`'s invariants: `commit-adversary` on the benign claim, then ask
-Rob, then file.
+bugs." Excluding an instance, deferring anything, or creating any work item all go
+through `deliver`'s benign-in-context bar and deferral procedure.
 
 ### 2b. Read the diff before staging
 
@@ -152,6 +148,11 @@ they are genuinely out of scope, in which case say so explicitly and note them f
 branch review. Re-run the review on the fixed diff. Repeat to a maximum of three rounds;
 if BLOCKERs persist after the third, stop and bring it to Rob, declaring the stop per
 `deliver`'s invariants.
+
+Before round 3, apply `deliver`'s revert rule: if round 2's findings were mostly against
+what round 1's fix introduced rather than against the phase's own code, revert that fix and
+take a different approach instead of running a third round. Do not build a guard to satisfy
+a finding here — `deliver`'s enforcement-machinery invariant makes that a separate ticket.
 
 ### 2d. Definition of Done, then commit
 
@@ -238,6 +239,16 @@ failed on something no written rule covers qualifies; a typo does not. So does a
 that exists but was not found from where you were reading — that is a cross-reference
 problem and names its own fix.
 
+**A friction item names what it would replace, or states that it adds nothing.** The most
+common resolution is not a new rule: it is moving an existing one to where you were
+actually reading, narrowing one that fired wrongly, or deleting one that sent you the wrong
+way. Those are the valuable items — they leave the corpus the same size or smaller. An item
+proposing genuinely new text says what it displaces, per `deliver`'s line-budget invariant.
+
+An item whose honest answer is "nothing to change, this was a one-off" is not a friction
+item. Write `none` rather than promoting it, and do not treat a clean phase as a section
+you failed to fill.
+
 Do not apply the fix now. Phase reports collect; step 3 proposes.
 
 ## Step 3 — Report
@@ -269,8 +280,7 @@ Do not push. Do not open a PR. `/ship-pr` covers that, after `/branch-review`.
 
 ## Standing rules
 
-- Never dismiss a failing test as a known flake, pre-existing, or unrelated. Root-cause
-  every failure. A rerun that passes is not a resolution.
+- Never dismiss a failing test as a known flake. Policy: `.claude/gates/e2e-run.md`.
 - If Rob says something is broken, investigate before responding. Never lead with
   reassurance — his view of the browser and the UI is authoritative, tool output can be
   stale.

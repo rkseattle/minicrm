@@ -30,10 +30,8 @@ For each BLOCKER and MAJOR, in order:
    ownership clause, check every endpoint. If it was an unawaited promise on a write
    path, check every write service.
 3. **Decide the scope of the fix.** Every live instance of the root cause gets fixed in
-   this pass. An instance is excluded only when it is **benign in its context** — it
-   cannot produce a wrong result for any user or any test. "Different feature",
-   "different workspace", "big diff", "deserves its own review surface" are not benign;
-   they describe every pattern-spread fix. State the exclusion in benign terms or fix it.
+   this pass; excluding one requires `deliver`'s benign-in-context bar. State the
+   exclusion in those terms or fix it.
 4. **Fix using the industry-standard pattern**, matching in-repo precedent where one
    exists. Not the minimal edit that clears the finding.
 
@@ -58,6 +56,13 @@ rounds. If it still requests changes after the third round, stop and bring the s
 disagreement to Rob rather than iterating further, declaring the stop per `deliver`'s
 invariants.
 
+**Check what each round is about before starting the next**, per `deliver`'s revert rule.
+Findings against code a previous round wrote — rather than against the branch's own work —
+mean that fix was the wrong shape. Revert it and take a different approach; a third round
+will not converge on a design that should not exist. This is the failure mode that has cost
+this repo the most: a branch whose feature landed in one commit and then spent seven more
+rewriting a guard, each round closing a bypass the last one opened.
+
 ## Step 4 — Verify the acceptance criteria table
 
 The reviewer returns an AC coverage table. Check each unmet or partially-met row
@@ -74,9 +79,19 @@ Nothing about being in review mode relaxes the commit gates.
 
 Same shape as a phase report: which findings were fixed and which were argued down, the
 files each fix touched, how long the stage took, whether any finding moved an acceptance
-criterion, and the friction worth writing into a config file. A review finding that a
-written rule would have prevented is the highest-value friction item there is — it was
-caught late, by an agent, on work already committed.
+criterion, and the friction worth writing into a config file.
+
+A review finding that a written rule would have prevented is worth reporting — it was
+caught late, by an agent, on work already committed. But check which of the two it is
+before proposing anything: a finding no rule covers, or a finding a rule already covered
+and the run did not follow. The second is far more common in this corpus, and its fix is
+never new text. It is moving the existing rule to where the run was reading, or deleting a
+competing copy that said something subtly different. Both of those shrink the corpus.
+
+Propose new text only for the first kind, naming what it displaces per `deliver`'s
+line-budget invariant. Do not propose a guard, hook, or check script here at all — that is
+its own ticket under `deliver`'s enforcement-machinery invariant, never a branch-review
+output.
 
 ## Validate before reporting
 
