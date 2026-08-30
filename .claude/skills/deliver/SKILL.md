@@ -203,6 +203,17 @@ automatically licence for an irreversible act. Ask what the work would actually 
 The middle case — a commit — follows the work: commit freely on a feature branch, ask
 before committing to `main`.
 
+**Authorization already given is not asked for twice.** This rule governs an external
+write nobody has approved yet — the ad-hoc request, the "while you're in there". It does
+not re-gate the stages of an approved run: `/deliver`'s stage 1 approval covers the push,
+the PR, and the Jira transitions that stages 2 through 5 exist to perform, which is what
+"stages 2 through 5 run without further approval gates" above means. Stopping at ship-pr
+to ask permission to push would deadlock the workflow at its final stage.
+
+The test is whether _this specific operation_ was authorized, not whether it is
+irreversible. An approved plan authorizes its own delivery; it does not authorize an
+unrelated force-push, a ticket nobody asked for, or a bypass of a gate that just failed.
+
 **Prefer a stated assumption to a blocking question.** When a choice has an obvious
 default and the resulting work is cheap to redo, take the default, say in one line which
 assumption you made, and keep going. A correction then costs an amend rather than a
