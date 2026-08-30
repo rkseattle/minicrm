@@ -103,6 +103,9 @@ jobs:
           if git diff --cached --quiet; then
             echo "Baseline unchanged — nothing to commit."
           else
-            git commit -m "chore(e2e): update test timing baseline [skip ci]"
-            git push
+            # --no-verify on both: npm ci installs husky, so the local hooks are live
+            # on the runner. pre-push runs a TIA-selected E2E suite needing secrets
+            # this step does not set, and pre-commit lints a generated JSON baseline.
+            git commit --no-verify -m "chore(e2e): update test timing baseline [skip ci]"
+            git push --no-verify
           fi
