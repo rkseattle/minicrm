@@ -140,3 +140,6 @@ docs/plans/
 # never show up as an untracked file or be mistaken for the map itself.
 # (MINCRM-703)
 qa/coverage-map.jsonl.*.tmp
+
+# Python bytecode from .claude/hooks/ (regenerated on every hook run)
+__pycache__/
