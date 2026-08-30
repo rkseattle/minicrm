@@ -148,6 +148,13 @@ const RENAME_TO_PATTERN = /^rename to (.+)$/m;
 const NEW_PATH_PATTERN = /^\+\+\+ b\/(.+)$/m;
 /** Matches the `--- a/path` line git emits for the old-side path — `/dev/null` for an added file. */
 const OLD_PATH_PATTERN = /^--- a\/(.+)$/m;
+/**
+ * Matches the new-side path on the section's own `diff --git a/X b/X` header.
+ *
+ * The only path a BINARY file's section carries: git prints `Binary files ... differ`
+ * in place of the +++/--- pair, so a parser reading only those yields no path at all.
+ */
+const HEADER_PATH_PATTERN = /^diff --git a\/.+? b\/(.+)$/m;
 
 /** Parses one `diff --git ...` section into a FileDiff. */
 function parseFileSection(section: string): FileDiff {
@@ -171,10 +178,17 @@ function parseFileSection(section: string): FileDiff {
   // A deleted file has no "+++ b/..." path (git prints "+++ /dev/null"), so
   // its filePath comes from the "--- a/..." (old) side instead; every other
   // status has a real new-side path.
+  const headerPathMatch = HEADER_PATH_PATTERN.exec(section);
   const filePath =
     status === 'deleted'
-      ? (oldPathMatch?.[1] ?? '')
-      : (renameToMatch?.[1] ?? newPathMatch?.[1] ?? '');
+      ? (oldPathMatch?.[1] ?? headerPathMatch?.[1] ?? '')
+      : (renameToMatch?.[1] ?? newPathMatch?.[1] ?? headerPathMatch?.[1] ?? '');
+
+  // An empty path is indistinguishable downstream from a path no manifest glob covers,
+  // so selection reports it as unmapped and silently widens to the full suite.
+  if (filePath === '') {
+    throw new Error(`Could not parse a file path from a diff section: ${section.slice(0, 200)}`);
+  }
   const oldFilePath = status === 'renamed' ? (renameFromMatch?.[1] ?? null) : null;
 
   return {
