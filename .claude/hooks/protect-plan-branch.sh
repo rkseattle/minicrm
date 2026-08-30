@@ -49,7 +49,10 @@ current=$(git -C "$root" branch --show-current 2>/dev/null) || allow
 # Global options (-C, -c, --git-dir, --work-tree) may sit between `git` and the
 # subcommand, so they are skipped rather than defeating the match. `stash list` and
 # `stash show` are reads and stay allowed.
-GIT_GLOBAL_OPTS='([[:space:]]+(-[cC][[:space:]]*[^[:space:]]+|--(git-dir|work-tree|namespace)(=[^[:space:]]+|[[:space:]]+[^[:space:]]+)))*'
+# A -C or --git-dir value may be quoted and hold spaces, so each alternative accepts a
+# quoted run as well as a bare token — matching only bare tokens let
+# `git -C "/some path" checkout main` slip past the subcommand entirely.
+GIT_GLOBAL_OPTS='([[:space:]]+(-[cC][[:space:]]*("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)|--(git-dir|work-tree|namespace)(=|[[:space:]]+)("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)))*'
 # A branch switch names a ref. `--` marks everything after it as paths, and a bare
 # `-` means "the previous branch", which is still a switch.
 BRANCH_SWITCH="(checkout|switch)([[:space:]]+-[[:alnum:]-]+)*[[:space:]]+(-([[:space:]]|$)|[^-[:space:]][^[:space:]]*)"
@@ -78,7 +81,7 @@ scannable=$(printf '%s' "$cmd" \
       -e 's/(grep|rg|ack)([[:space:]]+-[[:alnum:]-]+)*[[:space:]]+"[^"]*"//g' \
       -e 's/(echo|printf)[[:space:]]+'"'"'[^'"'"']*'"'"'//g' \
       -e 's/(echo|printf)[[:space:]]+"[^"]*"//g' \
-  | tr -d '"'"'"'"')
+  | perl -pe 's/"([^"]*)"|\x27([^\x27]*)\x27/my $v = defined $1 ? $1 : $2; $v =~ s{\s}{_}g; $v/ge')
 [ -n "$scannable" ] || allow
 
 # Count destructive invocations, then count the subset that are a return to the plan's

@@ -202,6 +202,25 @@ describe('UserMenu', () => {
     expect(languageSelect).toHaveFocus();
   });
 
+  it('arrow keys skip past the logout item while it is disabled', async () => {
+    // Never resolves, so logoutMutation.isPending keeps nav-logout disabled.
+    server.use(http.post('/api/v1/auth/logout', () => new Promise(() => {})));
+
+    renderMenu();
+    openMenu();
+    fireEvent.click(screen.getByTestId('nav-logout'));
+    openMenu();
+
+    await waitFor(() => expect(screen.getByTestId('nav-logout')).toBeDisabled());
+    await waitFor(() => expect(screen.getByTestId('nav-user-menu-profile')).toHaveFocus());
+
+    // A disabled button ignores .focus(), so landing on it would strand the user:
+    // every further press retries the same index and the select is unreachable.
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' });
+
+    expect(screen.getByTestId('nav-language-select')).toHaveFocus();
+  });
+
   it('Tab out of the language select closes the menu', () => {
     renderMenu();
     openMenu();

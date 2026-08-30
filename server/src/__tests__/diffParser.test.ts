@@ -112,6 +112,27 @@ describe('parseGitDiff', () => {
     expect(diffs[0].status).toBe('modified');
   });
 
+  it('reports a binary file whose path git C-quotes', async () => {
+    repoRoot = await initRepo();
+    await writeFile(join(repoRoot, 'a.ts'), 'export const x = 1;\n');
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    // git quotes a path holding non-ASCII bytes: `diff --git "a/wéird.png" "b/..."`.
+    // The unquoted header pattern misses it, and a binary section has no +++/--- to
+    // fall back to — so this is the one shape that reaches the parser with no path.
+    await writeFile(join(repoRoot, 'wéird shot.png'), PNG_BYTES);
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'add quoted binary']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].filePath).toBe('wéird shot.png');
+  });
+
   it('reports a deleted binary file by path', async () => {
     repoRoot = await initRepo();
     await writeFile(join(repoRoot, 'shot.png'), PNG_BYTES);

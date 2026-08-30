@@ -155,6 +155,35 @@ const OLD_PATH_PATTERN = /^--- a\/(.+)$/m;
  * in place of the +++/--- pair, so a parser reading only those yields no path at all.
  */
 const HEADER_PATH_PATTERN = /^diff --git a\/.+? b\/(.+)$/m;
+/**
+ * The same header when git C-quotes the pair, which it does whenever a path holds a
+ * non-ASCII byte, a tab, or a quote: `diff --git "a/wéird name.png" "b/..."`.
+ *
+ * A binary section has no +++/--- lines to fall back to, so this is the only shape that
+ * would otherwise reach the caller with no path at all.
+ */
+const QUOTED_HEADER_PATH_PATTERN = /^diff --git "a\/.+?" "b\/(.+)"$/m;
+
+/** Decodes git's C-quoted escapes (`\303\251` → `é`) back into a real path. */
+function unquoteGitPath(quoted: string): string {
+  const bytes: number[] = [];
+  for (let index = 0; index < quoted.length; index += 1) {
+    if (quoted[index] !== '\\') {
+      bytes.push(quoted.charCodeAt(index));
+      continue;
+    }
+    const octal = /^[0-7]{3}/.exec(quoted.slice(index + 1, index + 4));
+    if (octal) {
+      bytes.push(parseInt(octal[0], 8));
+      index += 3;
+      continue;
+    }
+    const escaped = quoted[index + 1];
+    bytes.push(escaped === 't' ? 9 : escaped === 'n' ? 10 : (escaped?.charCodeAt(0) ?? 92));
+    index += 1;
+  }
+  return Buffer.from(bytes).toString('utf8');
+}
 
 /** Parses one `diff --git ...` section into a FileDiff. */
 function parseFileSection(section: string): FileDiff {
@@ -179,16 +208,13 @@ function parseFileSection(section: string): FileDiff {
   // its filePath comes from the "--- a/..." (old) side instead; every other
   // status has a real new-side path.
   const headerPathMatch = HEADER_PATH_PATTERN.exec(section);
+  const quotedHeaderMatch = QUOTED_HEADER_PATH_PATTERN.exec(section);
+  const headerPath =
+    headerPathMatch?.[1] ?? (quotedHeaderMatch ? unquoteGitPath(quotedHeaderMatch[1]) : undefined);
   const filePath =
     status === 'deleted'
-      ? (oldPathMatch?.[1] ?? headerPathMatch?.[1] ?? '')
-      : (renameToMatch?.[1] ?? newPathMatch?.[1] ?? headerPathMatch?.[1] ?? '');
-
-  // An empty path is indistinguishable downstream from a path no manifest glob covers,
-  // so selection reports it as unmapped and silently widens to the full suite.
-  if (filePath === '') {
-    throw new Error(`Could not parse a file path from a diff section: ${section.slice(0, 200)}`);
-  }
+      ? (oldPathMatch?.[1] ?? headerPath ?? '')
+      : (renameToMatch?.[1] ?? newPathMatch?.[1] ?? headerPath ?? '');
   const oldFilePath = status === 'renamed' ? (renameFromMatch?.[1] ?? null) : null;
 
   return {
