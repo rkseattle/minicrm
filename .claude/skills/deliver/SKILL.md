@@ -168,7 +168,7 @@ which is why it now stands at ~2,900 lines that are read on every run. Each file
 | `CLAUDE.md`                   | 400 |
 | `gates/pre-push.md`           | 360 |
 | `gates/e2e-run.md`            | 280 |
-| `gates/definition-of-done.md` | 250 |
+| `gates/definition-of-done.md` | 275 |
 | Any skill `SKILL.md`          | 300 |
 | Any agent definition          | 130 |
 
