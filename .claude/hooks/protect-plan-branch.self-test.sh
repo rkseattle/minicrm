@@ -50,16 +50,23 @@ verdict deny "git stash"                               "stash"
 verdict deny "git reset --hard origin/main"            "hard reset"
 verdict deny "git clean -fd"                           "clean"
 verdict deny "git worktree add ../wt main"             "worktree add"
-verdict deny "git checkout -- client/src/app.tsx"      "discard a tracked file"
+
 
 echo "== holes found in review: these must also be denied =="
-verdict deny "git restore client/src/app.tsx"          "restore a tracked file"
+
 verdict deny "git -C /repo checkout main"              "global -C before the subcommand"
 verdict deny "git --git-dir=/r/.git switch main"       "global --git-dir before the subcommand"
 verdict deny "git checkout main && git checkout feature-branch" "destructive first in a compound"
 verdict deny "npm test && git checkout main"           "destructive second in a compound"
 verdict deny "git stash push -m wip"                   "stash push"
 verdict deny "git stash pop"                           "stash pop"
+
+echo "== path-scoped reverts cannot move HEAD, so they stay allowed =="
+# Restoring a file the tooling touched incidentally is routine; the guard protects the
+# branch, not every destructive-looking verb.
+verdict allow "git checkout -- client/src/app.tsx"     "discard one tracked file"
+verdict allow "git restore client/src/app.tsx"         "restore one tracked file"
+verdict allow "git checkout -- docs/screenshots/06.png docs/screenshots/16.png" "restore several files"
 
 echo "== command TEXT that only mentions a git command must stay allowed =="
 # The guard's first live failure: a commit whose message documented the guard was

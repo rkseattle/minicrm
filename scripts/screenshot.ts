@@ -160,8 +160,13 @@ async function main(): Promise<void> {
     // 11 — My Tasks
     await capture('11-my-tasks.png', '/tasks');
 
-    // 12 — Profile settings
-    await capture('12-profile-settings.png', '/profile');
+    // 12 — Profile settings, with the user menu open. profile.md tells the reader to
+    // click their name and then Profile Settings, so a closed menu would not show the
+    // path the page describes.
+    await capture('12-profile-settings.png', '/profile', async () => {
+      await page.getByTestId('nav-user-menu-button').click();
+      await page.getByTestId('nav-user-menu-profile').waitFor({ state: 'visible' });
+    });
 
     // 13 — Data hygiene queue. Populated by npm run seed:demo, which runs the scan.
     await capture('13-data-hygiene.png', '/hygiene');
