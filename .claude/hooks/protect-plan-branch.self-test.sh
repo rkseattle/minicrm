@@ -65,6 +65,12 @@ verdict deny "npm test && git checkout main"           "destructive second in a 
 verdict deny "git stash push -m wip"                   "stash push"
 verdict deny "git stash pop"                           "stash pop"
 
+echo "== a wrapped invocation must still be seen =="
+# Collapsing spaces inside ANY quoted run turned `sh -c "git checkout main"` into one
+# opaque token, hiding the wrapped git command from the matcher entirely.
+verdict deny 'sh -c "git checkout main"'               "sh -c wrapping a checkout"
+verdict deny "bash -c 'git switch main'"               "bash -c wrapping a switch"
+
 echo "== bypasses found in review: quoting must not defeat the match =="
 # Stripping every quoted run to avoid false positives also stripped the branch
 # argument, so `git checkout "main"` left nothing for the ref token to match.

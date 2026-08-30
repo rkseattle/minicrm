@@ -207,15 +207,25 @@ function parseFileSection(section: string): FileDiff {
   // A deleted file has no "+++ b/..." path (git prints "+++ /dev/null"), so
   // its filePath comes from the "--- a/..." (old) side instead; every other
   // status has a real new-side path.
+  // git quotes the value on `rename to` / `rename from` / `+++` / `---` too, and those
+  // win over the header below — so every candidate is decoded rather than only the
+  // header, or a renamed path arrives still escaped and matches no manifest glob.
+  const decode = (value: string | undefined): string | undefined =>
+    value === undefined
+      ? undefined
+      : value.startsWith('"') && value.endsWith('"')
+        ? unquoteGitPath(value.slice(1, -1))
+        : value;
+
   const headerPathMatch = HEADER_PATH_PATTERN.exec(section);
   const quotedHeaderMatch = QUOTED_HEADER_PATH_PATTERN.exec(section);
   const headerPath =
     headerPathMatch?.[1] ?? (quotedHeaderMatch ? unquoteGitPath(quotedHeaderMatch[1]) : undefined);
   const filePath =
     status === 'deleted'
-      ? (oldPathMatch?.[1] ?? headerPath ?? '')
-      : (renameToMatch?.[1] ?? newPathMatch?.[1] ?? headerPath ?? '');
-  const oldFilePath = status === 'renamed' ? (renameFromMatch?.[1] ?? null) : null;
+      ? (decode(oldPathMatch?.[1]) ?? headerPath ?? '')
+      : (decode(renameToMatch?.[1]) ?? decode(newPathMatch?.[1]) ?? headerPath ?? '');
+  const oldFilePath = status === 'renamed' ? (decode(renameFromMatch?.[1]) ?? null) : null;
 
   return {
     filePath,
