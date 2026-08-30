@@ -95,6 +95,12 @@ This binds regardless of how small the guard looks or how confident the finding 
 twenty lines" is how both of those started. A guard is a program with its own failure
 modes, and its only failure mode is silence — which is exactly what a rushed one produces.
 
+**And a guard usually drags `ci.yml` with it, which costs the full E2E suite.** Every
+`.github/workflows/**` edit widens TIA selection to everything; 93 such edits have left
+that file at 3,499 lines with 16 single-purpose filter outputs. When a guard does earn its
+own ticket, the plan must reach an existing filter rather than adding one — the ordered
+list is in `.claude/gates/definition-of-done.md` under "Do not edit `ci.yml`".
+
 **Fixing is the default; deferring is the exception that needs permission.** An instance
 of a root cause this work already fixes is excluded only when it is **benign in its
 context** — it cannot produce a wrong result for any user or any test. "It's a different

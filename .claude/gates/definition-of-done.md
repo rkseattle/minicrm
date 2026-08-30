@@ -16,13 +16,9 @@ npm run lint
 
 # 3. Audit — unconditional. Advisories land against versions already in the lockfile,
 #    so "no dependencies changed" is not a reason to skip it; that is precisely when
-#    drift goes unnoticed until CI is red. The bar is ZERO high/critical — there is no
-#    allowlist. To fix: pin the patched version in the root package.json "overrides",
-#    then re-resolve with `rm -rf node_modules package-lock.json && npm install` and
-#    COMMIT the regenerated lockfile. An incremental install will not reconsider
-#    overrides for transitive deps and makes a fixable advisory look unfixable. The
-#    re-resolve is only for changing overrides — `npm ci` installs a committed
-#    lockfile verbatim — see .claude/gates/pre-push.md (MINCRM-703).
+#    drift goes unnoticed until CI is red. The bar is ZERO high/critical, no allowlist.
+#    Fixing one means changing "overrides" and re-resolving from scratch — the
+#    procedure and why an incremental install defeats it are in pre-push.md step 5.
 bash scripts/npm-audit-gate.sh
 
 # 4. Unit tests — sequential; never run the three workspaces in parallel
@@ -119,22 +115,53 @@ until much later, or fail silently forever. Walk this table against the diff bef
 staging. A row whose left side appears in your diff and whose right side does not is
 either a gap or a decision you must be able to state.
 
-| You changed                                                | You must also                                                                                                                                                             | Why it fails silently otherwise                                                                                                                                                                                                                                            |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A test that reads a file **outside its own workspace**     | Add a single-purpose paths-filter output in `ci.yml` naming **both** sides, OR it into the job that runs the test, and keep that job's `always()` + upstream result check | `server` is `server/src/**` and `client` is `client/src/**` — a guard pinning the other workspace never runs on the edit it exists to catch. `check-ci-filter-globs.mjs` only verifies listed paths _exist_; it cannot see a missing one                                   |
-| A new filter output in `ci.yml`                            | Declare it in the `changes` job's `outputs:` block too                                                                                                                    | `actionlint` catches this one — run it, since the pre-commit hook only fires on staged workflow files                                                                                                                                                                      |
-| A route with no `authenticate`                             | Update the public-endpoint count in `swagger.ts`'s `info.description`                                                                                                     | `swagger.test.ts` asserts the prose count matches `security: []` operations                                                                                                                                                                                                |
-| Any new route                                              | A real `@openapi` block, plus a `tags:` entry if the tag is new                                                                                                           | `swagger.test.ts` asserts `registrations - operations` stays at its expected shortfall; redocly `lint:api` rejects an undeclared tag                                                                                                                                       |
-| A `t()` key in `client/src/locales/` that `qa/` references | Add it to `qa/e2e/apps/minicrm/locale.ts` in all five maps                                                                                                                | `t()` throws `RangeError` on an unknown key and locator strategy arrays are eagerly evaluated, so the page object throws before resolving anything — every spec reaching that control, not just new ones. Typecheck, lint and all twelve QA checks pass on the broken code |
-| A new dependency                                           | Check its license and transitive tree, then run the audit gate; re-resolve (`rm -rf node_modules package-lock.json && npm install`) if you added an override              | An incremental install silently ignores overrides for transitive deps                                                                                                                                                                                                      |
-| A pattern a hook should enforce                            | Update the hook **and** its self-test in `.claude/hooks/`                                                                                                                 | A hook that does not know about a new pattern reports success. Self-tests assert finding _counts_, not exit status                                                                                                                                                         |
-| A new `@serial` E2E spec                                   | Add a `qa/e2e/apps/minicrm/resource-registry.ts` entry, then `npx tsx qa/e2e/scripts/gen-conflict-group-configs.ts`                                                       | A spec in no conflict group is never scheduled — it silently does not run                                                                                                                                                                                                  |
-| A new table                                                | Add it to `reset-e2e-data.ts`                                                                                                                                             | That script enumerates tables one by one; an omitted table accumulates rows across every E2E run                                                                                                                                                                           |
-| A migration                                                | Regenerate the ERD (`npm run db:erd --workspace=minicrm-server`) in the same commit                                                                                       | Nothing in CI checks ERD staleness                                                                                                                                                                                                                                         |
-| Behavior a user can see                                    | Update `docs/user-guide/`; new pages need an `index.md` row, and a changed page's screenshot and alt text                                                                 | Route parity checks that a page _exists_, never that it is accurate                                                                                                                                                                                                        |
+| You changed                                                | You must also                                                                                                                                                                                                                                   | Why it fails silently otherwise                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A test that reads a file **outside its own workspace**     | Make an **existing** filter cover both sides — see "Do not edit `ci.yml`" below. Only if none can, add a single-purpose output naming both sides, OR it into the job that runs the test, and keep that job's `always()` + upstream result check | `server` is `server/src/**` and `client` is `client/src/**` — a guard pinning the other workspace never runs on the edit it exists to catch. `check-ci-filter-globs.mjs` only verifies listed paths _exist_; it cannot see a missing one                                   |
+| A new filter output in `ci.yml`                            | Declare it in the `changes` job's `outputs:` block too                                                                                                                                                                                          | `actionlint` catches this one — run it, since the pre-commit hook only fires on staged workflow files                                                                                                                                                                      |
+| A route with no `authenticate`                             | Update the public-endpoint count in `swagger.ts`'s `info.description`                                                                                                                                                                           | `swagger.test.ts` asserts the prose count matches `security: []` operations                                                                                                                                                                                                |
+| Any new route                                              | A real `@openapi` block, plus a `tags:` entry if the tag is new                                                                                                                                                                                 | `swagger.test.ts` asserts `registrations - operations` stays at its expected shortfall; redocly `lint:api` rejects an undeclared tag                                                                                                                                       |
+| A `t()` key in `client/src/locales/` that `qa/` references | Add it to `qa/e2e/apps/minicrm/locale.ts` in all five maps                                                                                                                                                                                      | `t()` throws `RangeError` on an unknown key and locator strategy arrays are eagerly evaluated, so the page object throws before resolving anything — every spec reaching that control, not just new ones. Typecheck, lint and all twelve QA checks pass on the broken code |
+| A new dependency                                           | Check its license and transitive tree, then run the audit gate; re-resolve (`rm -rf node_modules package-lock.json && npm install`) if you added an override                                                                                    | An incremental install silently ignores overrides for transitive deps                                                                                                                                                                                                      |
+| A pattern a hook should enforce                            | Update the hook **and** its self-test in `.claude/hooks/`                                                                                                                                                                                       | A hook that does not know about a new pattern reports success. Self-tests assert finding _counts_, not exit status                                                                                                                                                         |
+| A new `@serial` E2E spec                                   | Add a `qa/e2e/apps/minicrm/resource-registry.ts` entry, then `npx tsx qa/e2e/scripts/gen-conflict-group-configs.ts`                                                                                                                             | A spec in no conflict group is never scheduled — it silently does not run                                                                                                                                                                                                  |
+| A new table                                                | Add it to `reset-e2e-data.ts`                                                                                                                                                                                                                   | That script enumerates tables one by one; an omitted table accumulates rows across every E2E run                                                                                                                                                                           |
+| A migration                                                | Regenerate the ERD (`npm run db:erd --workspace=minicrm-server`) in the same commit                                                                                                                                                             | Nothing in CI checks ERD staleness                                                                                                                                                                                                                                         |
+| Behavior a user can see                                    | Update `docs/user-guide/`; new pages need an `index.md` row, and a changed page's screenshot and alt text                                                                                                                                       | Route parity checks that a page _exists_, never that it is accurate                                                                                                                                                                                                        |
 
 The table is not exhaustive, and a row is not a substitute for thinking about the
 particular change. When you add a coupling this table does not name, add the row.
+
+### Do not edit `ci.yml` — it costs the full E2E suite
+
+**Every edit to `.github/workflows/**` forces the entire functional E2E suite** — the TIA
+selector's `ci-workflow` rule is `alwaysWiden: true`
+(`server/src/coverageAgent/testSelection/dependencyGraphService.ts`), by design, since a
+workflow edit changes whether tests run at all. There is no cheap touch of this file.
+
+That price has been paid 93 times, leaving `ci.yml` at 3,499 lines with 16 single-purpose
+filter outputs and 63 `needs.changes.outputs.X == 'true'` clauses, mostly one guard at a
+time. This gate's own table asked for it, which is why the row above now points here.
+
+**Work down this list and stop at the first that applies:**
+
+1. **Name the guard so an existing glob matches it.** `scripts/**/check-*.{sh,mjs,ts}` is
+   already the `guard-invocation` output, and `qa` already matches `qa/scripts/**`. A new
+   `scripts/check-<thing>.mjs` invoked from a job that already runs needs **no `ci.yml`
+   edit** — the trigger and the invocation both exist. This fits nearly every new guard.
+2. **Check whether a filter already covers both sides.** `config` matches `.github/**`,
+   root-level `*.json`/`*.yml` and `Dockerfile*`; `docs/**` and `docs/user-guide/**` are
+   globbed too. Read the `changes` job before concluding a path is uncovered.
+3. **Put the assertion where the trigger already is.** Test the rule from the workspace
+   whose filter already matches both files, rather than adding a trigger to reach where
+   you first thought to put the test. Moving a test is free; widening CI is not.
+4. **Only then edit `ci.yml`**, saying in the commit message which of 1–3 you ruled out.
+   An edit that skipped this list is the defect even when the YAML is correct.
+
+Weigh any remaining edit against a full E2E run now plus one on every future PR touching
+the workflow; if 1–3 all fail, the guard may not be worth its trigger. Two edits stay
+legitimate: declaring a genuinely new filter output in `outputs:` (the row above), and
+changing what a job actually does — a step, a runner, a matrix. Neither is guard wiring.
 
 ### Domain subsystems — ask these of every feature, not just the obvious one
 
@@ -218,17 +245,9 @@ review round rather than describing the code — the commit message is where his
 
 ## After the commit — status report
 
-A phase is not done at the commit. Report status before starting the next one, per
-`implement-phases` step 2e: phases complete and remaining, files modified in this phase
-with the commit SHA, per-phase duration, acceptance criteria met with evidence, gate
-results, and friction.
-
-The costly parts are the ones easiest to skip. `files` comes from `git show --name-only`
-on the commit, never from memory of what you edited — a lint autofix or a regenerated
-lockfile lands in the commit without passing through you. Duration comes from the
-`started_at`/`finished_at` timestamps in `.claude/state/current-plan.json`, never from
-an estimate. And an AC is met only with evidence naming something that fails if the
-behavior regresses; code existing that ought to satisfy it is not evidence.
+A phase is not done at the commit. Report status before starting the next one; the format
+and the rules for reading `files`, duration, and AC evidence back from disk rather than
+from memory are `implement-phases` step 2e.
 
 ## Reading results
 
