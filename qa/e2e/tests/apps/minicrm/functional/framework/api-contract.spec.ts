@@ -52,7 +52,9 @@ test(
 
     // If the server renames `tag` to `data`, or drops `id`/`name`, the schema
     // validation inside createTestTag will throw before this line returns.
-    const tag = await createTestTag(testData, restClient, { name: `ct1-tag-${Date.now()}` });
+    const tag = await createTestTag(testData, restClient, {
+      name: `ct1-tag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    });
 
     expect(tag.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
     expect(typeof tag.name).toBe('string');

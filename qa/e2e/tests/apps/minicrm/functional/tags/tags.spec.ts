@@ -101,7 +101,9 @@ test(
     // global tags list under fullyParallel). Pagination renders as soon as
     // the tags query resolves regardless of count, but without an owned tag
     // this test has no guarantee the list isn't momentarily empty mid-race.
-    await createTestTag(testData, restClient, { name: `tg1b-pagination-${Date.now()}` });
+    await createTestTag(testData, restClient, {
+      name: `tg1b-pagination-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    });
 
     const navResult = await navigateToAdminTags({ page });
     // Root cause of the prior "testId(pagination) exhausted" flake:
@@ -128,12 +130,14 @@ test(
     const admin = await createTestAdmin(testData, restClient);
     await loginViaBrowser(admin.email, admin.password, { page });
 
-    const tag = await createTestTag(testData, restClient, { name: `tg2-original-${Date.now()}` });
+    const tag = await createTestTag(testData, restClient, {
+      name: `tg2-original-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    });
 
     const navResult = await navigateToAdminTags({ page });
     expect(navResult.loaded).toBe(true);
 
-    const newName = `tg2-renamed-${Date.now()}`;
+    const newName = `tg2-renamed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const renameResult = await renameTagViaUI(tag.id, newName, { page });
     expect(renameResult.saved).toBe(true);
 
@@ -157,7 +161,9 @@ test(
     // Create the tag but unregister it from TestDataManager after we delete it
     // in the test — otherwise teardown will attempt a DELETE on an already-gone
     // resource and log a spurious error.
-    const tag = await createTestTag(testData, restClient, { name: `tg3-delete-${Date.now()}` });
+    const tag = await createTestTag(testData, restClient, {
+      name: `tg3-delete-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    });
 
     const navResult = await navigateToAdminTags({ page });
     expect(navResult.loaded).toBe(true);
@@ -184,7 +190,13 @@ test(
     const admin = await createTestAdmin(testData, restClient);
     await loginViaBrowser(admin.email, admin.password, { page });
 
-    const tag = await createTestTag(testData, restClient, { name: `tg4-attach-${Date.now()}` });
+    // Random suffix, not a bare timestamp: POST /tags upserts ON CONFLICT (name) and
+    // returns 201 with the EXISTING row's id, so two workers landing in the same
+    // millisecond share one tag — and whichever tears down first deletes it under the
+    // other, whose badge then never appears.
+    const tag = await createTestTag(testData, restClient, {
+      name: `tg4-attach-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    });
     const contact = await createTestContact(testData, restClient, {
       first_name: 'TG4',
       last_name: 'Contact',
@@ -214,7 +226,9 @@ test(
     const admin = await createTestAdmin(testData, restClient);
     await loginViaBrowser(admin.email, admin.password, { page });
 
-    const tag = await createTestTag(testData, restClient, { name: `tg5-detach-${Date.now()}` });
+    const tag = await createTestTag(testData, restClient, {
+      name: `tg5-detach-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    });
     const contact = await createTestContact(testData, restClient, {
       first_name: 'TG5',
       last_name: 'Contact',
@@ -246,7 +260,9 @@ test(
     const admin = await createTestAdmin(testData, restClient);
     await loginViaBrowser(admin.email, admin.password, { page });
 
-    const tag = await createTestTag(testData, restClient, { name: `tg6-deal-${Date.now()}` });
+    const tag = await createTestTag(testData, restClient, {
+      name: `tg6-deal-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    });
     const account = await createTestAccount(testData, restClient, {
       name: `TG6 Account ${Date.now()}`,
     });
