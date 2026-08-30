@@ -7,7 +7,7 @@ authentication, and the mailboxes you have connected.
 Everything here applies to you alone. Nothing on this page changes what your teammates
 see, and nothing on it needs an admin.
 
-![Profile Settings, showing the preferred-language selector and the three email notification checkboxes, each with its own Save button, above the two-factor authentication panel and the connected accounts panel](../screenshots/12-profile-settings.png)
+![The Profile Settings page with the user menu open in the top-right corner, showing Profile Settings, Log out, and the language selector; behind it the preferred-language selector and the three email notification checkboxes, each with its own Save button, above the two-factor authentication panel and the connected accounts panel](../screenshots/12-profile-settings.png)
 
 ---
 

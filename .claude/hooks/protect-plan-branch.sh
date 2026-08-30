@@ -36,13 +36,22 @@ want_branch=$(jq -r '.branch // ""' "$state" 2>/dev/null) || allow
 current=$(git -C "$root" branch --show-current 2>/dev/null) || allow
 [ "$current" = "$want_branch" ] || allow
 
-# Commands that move HEAD or discard tracked state. `git checkout -- <path>` and
-# `git restore <path>` are included: they revert files the plan is midway through
-# editing. Global options (-C, -c, --git-dir, --work-tree) may sit between `git` and
-# the subcommand, so they are skipped rather than defeating the match. `stash list`
-# and `stash show` are reads and stay allowed.
+# Commands that move HEAD or discard the working tree wholesale.
+#
+# Path-scoped reverts — `git checkout -- <path>`, `git restore <path>` — are NOT here.
+# They cannot move HEAD, and restoring a file the tooling touched incidentally (a
+# regenerated report, a screenshot whose only change is a relative timestamp) is
+# routine work this guard has no business refusing. The scope is the branch, not
+# every destructive-looking verb.
+#
+# Global options (-C, -c, --git-dir, --work-tree) may sit between `git` and the
+# subcommand, so they are skipped rather than defeating the match. `stash list` and
+# `stash show` are reads and stay allowed.
 GIT_GLOBAL_OPTS='([[:space:]]+(-[cC][[:space:]]*[^[:space:]]+|--(git-dir|work-tree|namespace)(=[^[:space:]]+|[[:space:]]+[^[:space:]]+)))*'
-DESTRUCTIVE="checkout|switch|restore|reset|clean|worktree|stash[[:space:]]+(push|pop|apply|drop|clear|branch|create|store)|stash([[:space:]]*$|[[:space:]]+-)"
+# A branch switch names a ref. `--` marks everything after it as paths, and a bare
+# `-` means "the previous branch", which is still a switch.
+BRANCH_SWITCH="(checkout|switch)([[:space:]]+-[[:alnum:]-]+)*[[:space:]]+(-([[:space:]]|$)|[^-[:space:]][^[:space:]]*)"
+DESTRUCTIVE="${BRANCH_SWITCH}|reset|clean|worktree|stash[[:space:]]+(push|pop|apply|drop|clear|branch|create|store)|stash([[:space:]]*$|[[:space:]]+-)"
 
 DESTRUCTIVE_RE="(^|[^[:alnum:]_-])git${GIT_GLOBAL_OPTS}[[:space:]]+(${DESTRUCTIVE})"
 
@@ -61,6 +70,12 @@ scannable=$(printf '%s' "$cmd" \
 # own branch — the recovery path a stranded session needs. Denying unless every one is
 # a return means a compound cannot smuggle a checkout past the guard by also
 # mentioning the branch somewhere.
+# `checkout --` / `restore --` scope to paths, so drop those invocations before
+# counting: they cannot move HEAD, and the flags group would otherwise read the `--`
+# as an option and the first path as a branch name.
+scannable=$(printf '%s' "$scannable" \
+  | sed -E 's/git[[:space:]]+(checkout|restore)[[:space:]]+--[[:space:]]+[^;|&]*//g')
+
 destructive_count=$(printf '%s' "$scannable" | grep -oE "$DESTRUCTIVE_RE" | wc -l | tr -d ' ')
 [ "$destructive_count" -eq 0 ] && allow
 
