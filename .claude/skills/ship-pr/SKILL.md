@@ -41,11 +41,9 @@ exit code. If output truncates, read the file — do not re-run.
 One run. If it fails, root-cause and fix, then validate that fix by running **the specs
 the fix affects** — and push again with `SKIP_TIA_PREPUSH=1` rather than sitting through a
 second full suite. That is the documented path, not a shortcut: "After the hook's own E2E
-run fails" in `.claude/gates/pre-push.md` sets out the procedure and its bounds. Never
-re-run to see whether a failure goes away, never dismiss one as a known flake,
-pre-existing, or unrelated, and never compare against `main` to wave it off. If you cannot
-find the root cause, say so explicitly and ask how to proceed, declaring the stop per
-`deliver`'s invariants.
+run fails" in `.claude/gates/pre-push.md` sets out the procedure and its bounds. Failure
+handling is `.claude/gates/e2e-run.md`'s policy; if you cannot find the root cause, declare
+the stop per `deliver`'s invariants and ask.
 
 ## Step 3 — Clean the working tree
 
@@ -70,10 +68,9 @@ nohup git push -u --force-with-lease origin <branch> > /tmp/push.log 2>&1 &
 Then arm a `Monitor` that watches for the remote branch appearing, and stay quiet until it
 reports. Read the counts from `qa/e2e/test-results/results.xml` when it lands.
 
-**A killed run is not a failed run.** No `results.xml` means the suite produced no verdict
-to accept, so starting it again is not a rerun under `e2e-run.md`'s never-rerun rule — that
-rule governs runs that finished and told you something. Confirm HEAD is unchanged, then
-start it again, detached.
+**A killed run is not a failed run** — no `results.xml`, no verdict, so `e2e-run.md`'s
+never-rerun rule does not govern it. Confirm HEAD is unchanged, then start it again,
+detached.
 
 ```bash
 gh pr create --title "<ALL ticket IDs> — <summary>" --body "<body>"
@@ -95,10 +92,9 @@ those failures, so re-running all of it re-executes hundreds of specs whose verd
 changed. The procedure and its bounds are "After the hook's own E2E run fails" in
 `.claude/gates/pre-push.md`; follow it there rather than improvising here.
 
-**A run that never executed is not a failed run.** A `StaleDataAbortError` from a stale
-E2E database, or a test stack built at the wrong SHA, produces no verdict — fix the
-environment and let the hook run normally. There is nothing to preserve and nothing to
-bypass.
+The same applies to a run that never executed — a `StaleDataAbortError` from a stale E2E
+database, a stack built at the wrong SHA. Fix the environment and let the hook run
+normally; there is nothing to preserve and nothing to bypass.
 
 If the lease check rejects the push, the remote branch has commits your local copy does
 not — someone else pushed, or an earlier run of this skill did. Do not re-force past it.

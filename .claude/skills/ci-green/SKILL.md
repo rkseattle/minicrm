@@ -44,12 +44,9 @@ For every failing job:
    healed-locator E2E failure, pull that specific run's `healing-report.json` via
    `gh api .../artifacts/<id>/zip`; the local `heal-trends.json` is from a different
    run and will mislead you.
-2. Root-cause it. No failure is dismissed as a known flake, flaky, pre-existing, or
-   unrelated — the test's history is irrelevant. Never re-run a job to see whether a
-   failure goes away, and never compare against `main` to wave one off. If the root
-   cause is genuinely not determinable, say so explicitly and ask how to proceed. No
-   `paused` declaration is needed here — `ship-pr` clears the phase state when it opens
-   the PR, so the Stop hook is inert for this stage.
+2. Root-cause it, under `.claude/gates/e2e-run.md`'s failure policy — it governs CI jobs
+   as much as local runs. No `paused` declaration is needed here: `ship-pr` clears the
+   phase state when it opens the PR, so the Stop hook is inert for this stage.
 3. Write the fix using the industry-standard pattern for the failure mode.
 4. **Verify it in an isolated subagent before committing.** Launch
    `ci-failure-adversary` with only the failure evidence and the git ref of the fix —
