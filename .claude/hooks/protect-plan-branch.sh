@@ -82,13 +82,16 @@ scannable=$(printf '%s' "$cmd" \
       -e 's/(echo|printf)[[:space:]]+'"'"'[^'"'"']*'"'"'//g' \
       -e 's/(echo|printf)[[:space:]]+"[^"]*"//g' \
   | perl -pe '
-      # Collapse spaces ONLY inside the value of a git global option that takes a path,
-      # so `git -C "/some path" checkout main` keeps the subcommand adjacent and
-      # matchable. Named explicitly rather than by shape: `-c` is sh/bash\x27s command
-      # flag, and collapsing THAT value turns `sh -c "git checkout main"` into one
-      # opaque token the matcher cannot see into.
-      s/(-C[= ]?|--git-dir[= ]|--work-tree[= ])"([^"]*)"/my ($f,$v)=($1,$2); $v =~ s{ }{_}g; "$f$v"/ge;
-      s/(-C[= ]?|--git-dir[= ]|--work-tree[= ])\x27([^\x27]*)\x27/my ($f,$v)=($1,$2); $v =~ s{ }{_}g; "$f$v"/ge;
+      # Collapse spaces inside the value of a git global option so the value cannot
+      # split into tokens and carry the subcommand out of the matcher.
+      #
+      # Anchored on `git` rather than on the flag name: `-c` is BOTH git\x27s config flag
+      # and sh\x27s command flag. Collapsing every `-c` hides `sh -c "git checkout main"`
+      # from the matcher; collapsing none lets `git -c "user.name=A B" checkout main`
+      # split at the space. Only a value that follows `git` directly is a git option.
+      s{(\bgit((?:\s+-[cC]\s*|\s+--(?:git-dir|work-tree|namespace)[= ])(?:"[^"]*"|\x27[^\x27]*\x27|\S+))+)}{
+        my $run = $1; $run =~ s/"([^"]*)"|\x27([^\x27]*)\x27/my $v = defined $1 ? $1 : $2; $v =~ s{ }{_}g; $v/ge; $run
+      }ge;
       s/["\x27]//g;
     ')
 [ -n "$scannable" ] || allow
