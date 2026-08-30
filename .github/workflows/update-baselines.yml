@@ -53,7 +53,17 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch }}
           fetch-depth: 0
-          token: ${{ secrets.WORKFLOW_PAT }}
+          # Deploy key, for the same reason tia-record-mode.yml uses one: this job
+          # pushes commits back to a branch, and the "protect main" ruleset's bypass
+          # list exempts deploy keys but not users. WORKFLOW_PAT authenticates as a
+          # user, so it could not satisfy the ruleset even while it was valid — and
+          # once it expired, checkout itself failed with "could not read Username",
+          # because a token: value overrides the default GITHUB_TOKEN even when empty.
+          #
+          # Supplied at checkout rather than at push time so the SSH remote is written
+          # once and `git push` below needs no change — one place for the auth method,
+          # not two that can drift apart.
+          ssh-key: ${{ secrets.TIA_DEPLOY_KEY }}
 
       - uses: actions/setup-node@v6
         with:
