@@ -3327,13 +3327,16 @@ jobs:
             echo "baselines_changed=false" >> "$GITHUB_OUTPUT"
           else
             CHANGED=$(git diff --cached --name-only | wc -l | tr -d ' ')
-            git commit -m "chore(qa): update visual regression baselines ($CHANGED file(s)) [skip ci]"
+            # --no-verify throughout: npm ci installs husky, so the local hooks are
+            # live on the runner. pre-push runs a TIA-selected E2E suite, which this
+            # job has just run, and pre-commit lints staged files, which here are PNGs.
+            git commit --no-verify -m "chore(qa): update visual regression baselines ($CHANGED file(s)) [skip ci]"
             # Push an empty follow-up commit without [skip ci] so GitHub's required
             # status checks have a non-skipped HEAD commit to report against.
             # Without this the [skip ci] baseline commit becomes HEAD and the PR's
             # required checks stay "Waiting for status to be reported" indefinitely.
-            git commit --allow-empty -m "ci: re-trigger checks after baseline update (MINCRM-324)"
-            git push origin "HEAD:$HEAD_REF"
+            git commit --no-verify --allow-empty -m "ci: re-trigger checks after baseline update (MINCRM-324)"
+            git push --no-verify origin "HEAD:$HEAD_REF"
             echo "Pushed $CHANGED updated snapshot file(s) to $HEAD_REF."
             # Signal to the verify steps that new baselines were just committed.
             # They must not run now — the re-trigger commit above will run CI

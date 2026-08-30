@@ -213,7 +213,14 @@ jobs:
             echo "No baseline changes — all snapshots already match."
           else
             CHANGED=$(git diff --cached --name-only | wc -l | tr -d ' ')
-            git commit -m "chore(qa): update visual regression baselines ($CHANGED file(s))"
-            git push origin HEAD:${{ github.event.inputs.branch }}
+            # --no-verify on BOTH, same reason tia-record-mode.yml uses it: npm ci
+            # installs husky, so the local hooks are live on the runner.
+            # .husky/pre-push runs a TIA-selected E2E suite — the right guard for a
+            # developer pushing source, and wrong here, where this job just finished
+            # rendering the very snapshots it is pushing. It also failed outright:
+            # the suite needs E2E_ADMIN_PASSWORD, which this step does not set.
+            # pre-commit runs lint-staged, and a PNG is not source to be linted.
+            git commit --no-verify -m "chore(qa): update visual regression baselines ($CHANGED file(s))"
+            git push --no-verify origin HEAD:${{ github.event.inputs.branch }}
             echo "Pushed $CHANGED updated baseline(s) to ${{ github.event.inputs.branch }}."
           fi
