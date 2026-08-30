@@ -91,13 +91,11 @@ export class NavPage {
       .locate(
         [
           { type: 'testId', value: 'nav-user-menu-button' },
-          // The trigger's accessible name is its aria-label, which interpolates the
-          // signed-in user's name, so match on the fixed prefix before the placeholder.
-          {
-            type: 'role',
-            value: 'button',
-            options: { name: t('nav.userMenuTrigger').split('{{')[0].trim(), exact: false },
-          },
+          // Matched on the ARIA property, not the accessible name: the name
+          // interpolates the signed-in user's, and the fixed part around the
+          // placeholder is empty in zh-Hans, where it leads. An empty name matches
+          // every button on the page.
+          { type: 'css', value: 'button[aria-haspopup="menu"]' },
         ],
         { intent: 'user menu trigger — force click to bypass search overlap' },
       )

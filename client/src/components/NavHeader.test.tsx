@@ -36,10 +36,25 @@ describe('NavHeader', () => {
     });
   });
 
-  it('renders no user menu until the auth query resolves', () => {
+  it('renders no per-user controls once the auth query resolves with no user', async () => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: null })));
+
     renderWithProviders(<NavHeader />);
 
-    expect(screen.queryByTestId('nav-user-menu-button')).not.toBeInTheDocument();
+    // Waits for the settled state. Asserting synchronously would pass merely because
+    // MSW had not answered yet, and would keep passing if the {user && …} guard were
+    // dropped — which is the branch this covers.
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-brand-wordmark')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByTestId('nav-user-menu-button')).not.toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('notification-bell-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('nav-language-select')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('nav-logout')).not.toBeInTheDocument();
+    // The shell itself still renders for a signed-out viewer.
+    expect(screen.getByTestId('global-search-input')).toBeInTheDocument();
   });
 
   it('renders the language selector inside the user menu', async () => {

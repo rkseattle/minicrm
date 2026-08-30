@@ -10,7 +10,8 @@
  * Escape and an outside click close the menu and return focus to the trigger.
  */
 
-import { MENU_ITEM_CLASSES, useMenuButton } from '@/hooks/useMenuButton.js';
+import { useMenuButton } from '@/hooks/useMenuButton.js';
+import { MENU_ITEM_CLASSES } from '@/components/ui/menuItemClasses.js';
 
 interface ExportMenuActionItemConfig {
   /** Unique key for React list rendering — not rendered. */
@@ -116,7 +117,7 @@ export function ExportMenu({ label, testId, items, menuLabel }: ExportMenuProps)
                 role="menuitem"
                 data-testid={item.testId}
                 disabled
-                className={[MENU_ITEM_CLASSES, item.className].filter(Boolean).join(' ')}
+                className={[MENU_ITEM_CLASSES, 'py-2', item.className].filter(Boolean).join(' ')}
               >
                 {item.label}
               </button>
@@ -128,7 +129,7 @@ export function ExportMenu({ label, testId, items, menuLabel }: ExportMenuProps)
                 download
                 role="menuitem"
                 data-testid={item.testId}
-                className={[MENU_ITEM_CLASSES, item.className].filter(Boolean).join(' ')}
+                className={[MENU_ITEM_CLASSES, 'py-2', item.className].filter(Boolean).join(' ')}
                 onClick={() => close(true)}
               >
                 {item.label}
@@ -141,7 +142,7 @@ export function ExportMenu({ label, testId, items, menuLabel }: ExportMenuProps)
                 role="menuitem"
                 data-testid={item.testId}
                 disabled={item.disabled}
-                className={[MENU_ITEM_CLASSES, item.className].filter(Boolean).join(' ')}
+                className={[MENU_ITEM_CLASSES, 'py-2', item.className].filter(Boolean).join(' ')}
                 onClick={() => {
                   close(true);
                   item.onClick();

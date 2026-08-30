@@ -11,11 +11,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnClickOutside } from '@/hooks/useOnClickOutside.js';
 
-/** Shared menu-item styling, so the two menus cannot drift visually. */
-export const MENU_ITEM_CLASSES =
-  'block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50 ' +
-  'focus:bg-gray-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50';
-
 export interface UseMenuButtonOptions {
   /**
    * How many items the menu currently renders. Required because the ref array is

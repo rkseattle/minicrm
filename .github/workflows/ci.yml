@@ -741,6 +741,19 @@ jobs:
           cmd=${cmd/\$\{CLAUDE_PROJECT_DIR\}/$GITHUB_WORKSPACE}
           test -x "$cmd" || { echo "Stop hook command is not executable: $cmd"; exit 1; }
 
+      # Same reasoning as the Stop hook above: a PreToolUse hook that stops matching is
+      # silently permissive, and nothing else runs it. It also guards the working tree
+      # a delivery session commits from, so a regression there is not merely noisy.
+      - name: Branch-guard hook self-test
+        run: bash .claude/hooks/protect-plan-branch.sh --self-test
+
+      - name: Branch-guard hook is wired into settings
+        run: |
+          cmd=$(jq -er '.hooks.PreToolUse[] | select(.matcher == "Bash") | .hooks[].command' .claude/settings.json \
+                | grep protect-plan-branch)
+          cmd=${cmd/\$\{CLAUDE_PROJECT_DIR\}/$GITHUB_WORKSPACE}
+          test -x "$cmd" || { echo "Branch-guard hook command is not executable: $cmd"; exit 1; }
+
       # Covers db/migrations and qa/migrations, which eslint.config.mjs ignores, so
       # the ESLint rule above never sees them. Without this the ID convention is
       # unenforced in exactly the directories where a catalog comment can be mistaken
