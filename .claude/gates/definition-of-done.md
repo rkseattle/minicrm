@@ -247,7 +247,7 @@ review round rather than describing the code — the commit message is where his
 
 A phase is not done at the commit. Report status before starting the next one; the format
 and the rules for reading `files`, duration, and AC evidence back from disk rather than
-from memory are `implement-phases` step 2e.
+from memory are `.claude/gates/status-report.md`.
 
 ## Reading results
 

@@ -61,7 +61,7 @@ reports green against criteria nobody agreed to. If the plan has no coverage tab
 either, say so in the report and ask rather than writing the criteria yourself.
 
 Each phase gains four more fields as it runs — `started_at`, `finished_at`, `commit`,
-and `files`. They are what step 2e reports from, and they exist so duration and file
+and `files`. They are what the status report reads from, and they exist so duration and file
 lists are read back rather than recalled: a phase that spans a compaction boundary is
 otherwise unreportable, and an estimated duration is worse than none. Write
 `started_at` as the first action of each phase and the rest at its commit:
@@ -110,7 +110,7 @@ edit — `date -u '+%Y-%m-%dT%H:%M:%SZ'`.
 While the phase runs, keep a note of anything that cost real time and was avoidable: a
 gate that failed for a reason a rule could have prevented, an adversarial round spent on
 something already written down somewhere, a convention discovered by being corrected
-rather than by reading it. That is what 2e's Friction line reports, and noticing it
+rather than by reading it. That is what the report's Friction line covers, and noticing it
 afterward does not work — by then the cost is invisible.
 
 Industry-standard patterns only, per `deliver`'s invariant. Put the reason for any
@@ -175,81 +175,9 @@ the code that ought to satisfy it exists. If nothing checkable exists yet, the A
 
 ### 2e. Phase status report
 
-Report before starting the next phase — every phase, including the last one, and
-including a phase that changed one line. This is not a summary of the work; it is where
-Rob sees where the run is, what it cost, and what to fix in the config. Then move
-directly to the next phase without pausing for a reply.
-
-Six parts, in this order:
-
-**1. The heading** — `Phase <n> of <total> complete — <phase name>`.
-
-**2. The phase table** — every phase in the plan, not just the finished ones, so
-remaining work is visible without scrolling back:
-
-```
-| Phase | Status | Duration | Files |
-|---|---|---|---|
-| 1 UserMenu component | done | 18m | 4 |
-| 2 Drop Profile nav link | done | 6m | 3 |
-| 3 E2E specs | done | 41m | 7 |
-| 4 User guide | pending | — | — |
-| 5 Visual baselines | pending | — | — |
-```
-
-Duration is `finished_at - started_at`, rounded to the minute. It is wall-clock, so it
-includes time spent waiting on a review round or a test run — that is the number worth
-knowing. A phase whose timestamps are missing reports `unknown`, never an estimate.
-
-**3. Files modified this phase** — the full list from `git show --stat --name-only
-<commit>`, with the commit SHA. Not a count, not "and 4 others": the list is what makes a
-wrong-file mistake visible while it is still one commit from the top. Group by workspace
-when it runs past a dozen.
-
-**4. Acceptance criteria** — every AC on the covered tickets, with its state after this
-phase. All of them every time, not just the ones that moved:
-
-```
-| AC | Criterion | Met | Evidence |
-|---|---|---|---|
-| AC1 | Header shows one user menu | yes | UserMenu.test.tsx:renders trigger |
-| AC2 | Profile Settings reachable from it | yes | nav.behaviors.ts:openUserMenu |
-| AC3 | Keyboard-navigable per WCAG | no | no axe assertion yet — phase 3 |
-```
-
-`met` is `yes` only with evidence in the row. An AC that no phase has touched shows `no`
-and says which phase is meant to cover it; an AC the plan does not cover anywhere is the
-report's most useful output, so call it out explicitly rather than letting it sit
-unremarked in the table — that is a plan gap, and it is cheapest to find now.
-
-Never mark an AC met because the phase "addressed" it. The question is whether something
-would fail if the behavior regressed.
-
-**5. Gates** — one line naming what ran and what came back, with the counts read from the
-result files. `commit-adversary` gets its round count and the verdict that ended it.
-
-**6. Friction** — the one part that is not bookkeeping. What cost time in this phase that
-a config change would have prevented, and the specific file the change belongs in:
-`CLAUDE.md`, a gate, a stage skill, or a memory file. One or two lines. Write `none` when
-the phase genuinely ran clean — an invented item is worse than an empty one, because a
-list of real friction is only useful if everything on it is real.
-
-The bar for a friction item is that it is **repeatable and preventable**. A gate that
-failed on something no written rule covers qualifies; a typo does not. So does a rule
-that exists but was not found from where you were reading — that is a cross-reference
-problem and names its own fix.
-
-**A friction item names what it would replace, or states that it adds nothing.** The most
-common resolution is not a new rule: it is moving an existing one to where you were
-actually reading, narrowing one that fired wrongly, or deleting one that sent you the wrong
-way. Those are the valuable items — they leave the corpus the same size or smaller. An item
-proposing genuinely new text says what it displaces, per `deliver`'s line-budget invariant.
-
-An item whose honest answer is "nothing to change, this was a one-off" is not a friction
-item. Write `none` rather than promoting it, and do not treat a clean phase as a section
-you failed to fill.
-
-Do not apply the fix now. Phase reports collect; step 3 proposes.
+Report before starting the next phase, then move directly to the next one without
+pausing for a reply. The format — heading, phase table, files, acceptance criteria,
+gates, friction — is `.claude/gates/status-report.md`. Read it once per session.
 
 ## Step 3 — Report
 

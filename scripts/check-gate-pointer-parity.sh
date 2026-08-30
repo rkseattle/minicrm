@@ -25,6 +25,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GATE_COUNTERPARTS=(
   ".claude/gates/definition-of-done.md|docs/dev/contributing.md"
   ".claude/gates/pre-push.md|docs/dev/contributing.md"
+  ".claude/gates/status-report.md|docs/dev/contributing.md"
   ".claude/gates/new-endpoint.md|docs/dev/new-endpoint.md"
   ".claude/gates/e2e-run.md|docs/operations.md"
 )
@@ -109,6 +110,8 @@ self_test() {
     > "$tmp/.claude/gates/new-endpoint.md"
   printf '# gate\n\nSee [operations](../../docs/operations.md).\n' \
     > "$tmp/.claude/gates/e2e-run.md"
+  printf '# gate\n\nSee [contributing](../../docs/dev/contributing.md).\n' \
+    > "$tmp/.claude/gates/status-report.md"
   printf '# contributing\n' > "$tmp/docs/dev/contributing.md"
   printf '# checklist\n' > "$tmp/docs/dev/new-endpoint.md"
   printf '# operations\n' > "$tmp/docs/operations.md"
