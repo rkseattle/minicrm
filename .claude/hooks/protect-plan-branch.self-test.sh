@@ -56,6 +56,10 @@ echo "== holes found in review: these must also be denied =="
 
 verdict deny "git -C /repo checkout main"              "global -C before the subcommand"
 verdict deny "git --git-dir=/r/.git switch main"       "global --git-dir before the subcommand"
+# A -C value may be quoted and hold spaces; matching only bare tokens let the
+# subcommand escape the pattern entirely.
+verdict deny 'git -C "/workspace path" checkout main'  "quoted -C value with a space"
+verdict deny "git -C '/workspace path' switch main"    "single-quoted -C value with a space"
 verdict deny "git checkout main && git checkout feature-branch" "destructive first in a compound"
 verdict deny "npm test && git checkout main"           "destructive second in a compound"
 verdict deny "git stash push -m wip"                   "stash push"

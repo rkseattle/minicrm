@@ -75,10 +75,22 @@ export function useMenuButton<TItem extends HTMLElement>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
+  /**
+   * Walks in `step` direction past targets that cannot take focus. A disabled button
+   * ignores .focus(), so landing on one strands the keyboard user: every further press
+   * retries the same index and the targets beyond it become unreachable.
+   */
   const focusItemAt = useCallback(
-    (index: number): void => {
+    (index: number, step: 1 | -1 = 1): void => {
       if (itemCount === 0) return;
-      itemRefs.current[(index + itemCount) % itemCount]?.focus();
+      for (let attempt = 0; attempt < itemCount; attempt += 1) {
+        const candidate =
+          itemRefs.current[(index + step * attempt + itemCount * itemCount) % itemCount];
+        if (candidate && !(candidate as HTMLElement & { disabled?: boolean }).disabled) {
+          candidate.focus();
+          return;
+        }
+      }
     },
     [itemCount],
   );
@@ -102,19 +114,19 @@ export function useMenuButton<TItem extends HTMLElement>({
           break;
         case 'ArrowDown':
           event.preventDefault();
-          focusItemAt(currentIndex < 0 ? 0 : currentIndex + 1);
+          focusItemAt(currentIndex < 0 ? 0 : currentIndex + 1, 1);
           break;
         case 'ArrowUp':
           event.preventDefault();
-          focusItemAt(currentIndex < 0 ? itemCount - 1 : currentIndex - 1);
+          focusItemAt(currentIndex < 0 ? itemCount - 1 : currentIndex - 1, -1);
           break;
         case 'Home':
           event.preventDefault();
-          focusItemAt(0);
+          focusItemAt(0, 1);
           break;
         case 'End':
           event.preventDefault();
-          focusItemAt(itemCount - 1);
+          focusItemAt(itemCount - 1, -1);
           break;
         case 'Tab':
           // Standard menu-button behavior: Tab leaves without trapping focus.
