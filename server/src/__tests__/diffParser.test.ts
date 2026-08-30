@@ -65,6 +65,71 @@ describe('parseGitDiff', () => {
     expect(diffs[0].changedRanges).toEqual([{ startLine: 1, endLine: 4 }]);
   });
 
+  // A binary diff carries no `+++ b/` or `--- a/` line — git prints
+  // "Binary files ... differ" instead — so a parser reading only those yields an empty
+  // path. Downstream that is indistinguishable from a path no manifest glob covers, and
+  // selection silently widens to the full E2E suite.
+  const PNG_BYTES = Buffer.from(
+    '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489',
+    'hex',
+  );
+
+  it('reports an added binary file by path', async () => {
+    repoRoot = await initRepo();
+    await writeFile(join(repoRoot, 'a.ts'), 'export const x = 1;\n');
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    await writeFile(join(repoRoot, 'shot.png'), PNG_BYTES);
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'add shot.png']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].filePath).toBe('shot.png');
+    expect(diffs[0].status).toBe('added');
+  });
+
+  it('reports a modified binary file by path', async () => {
+    repoRoot = await initRepo();
+    await writeFile(join(repoRoot, 'shot.png'), PNG_BYTES);
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    await writeFile(join(repoRoot, 'shot.png'), Buffer.concat([PNG_BYTES, Buffer.from([0, 1, 2])]));
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'change shot.png']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].filePath).toBe('shot.png');
+    expect(diffs[0].status).toBe('modified');
+  });
+
+  it('reports a deleted binary file by path', async () => {
+    repoRoot = await initRepo();
+    await writeFile(join(repoRoot, 'shot.png'), PNG_BYTES);
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    await execFileAsync('git', ['rm', 'shot.png'], { cwd: repoRoot });
+    await git(repoRoot, ['commit', '-m', 'delete shot.png']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].filePath).toBe('shot.png');
+    expect(diffs[0].status).toBe('deleted');
+  });
+
   it('reports a deleted file with no changed ranges', async () => {
     repoRoot = await initRepo();
     await writeFile(join(repoRoot, 'a.ts'), 'export const x = 1;\n');
