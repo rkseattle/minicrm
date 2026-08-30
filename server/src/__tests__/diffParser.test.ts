@@ -133,6 +133,27 @@ describe('parseGitDiff', () => {
     expect(diffs[0].filePath).toBe('wéird shot.png');
   });
 
+  it('decodes a C-quoted path on a rename, not just on the header', async () => {
+    repoRoot = await initRepo();
+    await writeFile(join(repoRoot, 'plain.ts'), 'export const y = 1;\n');
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    // `rename to` carries its own quoted value and wins over the header, so decoding
+    // only the header leaves the path escaped — and an escaped path matches no
+    // manifest glob, silently dropping the file from selection.
+    await git(repoRoot, ['mv', 'plain.ts', 'rénamed file.ts']);
+    await git(repoRoot, ['commit', '-m', 'rename with a non-ascii name']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].filePath).toBe('rénamed file.ts');
+    expect(diffs[0].oldFilePath).toBe('plain.ts');
+  });
+
   it('reports a deleted binary file by path', async () => {
     repoRoot = await initRepo();
     await writeFile(join(repoRoot, 'shot.png'), PNG_BYTES);

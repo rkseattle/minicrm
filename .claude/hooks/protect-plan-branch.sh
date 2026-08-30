@@ -81,7 +81,16 @@ scannable=$(printf '%s' "$cmd" \
       -e 's/(grep|rg|ack)([[:space:]]+-[[:alnum:]-]+)*[[:space:]]+"[^"]*"//g' \
       -e 's/(echo|printf)[[:space:]]+'"'"'[^'"'"']*'"'"'//g' \
       -e 's/(echo|printf)[[:space:]]+"[^"]*"//g' \
-  | perl -pe 's/"([^"]*)"|\x27([^\x27]*)\x27/my $v = defined $1 ? $1 : $2; $v =~ s{\s}{_}g; $v/ge')
+  | perl -pe '
+      # Collapse spaces ONLY inside the value of a git global option that takes a path,
+      # so `git -C "/some path" checkout main` keeps the subcommand adjacent and
+      # matchable. Named explicitly rather than by shape: `-c` is sh/bash\x27s command
+      # flag, and collapsing THAT value turns `sh -c "git checkout main"` into one
+      # opaque token the matcher cannot see into.
+      s/(-C[= ]?|--git-dir[= ]|--work-tree[= ])"([^"]*)"/my ($f,$v)=($1,$2); $v =~ s{ }{_}g; "$f$v"/ge;
+      s/(-C[= ]?|--git-dir[= ]|--work-tree[= ])\x27([^\x27]*)\x27/my ($f,$v)=($1,$2); $v =~ s{ }{_}g; "$f$v"/ge;
+      s/["\x27]//g;
+    ')
 [ -n "$scannable" ] || allow
 
 # Count destructive invocations, then count the subset that are a return to the plan's
