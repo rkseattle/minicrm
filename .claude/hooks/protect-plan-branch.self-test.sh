@@ -31,7 +31,13 @@ verdict() {
   local out got
   out=$(printf '{"cwd":"%s","tool_input":{"command":%s}}' "$tmp" "$(jq -Rn --arg c "$cmd" '$c')" \
         | CLAUDE_PROJECT_DIR="$tmp" bash "$HOOK" 2>/dev/null)
-  if printf '%s' "$out" | grep -q '"permissionDecision":"deny"'; then got=deny; else got=allow; fi
+  # Parsed, not grepped: matching the serialized text made the harness sensitive to
+  # JSON spacing, and a formatting change read as 23 behavioural failures.
+  if printf '%s' "$out" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1; then
+    got=deny
+  else
+    got=allow
+  fi
   if [ "$got" = "$want" ]; then
     pass=$((pass+1))
   else
@@ -40,6 +46,14 @@ verdict() {
     echo "       cmd: $cmd"
   fi
 }
+
+# Without python3 the hook allows every command by design, and each case below would
+# report allow — a fully permissive guard passing its own suite 50/50. Fail loudly
+# instead: silence is this guard's only real failure mode.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "FATAL: python3 not found — the hook would allow everything and this suite would still pass."
+  exit 1
+fi
 
 echo "== plan names the checked-out branch: moving HEAD must be denied =="
 write_state feature-branch
@@ -81,6 +95,81 @@ verdict deny 'git checkout "main"'                     "double-quoted branch"
 verdict deny "git checkout 'main'"                     "single-quoted branch"
 verdict deny "git rebase main"                         "rebase moves HEAD and rewrites"
 verdict deny "git restore --source=main --worktree ."  "restore --source overwrites the tree"
+
+echo "== quoting variants of one command: all are the same token list =="
+# Reported as four separate P1 bypasses against the regex matcher, each a new spelling.
+# A probe of five variants found three still broken after the reported one was patched,
+# which is what moved the decision from regex matching to shlex tokenization.
+verdict deny 'git -c user.name="John Doe" checkout main'  "value quoted, key bare"
+verdict deny "git -c user.name='John Doe' checkout main"  "value single-quoted, key bare"
+verdict deny 'git -c a=1 -c b="x y" checkout main'        "two -c options, second quoted"
+verdict deny 'git --git-dir="/a b/.git" checkout main'    "quoted --git-dir= value"
+verdict deny 'git checkout "ma"in'                        "quote opening mid-token"
+verdict deny "git   checkout    main"                     "runs of whitespace"
+verdict deny "git -C /r -c x=y switch main"               "two global options then switch"
+
+echo "== separators: shlex does not split these, so the raw string must be split first =="
+# `;` is the separator an agent writes most often and was completely unguarded: shlex
+# glues it to the neighbouring word (`hi;`, `true;git`), so a tokenize-then-split design
+# read the whole line as one non-git command.
+verdict deny "echo hi; git checkout main"              "semicolon separator"
+verdict deny "true;git checkout main"                  "semicolon with no spaces"
+verdict deny "git status&&git checkout main"           "unspaced &&"
+verdict deny "git status||git checkout main"           "unspaced ||"
+verdict deny "git log|head;git clean -fd"              "pipe then semicolon"
+verdict deny "npm test; git switch main"               "switch after a semicolon"
+
+echo "== every shell wrapper must be seen through, in both shapes =="
+# Sibling shape (`sudo git ...`) was allowed wholesale: re-tokenizing each token alone
+# turned `git` into a one-token command that moves nothing.
+verdict deny "sh -c 'git checkout main'"               "sh -c nested"
+verdict deny "bash -c 'git checkout main'"             "bash -c nested"
+verdict deny "zsh -c 'git checkout main'"              "zsh -c nested"
+verdict deny "dash -c 'git checkout main'"             "dash -c nested"
+verdict deny "env FOO=bar git checkout main"           "env with an assignment"
+verdict deny "xargs git checkout main"                 "xargs sibling"
+verdict deny "nohup git switch main"                   "nohup sibling"
+verdict deny "time git checkout main"                  "time sibling"
+verdict deny "sudo git checkout main"                  "sudo sibling"
+verdict deny 'bash -c "echo x; git checkout main"'     "separator inside a wrapper"
+verdict deny "/usr/bin/git checkout main"              "absolute path to git"
+
+echo "== every value-taking global option must skip its value =="
+verdict deny "git -c a=b checkout main"                "-c"
+verdict deny "git -C /repo checkout main"              "-C"
+verdict deny "git --git-dir /r/.git checkout main"     "--git-dir"
+verdict deny "git --work-tree /r checkout main"        "--work-tree"
+verdict deny "git --namespace ns checkout main"        "--namespace"
+verdict deny "git --exec-path /x checkout main"        "--exec-path"
+
+echo "== grouping and control flow must not hide the command =="
+verdict deny "(git checkout main)"                     "subshell"
+verdict deny "{ git checkout main; }"                  "brace group"
+verdict deny "if true; then git checkout main; fi"     "inside an if"
+
+echo "== refs that look like flags, and refs hidden behind another ref =="
+# `-` is the previous branch. It was filtered out as a flag, leaving no refs at all.
+verdict deny "git checkout -"                          "dash means previous branch"
+verdict deny "git switch -"                            "dash on switch"
+# A ref BEFORE `--` still moves HEAD; only the tokens after it are paths.
+verdict deny "git checkout main --"                    "ref then bare --"
+verdict deny "git switch main --"                      "switch ref then bare --"
+# Naming the plan branch first must not launder a second ref.
+verdict deny "git checkout feature-branch main"        "plan branch then another ref"
+
+echo "== stash spellings that are all push =="
+verdict deny "git stash save wip"                      "save is the push alias"
+verdict deny "git stash -u"                            "bare push with a flag"
+verdict deny "git stash -m wip"                        "bare push with a message"
+
+echo "== recovery paths must stay allowed, or the guard strands the session =="
+verdict allow "git rebase --abort"                     "abort a broken rebase"
+verdict allow "git rebase --continue"                  "continue a rebase"
+verdict allow "git clean -n"                           "clean dry run"
+verdict allow "git clean --dry-run"                    "clean --dry-run"
+verdict allow "git reset HEAD path/to/file.txt"        "unstage one path"
+verdict allow "git reset -- path/to/file.txt"          "unstage via --"
+verdict allow "git worktree lock ../wt"                "worktree lock moves nothing"
 
 echo "== verbs that move neither HEAD nor the tree stay allowed =="
 verdict allow "git worktree list"                      "worktree list is a read"
