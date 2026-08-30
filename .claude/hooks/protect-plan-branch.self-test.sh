@@ -134,6 +134,31 @@ verdict deny "sudo git checkout main"                  "sudo sibling"
 verdict deny 'bash -c "echo x; git checkout main"'     "separator inside a wrapper"
 verdict deny "/usr/bin/git checkout main"              "absolute path to git"
 
+echo "== a wrapper's OWN options and positionals must not be read as the program =="
+# Skipping the flag but treating its VALUE as the wrapped program read
+# `sudo -u root git checkout main` as the program `root`, and never examined the git
+# command after it. `timeout 5 git ...` is the same bug with no flag to key off.
+verdict deny "sudo -u root git checkout main"          "sudo -u takes a value"
+verdict deny "sudo -g wheel git checkout main"         "sudo -g takes a value"
+verdict deny "sudo --user=root git checkout main"      "sudo inline long value"
+verdict deny "env -u FOO git checkout main"            "env -u takes a value"
+verdict deny "env -C /tmp git checkout main"           "env -C takes a value"
+verdict deny "env --unset=FOO git checkout main"       "env inline long value"
+verdict deny "xargs -n 1 git checkout main"            "xargs -n takes a value"
+verdict deny "xargs -I{} git checkout main"            "xargs value glued to the flag"
+verdict deny "nice -n 10 git checkout main"            "nice -n takes a value"
+verdict deny "stdbuf -o0 git checkout main"            "stdbuf glued value"
+verdict deny "timeout 5 git checkout main"             "timeout positional duration"
+verdict deny "timeout -k 5 10 git checkout main"       "timeout flag then positional"
+verdict deny "nohup -- git checkout main"              "wrapper then bare --"
+verdict deny "sudo -u root env -u X git switch main"   "wrapper wrapping a wrapper"
+# The same options must not make the guard deny ordinary work.
+verdict allow "sudo -u root npm test"                  "sudo running a non-git command"
+verdict allow "timeout 30 npm test"                    "timeout running a non-git command"
+verdict allow "xargs -n 1 echo hello"                  "xargs running echo"
+verdict allow "nice -n 10 git log --oneline"           "nice running a git read"
+verdict allow "env -C /tmp git diff main...feature-branch" "env running a git read"
+
 echo "== every value-taking global option must skip its value =="
 verdict deny "git -c a=b checkout main"                "-c"
 verdict deny "git -C /repo checkout main"              "-C"
