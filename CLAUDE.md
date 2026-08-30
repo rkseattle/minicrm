@@ -146,8 +146,16 @@ eight job conditions and `server` in seven, both including the full `e2e-functio
 matrix. The two `qa` entries above predate this guidance and are grandfathered: a server-only
 edit to `junitXml.ts` does boot the whole E2E suite, which is over-broad but
 harmless enough that churning `ci.yml` to fix it is not worth it. Don't copy that
-shape for new guards. Instead add a **single-purpose filter output** and OR it
-into the specific jobs that run the test.
+shape for new guards.
+
+**But reach an existing filter before adding one.** Editing `.github/workflows/**` forces
+the full functional E2E suite — the TIA selector's `ci-workflow` rule is `alwaysWiden`, by
+design, because a workflow edit changes whether tests run at all. So a single-purpose
+output is the **last** resort, not the default: name the guard `scripts/check-*.{sh,mjs,ts}`
+(already globbed by `guard-invocation`) or place it where a filter already matches both
+sides, and the wiring costs nothing. Only when no existing filter can cover both sides is
+a new output correct — then OR it into the specific jobs that run the test. The full list
+and the measured cost are in `.claude/gates/definition-of-done.md`.
 
 **A guard's file location is part of its trigger scope.** A single-purpose output narrows
 nothing if a broad filter already matches the directory you put the file in — the job
