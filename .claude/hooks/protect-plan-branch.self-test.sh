@@ -69,6 +69,9 @@ echo "== a wrapped invocation must still be seen =="
 # Collapsing spaces inside ANY quoted run turned `sh -c "git checkout main"` into one
 # opaque token, hiding the wrapped git command from the matcher entirely.
 verdict deny 'sh -c "git checkout main"'               "sh -c wrapping a checkout"
+# `-c` is git's config flag AND sh's command flag. Matching on the flag name alone
+# cannot separate them: the git one must collapse, the sh one must not.
+verdict deny 'git -c "user.name=John Doe" checkout main' "git -c config value with a space"
 verdict deny "bash -c 'git switch main'"               "bash -c wrapping a switch"
 
 echo "== bypasses found in review: quoting must not defeat the match =="
