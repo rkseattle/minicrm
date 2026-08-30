@@ -146,7 +146,7 @@ Atlassian MCP first — never guess a transition ID.
 is never just a line saying it is done. The report carries: which phases are complete and
 which remain, the files each one modified, how long each took, the acceptance criteria met
 so far with the evidence for each, and the friction worth fixing in these config files.
-`implement-phases` step 2e defines the format; stages 3 through 5 report the same things
+`.claude/gates/status-report.md` defines the format; stages 3 through 5 report the same things
 scaled to what they do — a stage that fixes review findings still says which files
 it touched, how long it ran, and which ACs it moved. A boundary crossed without a status
 report is the single most common way a run becomes unreviewable: the information exists
@@ -169,6 +169,7 @@ which is why it now stands at ~2,900 lines that are read on every run. Each file
 | `gates/pre-push.md`           | 360 |
 | `gates/e2e-run.md`            | 280 |
 | `gates/definition-of-done.md` | 275 |
+| `gates/status-report.md`      | 130 |
 | Any skill `SKILL.md`          | 300 |
 | Any agent definition          | 130 |
 
@@ -186,12 +187,50 @@ when the file genuinely covers more ground than it used to.
 **Stay quiet while monitors run.** No filler turns, no polling loops, no narrating the
 wait.
 
+**Reversibility decides whether to ask, not phrasing.** A message ending in a question
+mark is not automatically a discussion, and one phrased as an instruction is not
+automatically licence for an irreversible act. Ask what the work would actually do:
+
+- **Cheap to undo — act, and say what you did.** A local edit, a new file, a scratch
+  script, an uncommitted experiment. `git checkout` reverses all of it in seconds, so
+  answering the question _and_ doing the work costs one round trip instead of two. A
+  question about the repo usually wants the answer demonstrated, not described.
+- **Costly or impossible to undo — stop and ask.** A push, a force-push, a PR, a Jira
+  write, a deleted branch, a destructive DB command, anything reaching a system outside
+  this checkout. These stop even when the message reads as an instruction, because the
+  cost of being wrong is not symmetrical with the cost of asking.
+
+The middle case — a commit — follows the work: commit freely on a feature branch, ask
+before committing to `main`.
+
+**Prefer a stated assumption to a blocking question.** When a choice has an obvious
+default and the resulting work is cheap to redo, take the default, say in one line which
+assumption you made, and keep going. A correction then costs an amend rather than a
+round trip. Reserve a blocking question — ending the turn with nothing delivered — for
+when proceeding wrongly would be unsafe, would be expensive to unwind, or would waste
+substantial work if the guess is wrong.
+
+Do everything that does not depend on the answer first. A question that blocks one phase
+rarely blocks all of them, and arriving with four phases done and one question is a far
+better turn than arriving with the question alone.
+
+**Batch open decisions into one turn.** When several genuinely need Rob, ask them
+together — one `AskUserQuestion` with every open choice, each carrying a recommendation
+and its consequence — rather than serializing them across turns. Two questions asked
+separately cost two round trips and make a run look stalled twice.
+
 **Declare a deliberate stop.** Any stage may end a turn to ask Rob something — a genuine
 decision, a deferral, persistent BLOCKERs, an ambiguous E2E scope. Whenever that happens
 with phases still unfinished, set `"paused": true` in `.claude/state/current-plan.json`
 first, and clear it as the first action of the turn that resumes. The `Stop` hook cannot
 tell a question from a stall, by design: distinguishing them would mean classifying
 prose. Declaring the stop is what separates them.
+
+That hook only guards stops _inside_ a plan, and most turns are not inside one — 70
+invocations, zero blocks, across the sessions it has been live. So it is a backstop for a
+control that has to be behavioral: nothing catches a false pause taken outside a plan
+except not taking it. A sentence naming the next action is never the last thing in a
+turn — either its tool call goes in the same message, or the sentence is not written.
 
 ## If a stage file is missing or unreadable
 
