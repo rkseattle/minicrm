@@ -1,13 +1,13 @@
 # data-testid Audit Report
 
-Generated: 2026-08-31T16:27:19.565Z
+Generated: 2026-08-31T16:48:15.191Z
 
 ## Summary
 
 - Matched: 594
 - Stale (broken locators): 0
 - Unexercised (in app, not in tests): 1019
-- Dynamic (manual review required): 695
+- Dynamic (manual review required): 691
 
 ## Stale testids (action required)
 
@@ -1262,9 +1262,7 @@ _None — all test-referenced testids are present in the application source._
 | `cell-*` | client/src/pages/ActivityVolumeReportPage.tsx | 306 | app |
 | `cell-*` | client/src/pages/ActivityVolumeReportPage.tsx | 322 | app |
 | `rep-row-*` | client/src/pages/ActivityVolumeReportPage.tsx | 298 | app |
-| `settings-tab-*` | client/src/pages/AdminSettingsPage.tsx | 169 | app |
 | `settings-panel-*` | client/src/pages/AdminSettingsPage.tsx | 175 | app |
-| `settings-tab-*` | client/src/pages/AdminSettingsPage.tsx | 138 | app |
 | `settings-panel-*` | client/src/pages/AdminSettingsPage.tsx | 145 | app |
 | `tag-name-*` | client/src/pages/AdminTagsPage.tsx | 395 | app |
 | `rename-tag-*` | client/src/pages/AdminTagsPage.tsx | 403 | app |
@@ -1395,9 +1393,7 @@ _None — all test-referenced testids are present in the application source._
 | `task-row-*` | client/src/pages/MyTasksPage.tsx | 378 | app |
 | `notif-checkbox-*` | client/src/pages/ProfilePage.tsx | 300 | app |
 | `notif-toggle-*` | client/src/pages/ProfilePage.tsx | 293 | app |
-| `reports-tab-*` | client/src/pages/ReportsPage.tsx | 152 | app |
 | `reports-panel-*` | client/src/pages/ReportsPage.tsx | 158 | app |
-| `reports-tab-*` | client/src/pages/ReportsPage.tsx | 131 | app |
 | `reports-panel-*` | client/src/pages/ReportsPage.tsx | 138 | app |
 | `step-edit-*` | client/src/pages/SequenceDetailPage.tsx | 353 | app |
 | `step-delete-*` | client/src/pages/SequenceDetailPage.tsx | 360 | app |
