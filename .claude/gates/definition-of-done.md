@@ -97,7 +97,9 @@ fixed at its source rather than hand-patched.
 catches what the pre-commit hook misses, but only after the push.
 
 **Staged `.github/workflows/*.yml`** — the pre-commit hook runs `actionlint` and hard-
-fails if it isn't installed (`brew install actionlint`, once per machine).
+fails if it isn't installed (`brew install actionlint`, once per machine). To run it
+before staging, invoke it by absolute path: `which actionlint` misses a Homebrew install
+that is not on this shell's `PATH`, which reads as "not installed" when it is.
 
 **Changes touching `server/src/services/` or `server/src/ai/`** — review
 `server/src/ai/tools/` and verify tool schemas still match service signatures: input
@@ -252,7 +254,9 @@ from memory are `.claude/gates/status-report.md`.
 ## Reading results
 
 Never rely on exit codes or console summaries for test outcomes. Delete stale result
-files before a run, then read the generated results file.
+files before a run, then read the generated results file. All three workspaces write
+`<workspace>/test-results/junit.xml` — not `junit.xml` at the workspace root, which is
+where a guess lands and finds nothing.
 
 Running one server suite on its own needs the workspace's own env:
 `DOTENV_CONFIG_PATH=../.env.test npx vitest run <name>` from `server/`. A bare
