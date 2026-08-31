@@ -94,6 +94,7 @@ jobs:
       tia-impact:        ${{ steps.filter.outputs.tia-impact }}
       tia-tree:          ${{ steps.filter.outputs.tia-tree }}
       guard-invocation: ${{ steps.filter.outputs.guard-invocation }}
+      testid-audit:     ${{ steps.filter.outputs.testid-audit }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -220,6 +221,15 @@ jobs:
               - 'scripts/**/check-*.sh'
               - 'scripts/**/check-*.mjs'
               - 'scripts/**/check-*.ts'
+
+            # Single-purpose output for check-testids.ts, which cross-references
+            # client/src against the E2E locators. Only client/src is listed: `qa`
+            # already matches the script and the page objects, so a duplicate could
+            # never be the deciding trigger. Without this entry the guard is silent
+            # on a deleted data-testid — the likeliest way to break a locator, and
+            # exactly what it exists to catch.
+            testid-audit:
+              - 'client/src/**'
 
             # Single-purpose output for check-ci-filter-globs.mjs. Its subject IS
             # ci.yml, so the workflow has to trigger it; `config` would also match but
@@ -1441,10 +1451,21 @@ jobs:
     # live outside qa/, so an edit to any would otherwise leave
     # check-grep-invert-parity.sh unrun on exactly the drift it guards.
     # (MINCRM-706)
-    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true' || needs.changes.outputs.env-example-parity == 'true' || needs.changes.outputs.audit-gate == 'true' || needs.changes.outputs.grep-invert-parity == 'true' || needs.changes.outputs.gate-pointer-parity == 'true'
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true' || needs.changes.outputs.env-example-parity == 'true' || needs.changes.outputs.audit-gate == 'true' || needs.changes.outputs.grep-invert-parity == 'true' || needs.changes.outputs.gate-pointer-parity == 'true' || needs.changes.outputs.testid-audit == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Every other step here is bash or bare node on built-ins, but the testid
+      # audit runs under tsx and parses with typescript-estree, so it needs both
+      # on disk. Without this the step cannot start.
+      - name: Install dependencies
+        run: npm ci
 
       - name: Check framework/ has no application-domain strings (MINCRM-123)
         run: bash qa/scripts/check-framework-purity.sh
@@ -1517,6 +1538,15 @@ jobs:
 
       - name: Check page objects forward their caller's timeout (MINCRM-703)
         run: node qa/scripts/check-locator-timeout-forwarding.mjs
+
+      # Self-test first: this guard's failure mode is silence — it reports what it
+      # can parse, so a capability that stops working reads as an app with fewer
+      # testids rather than as an error. (MINCRM-736)
+      - name: Testid audit self-test
+        run: npx tsx qa/scripts/check-testids.ts --self-test
+
+      - name: Every E2E testid locator resolves against client/src
+        run: npx tsx qa/scripts/check-testids.ts --check
 
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests

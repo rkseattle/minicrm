@@ -11,11 +11,13 @@
  * `-select` would absolve every dead id ending the same way.
  *
  * Usage:
- *   tsx qa/scripts/audit-testids.ts
+ *   tsx qa/scripts/check-testids.ts            regenerate the tracked report
+ *   tsx qa/scripts/check-testids.ts --check    verify it without writing
+ *   tsx qa/scripts/check-testids.ts --self-test
  *
  * Exit codes:
  *   0 — no stale testids found (unexercised testids are informational only)
- *   1 — one or more stale testids found (broken locators, CI-blocking)
+ *   1 — a stale testid, or under --check a report that no longer matches
  */
 
 import fs from 'node:fs';
@@ -791,9 +793,11 @@ function generateReport(params: {
 
   const lines: string[] = [
     '# data-testid Audit Report',
+    '',
     `Generated: ${timestamp}`,
     '',
     '## Summary',
+    '',
     `- Matched: ${matchedCount}`,
     `- Stale (broken locators): ${stale.length}`,
     `- Unexercised (in app, not in tests): ${unexercised.length}`,
@@ -801,7 +805,7 @@ function generateReport(params: {
     '',
   ];
 
-  lines.push('## Stale testids (action required)');
+  lines.push('## Stale testids (action required)', '');
   if (stale.length === 0) {
     lines.push('_None — all test-referenced testids are present in the application source._');
   } else {
@@ -813,7 +817,7 @@ function generateReport(params: {
   }
   lines.push('');
 
-  lines.push('## Unexercised testids (review required)');
+  lines.push('## Unexercised testids (review required)', '');
   if (unexercised.length === 0) {
     lines.push('_None — all static application testids are referenced by at least one test._');
   } else {
@@ -825,7 +829,7 @@ function generateReport(params: {
   }
   lines.push('');
 
-  lines.push('## Dynamic testids (manual review)');
+  lines.push('## Dynamic testids (manual review)', '');
   if (allDynamics.length === 0) {
     lines.push('_None._');
   } else {
@@ -844,7 +848,7 @@ function generateReport(params: {
 // Main
 // ---------------------------------------------------------------------------
 
-export function run(): void {
+export function run(checkOnly = false): void {
   const repoRoot = path.resolve(process.cwd());
 
   const appSrcDir = path.join(repoRoot, 'client', 'src');
@@ -888,7 +892,13 @@ export function run(): void {
   });
 
   const reportPath = path.join(repoRoot, 'qa', 'scripts', 'audit-testids-report.md');
-  fs.writeFileSync(reportPath, reportContent, 'utf-8');
+  let reportStatus: string;
+  if (checkOnly) {
+    reportStatus = compareReport(reportPath, reportContent);
+  } else {
+    fs.writeFileSync(reportPath, reportContent, 'utf-8');
+    reportStatus = `Full report written to: ${path.relative(repoRoot, reportPath)}`;
+  }
 
   // Print summary to stdout.
   const summaryLines = [
@@ -899,7 +909,7 @@ export function run(): void {
     `Unexercised (app, not tested): ${unexercised.length}`,
     `Dynamic (manual review):       ${appDynamics.length + testDynamics.length}`,
     '',
-    `Full report written to: ${path.relative(repoRoot, reportPath)}`,
+    reportStatus,
     '',
   ];
 
@@ -913,9 +923,60 @@ export function run(): void {
 
   console.log(summaryLines.join('\n'));
 
-  if (stale.length > 0) {
+  if (stale.length > 0 || reportStatus.startsWith(REPORT_DRIFT_PREFIX)) {
     process.exit(1);
   }
+}
+
+const REPORT_DRIFT_PREFIX = 'Report is out of date';
+
+/**
+ * Compare the part of the report that a broken locator changes.
+ *
+ * Only the summary counts and the stale list are gated. The unexercised and
+ * dynamic tables carry source line numbers, so comparing them would fail every
+ * time a line moved anywhere in client/src — a red build reading `Stale: 0`
+ * with nothing broken, which is how a check earns its way into being switched
+ * off. Prettier pads table separators, so those are normalized too.
+ */
+function compareReport(reportPath: string, expected: string): string {
+  let actual: string;
+  try {
+    actual = fs.readFileSync(reportPath, 'utf-8');
+  } catch {
+    return `${REPORT_DRIFT_PREFIX}: ${reportPath} is missing. Run: npm run audit:testids`;
+  }
+
+  const gated = (text: string): string[] => {
+    const lines = text.split('\n');
+    const start = lines.findIndex((line) => line.startsWith('## Stale testids'));
+    const end = lines.findIndex((line) => line.startsWith('## Unexercised'));
+    const staleSection = start === -1 ? [] : lines.slice(start, end === -1 ? undefined : end);
+    const counts = lines.filter(
+      (line) => line.startsWith('- Matched:') || line.startsWith('- Stale'),
+    );
+    return [...counts, ...staleSection]
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .map((line) => (/^\|[\s|:-]+\|$/.test(line) ? '|---|' : line))
+      .filter((line) => line.length > 0);
+  };
+
+  const trackedLines = gated(actual);
+  const freshLines = gated(expected);
+  if (trackedLines.join('\n') === freshLines.join('\n')) {
+    return 'Report matches the tracked file.';
+  }
+
+  // Name what drifted: otherwise the only way to find out is to regenerate a
+  // 1,700-line file and diff it by hand.
+  const differences: string[] = [];
+  for (let i = 0; i < Math.max(trackedLines.length, freshLines.length); i++) {
+    if (trackedLines[i] === freshLines[i]) continue;
+    differences.push(`  tracked: ${trackedLines[i] ?? '(absent)'}`);
+    differences.push(`  actual:  ${freshLines[i] ?? '(absent)'}`);
+    if (differences.length >= 6) break;
+  }
+  return [`${REPORT_DRIFT_PREFIX}. Run: npm run audit:testids`, ...differences].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -1159,6 +1220,65 @@ function selfTest(): void {
       failures.push('a dead member of an enumerated family was matched');
     }
 
+    // --check must accept prettier's table padding and a new timestamp, and
+    // must reject a changed stale list. Gating on the informational tables
+    // instead would fail on any line insertion in client/src.
+    const reportFile = path.join(root, 'report.md');
+    const generated = [
+      '# R',
+      '',
+      'Generated: 2026-01-01T00:00:00.000Z',
+      '',
+      '## Summary',
+      '',
+      '- Matched: 5',
+      '- Stale (broken locators): 1',
+      '',
+      '## Stale testids (action required)',
+      '',
+      '| testid | Test file | Line |',
+      '|--------|-----------|------|',
+      '| `gone` | a.ts | 1 |',
+      '',
+      '## Unexercised testids (review required)',
+      '',
+      '| testid | App file | Line |',
+      '|--------|----------|------|',
+      '| `x` | b.tsx | 12 |',
+      '',
+    ].join('\n');
+
+    // Same stale list, prettier padding, later timestamp, and a moved line
+    // number in the informational table: all of that must still pass.
+    fs.writeFileSync(
+      reportFile,
+      generated
+        .replace('2026-01-01T00:00:00.000Z', '2026-06-06T00:00:00.000Z')
+        .replace('|--------|-----------|------|', '| ------ | --------- | ---- |')
+        .replace('| `x` | b.tsx | 12 |', '| `x` | b.tsx | 98 |'),
+    );
+    if (compareReport(reportFile, generated).startsWith(REPORT_DRIFT_PREFIX)) {
+      failures.push(
+        '--check rejected a report differing only in timestamp, padding, and line numbers',
+      );
+    }
+
+    fs.writeFileSync(
+      reportFile,
+      generated.replace('| `gone` | a.ts | 1 |', '| `other` | a.ts | 1 |'),
+    );
+    if (!compareReport(reportFile, generated).startsWith(REPORT_DRIFT_PREFIX)) {
+      failures.push('--check accepted a changed stale list');
+    }
+
+    fs.writeFileSync(
+      reportFile,
+      generated.replace('- Stale (broken locators): 1', '- Stale (broken locators): 0'),
+    );
+    if (!compareReport(reportFile, generated).startsWith(REPORT_DRIFT_PREFIX)) {
+      failures.push('--check accepted a changed stale count');
+    }
+
     if (!tests.statics.some((t) => t.value === 'resolved-from-const')) {
       failures.push('test extractor did not resolve an identifier-valued reference');
     }
@@ -1185,27 +1305,28 @@ function selfTest(): void {
   console.log(
     `SELF-TEST PASS: ${mustResolveCount} forms resolved, ${expectedStaleCount} must-flag ` +
       `stale, ${mustNotInventCount} must-not-invent values absent, suffix-only pattern ` +
-      `inert, dead family sibling reported, identifier reference resolved.`,
+      `inert, dead family sibling reported, identifier reference resolved, ` +
+      `--check ignores line motion and rejects a changed stale list.`,
   );
 }
 
 function main(): void {
   // Validated before dispatch: checking after would let `--self-test --bogus`
   // report a pass, the silent success this guard exists to reject.
-  const unknown = process.argv.slice(2).filter((arg) => arg !== '--self-test');
+  const unknown = process.argv.slice(2).filter((arg) => arg !== '--self-test' && arg !== '--check');
   if (unknown.length > 0) {
     console.error(`Unknown argument: ${unknown[0]}`);
-    console.error('Usage: tsx qa/scripts/audit-testids.ts [--self-test]');
+    console.error('Usage: tsx qa/scripts/check-testids.ts [--self-test] [--check]');
     process.exit(2);
   }
   if (process.argv.includes('--self-test')) {
     selfTest();
     return;
   }
-  run();
+  run(process.argv.includes('--check'));
 }
 
 const scriptPath = process.argv[1] ?? '';
-if (scriptPath.endsWith('audit-testids.ts') || scriptPath.endsWith('audit-testids.js')) {
+if (scriptPath.endsWith('check-testids.ts') || scriptPath.endsWith('check-testids.js')) {
   main();
 }

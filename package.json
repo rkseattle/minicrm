@@ -6,8 +6,8 @@
     "node": ">=24",
     "npm": ">=11"
   },
-  "//engines": "DECLARATIVE, not enforced. npm honours engines only under engine-strict, and no .npmrc sets it — deliberately: 82 packages in the tree declare node >= 22 and would turn every npm ci into a hard failure. CI pins the real floor via .nvmrc + setup-node. (MINCRM-704)",
-  "//packageManager": "Also declarative — nothing here enables Corepack. Records the npm that ships with the node version .nvmrc pins (node:24-alpine -> npm 11.17.0), which is what CI actually runs. (MINCRM-704)",
+  "//engines": "DECLARATIVE, not enforced. npm honours engines only under engine-strict, and no .npmrc sets it \u2014 deliberately: 82 packages in the tree declare node >= 22 and would turn every npm ci into a hard failure. CI pins the real floor via .nvmrc + setup-node. (MINCRM-704)",
+  "//packageManager": "Also declarative \u2014 nothing here enables Corepack. Records the npm that ships with the node version .nvmrc pins (node:24-alpine -> npm 11.17.0), which is what CI actually runs. (MINCRM-704)",
   "packageManager": "npm@11.17.0",
   "workspaces": [
     "shared",
@@ -34,8 +34,8 @@
     "e2e:client": "npm run dev:e2e --workspace=minicrm-client",
     "screenshot": "tsx scripts/screenshot.ts",
     "pseudoloc": "tsx scripts/generate-pseudoloc.ts",
-    "audit:testids": "tsx qa/scripts/audit-testids.ts",
-    "audit:testids:self-test": "tsx qa/scripts/audit-testids.ts --self-test",
+    "audit:testids": "tsx qa/scripts/check-testids.ts",
+    "audit:testids:self-test": "tsx qa/scripts/check-testids.ts --self-test",
     "generate:proto": "npx @bufbuild/buf generate",
     "e2e:timing:baseline": "npx tsx qa/e2e/scripts/compute-timing-baseline.ts",
     "e2e:timing:shards": "npx tsx qa/e2e/scripts/gen-shards.ts",
