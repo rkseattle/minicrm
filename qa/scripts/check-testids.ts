@@ -410,7 +410,7 @@ function collectStaticMembers(ast: AstNode): Map<string, StaticFamily> {
  * components share, so two declared in one file would otherwise each inherit the
  * other's ids.
  */
-function collectLocalComponentProps(ast: AstNode): Map<string, Map<string, string[]>> {
+function collectLocalComponentProps(ast: AstNode): Map<string, Map<string, string[] | undefined>> {
   const declared = new Set<string>();
   walk(ast, (node) => {
     if (node.type === 'FunctionDeclaration' && isNode(node.id))
@@ -437,14 +437,15 @@ function collectLocalComponentProps(ast: AstNode): Map<string, Map<string, strin
     },
   );
 
-  const byComponent = new Map<string, Map<string, string[]>>();
+  const byComponent = new Map<string, Map<string, string[] | undefined>>();
   forEachTestidParam(ast, (componentName, propName, boundAs, defaultValue) => {
     const byProp = callSiteValues.get(componentName);
     if (!byProp?.has(propName)) return;
     const values = byProp.get(propName);
-    if (!values) return;
-    const bindings = byComponent.get(componentName) ?? new Map<string, string[]>();
-    bindings.set(boundAs, [...values, ...(defaultValue ? [defaultValue] : [])]);
+    const bindings = byComponent.get(componentName) ?? new Map<string, string[] | undefined>();
+    // undefined rather than absent: a caller this could not read must poison the pair,
+    // and "no same-file caller" has to stay distinguishable from "one I cannot resolve".
+    bindings.set(boundAs, values && [...values, ...(defaultValue ? [defaultValue] : [])]);
     byComponent.set(componentName, bindings);
   });
   return byComponent;
@@ -628,27 +629,37 @@ function componentPropsWithCorpus(
 ): Map<string, Map<string, string[]>> {
   const local = collectLocalComponentProps(ast);
   const external = corpus.get(filePath);
-  if (!external) return local;
 
+  // Poisoned in EITHER direction wins: a pair one index could not read is unresolvable
+  // however well the other read it, and binding the readable half resolves a subset —
+  // whose missing siblings are then reported stale though the app renders them.
   const merged = new Map(local);
-  forEachTestidParam(ast, (componentName, propName, boundAs, defaultValue) => {
-    const byProp = external.get(componentName);
-    if (!byProp?.has(propName)) return;
-    const values = byProp.get(propName);
-    // Unresolvable: drop any same-file binding too, so the template stays dynamic
-    // rather than resolving to the subset this could read.
-    if (!values) {
-      merged.get(componentName)?.delete(boundAs);
-      return;
-    }
-    const bindings = merged.get(componentName) ?? new Map<string, string[]>();
-    const withDefault = defaultValue ? [defaultValue] : [];
-    bindings.set(boundAs, [
-      ...new Set([...(bindings.get(boundAs) ?? []), ...values, ...withDefault]),
-    ]);
-    merged.set(componentName, bindings);
-  });
-  return merged;
+  if (external) {
+    forEachTestidParam(ast, (componentName, propName, boundAs, defaultValue) => {
+      const byProp = external.get(componentName);
+      if (!byProp?.has(propName)) return;
+      const values = byProp.get(propName);
+      const bindings = merged.get(componentName) ?? new Map<string, string[] | undefined>();
+      const existing = bindings.has(boundAs) ? bindings.get(boundAs) : undefined;
+      if (!values || (bindings.has(boundAs) && existing === undefined)) {
+        bindings.set(boundAs, undefined);
+      } else {
+        const withDefault = defaultValue ? [defaultValue] : [];
+        bindings.set(boundAs, [...new Set([...(existing ?? []), ...values, ...withDefault])]);
+      }
+      merged.set(componentName, bindings);
+    });
+  }
+
+  // Drop the poisoned pairs at the boundary: the walk binds names to id lists, and an
+  // absent binding is what leaves the template dynamic.
+  const resolved = new Map<string, Map<string, string[]>>();
+  for (const [componentName, bindings] of merged) {
+    const kept = new Map<string, string[]>();
+    for (const [boundAs, values] of bindings) if (values) kept.set(boundAs, values);
+    if (kept.size > 0) resolved.set(componentName, kept);
+  }
+  return resolved;
 }
 
 /**
@@ -712,8 +723,9 @@ function collectImportedFamilies(
  * no CI filter would trigger it on. `@shared/*` points outside the scanned corpus and
  * stays unresolved, so anything reaching it remains dynamic.
  *
- * If the alias is ever renamed in client/tsconfig.json, the self-test's SubPageNav
- * assertion is what fails — that component is reached only through this alias.
+ * A rename in client/tsconfig.json is caught because every `@/` import resolves under
+ * client/src, which the testid-audit CI filter matches — not by the tsconfig itself,
+ * which only the dockerfiles filter sees.
  */
 const SCAN_ROOT_ALIAS = '@/';
 
@@ -1417,15 +1429,26 @@ export function DefaultedCard({ testId = 'defaulted' }: { testId?: string }) {
 }
 `;
 
+const SELF_TEST_SAMEFILE_PARTIAL = `
+export function SameFileCard({ testId }: { testId: string }) {
+  return <div data-testid={\`\${testId}-sf\`} />;
+}
+export const SameFileUse = ({ kind }: { kind: string }) => (
+  <SameFileCard testId={\`\${kind}-computed\`} />
+);
+`;
+
 const SELF_TEST_PARTIAL_CALLERS = `
 import { PartialCard } from './partial-card.js';
 import { DefaultedCard } from './defaulted-card.js';
+import { SameFileCard } from './samefile-card.js';
 export const Callers = ({ kind }: { kind: string }) => (
   <div>
     <PartialCard testId="literal-one" />
     <PartialCard testId={\`\${kind}-computed\`} />
     <DefaultedCard testId="explicit" />
     <DefaultedCard />
+    <SameFileCard testId="cross-literal" />
   </div>
 );
 `;
@@ -1505,6 +1528,7 @@ function selfTest(): void {
     fs.writeFileSync(path.join(appDir, 'TwinCallers.tsx'), SELF_TEST_TWIN_CALLERS);
     fs.writeFileSync(path.join(appDir, 'partial-card.tsx'), SELF_TEST_PARTIAL_COMPONENT);
     fs.writeFileSync(path.join(appDir, 'defaulted-card.tsx'), SELF_TEST_DEFAULTED_COMPONENT);
+    fs.writeFileSync(path.join(appDir, 'samefile-card.tsx'), SELF_TEST_SAMEFILE_PARTIAL);
     fs.writeFileSync(path.join(appDir, 'PartialCallers.tsx'), SELF_TEST_PARTIAL_CALLERS);
     fs.writeFileSync(path.join(appDir, 'UnitOnly.test.tsx'), SELF_TEST_UNIT_TEST_CALL_SITE);
     // A fixture that must be ignored: its testid exists only in a unit test.
@@ -1621,6 +1645,10 @@ function selfTest(): void {
       {
         value: 'literal-one-body',
         why: 'a family with a non-literal call site must stay dynamic, not half-resolve',
+      },
+      {
+        value: 'cross-literal-sf',
+        why: 'a same-file non-literal poisons the pair as surely as a cross-file one',
       },
       {
         value: 'mixed-props-b',
@@ -1803,7 +1831,8 @@ function selfTest(): void {
     `SELF-TEST PASS: ${mustResolveCount} forms resolved, ${expectedStaleCount} must-flag ` +
       `stale, ${mustNotInventCount} must-not-invent values absent, suffix-only pattern ` +
       `inert, dead family sibling reported, identifier reference resolved, ` +
-      `--check ignores line motion and rejects a changed stale list, corpus floor and \n      parse refusal both enforced.`,
+      '--check ignores line motion and rejects a changed stale list, corpus floor and ' +
+      'parse refusal both enforced.',
   );
 }
 
