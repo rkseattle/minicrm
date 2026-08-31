@@ -223,13 +223,18 @@ jobs:
               - 'scripts/**/check-*.ts'
 
             # Single-purpose output for check-testids.ts, which cross-references
-            # client/src against the E2E locators. Only client/src is listed: `qa`
-            # already matches the script and the page objects, so a duplicate could
-            # never be the deciding trigger. Without this entry the guard is silent
+            # client/src against the E2E locators. Without this the guard is silent
             # on a deleted data-testid — the likeliest way to break a locator, and
             # exactly what it exists to catch.
+            #
+            # The report is listed because `qa`'s globs are extension-scoped
+            # (qa/scripts/**/*.{sh,ts,mjs}) and none matches .md, so editing the
+            # tracked report — the obvious way to turn a red build green by hand —
+            # would otherwise run no check at all. The script and the page objects
+            # ARE covered by `qa`, hence only these two entries.
             testid-audit:
               - 'client/src/**'
+              - 'qa/scripts/audit-testids-report.md'
 
             # Single-purpose output for check-ci-filter-globs.mjs. Its subject IS
             # ci.yml, so the workflow has to trigger it; `config` would also match but

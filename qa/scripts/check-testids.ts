@@ -196,6 +196,13 @@ const TESTID_VALUE_NAMES = new Set(['data-testid', 'testId']);
  * OwnerToggle's three suffixes are fixed enough to expand concretely; the rest
  * become dynamic prefixes, because resolving them needs cross-file dataflow.
  *
+ * `itemTestidPrefix` keeps its prefix even though the item ids it covers are
+ * already enumerated from the call site's `.map()`. Dropping it would report
+ * `reports-tab-list-select` — a real element SubPageNav renders from a
+ * `data-testid` prop bound in another file, which this single-file walk cannot
+ * resolve. A known fail-open, kept because a false positive on a live locator
+ * is worse than an unreported dead sibling.
+ *
  * `panelTestidPrefix` is deliberately absent — despite the name it feeds
  * `aria-controls`, never `data-testid`.
  */
@@ -219,7 +226,10 @@ function memberName(node: AstNode): string | undefined {
  *
  * Returns statics (exact values) and dynamics (prefix + "*").
  */
-export function collectAppTestids(srcDir: string): {
+export function collectAppTestids(
+  srcDir: string,
+  repoRoot: string = process.cwd(),
+): {
   statics: TestidOccurrence[];
   dynamics: TestidOccurrence[];
 } {
@@ -233,7 +243,7 @@ export function collectAppTestids(srcDir: string): {
     if (isUnitTestFile(filePath)) continue;
 
     const content = fs.readFileSync(filePath, 'utf-8');
-    const relPath = path.relative(process.cwd(), filePath);
+    const relPath = path.relative(repoRoot, filePath);
     const ast = parseFile(relPath, content);
 
     const staticMembers = collectStaticMembers(ast);
@@ -669,7 +679,10 @@ function resolveFamily(
  * Identifier values resolve through same-file `const` declarations: a locator
  * built from a computed id would otherwise read as absent and go unwatched.
  */
-export function collectTestTestids(dirs: string[]): {
+export function collectTestTestids(
+  dirs: string[],
+  repoRoot: string = process.cwd(),
+): {
   statics: TestidOccurrence[];
   dynamics: TestidOccurrence[];
 } {
@@ -679,7 +692,7 @@ export function collectTestTestids(dirs: string[]): {
   for (const dir of dirs) {
     for (const filePath of findFiles(dir, ['.ts', '.tsx'])) {
       const content = fs.readFileSync(filePath, 'utf-8');
-      const relPath = path.relative(process.cwd(), filePath);
+      const relPath = path.relative(repoRoot, filePath);
       const ast = parseFile(relPath, content);
 
       const staticMembers = collectStaticMembers(ast);
@@ -868,7 +881,7 @@ export function run(checkOnly = false): void {
     path.join(repoRoot, 'qa', 'e2e', 'tests', 'apps'),
   ];
 
-  const { statics: appStatics, dynamics: appDynamics } = collectAppTestids(appSrcDir);
+  const { statics: appStatics, dynamics: appDynamics } = collectAppTestids(appSrcDir, repoRoot);
   // An empty scan reports Stale: 0 — this guard's silent-failure mode, and how
   // it lost sight of the app before. Refuse rather than certify nothing.
   if (appStatics.length < MINIMUM_EXPECTED_STATICS) {
@@ -878,7 +891,7 @@ export function run(checkOnly = false): void {
     );
     process.exit(1);
   }
-  const { statics: testStatics, dynamics: testDynamics } = collectTestTestids(testDirs);
+  const { statics: testStatics, dynamics: testDynamics } = collectTestTestids(testDirs, repoRoot);
 
   const appStaticValues = new Set(appStatics.map((s) => s.value));
   const appDynamicPrefixes = appDynamics.map((d) => d.value);
@@ -1048,6 +1061,7 @@ export function Fixture({
       <ExportMenu testId="forwarded-prop" />
       <StatCard testId={testId} />
       <OwnerToggle testIdPrefix="owner-filter" />
+      <SubNav itemTestidPrefix="item-prefix" />
       <input
         data-testid={
           readOnly
@@ -1296,6 +1310,18 @@ function selfTest(): void {
     );
     if (!compareReport(reportFile, generated).startsWith(REPORT_DRIFT_PREFIX)) {
       failures.push('--check accepted a changed stale count');
+    }
+
+    // A prefix prop keeps absolving its family's dead siblings — the documented
+    // fail-open above. Asserted so the trade is visible rather than discovered.
+    const prefixFamily = collectAppTestids(appDir, root);
+    const prefixStatics = new Set(prefixFamily.statics.map((x) => x.value));
+    const prefixPatterns = prefixFamily.dynamics.map((d) => d.value);
+    if (!isMatchedByApp('item-prefix-dead-sibling', prefixStatics, prefixPatterns)) {
+      failures.push(
+        'an itemTestidPrefix family stopped absolving its siblings — if that is ' +
+          'deliberate, the SubPageNav -select case needs cross-file resolution first',
+      );
     }
 
     if (!tests.statics.some((t) => t.value === 'resolved-from-const')) {
