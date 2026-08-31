@@ -142,6 +142,15 @@ Check the executed count, not just failures. A truncated run reports `failures="
 looks green: the tells are a `<testsuites>` `time` sitting at exactly the timeout and an
 executed count well below the suite total.
 
+Copy a results file aside before you run anything else. Any run that executes tests
+clears `test-results/` at startup, so a verdict you still need is gone whether or not you
+meant to replace it. `--list` is the exception that still costs you the file: it executes
+nothing and leaves the rest of the directory alone, but the JUnit reporter rewrites
+`results.xml` with an all-skipped report. Zero executed tests is what distinguishes that
+from the truncated run above, which has a large partial count. To keep a run from
+touching the file at all, redirect it with `--output` and `PLAYWRIGHT_JUNIT_OUTPUT_FILE`
+as the pre-push hook does.
+
 Every failure gets root-caused. Never label one a known flake, flaky, pre-existing, or
 unrelated as grounds to stop investigating — whether it has failed before is irrelevant,
 and comparing against `main` is not a way to dismiss it. **Never rerun to make a failure
