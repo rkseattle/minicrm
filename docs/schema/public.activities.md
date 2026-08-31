@@ -216,6 +216,7 @@ erDiagram
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
   varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
+  varchar_20_ nav_layout "Personal navigation layout. NULL means follow the workspace default in system_settings.nav_layout, so a later admin change still propagates."
 }
 ```
 

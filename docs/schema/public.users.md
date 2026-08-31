@@ -32,11 +32,13 @@
 | api_token_issued_at | timestamp with time zone |  | true |  |  |  |
 | scim_external_id | text |  | true |  |  |  |
 | territory | varchar(255) |  | true |  |  | Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475). |
+| nav_layout | varchar(20) | NULL::character varying | true |  |  | Personal navigation layout. NULL means follow the workspace default in system_settings.nav_layout, so a later admin change still propagates. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| users_nav_layout_check | CHECK | CHECK (((nav_layout IS NULL) OR ((nav_layout)::text = ANY ((ARRAY['top'::character varying, 'left'::character varying, 'hamburger'::character varying])::text[])))) |
 | users_role_check | CHECK | CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('rep'::character varying)::text, ('manager'::character varying)::text, ('viewer'::character varying)::text, ('service_account'::character varying)::text]))) |
 | users_sso_provider_requires_subject | CHECK | CHECK (((sso_provider IS NULL) OR (sso_subject IS NOT NULL))) |
 | users_sso_subject_max_length | CHECK | CHECK (((sso_subject IS NULL) OR (length(sso_subject) <= 1024))) |
@@ -155,6 +157,7 @@ erDiagram
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
   varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
+  varchar_20_ nav_layout "Personal navigation layout. NULL means follow the workspace default in system_settings.nav_layout, so a later admin change still propagates."
 }
 "public.system_settings" {
   text key ""
