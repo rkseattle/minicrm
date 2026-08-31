@@ -4,7 +4,7 @@
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.users](public.users.md) | 28 |  | BASE TABLE |
+| [public.users](public.users.md) | 29 |  | BASE TABLE |
 | [public.tags](public.tags.md) | 4 |  | BASE TABLE |
 | [public.system_settings](public.system_settings.md) | 4 |  | BASE TABLE |
 | [public.currencies](public.currencies.md) | 6 |  | BASE TABLE |
@@ -305,6 +305,7 @@ erDiagram
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
   varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
+  varchar_20_ nav_layout "Personal navigation layout. NULL means follow the workspace default in system_settings.nav_layout, so a later admin change still propagates."
 }
 "public.tags" {
   uuid id ""

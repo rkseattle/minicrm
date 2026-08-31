@@ -162,6 +162,13 @@
           "type": "varchar(255)",
           "nullable": true,
           "comment": "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
+        },
+        {
+          "name": "nav_layout",
+          "type": "varchar(20)",
+          "nullable": true,
+          "default": "NULL::character varying",
+          "comment": "Personal navigation layout. NULL means follow the workspace default in system_settings.nav_layout, so a later admin change still propagates."
         }
       ],
       "indexes": [
@@ -224,6 +231,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "users_nav_layout_check",
+          "type": "CHECK",
+          "def": "CHECK (((nav_layout IS NULL) OR ((nav_layout)::text = ANY ((ARRAY['top'::character varying, 'left'::character varying, 'hamburger'::character varying])::text[]))))",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "nav_layout"
+          ]
+        },
         {
           "name": "users_role_check",
           "type": "CHECK",
