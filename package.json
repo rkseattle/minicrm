@@ -35,6 +35,7 @@
     "screenshot": "tsx scripts/screenshot.ts",
     "pseudoloc": "tsx scripts/generate-pseudoloc.ts",
     "audit:testids": "tsx qa/scripts/audit-testids.ts",
+    "audit:testids:self-test": "tsx qa/scripts/audit-testids.ts --self-test",
     "generate:proto": "npx @bufbuild/buf generate",
     "e2e:timing:baseline": "npx tsx qa/e2e/scripts/compute-timing-baseline.ts",
     "e2e:timing:shards": "npx tsx qa/e2e/scripts/gen-shards.ts",

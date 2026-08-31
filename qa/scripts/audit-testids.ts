@@ -19,6 +19,7 @@
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { parse } from '@typescript-eslint/typescript-estree';
 
@@ -744,7 +745,208 @@ export function run(): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Self-test
+// ---------------------------------------------------------------------------
+
+/**
+ * Every form this extractor must see, and the ones it must refuse to invent.
+ *
+ * Cases assert finding COUNTS. A guard checked only on exit status passes just
+ * as happily against a corpus it never read, which is the failure this audit
+ * itself shipped with for four months.
+ */
+const SELF_TEST_APP_SOURCE = `
+const TAB_KEYS = ['alpha', 'beta'];
+const VIEWS = ['win-loss', 'activity'] as const;
+const LABELS = { primary: 'main', secondary: 'aux' };
+const SIZES = ['sm', 'lg'];
+
+export function Fixture({ testId, readOnly, tab }: { testId: string; readOnly: boolean; tab: string }) {
+  const navItems = TAB_KEYS.map((tab) => ({ 'data-testid': \`settings-tab-\${tab}\` }));
+  const viewItems = VIEWS.map((view) => ({ 'data-testid': \`reports-tab-\${view}\` }));
+  return (
+    <div>
+      <span data-testid="plain-static" />
+      <span data-testid={'braced-static'} />
+      <ExportMenu testId="forwarded-prop" />
+      <StatCard testId={testId} />
+      <OwnerToggle testIdPrefix="owner-filter" />
+      <input
+        data-testid={
+          readOnly
+            ? 'multiline-ternary-readonly'
+            : 'multiline-ternary-editable'
+        }
+      />
+      <em data-testid={\`member-\${LABELS.primary}\`} />
+      <b data-testid={\`len-\${SIZES.length}\`} />
+      <i data-testid={\`\${testId}-suffix-only\`} />
+      <u data-testid="resolved-from-const" />
+      <s data-testid={\`after-map-\${tab}\`} />
+      {navItems}
+      {viewItems}
+    </div>
+  );
+}
+`;
+
+const SELF_TEST_PAGE_OBJECT = `
+const bannerTestId = 'resolved-from-const';
+export const locators = [
+  { type: 'testId', value: 'plain-static' },
+  { type: 'testId', value: 'forwarded-prop' },
+  { type: 'testId', value: 'multiline-ternary-readonly' },
+  { type: 'testId', value: 'settings-tab-alpha' },
+  { type: 'testId', value: 'reports-tab-win-loss' },
+  { type: 'testId', value: 'owner-filter-mine' },
+  { type: 'testId', value: 'member-main' },
+  { type: 'testId', value: bannerTestId },
+  { type: 'testId', value: 'genuinely-absent-testid' },
+];
+`;
+
+interface SelfTestCase {
+  name: string;
+  /** The form this case pins, named so a failure says what regressed. */
+  pins: string;
+}
+
+function selfTest(): void {
+  const failures: string[] = [];
+  let mustResolveCount = 0;
+  let mustNotInventCount = 0;
+  let expectedStaleCount = 0;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-testids-selftest-'));
+
+  try {
+    const appDir = path.join(root, 'app');
+    const testDir = path.join(root, 'tests');
+    fs.mkdirSync(appDir, { recursive: true });
+    fs.mkdirSync(testDir, { recursive: true });
+    fs.writeFileSync(path.join(appDir, 'Fixture.tsx'), SELF_TEST_APP_SOURCE);
+    // A fixture that must be ignored: its testid exists only in a unit test.
+    fs.writeFileSync(
+      path.join(appDir, 'Fixture.test.tsx'),
+      `export const T = () => <div data-testid="unit-test-only" />;\n`,
+    );
+    fs.writeFileSync(path.join(testDir, 'FixturePage.ts'), SELF_TEST_PAGE_OBJECT);
+
+    const app = collectAppTestids(appDir);
+    const tests = collectTestTestids([testDir]);
+    const appStatics = new Set(app.statics.map((s) => s.value));
+    const appPatterns = app.dynamics.map((d) => d.value);
+
+    const stale = tests.statics
+      .filter((t) => !isMatchedByApp(t.value, appStatics, appPatterns))
+      .map((t) => t.value)
+      .sort();
+
+    // One must-flag case, and every other reference is a form the extractor
+    // has to resolve. Any of them appearing here is a regression.
+    const expectedStale = ['genuinely-absent-testid'];
+    expectedStaleCount = expectedStale.length;
+    if (stale.join(',') !== expectedStale.join(',')) {
+      failures.push(
+        `expected exactly ${expectedStale.length} stale (${expectedStale.join(', ')}), ` +
+          `got ${stale.length} (${stale.join(', ') || 'none'})`,
+      );
+    }
+
+    const mustResolve: SelfTestCase[] = [
+      { name: 'plain-static', pins: 'double-quoted attribute' },
+      { name: 'braced-static', pins: 'brace-wrapped literal' },
+      { name: 'forwarded-prop', pins: 'JSX attribute prop forwarding' },
+      { name: 'multiline-ternary-readonly', pins: 'ternary Prettier split' },
+      { name: 'multiline-ternary-editable', pins: 'the other ternary branch' },
+      { name: 'settings-tab-alpha', pins: 'plain array via .map()' },
+      { name: 'reports-tab-win-loss', pins: '`as const` array via .map()' },
+      { name: 'owner-filter-mine', pins: 'OwnerToggle prefix expansion' },
+      { name: 'member-main', pins: 'member access resolved to one value' },
+    ];
+    mustResolveCount = mustResolve.length;
+    for (const testCase of mustResolve) {
+      if (!appStatics.has(testCase.name)) {
+        failures.push(`app extractor missed ${testCase.name} (${testCase.pins})`);
+      }
+    }
+
+    // Values the extractor must NOT invent. Each would silently absolve a dead
+    // locator, which is worse than the false positives this audit set out to fix.
+    const mustNotInvent = [
+      { value: 'member-aux', why: 'a member access must not enumerate its whole object' },
+      { value: 'len-sm', why: '`.length` is not a member of the array' },
+      { value: 'len-lg', why: '`.length` is not a member of the array' },
+      { value: 'unit-test-only', why: 'unit-test JSX is not application source' },
+      {
+        value: 'after-map-alpha',
+        why: 'a .map() parameter binding must not escape its callback',
+      },
+      {
+        value: 'after-map-beta',
+        why: 'a .map() parameter binding must not escape its callback',
+      },
+    ];
+    mustNotInventCount = mustNotInvent.length;
+    for (const invented of mustNotInvent) {
+      if (appStatics.has(invented.value)) {
+        failures.push(`app extractor invented ${invented.value} — ${invented.why}`);
+      }
+    }
+
+    // A suffix-only template cannot be matched on its tail: doing so absolves
+    // every unrelated id ending the same way.
+    if (isMatchedByApp('anything-suffix-only', appStatics, appPatterns)) {
+      failures.push('a trailing-segment pattern matched an unrelated value');
+    }
+
+    if (!tests.statics.some((t) => t.value === 'resolved-from-const')) {
+      failures.push('test extractor did not resolve an identifier-valued reference');
+    }
+
+    // The real corpus, because an empty scan is this guard's silent failure.
+    // Resolved from this script's own path, not cwd: running from qa/ would
+    // otherwise report zero statics and blame the extractor. `import.meta` is
+    // unavailable — qa/tsconfig.json builds to CommonJS.
+    const repoRoot = path.resolve(path.dirname(process.argv[1] ?? ''), '..', '..');
+    const realApp = collectAppTestids(path.join(repoRoot, 'client', 'src'));
+    if (realApp.statics.length < 1000) {
+      failures.push(
+        `real client/src scan returned ${realApp.statics.length} statics; expected 1000+`,
+      );
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+
+  if (failures.length > 0) {
+    for (const failure of failures) console.error(`SELF-TEST FAIL: ${failure}`);
+    process.exit(1);
+  }
+  console.log(
+    `SELF-TEST PASS: ${mustResolveCount} forms resolved, ${expectedStaleCount} must-flag ` +
+      `stale, ${mustNotInventCount} must-not-invent values absent, suffix-only pattern ` +
+      `inert, identifier reference resolved.`,
+  );
+}
+
+function main(): void {
+  // Validated before dispatch: checking after would let `--self-test --bogus`
+  // report a pass, the silent success this guard exists to reject.
+  const unknown = process.argv.slice(2).filter((arg) => arg !== '--self-test');
+  if (unknown.length > 0) {
+    console.error(`Unknown argument: ${unknown[0]}`);
+    console.error('Usage: tsx qa/scripts/audit-testids.ts [--self-test]');
+    process.exit(2);
+  }
+  if (process.argv.includes('--self-test')) {
+    selfTest();
+    return;
+  }
+  run();
+}
+
 const scriptPath = process.argv[1] ?? '';
 if (scriptPath.endsWith('audit-testids.ts') || scriptPath.endsWith('audit-testids.js')) {
-  run();
+  main();
 }
