@@ -228,11 +228,13 @@ test('@functional WH-06: create contact via API → contact.created log appears 
 }) => {
   await loginAsAdmin(restClient);
 
-  // Create a webhook subscribed to contact.created pointing at httpbin (any valid URL —
-  // we only verify the log was written, not that the target accepted it)
+  // Any valid URL: this asserts the delivery log was written, never that the target
+  // accepted it. example.com matches WH-02..WH-05 and resolves without leaving the
+  // network — subscription creation validates the URL by resolving it, so a host that
+  // is slow to look up fails setup with a 422 before the test reaches its assertion.
   const suffix = Date.now().toString();
   const { subscription: sub } = await createWebhookSubscription(restClient, {
-    url: `https://httpbin.org/anything/wh06-${suffix}`,
+    url: `https://example.com/hook/wh06-${suffix}`,
     events: ['contact.created'],
   });
   testData.register('webhook_subscription', sub.id, `/api/v1/admin/webhooks/${sub.id}`);
@@ -252,8 +254,8 @@ test('@functional WH-06: create contact via API → contact.created log appears 
 
   // Poll until a delivery log entry for contact.created appears.
   // maxMs must exceed DELIVERY_TIMEOUT_MS (10 s) + dispatch overhead: the log is
-  // written after attemptDelivery() returns (success or timeout), so 8 s is too
-  // tight when httpbin.org is slow under CI load.
+  // written after attemptDelivery() returns, and an unreachable target takes the
+  // full timeout before it does.
   const log = await pollForWebhookDelivery(restClient, sub.id, 'contact.created', {
     maxMs: 20_000,
   });
