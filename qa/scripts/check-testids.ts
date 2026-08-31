@@ -52,6 +52,9 @@ interface StaticFamily {
   objectKeys?: Map<string, string[]>;
 }
 
+/** Declaring file → component → testid prop → the literals its call sites pass. */
+type CorpusCallSites = Map<string, Map<string, Map<string, Set<string>>>>;
+
 function isNode(value: unknown): value is AstNode {
   return typeof value === 'object' && value !== null && typeof (value as AstNode).type === 'string';
 }
@@ -243,18 +246,40 @@ export function collectAppTestids(
   const statics: TestidOccurrence[] = [];
   const dynamics: TestidOccurrence[] = [];
 
-  for (const filePath of findFiles(srcDir, ['.tsx', '.ts'])) {
-    // Unit-test fixtures render testids the app never does. The AST reads their
-    // JSX as readily as a component's, so an id existing only in a Vitest
-    // fixture would answer for a locator against the real app.
-    if (isUnitTestFile(filePath)) continue;
+  // Absolute: the corpus index is keyed by what `resolveImport` returns, always absolute.
+  const appFiles = findFiles(srcDir, ['.tsx', '.ts'])
+    .filter((f) => !isUnitTestFile(f))
+    .map((f) => path.resolve(f));
 
-    const content = fs.readFileSync(filePath, 'utf-8');
+  // Shared across both passes: every file is walked twice and parsing dominates.
+  const astCache = new Map<string, AstNode>();
+  const astOf = (filePath: string): AstNode => {
+    let ast = astCache.get(filePath);
+    if (!ast) {
+      ast = parseFile(path.relative(repoRoot, filePath), fs.readFileSync(filePath, 'utf-8'));
+      astCache.set(filePath, ast);
+    }
+    return ast;
+  };
+
+  // Survives the whole scan: an imported family is otherwise recollected once per
+  // importing file, and the nav families have many.
+  const familyCache = new Map<string, Map<string, StaticFamily>>();
+
+  const corpusCallSites = collectCorpusCallSites(appFiles, path.resolve(srcDir), astOf);
+
+  for (const filePath of appFiles) {
     const relPath = path.relative(repoRoot, filePath);
-    const ast = parseFile(relPath, content);
+    const ast = astOf(filePath);
 
     const staticMembers = collectStaticMembers(ast);
-    for (const [name, family] of collectImportedFamilies(ast, filePath)) {
+    for (const [name, family] of collectImportedFamilies(
+      ast,
+      filePath,
+      path.resolve(srcDir),
+      astOf,
+      familyCache,
+    )) {
       if (!staticMembers.has(name)) staticMembers.set(name, family);
     }
 
@@ -265,7 +290,7 @@ export function collectAppTestids(
       dynamics.push({ value, file: relPath, line: lineOf(node) });
     };
 
-    const componentProps = collectLocalComponentProps(ast);
+    const componentProps = componentPropsWithCorpus(ast, filePath, corpusCallSites);
 
     walkScoped(ast, new Map(), staticMembers, componentProps, (node, bindings) => {
       if (node.type === 'JSXAttribute') {
@@ -375,12 +400,11 @@ function collectStaticMembers(ast: AstNode): Map<string, StaticFamily> {
 
 /**
  * Each locally-declared component's testid parameter, bound to the literals its
- * own call sites pass — `StatCard` derives `${testId}-link` and `${testId}-value`.
+ * own call sites in THIS file pass — `StatCard` derives `${testId}-link`.
  *
  * Keyed by component, not by parameter name: `testId` is the prop name several
  * components share, so two declared in one file would otherwise each inherit the
- * other's ids. Only `FunctionDeclaration` components are read; an arrow-function
- * component stays a dynamic, which fails closed rather than open.
+ * other's ids.
  */
 function collectLocalComponentProps(ast: AstNode): Map<string, Map<string, string[]>> {
   const declared = new Set<string>();
@@ -390,58 +414,216 @@ function collectLocalComponentProps(ast: AstNode): Map<string, Map<string, strin
   });
   if (declared.size === 0) return new Map();
 
-  const callSiteValues = new Map<string, Set<string>>();
-  walk(ast, (node) => {
-    if (node.type !== 'JSXOpeningElement') return;
-    const name = isNode(node.name) ? (node.name.name as string) : undefined;
-    if (!name || !declared.has(name)) return;
-    for (const attribute of (node.attributes as unknown[]).filter(isNode)) {
-      if (attribute.type !== 'JSXAttribute') continue;
-      if (!TESTID_VALUE_NAMES.has(memberName(attribute) ?? '')) continue;
-      const literal = jsxAttributeLiteral(attribute.value);
-      if (!literal) continue;
-      const values = callSiteValues.get(name) ?? new Set<string>();
-      values.add(literal.value);
-      callSiteValues.set(name, values);
-    }
-  });
+  // Keyed by prop as well as component: a call site passing `testId` must not feed a
+  // parameter destructured from `data-testid`, whose template the app never renders.
+  const callSiteValues = new Map<string, Map<string, Set<string>>>();
+  forEachTestidCallSite(
+    ast,
+    (name) => declared.has(name),
+    (name, propName, value) => {
+      const byProp = callSiteValues.get(name) ?? new Map<string, Set<string>>();
+      const values = byProp.get(propName) ?? new Set<string>();
+      values.add(value);
+      byProp.set(propName, values);
+      callSiteValues.set(name, byProp);
+    },
+  );
 
   const byComponent = new Map<string, Map<string, string[]>>();
-  walk(ast, (node) => {
-    if (node.type !== 'FunctionDeclaration' || !isNode(node.id)) return;
-    const componentName = node.id.name as string;
-    const values = callSiteValues.get(componentName);
+  forEachTestidParam(ast, (componentName, propName, boundAs) => {
+    const values = callSiteValues.get(componentName)?.get(propName);
     if (!values) return;
-    const bindings = new Map<string, string[]>();
-    for (const param of (node.params as unknown[]).filter(isNode)) {
-      if (param.type !== 'ObjectPattern') continue;
-      for (const property of (param.properties as unknown[]).filter(isNode)) {
-        const key = memberName(property);
-        if (key && TESTID_VALUE_NAMES.has(key)) bindings.set(key, [...values]);
-      }
-    }
-    if (bindings.size > 0) byComponent.set(componentName, bindings);
+    const bindings = byComponent.get(componentName) ?? new Map<string, string[]>();
+    bindings.set(boundAs, [...values]);
+    byComponent.set(componentName, bindings);
   });
   return byComponent;
 }
 
 /**
- * Constant families a file imports by relative path.
+ * Every literal testid value a JSX call site passes, for the elements `isTarget` accepts.
+ *
+ * Shared by the same-file and cross-file indexes: a spread attribute or a new testid
+ * prop name handled on only one of them resolves an id from one kind of call site but
+ * not the other, which reads as a missing testid rather than as a bug.
+ */
+function forEachTestidCallSite(
+  ast: AstNode,
+  isTarget: (elementName: string) => boolean,
+  visit: (elementName: string, propName: string, value: string) => void,
+): void {
+  walk(ast, (node) => {
+    if (node.type !== 'JSXOpeningElement') return;
+    const name = isNode(node.name) ? (node.name.name as string) : undefined;
+    if (!name || !isTarget(name)) return;
+    for (const attribute of (node.attributes as unknown[]).filter(isNode)) {
+      if (attribute.type !== 'JSXAttribute') continue;
+      const propName = memberName(attribute);
+      if (!propName || !TESTID_VALUE_NAMES.has(propName)) continue;
+      const literal = jsxAttributeLiteral(attribute.value);
+      if (!literal) continue;
+      visit(name, propName, literal.value);
+    }
+  });
+}
+
+/**
+ * Every testid-valued parameter each declared component destructures, with the name it
+ * binds to. Shared by both binders for the reason `forEachTestidCallSite` gives.
+ *
+ * Only `FunctionDeclaration` components are read; an arrow-function component stays a
+ * dynamic, which fails closed rather than open.
+ */
+function forEachTestidParam(
+  ast: AstNode,
+  visit: (componentName: string, propName: string, boundAs: string) => void,
+): void {
+  walk(ast, (node) => {
+    if (node.type !== 'FunctionDeclaration' || !isNode(node.id)) return;
+    const componentName = node.id.name as string;
+    for (const param of (node.params as unknown[]).filter(isNode)) {
+      if (param.type !== 'ObjectPattern') continue;
+      for (const property of (param.properties as unknown[]).filter(isNode)) {
+        const propName = memberName(property);
+        if (!propName || !TESTID_VALUE_NAMES.has(propName)) continue;
+        visit(componentName, propName, destructuredLocalName(property) ?? propName);
+      }
+    }
+  });
+}
+
+/**
+ * The name a destructured property binds to — `'data-testid': listTestId` binds
+ * `listTestId`, which is what the component body interpolates.
+ */
+function destructuredLocalName(property: AstNode): string | undefined {
+  const value = property.value as AstNode | undefined;
+  if (value?.type === 'Identifier') return value.name as string;
+  // A default (`id = 'x'`) wraps the binding one level deeper.
+  if (value?.type === 'AssignmentPattern' && isNode(value.left) && value.left.type === 'Identifier')
+    return value.left.name as string;
+  return undefined;
+}
+
+/**
+ * Every testid literal each component receives, from call sites in ANY file.
+ *
+ * A component holds no reference to its own call sites, so this cannot follow an import
+ * the way `collectImportedFamilies` does — it indexes the whole corpus once, keyed by the
+ * file that declares the component. Without it a testid built from a prop bound in
+ * another file (`SubPageNav`'s `${listTestId}-select`) degrades to a pattern matching
+ * nothing, and its family's dead siblings go unreported.
+ *
+ * Keyed by declaring file as well as component name: `testId` is a prop name many
+ * components share, and two same-named components in different files would otherwise
+ * feed each other's suffixes.
+ */
+function collectCorpusCallSites(
+  files: string[],
+  srcDir: string,
+  astOf: (filePath: string) => AstNode,
+): CorpusCallSites {
+  const byDeclaringFile: CorpusCallSites = new Map();
+
+  for (const filePath of files) {
+    const ast = astOf(filePath);
+
+    // Where each locally-visible name was imported from. Only imports are indexed:
+    // a same-file call site is already `collectLocalComponentProps`'s job. The caller
+    // has already dropped unit-test files, so their call sites never reach here.
+    // `import { Twin as First }` renders as First here and is declared as Twin there.
+    const importedFrom = new Map<string, { file: string; declaredAs: string }>();
+    walk(ast, (node) => {
+      if (node.type !== 'ImportDeclaration') return;
+      const source = node.source as AstNode | undefined;
+      const specifier = typeof source?.value === 'string' ? source.value : undefined;
+      if (!specifier) return;
+      const resolved = resolveImport(filePath, specifier, srcDir);
+      if (!resolved) return;
+      for (const spec of (node.specifiers as unknown[]).filter(isNode)) {
+        if (spec.type !== 'ImportSpecifier' && spec.type !== 'ImportDefaultSpecifier') continue;
+        if (!isNode(spec.local)) continue;
+        const local = spec.local.name as string;
+        const declaredAs =
+          spec.type === 'ImportSpecifier' && isNode(spec.imported)
+            ? (spec.imported.name as string)
+            : local;
+        importedFrom.set(local, { file: resolved, declaredAs });
+      }
+    });
+    if (importedFrom.size === 0) continue;
+
+    forEachTestidCallSite(
+      ast,
+      (name) => importedFrom.has(name),
+      (name, propName, value) => {
+        const source = importedFrom.get(name);
+        if (!source) return;
+        const byComponent =
+          byDeclaringFile.get(source.file) ?? new Map<string, Map<string, Set<string>>>();
+        const byProp = byComponent.get(source.declaredAs) ?? new Map<string, Set<string>>();
+        const values = byProp.get(propName) ?? new Set<string>();
+        values.add(value);
+        byProp.set(propName, values);
+        byComponent.set(source.declaredAs, byProp);
+        byDeclaringFile.set(source.file, byComponent);
+      },
+    );
+  }
+
+  return byDeclaringFile;
+}
+
+/**
+ * The corpus's call-site values for the components one file declares, bound to the names
+ * that file's parameter lists destructure them under.
+ *
+ * Unioned with the same-file bindings rather than overriding them: a component called
+ * both from its own file and from another has ids from both, and letting either win
+ * silently drops the other's.
+ */
+function componentPropsWithCorpus(
+  ast: AstNode,
+  filePath: string,
+  corpus: CorpusCallSites,
+): Map<string, Map<string, string[]>> {
+  const local = collectLocalComponentProps(ast);
+  const external = corpus.get(filePath);
+  if (!external) return local;
+
+  const merged = new Map(local);
+  forEachTestidParam(ast, (componentName, propName, boundAs) => {
+    const values = external.get(componentName)?.get(propName);
+    if (!values) return;
+    const bindings = merged.get(componentName) ?? new Map<string, string[]>();
+    bindings.set(boundAs, [...new Set([...(bindings.get(boundAs) ?? []), ...values])]);
+    merged.set(componentName, bindings);
+  });
+  return merged;
+}
+
+/**
+ * Constant families a file imports, by relative path or through the scan-root alias.
  *
  * One edge deep, no transitive resolution. The nav families are the reason:
  * `DESTINATION_NAME` lives in `navLinks.ts` and is what every `nav-*` testid
  * interpolates, so without following that edge the whole family stays a
  * permissive prefix that any dead sibling matches.
  */
-function collectImportedFamilies(ast: AstNode, filePath: string): Map<string, StaticFamily> {
+function collectImportedFamilies(
+  ast: AstNode,
+  filePath: string,
+  srcDir: string,
+  astOf: (filePath: string) => AstNode,
+  familyCache: Map<string, Map<string, StaticFamily>>,
+): Map<string, StaticFamily> {
   const imported = new Map<string, StaticFamily>();
-  const cached = new Map<string, Map<string, StaticFamily>>();
 
   walk(ast, (node) => {
     if (node.type !== 'ImportDeclaration') return;
     const source = node.source as AstNode | undefined;
     const specifier = typeof source?.value === 'string' ? source.value : undefined;
-    if (!specifier?.startsWith('.')) return;
+    if (!specifier) return;
 
     // Look up by the exported name, bind under the local one: `import { F as L }`
     // is declared as F over there and interpolated as L here.
@@ -456,13 +638,13 @@ function collectImportedFamilies(ast: AstNode, filePath: string): Map<string, St
       .filter((entry): entry is { exported: string; local: string } => entry !== undefined);
     if (names.length === 0) return;
 
-    const resolved = resolveRelativeImport(filePath, specifier);
+    const resolved = resolveImport(filePath, specifier, srcDir);
     if (!resolved || isUnitTestFile(resolved)) return;
 
-    let families = cached.get(resolved);
+    let families = familyCache.get(resolved);
     if (!families) {
-      families = collectStaticMembers(parseFile(resolved, fs.readFileSync(resolved, 'utf-8')));
-      cached.set(resolved, families);
+      families = collectStaticMembers(astOf(resolved));
+      familyCache.set(resolved, families);
     }
     for (const { exported, local } of names) {
       const family = families.get(exported);
@@ -473,9 +655,36 @@ function collectImportedFamilies(ast: AstNode, filePath: string): Map<string, St
   return imported;
 }
 
-/** The file a relative specifier names, rewriting the repo's `.js` suffix. */
-function resolveRelativeImport(fromFile: string, specifier: string): string | undefined {
-  const base = path.resolve(path.dirname(fromFile), specifier.replace(/\.js$/, ''));
+/**
+ * The alias `client/tsconfig.json` maps onto the directory this scan was handed.
+ *
+ * Rewritten against the scan root rather than read from tsconfig: `@/*` resolves to
+ * `./src/*`, which IS that root, so deriving it costs the guard no dependency on a file
+ * no CI filter would trigger it on. `@shared/*` points outside the scanned corpus and
+ * stays unresolved, so anything reaching it remains dynamic.
+ *
+ * If the alias is ever renamed in client/tsconfig.json, the self-test's SubPageNav
+ * assertion is what fails — that component is reached only through this alias.
+ */
+const SCAN_ROOT_ALIAS = '@/';
+
+/**
+ * The file an import specifier names, rewriting the repo's `.js` suffix.
+ *
+ * Both forms matter: the components this resolves are imported relatively in some files
+ * and through the alias in others, and reading only one leaves the other's callers
+ * invisible — a family that degrades to a permissive prefix absolving dead siblings.
+ */
+function resolveImport(fromFile: string, specifier: string, srcDir: string): string | undefined {
+  const withoutSuffix = specifier.replace(/\.js$/, '');
+  let base: string;
+  if (specifier.startsWith('.')) {
+    base = path.resolve(path.dirname(fromFile), withoutSuffix);
+  } else if (specifier.startsWith(SCAN_ROOT_ALIAS)) {
+    base = path.resolve(srcDir, withoutSuffix.slice(SCAN_ROOT_ALIAS.length));
+  } else {
+    return undefined;
+  }
   for (const candidate of [`${base}.ts`, `${base}.tsx`]) {
     if (fs.existsSync(candidate)) return candidate;
   }
@@ -602,9 +811,8 @@ function harvestTemplateLiteral(
   // A leading interpolation carries no prefix, and its tail — `-select`, `-link`
   // — is shared by unrelated ids, so matching on it would absolve every dead id
   // ending the same way. Recorded for the report's manual-review list, where it
-  // matches nothing: resolving these needs the value bound at a call site in
-  // ANOTHER file, which this single-file walk cannot see. SubPageNav's
-  // `${listTestId}-select` is the live example.
+  // matches nothing. What reaches here is a testid built from a prop whose name is
+  // outside TESTID_VALUE_NAMES, so no call-site value is ever bound to it.
   addDynamic(`*${quasis.map(text).join('*')}`, template);
 }
 
@@ -1037,6 +1245,12 @@ const SIZES = ['sm', 'lg'];
 const shadowed = ['overview', 'settings'];
 
 import { DESTINATIONS, ROUTES, ALIASED as RENAMED, OPAQUE } from './destinations.js';
+import AliasNav from '@/aliased-nav.js';
+import { RelativeCard } from './relative-card.js';
+
+function MixedProps({ testId, 'data-testid': dt }: { testId?: string; 'data-testid'?: string }) {
+  return <div><span data-testid={\`\${testId}-a\`} /><em data-testid={\`\${dt}-b\`} /></div>;
+}
 
 function LocalCard({ testId }: { testId: string }) {
   return <div data-testid={\`\${testId}-derived\`} />;
@@ -1086,8 +1300,11 @@ export function Fixture({
         <p data-testid={\`nav-\${DESTINATIONS[link.to]}\`} />
       ))}
       <q data-testid={\`alias-\${RENAMED.primary}\`} />
+      <MixedProps testId="mixed-props" />
       <LocalCard testId="local-card" />
       <OtherCard testId="other-card" />
+      <AliasNav data-testid="alias-nav-list" />
+      <RelativeCard testId="relative-card" />
       <ImportedCard testId="imported-card" />
       <a data-testid={\`opaque-\${OPAQUE[route]}\`} />
       {navItems}
@@ -1095,6 +1312,59 @@ export function Fixture({
     </div>
   );
 }
+`;
+
+/**
+ * A component whose testid prop is renamed on destructuring and reached only through the
+ * scan-root alias — the shape `SubPageNav` has, and the one a relative-only resolver
+ * silently fails to bind.
+ */
+const SELF_TEST_ALIAS_COMPONENT = `
+export default function AliasNav({ 'data-testid': listTestId }: { 'data-testid'?: string }) {
+  return <div data-testid={listTestId ? \`\${listTestId}-select\` : undefined} />;
+}
+`;
+
+/** The same shape reached relatively, so one fixture cannot pass for the other. */
+const SELF_TEST_RELATIVE_COMPONENT = `
+export function RelativeCard({ testId }: { testId: string }) {
+  return <div data-testid={\`\${testId}-body\`} />;
+}
+`;
+
+/**
+ * Two components sharing a name in different files, each with its own suffix. The index
+ * is keyed by declaring file for exactly this: keyed by name alone, each would answer
+ * for the other's call sites and mint ids neither file renders.
+ */
+const SELF_TEST_TWIN_ONE = `
+export function Twin({ testId }: { testId: string }) {
+  return <div data-testid={\`\${testId}-one\`} />;
+}
+`;
+
+const SELF_TEST_TWIN_TWO = `
+export function Twin({ testId }: { testId: string }) {
+  return <div data-testid={\`\${testId}-two\`} />;
+}
+`;
+
+/** A unit test's call site: its ids are not the app's, however the corpus reaches them. */
+const SELF_TEST_UNIT_TEST_CALL_SITE = `
+import AliasNav from '@/aliased-nav.js';
+export const T = () => <AliasNav data-testid="unit-only-nav" />;
+`;
+
+/** Callers of the twins: each passes a value only its own twin may suffix. */
+const SELF_TEST_TWIN_CALLERS = `
+import { Twin as First } from './twin-one.js';
+import { Twin as Second } from '@/twin-two.js';
+export const Callers = () => (
+  <div>
+    <First testId="ex" />
+    <Second testId="wy" />
+  </div>
+);
 `;
 
 const SELF_TEST_IMPORTED_FAMILY = `
@@ -1146,6 +1416,12 @@ function selfTest(): void {
     fs.mkdirSync(testDir, { recursive: true });
     fs.writeFileSync(path.join(appDir, 'Fixture.tsx'), SELF_TEST_APP_SOURCE);
     fs.writeFileSync(path.join(appDir, 'destinations.ts'), SELF_TEST_IMPORTED_FAMILY);
+    fs.writeFileSync(path.join(appDir, 'aliased-nav.tsx'), SELF_TEST_ALIAS_COMPONENT);
+    fs.writeFileSync(path.join(appDir, 'relative-card.tsx'), SELF_TEST_RELATIVE_COMPONENT);
+    fs.writeFileSync(path.join(appDir, 'twin-one.tsx'), SELF_TEST_TWIN_ONE);
+    fs.writeFileSync(path.join(appDir, 'twin-two.tsx'), SELF_TEST_TWIN_TWO);
+    fs.writeFileSync(path.join(appDir, 'TwinCallers.tsx'), SELF_TEST_TWIN_CALLERS);
+    fs.writeFileSync(path.join(appDir, 'UnitOnly.test.tsx'), SELF_TEST_UNIT_TEST_CALL_SITE);
     // A fixture that must be ignored: its testid exists only in a unit test.
     fs.writeFileSync(
       path.join(appDir, 'Fixture.test.tsx'),
@@ -1189,6 +1465,11 @@ function selfTest(): void {
       { name: 'alias-aliased-value', pins: 'an aliased import bound to its local name' },
       { name: 'local-card-derived', pins: "a local component's own derived suffix" },
       { name: 'other-card-other', pins: "a second local component's own suffix" },
+      { name: 'mixed-props-a', pins: 'the prop a same-file call site actually passed' },
+      { name: 'alias-nav-list-select', pins: 'a renamed prop bound through the scan-root alias' },
+      { name: 'relative-card-body', pins: 'the same cross-file binding by relative path' },
+      { name: 'ex-one', pins: 'a component resolved against the file that declares it' },
+      { name: 'wy-two', pins: "its same-named twin's own call site, in another file" },
     ];
     mustResolveCount = mustResolve.length;
     for (const testCase of mustResolve) {
@@ -1239,6 +1520,26 @@ function selfTest(): void {
       {
         value: 'shadowed-overview',
         why: 'a bare identifier must not resolve against a same-named const family',
+      },
+      {
+        value: 'unit-only-nav-select',
+        why: 'a call site in a unit test must not feed the corpus index',
+      },
+      {
+        value: 'alias-nav-list-body',
+        why: "one component's cross-file values must not reach another's suffix",
+      },
+      {
+        value: 'mixed-props-b',
+        why: "one testid prop's call-site values must not bind another prop's parameter",
+      },
+      {
+        value: 'wy-one',
+        why: 'a same-named component in another file must not answer for these call sites',
+      },
+      {
+        value: 'ex-two',
+        why: 'the same crossing, the other way',
       },
     ];
     mustNotInventCount = mustNotInvent.length;
@@ -1368,6 +1669,21 @@ function selfTest(): void {
       failures.push(
         `real client/src scan returned ${realApp.statics.length} statics; ` +
           `expected ${MINIMUM_EXPECTED_STATICS}+`,
+      );
+    }
+
+    // The fixture corpus cannot prove this: its files are siblings in one tmpdir, so a
+    // resolver broken on the real tree's nesting or alias depth still passes above.
+    // Asserted on the mechanism, not on specific ids: pinning the ids would turn this
+    // red on an ordinary rename in client/src, blaming the resolver for someone else's
+    // edit. SubPageNav's `-select` template is unresolvable without a bound call site,
+    // so a resolved static from that file is what proves the binding happened.
+    const subPageNavStatics = realApp.statics.filter(
+      (s) => s.file.endsWith('SubPageNav.tsx') && s.value.endsWith('-select'),
+    );
+    if (subPageNavStatics.length === 0) {
+      failures.push(
+        'no -select static resolved from SubPageNav.tsx; cross-file prop resolution is not binding',
       );
     }
   } finally {
