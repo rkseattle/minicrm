@@ -96,7 +96,7 @@ export class AdminTagsPage {
       const el = await this.page
         .locate(
           [
-            { type: 'testId', value: 'admin-tags-empty' },
+            { type: 'testId', value: 'admin-tags-empty-state' },
             { type: 'text', value: t('tags.empty') },
           ],
           { intent: 'empty state message when no tags exist' },
