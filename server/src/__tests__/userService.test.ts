@@ -23,6 +23,8 @@ import {
   clearMustChangePassword,
   getUserPreferredLanguage,
   setUserPreferredLanguage,
+  getUserNavLayout,
+  setUserNavLayout,
   getNotificationPrefs,
   updateNotificationPrefs,
   listUsersOptedIn,
@@ -31,6 +33,7 @@ import {
   resetUserOnboarding,
 } from '../services/userService.js';
 import pool from '../db.js';
+import { getFieldDisplayName } from '../services/auditService.js';
 
 const FILE_PREFIX = 'user-svc';
 
@@ -785,6 +788,135 @@ describe('setUserPreferredLanguage', () => {
   it('returns null for a non-existent user', async () => {
     const result = await setUserPreferredLanguage('00000000-0000-0000-0000-000000000000', 'en');
     expect(result).toBeNull();
+  });
+});
+
+/** A UUID no user row holds, for the not-found paths below. */
+const MISSING_USER_ID = '00000000-0000-0000-0000-000000000000';
+
+// ── getUserNavLayout ───────────────────────────────────────────────────────────
+
+describe('getUserNavLayout', () => {
+  it('returns null when no preference has been set', async () => {
+    const user = await createUser(BASE_USER);
+    expect(await getUserNavLayout(user.id)).toBeNull();
+  });
+
+  it('returns null for a non-existent user', async () => {
+    expect(await getUserNavLayout(MISSING_USER_ID)).toBeNull();
+  });
+
+  it('returns the layout after it has been set', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserNavLayout(user.id, 'left', { id: user.id, name: user.name });
+    expect(await getUserNavLayout(user.id)).toBe('left');
+  });
+
+  it('returns null after the preference has been cleared', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserNavLayout(user.id, 'hamburger', { id: user.id, name: user.name });
+    await setUserNavLayout(user.id, null, { id: user.id, name: user.name });
+    expect(await getUserNavLayout(user.id)).toBeNull();
+  });
+
+  it('rejects an unsupported stored value without needing to plant one', async () => {
+    // The CHECK constraint makes a stale nav_layout unreachable through the app, and
+    // dropping it to plant one would take an ACCESS EXCLUSIVE lock across every
+    // parallel test file. The runtime guard is shared with preferred_language, whose
+    // column has no CHECK — the sibling test above plants 'xx' there and covers the
+    // same branch. Here, assert the constraint is the reason a stale value cannot exist.
+    const user = await createUser(BASE_USER);
+    await expect(
+      pool.query(`UPDATE users SET nav_layout = 'sidebar' WHERE id = $1`, [user.id]),
+    ).rejects.toMatchObject({ code: '23514' });
+    expect(await getUserNavLayout(user.id)).toBeNull();
+  });
+});
+
+// ── setUserNavLayout ───────────────────────────────────────────────────────────
+
+describe('setUserNavLayout', () => {
+  it('persists the layout and returns the updated row', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await setUserNavLayout(user.id, 'left', { id: user.id, name: user.name });
+    expect(updated).not.toBeNull();
+    expect(updated!.nav_layout).toBe('left');
+  });
+
+  it('overwrites a previously set layout', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserNavLayout(user.id, 'left', { id: user.id, name: user.name });
+    const updated = await setUserNavLayout(user.id, 'hamburger', { id: user.id, name: user.name });
+    expect(updated).not.toBeNull();
+    expect(updated!.nav_layout).toBe('hamburger');
+  });
+
+  it('clears the preference when null is passed', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserNavLayout(user.id, 'left', { id: user.id, name: user.name });
+    const updated = await setUserNavLayout(user.id, null, { id: user.id, name: user.name });
+    expect(updated).not.toBeNull();
+    expect(updated!.nav_layout).toBeNull();
+  });
+
+  it('handles every supported layout without error', async () => {
+    const user = await createUser(BASE_USER);
+    for (const layout of ['top', 'left', 'hamburger'] as const) {
+      const updated = await setUserNavLayout(user.id, layout, { id: user.id, name: user.name });
+      expect(updated).not.toBeNull();
+      expect(updated!.nav_layout).toBe(layout);
+    }
+  });
+
+  it('returns null for a non-existent user', async () => {
+    const result = await setUserNavLayout(MISSING_USER_ID, 'top', {
+      id: MISSING_USER_ID,
+      name: 'Nobody',
+    });
+    expect(result).toBeNull();
+  });
+
+  it('writes one audit entry naming the caller as the actor', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserNavLayout(user.id, 'left', { id: user.id, name: user.name });
+
+    const audit = await pool.query(
+      `SELECT field_name, old_value, new_value, changed_by_id, event_type, record_type
+         FROM audit_log WHERE record_id = $1 AND field_name = $2`,
+      [user.id, getFieldDisplayName('nav_layout')],
+    );
+    expect(audit.rows).toHaveLength(1);
+    expect(audit.rows[0]).toMatchObject({
+      record_type: 'user',
+      event_type: 'updated',
+      old_value: null,
+      new_value: 'left',
+      changed_by_id: user.id,
+    });
+  });
+
+  it('records the previous layout as the audit old value', async () => {
+    const user = await createUser(BASE_USER);
+    await setUserNavLayout(user.id, 'left', { id: user.id, name: user.name });
+    await setUserNavLayout(user.id, 'hamburger', { id: user.id, name: user.name });
+
+    const audit = await pool.query<{ old_value: string | null; new_value: string | null }>(
+      `SELECT old_value, new_value FROM audit_log
+        WHERE record_id = $1 AND field_name = $2
+        ORDER BY created_at DESC LIMIT 1`,
+      [user.id, getFieldDisplayName('nav_layout')],
+    );
+    expect(audit.rows[0].old_value).toBe('left');
+    expect(audit.rows[0].new_value).toBe('hamburger');
+  });
+
+  it('writes no audit entry when the user does not exist', async () => {
+    await setUserNavLayout(MISSING_USER_ID, 'top', { id: MISSING_USER_ID, name: 'Nobody' });
+    const audit = await pool.query(
+      `SELECT 1 FROM audit_log WHERE record_id = $1 AND field_name = $2`,
+      [MISSING_USER_ID, getFieldDisplayName('nav_layout')],
+    );
+    expect(audit.rows).toHaveLength(0);
   });
 });
 
