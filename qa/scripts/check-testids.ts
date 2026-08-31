@@ -202,21 +202,23 @@ function isUnitTestFile(filePath: string): boolean {
 const TESTID_VALUE_NAMES = new Set(['data-testid', 'testId']);
 
 /**
- * Props whose value is a stem the receiving component appends to. Only
- * OwnerToggle's three suffixes are fixed enough to expand concretely; the rest
- * become dynamic prefixes, because resolving them needs cross-file dataflow.
+ * Props whose value is a stem the receiving component appends to, expanded into the
+ * concrete ids that component renders.
  *
- * `itemTestidPrefix` keeps its prefix even though the item ids it covers are
- * already enumerated from the call site's `.map()`. Dropping it would report
- * `reports-tab-list-select` — a real element SubPageNav renders from a
- * `data-testid` prop bound in another file, which this single-file walk cannot
- * resolve. A known fail-open, kept because a false positive on a live locator
- * is worse than an unreported dead sibling.
+ * Only names `harvestPrefixProp` can expand belong here; it refuses any other. Emitting
+ * a `prefix-*` dynamic instead would absolve every dead id sharing that stem — the
+ * fail-open this audit exists to report.
  *
- * `panelTestidPrefix` is deliberately absent — despite the name it feeds
- * `aria-controls`, never `data-testid`.
+ * `itemTestidPrefix` is absent for that reason. Every SubPageNav call site supplies a
+ * per-item `data-testid`, which takes precedence over the prefix template, so its ids are
+ * enumerated from the call site's own `.map()` and the prefix added only the fail-open.
+ * A future call site passing ONLY the prefix would render ids this cannot see and its
+ * locators would be reported stale — resolving that needs the `items` array enumerated,
+ * which no call site makes possible today.
+ *
+ * `panelTestidPrefix` is absent too — despite the name it feeds `aria-controls`.
  */
-const TESTID_PREFIX_NAMES = new Set(['testIdPrefix', 'itemTestidPrefix']);
+const TESTID_PREFIX_NAMES = new Set(['testIdPrefix']);
 const OWNER_TOGGLE_SUFFIXES = ['-all', '-mine', '-my-team'] as const;
 
 /** The name a JSX attribute or object property is written under, if it has one. */
@@ -299,7 +301,7 @@ export function collectAppTestids(
         if (TESTID_VALUE_NAMES.has(name)) {
           harvestTestidExpression(node.value, bindings, staticMembers, addStatic, addDynamic);
         } else if (TESTID_PREFIX_NAMES.has(name)) {
-          harvestPrefixProp(name, node.value, addStatic, addDynamic);
+          harvestPrefixProp(name, node.value, addStatic);
         }
         return;
       }
@@ -320,18 +322,20 @@ function harvestPrefixProp(
   propName: string,
   value: unknown,
   addStatic: (value: string, node: AstNode) => void,
-  addDynamic: (value: string, node: AstNode) => void,
 ): void {
+  // Concrete ids only. A prefix whose suffixes are not known cannot be expanded, and
+  // emitting `prefix-*` instead would absolve every dead id sharing that stem — so an
+  // unrecognized name is refused rather than guessed at.
+  if (propName !== 'testIdPrefix') {
+    throw new Error(
+      `${propName} is in TESTID_PREFIX_NAMES but harvestPrefixProp cannot expand it. ` +
+        'Add its suffixes here, or leave the prop out of the set — outside it the ' +
+        'attribute is not read at all, which is safe but records nothing.',
+    );
+  }
   const literal = jsxAttributeLiteral(value);
   if (!literal) return;
-  if (propName === 'testIdPrefix') {
-    // Concrete ids only: an accompanying `prefix-*` would absolve any dead
-    // sibling, which is the fail-open this audit exists to report.
-    for (const suffix of OWNER_TOGGLE_SUFFIXES)
-      addStatic(`${literal.value}${suffix}`, literal.node);
-    return;
-  }
-  addDynamic(`${literal.value}-*`, literal.node);
+  for (const suffix of OWNER_TOGGLE_SUFFIXES) addStatic(`${literal.value}${suffix}`, literal.node);
 }
 
 /** The string behind `foo="bar"` or `foo={'bar'}`, if it is a plain literal. */
@@ -1282,6 +1286,8 @@ export function Fixture({
       <ExportMenu testId="forwarded-prop" />
       <StatCard testId={testId} />
       <OwnerToggle testIdPrefix="owner-filter" />
+      {/* Still rendered: the dead-sibling case is only meaningful while a real prefix
+          prop exists in the source and no longer absolves its family. */}
       <SubNav itemTestidPrefix="item-prefix" />
       <input
         data-testid={
@@ -1393,6 +1399,7 @@ export const locators = [
   { type: 'testId', value: 'member-main' },
   { type: 'testId', value: bannerTestId },
   { type: 'testId', value: 'genuinely-absent-testid' },
+  { type: 'testId', value: 'item-prefix-dead-sibling' },
 ];
 `;
 
@@ -1441,7 +1448,9 @@ function selfTest(): void {
 
     // One must-flag case, and every other reference is a form the extractor
     // has to resolve. Any of them appearing here is a regression.
-    const expectedStale = ['genuinely-absent-testid'];
+    // A locator for a dead member of a prefix family lands in the stale list, which is
+    // what makes the script exit 1 on it.
+    const expectedStale = ['genuinely-absent-testid', 'item-prefix-dead-sibling'];
     expectedStaleCount = expectedStale.length;
     if (stale.join(',') !== expectedStale.join(',')) {
       failures.push(
@@ -1620,16 +1629,28 @@ function selfTest(): void {
       failures.push('--check accepted a changed stale count');
     }
 
-    // A prefix prop keeps absolving its family's dead siblings — the documented
-    // fail-open above. Asserted so the trade is visible rather than discovered.
-    const prefixFamily = collectAppTestids(appDir, root);
-    const prefixStatics = new Set(prefixFamily.statics.map((x) => x.value));
-    const prefixPatterns = prefixFamily.dynamics.map((d) => d.value);
-    if (!isMatchedByApp('item-prefix-dead-sibling', prefixStatics, prefixPatterns)) {
-      failures.push(
-        'an itemTestidPrefix family stopped absolving its siblings — if that is ' +
-          'deliberate, the SubPageNav -select case needs cross-file resolution first',
-      );
+    // An unexpandable prefix name must be refused, not silently turned into a `prefix-*`
+    // dynamic that absolves its family's dead siblings. Driven through a fixture so it
+    // fails if the dispatch stops reaching harvestPrefixProp at all.
+    const refusalDir = path.join(root, 'refusal');
+    fs.mkdirSync(refusalDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(refusalDir, 'Future.tsx'),
+      'export const F = () => <Nav someFuturePrefix="future" />;\n',
+    );
+    const previousNames = [...TESTID_PREFIX_NAMES];
+    TESTID_PREFIX_NAMES.add('someFuturePrefix');
+    let refusedUnknownPrefix = false;
+    try {
+      collectAppTestids(refusalDir, root);
+    } catch (err) {
+      refusedUnknownPrefix = err instanceof Error && err.message.includes('someFuturePrefix');
+    } finally {
+      TESTID_PREFIX_NAMES.clear();
+      for (const name of previousNames) TESTID_PREFIX_NAMES.add(name);
+    }
+    if (!refusedUnknownPrefix) {
+      failures.push('an unexpandable prefix prop was accepted rather than refused');
     }
 
     // The floor and the parse refusal are both documented as this guard's
@@ -1648,8 +1669,8 @@ function selfTest(): void {
     let threw = false;
     try {
       collectAppTestids(unparseableDir, root);
-    } catch {
-      threw = true;
+    } catch (err) {
+      threw = err instanceof Error && err.message.includes('Failed to parse');
     }
     if (!threw) {
       failures.push('a file that cannot be parsed was skipped rather than reported');
