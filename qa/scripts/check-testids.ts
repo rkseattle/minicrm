@@ -202,24 +202,15 @@ function isUnitTestFile(filePath: string): boolean {
 const TESTID_VALUE_NAMES = new Set(['data-testid', 'testId']);
 
 /**
- * Props whose value is a stem the receiving component appends to, expanded into the
- * concrete ids that component renders.
- *
- * Only names `harvestPrefixProp` can expand belong here; it refuses any other. Emitting
- * a `prefix-*` dynamic instead would absolve every dead id sharing that stem — the
- * fail-open this audit exists to report.
- *
- * `itemTestidPrefix` is absent for that reason. Every SubPageNav call site supplies a
- * per-item `data-testid`, which takes precedence over the prefix template, so its ids are
- * enumerated from the call site's own `.map()` and the prefix added only the fail-open.
- * A future call site passing ONLY the prefix would render ids this cannot see and its
- * locators would be reported stale — resolving that needs the `items` array enumerated,
- * which no call site makes possible today.
- *
- * `panelTestidPrefix` is absent too — despite the name it feeds `aria-controls`.
+ * Props that carry a testid stem the receiving component appends to, rather than a
+ * testid itself. They bind exactly like `testId` does — the component's own template
+ * over the bound name is what yields the concrete ids — but the stem is not an id any
+ * element renders, so it is never recorded as a static in its own right.
  */
-const TESTID_PREFIX_NAMES = new Set(['testIdPrefix']);
-const OWNER_TOGGLE_SUFFIXES = ['-all', '-mine', '-my-team'] as const;
+const TESTID_STEM_NAMES = new Set(['testIdPrefix']);
+
+/** Every prop name that binds a value the receiving component builds testids from. */
+const TESTID_BINDING_NAMES = new Set([...TESTID_VALUE_NAMES, ...TESTID_STEM_NAMES]);
 
 /** The name a JSX attribute or object property is written under, if it has one. */
 function memberName(node: AstNode): string | undefined {
@@ -300,8 +291,6 @@ export function collectAppTestids(
         if (!name) return;
         if (TESTID_VALUE_NAMES.has(name)) {
           harvestTestidExpression(node.value, bindings, staticMembers, addStatic, addDynamic);
-        } else if (TESTID_PREFIX_NAMES.has(name)) {
-          harvestPrefixProp(name, node.value, addStatic);
         }
         return;
       }
@@ -315,27 +304,6 @@ export function collectAppTestids(
   }
 
   return { statics, dynamics };
-}
-
-/** `testIdPrefix="contacts-owner-filter"` → the three ids OwnerToggle renders. */
-function harvestPrefixProp(
-  propName: string,
-  value: unknown,
-  addStatic: (value: string, node: AstNode) => void,
-): void {
-  // Concrete ids only. A prefix whose suffixes are not known cannot be expanded, and
-  // emitting `prefix-*` instead would absolve every dead id sharing that stem — so an
-  // unrecognized name is refused rather than guessed at.
-  if (propName !== 'testIdPrefix') {
-    throw new Error(
-      `${propName} is in TESTID_PREFIX_NAMES but harvestPrefixProp cannot expand it. ` +
-        'Add its suffixes here, or leave the prop out of the set — outside it the ' +
-        'attribute is not read at all, which is safe but records nothing.',
-    );
-  }
-  const literal = jsxAttributeLiteral(value);
-  if (!literal) return;
-  for (const suffix of OWNER_TOGGLE_SUFFIXES) addStatic(`${literal.value}${suffix}`, literal.node);
 }
 
 /** The string behind `foo="bar"` or `foo={'bar'}`, if it is a plain literal. */
@@ -472,12 +440,12 @@ function forEachTestidCallSite(
       // poisons them all — binding only what the literal call sites pass would resolve
       // an incomplete set whose missing ids are then reported stale.
       if (attribute.type === 'JSXSpreadAttribute') {
-        for (const propName of TESTID_VALUE_NAMES) visit(name, propName, undefined);
+        for (const propName of TESTID_BINDING_NAMES) visit(name, propName, undefined);
         continue;
       }
       if (attribute.type !== 'JSXAttribute') continue;
       const propName = memberName(attribute);
-      if (!propName || !TESTID_VALUE_NAMES.has(propName)) continue;
+      if (!propName || !TESTID_BINDING_NAMES.has(propName)) continue;
       // A non-literal reaches `visit` as undefined rather than being skipped: a caller
       // that binds only the literals resolves an incomplete set, and the ids it misses
       // are reported stale though the app renders them.
@@ -509,7 +477,7 @@ function forEachTestidParam(
       if (param.type !== 'ObjectPattern') continue;
       for (const property of (param.properties as unknown[]).filter(isNode)) {
         const propName = memberName(property);
-        if (!propName || !TESTID_VALUE_NAMES.has(propName)) continue;
+        if (!propName || !TESTID_BINDING_NAMES.has(propName)) continue;
         visit(
           componentName,
           propName,
@@ -1316,6 +1284,7 @@ import { DESTINATIONS, ROUTES, ALIASED as RENAMED, OPAQUE } from './destinations
 import AliasNav from '@/aliased-nav.js';
 import { RelativeCard } from './relative-card.js';
 import { ALIAS_FAMILY } from '@/alias-family.js';
+import { OwnerToggle } from './owner-toggle.js';
 
 function MixedProps({ testId, 'data-testid': dt }: { testId?: string; 'data-testid'?: string }) {
   return <div><span data-testid={\`\${testId}-a\`} /><em data-testid={\`\${dt}-b\`} /></div>;
@@ -1440,6 +1409,19 @@ export function DefaultedCard({ testId = 'defaulted' }: { testId?: string }) {
 }
 `;
 
+/** The stem-prop shape: a component appending fixed suffixes to a bound prefix. */
+const SELF_TEST_OWNER_TOGGLE = `
+export function OwnerToggle({ testIdPrefix }: { testIdPrefix: string }) {
+  return (
+    <div>
+      <button data-testid={\`\${testIdPrefix}-all\`} />
+      <button data-testid={\`\${testIdPrefix}-mine\`} />
+      <button data-testid={\`\${testIdPrefix}-my-team\`} />
+    </div>
+  );
+}
+`;
+
 const SELF_TEST_SPREAD_CALLER = `
 export function SpreadCard({ testId }: { testId: string }) {
   return <div data-testid={\`\${testId}-sp\`} />;
@@ -1557,6 +1539,7 @@ function selfTest(): void {
     fs.writeFileSync(path.join(appDir, 'defaulted-card.tsx'), SELF_TEST_DEFAULTED_COMPONENT);
     fs.writeFileSync(path.join(appDir, 'samefile-card.tsx'), SELF_TEST_SAMEFILE_PARTIAL);
     fs.writeFileSync(path.join(appDir, 'spread-card.tsx'), SELF_TEST_SPREAD_CALLER);
+    fs.writeFileSync(path.join(appDir, 'owner-toggle.tsx'), SELF_TEST_OWNER_TOGGLE);
     fs.writeFileSync(path.join(appDir, 'PartialCallers.tsx'), SELF_TEST_PARTIAL_CALLERS);
     fs.writeFileSync(path.join(appDir, 'UnitOnly.test.tsx'), SELF_TEST_UNIT_TEST_CALL_SITE);
     // A fixture that must be ignored: its testid exists only in a unit test.
@@ -1772,30 +1755,6 @@ function selfTest(): void {
     );
     if (!compareReport(reportFile, generated).startsWith(REPORT_DRIFT_PREFIX)) {
       failures.push('--check accepted a changed stale count');
-    }
-
-    // An unexpandable prefix name must be refused, not silently turned into a `prefix-*`
-    // dynamic that absolves its family's dead siblings. Driven through a fixture so it
-    // fails if the dispatch stops reaching harvestPrefixProp at all.
-    const refusalDir = path.join(root, 'refusal');
-    fs.mkdirSync(refusalDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(refusalDir, 'Future.tsx'),
-      'export const F = () => <Nav someFuturePrefix="future" />;\n',
-    );
-    const previousNames = [...TESTID_PREFIX_NAMES];
-    TESTID_PREFIX_NAMES.add('someFuturePrefix');
-    let refusedUnknownPrefix = false;
-    try {
-      collectAppTestids(refusalDir, root);
-    } catch (err) {
-      refusedUnknownPrefix = err instanceof Error && err.message.includes('someFuturePrefix');
-    } finally {
-      TESTID_PREFIX_NAMES.clear();
-      for (const name of previousNames) TESTID_PREFIX_NAMES.add(name);
-    }
-    if (!refusedUnknownPrefix) {
-      failures.push('an unexpandable prefix prop was accepted rather than refused');
     }
 
     // The floor and the parse refusal are both documented as this guard's
