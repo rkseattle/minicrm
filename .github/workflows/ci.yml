@@ -612,7 +612,7 @@ jobs:
             #     bidirectional half: without it the guard is silent on exactly
             #     the edit it exists to catch.
             #
-            # Deliberately NOT e2e-framework-purity: its seven checks scan
+            # Deliberately NOT e2e-framework-purity: its checks scan
             # e2e/framework, e2e/tests, e2e/behaviors and three named files, none
             # of which is qa/e2e/scripts — adding it there would be a no-op that
             # reads like coverage.

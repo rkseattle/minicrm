@@ -179,9 +179,16 @@ function findFiles(dir: string, extensions: string[]): string[] {
  */
 const MINIMUM_EXPECTED_STATICS = 1000;
 
+/** Whether a scan found so little that reporting on it would be dishonest. */
+export function isCorpusTooSmall(staticCount: number): boolean {
+  return staticCount < MINIMUM_EXPECTED_STATICS;
+}
+
 /** Unit-test sources, which render testids that are not part of the app. */
 function isUnitTestFile(filePath: string): boolean {
-  return /\.test\.tsx?$/.test(filePath) || filePath.includes(`${path.sep}__tests__${path.sep}`);
+  return (
+    /\.(test|spec)\.tsx?$/.test(filePath) || filePath.includes(`${path.sep}__tests__${path.sep}`)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -884,7 +891,7 @@ export function run(checkOnly = false): void {
   const { statics: appStatics, dynamics: appDynamics } = collectAppTestids(appSrcDir, repoRoot);
   // An empty scan reports Stale: 0 — this guard's silent-failure mode, and how
   // it lost sight of the app before. Refuse rather than certify nothing.
-  if (appStatics.length < MINIMUM_EXPECTED_STATICS) {
+  if (isCorpusTooSmall(appStatics.length)) {
     console.error(
       `Scanned ${appSrcDir} and found only ${appStatics.length} testids; expected at least ` +
         `${MINIMUM_EXPECTED_STATICS}. Refusing to report on a corpus this small.`,
@@ -1324,6 +1331,29 @@ function selfTest(): void {
       );
     }
 
+    // The floor and the parse refusal are both documented as this guard's
+    // protection against certifying an empty scan. Neither is reachable from
+    // the collectors, so assert them directly rather than in prose only.
+    if (!isCorpusTooSmall(0) || !isCorpusTooSmall(MINIMUM_EXPECTED_STATICS - 1)) {
+      failures.push('the corpus floor accepts a scan that found nothing');
+    }
+    if (isCorpusTooSmall(MINIMUM_EXPECTED_STATICS)) {
+      failures.push('the corpus floor rejects a scan at the threshold');
+    }
+
+    const unparseableDir = path.join(root, 'unparseable');
+    fs.mkdirSync(unparseableDir, { recursive: true });
+    fs.writeFileSync(path.join(unparseableDir, 'Broken.tsx'), 'export function ( { <<<');
+    let threw = false;
+    try {
+      collectAppTestids(unparseableDir, root);
+    } catch {
+      threw = true;
+    }
+    if (!threw) {
+      failures.push('a file that cannot be parsed was skipped rather than reported');
+    }
+
     if (!tests.statics.some((t) => t.value === 'resolved-from-const')) {
       failures.push('test extractor did not resolve an identifier-valued reference');
     }
@@ -1352,7 +1382,7 @@ function selfTest(): void {
     `SELF-TEST PASS: ${mustResolveCount} forms resolved, ${expectedStaleCount} must-flag ` +
       `stale, ${mustNotInventCount} must-not-invent values absent, suffix-only pattern ` +
       `inert, dead family sibling reported, identifier reference resolved, ` +
-      `--check ignores line motion and rejects a changed stale list.`,
+      `--check ignores line motion and rejects a changed stale list, corpus floor and \n      parse refusal both enforced.`,
   );
 }
 
