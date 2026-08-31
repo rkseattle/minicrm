@@ -252,9 +252,9 @@ the pipeline, not for producing the file that ships.
 Read `qa/e2e/test-results/results.xml` for pass/fail/skip counts. Never the console
 output, never the exit code. If output is truncated, read the file — do not re-run. **A
 verdict you still need must be copied aside first**: any executing run clears
-`test-results/`, and `--list` rewrites `results.xml` with an all-skipped report — zero
-executed, unlike a truncated run's partial count. To redirect a run instead, use
-`pre-push.md`'s `--output` and `PLAYWRIGHT_JUNIT_OUTPUT_FILE`.
+`test-results/`, and `--list` rewrites `results.xml` all-skipped (executed = `tests` −
+`skipped` = 0, where a truncated run's is partial). **Verify a fix under the config's own
+reporter**: `--reporter=` replaces the JUnit one, leaving no `results.xml` at all.
 
 ## Failure handling
 
