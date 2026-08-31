@@ -12,6 +12,7 @@ import {
   setPasswordSchema,
   adminSetPasswordSchema,
   updateRoleSchema,
+  updateNavLayoutSchema,
   updatePreferredLanguageSchema,
   updateNotificationPrefsSchema,
 } from '@minicrm/shared/schemas/userSchema.js';
@@ -345,6 +346,48 @@ export async function setMyPreferredLanguage(req: Request, res: Response): Promi
   }
 
   res.status(200).json({ language: user.preferred_language });
+}
+
+/**
+ * GET /api/v1/users/me/nav-layout
+ * Returns the authenticated user's stored nav layout, or null if not set.
+ */
+export async function getMyNavLayout(req: Request, res: Response): Promise<void> {
+  const layout = await userService.getUserNavLayout(req.user!.id);
+  res.status(200).json({ layout });
+}
+
+/**
+ * PATCH /api/v1/users/me/nav-layout
+ * Persists the authenticated user's nav layout.
+ * Accepts { layout: NavLayout | null } — null clears the preference.
+ */
+export async function setMyNavLayout(req: Request, res: Response): Promise<void> {
+  const parseResult = updateNavLayoutSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parseResult.error.errors[0].message,
+      },
+    });
+    return;
+  }
+
+  const { layout } = parseResult.data;
+
+  const user = await userService.setUserNavLayout(req.user!.id, layout, {
+    id: req.user!.id,
+    name: req.user!.name,
+  });
+  if (!user) {
+    res.status(404).json({
+      error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+    });
+    return;
+  }
+
+  res.status(200).json({ layout: user.nav_layout });
 }
 
 /**

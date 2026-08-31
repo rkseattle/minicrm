@@ -21,7 +21,7 @@
 import 'dotenv/config';
 import request from 'supertest';
 import app from '../app.js';
-import { createUser } from '../services/userService.js';
+import { createUser, getUserNavLayout } from '../services/userService.js';
 import { createContact } from '../services/contactService.js';
 import { createAccount } from '../services/accountService.js';
 import { createDeal } from '../services/dealService.js';
@@ -590,6 +590,20 @@ describe('ownership check uses req.user, not request body', () => {
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
+  it('ignores a user id in PATCH body for nav layout — rep B cannot write rep A row', async () => {
+    // A me-scoped route takes no id in its path, so a honored body id would be silent:
+    // the write succeeds either way and only the row written differs.
+    const before = await getUserNavLayout(repAId);
+
+    const res = await request(app)
+      .patch('/api/v1/users/me/nav-layout')
+      .set('Cookie', repBCookie)
+      .send({ layout: 'left', id: repAId, user_id: repAId });
+
+    expect(res.status).toBe(200);
+    expect(await getUserNavLayout(repAId)).toBe(before);
   });
 });
 
