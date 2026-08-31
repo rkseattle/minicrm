@@ -46,6 +46,8 @@ type AstNode = Record<string, unknown> & { type: string };
 interface StaticFamily {
   members: string[];
   byKey?: Map<string, string>;
+  /** For an array of object literals: each property name's values across rows. */
+  objectKeys?: Map<string, string[]>;
 }
 
 function isNode(value: unknown): value is AstNode {
@@ -218,6 +220,9 @@ export function collectAppTestids(srcDir: string): {
     const ast = parseFile(relPath, content);
 
     const staticMembers = collectStaticMembers(ast);
+    for (const [name, family] of collectImportedFamilies(ast, filePath)) {
+      if (!staticMembers.has(name)) staticMembers.set(name, family);
+    }
 
     const addStatic = (value: string, node: AstNode): void => {
       statics.push({ value, file: relPath, line: lineOf(node) });
@@ -296,6 +301,21 @@ function collectStaticMembers(ast: AstNode): Map<string, StaticFamily> {
       const literals = elements.filter((e) => e.type === 'Literal' && typeof e.value === 'string');
       if (literals.length === elements.length && literals.length > 0) {
         families.set(id.name as string, { members: literals.map((e) => e.value as string) });
+        return;
+      }
+
+      const rows = elements.filter((e) => e.type === 'ObjectExpression');
+      if (rows.length === elements.length && rows.length > 0) {
+        const objectKeys = new Map<string, string[]>();
+        for (const row of rows) {
+          for (const property of (row.properties as unknown[]).filter(isNode)) {
+            const key = memberName(property);
+            const value = unwrapTypeExpression(property.value);
+            if (!key || value?.type !== 'Literal' || typeof value.value !== 'string') continue;
+            objectKeys.set(key, [...(objectKeys.get(key) ?? []), value.value]);
+          }
+        }
+        if (objectKeys.size > 0) families.set(id.name as string, { members: [], objectKeys });
       }
       return;
     }
@@ -315,6 +335,63 @@ function collectStaticMembers(ast: AstNode): Map<string, StaticFamily> {
     }
   });
   return families;
+}
+
+/**
+ * Constant families a file imports by relative path.
+ *
+ * One edge deep, no transitive resolution. The nav families are the reason:
+ * `DESTINATION_NAME` lives in `navLinks.ts` and is what every `nav-*` testid
+ * interpolates, so without following that edge the whole family stays a
+ * permissive prefix that any dead sibling matches.
+ */
+function collectImportedFamilies(ast: AstNode, filePath: string): Map<string, StaticFamily> {
+  const imported = new Map<string, StaticFamily>();
+  const cached = new Map<string, Map<string, StaticFamily>>();
+
+  walk(ast, (node) => {
+    if (node.type !== 'ImportDeclaration') return;
+    const source = node.source as AstNode | undefined;
+    const specifier = typeof source?.value === 'string' ? source.value : undefined;
+    if (!specifier?.startsWith('.')) return;
+
+    // Look up by the exported name, bind under the local one: `import { F as L }`
+    // is declared as F over there and interpolated as L here.
+    const names = (node.specifiers as unknown[])
+      .filter(isNode)
+      .filter((s) => s.type === 'ImportSpecifier')
+      .map((s) => {
+        const exported = isNode(s.imported) ? (s.imported.name as string) : undefined;
+        const local = isNode(s.local) ? (s.local.name as string) : exported;
+        return exported === undefined ? undefined : { exported, local: local ?? exported };
+      })
+      .filter((entry): entry is { exported: string; local: string } => entry !== undefined);
+    if (names.length === 0) return;
+
+    const resolved = resolveRelativeImport(filePath, specifier);
+    if (!resolved || isUnitTestFile(resolved)) return;
+
+    let families = cached.get(resolved);
+    if (!families) {
+      families = collectStaticMembers(parseFile(resolved, fs.readFileSync(resolved, 'utf-8')));
+      cached.set(resolved, families);
+    }
+    for (const { exported, local } of names) {
+      const family = families.get(exported);
+      if (family) imported.set(local, family);
+    }
+  });
+
+  return imported;
+}
+
+/** The file a relative specifier names, rewriting the repo's `.js` suffix. */
+function resolveRelativeImport(fromFile: string, specifier: string): string | undefined {
+  const base = path.resolve(path.dirname(fromFile), specifier.replace(/\.js$/, ''));
+  for (const candidate of [`${base}.ts`, `${base}.tsx`]) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return undefined;
 }
 
 /**
@@ -441,6 +518,27 @@ function harvestTemplateLiteral(
 }
 
 /**
+ * The keys an index expression can select — `link.to`, where `link` iterates an
+ * array of objects, resolves to every `to` value in that array.
+ *
+ * Without this the audit would have to assume an index reaches every row of the
+ * map it indexes, which mints ids for rows nothing selects.
+ */
+function indexKeys(
+  property: unknown,
+  staticMembers: Map<string, StaticFamily>,
+): string[] | undefined {
+  if (!isNode(property) || property.type !== 'MemberExpression') return undefined;
+  const propertyName = isNode(property.property) ? (property.property.name as string) : undefined;
+  if (!propertyName) return undefined;
+  for (const family of staticMembers.values()) {
+    const keys = family.objectKeys?.get(propertyName);
+    if (keys) return keys;
+  }
+  return undefined;
+}
+
+/**
  * The values an interpolated expression can take, if this file can see them.
  *
  * A member access resolves to its ONE named property. Returning the whole
@@ -467,7 +565,19 @@ function resolveFamily(
         : property.type === 'Literal' && typeof property.value === 'string'
           ? property.value
           : undefined;
-    if (key === undefined) return undefined;
+    // A computed key: `DESTINATION_NAME[link.to]`. Enumerate only the entries
+    // the index can actually select. Taking the whole family instead would mint
+    // ids for rows nothing reaches — DESTINATION_NAME has an /activities row,
+    // NAV_LINKS has no /activities link — and each would absolve a dead locator.
+    if (key === undefined) {
+      if (expression.computed !== true) return undefined;
+      const selectable = indexKeys(expression.property, staticMembers);
+      if (!selectable) return undefined;
+      const reachable = selectable
+        .map((k) => family.byKey?.get(k))
+        .filter((value): value is string => value !== undefined);
+      return reachable.length > 0 ? reachable : undefined;
+    }
     const value = family.byKey.get(key);
     return value === undefined ? undefined : [value];
   }
@@ -762,7 +872,19 @@ const VIEWS = ['win-loss', 'activity'] as const;
 const LABELS = { primary: 'main', secondary: 'aux' };
 const SIZES = ['sm', 'lg'];
 
-export function Fixture({ testId, readOnly, tab }: { testId: string; readOnly: boolean; tab: string }) {
+import { DESTINATIONS, ROUTES, ALIASED as RENAMED, OPAQUE } from './destinations.js';
+
+export function Fixture({
+  testId,
+  readOnly,
+  tab,
+  route,
+}: {
+  testId: string;
+  readOnly: boolean;
+  tab: string;
+  route: string;
+}) {
   const navItems = TAB_KEYS.map((tab) => ({ 'data-testid': \`settings-tab-\${tab}\` }));
   const viewItems = VIEWS.map((view) => ({ 'data-testid': \`reports-tab-\${view}\` }));
   return (
@@ -784,11 +906,30 @@ export function Fixture({ testId, readOnly, tab }: { testId: string; readOnly: b
       <i data-testid={\`\${testId}-suffix-only\`} />
       <u data-testid="resolved-from-const" />
       <s data-testid={\`after-map-\${tab}\`} />
+      {ROUTES.map((link) => (
+        <p data-testid={\`nav-\${DESTINATIONS[link.to]}\`} />
+      ))}
+      <q data-testid={\`alias-\${RENAMED.primary}\`} />
+      <a data-testid={\`opaque-\${OPAQUE[route]}\`} />
       {navItems}
       {viewItems}
     </div>
   );
 }
+`;
+
+const SELF_TEST_IMPORTED_FAMILY = `
+export const DESTINATIONS: Record<string, string> = {
+  '/one': 'one',
+  '/two': 'two',
+  '/unreachable': 'unreachable',
+};
+
+export const ROUTES = [{ to: '/one' }, { to: '/two' }];
+
+export const ALIASED: Record<string, string> = { primary: 'aliased-value' };
+
+export const OPAQUE: Record<string, string> = { a: 'opaque-one', b: 'opaque-two' };
 `;
 
 const SELF_TEST_PAGE_OBJECT = `
@@ -825,6 +966,7 @@ function selfTest(): void {
     fs.mkdirSync(appDir, { recursive: true });
     fs.mkdirSync(testDir, { recursive: true });
     fs.writeFileSync(path.join(appDir, 'Fixture.tsx'), SELF_TEST_APP_SOURCE);
+    fs.writeFileSync(path.join(appDir, 'destinations.ts'), SELF_TEST_IMPORTED_FAMILY);
     // A fixture that must be ignored: its testid exists only in a unit test.
     fs.writeFileSync(
       path.join(appDir, 'Fixture.test.tsx'),
@@ -863,6 +1005,9 @@ function selfTest(): void {
       { name: 'reports-tab-win-loss', pins: '`as const` array via .map()' },
       { name: 'owner-filter-mine', pins: 'OwnerToggle prefix expansion' },
       { name: 'member-main', pins: 'member access resolved to one value' },
+      { name: 'nav-one', pins: 'computed access into an imported family' },
+      { name: 'nav-two', pins: "the imported family's other member" },
+      { name: 'alias-aliased-value', pins: 'an aliased import bound to its local name' },
     ];
     mustResolveCount = mustResolve.length;
     for (const testCase of mustResolve) {
@@ -886,6 +1031,18 @@ function selfTest(): void {
         value: 'after-map-beta',
         why: 'a .map() parameter binding must not escape its callback',
       },
+      {
+        value: 'nav-unreachable',
+        why: 'a computed index reaches only the keys its own array supplies',
+      },
+      {
+        value: 'opaque-opaque-one',
+        why: 'an index with no resolvable key set must not enumerate the family',
+      },
+      {
+        value: 'opaque-opaque-two',
+        why: 'an index with no resolvable key set must not enumerate the family',
+      },
     ];
     mustNotInventCount = mustNotInvent.length;
     for (const invented of mustNotInvent) {
@@ -898,6 +1055,12 @@ function selfTest(): void {
     // every unrelated id ending the same way.
     if (isMatchedByApp('anything-suffix-only', appStatics, appPatterns)) {
       failures.push('a trailing-segment pattern matched an unrelated value');
+    }
+
+    // An enumerated family drops its permissive prefix, so a sibling the app
+    // never renders is reported rather than absolved.
+    if (isMatchedByApp('nav-three', appStatics, appPatterns)) {
+      failures.push('a dead member of an enumerated family was matched');
     }
 
     if (!tests.statics.some((t) => t.value === 'resolved-from-const')) {
@@ -926,7 +1089,7 @@ function selfTest(): void {
   console.log(
     `SELF-TEST PASS: ${mustResolveCount} forms resolved, ${expectedStaleCount} must-flag ` +
       `stale, ${mustNotInventCount} must-not-invent values absent, suffix-only pattern ` +
-      `inert, identifier reference resolved.`,
+      `inert, dead family sibling reported, identifier reference resolved.`,
   );
 }
 
