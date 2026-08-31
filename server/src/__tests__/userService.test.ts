@@ -33,6 +33,7 @@ import {
   resetUserOnboarding,
 } from '../services/userService.js';
 import pool from '../db.js';
+import { NAV_LAYOUTS } from '@minicrm/shared/schemas/settingsSchema.js';
 import { getFieldDisplayName } from '../services/auditService.js';
 
 const FILE_PREFIX = 'user-svc';
@@ -861,7 +862,7 @@ describe('setUserNavLayout', () => {
 
   it('handles every supported layout without error', async () => {
     const user = await createUser(BASE_USER);
-    for (const layout of ['top', 'left', 'hamburger'] as const) {
+    for (const layout of NAV_LAYOUTS) {
       const updated = await setUserNavLayout(user.id, layout, { id: user.id, name: user.name });
       expect(updated).not.toBeNull();
       expect(updated!.nav_layout).toBe(layout);

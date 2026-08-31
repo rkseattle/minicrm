@@ -14,6 +14,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { NAV_LAYOUTS } from '@minicrm/shared/schemas/settingsSchema.js';
 import { makeAuthCookie } from './testUtils.js';
 
 const BASE_USER = {
@@ -176,5 +177,113 @@ describe('PATCH /api/v1/users/:id/deactivate', () => {
       .set('Cookie', repCookie);
 
     expect(res.status).toBe(403);
+  });
+});
+
+describe('GET /api/v1/users/me/nav-layout', () => {
+  it('returns null when the user has no preference', async () => {
+    const res = await request(app).get('/api/v1/users/me/nav-layout').set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.layout).toBeNull();
+  });
+
+  it('is reachable by a non-admin', async () => {
+    const res = await request(app).get('/api/v1/users/me/nav-layout').set('Cookie', repCookie);
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 401 without a session', async () => {
+    const res = await request(app).get('/api/v1/users/me/nav-layout');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('PATCH /api/v1/users/me/nav-layout', () => {
+  // No truncating beforeEach in this file, so each test clears what it wrote.
+  afterEach(async () => {
+    for (const cookie of [adminCookie, repCookie]) {
+      await request(app)
+        .patch('/api/v1/users/me/nav-layout')
+        .set('Cookie', cookie)
+        .send({ layout: null });
+    }
+  });
+
+  it.each([...NAV_LAYOUTS])('accepts %s and echoes it back', async (layout) => {
+    const res = await request(app)
+      .patch('/api/v1/users/me/nav-layout')
+      .set('Cookie', adminCookie)
+      .send({ layout });
+    expect(res.status).toBe(200);
+    expect(res.body.layout).toBe(layout);
+  });
+
+  it('accepts null to clear the preference', async () => {
+    await request(app)
+      .patch('/api/v1/users/me/nav-layout')
+      .set('Cookie', adminCookie)
+      .send({ layout: 'left' });
+
+    const res = await request(app)
+      .patch('/api/v1/users/me/nav-layout')
+      .set('Cookie', adminCookie)
+      .send({ layout: null });
+    expect(res.status).toBe(200);
+    expect(res.body.layout).toBeNull();
+  });
+
+  it('writes only the caller row, ignoring any id in the body', async () => {
+    // Give the admin a distinct known value, so this test proves the rep's write landed
+    // on the rep and left the admin alone, rather than inheriting a null from test order.
+    await request(app)
+      .patch('/api/v1/users/me/nav-layout')
+      .set('Cookie', adminCookie)
+      .send({ layout: 'top' });
+
+    const res = await request(app)
+      .patch('/api/v1/users/me/nav-layout')
+      .set('Cookie', repCookie)
+      .send({ layout: 'left', id: adminId, user_id: adminId });
+    expect(res.status).toBe(200);
+    expect(res.body.layout).toBe('left');
+
+    const rep = await request(app).get('/api/v1/users/me/nav-layout').set('Cookie', repCookie);
+    expect(rep.body.layout).toBe('left');
+
+    const admin = await request(app).get('/api/v1/users/me/nav-layout').set('Cookie', adminCookie);
+    expect(admin.body.layout).toBe('top');
+  });
+
+  it('rejects an unsupported layout with 400 VALIDATION_ERROR', async () => {
+    const res = await request(app)
+      .patch('/api/v1/users/me/nav-layout')
+      .set('Cookie', adminCookie)
+      .send({ layout: 'sidebar' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.message).toContain(NAV_LAYOUTS.join(', '));
+  });
+
+  it('rejects a missing layout key with 400', async () => {
+    const res = await request(app)
+      .patch('/api/v1/users/me/nav-layout')
+      .set('Cookie', adminCookie)
+      .send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('is reachable by a non-admin', async () => {
+    const res = await request(app)
+      .patch('/api/v1/users/me/nav-layout')
+      .set('Cookie', repCookie)
+      .send({ layout: 'hamburger' });
+    expect(res.status).toBe(200);
+    expect(res.body.layout).toBe('hamburger');
+  });
+
+  it('returns 401 without a session', async () => {
+    const res = await request(app).patch('/api/v1/users/me/nav-layout').send({ layout: 'top' });
+    expect(res.status).toBe(401);
   });
 });

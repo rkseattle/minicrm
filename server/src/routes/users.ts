@@ -19,6 +19,8 @@ import {
   adminSetPassword,
   getMyPreferredLanguage,
   setMyPreferredLanguage,
+  getMyNavLayout,
+  setMyNavLayout,
   getMyNotificationPrefs,
   updateMyNotificationPrefs,
   getNotificationRecipientCount,
@@ -245,6 +247,78 @@ router.get('/me/language', authenticate, asyncHandler(getMyPreferredLanguage));
  *                 message: Authentication required
  */
 router.patch('/me/language', authenticate, asyncHandler(setMyPreferredLanguage));
+
+/**
+ * @openapi
+ * /api/v1/users/me/nav-layout:
+ *   get:
+ *     tags: [Users]
+ *     operationId: getMyNavLayout
+ *     summary: Get the authenticated user's navigation layout preference
+ *     description: >
+ *       Returns the user's stored navigation layout, or null if none is set
+ *       (in which case the workspace default applies). Requires authentication.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: User's navigation layout (or null)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 layout:
+ *                   type: string
+ *                   enum: [top, left, hamburger]
+ *                   nullable: true
+ *             example:
+ *               layout: left
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/me/nav-layout', authenticate, asyncHandler(getMyNavLayout));
+
+/**
+ * @openapi
+ * /api/v1/users/me/nav-layout:
+ *   patch:
+ *     tags: [Users]
+ *     operationId: setMyNavLayout
+ *     summary: Set the authenticated user's navigation layout preference
+ *     description: >
+ *       Persists the user's navigation layout. Pass null to clear the preference
+ *       and follow the workspace default. Requires authentication.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateNavLayoutRequest'
+ *           example:
+ *             layout: left
+ *     responses:
+ *       200:
+ *         description: Navigation layout updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 layout:
+ *                   type: string
+ *                   enum: [top, left, hamburger]
+ *                   nullable: true
+ *             example:
+ *               layout: left
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.patch('/me/nav-layout', authenticate, asyncHandler(setMyNavLayout));
 
 /**
  * @openapi

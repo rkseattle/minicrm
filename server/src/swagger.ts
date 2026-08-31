@@ -209,6 +209,19 @@ const componentSchemas = {
       },
     },
   },
+  UpdateNavLayoutRequest: {
+    type: 'object',
+    required: ['layout'],
+    properties: {
+      layout: {
+        type: 'string',
+        enum: [...NAV_LAYOUTS],
+        nullable: true,
+        description: 'null clears the preference and falls back to the workspace default',
+        example: 'left',
+      },
+    },
+  },
 
   // ── Contact ────────────────────────────────────────────────────────────────
   Contact: {
