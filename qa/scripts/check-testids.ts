@@ -468,6 +468,13 @@ function forEachTestidCallSite(
     const name = isNode(node.name) ? (node.name.name as string) : undefined;
     if (!name || !isTarget(name)) return;
     for (const attribute of (node.attributes as unknown[]).filter(isNode)) {
+      // A spread can carry any testid prop and its value is unreadable here, so it
+      // poisons them all — binding only what the literal call sites pass would resolve
+      // an incomplete set whose missing ids are then reported stale.
+      if (attribute.type === 'JSXSpreadAttribute') {
+        for (const propName of TESTID_VALUE_NAMES) visit(name, propName, undefined);
+        continue;
+      }
       if (attribute.type !== 'JSXAttribute') continue;
       const propName = memberName(attribute);
       if (!propName || !TESTID_VALUE_NAMES.has(propName)) continue;
@@ -1308,6 +1315,7 @@ const shadowed = ['overview', 'settings'];
 import { DESTINATIONS, ROUTES, ALIASED as RENAMED, OPAQUE } from './destinations.js';
 import AliasNav from '@/aliased-nav.js';
 import { RelativeCard } from './relative-card.js';
+import { ALIAS_FAMILY } from '@/alias-family.js';
 
 function MixedProps({ testId, 'data-testid': dt }: { testId?: string; 'data-testid'?: string }) {
   return <div><span data-testid={\`\${testId}-a\`} /><em data-testid={\`\${dt}-b\`} /></div>;
@@ -1363,6 +1371,9 @@ export function Fixture({
         <p data-testid={\`nav-\${DESTINATIONS[link.to]}\`} />
       ))}
       <q data-testid={\`alias-\${RENAMED.primary}\`} />
+      {ALIAS_FAMILY.map((m) => (
+        <output data-testid={\`aliasfam-\${m}\`} />
+      ))}
       <MixedProps testId="mixed-props" />
       <LocalCard testId="local-card" />
       <OtherCard testId="other-card" />
@@ -1429,6 +1440,16 @@ export function DefaultedCard({ testId = 'defaulted' }: { testId?: string }) {
 }
 `;
 
+const SELF_TEST_SPREAD_CALLER = `
+export function SpreadCard({ testId }: { testId: string }) {
+  return <div data-testid={\`\${testId}-sp\`} />;
+}
+const forwarded = { testId: 'from-spread' };
+export const SpreadUse = () => (
+  <div><SpreadCard testId="spread-literal" /><SpreadCard {...forwarded} /></div>
+);
+`;
+
 const SELF_TEST_SAMEFILE_PARTIAL = `
 export function SameFileCard({ testId }: { testId: string }) {
   return <div data-testid={\`\${testId}-sf\`} />;
@@ -1469,6 +1490,11 @@ export const Callers = () => (
     <Second testId="wy" />
   </div>
 );
+`;
+
+/** A constant family reached only through the scan-root alias. */
+const SELF_TEST_ALIAS_FAMILY = `
+export const ALIAS_FAMILY = ['one', 'two'];
 `;
 
 const SELF_TEST_IMPORTED_FAMILY = `
@@ -1521,6 +1547,7 @@ function selfTest(): void {
     fs.mkdirSync(testDir, { recursive: true });
     fs.writeFileSync(path.join(appDir, 'Fixture.tsx'), SELF_TEST_APP_SOURCE);
     fs.writeFileSync(path.join(appDir, 'destinations.ts'), SELF_TEST_IMPORTED_FAMILY);
+    fs.writeFileSync(path.join(appDir, 'alias-family.ts'), SELF_TEST_ALIAS_FAMILY);
     fs.writeFileSync(path.join(appDir, 'aliased-nav.tsx'), SELF_TEST_ALIAS_COMPONENT);
     fs.writeFileSync(path.join(appDir, 'relative-card.tsx'), SELF_TEST_RELATIVE_COMPONENT);
     fs.writeFileSync(path.join(appDir, 'twin-one.tsx'), SELF_TEST_TWIN_ONE);
@@ -1529,6 +1556,7 @@ function selfTest(): void {
     fs.writeFileSync(path.join(appDir, 'partial-card.tsx'), SELF_TEST_PARTIAL_COMPONENT);
     fs.writeFileSync(path.join(appDir, 'defaulted-card.tsx'), SELF_TEST_DEFAULTED_COMPONENT);
     fs.writeFileSync(path.join(appDir, 'samefile-card.tsx'), SELF_TEST_SAMEFILE_PARTIAL);
+    fs.writeFileSync(path.join(appDir, 'spread-card.tsx'), SELF_TEST_SPREAD_CALLER);
     fs.writeFileSync(path.join(appDir, 'PartialCallers.tsx'), SELF_TEST_PARTIAL_CALLERS);
     fs.writeFileSync(path.join(appDir, 'UnitOnly.test.tsx'), SELF_TEST_UNIT_TEST_CALL_SITE);
     // A fixture that must be ignored: its testid exists only in a unit test.
@@ -1583,6 +1611,7 @@ function selfTest(): void {
       { name: 'wy-two', pins: "its same-named twin's own call site, in another file" },
       { name: 'explicit-tail', pins: 'a defaulted parameter still binds its call sites' },
       { name: 'defaulted-tail', pins: "the parameter's own default, when a caller omits it" },
+      { name: 'aliasfam-one', pins: 'a constant family imported through the scan-root alias' },
     ];
     mustResolveCount = mustResolve.length;
     for (const testCase of mustResolve) {
@@ -1645,6 +1674,10 @@ function selfTest(): void {
       {
         value: 'literal-one-body',
         why: 'a family with a non-literal call site must stay dynamic, not half-resolve',
+      },
+      {
+        value: 'spread-literal-sp',
+        why: 'a spread call site can carry the prop, so it poisons the pair like any other',
       },
       {
         value: 'cross-literal-sf',
