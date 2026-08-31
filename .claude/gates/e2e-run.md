@@ -116,7 +116,7 @@ docker compose -f docker-compose.test.yml up -d server
 # Re-seed admin user, MinIO storage config, Mailhog SMTP config
 env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
 
-# Clear stale results (any run clears them anyway — see "Reading results")
+# Clear stale results — the run clears them too, but not if it dies before starting
 rm -rf qa/e2e/test-results/
 
 # Non-serial — both projects, matching e2e-functional's [desktop, mobile-web]

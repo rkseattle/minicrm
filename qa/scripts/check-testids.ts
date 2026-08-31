@@ -490,7 +490,7 @@ function forEachTestidParam(
   });
 }
 
-/** The literal a destructured property falls back to — `{ id = 'contact-selector' }`. */
+/** The literal a destructured property falls back to — `{ testId = 'stat-card' }`. */
 function destructuredDefault(property: AstNode): string | undefined {
   const value = property.value as AstNode | undefined;
   if (value?.type !== 'AssignmentPattern') return undefined;
@@ -524,9 +524,9 @@ function destructuredLocalName(property: AstNode): string | undefined {
  * components share, and two same-named components in different files would otherwise
  * feed each other's suffixes.
  *
- * One edge deep, like `collectImportedFamilies`: a call site importing through a
- * re-export barrel indexes against the barrel, so the declaring component never sees it
- * and its template stays dynamic. No barrel exists in `client/src`.
+ * Only static `import` reaches this: a `lazy(() => import(...))` call site is invisible,
+ * as is one importing through a re-export barrel. Both leave the template dynamic. The
+ * lazy form is live — `App.tsx` loads its pages that way — but none takes a testid prop.
  */
 function collectCorpusCallSites(
   files: string[],
@@ -847,8 +847,8 @@ function harvestTemplateLiteral(
   // A leading interpolation carries no prefix, and its tail — `-select`, `-link`
   // — is shared by unrelated ids, so matching on it would absolve every dead id
   // ending the same way. Recorded for the report's manual-review list, where it
-  // matches nothing. What reaches here is a testid built from a prop whose name is
-  // outside TESTID_VALUE_NAMES, so no call-site value is ever bound to it.
+  // matches nothing. Two routes reach here: a stem prop no binding name covers, or an
+  // in-scope prop whose pair a call site poisoned. Both mean no value is bound.
   addDynamic(`*${quasis.map(text).join('*')}`, template);
 }
 
