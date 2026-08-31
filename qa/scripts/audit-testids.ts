@@ -80,10 +80,11 @@ function walkScoped(
   node: unknown,
   bindings: Map<string, string[]>,
   staticMembers: Map<string, StaticFamily>,
+  componentProps: Map<string, Map<string, string[]>>,
   visit: (node: AstNode, bindings: Map<string, string[]>) => void,
 ): void {
   if (Array.isArray(node)) {
-    for (const child of node) walkScoped(child, bindings, staticMembers, visit);
+    for (const child of node) walkScoped(child, bindings, staticMembers, componentProps, visit);
     return;
   }
   if (typeof node !== 'object' || node === null) return;
@@ -93,11 +94,19 @@ function walkScoped(
     visit(node, bindings);
     const bound = mapCallbackBinding(node, staticMembers);
     if (bound) scope = new Map([...bindings, ...bound]);
+    // A component's own body sees the testids ITS call sites pass. Two
+    // components in one file both destructure `testId`, so a flat binding
+    // would give each the other's ids.
+    const declared =
+      node.type === 'FunctionDeclaration' && isNode(node.id)
+        ? componentProps.get(node.id.name as string)
+        : undefined;
+    if (declared) scope = new Map([...scope, ...declared]);
   }
 
   for (const [key, child] of Object.entries(node)) {
     if (key === 'parent') continue;
-    walkScoped(child, scope, staticMembers, visit);
+    walkScoped(child, scope, staticMembers, componentProps, visit);
   }
 }
 
@@ -231,7 +240,9 @@ export function collectAppTestids(srcDir: string): {
       dynamics.push({ value, file: relPath, line: lineOf(node) });
     };
 
-    walkScoped(ast, new Map(), staticMembers, (node, bindings) => {
+    const componentProps = collectLocalComponentProps(ast);
+
+    walkScoped(ast, new Map(), staticMembers, componentProps, (node, bindings) => {
       if (node.type === 'JSXAttribute') {
         const name = memberName(node);
         if (!name) return;
@@ -335,6 +346,58 @@ function collectStaticMembers(ast: AstNode): Map<string, StaticFamily> {
     }
   });
   return families;
+}
+
+/**
+ * Each locally-declared component's testid parameter, bound to the literals its
+ * own call sites pass — `StatCard` derives `${testId}-link` and `${testId}-value`.
+ *
+ * Keyed by component, not by parameter name: `testId` is the prop name several
+ * components share, so two declared in one file would otherwise each inherit the
+ * other's ids. Only `FunctionDeclaration` components are read; an arrow-function
+ * component stays a dynamic, which fails closed rather than open.
+ */
+function collectLocalComponentProps(ast: AstNode): Map<string, Map<string, string[]>> {
+  const declared = new Set<string>();
+  walk(ast, (node) => {
+    if (node.type === 'FunctionDeclaration' && isNode(node.id))
+      declared.add(node.id.name as string);
+  });
+  if (declared.size === 0) return new Map();
+
+  const callSiteValues = new Map<string, Set<string>>();
+  walk(ast, (node) => {
+    if (node.type !== 'JSXOpeningElement') return;
+    const name = isNode(node.name) ? (node.name.name as string) : undefined;
+    if (!name || !declared.has(name)) return;
+    for (const attribute of (node.attributes as unknown[]).filter(isNode)) {
+      if (attribute.type !== 'JSXAttribute') continue;
+      if (!TESTID_VALUE_NAMES.has(memberName(attribute) ?? '')) continue;
+      const literal = jsxAttributeLiteral(attribute.value);
+      if (!literal) continue;
+      const values = callSiteValues.get(name) ?? new Set<string>();
+      values.add(literal.value);
+      callSiteValues.set(name, values);
+    }
+  });
+
+  const byComponent = new Map<string, Map<string, string[]>>();
+  walk(ast, (node) => {
+    if (node.type !== 'FunctionDeclaration' || !isNode(node.id)) return;
+    const componentName = node.id.name as string;
+    const values = callSiteValues.get(componentName);
+    if (!values) return;
+    const bindings = new Map<string, string[]>();
+    for (const param of (node.params as unknown[]).filter(isNode)) {
+      if (param.type !== 'ObjectPattern') continue;
+      for (const property of (param.properties as unknown[]).filter(isNode)) {
+        const key = memberName(property);
+        if (key && TESTID_VALUE_NAMES.has(key)) bindings.set(key, [...values]);
+      }
+    }
+    if (bindings.size > 0) byComponent.set(componentName, bindings);
+  });
+  return byComponent;
 }
 
 /**
@@ -618,7 +681,7 @@ export function collectTestTestids(dirs: string[]): {
         dynamics.push({ value, file: relPath, line: lineOf(node) });
       };
 
-      walkScoped(ast, new Map(), staticMembers, (node, bindings) => {
+      walkScoped(ast, new Map(), staticMembers, new Map(), (node, bindings) => {
         if (node.type !== 'ObjectExpression') return;
         const properties = (node.properties as unknown[]).filter(isNode);
         const typeProperty = properties.find((p) => memberName(p) === 'type');
@@ -871,19 +934,30 @@ const TAB_KEYS = ['alpha', 'beta'];
 const VIEWS = ['win-loss', 'activity'] as const;
 const LABELS = { primary: 'main', secondary: 'aux' };
 const SIZES = ['sm', 'lg'];
+const shadowed = ['overview', 'settings'];
 
 import { DESTINATIONS, ROUTES, ALIASED as RENAMED, OPAQUE } from './destinations.js';
+
+function LocalCard({ testId }: { testId: string }) {
+  return <div data-testid={\`\${testId}-derived\`} />;
+}
+
+function OtherCard({ testId }: { testId: string }) {
+  return <div data-testid={\`\${testId}-other\`} />;
+}
 
 export function Fixture({
   testId,
   readOnly,
   tab,
   route,
+  shadowed,
 }: {
   testId: string;
   readOnly: boolean;
   tab: string;
   route: string;
+  shadowed: string;
 }) {
   const navItems = TAB_KEYS.map((tab) => ({ 'data-testid': \`settings-tab-\${tab}\` }));
   const viewItems = VIEWS.map((view) => ({ 'data-testid': \`reports-tab-\${view}\` }));
@@ -906,10 +980,14 @@ export function Fixture({
       <i data-testid={\`\${testId}-suffix-only\`} />
       <u data-testid="resolved-from-const" />
       <s data-testid={\`after-map-\${tab}\`} />
+      <h1 data-testid={\`shadowed-\${shadowed}\`} />
       {ROUTES.map((link) => (
         <p data-testid={\`nav-\${DESTINATIONS[link.to]}\`} />
       ))}
       <q data-testid={\`alias-\${RENAMED.primary}\`} />
+      <LocalCard testId="local-card" />
+      <OtherCard testId="other-card" />
+      <ImportedCard testId="imported-card" />
       <a data-testid={\`opaque-\${OPAQUE[route]}\`} />
       {navItems}
       {viewItems}
@@ -1008,6 +1086,8 @@ function selfTest(): void {
       { name: 'nav-one', pins: 'computed access into an imported family' },
       { name: 'nav-two', pins: "the imported family's other member" },
       { name: 'alias-aliased-value', pins: 'an aliased import bound to its local name' },
+      { name: 'local-card-derived', pins: "a local component's own derived suffix" },
+      { name: 'other-card-other', pins: "a second local component's own suffix" },
     ];
     mustResolveCount = mustResolve.length;
     for (const testCase of mustResolve) {
@@ -1042,6 +1122,22 @@ function selfTest(): void {
       {
         value: 'opaque-opaque-two',
         why: 'an index with no resolvable key set must not enumerate the family',
+      },
+      {
+        value: 'imported-card-derived',
+        why: 'a suffix belongs to the component that declares it, not to every testId prop',
+      },
+      {
+        value: 'other-card-derived',
+        why: "one component's call sites must not feed another's suffix",
+      },
+      {
+        value: 'local-card-other',
+        why: "one component's call sites must not feed another's suffix",
+      },
+      {
+        value: 'shadowed-overview',
+        why: 'a bare identifier must not resolve against a same-named const family',
       },
     ];
     mustNotInventCount = mustNotInvent.length;
