@@ -116,7 +116,7 @@ docker compose -f docker-compose.test.yml up -d server
 # Re-seed admin user, MinIO storage config, Mailhog SMTP config
 env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
 
-# Clear stale results so they cannot influence pass/fail
+# Clear stale results (any run clears them anyway — see "Reading results")
 rm -rf qa/e2e/test-results/
 
 # Non-serial — both projects, matching e2e-functional's [desktop, mobile-web]
@@ -250,7 +250,11 @@ the pipeline, not for producing the file that ships.
 ## Reading results
 
 Read `qa/e2e/test-results/results.xml` for pass/fail/skip counts. Never the console
-output, never the exit code. If output is truncated, read the file — do not re-run.
+output, never the exit code. If output is truncated, read the file — do not re-run. **A
+verdict you still need must be copied aside first**: any executing run clears
+`test-results/`, and `--list` rewrites `results.xml` with an all-skipped report — zero
+executed, unlike a truncated run's partial count. To redirect a run instead, use
+`pre-push.md`'s `--output` and `PLAYWRIGHT_JUNIT_OUTPUT_FILE`.
 
 ## Failure handling
 
