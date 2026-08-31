@@ -9,10 +9,10 @@ import pool from '../db.js';
 import logger from '../logger.js';
 import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js';
 import { passwordComplexitySchema } from '@minicrm/shared/schemas/userSchema.js';
-import { SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
-import type { SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
+import { NAV_LAYOUTS, SUPPORTED_LOCALES } from '@minicrm/shared/schemas/settingsSchema.js';
+import type { NavLayout, SupportedLocale } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
-import { writeAuditEntry } from './auditService.js';
+import { writeAuditEntry, getFieldDisplayName } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 
@@ -42,6 +42,7 @@ export interface UserRow {
   status: UserStatus;
   must_change_password: boolean;
   preferred_language: SupportedLocale | null;
+  nav_layout: NavLayout | null;
   notify_overdue_tasks: boolean;
   notify_assignments: boolean;
   notify_deal_stage_changes: boolean;
@@ -505,6 +506,38 @@ export async function clearMustChangePassword(id: string): Promise<void> {
   );
 }
 
+/** Columns holding a nullable, allowlist-constrained personal preference. */
+type UserPreferenceColumn = 'preferred_language' | 'nav_layout';
+
+/**
+ * Reads a nullable preference column, treating any value outside `allowed` as unset.
+ * The DB CHECK constraints make a stale value unreachable through the app, but a
+ * hand-edited row must degrade to the workspace default rather than reach the client.
+ *
+ * @param id - The user UUID.
+ * @param column - The preference column to read.
+ * @param allowed - The values that column may legally hold.
+ * @returns The stored value, or null when unset, unknown, or unsupported.
+ */
+async function readValidatedUserPreference<T extends string>(
+  id: string,
+  column: UserPreferenceColumn,
+  allowed: readonly T[],
+): Promise<T | null> {
+  // Column name is a union of literals, never caller input, so interpolation is safe.
+  const result = await pool.query<Record<UserPreferenceColumn, string | null>>(
+    `SELECT ${column} FROM users WHERE id = $1 LIMIT 1`,
+    [id],
+  );
+  if (!result.rows[0]) return null;
+  const stored = result.rows[0][column];
+  if (stored === null) return null;
+  // includes() does not narrow a readonly T[], so the cast restates what it proved.
+  if ((allowed as readonly string[]).includes(stored)) return stored as T;
+  logger.warn(`User ${id} has unsupported ${column} '${stored}' — treating as null`);
+  return null;
+}
+
 /**
  * Returns the stored preferred language for a user, or null if none is set.
  *
@@ -512,19 +545,7 @@ export async function clearMustChangePassword(id: string): Promise<void> {
  * @returns The stored locale code, or null if the user has no preference.
  */
 export async function getUserPreferredLanguage(id: string): Promise<SupportedLocale | null> {
-  const result = await pool.query<Pick<UserRow, 'preferred_language'>>(
-    `SELECT preferred_language FROM users WHERE id = $1 LIMIT 1`,
-    [id],
-  );
-  if (!result.rows[0]) return null;
-  const stored = result.rows[0].preferred_language;
-  if (stored === null) return null;
-  // Validate at runtime in case the DB contains a stale / unsupported code
-  if ((SUPPORTED_LOCALES as readonly string[]).includes(stored)) {
-    return stored as SupportedLocale;
-  }
-  logger.warn(`User ${id} has unsupported preferred_language '${stored}' — treating as null`);
-  return null;
+  return readValidatedUserPreference(id, 'preferred_language', SUPPORTED_LOCALES);
 }
 
 /**
@@ -546,6 +567,69 @@ export async function setUserPreferredLanguage(
     [id, language],
   );
   return result.rows[0] ?? null;
+}
+
+/**
+ * Returns the stored nav layout for a user, or null if none is set.
+ *
+ * @param id - The user UUID.
+ * @returns The stored layout, or null if the user has no preference.
+ */
+export async function getUserNavLayout(id: string): Promise<NavLayout | null> {
+  return readValidatedUserPreference(id, 'nav_layout', NAV_LAYOUTS);
+}
+
+/**
+ * Persists a user's nav layout. Pass null to clear the preference.
+ *
+ * @param id - The UUID of the user whose layout is being set.
+ * @param layout - The layout to store, or null to clear.
+ * @param actor - Who performed the change; recorded on the audit entry.
+ * @returns The updated user row, or null if the user was not found.
+ */
+export async function setUserNavLayout(
+  id: string,
+  layout: NavLayout | null,
+  actor: AuditActor,
+): Promise<UserRow | null> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<UserRow & { old_nav_layout: NavLayout | null }>(
+      `WITH before AS (SELECT nav_layout FROM users WHERE id = $1)
+       UPDATE users
+          SET nav_layout = $2, updated_at = now()
+         FROM before
+        WHERE users.id = $1
+       RETURNING users.*, before.nav_layout AS old_nav_layout`,
+      [id, layout],
+    );
+
+    const updated = result.rows[0] ?? null;
+
+    if (updated) {
+      await writeAuditEntry(client, {
+        recordType: 'user',
+        recordId: updated.id,
+        recordName: updated.name,
+        eventType: 'updated',
+        fieldName: getFieldDisplayName('nav_layout'),
+        oldValue: updated.old_nav_layout,
+        newValue: layout,
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+    return updated;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**

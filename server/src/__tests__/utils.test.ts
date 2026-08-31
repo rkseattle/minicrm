@@ -190,6 +190,7 @@ describe('sanitizeUser', () => {
       password_hash: 'secret',
       must_change_password: false,
       preferred_language: 'en' as const,
+      nav_layout: null,
       notify_overdue_tasks: true,
       notify_assignments: true,
       notify_deal_stage_changes: true,

@@ -129,6 +129,13 @@ const componentSchemas = {
         nullable: true,
         example: 'en',
       },
+      nav_layout: {
+        type: 'string',
+        enum: [...NAV_LAYOUTS],
+        nullable: true,
+        description: 'null follows the workspace default in system settings',
+        example: 'left',
+      },
       created_at: {
         type: 'string',
         format: 'date-time',

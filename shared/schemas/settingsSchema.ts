@@ -149,15 +149,21 @@ export type SetDefaultTimezoneInput = z.infer<typeof setDefaultTimezoneSchema>;
 export type DefaultTimezoneResponse = z.infer<typeof defaultTimezoneResponseSchema>;
 
 /**
+ * A nav layout value with the shared validation messages. The per-user preference
+ * schema derives its nullable variant from this, so both report layout errors alike.
+ */
+export const navLayoutEnum = z.enum(NAV_LAYOUTS, {
+  errorMap: (issue) =>
+    issue.code === 'invalid_type' && issue.received === 'undefined'
+      ? { message: 'Layout is required' }
+      : { message: `Layout must be one of: ${NAV_LAYOUTS.join(', ')}` },
+});
+
+/**
  * Schema for the PATCH /api/v1/settings/nav-layout request body.
  */
 export const setNavLayoutSchema = z.object({
-  layout: z.enum(NAV_LAYOUTS, {
-    errorMap: (issue) =>
-      issue.code === 'invalid_type' && issue.received === 'undefined'
-        ? { message: 'Layout is required' }
-        : { message: `Layout must be one of: ${NAV_LAYOUTS.join(', ')}` },
-  }),
+  layout: navLayoutEnum,
 });
 
 /** The shape returned by GET /api/v1/settings/nav-layout */

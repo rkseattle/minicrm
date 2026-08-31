@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { SUPPORTED_LOCALES } from './settingsSchema.js';
+import { NAV_LAYOUTS, navLayoutEnum, SUPPORTED_LOCALES } from './settingsSchema.js';
 
 /** Allowed user roles */
 export const USER_ROLES = ['admin', 'rep', 'manager', 'viewer', 'service_account'] as const;
@@ -117,6 +117,14 @@ export const updatePreferredLanguageSchema = z.object({
 });
 
 /**
+ * Schema for the PATCH /api/v1/users/me/nav-layout request body.
+ * Passing null clears the preference and falls back to the workspace default.
+ */
+export const updateNavLayoutSchema = z.object({
+  layout: navLayoutEnum.nullable(),
+});
+
+/**
  * Schema for PATCH /api/v1/users/me/notification-preferences request body.
  */
 export const updateNotificationPrefsSchema = z.object({
@@ -137,6 +145,7 @@ export const userResponseSchema = z.object({
   status: z.enum(USER_STATUSES),
   must_change_password: z.boolean(),
   preferred_language: z.enum(SUPPORTED_LOCALES).nullable().optional(),
+  nav_layout: z.enum(NAV_LAYOUTS).nullable().optional(),
   notify_overdue_tasks: z.boolean().optional(),
   notify_assignments: z.boolean().optional(),
   notify_deal_stage_changes: z.boolean().optional(),
@@ -183,6 +192,7 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type UpdatePreferredLanguageInput = z.infer<typeof updatePreferredLanguageSchema>;
+export type UpdateNavLayoutInput = z.infer<typeof updateNavLayoutSchema>;
 export type UpdateNotificationPrefsInput = z.infer<typeof updateNotificationPrefsSchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;
 export type IssueApiTokenResponse = z.infer<typeof issueApiTokenResponseSchema>;
