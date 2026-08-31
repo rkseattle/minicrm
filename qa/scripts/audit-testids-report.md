@@ -1,13 +1,13 @@
 # data-testid Audit Report
 
-Generated: 2026-08-31T17:48:25.153Z
+Generated: 2026-08-31T17:59:52.322Z
 
 ## Summary
 
 - Matched: 594
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1019
-- Dynamic (manual review required): 691
+- Unexercised (in app, not in tests): 1016
+- Dynamic (manual review required): 688
 
 ## Stale testids (action required)
 
@@ -269,6 +269,15 @@ _None — all test-referenced testids are present in the application source._
 | `deactivate-self-close` | client/src/components/ui/InlineStatusSelect.tsx | 146 |
 | `deactivate-self-dialog` | client/src/components/ui/InlineStatusSelect.tsx | 131 |
 | `deactivate-self-overlay` | client/src/components/ui/InlineStatusSelect.tsx | 124 |
+| `accounts-owner-filter-all` | client/src/components/ui/OwnerToggle.tsx | 43 |
+| `deals-owner-filter-all` | client/src/components/ui/OwnerToggle.tsx | 43 |
+| `filter-owner-all` | client/src/components/ui/OwnerToggle.tsx | 43 |
+| `accounts-owner-filter-mine` | client/src/components/ui/OwnerToggle.tsx | 52 |
+| `contacts-owner-filter-mine` | client/src/components/ui/OwnerToggle.tsx | 52 |
+| `deals-owner-filter-mine` | client/src/components/ui/OwnerToggle.tsx | 52 |
+| `accounts-owner-filter-my-team` | client/src/components/ui/OwnerToggle.tsx | 61 |
+| `deals-owner-filter-my-team` | client/src/components/ui/OwnerToggle.tsx | 61 |
+| `filter-owner-my-team` | client/src/components/ui/OwnerToggle.tsx | 61 |
 | `pagination-summary` | client/src/components/ui/Pagination.tsx | 50 |
 | `back-to-accounts` | client/src/pages/AccountDetailPage.tsx | 228 |
 | `export-pdf-error` | client/src/pages/AccountDetailPage.tsx | 325 |
@@ -297,9 +306,6 @@ _None — all test-referenced testids are present in the application source._
 | `accounts-sort-name` | client/src/pages/AccountsPage.tsx | 748 |
 | `accounts-industry-filter` | client/src/pages/AccountsPage.tsx | 582 |
 | `accounts-type-filter` | client/src/pages/AccountsPage.tsx | 595 |
-| `accounts-owner-filter-all` | client/src/pages/AccountsPage.tsx | 613 |
-| `accounts-owner-filter-mine` | client/src/pages/AccountsPage.tsx | 613 |
-| `accounts-owner-filter-my-team` | client/src/pages/AccountsPage.tsx | 613 |
 | `accounts-health-filter` | client/src/pages/AccountsPage.tsx | 620 |
 | `accounts-tag-filter` | client/src/pages/AccountsPage.tsx | 635 |
 | `accounts-active-tag-filters` | client/src/pages/AccountsPage.tsx | 656 |
@@ -471,7 +477,6 @@ _None — all test-referenced testids are present in the application source._
 | `bulk-success-message` | client/src/pages/ContactsPage.tsx | 561 |
 | `contacts-sort-email` | client/src/pages/ContactsPage.tsx | 817 |
 | `contacts-account-search` | client/src/pages/ContactsPage.tsx | 653 |
-| `contacts-owner-filter-mine` | client/src/pages/ContactsPage.tsx | 666 |
 | `contacts-tag-filter` | client/src/pages/ContactsPage.tsx | 672 |
 | `contacts-active-tag-filters` | client/src/pages/ContactsPage.tsx | 693 |
 | `save-report-visibility-select` | client/src/pages/CustomReportBuilderPage.tsx | 378 |
@@ -548,17 +553,11 @@ _None — all test-referenced testids are present in the application source._
 | `link-contact-error` | client/src/pages/DealDetailPage.tsx | 939 |
 | `deals-export-all-button` | client/src/pages/DealsPage.tsx | 632 |
 | `deals-view-toggle` | client/src/pages/DealsPage.tsx | 645 |
-| `deals-owner-filter-all` | client/src/pages/DealsPage.tsx | 726 |
-| `deals-owner-filter-mine` | client/src/pages/DealsPage.tsx | 726 |
-| `deals-owner-filter-my-team` | client/src/pages/DealsPage.tsx | 726 |
 | `toggle-closed-deals` | client/src/pages/DealsPage.tsx | 731 |
 | `bulk-success-message` | client/src/pages/DealsPage.tsx | 893 |
 | `bulk-change-stage-button` | client/src/pages/DealsPage.tsx | 928 |
 | `deals-sort-name` | client/src/pages/DealsPage.tsx | 1168 |
 | `deals-sort-close-date` | client/src/pages/DealsPage.tsx | 1207 |
-| `deals-owner-filter-all` | client/src/pages/DealsPage.tsx | 997 |
-| `deals-owner-filter-mine` | client/src/pages/DealsPage.tsx | 997 |
-| `deals-owner-filter-my-team` | client/src/pages/DealsPage.tsx | 997 |
 | `toggle-closed-deals` | client/src/pages/DealsPage.tsx | 1002 |
 | `deals-tag-filter` | client/src/pages/DealsPage.tsx | 1016 |
 | `deals-active-tag-filters` | client/src/pages/DealsPage.tsx | 1039 |
@@ -585,8 +584,6 @@ _None — all test-referenced testids are present in the application source._
 | `leads-loading` | client/src/pages/LeadsPage.tsx | 517 |
 | `leads-error` | client/src/pages/LeadsPage.tsx | 522 |
 | `leads-select-all` | client/src/pages/LeadsPage.tsx | 658 |
-| `filter-owner-all` | client/src/pages/LeadsPage.tsx | 534 |
-| `filter-owner-my-team` | client/src/pages/LeadsPage.tsx | 534 |
 | `filter-status` | client/src/pages/LeadsPage.tsx | 545 |
 | `filter-source` | client/src/pages/LeadsPage.tsx | 563 |
 | `leads-empty-state` | client/src/pages/LeadsPage.tsx | 607 |
@@ -1227,9 +1224,6 @@ _None — all test-referenced testids are present in the application source._
 | `custom-role-chip-*` | client/src/components/ui/InlineRoleSelect.tsx | 135 | app |
 | `status-invited-*` | client/src/components/ui/InlineStatusSelect.tsx | 90 | app |
 | `status-select-*` | client/src/components/ui/InlineStatusSelect.tsx | 106 | app |
-| `**-all` | client/src/components/ui/OwnerToggle.tsx | 43 | app |
-| `**-mine` | client/src/components/ui/OwnerToggle.tsx | 52 | app |
-| `**-my-team` | client/src/components/ui/OwnerToggle.tsx | 61 | app |
 | `user-actions-*` | client/src/components/ui/UserActionsMenu.tsx | 88 | app |
 | `issue-token-*` | client/src/components/ui/UserActionsMenu.tsx | 115 | app |
 | `revoke-token-*` | client/src/components/ui/UserActionsMenu.tsx | 125 | app |
