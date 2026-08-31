@@ -200,8 +200,8 @@ export class NotesPage {
     return this.page
       .locate(
         [
-          { type: 'testId', value: 'notes-empty' },
-          { type: 'css', value: '[data-testid="notes-empty"]' },
+          { type: 'testId', value: 'notes-empty-state' },
+          { type: 'css', value: '[data-testid="notes-empty-state"]' },
         ],
         { intent: 'empty state message when no notes exist' },
       )
