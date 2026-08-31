@@ -53,7 +53,7 @@ interface StaticFamily {
 }
 
 /** Declaring file → component → testid prop → the literals its call sites pass. */
-type CorpusCallSites = Map<string, Map<string, Map<string, Set<string>>>>;
+type CorpusCallSites = Map<string, Map<string, Map<string, Set<string> | undefined>>>;
 
 function isNode(value: unknown): value is AstNode {
   return typeof value === 'object' && value !== null && typeof (value as AstNode).type === 'string';
@@ -420,25 +420,31 @@ function collectLocalComponentProps(ast: AstNode): Map<string, Map<string, strin
 
   // Keyed by prop as well as component: a call site passing `testId` must not feed a
   // parameter destructured from `data-testid`, whose template the app never renders.
-  const callSiteValues = new Map<string, Map<string, Set<string>>>();
+  const callSiteValues = new Map<string, Map<string, Set<string> | undefined>>();
   forEachTestidCallSite(
     ast,
     (name) => declared.has(name),
     (name, propName, value) => {
-      const byProp = callSiteValues.get(name) ?? new Map<string, Set<string>>();
-      const values = byProp.get(propName) ?? new Set<string>();
-      values.add(value);
-      byProp.set(propName, values);
+      const byProp = callSiteValues.get(name) ?? new Map<string, Set<string> | undefined>();
+      // undefined marks the pair unresolvable, and no later literal restores it.
+      const values = byProp.has(propName) ? byProp.get(propName) : new Set<string>();
+      if (value === undefined) byProp.set(propName, undefined);
+      else if (values) {
+        values.add(value);
+        byProp.set(propName, values);
+      }
       callSiteValues.set(name, byProp);
     },
   );
 
   const byComponent = new Map<string, Map<string, string[]>>();
-  forEachTestidParam(ast, (componentName, propName, boundAs) => {
-    const values = callSiteValues.get(componentName)?.get(propName);
+  forEachTestidParam(ast, (componentName, propName, boundAs, defaultValue) => {
+    const byProp = callSiteValues.get(componentName);
+    if (!byProp?.has(propName)) return;
+    const values = byProp.get(propName);
     if (!values) return;
     const bindings = byComponent.get(componentName) ?? new Map<string, string[]>();
-    bindings.set(boundAs, [...values]);
+    bindings.set(boundAs, [...values, ...(defaultValue ? [defaultValue] : [])]);
     byComponent.set(componentName, bindings);
   });
   return byComponent;
@@ -454,7 +460,7 @@ function collectLocalComponentProps(ast: AstNode): Map<string, Map<string, strin
 function forEachTestidCallSite(
   ast: AstNode,
   isTarget: (elementName: string) => boolean,
-  visit: (elementName: string, propName: string, value: string) => void,
+  visit: (elementName: string, propName: string, value: string | undefined) => void,
 ): void {
   walk(ast, (node) => {
     if (node.type !== 'JSXOpeningElement') return;
@@ -464,9 +470,10 @@ function forEachTestidCallSite(
       if (attribute.type !== 'JSXAttribute') continue;
       const propName = memberName(attribute);
       if (!propName || !TESTID_VALUE_NAMES.has(propName)) continue;
-      const literal = jsxAttributeLiteral(attribute.value);
-      if (!literal) continue;
-      visit(name, propName, literal.value);
+      // A non-literal reaches `visit` as undefined rather than being skipped: a caller
+      // that binds only the literals resolves an incomplete set, and the ids it misses
+      // are reported stale though the app renders them.
+      visit(name, propName, jsxAttributeLiteral(attribute.value)?.value);
     }
   });
 }
@@ -480,7 +487,12 @@ function forEachTestidCallSite(
  */
 function forEachTestidParam(
   ast: AstNode,
-  visit: (componentName: string, propName: string, boundAs: string) => void,
+  visit: (
+    componentName: string,
+    propName: string,
+    boundAs: string,
+    defaultValue: string | undefined,
+  ) => void,
 ): void {
   walk(ast, (node) => {
     if (node.type !== 'FunctionDeclaration' || !isNode(node.id)) return;
@@ -490,10 +502,24 @@ function forEachTestidParam(
       for (const property of (param.properties as unknown[]).filter(isNode)) {
         const propName = memberName(property);
         if (!propName || !TESTID_VALUE_NAMES.has(propName)) continue;
-        visit(componentName, propName, destructuredLocalName(property) ?? propName);
+        visit(
+          componentName,
+          propName,
+          destructuredLocalName(property) ?? propName,
+          // A caller omitting the prop renders the default, so it is a real id.
+          destructuredDefault(property),
+        );
       }
     }
   });
+}
+
+/** The literal a destructured property falls back to — `{ id = 'contact-selector' }`. */
+function destructuredDefault(property: AstNode): string | undefined {
+  const value = property.value as AstNode | undefined;
+  if (value?.type !== 'AssignmentPattern') return undefined;
+  const right = value.right as AstNode | undefined;
+  return right?.type === 'Literal' && typeof right.value === 'string' ? right.value : undefined;
 }
 
 /**
@@ -521,6 +547,10 @@ function destructuredLocalName(property: AstNode): string | undefined {
  * Keyed by declaring file as well as component name: `testId` is a prop name many
  * components share, and two same-named components in different files would otherwise
  * feed each other's suffixes.
+ *
+ * One edge deep, like `collectImportedFamilies`: a call site importing through a
+ * re-export barrel indexes against the barrel, so the declaring component never sees it
+ * and its template stays dynamic. No barrel exists in `client/src`.
  */
 function collectCorpusCallSites(
   files: string[],
@@ -564,11 +594,16 @@ function collectCorpusCallSites(
         const source = importedFrom.get(name);
         if (!source) return;
         const byComponent =
-          byDeclaringFile.get(source.file) ?? new Map<string, Map<string, Set<string>>>();
-        const byProp = byComponent.get(source.declaredAs) ?? new Map<string, Set<string>>();
-        const values = byProp.get(propName) ?? new Set<string>();
-        values.add(value);
-        byProp.set(propName, values);
+          byDeclaringFile.get(source.file) ??
+          new Map<string, Map<string, Set<string> | undefined>>();
+        const byProp =
+          byComponent.get(source.declaredAs) ?? new Map<string, Set<string> | undefined>();
+        const values = byProp.has(propName) ? byProp.get(propName) : new Set<string>();
+        if (value === undefined) byProp.set(propName, undefined);
+        else if (values) {
+          values.add(value);
+          byProp.set(propName, values);
+        }
         byComponent.set(source.declaredAs, byProp);
         byDeclaringFile.set(source.file, byComponent);
       },
@@ -596,11 +631,21 @@ function componentPropsWithCorpus(
   if (!external) return local;
 
   const merged = new Map(local);
-  forEachTestidParam(ast, (componentName, propName, boundAs) => {
-    const values = external.get(componentName)?.get(propName);
-    if (!values) return;
+  forEachTestidParam(ast, (componentName, propName, boundAs, defaultValue) => {
+    const byProp = external.get(componentName);
+    if (!byProp?.has(propName)) return;
+    const values = byProp.get(propName);
+    // Unresolvable: drop any same-file binding too, so the template stays dynamic
+    // rather than resolving to the subset this could read.
+    if (!values) {
+      merged.get(componentName)?.delete(boundAs);
+      return;
+    }
     const bindings = merged.get(componentName) ?? new Map<string, string[]>();
-    bindings.set(boundAs, [...new Set([...(bindings.get(boundAs) ?? []), ...values])]);
+    const withDefault = defaultValue ? [defaultValue] : [];
+    bindings.set(boundAs, [
+      ...new Set([...(bindings.get(boundAs) ?? []), ...values, ...withDefault]),
+    ]);
     merged.set(componentName, bindings);
   });
   return merged;
@@ -1355,6 +1400,36 @@ export function Twin({ testId }: { testId: string }) {
 }
 `;
 
+/**
+ * Two shapes the corpus index must not resolve half of: a component whose callers are
+ * partly non-literal, and one whose parameter carries a default. Binding only the
+ * literals reports the ids it missed as stale though the app renders them.
+ */
+const SELF_TEST_PARTIAL_COMPONENT = `
+export function PartialCard({ testId }: { testId: string }) {
+  return <div data-testid={\`\${testId}-body\`} />;
+}
+`;
+
+const SELF_TEST_DEFAULTED_COMPONENT = `
+export function DefaultedCard({ testId = 'defaulted' }: { testId?: string }) {
+  return <div data-testid={\`\${testId}-tail\`} />;
+}
+`;
+
+const SELF_TEST_PARTIAL_CALLERS = `
+import { PartialCard } from './partial-card.js';
+import { DefaultedCard } from './defaulted-card.js';
+export const Callers = ({ kind }: { kind: string }) => (
+  <div>
+    <PartialCard testId="literal-one" />
+    <PartialCard testId={\`\${kind}-computed\`} />
+    <DefaultedCard testId="explicit" />
+    <DefaultedCard />
+  </div>
+);
+`;
+
 /** A unit test's call site: its ids are not the app's, however the corpus reaches them. */
 const SELF_TEST_UNIT_TEST_CALL_SITE = `
 import AliasNav from '@/aliased-nav.js';
@@ -1428,6 +1503,9 @@ function selfTest(): void {
     fs.writeFileSync(path.join(appDir, 'twin-one.tsx'), SELF_TEST_TWIN_ONE);
     fs.writeFileSync(path.join(appDir, 'twin-two.tsx'), SELF_TEST_TWIN_TWO);
     fs.writeFileSync(path.join(appDir, 'TwinCallers.tsx'), SELF_TEST_TWIN_CALLERS);
+    fs.writeFileSync(path.join(appDir, 'partial-card.tsx'), SELF_TEST_PARTIAL_COMPONENT);
+    fs.writeFileSync(path.join(appDir, 'defaulted-card.tsx'), SELF_TEST_DEFAULTED_COMPONENT);
+    fs.writeFileSync(path.join(appDir, 'PartialCallers.tsx'), SELF_TEST_PARTIAL_CALLERS);
     fs.writeFileSync(path.join(appDir, 'UnitOnly.test.tsx'), SELF_TEST_UNIT_TEST_CALL_SITE);
     // A fixture that must be ignored: its testid exists only in a unit test.
     fs.writeFileSync(
@@ -1446,8 +1524,8 @@ function selfTest(): void {
       .map((t) => t.value)
       .sort();
 
-    // One must-flag case, and every other reference is a form the extractor
-    // has to resolve. Any of them appearing here is a regression.
+    // Every other reference is a form the extractor must resolve; one appearing
+    // here is a regression.
     // A locator for a dead member of a prefix family lands in the stale list, which is
     // what makes the script exit 1 on it.
     const expectedStale = ['genuinely-absent-testid', 'item-prefix-dead-sibling'];
@@ -1479,6 +1557,8 @@ function selfTest(): void {
       { name: 'relative-card-body', pins: 'the same cross-file binding by relative path' },
       { name: 'ex-one', pins: 'a component resolved against the file that declares it' },
       { name: 'wy-two', pins: "its same-named twin's own call site, in another file" },
+      { name: 'explicit-tail', pins: 'a defaulted parameter still binds its call sites' },
+      { name: 'defaulted-tail', pins: "the parameter's own default, when a caller omits it" },
     ];
     mustResolveCount = mustResolve.length;
     for (const testCase of mustResolve) {
@@ -1537,6 +1617,10 @@ function selfTest(): void {
       {
         value: 'alias-nav-list-body',
         why: "one component's cross-file values must not reach another's suffix",
+      },
+      {
+        value: 'literal-one-body',
+        why: 'a family with a non-literal call site must stay dynamic, not half-resolve',
       },
       {
         value: 'mixed-props-b',
