@@ -173,6 +173,12 @@ function findFiles(dir: string, extensions: string[]): string[] {
   return results;
 }
 
+/**
+ * A floor under the app scan. Well below today's count, high enough that a
+ * scan which found essentially nothing cannot pass as a clean report.
+ */
+const MINIMUM_EXPECTED_STATICS = 1000;
+
 /** Unit-test sources, which render testids that are not part of the app. */
 function isUnitTestFile(filePath: string): boolean {
   return /\.test\.tsx?$/.test(filePath) || filePath.includes(`${path.sep}__tests__${path.sep}`);
@@ -576,9 +582,12 @@ function harvestTemplateLiteral(
     return;
   }
 
-  // A leading interpolation has no prefix to match on. It is still reported for
-  // manual review, but deliberately matches nothing: the only thing left to key
-  // on is a tail like `-select`, shared by unrelated ids across the app.
+  // A leading interpolation carries no prefix, and its tail — `-select`, `-link`
+  // — is shared by unrelated ids, so matching on it would absolve every dead id
+  // ending the same way. Recorded for the report's manual-review list, where it
+  // matches nothing: resolving these needs the value bound at a call site in
+  // ANOTHER file, which this single-file walk cannot see. SubPageNav's
+  // `${listTestId}-select` is the live example.
   addDynamic(`*${quasis.map(text).join('*')}`, template);
 }
 
@@ -729,13 +738,12 @@ function collectStringConstants(ast: AstNode): Map<string, string> {
 /**
  * Whether a value matches any dynamic pattern.
  *
- * Only `prefix*` matches. A leading interpolation leaves nothing but a common
- * tail — `-select`, `-link` — and matching on that would absolve every dead id
- * sharing it, a far wider hole than the one such a rule closes.
+ * Only a leading prefix matches. A pattern recorded for a leading interpolation
+ * begins with `*`, which no testid does, so it matches nothing by construction —
+ * see harvestTemplateLiteral for why it is recorded rather than resolved.
  */
 export function matchesAnyPattern(value: string, patterns: string[]): boolean {
   for (const pattern of patterns) {
-    if (pattern.startsWith('*')) continue;
     const prefix = pattern.endsWith('*') ? pattern.slice(0, -1) : pattern;
     if (prefix && value.startsWith(prefix)) return true;
   }
@@ -849,7 +857,9 @@ function generateReport(params: {
 // ---------------------------------------------------------------------------
 
 export function run(checkOnly = false): void {
-  const repoRoot = path.resolve(process.cwd());
+  // From this script's own path, not cwd: the same derivation the self-test
+  // uses, so running from qa/ cannot scan nothing and call it clean.
+  const repoRoot = path.resolve(path.dirname(process.argv[1] ?? ''), '..', '..');
 
   const appSrcDir = path.join(repoRoot, 'client', 'src');
   const testDirs = [
@@ -859,6 +869,15 @@ export function run(checkOnly = false): void {
   ];
 
   const { statics: appStatics, dynamics: appDynamics } = collectAppTestids(appSrcDir);
+  // An empty scan reports Stale: 0 — this guard's silent-failure mode, and how
+  // it lost sight of the app before. Refuse rather than certify nothing.
+  if (appStatics.length < MINIMUM_EXPECTED_STATICS) {
+    console.error(
+      `Scanned ${appSrcDir} and found only ${appStatics.length} testids; expected at least ` +
+        `${MINIMUM_EXPECTED_STATICS}. Refusing to report on a corpus this small.`,
+    );
+    process.exit(1);
+  }
   const { statics: testStatics, dynamics: testDynamics } = collectTestTestids(testDirs);
 
   const appStaticValues = new Set(appStatics.map((s) => s.value));
@@ -1208,10 +1227,10 @@ function selfTest(): void {
       }
     }
 
-    // A suffix-only template cannot be matched on its tail: doing so absolves
-    // every unrelated id ending the same way.
-    if (isMatchedByApp('anything-suffix-only', appStatics, appPatterns)) {
-      failures.push('a trailing-segment pattern matched an unrelated value');
+    // A leading-interpolation pattern must not absolve an unrelated id that
+    // happens to share its tail.
+    if (isMatchedByApp('unrelated-thing-suffix-only', appStatics, appPatterns)) {
+      failures.push('a leading-interpolation pattern matched an unrelated value');
     }
 
     // An enumerated family drops its permissive prefix, so a sibling the app
@@ -1289,9 +1308,10 @@ function selfTest(): void {
     // unavailable — qa/tsconfig.json builds to CommonJS.
     const repoRoot = path.resolve(path.dirname(process.argv[1] ?? ''), '..', '..');
     const realApp = collectAppTestids(path.join(repoRoot, 'client', 'src'));
-    if (realApp.statics.length < 1000) {
+    if (realApp.statics.length < MINIMUM_EXPECTED_STATICS) {
       failures.push(
-        `real client/src scan returned ${realApp.statics.length} statics; expected 1000+`,
+        `real client/src scan returned ${realApp.statics.length} statics; ` +
+          `expected ${MINIMUM_EXPECTED_STATICS}+`,
       );
     }
   } finally {
