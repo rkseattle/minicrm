@@ -412,15 +412,11 @@ docker compose pull
 # 3. Stop the running containers.
 #    IMPORTANT: omit -v. Using "docker compose down -v" destroys the db_data volume
 #    and permanently deletes all your data. Plain "down" preserves the volume.
-#    --profile web is needed here too, or the client container is left running.
-docker compose --profile web down
+docker compose down
 
 # 4. Start with the new images. Migrations run automatically on server startup.
-#    --profile web is REQUIRED: the nginx client service is behind that profile
-#    (MINCRM-684) so a local `docker compose up` does not occupy port 80. Omitting it
-#    brings the stack up with no frontend. Add --profile backup if you use the
-#    automated backup service.
-docker compose --profile web up -d
+#    Add --profile backup if you use the automated backup service.
+docker compose up -d
 ```
 
 ### Confirming migrations ran
@@ -460,12 +456,11 @@ line, check the full log for the error and follow the rollback procedure below.
 
 Down migrations are **not** a safe recovery strategy in production. If a migration fails:
 
-1. Run `docker compose --profile web down` to stop all containers. The profile flag is
-   required or the nginx client container is left running (MINCRM-684).
+1. Run `docker compose down` to stop all containers.
 2. Restore from the backup you took before pulling the new images (see [Backup and Restore](#backup-and-restore)).
 3. Re-tag or revert to the previous image version in your `docker-compose.yml` or by re-pulling
    the prior tag.
-4. Start the old version: `docker compose --profile web up -d`.
+4. Start the old version: `docker compose up -d`.
 
 > **Warning — data loss risk:** `docker compose down -v` deletes the `db_data` volume and
 > permanently destroys your database. Never use the `-v` flag unless you intend to wipe all

@@ -1,0 +1,1095 @@
+/**
+ * IMAP provider behavior, driven by a fake ImapFlow.
+ *
+ * Injected rather than vi.mock'd, following getUsableAccessToken's injected refresh: the
+ * seam is the client factory, and a fake makes UIDVALIDITY changes and odd server
+ * responses reproducible on demand, which a real server cannot be made to do.
+ */
+
+import type { ImapFlow } from 'imapflow';
+
+import logger from '../logger.js';
+import { createImapProvider, parseCursor, serializeCursor } from '../services/mail/imapProvider.js';
+import type { ImapAuthPayload } from '../services/connectedAccountService.js';
+
+const ACCOUNT_ADDRESS = 'rep@example.com';
+
+const AUTH: ImapAuthPayload = {
+  kind: 'imap',
+  host: 'imap.example.com',
+  port: 993,
+  username: ACCOUNT_ADDRESS,
+  password: 'imap-password-value',
+  secure: true,
+};
+
+interface FakeMessage {
+  uid: number;
+  from: string;
+  to?: string[];
+  cc?: string[];
+  subject?: string;
+  messageId?: string;
+  inReplyTo?: string;
+  referencesHeader?: string;
+  date?: Date;
+  bodyStructure?: unknown;
+}
+
+interface FakeMailbox {
+  path: string;
+  uidValidity: string;
+  uidNext: number;
+  specialUse?: string;
+  messages: FakeMessage[];
+  /**
+   * Order the server hands messages back in.
+   *
+   * RFC 3501 §7.4.2 puts no ordering on untagged FETCH responses, and imapflow yields
+   * them as they arrive — `onUntaggedFetch` pushes onto a queue the iterator shifts off,
+   * with no sort anywhere. A fake that always ascends cannot see a cap that assumes one.
+   */
+  arrivalOrder?: 'ascending' | 'descending';
+  /** Set to make SELECT fail, as a folder renamed or deleted between LIST and SELECT does. */
+  failsToOpen?: string;
+  /** Hierarchy delimiter, which determines what `name` is a leaf of. */
+  delimiter?: string;
+}
+
+/**
+ * Applies a fetch query the way a server would.
+ *
+ * A `uid` range is resolved per RFC 3501 §6.4.8: `*` is the mailbox's highest existing UID,
+ * and the range is order-independent, so `500:*` over a mailbox topping out at 499 covers
+ * 499 through 500 rather than being empty. Reproducing that is the whole point — it is the
+ * behavior an open-ended resume query gets wrong.
+ */
+function selectMessages(messages: FakeMessage[], query: unknown): FakeMessage[] {
+  const uidRange = (query as { uid?: string }).uid;
+  if (uidRange) {
+    const highestUid = messages.reduce((highest, m) => Math.max(highest, m.uid), 0);
+    const bound = (token: string): number => (token === '*' ? highestUid : Number(token));
+    const [start, end = start] = uidRange.split(':').map(bound);
+    const [low, high] = start <= end ? [start, end] : [end, start];
+    return messages.filter((m) => m.uid >= low && m.uid <= high);
+  }
+
+  const since = (query as { since?: Date }).since;
+  if (since) {
+    // A server filters on its own internal date, so a message whose header date is absent
+    // or unparseable is still returned — it is the provider's job to cope with it.
+    return messages.filter((m) => {
+      if (!m.date || Number.isNaN(m.date.getTime())) return true;
+      return m.date >= since;
+    });
+  }
+
+  throw new Error(`fake ImapFlow: unsupported fetch query ${JSON.stringify(query)}`);
+}
+
+/**
+ * A stand-in for ImapFlow covering only what the provider calls.
+ *
+ * The fetch HONORS its query rather than yielding everything: a fake that ignores the
+ * query makes every resumption test an assertion about a string the provider built, which
+ * is how an open-ended `uid` range that re-delivered the top message forever passed a
+ * green suite. `fetchCalls` still records each query, but it is the weaker assertion.
+ */
+function makeFakeClient(mailboxes: FakeMailbox[]): {
+  client: ImapFlow;
+  fetchCalls: Array<{ path: string; query: unknown }>;
+  loggedOut: () => boolean;
+} {
+  const fetchCalls: Array<{ path: string; query: unknown }> = [];
+  let didLogout = false;
+  let open: FakeMailbox | undefined;
+
+  const client = {
+    list: async () =>
+      mailboxes.map((m) => {
+        // imapflow reports `name` as the last path segment, not the whole path. A fake
+        // that conflates them hides every defect in code that reads one and means the
+        // other.
+        const delimiter = m.delimiter ?? '/';
+        const segments = m.path.split(delimiter);
+        return {
+          path: m.path,
+          specialUse: m.specialUse,
+          name: segments[segments.length - 1],
+          delimiter,
+        };
+      }),
+    getMailboxLock: async (path: string) => {
+      const target = mailboxes.find((m) => m.path === path);
+      if (!target) throw new Error(`no such mailbox ${path}`);
+      if (target.failsToOpen) throw new Error(target.failsToOpen);
+      open = target;
+      return { path, release: () => undefined };
+    },
+    get mailbox() {
+      return open
+        ? { path: open.path, uidValidity: BigInt(open.uidValidity), uidNext: open.uidNext }
+        : false;
+    },
+    fetch: (query: unknown) => {
+      const mailbox = open;
+      fetchCalls.push({ path: mailbox?.path ?? '(none)', query });
+      const selected = selectMessages(mailbox?.messages ?? [], query);
+      const messages =
+        mailbox?.arrivalOrder === 'descending' ? [...selected].reverse() : selected;
+      return (async function* () {
+        for (const m of messages) {
+          yield {
+            uid: m.uid,
+            envelope: {
+              from: [{ address: m.from }],
+              to: (m.to ?? []).map((address) => ({ address })),
+              cc: (m.cc ?? []).map((address) => ({ address })),
+              subject: m.subject,
+              messageId: m.messageId,
+              inReplyTo: m.inReplyTo,
+              date: m.date,
+            },
+            internalDate: m.date,
+            bodyStructure: m.bodyStructure,
+            headers: m.referencesHeader ? Buffer.from(m.referencesHeader, 'utf8') : undefined,
+          };
+        }
+      })();
+    },
+    logout: async () => {
+      didLogout = true;
+    },
+    close: () => undefined,
+  } as unknown as ImapFlow;
+
+  return { client, fetchCalls, loggedOut: () => didLogout };
+}
+
+function inbox(messages: FakeMessage[], overrides: Partial<FakeMailbox> = {}): FakeMailbox {
+  return { path: 'INBOX', uidValidity: '900', uidNext: 10, messages, ...overrides };
+}
+
+const SINCE = new Date('2026-06-01T00:00:00Z');
+
+/** Builds a stored cursor without restating its encoding at every call site. */
+function cursorOf(entries: Record<string, { uidValidity: string; uidNext: number }>): string {
+  return serializeCursor(new Map(Object.entries(entries)));
+}
+
+/**
+ * A provider whose SSRF guard is stubbed out.
+ *
+ * The real guard resolves the host over DNS, and these fixtures name hosts that do not
+ * exist. Stubbing it is deliberate and explicit — the guard's own behavior is asserted
+ * separately, against the real one.
+ */
+function providerWith(client: ImapFlow): ReturnType<typeof createImapProvider> {
+  return createImapProvider(
+    ACCOUNT_ADDRESS,
+    async () => client,
+    async () => undefined,
+  );
+}
+
+describe('the cursor codec', () => {
+  it('round-trips one mailbox', () => {
+    const parsed = parseCursor(serializeCursor(new Map([['INBOX', { uidValidity: '900', uidNext: 42 }]])));
+    expect(parsed.get('INBOX')).toEqual({ uidValidity: '900', uidNext: 42 });
+  });
+
+  it('round-trips several mailboxes', () => {
+    const source = new Map([
+      ['INBOX', { uidValidity: '900', uidNext: 42 }],
+      ['Sent', { uidValidity: '901', uidNext: 7 }],
+    ]);
+    const parsed = parseCursor(serializeCursor(source));
+    expect(parsed.size).toBe(2);
+    expect(parsed.get('Sent')).toEqual({ uidValidity: '901', uidNext: 7 });
+  });
+
+  it('round-trips a path containing a colon, which is a hierarchy delimiter', () => {
+    // A delimited encoding splits this path into the wrong fields, and the mailbox then
+    // looks never-synced on every tick and re-delivers its entire history.
+    const source = new Map([['Sent:Items', { uidValidity: '901', uidNext: 5 }]]);
+    expect(parseCursor(serializeCursor(source)).get('Sent:Items')).toEqual({
+      uidValidity: '901',
+      uidNext: 5,
+    });
+  });
+
+  it('round-trips a path containing a pipe', () => {
+    const source = new Map([['Odd|Name', { uidValidity: '901', uidNext: 5 }]]);
+    expect(parseCursor(serializeCursor(source)).get('Odd|Name')).toEqual({
+      uidValidity: '901',
+      uidNext: 5,
+    });
+  });
+
+  it('round-trips a path containing quotes and backslashes', () => {
+    const path = 'We"ird\\Folder';
+    const source = new Map([[path, { uidValidity: '901', uidNext: 5 }]]);
+    expect(parseCursor(serializeCursor(source)).get(path)).toEqual({
+      uidValidity: '901',
+      uidNext: 5,
+    });
+  });
+
+  it('treats a null cursor as nothing synced yet', () => {
+    expect(parseCursor(null).size).toBe(0);
+  });
+
+  it('discards a cursor that is not JSON rather than refusing to sync', () => {
+    // The delimited encoding this replaced. A stored cursor in the old shape must degrade
+    // to a bounded re-backfill, not to a parse that yields wrong mailbox positions.
+    expect(parseCursor('INBOX:900:42').size).toBe(0);
+  });
+
+  it('drops an unusable entry rather than refusing the whole cursor', () => {
+    const cursor = JSON.stringify({
+      INBOX: { uidValidity: '900', uidNext: 42 },
+      Bad: { uidValidity: '901', uidNext: 0 },
+      Worse: { uidValidity: 901, uidNext: 5 },
+      Missing: {},
+    });
+    const parsed = parseCursor(cursor);
+    expect(parsed.size).toBe(1);
+    expect(parsed.get('INBOX')).toEqual({ uidValidity: '900', uidNext: 42 });
+  });
+
+  it('keeps UIDVALIDITY as a string, so a large value cannot lose precision', () => {
+    const large = '4294967295';
+    const source = new Map([['INBOX', { uidValidity: large, uidNext: 1 }]]);
+    expect(parseCursor(serializeCursor(source)).get('INBOX')?.uidValidity).toBe(large);
+  });
+});
+
+describe('fetchSince', () => {
+  it('reads from `since` when the mailbox has never been synced', async () => {
+    const { client, fetchCalls } = makeFakeClient([
+      inbox([{ uid: 5, from: 'someone@example.net', messageId: '<a@example.net>' }]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(fetchCalls[0].query).toEqual({ since: SINCE });
+    expect(page.messages).toHaveLength(1);
+    expect(page.cursorInvalid).toBe(false);
+  });
+
+  it('resumes from the stored UIDNEXT rather than re-reading the window', async () => {
+    const { client, fetchCalls } = makeFakeClient([
+      inbox(
+        [
+          { uid: 39, from: 'old@example.net', messageId: '<old@example.net>' },
+          { uid: 42, from: 'someone@example.net', messageId: '<b@example.net>' },
+        ],
+        { uidNext: 43 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, cursorOf({ INBOX: { uidValidity: '900', uidNext: 40 } }), SINCE);
+
+    expect(fetchCalls[0].query).toEqual({ uid: '40:42' });
+    // The already-synced UID 39 is below the cursor and must not come back.
+    expect(page.messages.map((m) => m.providerMessageId)).toEqual(['INBOX:42']);
+  });
+
+  it('closes the resume range, so an exhausted mailbox stops re-delivering its top message', async () => {
+    // An open-ended `41:*` would resolve to `40:41` per RFC 3501 §6.4.8 and hand back UID
+    // 40 on every tick forever, re-parsing and re-upserting a message that has not changed.
+    const { client, fetchCalls } = makeFakeClient([
+      inbox([{ uid: 40, from: 'a@example.net', messageId: '<a@example.net>' }], { uidNext: 41 }),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, cursorOf({ INBOX: { uidValidity: '900', uidNext: 41 } }), SINCE);
+
+    expect(page.messages).toHaveLength(0);
+    expect(fetchCalls).toHaveLength(0);
+    expect(parseCursor(page.cursor).get('INBOX')?.uidNext).toBe(41);
+  });
+
+  it('re-syncing an unchanged mailbox yields nothing the second time', async () => {
+    const { client } = makeFakeClient([
+      inbox(
+        [
+          { uid: 5, from: 'a@example.net', messageId: '<a@example.net>' },
+          { uid: 6, from: 'b@example.net', messageId: '<b@example.net>' },
+        ],
+        { uidNext: 7 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const first = await provider.fetchSince(AUTH, null, SINCE);
+    const second = await provider.fetchSince(AUTH, first.cursor, SINCE);
+
+    expect(first.messages).toHaveLength(2);
+    expect(second.messages).toHaveLength(0);
+    expect(second.cursor).toBe(first.cursor);
+  });
+
+  it('picks up only what arrived since the last sync', async () => {
+    const mailbox = inbox([{ uid: 5, from: 'a@example.net', messageId: '<a@example.net>' }], {
+      uidNext: 6,
+    });
+    const { client } = makeFakeClient([mailbox]);
+    const provider = providerWith(client);
+
+    const first = await provider.fetchSince(AUTH, null, SINCE);
+    mailbox.messages.push({ uid: 6, from: 'b@example.net', messageId: '<b@example.net>' });
+    mailbox.uidNext = 7;
+    const second = await provider.fetchSince(AUTH, first.cursor, SINCE);
+
+    expect(second.messages.map((m) => m.providerMessageId)).toEqual(['INBOX:6']);
+  });
+
+  it('advances the cursor past the highest UID it saw', async () => {
+    const { client } = makeFakeClient([
+      inbox(
+        [
+          { uid: 40, from: 'a@example.net', messageId: '<a@example.net>' },
+          { uid: 41, from: 'b@example.net', messageId: '<b@example.net>' },
+        ],
+        { uidNext: 42 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, cursorOf({ INBOX: { uidValidity: '900', uidNext: 40 } }), SINCE);
+
+    expect(parseCursor(page.cursor).get('INBOX')).toEqual({ uidValidity: '900', uidNext: 42 });
+  });
+
+  it('reports the cursor invalid when UIDVALIDITY changed, and persists nothing', async () => {
+    const { client } = makeFakeClient([
+      inbox([{ uid: 1, from: 'a@example.net', messageId: '<a@example.net>' }], {
+        uidValidity: '999',
+      }),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, cursorOf({ INBOX: { uidValidity: '900', uidNext: 40 } }), SINCE);
+
+    expect(page.cursorInvalid).toBe(true);
+    expect(page.cursor).toBeNull();
+    expect(page.messages).toHaveLength(0);
+    expect(page.hasMore).toBe(false);
+  });
+
+  it('returns an empty page for an empty mailbox without reporting invalidity', async () => {
+    const { client } = makeFakeClient([inbox([])]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages).toHaveLength(0);
+    expect(page.cursorInvalid).toBe(false);
+    expect(parseCursor(page.cursor).get('INBOX')).toBeDefined();
+  });
+
+  it('keeps two mailboxes distinct even when they reuse the same UID', async () => {
+    // IMAP numbers UIDs per mailbox, so both folders having a UID 4 is the common case,
+    // not an edge one. A bare UID would collide on the account-level unique constraint and
+    // one of the two messages would be silently dropped.
+    const { client } = makeFakeClient([
+      inbox([{ uid: 4, from: 'someone@example.net', messageId: '<in@example.net>' }]),
+      {
+        path: 'Sent Items',
+        uidValidity: '901',
+        uidNext: 5,
+        specialUse: '\\Sent',
+        messages: [{ uid: 4, from: ACCOUNT_ADDRESS, messageId: '<out@example.com>' }],
+      },
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages).toHaveLength(2);
+    expect(new Set(page.messages.map((m) => m.providerMessageId)).size).toBe(2);
+    const cursor = parseCursor(page.cursor);
+    expect(cursor.get('INBOX')).toBeDefined();
+    expect(cursor.get('Sent Items')).toBeDefined();
+  });
+
+  it('never rewinds the cursor when the server reports a lower uidNext', async () => {
+    const { client } = makeFakeClient([inbox([], { uidNext: 300 })]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, cursorOf({ INBOX: { uidValidity: '900', uidNext: 500 } }), SINCE);
+
+    expect(parseCursor(page.cursor).get('INBOX')?.uidNext).toBe(500);
+  });
+
+  it('reports more history waiting when a mailbox exceeds the per-fetch cap', async () => {
+    const many = Array.from({ length: 250 }, (_, i) => ({
+      uid: i + 1,
+      from: 'someone@example.net',
+      messageId: `<m${String(i)}@example.net>`,
+    }));
+    const { client } = makeFakeClient([inbox(many, { uidNext: 251 })]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.hasMore).toBe(true);
+    expect(page.messages).toHaveLength(200);
+    // Resumes at the truncation boundary, not past it, so nothing above is skipped.
+    expect(parseCursor(page.cursor).get('INBOX')?.uidNext).toBe(201);
+  });
+
+  it('loses nothing when the server returns messages highest-UID-first', async () => {
+    // RFC 3501 §7.4.2 puts no ordering on untagged FETCH responses, and imapflow yields
+    // them as they arrive. Capping an arrival stream at a count and then taking the
+    // highest UID seen skips everything the server happened to send after the cap.
+    const many = Array.from({ length: 250 }, (_, i) => ({
+      uid: i + 1,
+      from: 'someone@example.net',
+      messageId: `<m${String(i)}@example.net>`,
+    }));
+    const { client } = makeFakeClient([inbox(many, { uidNext: 251, arrivalOrder: 'descending' })]);
+    const provider = providerWith(client);
+
+    const first = await provider.fetchSince(AUTH, null, SINCE);
+    const second = await provider.fetchSince(AUTH, first.cursor, SINCE);
+    const third = await provider.fetchSince(AUTH, second.cursor, SINCE);
+
+    const delivered = new Set(
+      [...first.messages, ...second.messages, ...third.messages].map((m) => m.providerMessageId),
+    );
+    expect(delivered.size).toBe(250);
+  });
+
+  it('pages a resume by a bounded UID window rather than by arrival count', async () => {
+    const many = Array.from({ length: 250 }, (_, i) => ({
+      uid: i + 1,
+      from: 'someone@example.net',
+      messageId: `<m${String(i)}@example.net>`,
+    }));
+    const { client, fetchCalls } = makeFakeClient([inbox(many, { uidNext: 251 })]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(
+      AUTH,
+      cursorOf({ INBOX: { uidValidity: '900', uidNext: 1 } }),
+      SINCE,
+    );
+
+    expect(fetchCalls[0].query).toEqual({ uid: '1:200' });
+    expect(page.messages).toHaveLength(200);
+    expect(page.hasMore).toBe(true);
+    expect(parseCursor(page.cursor).get('INBOX')?.uidNext).toBe(201);
+  });
+
+  it('advances past a window whose messages were all deleted', async () => {
+    // Every message in the window is gone. Without advancing, the same empty window is
+    // requested on every tick and the mailbox never progresses.
+    const { client } = makeFakeClient([inbox([], { uidNext: 500 })]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(
+      AUTH,
+      cursorOf({ INBOX: { uidValidity: '900', uidNext: 10 } }),
+      SINCE,
+    );
+
+    expect(page.messages).toHaveLength(0);
+    expect(parseCursor(page.cursor).get('INBOX')?.uidNext).toBe(210);
+    expect(page.hasMore).toBe(true);
+  });
+
+  it('treats a mailbox missing from the cursor as never synced', async () => {
+    const { client, fetchCalls } = makeFakeClient([
+      inbox([]),
+      {
+        path: 'Sent',
+        uidValidity: '901',
+        uidNext: 5,
+        specialUse: '\\Sent',
+        messages: [{ uid: 4, from: ACCOUNT_ADDRESS, messageId: '<out@example.com>' }],
+      },
+    ]);
+    const provider = providerWith(client);
+
+    await provider.fetchSince(AUTH, cursorOf({ INBOX: { uidValidity: '900', uidNext: 9 } }), SINCE);
+
+    expect(fetchCalls.find((c) => c.path === 'INBOX')?.query).toEqual({ uid: '9:9' });
+    expect(fetchCalls.find((c) => c.path === 'Sent')?.query).toEqual({ since: SINCE });
+  });
+
+  it('syncs INBOX alone when the server refuses to list mailboxes', async () => {
+    const { client } = makeFakeClient([inbox([])]);
+    (client as unknown as { list: () => Promise<never> }).list = async () => {
+      throw new Error('LIST refused');
+    };
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.cursorInvalid).toBe(false);
+    expect(parseCursor(page.cursor).size).toBe(1);
+  });
+
+  it('finds Sent by name on a server that reports no special-use flag', async () => {
+    // RFC 6154 SPECIAL-USE is optional; without a name fallback these servers sync INBOX
+    // alone, and the ticket's "inbound and sent email" quietly becomes inbound only.
+    const { client } = makeFakeClient([
+      inbox([]),
+      {
+        path: 'Sent Items',
+        uidValidity: '901',
+        uidNext: 5,
+        messages: [{ uid: 4, from: ACCOUNT_ADDRESS, messageId: '<out@example.com>' }],
+      },
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages.map((m) => m.providerMessageId)).toEqual(['Sent Items:4']);
+    expect(parseCursor(page.cursor).get('Sent Items')).toBeDefined();
+  });
+
+  it('prefers the special-use flag over a folder that merely looks like Sent', async () => {
+    const { client } = makeFakeClient([
+      inbox([]),
+      {
+        path: 'Sent',
+        uidValidity: '901',
+        uidNext: 2,
+        messages: [{ uid: 1, from: ACCOUNT_ADDRESS, messageId: '<decoy@example.com>' }],
+      },
+      {
+        path: 'Archive/Outbound',
+        uidValidity: '902',
+        uidNext: 2,
+        specialUse: '\\Sent',
+        messages: [{ uid: 1, from: ACCOUNT_ADDRESS, messageId: '<real@example.com>' }],
+      },
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages.map((m) => m.providerMessageId)).toEqual(['Archive/Outbound:1']);
+  });
+
+  it('does not mistake an archived folder whose leaf name is Sent for the real one', async () => {
+    // imapflow reports `name` as the last path segment, so matching on it selects
+    // Archive/2019/Sent — a years-old archive — as the account's sent-mail folder.
+    const { client } = makeFakeClient([
+      inbox([]),
+      {
+        path: 'Archive/2019/Sent',
+        uidValidity: '901',
+        uidNext: 2,
+        messages: [{ uid: 1, from: ACCOUNT_ADDRESS, messageId: '<old@example.com>' }],
+      },
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages).toHaveLength(0);
+    expect(parseCursor(page.cursor).size).toBe(1);
+  });
+
+  it('warns rather than silently syncing INBOX alone when no Sent folder resolves', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+    const { client } = makeFakeClient([inbox([])]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(parseCursor(page.cursor).size).toBe(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('no sent-mail folder found'),
+    );
+    warn.mockRestore();
+  });
+
+  it('does not sync INBOX twice when the server spells it with different case', async () => {
+    // Some servers report the inbox as "Inbox" and hang \Sent off that same mailbox. A
+    // case-sensitive comparison reads it as a second, distinct folder and syncs it twice
+    // — every message stored under two provider ids, one per spelling.
+    const { client } = makeFakeClient([
+      {
+        path: 'Inbox',
+        uidValidity: '900',
+        uidNext: 2,
+        specialUse: '\\Sent',
+        messages: [{ uid: 1, from: 'a@example.net', messageId: '<a@example.net>' }],
+      },
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(parseCursor(page.cursor).size).toBe(1);
+    expect(page.messages).toHaveLength(1);
+  });
+});
+
+describe('message normalization', () => {
+  it('marks a message the account sent as outbound, wherever it was filed', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        { uid: 1, from: ACCOUNT_ADDRESS.toUpperCase(), messageId: '<self@example.com>' },
+        { uid: 2, from: 'someone@example.net', messageId: '<in@example.net>' },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages[0].direction).toBe('outbound');
+    expect(page.messages[1].direction).toBe('inbound');
+  });
+
+  it('lowercases every address so downstream matching is case-insensitive', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 1,
+          from: 'Someone@Example.NET',
+          to: ['Rep@Example.com'],
+          cc: ['Watcher@Example.org'],
+          messageId: '<a@example.net>',
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.fromAddress).toBe('someone@example.net');
+    expect(message.toAddresses).toEqual(['rep@example.com']);
+    expect(message.ccAddresses).toEqual(['watcher@example.org']);
+  });
+
+  it('threads a reply onto its References root', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 1,
+          from: 'someone@example.net',
+          messageId: '<reply@example.net>',
+          referencesHeader: 'References: <root@example.net> <mid@example.net>',
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.threadId).toBe('root@example.net');
+  });
+
+  it('threads on References, not on another field in the same header block', async () => {
+    // The fetch asks for one field but the server returns a block, and some servers ignore
+    // HEADER.FIELDS filtering entirely. Taking the first bracketed token would thread every
+    // message from such a server onto its bounce address.
+    const { client } = makeFakeClient([
+      inbox(
+        [
+          {
+            uid: 1,
+            from: 'someone@example.net',
+            messageId: '<reply@example.net>',
+            referencesHeader:
+              'Return-Path: <bounce-12345@mailer.example.net>\r\n' +
+              'References: <root@example.net> <mid@example.net>\r\n',
+          },
+        ],
+        { uidNext: 2 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.threadId).toBe('root@example.net');
+  });
+
+  it('reads a References value folded across continuation lines', async () => {
+    // RFC 5322 §2.2.3 folds a long value onto lines beginning with whitespace.
+    const { client } = makeFakeClient([
+      inbox(
+        [
+          {
+            uid: 1,
+            from: 'someone@example.net',
+            messageId: '<reply@example.net>',
+            referencesHeader: 'References: <root@example.net>\r\n\t<mid@example.net>\r\n',
+          },
+        ],
+        { uidNext: 2 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.threadId).toBe('root@example.net');
+  });
+
+  it('falls back to Message-ID when the block carries no References field', async () => {
+    const { client } = makeFakeClient([
+      inbox(
+        [
+          {
+            uid: 1,
+            from: 'someone@example.net',
+            messageId: '<solo@example.net>',
+            referencesHeader: 'Return-Path: <bounce@mailer.example.net>\r\n',
+          },
+        ],
+        { uidNext: 2 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.threadId).toBe('solo@example.net');
+  });
+
+  it('stores no date rather than an invalid one', async () => {
+    // An Invalid Date reaches a timestamptz column as a write failure or a corrupt row,
+    // and sent_at is indexed.
+    const { client } = makeFakeClient([
+      inbox(
+        [{ uid: 1, from: 'a@example.net', messageId: '<a@example.net>', date: new Date('nonsense') }],
+        { uidNext: 2 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.sentAt).toBeNull();
+  });
+
+  it('bounds a subject a sender made absurdly long', async () => {
+    const { client } = makeFakeClient([
+      inbox(
+        [{ uid: 1, from: 'a@example.net', messageId: '<a@example.net>', subject: 'x'.repeat(5000) }],
+        { uidNext: 2 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.subject).toHaveLength(998);
+  });
+
+  it('gives a message with no threading headers an identity that spans mailboxes', async () => {
+    const { client } = makeFakeClient([inbox([{ uid: 7, from: 'someone@example.net' }])]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    // Not qualified by mailbox: the same message filed in both INBOX and Sent must land
+    // in one thread.
+    expect(message.threadId).toBe('uid-7');
+  });
+
+  it('reads has_attachments from the body structure without downloading a part', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 1,
+          from: 'a@example.net',
+          messageId: '<a@example.net>',
+          bodyStructure: {
+            childNodes: [{ disposition: undefined }, { disposition: 'attachment' }],
+          },
+        },
+        {
+          uid: 2,
+          from: 'b@example.net',
+          messageId: '<b@example.net>',
+          bodyStructure: { childNodes: [{ disposition: undefined }] },
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages[0].hasAttachments).toBe(true);
+    expect(page.messages[1].hasAttachments).toBe(false);
+  });
+
+  it('finds an attachment nested inside a multipart part', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 1,
+          from: 'a@example.net',
+          messageId: '<a@example.net>',
+          bodyStructure: {
+            childNodes: [{ childNodes: [{ disposition: 'attachment' }] }],
+          },
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.hasAttachments).toBe(true);
+  });
+
+  it('counts a single-part message that is itself an attachment', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 1,
+          from: 'a@example.net',
+          messageId: '<a@example.net>',
+          bodyStructure: { disposition: 'attachment' },
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.hasAttachments).toBe(true);
+  });
+
+  it('counts an inline part that carries a filename', async () => {
+    const { client } = makeFakeClient([
+      inbox(
+        [
+          {
+            uid: 1,
+            from: 'a@example.net',
+            messageId: '<a@example.net>',
+            bodyStructure: {
+              childNodes: [
+                { disposition: 'inline', dispositionParameters: { filename: 'invoice.pdf' } },
+              ],
+            },
+          },
+        ],
+        { uidNext: 2 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.hasAttachments).toBe(true);
+  });
+
+  it('does not count an inline part with no filename, which is body content', async () => {
+    const { client } = makeFakeClient([
+      inbox(
+        [
+          {
+            uid: 1,
+            from: 'a@example.net',
+            messageId: '<a@example.net>',
+            bodyStructure: { childNodes: [{ disposition: 'inline' }] },
+          },
+        ],
+        { uidNext: 2 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.hasAttachments).toBe(false);
+  });
+
+  it('matches a disposition the server spelled in a different case', async () => {
+    const { client } = makeFakeClient([
+      inbox(
+        [
+          {
+            uid: 1,
+            from: 'a@example.net',
+            messageId: '<a@example.net>',
+            bodyStructure: { childNodes: [{ disposition: 'ATTACHMENT' }] },
+          },
+        ],
+        { uidNext: 2 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.hasAttachments).toBe(true);
+  });
+
+  it('reports no attachments when the server returned no body structure', async () => {
+    const { client } = makeFakeClient([
+      inbox([{ uid: 1, from: 'a@example.net', messageId: '<a@example.net>' }]),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.hasAttachments).toBe(false);
+  });
+
+  it('skips a message with no sender rather than storing an unattributable row', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        { uid: 1, from: '', messageId: '<nobody@example.net>' },
+        { uid: 2, from: 'a@example.net', messageId: '<a@example.net>' },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages).toHaveLength(1);
+    expect(page.messages[0].providerMessageId).toBe('INBOX:2');
+  });
+});
+
+describe('connection handling', () => {
+  it('closes the session even when the mailbox listing throws', async () => {
+    const { client, loggedOut } = makeFakeClient([inbox([])]);
+    (client as unknown as { list: () => Promise<never> }).list = async () => {
+      throw new Error('connection reset');
+    };
+    (client as unknown as { getMailboxLock: () => Promise<never> }).getMailboxLock = async () => {
+      throw new Error('connection reset');
+    };
+    const provider = providerWith(client);
+
+    await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(loggedOut()).toBe(true);
+  });
+
+  it('skips an unreadable mailbox rather than discarding the ones that worked', async () => {
+    // A folder renamed or deleted between LIST and SELECT is routine. Letting it throw
+    // costs the whole page AND the cursor, so the account makes no forward progress on any
+    // tick until the folder comes back.
+    const { client } = makeFakeClient([
+      inbox([{ uid: 1, from: 'a@example.net', messageId: '<a@example.net>' }], { uidNext: 2 }),
+      {
+        path: 'Sent',
+        uidValidity: '901',
+        uidNext: 5,
+        specialUse: '\\Sent',
+        messages: [],
+        failsToOpen: 'NONEXISTENT: mailbox does not exist',
+      },
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages.map((m) => m.providerMessageId)).toEqual(['INBOX:1']);
+    expect(parseCursor(page.cursor).get('INBOX')?.uidNext).toBe(2);
+  });
+
+  it('keeps an unreadable mailbox at its stored position rather than re-backfilling it', async () => {
+    const { client } = makeFakeClient([
+      inbox([], { uidNext: 2 }),
+      {
+        path: 'Sent',
+        uidValidity: '901',
+        uidNext: 9,
+        specialUse: '\\Sent',
+        messages: [],
+        failsToOpen: 'NONEXISTENT: mailbox does not exist',
+      },
+    ]);
+    const provider = providerWith(client);
+
+    const stored = cursorOf({
+      INBOX: { uidValidity: '900', uidNext: 2 },
+      Sent: { uidValidity: '901', uidNext: 7 },
+    });
+    const page = await provider.fetchSince(AUTH, stored, SINCE);
+
+    expect(parseCursor(page.cursor).get('Sent')).toEqual({ uidValidity: '901', uidNext: 7 });
+  });
+
+  it('reports rejected credentials distinctly from an unreachable server', async () => {
+    const authFailure = Object.assign(new Error('nope'), { authenticationFailed: true });
+    const provider = createImapProvider(
+      ACCOUNT_ADDRESS,
+      async () => {
+        throw authFailure;
+      },
+      async () => undefined,
+    );
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toMatchObject({
+      code: 'PROVIDER_AUTH_EXPIRED',
+    });
+  });
+
+  it('reports an unreachable server as a connection failure', async () => {
+    const provider = createImapProvider(
+      ACCOUNT_ADDRESS,
+      async () => {
+        throw new Error('ECONNREFUSED');
+      },
+      async () => undefined,
+    );
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toMatchObject({
+      code: 'CONNECTION_FAILED',
+    });
+  });
+
+  it('refuses a link-local host before the client factory is consulted', async () => {
+    // Runs against the REAL guard — a literal address needs no DNS. 169.254.169.254 is the
+    // cloud metadata endpoint, the address this whole check exists for. The factory must
+    // never be reached: a mailbox whose host was repointed after its connection test
+    // passed would otherwise open a session against the internal network.
+    let factoryCalled = false;
+    const provider = createImapProvider(ACCOUNT_ADDRESS, async () => {
+      factoryCalled = true;
+      return makeFakeClient([inbox([])]).client;
+    });
+
+    await expect(
+      provider.fetchSince({ ...AUTH, host: '169.254.169.254' }, null, SINCE),
+    ).rejects.toMatchObject({ code: 'CONNECTION_FAILED' });
+    expect(factoryCalled).toBe(false);
+  });
+
+  it('refuses a loopback host, which no real mail server uses', async () => {
+    let factoryCalled = false;
+    const provider = createImapProvider(ACCOUNT_ADDRESS, async () => {
+      factoryCalled = true;
+      return makeFakeClient([inbox([])]).client;
+    });
+
+    await expect(
+      provider.fetchSince({ ...AUTH, host: '127.0.0.1' }, null, SINCE),
+    ).rejects.toMatchObject({ code: 'CONNECTION_FAILED' });
+    expect(factoryCalled).toBe(false);
+  });
+
+  it('refuses an account whose credentials are not IMAP', async () => {
+    const { client } = makeFakeClient([inbox([])]);
+    const provider = providerWith(client);
+
+    await expect(
+      provider.fetchSince(
+        { kind: 'oauth', access_token: 'x', refresh_token: null, expires_at: null },
+        null,
+        SINCE,
+      ),
+    ).rejects.toThrow(/not an IMAP account/);
+  });
+});

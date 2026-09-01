@@ -122,6 +122,12 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // Bind-mounted source on Docker Desktop does not deliver inotify events, so the
+    // watcher silently misses edits and HMR appears to stop working. Polling is the only
+    // thing that sees them. Opt-in, because it costs idle CPU and the host-run dev server
+    // (npm run dev:client) gets real filesystem events and must not pay for it.
+    watch:
+      process.env.VITE_USE_POLLING === 'true' ? { usePolling: true, interval: 300 } : undefined,
     // Vite blocks Host headers it does not recognise, so a friendly /etc/hosts alias
     // (e.g. `127.0.0.1 dev.minicrm.local` → http://dev.minicrm.local:5173) is refused
     // with "This host is not allowed" until it is listed here. Additive and opt-in:

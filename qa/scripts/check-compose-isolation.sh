@@ -34,7 +34,7 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 0
 fi
 
-DEV_ARGS=(-f docker-compose.yml -f docker-compose.dev.yml --profile web --profile backup)
+DEV_ARGS=(-f docker-compose.yml -f docker-compose.dev.yml --profile backup)
 TEST_ARGS=(-f docker-compose.test.yml)
 
 failures=0
@@ -56,13 +56,35 @@ if [ $? -ne 0 ] || [ -z "$test_config" ]; then
   echo "  Reproduce: docker compose ${TEST_ARGS[*]} config"
 fi
 
-# The dev stack must also validate WITHOUT --profile web, since that is the default
-# local invocation, and must not expose the nginx client on port 80 in that mode.
+# The dev stack must serve the Vite dev server on 5173 and must NOT publish port 80: the
+# dev client stops at the builder stage and has no nginx listening there, so publishing it
+# would occupy the port with nothing behind it.
 dev_default=$(docker compose -f docker-compose.yml -f docker-compose.dev.yml config 2>/dev/null)
 if [ $? -ne 0 ] || [ -z "$dev_default" ]; then
-  fail "dev project failed to validate without --profile web (the default local mode)."
-elif grep -qE '^\s+published: "80"$' <<<"$dev_default"; then
-  fail "port 80 is published by the default dev stack; the client service must stay profiled."
+  fail "dev project failed to validate (the default local mode)."
+else
+  if grep -qE '^\s+published: "80"$' <<<"$dev_default"; then
+    fail "port 80 is published by the dev stack; the dev client serves Vite on 5173, not nginx on 80."
+  fi
+  if ! grep -qE '^\s+published: "5173"$' <<<"$dev_default"; then
+    fail "the dev stack does not publish 5173; the dev UI must come up with a plain 'up -d'."
+  fi
+  if ! grep -qE '^\s+target: builder$' <<<"$dev_default"; then
+    fail "the dev client is not built from the builder stage; it would serve a static bundle with no HMR."
+  fi
+fi
+
+# Production must keep serving nginx on 80 — the dev overlay must not have leaked into it.
+prod_config=$(docker compose -f docker-compose.yml config 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$prod_config" ]; then
+  fail "production project (docker-compose.yml alone) failed to validate."
+else
+  if ! grep -qE '^\s+published: "80"$' <<<"$prod_config"; then
+    fail "production no longer publishes port 80; the client is how the app is served."
+  fi
+  if grep -qE '^\s+target: builder$' <<<"$prod_config"; then
+    fail "production builds the builder stage; it must build through to the nginx stage."
+  fi
 fi
 
 if [ "$failures" -gt 0 ]; then

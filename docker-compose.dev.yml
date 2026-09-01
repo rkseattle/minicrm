@@ -1,9 +1,11 @@
 # Development overrides for docker-compose.yml.
 # Mounts local source into containers and overrides NODE_ENV.
 #
-# Usage (normal dev):
+# Usage (normal dev) — one command, and the UI hot-reloads on :5173:
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-#   npm run dev:client     # Vite dev server on :5173 — this is the dev UI, with HMR
+#
+# `npm run dev:client` still runs the same dev server on the host, against the API on
+# :3001, for when a native watcher is wanted instead of the container's polling.
 #
 # Automated testing does NOT run here. E2E, unit, coverage and TIA all target the
 # isolated stack in docker-compose.test.yml (MINCRM-684):
@@ -28,14 +30,38 @@ services:
       # host source tree is mounted on top of /app.
       - /app/node_modules
 
-  # Only applies under `--profile web`, since the base service is profiled (MINCRM-684).
-  # NODE_ENV is set for parity with the other services; the bind mounts are deliberately
-  # NOT carried over from the previous version of this block — the image serves a
-  # production build baked in at build time (client/Dockerfile), so mounting host source
-  # over /app/client changed nothing and implied a hot-reload path that never existed.
+  # The dev client is the Vite dev server, not the nginx image the base file defines.
+  #
+  # The base `client` is a production artifact: client/Dockerfile builds the bundle and
+  # serves it from nginx, so nothing in that container can hot-reload and mounting source
+  # over it does nothing. Dev stops at the `builder` stage instead, which already has the
+  # workspace installed, and runs Vite against the mounted tree.
+  #
+  # Verifying the built bundle belongs to the test stack's client on :8080
+  # (docker-compose.test.yml), which exists for exactly that.
   client:
+    build:
+      target: builder
+    # Run through the workspace so Vite's root is client/, where index.html lives, and
+    # the API proxy target comes from the same script the host-run dev server uses.
+    working_dir: /app
+    command: npm run dev --workspace=minicrm-client -- --host 0.0.0.0
     environment:
       NODE_ENV: development
+      # Reached over the compose network, so it is the service name rather than localhost.
+      API_URL: http://server:3001
+      VITE_USE_POLLING: 'true'
+    # !reset discards the base service's 80:80 rather than appending to it — sequences
+    # merge by appending, and the dev container has nothing listening on 80.
+    ports: !override
+      - "5173:5173"
+    volumes:
+      - ./client:/app/client
+      - ./shared:/app/shared
+      # Anonymous volumes keep the image's installed dependencies from being shadowed by
+      # the host mount — node_modules is absent from the host tree for these workspaces.
+      - /app/node_modules
+      - /app/client/node_modules
 
   # MINCRM-399: Dex OIDC provider for local SSO testing.
   # Enable with (both files — this overlay's services are override fragments):

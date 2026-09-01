@@ -107,13 +107,11 @@ services:
   # uses the Vite dev server on :5173 instead (`npm run dev:client`).
   #
   # Deployments must pass the profile explicitly:
-  #   docker compose --profile web --profile backup up -d
+  #   docker compose --profile backup up -d
   # See docs/operations.md — this file is the production deployment artifact, so the
   # service is profiled rather than removed.
   client:
     container_name: minicrm-client
-    profiles:
-      - web
     logging: *default-logging
     build:
       context: .

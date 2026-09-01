@@ -46,8 +46,7 @@ scripts refuse to run against the dev port for this reason — see
 **Fix:**
 
 ```bash
-# dev — add --profile web only if you want the containerized client on :80;
-# for development use `npm run dev:client` on 5173 instead
+# dev — the UI is the Vite dev server on :5173, with hot reload
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 # test — Compose starts the services; e2e:setup creates the databases
