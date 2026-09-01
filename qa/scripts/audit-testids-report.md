@@ -1,12 +1,12 @@
 # data-testid Audit Report
 
-Generated: 2026-09-01T00:02:35.536Z
+Generated: 2026-09-01T00:24:28.575Z
 
 ## Summary
 
-- Matched: 594
+- Matched: 597
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1023
+- Unexercised (in app, not in tests): 1021
 - Dynamic (manual review required): 688
 
 ## Stale testids (action required)
@@ -606,10 +606,8 @@ _None — all test-referenced testids are present in the application source._
 | `profile-lang-section` | client/src/pages/ProfilePage.tsx | 221 |
 | `profile-navlayout-loading` | client/src/pages/ProfilePage.tsx | 284 |
 | `profile-navlayout-error` | client/src/pages/ProfilePage.tsx | 290 |
-| `profile-navlayout-select` | client/src/pages/ProfilePage.tsx | 311 |
 | `profile-navlayout-success` | client/src/pages/ProfilePage.tsx | 328 |
 | `profile-navlayout-save-error` | client/src/pages/ProfilePage.tsx | 338 |
-| `profile-navlayout-save` | client/src/pages/ProfilePage.tsx | 349 |
 | `profile-navlayout-section` | client/src/pages/ProfilePage.tsx | 299 |
 | `profile-notifications-title` | client/src/pages/ProfilePage.tsx | 367 |
 | `profile-prefs-loading` | client/src/pages/ProfilePage.tsx | 376 |
@@ -1689,8 +1687,8 @@ _None — all test-referenced testids are present in the application source._
 | `stat-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 379 | test |
 | `stat-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 396 | test |
 | `recent-activity-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 415 | test |
-| `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 811 | test |
-| `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 800 | test |
+| `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 812 | test |
+| `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 801 | test |
 | `pipeline-stage-name-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 359 | test |
 | `pipeline-edit-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1311 | test |
 | `pipeline-edit-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1329 | test |
@@ -1729,7 +1727,7 @@ _None — all test-referenced testids are present in the application source._
 | `feature-flag-role-override-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2692 | test |
 | `group-detail-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2723 | test |
 | `group-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2738 | test |
-| `custom-field-delete-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 564 | test |
-| `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 583 | test |
-| `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 606 | test |
-| `custom-field-label-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 619 | test |
+| `custom-field-delete-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 593 | test |
+| `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 612 | test |
+| `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 635 | test |
+| `custom-field-label-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 648 | test |

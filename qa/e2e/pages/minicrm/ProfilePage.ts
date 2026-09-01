@@ -574,4 +574,48 @@ export class ProfilePage {
       .resolve();
     return resolved.getAttribute('href');
   }
+
+  // ── Navigation layout preference ────────────────────────────────────────────
+
+  /** Returns the layout currently selected, or '' for the workspace default. */
+  async selectedNavLayout(): Promise<string> {
+    const resolved = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'profile-navlayout-select' },
+          { type: 'css', value: '[data-testid="profile-navlayout-select"]' },
+        ],
+        { intent: 'personal navigation layout selector' },
+      )
+      .resolve();
+    return resolved.inputValue();
+  }
+
+  /** Picks a layout, or '' to follow the workspace default. */
+  async selectNavLayout(layout: string): Promise<void> {
+    const resolved = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'profile-navlayout-select' },
+          { type: 'css', value: '[data-testid="profile-navlayout-select"]' },
+        ],
+        { intent: 'personal navigation layout selector' },
+      )
+      .resolve();
+    await resolved.selectOption(layout);
+  }
+
+  /** Clicks the save button for the navigation layout section. */
+  async saveNavLayout(): Promise<void> {
+    const resolved = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'profile-navlayout-save' },
+          { type: 'css', value: '[data-testid="profile-navlayout-save"]' },
+        ],
+        { intent: 'save button for the navigation layout preference' },
+      )
+      .resolve();
+    await resolved.click();
+  }
 }
