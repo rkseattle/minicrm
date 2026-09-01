@@ -58,11 +58,52 @@ export interface ThreadingHeaders {
 /**
  * Pulls message ids out of a header value.
  *
- * RFC 5322 folds long headers across lines and permits comments between ids, so this
- * takes the angle-bracketed tokens rather than splitting on whitespace.
+ * Bracketed tokens rather than whitespace splitting, because RFC 5322 folds long headers
+ * across lines. Parenthesised comments are stripped first: they are legal between ids and
+ * may themselves contain a bracketed address, and taking one as the conversation root
+ * would thread unrelated messages together — the same failure extractHeaderField exists
+ * to prevent one level up.
  */
 function extractMessageIds(headerValue: string): string[] {
-  return headerValue.match(/<[^<>]+>/g) ?? [];
+  return stripComments(headerValue).match(/<[^<>]+>/g) ?? [];
+}
+
+/**
+ * Removes RFC 5322 CFWS comments, which nest.
+ *
+ * A regex cannot match nested parentheses, so this counts depth. A quoted string may hold
+ * an unmatched parenthesis, so it is skipped over rather than counted.
+ */
+function stripComments(value: string): string {
+  let depth = 0;
+  let inQuotes = false;
+  let result = '';
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    const escaped = index > 0 && value[index - 1] === '\\';
+
+    if (!escaped && char === '"' && depth === 0) {
+      inQuotes = !inQuotes;
+      result += char;
+      continue;
+    }
+    if (inQuotes || escaped) {
+      if (depth === 0) result += char;
+      continue;
+    }
+    if (char === '(') {
+      depth += 1;
+      continue;
+    }
+    if (char === ')') {
+      if (depth > 0) depth -= 1;
+      continue;
+    }
+    if (depth === 0) result += char;
+  }
+
+  return result;
 }
 
 /**
@@ -98,7 +139,8 @@ export function resolveThreadId(headers: ThreadingHeaders): string | null {
   }
 
   if (headers.inReplyTo) {
-    // imapflow's envelope hands this back unbracketed; a raw header keeps its brackets.
+    // ENVELOPE carries the raw header value, brackets included, so the bracketed token is
+    // the normal case; the raw fallback covers a client that omitted them.
     const [bracketed] = extractMessageIds(headers.inReplyTo);
     const normalized = normalizeMessageId(bracketed ?? headers.inReplyTo);
     if (normalized) return normalized;

@@ -139,10 +139,14 @@ stored, so a failure here means nothing was written.
 
 ### Read the status
 
-| Status              | What it means                                                                                                          |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Active**          | The mailbox is connected and working.                                                                                  |
-| **Needs attention** | The provider stopped accepting the stored credentials. Click **Test** to re-check, or disconnect and connect it again. |
+| Status              | What it means                                                                                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Active**          | The mailbox is connected and working.                                                                                                                     |
+| **Needs attention** | The provider stopped accepting the stored credentials, or email syncing has been failing. Click **Test** to re-check — a successful test resumes syncing. |
+
+Repeated sync failures slow the retries down, and after enough of them MiniCRM stops
+retrying until you click **Test**. A successful test clears the failure count and puts the
+mailbox straight back into the sync schedule.
 
 ### Disconnect a mailbox
 

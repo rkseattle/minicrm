@@ -86,7 +86,7 @@
 | [public.lead_routing_scoring_config](public.lead_routing_scoring_config.md) | 11 | Singleton admin-editable weights/thresholds for lead routing suggestion scoring (MINCRM-475). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151; rep_coaching_scoring_config, migration 153). | BASE TABLE |
 | [public.data_hygiene_scoring_config](public.data_hygiene_scoring_config.md) | 9 | Singleton admin-editable thresholds for the data hygiene scan (MINCRM-476). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151). | BASE TABLE |
 | [public.data_hygiene_findings](public.data_hygiene_findings.md) | 13 | Current data hygiene queue (MINCRM-476), one row per flagged record per issue type. Upserted nightly by dataHygieneService; mutated in place by update/merge/archive/dismiss actions rather than appended — reflects current state, not a history log. A finding is cleared (deleted) once the nightly scan no longer detects the issue, or the underlying record is deleted/archived. dismissed_until implements the 90-day (admin-configurable) dismiss suppression window. | BASE TABLE |
-| [public.connected_accounts](public.connected_accounts.md) | 13 | Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth tokens or IMAP credentials as JSON); it is never returned by any API. | BASE TABLE |
+| [public.connected_accounts](public.connected_accounts.md) | 15 | Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth tokens or IMAP credentials as JSON); it is never returned by any API. | BASE TABLE |
 | [public.connected_account_oauth_states](public.connected_account_oauth_states.md) | 6 | Single-use OAuth authorization-code state. Binds a flow to the user who started it and holds that flow PKCE verifier until the callback consumes the row. | BASE TABLE |
 | [public.email_messages](public.email_messages.md) | 13 | Messages synced from a connected mailbox. Headers and metadata; bodies are not stored. | BASE TABLE |
 | [public.email_sync_jobs](public.email_sync_jobs.md) | 9 | Progress of a bounded mailbox backfill. One row per backfill run; incremental syncs create none. | BASE TABLE |
@@ -1136,6 +1136,8 @@ erDiagram
   smallint key_version "Key version used to encrypt auth_encrypted. References ENCRYPTION_KEY_V<n> env var."
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+  integer sync_failure_count "Consecutive failed sync attempts. Drives the retry delay and the ceiling past which a mailbox is no longer claimed; reset when a connection test succeeds."
+  timestamp_with_time_zone sync_next_attempt_at "Earliest time this mailbox may be synced again. Null means due now. This, not status, is what gates a retry."
 }
 "public.connected_account_oauth_states" {
   text state ""

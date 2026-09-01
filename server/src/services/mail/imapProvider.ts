@@ -18,6 +18,7 @@
 import {
   type ImapFlow,
   type FetchMessageObject,
+  type ListResponse,
   type MessageAddressObject,
   type MessageStructureObject,
 } from 'imapflow';
@@ -41,6 +42,12 @@ const INBOX_PATH = 'INBOX';
 
 /** The special-use flag identifying the sent-mail folder, per RFC 6154. */
 const SENT_SPECIAL_USE = '\\Sent';
+
+/**
+ * `specialUseSource` values that mean the server said so, rather than imapflow guessing
+ * from a folder's name. Only these make a `\Sent` flag authoritative.
+ */
+const SERVER_SUPPLIED_SPECIAL_USE = ['extension', 'user'];
 
 /**
  * Top-level paths a sent-mail folder goes by, for servers reporting no special-use flag.
@@ -70,9 +77,26 @@ const SYNC_TIMEOUTS: ImapClientTimeouts = {
  * Longest subject stored.
  *
  * RFC 5322 §2.1.1 caps a header line at 998 octets; anything past that is a sender doing
- * something deliberate, and `subject` is a `text` column with no bound of its own.
+ * something deliberate, and `subject` is an unindexed `text` column with no bound.
+ * Measured in UTF-16 code units, so a CJK or emoji subject keeps more than 998 octets —
+ * acceptable here precisely because nothing indexes this column.
  */
 const MAX_SUBJECT_LENGTH = 998;
+
+/**
+ * Longest value stored in a column that carries a btree index.
+ *
+ * Postgres refuses an index entry larger than about a third of a page — 2704 bytes on a
+ * default build — and `thread_id` and `provider_message_id` are both indexed. A
+ * `Message-ID` may legally run to RFC 5322's 998-octet line limit and a hostile one is
+ * unbounded, so an unbounded derived id fails the INSERT with SQLSTATE 54000. That is not
+ * a mapped error, so it would escape as a 500 and fail the whole page — one broken sender
+ * wedging an account's sync indefinitely.
+ *
+ * The bound is well under the limit because it counts UTF-16 code units, not bytes: a
+ * 4-byte character costs two units, so the worst case is twice this in bytes.
+ */
+const MAX_INDEXED_ID_LENGTH = 512;
 
 /** Messages read per mailbox per fetch, bounding both memory and time per tick. */
 const MAX_MESSAGES_PER_MAILBOX = 200;
@@ -110,6 +134,7 @@ export function parseCursor(cursor: string | null): CursorByMailbox {
   }
   if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return parsed;
 
+  // Safe: the guard above rejects anything that is not a non-array object.
   for (const [path, value] of Object.entries(decoded as Record<string, unknown>)) {
     if (!path || typeof value !== 'object' || value === null) continue;
     const { uidValidity, uidNext } = value as { uidValidity?: unknown; uidNext?: unknown };
@@ -203,8 +228,9 @@ function normalize(
   // more fields than were requested — so the References field is read out by name.
   const headerBlock = message.headers?.toString('utf8') ?? null;
   const referencesHeader = headerBlock ? extractHeaderField(headerBlock, 'references') : null;
-  const qualifiedId = `${mailboxPath}:${String(message.uid)}`;
-  const threadId =
+  // Both ids are bounded because both land under a btree index; see the constant.
+  const qualifiedId = `${mailboxPath}:${String(message.uid)}`.slice(0, MAX_INDEXED_ID_LENGTH);
+  const threadId = (
     resolveThreadId({
       messageId: envelope?.messageId ?? null,
       inReplyTo: envelope?.inReplyTo ?? null,
@@ -213,7 +239,8 @@ function normalize(
     // A message with no threading headers at all is its own conversation. The id is NOT
     // qualified by mailbox: the same message filed in both INBOX and Sent must land in one
     // thread, and the UID is the only handle it has.
-    `uid-${String(message.uid)}`;
+    `uid-${String(message.uid)}`
+  ).slice(0, MAX_INDEXED_ID_LENGTH);
 
   return {
     providerMessageId: qualifiedId,
@@ -238,11 +265,30 @@ async function connect(auth: ImapAuthPayload): Promise<ImapFlow> {
 /**
  * Resolves which mailboxes to sync: INBOX always, Sent when one can be identified.
  *
- * The special-use flag is preferred because it is unambiguous, but RFC 6154 is an optional
- * extension — Courier, Dovecot without the plugin, and many shared hosts report none — so
- * a name match is tried second. Failing both is logged: the ticket asks for sent mail, and
- * silently syncing half a conversation is worse than a diagnosable gap.
+ * A `\Sent` flag is trusted only when the SERVER supplied it. imapflow also sets
+ * `specialUse` from its own localized leaf-name guess when the server advertises no
+ * RFC 6154 SPECIAL-USE, and when several folders share a leaf name it breaks the tie by
+ * `path.localeCompare` — so on such a server `Archive/2019/Sent` wins the flag outright
+ * and the live `Sent` never gets one. `specialUseSource` separates the two cases.
+ *
+ * Failing every route is logged: the ticket asks for sent mail, and silently syncing half
+ * a conversation is worse than a diagnosable gap.
  */
+/**
+ * A mailbox's path relative to the top of the account's tree.
+ *
+ * Courier and Dovecot commonly namespace every folder under the inbox, so the real Sent
+ * folder is `INBOX.Sent` with a `.` delimiter. Treating that as nested drops it: it is
+ * top-level as far as the user is concerned, and it is the single most common layout on
+ * servers that report no RFC 6154 special-use.
+ */
+function stripInboxNamespace(mailbox: ListResponse): string {
+  const prefix = `${INBOX_PATH}${mailbox.delimiter}`;
+  return mailbox.path.toLowerCase().startsWith(prefix.toLowerCase())
+    ? mailbox.path.slice(prefix.length).trim()
+    : mailbox.path.trim();
+}
+
 async function resolveMailboxPaths(client: ImapFlow): Promise<string[]> {
   const isInbox = (path: string): boolean => path.toLowerCase() === INBOX_PATH.toLowerCase();
   const paths = [INBOX_PATH];
@@ -251,23 +297,39 @@ async function resolveMailboxPaths(client: ImapFlow): Promise<string[]> {
     const listed = await client.list();
 
     // The name is case-insensitive per RFC 3501 §5.1, so a server may list it as "Inbox".
-    // Taking the server's own spelling keeps it one mailbox: two spellings would open two,
-    // and every message would be stored twice under two provider ids.
+    // imapflow uppercases any spelling before SELECT, so this is about the CURSOR and the
+    // provider ids, which are keyed on the path string this function returns.
     const inbox = listed.find((mailbox) => isInbox(mailbox.path));
     if (inbox) paths[0] = inbox.path;
 
+    const isSentFlag = (mailbox: ListResponse): boolean =>
+      mailbox.specialUse?.toLowerCase() === SENT_SPECIAL_USE.toLowerCase();
+
     const sent =
       listed.find(
-        (mailbox) => mailbox.specialUse?.toLowerCase() === SENT_SPECIAL_USE.toLowerCase(),
+        (mailbox) =>
+          isSentFlag(mailbox) &&
+          SERVER_SUPPLIED_SPECIAL_USE.includes(mailbox.specialUseSource ?? ''),
       ) ??
-      listed.find((mailbox) => SENT_FALLBACK_PATHS.includes(mailbox.path.trim().toLowerCase()));
+      listed.find((mailbox) =>
+        SENT_FALLBACK_PATHS.includes(stripInboxNamespace(mailbox).toLowerCase()),
+      ) ??
+      // A name-derived flag is still better than nothing once the whole-path names are
+      // exhausted — but only from a folder sitting at the top of the account's tree, so a
+      // dated archive whose leaf happens to read "Sent" cannot claim it.
+      listed.find(
+        (mailbox) =>
+          isSentFlag(mailbox) && !stripInboxNamespace(mailbox).includes(mailbox.delimiter),
+      );
 
     if (sent && !isInbox(sent.path)) {
       paths.push(sent.path);
     } else {
+      // A count rather than the paths: this fires on every tick for an account with no
+      // resolvable Sent folder, and the folder list is the user's own mail structure.
       logger.warn(
-        { mailboxes: listed.map((mailbox) => mailbox.path) },
-        'imapProvider: no sent-mail folder found by flag or name — syncing INBOX only',
+        { mailboxCount: listed.length, resolvedToInbox: sent !== undefined },
+        'imapProvider: no separate sent-mail folder resolved — syncing INBOX only',
       );
     }
   } catch (err) {
@@ -315,9 +377,11 @@ async function fetchMailbox(
     // the mailbox's highest existing UID and makes a range order-independent, so once the
     // cursor passes the top message `501:*` evaluates as `500:501` and re-delivers UID 500
     // on every tick, forever.
+    // The window spans from the cursor to the mailbox's top, and the CAP is applied to
+    // what comes back. Bounding the request by UID width instead makes a sparse mailbox —
+    // ten live messages atop a million-UID range — cost one round trip per 200 empty UIDs.
     const windowStart = resumeFrom;
-    const windowEnd =
-      windowStart === null ? null : Math.min(windowStart + MAX_MESSAGES_PER_MAILBOX - 1, uidNext - 1);
+    const windowEnd = windowStart === null ? null : uidNext - 1;
 
     const query =
       windowStart === null || windowEnd === null
@@ -347,13 +411,13 @@ async function fetchMailbox(
     // Sorted because the cursor is a high-water mark over UIDs and the server may have
     // sent them in any order — the arrival stream cannot be truncated in place, because
     // which messages are the LOWEST is not known until the last one has arrived.
-    collected.sort((a, b) => (a.uid ?? 0) - (b.uid ?? 0));
+    collected.sort((a, b) => a.uid - b.uid);
 
-    // The `since` path has no UID window bounding the request, so it is capped here, at
-    // the lowest UIDs. Taking the first to arrive instead would strand everything below
-    // the cut: the cursor advances past them and they are never asked for again.
-    const truncatedSince = windowStart === null && collected.length > MAX_MESSAGES_PER_MAILBOX;
-    const delivered = truncatedSince ? collected.slice(0, MAX_MESSAGES_PER_MAILBOX) : collected;
+    // Capped at the LOWEST UIDs, not at the first to arrive: taking arrival order would
+    // strand everything below the cut, because the cursor advances past them and they are
+    // never asked for again.
+    const truncated = collected.length > MAX_MESSAGES_PER_MAILBOX;
+    const delivered = truncated ? collected.slice(0, MAX_MESSAGES_PER_MAILBOX) : collected;
 
     const messages = delivered
       .map((message) => normalize(message, path, accountAddress))
@@ -362,23 +426,27 @@ async function fetchMailbox(
     // The cursor only ever moves forward. A server can report a uidNext below where this
     // account already reached — an empty fetch, or a server that recounts — and taking it
     // verbatim would rewind the mailbox and redeliver everything above it.
-    const highestDelivered = delivered.reduce((highest, m) => Math.max(highest, m.uid ?? 0), 0);
+    const highestDelivered = delivered.reduce((highest, m) => Math.max(highest, m.uid), 0);
     const resumedFrom = invalid ? 0 : (stored?.uidNext ?? 0);
 
-    // A resumed window advances past the window itself even when it came back empty:
-    // the messages in it were deleted, and asking for them again every tick never ends.
-    const reached =
-      windowEnd !== null ? windowEnd + 1 : highestDelivered > 0 ? highestDelivered + 1 : uidNext;
-
+    // A truncated read resumes just above what it delivered; a complete one resumes at the
+    // top of the range it asked for, so mail deleted at the end is not re-requested.
+    const reached = truncated
+      ? highestDelivered + 1
+      : windowEnd !== null
+        ? windowEnd + 1
+        : highestDelivered > 0
+          ? highestDelivered + 1
+          : uidNext;
 
     const nextCursor: MailboxCursor = {
       uidValidity,
       uidNext: Math.max(resumedFrom, reached),
     };
 
-    // More is waiting when this window stopped short of the mailbox's top, or when the
-    // unbounded `since` read hit its memory guard.
-    const hasMore = windowEnd !== null ? windowEnd < uidNext - 1 : truncatedSince;
+    // More is waiting only when the cap cut the result short — the request itself always
+    // spans to the top of the mailbox.
+    const hasMore = truncated;
 
     return {
       messages,
@@ -472,8 +540,11 @@ export function createImapProvider(
             // progress on any tick until the folder returns. Its stored position is kept
             // so the mailbox resumes where it stopped rather than re-backfilling.
             logger.warn({ err, mailbox: path }, 'imapProvider: skipping unreadable mailbox');
+            // The stored position is kept so the mailbox resumes rather than re-backfills
+            // if it returns. `hasMore` is deliberately NOT set: a folder that is gone for
+            // good would otherwise keep the engine paging an account forever to deliver
+            // nothing, and the next tick retries this mailbox regardless.
             if (storedForPath) nextCursor.set(path, storedForPath);
-            anyMore = true;
           }
         }
 
