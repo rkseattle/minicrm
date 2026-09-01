@@ -11,6 +11,17 @@ Purged by `runRetentionPurge()` in `retentionService.ts`, on the schedule in [Sc
 
 In-progress import jobs are never purged. `sequence_enrollment_logs` is retained indefinitely.
 
+`email_messages` is **not** time-purged: a mailbox's conversation history is the feature, not a
+log of it. Rows are deleted when their `connected_accounts` row is, via `ON DELETE CASCADE`, so
+disconnecting a mailbox removes everything synced from it. Erasing a message because a _data
+subject_ appears in its addresses is a separate question — the messages hold contact personal
+data while belonging to the connected user — and is decided by the email privacy story, which
+owns whether that is address redaction or row deletion and extends `gdpr_deletion_log` to match.
+
+`email_sync_jobs` holds no personal data — a status, a count, and an error string — and rides the
+same cascade. It gains a time-based purge on the `import_jobs` pattern when the service that
+writes it lands.
+
 `user_ai_context` is **not** subject to the `ai_sessions` retention policy — it stores persistent
 personalisation data (user-defined term definitions), not conversation transcripts.
 

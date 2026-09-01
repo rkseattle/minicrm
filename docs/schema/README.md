@@ -88,6 +88,8 @@
 | [public.data_hygiene_findings](public.data_hygiene_findings.md) | 13 | Current data hygiene queue (MINCRM-476), one row per flagged record per issue type. Upserted nightly by dataHygieneService; mutated in place by update/merge/archive/dismiss actions rather than appended — reflects current state, not a history log. A finding is cleared (deleted) once the nightly scan no longer detects the issue, or the underlying record is deleted/archived. dismissed_until implements the 90-day (admin-configurable) dismiss suppression window. | BASE TABLE |
 | [public.connected_accounts](public.connected_accounts.md) | 13 | Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth tokens or IMAP credentials as JSON); it is never returned by any API. | BASE TABLE |
 | [public.connected_account_oauth_states](public.connected_account_oauth_states.md) | 6 | Single-use OAuth authorization-code state. Binds a flow to the user who started it and holds that flow PKCE verifier until the callback consumes the row. | BASE TABLE |
+| [public.email_messages](public.email_messages.md) | 13 | Messages synced from a connected mailbox. Headers and metadata; bodies are not stored. | BASE TABLE |
+| [public.email_sync_jobs](public.email_sync_jobs.md) | 9 | Progress of a bounded mailbox backfill. One row per backfill run; incremental syncs create none. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -275,6 +277,8 @@ erDiagram
 "public.data_hygiene_findings" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.connected_accounts" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.connected_account_oauth_states" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.email_messages" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
+"public.email_sync_jobs" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -1140,6 +1144,32 @@ erDiagram
   text pkce_verifier ""
   timestamp_with_time_zone expires_at ""
   timestamp_with_time_zone created_at ""
+}
+"public.email_messages" {
+  uuid id ""
+  uuid connected_account_id FK ""
+  text provider_message_id "The provider's own message identifier, opaque here. Unique per connected account, which is what makes a repeated sync idempotent."
+  text thread_id "Normalized across providers: native thread id where one exists, otherwise derived from RFC 5322 References/In-Reply-To/Message-ID."
+  varchar_16_ direction ""
+  text from_address ""
+  text__ to_addresses ""
+  text__ cc_addresses ""
+  text subject ""
+  boolean has_attachments ""
+  timestamp_with_time_zone sent_at ""
+  boolean is_private "Restricts a message to the mailbox owner; enforced at the service layer."
+  timestamp_with_time_zone created_at ""
+}
+"public.email_sync_jobs" {
+  uuid id ""
+  uuid connected_account_id FK ""
+  varchar_16_ status ""
+  integer messages_synced "Messages stored so far. A backfill spans several scheduler ticks, so this advances while status stays running."
+  text error ""
+  timestamp_with_time_zone started_at ""
+  timestamp_with_time_zone completed_at ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
 }
 ```
 
