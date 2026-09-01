@@ -6,6 +6,7 @@
  * - Defaults to 'top' before the fetch resolves
  * - saveLayout calls the PATCH API and updates context value
  * - useNavLayout throws when called outside a NavLayoutProvider
+ * - A personal preference resolves over the workspace value, and clearing restores it
  */
 
 import { screen, fireEvent, waitFor, render } from '@testing-library/react';
