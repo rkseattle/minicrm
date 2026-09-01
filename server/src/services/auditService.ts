@@ -127,7 +127,8 @@ export type AuditEventType =
   | 'coverage_session_ended'
   /** Mailbox linked to or unlinked from a user account */
   | 'connected_account_connected'
-  | 'connected_account_disconnected';
+  | 'connected_account_disconnected'
+  | 'connected_account_sync_suspended';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {
