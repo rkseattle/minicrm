@@ -11,9 +11,9 @@
  *     ensureSystemDefaults() call — which would itself write settings.nav_layout
  *     and force the tag.
  *   - The workspace row is read once, only to pick a personal value that differs from
- *     whatever it holds. No assertion depends on that row's value: ensureSystemDefaults
- *     resets it to 'top' from eleven concurrent specs, and clearing a personal value
- *     re-reads it, so asserting on it would be a race.
+ *     whatever it holds. Every spec that writes that row is @serial and so runs in the
+ *     other half of the CI partition, but this spec still asserts only on values the
+ *     per-user route owns — that keeps it correct if the partition ever changes.
  *   - Each test owns an ephemeral user via the fixtures, which register teardown.
  *
  * AC notes:
@@ -47,11 +47,7 @@ function layoutDifferentFrom(workspaceLayout: string): 'top' | 'left' {
   return workspaceLayout === 'left' ? 'top' : 'left';
 }
 
-/**
- * Asserts the navigation actually rendered for `layout`, not merely what a form shows.
- * No-ops below the desktop breakpoint: mobile always renders the top bar regardless of
- * the stored layout, so a 'left' assertion could never hold there.
- */
+/** Asserts the navigation actually rendered for `layout`, not merely what a form shows. */
 async function expectNavRendered(
   layout: 'top' | 'left',
   context: NavBehaviorContext,

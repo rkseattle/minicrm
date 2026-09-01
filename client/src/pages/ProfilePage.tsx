@@ -2,6 +2,7 @@
  * ProfilePage component.
  * Allows authenticated users to manage their personal preferences:
  *   - Preferred language
+ *   - Navigation layout
  *   - Email notification preferences
  *   - Two-factor authentication
  *
@@ -38,7 +39,7 @@ import MfaDisableModal from '@/components/MfaDisableModal.js';
 import ConnectedAccountsPanel from '@/components/ConnectedAccountsPanel.js';
 
 /**
- * Profile settings page — language preference, email notification toggles, and MFA.
+ * Profile settings page — language, navigation layout, email notification toggles, and MFA.
  */
 export default function ProfilePage() {
   const { t } = useTranslation();
