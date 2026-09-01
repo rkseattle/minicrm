@@ -133,8 +133,18 @@ describe('extractHeaderField', () => {
     expect(extractHeaderField(folded, 'references')).toBe('<root@example.net> <mid@example.net>');
   });
 
-  it('stops at the next field rather than swallowing it', () => {
+  it('does not run one field value into the next', () => {
     expect(extractHeaderField(BLOCK, 'return-path')).toBe('<bounce@mailer.example.net>');
+  });
+
+  it('takes the first occurrence when a field is repeated, not a merge of both', () => {
+    // A repeated References is malformed but real. Reading past the first one would
+    // concatenate two conversations' ids into a single value.
+    const repeated =
+      'References: <first@example.net>\r\n' +
+      'Subject: hello\r\n' +
+      'References: <second@example.net>\r\n';
+    expect(extractHeaderField(repeated, 'references')).toBe('<first@example.net>');
   });
 
   it('returns null when the block does not carry the field', () => {
@@ -148,5 +158,27 @@ describe('extractHeaderField', () => {
   it('does not match a field name appearing inside another value', () => {
     const tricky = 'Subject: about References: nothing\r\n';
     expect(extractHeaderField(tricky, 'references')).toBeNull();
+  });
+});
+
+describe('RFC 5322 comments in a References header', () => {
+  it('does not thread on an address hidden inside a comment', () => {
+    // A comment is legal between ids and may contain a bracketed address. Taking it as
+    // the root would thread unrelated conversations together.
+    expect(resolveThreadId({ references: '(comment <fake@evil.net>) <root@example.net>' })).toBe(
+      'root@example.net',
+    );
+  });
+
+  it('handles a nested comment, which no regex can match', () => {
+    expect(
+      resolveThreadId({ references: '(outer (inner <fake@evil.net>)) <root@example.net>' }),
+    ).toBe('root@example.net');
+  });
+
+  it('keeps an id when a comment follows it', () => {
+    expect(resolveThreadId({ references: '<root@example.net> (trailing note)' })).toBe(
+      'root@example.net',
+    );
   });
 });

@@ -47,6 +47,8 @@ interface ConnectedAccountRow {
   status_detail: string | null;
   last_sync_at: Date | null;
   sync_cursor: string | null;
+  sync_failure_count: number;
+  sync_next_attempt_at: Date | null;
   key_version: number;
   created_at: Date;
   updated_at: Date;
@@ -78,6 +80,37 @@ export interface OAuthAuthPayload {
 }
 
 export type ConnectedAccountAuth = ImapAuthPayload | OAuthAuthPayload;
+
+/**
+ * Providers with a working sync driver.
+ *
+ * The single source of truth for what the scheduler may claim. A provider absent from
+ * this list is never picked up and so never marked failed for lacking a driver — it
+ * simply does not sync, which is what a mailbox connected before its provider shipped
+ * should do. Gmail and Microsoft Graph join this list when their drivers land.
+ */
+export const IMPLEMENTED_SYNC_PROVIDERS: readonly ConnectedAccountProvider[] = ['imap'];
+
+/**
+ * How long a claimed mailbox is withheld from other ticks.
+ *
+ * Long enough that a normal sync finishes inside it, short enough that a mailbox orphaned
+ * by a crashed process comes back on its own. Retrying an interrupted sync is safe: the
+ * cursor only advances on a completed page and the message ingest is idempotent.
+ */
+const SYNC_CLAIM_LEASE_MS = 15 * 60 * 1000;
+
+/** One mailbox the scheduler has claimed. Carries no credential material. */
+export interface ClaimedSyncAccount {
+  id: string;
+  userId: string;
+  /** The owner's role, joined here because the feature-flag check needs it. */
+  userRole: string;
+  provider: ConnectedAccountProvider;
+  emailAddress: string;
+  syncCursor: string | null;
+  syncFailureCount: number;
+}
 
 /** A connected account with its credentials decrypted, for internal use only. */
 export interface ConnectedAccountInternal {
@@ -567,8 +600,131 @@ export async function updateAccountStatus(
   status: ConnectedAccountStatus,
   statusDetail: string | null,
 ): Promise<void> {
+  // Going active clears the backoff. Without this a mailbox past MAX_SYNC_FAILURES could
+  // never be claimed again: POST /:id/test is the documented way back, and it would fix
+  // the status while leaving the counter that stopped the scheduler untouched, so a
+  // transient outage would retire a mailbox permanently.
   await pool.query(
-    `UPDATE connected_accounts SET status = $1, status_detail = $2 WHERE id = $3 AND user_id = $4`,
+    `UPDATE connected_accounts
+        SET status = $1::text,
+            status_detail = $2,
+            sync_failure_count = CASE WHEN $1::text = 'active' THEN 0 ELSE sync_failure_count END,
+            sync_next_attempt_at = CASE WHEN $1::text = 'active' THEN NULL ELSE sync_next_attempt_at END
+      WHERE id = $3 AND user_id = $4`,
     [status, statusDetail, accountId, userId],
   );
+}
+
+// ── Scheduler-facing API ──────────────────────────────────────────────────────
+//
+// The two functions below are this module's only queries not scoped by user_id, and the
+// exception is deliberate: the scheduler acts for no user. Neither returns credential
+// material to a caller that has not asked for it by account id, and neither is reachable
+// from a route.
+
+/**
+ * Claims a batch of mailboxes that are due to sync.
+ *
+ * The claim is a WRITE, not a lock: the selected rows have their `sync_next_attempt_at`
+ * pushed forward in the same statement that returns them. A row lock cannot serve here
+ * the way it does in `advanceRolloutStages` — that holds its lock across a few
+ * milliseconds of stage arithmetic, whereas a mailbox sync is network-bound and can run
+ * for minutes, and a lock held that long blocks the next tick rather than protecting it.
+ * Pushing the timestamp makes the claim survive the transaction ending, which is what
+ * stops a second instance from picking up the same mailbox mid-sync.
+ *
+ * `FOR UPDATE SKIP LOCKED` on the inner select still matters: it is what keeps two
+ * instances racing on the same batch from serializing behind each other.
+ *
+ * The lease is deliberately short. A process that dies mid-sync leaves the mailbox
+ * claimed until the lease expires, and then it is simply retried — the ingestion is
+ * idempotent, so a duplicated tick costs work, not correctness.
+ *
+ * `status IN ('active', 'error')` is what makes the backoff live rather than write-only.
+ * A failing mailbox is marked `error` for the UI's benefit, but it is
+ * `sync_next_attempt_at` that decides whether to retry, so excluding `error` here would
+ * mean a single failure retired an account for good. `disconnected` is excluded: that is
+ * a user's explicit decision, not a transient fault.
+ *
+ * The owner's role is joined rather than looked up per account, because the caller needs
+ * it for the feature-flag check and a lookup per row would be an N+1 on every tick. Their
+ * status is filtered on for the same reason auth.ts:78 refuses a non-active user's
+ * request: a deactivated employee's mailbox must stop syncing.
+ *
+ * @param limit - Maximum mailboxes to claim this tick.
+ */
+export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyncAccount[]> {
+  const result = await pool.query<ConnectedAccountRow & { user_role: string }>(
+    `UPDATE connected_accounts ca
+        SET sync_next_attempt_at = NOW() + ($3 || ' milliseconds')::interval
+       FROM (
+         SELECT ca2.id, u.role AS user_role
+           FROM connected_accounts ca2
+           JOIN users u ON u.id = ca2.user_id
+          WHERE ca2.status IN ('active', 'error')
+            AND ca2.provider = ANY($1)
+            AND u.status = 'active'
+            AND (ca2.sync_next_attempt_at IS NULL OR ca2.sync_next_attempt_at <= NOW())
+          ORDER BY ca2.sync_next_attempt_at ASC NULLS FIRST
+          LIMIT $2
+            FOR UPDATE OF ca2 SKIP LOCKED
+       ) due
+      WHERE ca.id = due.id
+  RETURNING ca.id, ca.user_id, ca.provider, ca.email_address, ca.sync_cursor,
+            ca.sync_failure_count, due.user_role`,
+    [IMPLEMENTED_SYNC_PROVIDERS, limit, SYNC_CLAIM_LEASE_MS],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    userRole: row.user_role,
+    provider: row.provider,
+    emailAddress: row.email_address,
+    syncCursor: row.sync_cursor,
+    syncFailureCount: row.sync_failure_count,
+  }));
+}
+
+/**
+ * Decrypts one already-claimed mailbox's credentials.
+ *
+ * Not scoped by user_id, because the scheduler has no user — the account id comes from
+ * claimAccountsDueForSync, which has already applied every ownership and status rule.
+ *
+ * IMAP only. An OAuth account needs the refresh-and-retry path getUsableAccessToken owns,
+ * and the claim query cannot return one until a Gmail or Graph driver exists, so an OAuth
+ * branch here would be code no test could reach.
+ *
+ * @returns the decrypted credentials, or null when the account is gone, is not IMAP, or
+ *   its ciphertext will not decrypt under any known key version.
+ */
+export async function getAccountAuthForSync(accountId: string): Promise<ImapAuthPayload | null> {
+  const result = await pool.query<ConnectedAccountRow>(
+    `SELECT id, provider, auth_encrypted, key_version FROM connected_accounts WHERE id = $1`,
+    [accountId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+
+  if (row.provider !== 'imap') {
+    logger.warn(
+      { accountId, provider: row.provider },
+      'connectedAccountService: refusing to decrypt a non-IMAP account for sync',
+    );
+    return null;
+  }
+
+  try {
+    const auth = JSON.parse(
+      decryptVersioned(row.auth_encrypted, row.key_version),
+    ) as ConnectedAccountAuth;
+    return auth.kind === 'imap' ? auth : null;
+  } catch (err) {
+    logger.error(
+      { err, accountId },
+      'connectedAccountService: failed to decrypt auth_encrypted for sync',
+    );
+    return null;
+  }
 }

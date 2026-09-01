@@ -11,10 +11,13 @@ import 'dotenv/config';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import {
+  claimAccountsDueForSync,
   createImapAccount,
   deleteConnectedAccount,
+  getAccountAuthForSync,
   getConnectedAccountInternal,
   getUsableAccessToken,
+  IMPLEMENTED_SYNC_PROVIDERS,
   listConnectedAccounts,
   updateAccountStatus,
   upsertOAuthAccount,
@@ -506,5 +509,253 @@ describe('audit entries for an expired refresh token', () => {
     expect(entries.rows).toHaveLength(1);
     expect(entries.rows[0].event_type).toBe('connected_account_disconnected');
     expect(entries.rows[0].old_value).toBe('PROVIDER_AUTH_EXPIRED');
+  });
+});
+
+describe('scheduler-facing account claim', () => {
+  /** Puts an account into a state the claim query should or should not pick up. */
+  async function setSyncState(
+    accountId: string,
+    state: {
+      status?: string;
+      nextAttemptAt?: Date | null;
+      failureCount?: number;
+    },
+  ): Promise<void> {
+    await pool.query(
+      `UPDATE connected_accounts
+          SET status = COALESCE($2, status),
+              sync_next_attempt_at = $3,
+              sync_failure_count = COALESCE($4, sync_failure_count)
+        WHERE id = $1`,
+      [accountId, state.status ?? null, state.nextAttemptAt ?? null, state.failureCount ?? null],
+    );
+  }
+
+  /** Only this file's fixtures, so a stray row from another suite cannot pass a test. */
+  async function claimOwn(limit = 10): Promise<string[]> {
+    const claimed = await claimAccountsDueForSync(limit);
+    return claimed
+      .filter((a) => a.userId === REP_A_ACTOR.id || a.userId === REP_B_ACTOR.id)
+      .map((a) => a.id);
+  }
+
+  it('claims a mailbox that has never been synced', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    expect(await claimOwn()).toContain(account.id);
+  });
+
+  it('does not claim one whose backoff has not elapsed', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await setSyncState(account.id, { nextAttemptAt: new Date(Date.now() + 60_000) });
+
+    expect(await claimOwn()).not.toContain(account.id);
+  });
+
+  it('claims an errored mailbox once its backoff elapses, so the retry is real', async () => {
+    // Excluding 'error' would make the backoff columns write-only: one failure would
+    // retire the mailbox permanently.
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await setSyncState(account.id, {
+      status: 'error',
+      failureCount: 3,
+      nextAttemptAt: new Date(Date.now() - 1_000),
+    });
+
+    expect(await claimOwn()).toContain(account.id);
+  });
+
+  it('never claims a disconnected mailbox, which is a user decision not a fault', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await setSyncState(account.id, { status: 'disconnected' });
+
+    expect(await claimOwn()).not.toContain(account.id);
+  });
+
+  it('never claims a mailbox belonging to a deactivated user', async () => {
+    // auth.ts refuses any request from a non-active user; their mailbox must stop syncing
+    // for the same reason.
+    const account = await createImapAccount(REP_B_ACTOR.id, IMAP_INPUT, REP_B_ACTOR);
+    await pool.query(`UPDATE users SET status = 'inactive' WHERE id = $1`, [REP_B_ACTOR.id]);
+
+    try {
+      expect(await claimOwn()).not.toContain(account.id);
+    } finally {
+      await pool.query(`UPDATE users SET status = 'active' WHERE id = $1`, [REP_B_ACTOR.id]);
+    }
+  });
+
+  it('never claims a provider with no driver', async () => {
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-google@example.com`,
+        auth: { kind: 'oauth', access_token: 'token', refresh_token: 'refresh', expires_at: null },
+        grantedScopes: [],
+      },
+      REP_A_ACTOR,
+    );
+
+    expect(IMPLEMENTED_SYNC_PROVIDERS).not.toContain('google');
+    expect(await claimOwn()).not.toContain(account.id);
+  });
+
+  it('leases what it claims, so a second tick does not resync the same mailbox', async () => {
+    // The claim is a write, not a held lock: a sync runs for minutes and the transaction
+    // that claimed it is long gone by then.
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    const first = await claimOwn();
+    const second = await claimOwn();
+
+    expect(first).toContain(account.id);
+    expect(second).not.toContain(account.id);
+  });
+
+  it('carries the owner role, so the tick needs no per-account lookup', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    const claimed = (await claimAccountsDueForSync(10)).find((a) => a.id === account.id);
+
+    expect(claimed?.userRole).toBe('rep');
+    expect(claimed?.userId).toBe(REP_A_ACTOR.id);
+  });
+
+  it('returns no credential material', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    const claimed = (await claimAccountsDueForSync(10)).find((a) => a.id === account.id);
+
+    expect(JSON.stringify(claimed)).not.toContain(IMAP_INPUT.password);
+    expect(JSON.stringify(claimed)).not.toContain(IMAP_INPUT.host);
+  });
+
+  it('honors the batch limit', async () => {
+    // Asserted against the raw return, not this file's fixtures: the limit applies to the
+    // whole due set, and other suites' accounts share the table.
+    await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await createImapAccount(
+      REP_A_ACTOR.id,
+      { ...IMAP_INPUT, email_address: `${FILE_PREFIX}-second@example.com` },
+      REP_A_ACTOR,
+    );
+
+    expect((await claimAccountsDueForSync(1)).length).toBeLessThanOrEqual(1);
+    expect((await claimAccountsDueForSync(5)).length).toBeLessThanOrEqual(5);
+  });
+});
+
+describe('sync recovery', () => {
+  it('clears the backoff when a connection test marks the mailbox active again', async () => {
+    // POST /:id/test is the documented way back. Without this reset a mailbox past the
+    // failure ceiling could never be claimed again.
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await pool.query(
+      `UPDATE connected_accounts
+          SET status = 'error', sync_failure_count = 9,
+              sync_next_attempt_at = $2
+        WHERE id = $1`,
+      [account.id, new Date(Date.now() + 86_400_000)],
+    );
+
+    await updateAccountStatus(account.id, REP_A_ACTOR.id, 'active', null);
+
+    const row = await pool.query<{ sync_failure_count: number; sync_next_attempt_at: Date | null }>(
+      'SELECT sync_failure_count, sync_next_attempt_at FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+    expect(row.rows[0].sync_failure_count).toBe(0);
+    expect(row.rows[0].sync_next_attempt_at).toBeNull();
+
+    const claimed = await claimAccountsDueForSync(10);
+    expect(claimed.map((a) => a.id)).toContain(account.id);
+  });
+
+  it('leaves the backoff alone when the status is not active', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    const due = new Date(Date.now() + 3_600_000);
+    await pool.query(
+      `UPDATE connected_accounts SET sync_failure_count = 4, sync_next_attempt_at = $2 WHERE id = $1`,
+      [account.id, due],
+    );
+
+    await updateAccountStatus(account.id, REP_A_ACTOR.id, 'error', 'still failing');
+
+    const row = await pool.query<{ sync_failure_count: number; sync_next_attempt_at: Date | null }>(
+      'SELECT sync_failure_count, sync_next_attempt_at FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+    expect(row.rows[0].sync_failure_count).toBe(4);
+    expect(row.rows[0].sync_next_attempt_at?.getTime()).toBe(due.getTime());
+  });
+});
+
+describe('getAccountAuthForSync', () => {
+  it('round-trips IMAP credentials without a user id', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    const auth = await getAccountAuthForSync(account.id);
+
+    expect(auth).toEqual({
+      kind: 'imap',
+      host: IMAP_INPUT.host,
+      port: IMAP_INPUT.port,
+      username: IMAP_INPUT.username,
+      password: IMAP_INPUT.password,
+      secure: IMAP_INPUT.secure,
+    });
+  });
+
+  it('refuses an OAuth account, whose refresh path this seam does not carry', async () => {
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-oauth@example.com`,
+        auth: { kind: 'oauth', access_token: 'token', refresh_token: 'refresh', expires_at: null },
+        grantedScopes: [],
+      },
+      REP_A_ACTOR,
+    );
+
+    expect(await getAccountAuthForSync(account.id)).toBeNull();
+  });
+
+  it('refuses a non-IMAP provider even when the stored payload looks like IMAP', async () => {
+    // The provider column is the gate, not the payload's shape. Checking only the payload
+    // would let a Google account with IMAP-shaped credentials through to a driver whose
+    // token-refresh path it needs and this seam does not carry.
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'microsoft',
+        emailAddress: `${FILE_PREFIX}-shaped@example.com`,
+        auth: { kind: 'oauth', access_token: 'token', refresh_token: null, expires_at: null },
+        grantedScopes: [],
+      },
+      REP_A_ACTOR,
+    );
+
+    // Rewrite the ciphertext to an IMAP payload, leaving provider = 'microsoft'.
+    const imapLike = await createImapAccount(
+      REP_B_ACTOR.id,
+      { ...IMAP_INPUT, email_address: `${FILE_PREFIX}-donor@example.com` },
+      REP_B_ACTOR,
+    );
+    await pool.query(
+      `UPDATE connected_accounts SET auth_encrypted = donor.auth_encrypted,
+              key_version = donor.key_version
+         FROM (SELECT auth_encrypted, key_version FROM connected_accounts WHERE id = $2) donor
+        WHERE connected_accounts.id = $1`,
+      [account.id, imapLike.id],
+    );
+
+    expect(await getAccountAuthForSync(account.id)).toBeNull();
+  });
+
+  it('returns null for an account that no longer exists', async () => {
+    expect(await getAccountAuthForSync('00000000-0000-0000-0000-000000000000')).toBeNull();
   });
 });

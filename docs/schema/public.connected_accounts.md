@@ -21,6 +21,8 @@ Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth token
 | key_version | smallint | 1 | false |  |  | Key version used to encrypt auth_encrypted. References ENCRYPTION_KEY_V\<n\> env var. |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
+| sync_failure_count | integer | 0 | false |  |  | Consecutive failed sync attempts. Drives the retry delay and the ceiling past which a mailbox is no longer claimed; reset when a connection test succeeds. |
+| sync_next_attempt_at | timestamp with time zone |  | true |  |  | Earliest time this mailbox may be synced again. Null means due now. This, not status, is what gates a retry. |
 
 ## Constraints
 
@@ -39,6 +41,7 @@ Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth token
 | connected_accounts_pkey | CREATE UNIQUE INDEX connected_accounts_pkey ON public.connected_accounts USING btree (id) |
 | connected_accounts_user_provider_email_unique | CREATE UNIQUE INDEX connected_accounts_user_provider_email_unique ON public.connected_accounts USING btree (user_id, provider, email_address) |
 | connected_accounts_user_id_idx | CREATE INDEX connected_accounts_user_id_idx ON public.connected_accounts USING btree (user_id) |
+| connected_accounts_sync_due_idx | CREATE INDEX connected_accounts_sync_due_idx ON public.connected_accounts USING btree (sync_next_attempt_at NULLS FIRST) WHERE ((status)::text = ANY ((ARRAY['active'::character varying, 'error'::character varying])::text[])) |
 
 ## Triggers
 
@@ -69,6 +72,8 @@ erDiagram
   smallint key_version "Key version used to encrypt auth_encrypted. References ENCRYPTION_KEY_V<n> env var."
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+  integer sync_failure_count "Consecutive failed sync attempts. Drives the retry delay and the ceiling past which a mailbox is no longer claimed; reset when a connection test succeeds."
+  timestamp_with_time_zone sync_next_attempt_at "Earliest time this mailbox may be synced again. Null means due now. This, not status, is what gates a retry."
 }
 "public.email_messages" {
   uuid id ""

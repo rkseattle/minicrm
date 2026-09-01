@@ -10251,6 +10251,19 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "sync_failure_count",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "comment": "Consecutive failed sync attempts. Drives the retry delay and the ceiling past which a mailbox is no longer claimed; reset when a connection test succeeds."
+        },
+        {
+          "name": "sync_next_attempt_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "Earliest time this mailbox may be synced again. Null means due now. This, not status, is what gates a retry."
         }
       ],
       "indexes": [
@@ -10278,6 +10291,14 @@
           "table": "public.connected_accounts",
           "columns": [
             "user_id"
+          ]
+        },
+        {
+          "name": "connected_accounts_sync_due_idx",
+          "def": "CREATE INDEX connected_accounts_sync_due_idx ON public.connected_accounts USING btree (sync_next_attempt_at NULLS FIRST) WHERE ((status)::text = ANY ((ARRAY['active'::character varying, 'error'::character varying])::text[]))",
+          "table": "public.connected_accounts",
+          "columns": [
+            "sync_next_attempt_at"
           ]
         }
       ],
