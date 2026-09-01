@@ -239,13 +239,25 @@ void (async () => {
   });
 })();
 
+/**
+ * Minutes between email sync ticks, resolved once at boot.
+ *
+ * A per-tick read would let a mid-run env change take effect silently, and the cron
+ * expression is built once anyway. An unparseable or non-positive value falls back to the
+ * scheduler's own default rather than producing an invalid expression.
+ */
+const emailSyncIntervalMinutes = (() => {
+  const raw = Number(process.env['EMAIL_SYNC_INTERVAL_MINUTES']);
+  return Number.isInteger(raw) && raw > 0 && raw <= 59 ? raw : undefined;
+})();
+
 // Background jobs. The inventory lives in services/scheduledJobs.ts so the
-// schedule is one enumerable list rather than twelve inline registrations.
+// schedule is one enumerable list rather than thirteen inline registrations.
 //
 // Skipped only when NODE_ENV=test. CI is not exempt: docker-compose.test.yml sets
 // NODE_ENV=development, so the E2E stack does schedule every job.
 if (process.env.NODE_ENV !== 'test') {
-  const stopScheduledJobs = startScheduledJobs(coverageRetentionDays);
+  const stopScheduledJobs = startScheduledJobs(coverageRetentionDays, emailSyncIntervalMinutes);
   process.once('SIGTERM', stopScheduledJobs);
   process.once('SIGINT', stopScheduledJobs);
 }
