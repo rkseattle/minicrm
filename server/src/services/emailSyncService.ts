@@ -28,6 +28,7 @@ import { writeAuditEntry } from './auditService.js';
 import {
   claimAccountsDueForSync,
   getAccountAuthForSync,
+  MAX_SYNC_FAILURES,
   SYNC_CLAIM_LEASE_MS,
   type ClaimedSyncAccount,
 } from './connectedAccountService.js';
@@ -65,9 +66,6 @@ const BACKFILL_WINDOW_DAYS = 90;
  * rest; the job's stored progress is what makes stopping mid-history safe.
  */
 const MAX_BACKFILL_PAGES_PER_TICK = 5;
-
-/** Consecutive failures after which a mailbox stops being retried until a user acts. */
-const MAX_SYNC_FAILURES = 8;
 
 /** First retry delay. Each further failure doubles it, up to the cap. */
 const BACKOFF_BASE_MS = 5 * 60 * 1000;

@@ -19,6 +19,7 @@ import {
   getUsableAccessToken,
   IMPLEMENTED_SYNC_PROVIDERS,
   listConnectedAccounts,
+  MAX_SYNC_FAILURES,
   updateAccountStatus,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
@@ -579,6 +580,47 @@ describe('scheduler-facing account claim', () => {
       failureCount: 3,
       nextAttemptAt: new Date(Date.now() - 1_000),
     });
+
+    expect(await claimOwn()).toContain(account.id);
+  });
+
+  it('never claims a mailbox retired at the failure ceiling', async () => {
+    // Retirement parks the mailbox with a null next attempt, which the due predicate reads
+    // as "due now" — so without the counter check a retired mailbox retries every tick and
+    // re-audits its own suspension, which is the unbounded retry the ceiling exists to stop.
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await setSyncState(account.id, {
+      status: 'error',
+      failureCount: MAX_SYNC_FAILURES,
+      nextAttemptAt: null,
+    });
+
+    expect(await claimOwn()).not.toContain(account.id);
+  });
+
+  it('claims a mailbox one failure below the ceiling', async () => {
+    // Pins the boundary: retiring at the last retry instead of after it would silently
+    // cost a mailbox its final attempt.
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await setSyncState(account.id, {
+      status: 'error',
+      failureCount: MAX_SYNC_FAILURES - 1,
+      nextAttemptAt: new Date(Date.now() - 1_000),
+    });
+
+    expect(await claimOwn()).toContain(account.id);
+  });
+
+  it('claims a retired mailbox again once a connection test clears its counter', async () => {
+    // updateAccountStatus zeroes the counter on going active; that is the documented way
+    // back, and it must actually return the mailbox to the schedule.
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await setSyncState(account.id, {
+      status: 'error',
+      failureCount: MAX_SYNC_FAILURES,
+      nextAttemptAt: null,
+    });
+    await updateAccountStatus(account.id, REP_A_ACTOR.id, 'active', null);
 
     expect(await claimOwn()).toContain(account.id);
   });

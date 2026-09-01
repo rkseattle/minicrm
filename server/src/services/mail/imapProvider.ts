@@ -15,6 +15,8 @@
  * fetch small enough that a mailbox syncs in a few round trips.
  */
 
+import { createHash } from 'node:crypto';
+
 import {
   type ImapFlow,
   type FetchMessageObject,
@@ -97,6 +99,20 @@ const MAX_SUBJECT_LENGTH = 998;
  * 4-byte character costs two units, so the worst case is twice this in bytes.
  */
 const MAX_INDEXED_ID_LENGTH = 512;
+
+/**
+ * Brings an identifier under the index bound without letting two distinct values become
+ * one. Plain truncation cannot do that: a mailbox path is the PREFIX of a qualified id,
+ * so two deep mailboxes sharing their first bytes lose the UID that told them apart, and
+ * the ingest's ON CONFLICT then overwrites one message with the other.
+ *
+ * Overflow is rare, so the readable form is kept whenever it fits and a digest of the
+ * whole value is substituted only when it does not.
+ */
+function boundIndexedId(id: string): string {
+  if (id.length <= MAX_INDEXED_ID_LENGTH) return id;
+  return `sha256:${createHash('sha256').update(id, 'utf8').digest('hex')}`;
+}
 
 /** Messages read per mailbox per fetch, bounding both memory and time per tick. */
 const MAX_MESSAGES_PER_MAILBOX = 200;
@@ -229,8 +245,8 @@ function normalize(
   const headerBlock = message.headers?.toString('utf8') ?? null;
   const referencesHeader = headerBlock ? extractHeaderField(headerBlock, 'references') : null;
   // Both ids are bounded because both land under a btree index; see the constant.
-  const qualifiedId = `${mailboxPath}:${String(message.uid)}`.slice(0, MAX_INDEXED_ID_LENGTH);
-  const threadId = (
+  const qualifiedId = boundIndexedId(`${mailboxPath}:${String(message.uid)}`);
+  const rawThreadId =
     resolveThreadId({
       messageId: envelope?.messageId ?? null,
       inReplyTo: envelope?.inReplyTo ?? null,
@@ -239,8 +255,8 @@ function normalize(
     // A message with no threading headers at all is its own conversation. The id is NOT
     // qualified by mailbox: the same message filed in both INBOX and Sent must land in one
     // thread, and the UID is the only handle it has.
-    `uid-${String(message.uid)}`
-  ).slice(0, MAX_INDEXED_ID_LENGTH);
+    `uid-${String(message.uid)}`;
+  const threadId = boundIndexedId(rawThreadId);
 
   return {
     providerMessageId: qualifiedId,
