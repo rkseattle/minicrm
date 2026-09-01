@@ -20,7 +20,7 @@ node -e "console.log('NODE_ENCRYPTION_KEY=' + require('crypto').randomBytes(32).
 # Then set ADMIN_PASSWORD in .env: at least 12 characters, with a letter, a
 # number, and a special character.
 
-docker compose --profile web up -d
+docker compose up -d
 ```
 
 Open http://localhost — the admin account is created automatically on first boot.
@@ -39,9 +39,13 @@ protects and how to rotate it.
 > `.env*.example` change. A root `.env` is unaffected: `.env.example` already declared
 > the key active, so its parity requirement has not changed.
 
-`--profile web` starts the nginx client on port 80. It serves a production build, so it
-does not hot-reload; for day-to-day development use the Vite dev server instead (see
-Local Development below).
+That command serves the production build through nginx on port 80. For day-to-day
+development add the dev overlay instead — it replaces the nginx client with the Vite dev
+server on http://localhost:5173, which hot-reloads as you edit:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
 
 ## Documentation
 

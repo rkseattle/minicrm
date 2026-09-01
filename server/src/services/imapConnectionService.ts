@@ -60,11 +60,55 @@ const AUTH_FAILURE_CODE = 'AUTHENTICATIONFAILED';
  * `authenticationFailed` or an `AUTHENTICATIONFAILED` response code; everything else —
  * DNS, TLS, refused connection, timeout — is a reachability problem.
  */
-function classifyImapError(err: unknown): typeof CONNECTION_FAILED | typeof PROVIDER_AUTH_EXPIRED {
+export function classifyImapError(
+  err: unknown,
+): typeof CONNECTION_FAILED | typeof PROVIDER_AUTH_EXPIRED {
   const candidate = err as { authenticationFailed?: boolean; responseText?: string; code?: string };
   if (candidate.authenticationFailed === true) return PROVIDER_AUTH_EXPIRED;
   if (candidate.code === AUTH_FAILURE_CODE) return PROVIDER_AUTH_EXPIRED;
   return CONNECTION_FAILED;
+}
+
+/** Timeouts one caller supplies, because a background sync and a form submit differ. */
+export interface ImapClientTimeouts {
+  connectionTimeout: number;
+  greetingTimeout: number;
+  socketTimeout: number;
+}
+
+/**
+ * Builds a client for a set of credentials.
+ *
+ * Shared so the `logger: false` stays in one place: imapflow logs the entire IMAP
+ * conversation at info level, the AUTH exchange included, and a copy of this construction
+ * that omits it writes plaintext credentials to the log.
+ */
+export function createImapClient(
+  candidate: ImapConnectionCandidate,
+  timeouts: ImapClientTimeouts,
+): ImapFlow {
+  return new ImapFlow({
+    host: candidate.host,
+    port: candidate.port,
+    secure: candidate.secure,
+    auth: { user: candidate.username, pass: candidate.password },
+    logger: false,
+    ...timeouts,
+  });
+}
+
+/**
+ * Ends a session, guaranteeing the socket is released.
+ *
+ * logout() negotiates a clean IMAP BYE and can itself hang or throw on a socket that is
+ * already gone; close() is unconditional and is what actually frees the fd.
+ */
+export async function closeImapClient(client: ImapFlow): Promise<void> {
+  try {
+    await client.logout();
+  } catch {
+    client.close();
+  }
 }
 
 /**
@@ -98,14 +142,7 @@ export async function testImapConnection(
     throw err;
   }
 
-  const client = new ImapFlow({
-    host: candidate.host,
-    port: candidate.port,
-    secure: candidate.secure,
-    auth: { user: candidate.username, pass: candidate.password },
-    // imapflow logs the full IMAP conversation at info level, which includes the AUTH
-    // exchange.
-    logger: false,
+  const client = createImapClient(candidate, {
     connectionTimeout: CONNECTION_TIMEOUT_MS,
     greetingTimeout: GREETING_TIMEOUT_MS,
     socketTimeout: SOCKET_TIMEOUT_MS,
@@ -129,12 +166,6 @@ export async function testImapConnection(
           : 'Could not reach that mail server.',
     };
   } finally {
-    // logout() negotiates a clean IMAP BYE and can itself hang or throw on a socket that
-    // is already gone; close() is unconditional and is what guarantees the fd is released.
-    try {
-      await client.logout();
-    } catch {
-      client.close();
-    }
+    await closeImapClient(client);
   }
 }
