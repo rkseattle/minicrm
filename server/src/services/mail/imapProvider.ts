@@ -263,18 +263,6 @@ async function connect(auth: ImapAuthPayload): Promise<ImapFlow> {
 }
 
 /**
- * Resolves which mailboxes to sync: INBOX always, Sent when one can be identified.
- *
- * A `\Sent` flag is trusted only when the SERVER supplied it. imapflow also sets
- * `specialUse` from its own localized leaf-name guess when the server advertises no
- * RFC 6154 SPECIAL-USE, and when several folders share a leaf name it breaks the tie by
- * `path.localeCompare` — so on such a server `Archive/2019/Sent` wins the flag outright
- * and the live `Sent` never gets one. `specialUseSource` separates the two cases.
- *
- * Failing every route is logged: the ticket asks for sent mail, and silently syncing half
- * a conversation is worse than a diagnosable gap.
- */
-/**
  * A mailbox's path relative to the top of the account's tree.
  *
  * Courier and Dovecot commonly namespace every folder under the inbox, so the real Sent
@@ -289,6 +277,18 @@ function stripInboxNamespace(mailbox: ListResponse): string {
     : mailbox.path.trim();
 }
 
+/**
+ * Resolves which mailboxes to sync: INBOX always, Sent when one can be identified.
+ *
+ * A `\Sent` flag is trusted only when the SERVER supplied it. imapflow also sets
+ * `specialUse` from its own localized leaf-name guess when the server advertises no
+ * RFC 6154 SPECIAL-USE, and when several folders share a leaf name it breaks the tie by
+ * `path.localeCompare` — so on such a server `Archive/2019/Sent` wins the flag outright
+ * and the live `Sent` never gets one. `specialUseSource` separates the two cases.
+ *
+ * Failing every route is logged: the ticket asks for sent mail, and silently syncing half
+ * a conversation is worse than a diagnosable gap.
+ */
 async function resolveMailboxPaths(client: ImapFlow): Promise<string[]> {
   const isInbox = (path: string): boolean => path.toLowerCase() === INBOX_PATH.toLowerCase();
   const paths = [INBOX_PATH];

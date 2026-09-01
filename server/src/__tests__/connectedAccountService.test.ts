@@ -512,6 +512,22 @@ describe('audit entries for an expired refresh token', () => {
   });
 });
 
+/**
+ * Withholds every other suite's mailbox from the claim.
+ *
+ * The claim is global and bounded by its limit, so a row this file owns can fall outside
+ * the batch whenever another suite has rows due — connected_accounts has no per-file
+ * isolation and vitest runs files in parallel. Filtering the result afterwards is not
+ * enough: by then the batch has already been chosen.
+ */
+async function withholdOtherSuites(): Promise<void> {
+  await pool.query(
+    `UPDATE connected_accounts SET sync_next_attempt_at = NOW() + interval '1 hour'
+      WHERE user_id <> ALL($1::uuid[])`,
+    [[REP_A_ACTOR.id, REP_B_ACTOR.id]],
+  );
+}
+
 describe('scheduler-facing account claim', () => {
   /** Puts an account into a state the claim query should or should not pick up. */
   async function setSyncState(
@@ -534,6 +550,7 @@ describe('scheduler-facing account claim', () => {
 
   /** Only this file's fixtures, so a stray row from another suite cannot pass a test. */
   async function claimOwn(limit = 10): Promise<string[]> {
+    await withholdOtherSuites();
     const claimed = await claimAccountsDueForSync(limit);
     return claimed
       .filter((a) => a.userId === REP_A_ACTOR.id || a.userId === REP_B_ACTOR.id)
@@ -617,6 +634,7 @@ describe('scheduler-facing account claim', () => {
   it('carries the owner role, so the tick needs no per-account lookup', async () => {
     const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
 
+    await withholdOtherSuites();
     const claimed = (await claimAccountsDueForSync(10)).find((a) => a.id === account.id);
 
     expect(claimed?.userRole).toBe('rep');
@@ -626,6 +644,7 @@ describe('scheduler-facing account claim', () => {
   it('returns no credential material', async () => {
     const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
 
+    await withholdOtherSuites();
     const claimed = (await claimAccountsDueForSync(10)).find((a) => a.id === account.id);
 
     expect(JSON.stringify(claimed)).not.toContain(IMAP_INPUT.password);
@@ -633,14 +652,7 @@ describe('scheduler-facing account claim', () => {
   });
 
   it('honors the batch limit', async () => {
-    // The limit applies to the whole due set, and other suites share this table — so the
-    // claim is bounded here by making this file's rows the only ones due. Asserting on
-    // the raw count instead makes the test depend on what ran alongside it.
-    await pool.query(
-      `UPDATE connected_accounts SET sync_next_attempt_at = NOW() + interval '1 hour'
-        WHERE user_id <> ALL($1::uuid[])`,
-      [[REP_A_ACTOR.id, REP_B_ACTOR.id]],
-    );
+    await withholdOtherSuites();
     await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
     await createImapAccount(
       REP_A_ACTOR.id,
@@ -674,6 +686,7 @@ describe('sync recovery', () => {
     expect(row.rows[0].sync_failure_count).toBe(0);
     expect(row.rows[0].sync_next_attempt_at).toBeNull();
 
+    await withholdOtherSuites();
     const claimed = await claimAccountsDueForSync(10);
     expect(claimed.map((a) => a.id)).toContain(account.id);
   });

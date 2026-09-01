@@ -28,12 +28,14 @@ import { writeAuditEntry } from './auditService.js';
 import {
   claimAccountsDueForSync,
   getAccountAuthForSync,
+  SYNC_CLAIM_LEASE_MS,
   type ClaimedSyncAccount,
 } from './connectedAccountService.js';
 import {
   completeEmailSyncJob,
   createEmailSyncJob,
   failEmailSyncJob,
+  getActiveEmailSyncJob,
   updateEmailSyncJobProgress,
 } from './emailSyncJobService.js';
 import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js';
@@ -131,6 +133,10 @@ function collapseDuplicateIds(messages: readonly NormalizedMessage[]): Normalize
  * a no-op in effect but must not lose an edit the provider made — a subject corrected, a
  * date resolved. `is_private` is deliberately not in the update list: it is a user's own
  * decision about a message and nothing upstream may overwrite it.
+ *
+ * @returns the number of rows this call CREATED. Updates are excluded so a job's
+ *   progress counts messages rather than write operations — a re-read of the same page
+ *   would otherwise inflate it without a single new message arriving.
  */
 async function storeMessages(
   client: PoolClient,
@@ -160,7 +166,7 @@ async function storeMessages(
       return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10})`;
     });
 
-    const result = await client.query(
+    const result = await client.query<{ inserted: boolean }>(
       `INSERT INTO email_messages
          (connected_account_id, provider_message_id, thread_id, direction, from_address,
           to_addresses, cc_addresses, subject, has_attachments, sent_at)
@@ -173,10 +179,13 @@ async function storeMessages(
              cc_addresses = EXCLUDED.cc_addresses,
              subject = EXCLUDED.subject,
              has_attachments = EXCLUDED.has_attachments,
-             sent_at = EXCLUDED.sent_at`,
+             sent_at = EXCLUDED.sent_at
+       RETURNING (xmax = 0) AS inserted`,
       values,
     );
-    stored += result.rowCount ?? 0;
+    // rowCount counts updated rows too, so it reports a re-sync of unchanged mail as
+    // newly stored. xmax is zero only on a row this statement inserted.
+    stored += result.rows.filter((row) => row.inserted).length;
   }
 
   return stored;
@@ -207,6 +216,11 @@ async function commitPage(accountId: string, page: ProviderPage): Promise<number
     const stored =
       page.messages.length > 0 ? await storeMessages(client, accountId, page.messages) : 0;
 
+    // The lease is extended, not cleared. claimAccountsDueForSync pushes
+    // sync_next_attempt_at forward to reserve the mailbox, and commitPage runs once per
+    // page — clearing it here would release the reservation mid-backfill and let a second
+    // instance claim the same mailbox while this one is still reading it. The failure
+    // count IS cleared: that is backoff state, and this page proves the mailbox works.
     await client.query(
       `UPDATE connected_accounts
           SET sync_cursor = $2,
@@ -214,9 +228,9 @@ async function commitPage(accountId: string, page: ProviderPage): Promise<number
               status = 'active',
               status_detail = NULL,
               sync_failure_count = 0,
-              sync_next_attempt_at = NULL
+              sync_next_attempt_at = NOW() + ($3 || ' milliseconds')::interval
         WHERE id = $1`,
-      [accountId, page.cursor],
+      [accountId, page.cursor, SYNC_CLAIM_LEASE_MS],
     );
 
     await client.query('COMMIT');
@@ -249,7 +263,10 @@ async function backfillAccount(
 ): Promise<SyncOutcome> {
   const job = await createEmailSyncJob(account.id);
   let stored = job.messages_synced;
-  let cursor: string | null = null;
+  // Resumes from where the last tick's final page left the cursor. Starting at null
+  // instead would re-read the window from the top every tick, so a mailbox larger than
+  // one tick's budget could never finish.
+  let cursor: string | null = account.syncCursor;
   let hasMore = false;
   let cursorInvalid = false;
 
@@ -307,7 +324,12 @@ export async function syncOneAccount(
   const resolved = provider ?? providerFor(account);
   const since = new Date(Date.now() - BACKFILL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-  if (account.syncCursor === null) {
+  // An unfinished job is what says a backfill is in progress — not the cursor, which
+  // every committed page advances. Routing on the cursor alone sent tick 2 down the
+  // incremental path, so a mailbox bigger than one tick's page budget was truncated and
+  // its job left running forever; migration 173's partial unique index then blocks any
+  // new job for that account, so even a later cursor invalidation could not recover.
+  if (account.syncCursor === null || (await getActiveEmailSyncJob(account.id)) !== null) {
     return backfillAccount(account, auth, resolved, since);
   }
 

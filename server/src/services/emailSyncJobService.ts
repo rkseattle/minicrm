@@ -40,23 +40,34 @@ export interface EmailSyncJobRow {
  * @param connectedAccountId - The mailbox being backfilled.
  * @returns The existing unfinished job, or a newly created one.
  */
+/** Passes allowed when the insert and the follow-up read keep racing a finishing job. */
+const CREATE_JOB_MAX_ATTEMPTS = 3;
+
 export async function createEmailSyncJob(connectedAccountId: string): Promise<EmailSyncJobRow> {
-  const inserted = await pool.query<EmailSyncJobRow>(
-    `INSERT INTO email_sync_jobs (connected_account_id)
-     VALUES ($1)
-     ON CONFLICT (connected_account_id) WHERE status IN ('pending', 'running')
-       DO NOTHING
-     RETURNING *`,
-    [connectedAccountId],
+  // Bounded rather than recursive. Each pass can lose the same race — the conflicting job
+  // finishing between the insert and the read — and an unbounded retry on a scheduler
+  // path would exhaust the stack rather than surface an error. Three passes is far more
+  // than the race needs; reaching the end means something other than the race is wrong.
+  for (let attempt = 0; attempt < CREATE_JOB_MAX_ATTEMPTS; attempt += 1) {
+    const inserted = await pool.query<EmailSyncJobRow>(
+      `INSERT INTO email_sync_jobs (connected_account_id)
+       VALUES ($1)
+       ON CONFLICT (connected_account_id) WHERE status IN ('pending', 'running')
+         DO NOTHING
+       RETURNING *`,
+      [connectedAccountId],
+    );
+    if (inserted.rows[0]) return inserted.rows[0];
+
+    const existing = await getActiveEmailSyncJob(connectedAccountId);
+    if (existing) return existing;
+    // Neither inserted nor found: the conflicting job finished between the two
+    // statements, so the caller's request to open one still stands. Try again.
+  }
+
+  throw new Error(
+    `emailSyncJobService: could not open a sync job for ${connectedAccountId} after ${String(CREATE_JOB_MAX_ATTEMPTS)} attempts`,
   );
-  if (inserted.rows[0]) return inserted.rows[0];
-
-  const existing = await getActiveEmailSyncJob(connectedAccountId);
-  if (existing) return existing;
-
-  // The conflicting job finished between the insert and this read, so the mailbox has no
-  // active job after all and the caller's request to open one still stands.
-  return createEmailSyncJob(connectedAccountId);
 }
 
 /**
