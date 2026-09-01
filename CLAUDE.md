@@ -188,6 +188,7 @@ skipped anyway, because `lint-and-typecheck` doesn't match `.md` paths either.
 Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations.md) ·
 [grpc](docs/dev/grpc.md) · [retention](docs/dev/retention.md) ·
 [ai-chat](docs/dev/ai-chat.md) · [coverage](docs/dev/coverage.md) ·
+[email-sync](docs/dev/email-sync.md) ·
 [dates-and-timezones](docs/dev/dates-and-timezones.md) ·
 [e2e-performance](docs/dev/e2e-performance.md) · [e2e-authoring](docs/dev/e2e-authoring.md) ·
 [eslint-plugins](docs/dev/eslint-plugins.md) · [local-sso](docs/dev/local-sso.md) ·

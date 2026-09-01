@@ -178,6 +178,25 @@ ai_gdpr_cascade_log                    ← GDPR Art. 17 cascade tracking for AI 
 user_ai_context
   Per-user AI personalization key/value pairs. Explicitly excluded from the
   session retention purge policy — this is persistent config, not conversation history.
+
+email_messages
+  direction(inbound|outbound)  ← decided by comparing sender to the mailbox's own
+    address, not by which folder the message was in: a sent copy can land in INBOX.
+  UNIQUE(connected_account_id, provider_message_id)  ← this is what makes re-syncing
+    idempotent. An IMAP UID is unique only within one mailbox, so the id is qualified
+    by mailbox path; a bare UID would collide across INBOX and Sent.
+  thread_id  provider_message_id  ← both indexed, so both are length-bounded at the
+    writer. Postgres refuses a btree entry over ~2704 bytes, and a Message-ID may
+    legally run to 998 octets.
+  is_private  ← defaulted false, no writer yet. Excluded from the sync upsert's
+    update list: a user's own decision, which nothing upstream may overwrite.
+
+email_sync_jobs
+  status(pending|running|complete|failed)
+  Partial UNIQUE on connected_account_id WHERE status IN ('pending','running')
+    ← at most one unfinished job per mailbox. Two ticks can race to open a backfill;
+    without it the loser's row is unreachable and can never reach a terminal status,
+    which is the only status the retention purge deletes.
 ```
 
 ---
