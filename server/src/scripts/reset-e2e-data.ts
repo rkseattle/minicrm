@@ -16,6 +16,10 @@
  *   - email_notifications_enabled → true
  *   - tags_restrict_creation → false
  *
+ * The surviving admin's own preferences (nav_layout, preferred_language) are cleared
+ * too: that row outlives the user DELETE, so a preference a spec left on it would
+ * override the workspace default on every later run.
+ *
  * feature_flags rows are updated (not deleted): enabled and role_overrides are restored
  * to their seeded values. Rows must not be deleted because migrations insert them with
  * ON CONFLICT DO NOTHING and won't re-insert if pgmigrations marks them applied.
@@ -246,6 +250,12 @@ async function main(adminEmail: string): Promise<void> {
     for (const [key, value] of settingResets) {
       await client.query(`UPDATE system_settings SET value = $2 WHERE key = $1`, [key, value]);
     }
+
+    // Scoped to the preserved row rather than relying on the DELETE above.
+    await client.query(
+      `UPDATE users SET nav_layout = NULL, preferred_language = NULL WHERE id = $1`,
+      [adminId],
+    );
 
     await client.query('COMMIT');
 
