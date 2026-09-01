@@ -1003,6 +1003,30 @@ describe('message normalization', () => {
     expect(page.messages[0].providerMessageId.length).toBeLessThanOrEqual(512);
   });
 
+  it('keeps ids distinct for two messages in one deeply nested mailbox', async () => {
+    const longPath = `Sent ${'A'.repeat(5000)}`;
+    const { client } = makeFakeClient([
+      inbox([]),
+      {
+        path: longPath,
+        uidValidity: '901',
+        uidNext: 3,
+        specialUse: '\\Sent',
+        messages: [
+          { uid: 1, from: ACCOUNT_ADDRESS, messageId: '<a@example.net>' },
+          { uid: 2, from: ACCOUNT_ADDRESS, messageId: '<b@example.net>' },
+        ],
+      },
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+    const ids = page.messages.map((message) => message.providerMessageId);
+
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+  });
+
   it('bounds a subject a sender made absurdly long', async () => {
     const { client } = makeFakeClient([
       inbox(

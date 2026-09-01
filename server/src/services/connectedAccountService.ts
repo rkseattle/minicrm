@@ -100,6 +100,16 @@ export const IMPLEMENTED_SYNC_PROVIDERS: readonly ConnectedAccountProvider[] = [
  */
 export const SYNC_CLAIM_LEASE_MS = 15 * 60 * 1000;
 
+/**
+ * Consecutive failures after which a mailbox stops being retried until a user acts.
+ *
+ * Lives here, not in the sync engine, because the claim query is what has to enforce it.
+ * A retired mailbox is parked with a null sync_next_attempt_at, which the due predicate
+ * below reads as "due now" — the same value a recovered account carries. The counter is
+ * the only field that separates the two, so both sides must read one constant.
+ */
+export const MAX_SYNC_FAILURES = 8;
+
 /** One mailbox the scheduler has claimed. Carries no credential material. */
 export interface ClaimedSyncAccount {
   id: string;
@@ -665,6 +675,7 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
             AND ca2.provider = ANY($1)
             AND u.status = 'active'
             AND (ca2.sync_next_attempt_at IS NULL OR ca2.sync_next_attempt_at <= NOW())
+            AND ca2.sync_failure_count < $4
           ORDER BY ca2.sync_next_attempt_at ASC NULLS FIRST
           LIMIT $2
             FOR UPDATE OF ca2 SKIP LOCKED
@@ -672,7 +683,7 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
       WHERE ca.id = due.id
   RETURNING ca.id, ca.user_id, ca.provider, ca.email_address, ca.sync_cursor,
             ca.sync_failure_count, due.user_role`,
-    [IMPLEMENTED_SYNC_PROVIDERS, limit, SYNC_CLAIM_LEASE_MS],
+    [IMPLEMENTED_SYNC_PROVIDERS, limit, SYNC_CLAIM_LEASE_MS, MAX_SYNC_FAILURES],
   );
 
   return result.rows.map((row) => ({
