@@ -32,6 +32,7 @@ Progress of a bounded mailbox backfill. One row per backfill run; incremental sy
 | ---- | ---------- |
 | email_sync_jobs_pkey | CREATE UNIQUE INDEX email_sync_jobs_pkey ON public.email_sync_jobs USING btree (id) |
 | email_sync_jobs_account_id_idx | CREATE INDEX email_sync_jobs_account_id_idx ON public.email_sync_jobs USING btree (connected_account_id) |
+| email_sync_jobs_one_active_per_account_idx | CREATE UNIQUE INDEX email_sync_jobs_one_active_per_account_idx ON public.email_sync_jobs USING btree (connected_account_id) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying])::text[])) |
 
 ## Triggers
 

@@ -8,13 +8,14 @@
  *   automation_rule_logs  — 90 days  (keyed on triggered_at)
  *   webhook_delivery_logs — 30 days  (keyed on delivered_at)
  *   import_jobs           — 180 days (keyed on created_at; completed jobs only)
+ *   email_sync_jobs       — 180 days (keyed on created_at; finished jobs only)
  *   ai_sessions           — configurable (default 90 days, min 30); reads
  *                           ai_configuration.ai_session_retention_days each run.
  *                           Cascade delete removes ai_messages automatically.
  *                           user_ai_context is NOT purged by this policy.
  *
  * Each table is purged in its own statement so a single large delete does not
- * hold a lock across all three tables. Row counts are logged for observability.
+ * hold a lock across every table at once. Row counts are logged for observability.
  */
 
 import pool from '../db.js';
@@ -24,11 +25,22 @@ import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
 /** Fallback AI session retention window when ai_configuration has no row. */
 const AI_SESSION_RETENTION_DAYS_DEFAULT = 90;
 
+/**
+ * How long an email sync job may sit without progressing before it is presumed abandoned.
+ * Comfortably longer than any single backfill tick, so a slow mailbox is never mistaken
+ * for a stalled one.
+ */
+const STALE_EMAIL_SYNC_JOB_HOURS = 24;
+
+/** Recorded on a job the stall sweep retires, so the cause is legible in the UI. */
+const STALE_EMAIL_SYNC_JOB_ERROR = 'Sync stopped unexpectedly and was retired automatically.';
+
 /** Retention window in days for each log table. */
 const RETENTION_DAYS = {
   automation_rule_logs: 90,
   webhook_delivery_logs: 30,
   import_jobs: 180,
+  email_sync_jobs: 180,
 } as const;
 
 /**
@@ -68,6 +80,44 @@ async function purgeImportJobs(): Promise<number> {
       WHERE created_at < now() - ($1 || ' days')::interval
         AND status IN ('complete', 'failed')`,
     [RETENTION_DAYS.import_jobs],
+  );
+  return result.rowCount ?? 0;
+}
+
+/**
+ * Deletes finished email_sync_jobs older than the retention window.
+ *
+ * Age alone never retires an unfinished job — a backfill spans many scheduler ticks, so a
+ * days-old 'running' row can be work still in progress. Staleness is the separate question
+ * failStaleEmailSyncJobs answers.
+ */
+async function purgeEmailSyncJobs(): Promise<number> {
+  const result = await pool.query(
+    `DELETE FROM email_sync_jobs
+      WHERE created_at < now() - ($1 || ' days')::interval
+        AND status IN ('complete', 'failed')`,
+    [RETENTION_DAYS.email_sync_jobs],
+  );
+  return result.rowCount ?? 0;
+}
+
+/**
+ * Fails email_sync_jobs whose progress has not advanced for the stall window.
+ *
+ * Without this an unfinished job is immortal: nothing purges a non-terminal row, and a
+ * partial unique index allows only one per mailbox, so a job orphaned by a restart or an
+ * uncaught error would block that account's backfill forever. The updated_at trigger
+ * moves on every progress write, so a row that has not moved is not being worked.
+ */
+async function failStaleEmailSyncJobs(): Promise<number> {
+  const result = await pool.query(
+    `UPDATE email_sync_jobs
+        SET status       = 'failed',
+            error        = $2,
+            completed_at = now()
+      WHERE status IN ('pending', 'running')
+        AND updated_at < now() - ($1 || ' hours')::interval`,
+    [STALE_EMAIL_SYNC_JOB_HOURS, STALE_EMAIL_SYNC_JOB_ERROR],
   );
   return result.rowCount ?? 0;
 }
@@ -184,6 +234,20 @@ export async function runRetentionPurge(): Promise<void> {
     logger.info({ deleted: importJobsDeleted }, 'retention: import_jobs purged');
   } catch (err) {
     logger.error({ err }, 'retention: failed to purge import_jobs');
+  }
+
+  try {
+    const staleFailed = await failStaleEmailSyncJobs();
+    logger.info({ failed: staleFailed }, 'retention: stale email_sync_jobs retired');
+  } catch (err) {
+    logger.error({ err }, 'retention: failed to retire stale email_sync_jobs');
+  }
+
+  try {
+    const emailSyncJobsDeleted = await purgeEmailSyncJobs();
+    logger.info({ deleted: emailSyncJobsDeleted }, 'retention: email_sync_jobs purged');
+  } catch (err) {
+    logger.error({ err }, 'retention: failed to purge email_sync_jobs');
   }
 
   try {

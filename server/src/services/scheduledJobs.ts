@@ -95,7 +95,7 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       schedule: '0 2 * * *',
       displaySchedule: 'Daily, 02:00',
       purpose:
-        'Purges automation_rule_logs (>90d), webhook_delivery_logs (>30d), and completed/failed import_jobs (>180d).',
+        'Purges automation_rule_logs (>90d), webhook_delivery_logs (>30d), and completed/failed import_jobs and email_sync_jobs (>180d). Retires email sync jobs stalled over 24h.',
       run: () => runRetentionPurge(),
     },
     {
