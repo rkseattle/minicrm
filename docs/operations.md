@@ -513,7 +513,7 @@ with it set skips its login screen and its role check permanently, in any enviro
 
 ## Scheduled Jobs
 
-The server runs twelve background jobs. They are declared in one place —
+The server runs thirteen background jobs. They are declared in one place —
 `server/src/services/scheduledJobs.ts` — and registered at startup.
 
 | Job                              | Schedule                  | What it does                                                                                                                                                                             |
@@ -528,6 +528,7 @@ The server runs twelve background jobs. They are declared in one place —
 | Coverage/TIA retention pruning   | Daily, 07:00              | Deletes `coverage_units`, `coverage_test_links`, `coverage_ingested_dumps`, and `coverage_sessions` rows older than the retention window. Runs regardless of `COVERAGE_INSTRUMENTATION`. |
 | Overdue task digest              | Daily, 08:00              | Emails each opted-in user one digest of their open tasks past due, deduplicated so a task is notified once.                                                                              |
 | Sequence step advancement        | Every 15 minutes          | Advances due sequence enrollments to their next step. Skips a tick while the previous run is still in progress.                                                                          |
+| Email sync                       | Every 15 minutes          | Fetches new mail for every connected mailbox that is due, and advances its sync cursor. Skips a tick while the previous run is still in progress.                                        |
 | Audit log partition maintenance  | Monthly, 1st at 00:00 UTC | Pre-creates `audit_log` partitions for the current month and three ahead, so no write lands on `audit_log_default`.                                                                      |
 | Feature flag rollout advancement | Every 60 seconds          | Advances feature flags whose next rollout stage has come due.                                                                                                                            |
 

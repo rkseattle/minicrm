@@ -54,6 +54,7 @@ services:
       ADMIN_NAME: ${ADMIN_NAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       E2E: ${E2E:-false}
+      EMAIL_SYNC_INTERVAL_MINUTES: ${EMAIL_SYNC_INTERVAL_MINUTES:-15}
       COVERAGE_DASHBOARD_NO_AUTH: ${COVERAGE_DASHBOARD_NO_AUTH:-false}
       # Off by default (zero-overhead — see coverageConfig.ts's own
       # resolveCoverageConfig). Previously only the E2E server set these

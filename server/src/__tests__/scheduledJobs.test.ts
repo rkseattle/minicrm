@@ -23,6 +23,7 @@ import * as followUpTimingService from '../services/followUpTimingService.js';
 import * as repCoachingService from '../services/repCoachingService.js';
 import * as dataHygieneService from '../services/dataHygieneService.js';
 import * as auditPartitionService from '../services/auditPartitionService.js';
+import * as emailSyncService from '../services/emailSyncService.js';
 import * as coverageRetentionScheduler from '../coverageAgent/coverageRetentionScheduler.js';
 
 const COVERAGE_RETENTION_DAYS = 30;
@@ -39,6 +40,7 @@ const EXPECTED_JOBS = [
   ['Coverage/TIA retention pruning', '0 7 * * *'],
   ['Overdue task digest', '0 8 * * *'],
   ['Sequence step advancement', '*/15 * * * *'],
+  ['Email sync', '*/15 * * * *'],
   ['Audit log partition maintenance', '0 0 1 * *'],
   ['Feature flag rollout advancement', 'every 60 seconds'],
 ] as const;
@@ -55,8 +57,27 @@ const JOB_SERVICE_CALLS: ReadonlyArray<[string, object, string]> = [
   ['Coverage/TIA retention pruning', coverageRetentionScheduler, 'runCoverageRetentionPruning'],
   ['Overdue task digest', notificationService, 'sendOverdueDigests'],
   ['Sequence step advancement', sequenceService, 'advanceDueEnrollments'],
+  ['Email sync', emailSyncService, 'syncDueAccounts'],
   ['Audit log partition maintenance', auditPartitionService, 'ensureAuditLogPartitions'],
 ];
+
+describe('the email sync interval', () => {
+  it('drives the cron expression and its displayed schedule', () => {
+    const jobs = buildScheduledJobs(COVERAGE_RETENTION_DAYS, 5);
+    const sync = jobs.find((job) => job.name === 'Email sync');
+
+    expect(sync?.schedule).toBe('*/5 * * * *');
+    expect(sync?.displaySchedule).toBe('Every 5 minutes');
+  });
+
+  it('defaults to 15 minutes, which is what the docs row states', () => {
+    const jobs = buildScheduledJobs(COVERAGE_RETENTION_DAYS);
+    const sync = jobs.find((job) => job.name === 'Email sync');
+
+    expect(sync?.schedule).toBe('*/15 * * * *');
+    expect(sync?.displaySchedule).toBe('Every 15 minutes');
+  });
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -255,7 +276,7 @@ describe('startScheduledJobs', () => {
     const stop = startScheduledJobs(COVERAGE_RETENTION_DAYS);
     stop();
 
-    // One stopper, not a signal handler per job: twelve jobs registering a
+    // One stopper, not a signal handler per job: thirteen jobs registering a
     // SIGTERM and SIGINT handler each would cross Node's max-listeners warning.
     expect(stops).toHaveLength(EXPECTED_JOBS.length - 1);
     for (const stopFn of stops) {

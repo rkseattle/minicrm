@@ -18,6 +18,7 @@ import { computeFollowUpTimingSuggestions } from './followUpTimingService.js';
 import { generateRepCoachingInsights } from './repCoachingService.js';
 import { runDataHygieneScan } from './dataHygieneService.js';
 import { ensureAuditLogPartitions } from './auditPartitionService.js';
+import { syncDueAccounts } from './emailSyncService.js';
 import { startRolloutScheduler, stopRolloutScheduler } from './featureFlagService.js';
 import { runCoverageRetentionPruning } from '../coverageAgent/coverageRetentionScheduler.js';
 
@@ -81,13 +82,24 @@ function skipWhileRunning(
   };
 }
 
+/** Default minutes between email sync ticks, when the env var is unset. */
+const DEFAULT_EMAIL_SYNC_INTERVAL_MINUTES = 15;
+
 /**
  * Every scheduled job, in fire-time order.
  *
- * `coverageRetentionDays` is passed in because it is resolved once at boot;
- * re-reading it per tick would let a mid-run env change take effect silently.
+ * `coverageRetentionDays` and `emailSyncIntervalMinutes` are passed in because both are
+ * resolved once at boot; re-reading them per tick would let a mid-run env change take
+ * effect silently.
+ *
+ * The interval is optional so the tests and the docs guard that call this with one
+ * argument keep compiling, and so `displaySchedule` renders a stable string for the docs
+ * row those guards pin.
  */
-export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[] {
+export function buildScheduledJobs(
+  coverageRetentionDays: number,
+  emailSyncIntervalMinutes: number = DEFAULT_EMAIL_SYNC_INTERVAL_MINUTES,
+): ScheduledJob[] {
   return [
     {
       name: 'Log table retention purge',
@@ -180,6 +192,18 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
       run: skipWhileRunning('sequence advancement', advanceDueEnrollments),
     },
     {
+      name: 'Email sync',
+      kind: 'cron',
+      schedule: `*/${String(emailSyncIntervalMinutes)} * * * *`,
+      displaySchedule: `Every ${String(emailSyncIntervalMinutes)} minutes`,
+      purpose:
+        'Fetches new mail for every connected mailbox that is due, and advances its sync cursor. Skips a tick while the previous run is still in progress.',
+      run: skipWhileRunning('email sync', async () => {
+        await syncDueAccounts();
+      }),
+      failureNote: 'connected mailboxes stop receiving new mail until the next tick',
+    },
+    {
       name: 'Audit log partition maintenance',
       kind: 'cron',
       schedule: '0 0 1 * *',
@@ -207,14 +231,17 @@ export function buildScheduledJobs(coverageRetentionDays: number): ScheduledJob[
 /**
  * Starts every job and returns a function that stops them all.
  *
- * One returned stopper rather than a handler per job: at twelve jobs, a pair of
+ * One returned stopper rather than a handler per job: at thirteen jobs, a pair of
  * signal listeners each would exceed Node's default max-listeners warning.
  */
-export function startScheduledJobs(coverageRetentionDays: number): () => void {
+export function startScheduledJobs(
+  coverageRetentionDays: number,
+  emailSyncIntervalMinutes?: number,
+): () => void {
   const started: ScheduledTask[] = [];
   const stoppers: Array<() => void> = [];
 
-  for (const job of buildScheduledJobs(coverageRetentionDays)) {
+  for (const job of buildScheduledJobs(coverageRetentionDays, emailSyncIntervalMinutes)) {
     if (job.kind === 'interval') {
       job.start();
       stoppers.push(job.stop);
