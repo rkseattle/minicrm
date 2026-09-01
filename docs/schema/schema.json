@@ -10435,6 +10435,294 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.email_messages",
+      "type": "BASE TABLE",
+      "comment": "Messages synced from a connected mailbox. Headers and metadata; bodies are not stored.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "connected_account_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "provider_message_id",
+          "type": "text",
+          "nullable": false,
+          "comment": "The provider's own message identifier, opaque here. Unique per connected account, which is what makes a repeated sync idempotent."
+        },
+        {
+          "name": "thread_id",
+          "type": "text",
+          "nullable": false,
+          "comment": "Normalized across providers: native thread id where one exists, otherwise derived from RFC 5322 References/In-Reply-To/Message-ID."
+        },
+        {
+          "name": "direction",
+          "type": "varchar(16)",
+          "nullable": false
+        },
+        {
+          "name": "from_address",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "to_addresses",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]"
+        },
+        {
+          "name": "cc_addresses",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]"
+        },
+        {
+          "name": "subject",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "has_attachments",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "is_private",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Restricts a message to the mailbox owner; enforced at the service layer."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "email_messages_pkey",
+          "def": "CREATE UNIQUE INDEX email_messages_pkey ON public.email_messages USING btree (id)",
+          "table": "public.email_messages",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_messages_account_provider_id_unique",
+          "def": "CREATE UNIQUE INDEX email_messages_account_provider_id_unique ON public.email_messages USING btree (connected_account_id, provider_message_id)",
+          "table": "public.email_messages",
+          "columns": [
+            "connected_account_id",
+            "provider_message_id"
+          ]
+        },
+        {
+          "name": "email_messages_thread_id_idx",
+          "def": "CREATE INDEX email_messages_thread_id_idx ON public.email_messages USING btree (thread_id)",
+          "table": "public.email_messages",
+          "columns": [
+            "thread_id"
+          ]
+        },
+        {
+          "name": "email_messages_sent_at_idx",
+          "def": "CREATE INDEX email_messages_sent_at_idx ON public.email_messages USING btree (sent_at)",
+          "table": "public.email_messages",
+          "columns": [
+            "sent_at"
+          ]
+        },
+        {
+          "name": "email_messages_account_sent_at_idx",
+          "def": "CREATE INDEX email_messages_account_sent_at_idx ON public.email_messages USING btree (connected_account_id, sent_at DESC)",
+          "table": "public.email_messages",
+          "columns": [
+            "connected_account_id",
+            "sent_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "email_messages_direction_check",
+          "type": "CHECK",
+          "def": "CHECK (((direction)::text = ANY ((ARRAY['inbound'::character varying, 'outbound'::character varying])::text[])))",
+          "table": "public.email_messages",
+          "referenced_table": "",
+          "columns": [
+            "direction"
+          ]
+        },
+        {
+          "name": "email_messages_connected_account_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE",
+          "table": "public.email_messages",
+          "referenced_table": "public.connected_accounts",
+          "columns": [
+            "connected_account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_messages_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.email_messages",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_messages_account_provider_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (connected_account_id, provider_message_id)",
+          "table": "public.email_messages",
+          "referenced_table": "",
+          "columns": [
+            "connected_account_id",
+            "provider_message_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.email_sync_jobs",
+      "type": "BASE TABLE",
+      "comment": "Progress of a bounded mailbox backfill. One row per backfill run; incremental syncs create none.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "connected_account_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "nullable": false,
+          "default": "'pending'::character varying"
+        },
+        {
+          "name": "messages_synced",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "comment": "Messages stored so far. A backfill spans several scheduler ticks, so this advances while status stays running."
+        },
+        {
+          "name": "error",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "email_sync_jobs_pkey",
+          "def": "CREATE UNIQUE INDEX email_sync_jobs_pkey ON public.email_sync_jobs USING btree (id)",
+          "table": "public.email_sync_jobs",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_sync_jobs_account_id_idx",
+          "def": "CREATE INDEX email_sync_jobs_account_id_idx ON public.email_sync_jobs USING btree (connected_account_id)",
+          "table": "public.email_sync_jobs",
+          "columns": [
+            "connected_account_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "email_sync_jobs_status_check",
+          "type": "CHECK",
+          "def": "CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying, 'complete'::character varying, 'failed'::character varying])::text[])))",
+          "table": "public.email_sync_jobs",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "email_sync_jobs_connected_account_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE",
+          "table": "public.email_sync_jobs",
+          "referenced_table": "public.connected_accounts",
+          "columns": [
+            "connected_account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_sync_jobs_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.email_sync_jobs",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "email_sync_jobs_set_updated_at",
+          "def": "CREATE TRIGGER email_sync_jobs_set_updated_at BEFORE UPDATE ON public.email_sync_jobs FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -11984,6 +12272,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.email_messages",
+      "columns": [
+        "connected_account_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.connected_accounts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.email_sync_jobs",
+      "columns": [
+        "connected_account_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.connected_accounts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

@@ -8,7 +8,7 @@ Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth token
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false |  |  |  |
+| id | uuid | gen_random_uuid() | false | [public.email_messages](public.email_messages.md) [public.email_sync_jobs](public.email_sync_jobs.md) |  |  |
 | user_id | uuid |  | false |  | [public.users](public.users.md) |  |
 | provider | varchar(16) |  | false |  |  |  |
 | email_address | text |  | false |  |  |  |
@@ -51,6 +51,8 @@ Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth token
 ```mermaid
 erDiagram
 
+"public.email_messages" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
+"public.email_sync_jobs" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 "public.connected_accounts" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.connected_accounts" {
@@ -65,6 +67,32 @@ erDiagram
   timestamp_with_time_zone last_sync_at ""
   text sync_cursor ""
   smallint key_version "Key version used to encrypt auth_encrypted. References ENCRYPTION_KEY_V<n> env var."
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.email_messages" {
+  uuid id ""
+  uuid connected_account_id FK ""
+  text provider_message_id "The provider's own message identifier, opaque here. Unique per connected account, which is what makes a repeated sync idempotent."
+  text thread_id "Normalized across providers: native thread id where one exists, otherwise derived from RFC 5322 References/In-Reply-To/Message-ID."
+  varchar_16_ direction ""
+  text from_address ""
+  text__ to_addresses ""
+  text__ cc_addresses ""
+  text subject ""
+  boolean has_attachments ""
+  timestamp_with_time_zone sent_at ""
+  boolean is_private "Restricts a message to the mailbox owner; enforced at the service layer."
+  timestamp_with_time_zone created_at ""
+}
+"public.email_sync_jobs" {
+  uuid id ""
+  uuid connected_account_id FK ""
+  varchar_16_ status ""
+  integer messages_synced "Messages stored so far. A backfill spans several scheduler ticks, so this advances while status stays running."
+  text error ""
+  timestamp_with_time_zone started_at ""
+  timestamp_with_time_zone completed_at ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }
