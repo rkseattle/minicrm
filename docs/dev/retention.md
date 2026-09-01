@@ -7,6 +7,7 @@ Purged by `runRetentionPurge()` in `retentionService.ts`, on the schedule in [Sc
 | `automation_rule_logs`  | 90 days                           | `triggered_at`   | all rows                                |
 | `webhook_delivery_logs` | 30 days                           | `delivered_at`   | all rows                                |
 | `import_jobs`           | 180 days                          | `created_at`     | `status IN ('complete', 'failed')` only |
+| `email_sync_jobs`       | 180 days                          | `created_at`     | `status IN ('complete', 'failed')` only |
 | `ai_sessions`           | configurable (default 90, min 30) | `created_at`     | all rows; `ai_messages` cascade-deleted |
 
 In-progress import jobs are never purged. `sequence_enrollment_logs` is retained indefinitely.
@@ -19,8 +20,10 @@ data while belonging to the connected user — and is decided by the email priva
 owns whether that is address redaction or row deletion and extends `gdpr_deletion_log` to match.
 
 `email_sync_jobs` holds no personal data — a status, a count, and an error string — and rides the
-same cascade. It gains a time-based purge on the `import_jobs` pattern when the service that
-writes it lands.
+same cascade when its mailbox is disconnected. Age alone never purges an unfinished job, because
+a backfill legitimately spans many scheduler ticks. Staleness does: the same nightly run first
+fails any job whose `updated_at` has not advanced in 24 hours, so a backfill orphaned by a
+restart cannot block its mailbox forever — only one unfinished job may exist per account.
 
 `user_ai_context` is **not** subject to the `ai_sessions` retention policy — it stores persistent
 personalisation data (user-defined term definitions), not conversation transcripts.

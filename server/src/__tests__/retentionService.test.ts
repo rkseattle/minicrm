@@ -17,6 +17,7 @@ import 'dotenv/config';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { createSession } from '../services/aiSessionService.js';
+import { createImapAccount } from '../services/connectedAccountService.js';
 import {
   purgeAiSessions,
   getAiSessionRetentionStats,
@@ -123,5 +124,80 @@ describe('runRetentionPurge', () => {
 
     const remaining = await pool.query('SELECT id FROM ai_sessions WHERE id = $1', [session.id]);
     expect(remaining.rows).toHaveLength(0);
+  });
+
+  it('retires an email_sync_job whose progress has stalled, freeing the mailbox', async () => {
+    const account = await createImapAccount(
+      userId,
+      {
+        email_address: `${FILE_PREFIX}-stalled@example.com`,
+        host: 'imap.example.com',
+        port: 993,
+        username: `${FILE_PREFIX}-stalled@example.com`,
+        password: 'imap-password-value',
+        secure: true,
+      },
+      { id: userId, name: 'Retention Svc User' },
+    );
+    const stalled = await pool.query<{ id: string }>(
+      `INSERT INTO email_sync_jobs (connected_account_id, status, updated_at)
+       VALUES ($1, 'running', now() - interval '48 hours')
+       RETURNING id`,
+      [account.id],
+    );
+
+    await expect(runRetentionPurge()).resolves.toBeUndefined();
+
+    const after = await pool.query<{ status: string; error: string | null }>(
+      'SELECT status, error FROM email_sync_jobs WHERE id = $1',
+      [stalled.rows[0].id],
+    );
+    expect(after.rows[0].status).toBe('failed');
+    expect(after.rows[0].error).toMatch(/retired automatically/);
+  });
+
+  it('purges finished email_sync_jobs past the window but never an unfinished one', async () => {
+    const account = await createImapAccount(
+      userId,
+      {
+        email_address: `${FILE_PREFIX}-mailbox@example.com`,
+        host: 'imap.example.com',
+        port: 993,
+        username: `${FILE_PREFIX}-mailbox@example.com`,
+        password: 'imap-password-value',
+        secure: true,
+      },
+      { id: userId, name: 'Retention Svc User' },
+    );
+
+    // Keyed on messages_synced rather than RETURNING order: a multi-row INSERT does not
+    // promise to emit rows in VALUES order, and the assertions below invert if it does not.
+    const inserted = await pool.query<{ id: string; messages_synced: number }>(
+      `INSERT INTO email_sync_jobs (connected_account_id, status, created_at, messages_synced)
+       VALUES ($1, 'complete', now() - interval '200 days', 1),
+              ($1, 'failed',   now() - interval '200 days', 2),
+              ($1, 'running',  now(),                       3),
+              ($1, 'complete', now(),                       4)
+       RETURNING id, messages_synced`,
+      [account.id],
+    );
+    // Non-null is safe: every marker below is one of the four just inserted.
+    const idFor = (marker: number): string =>
+      inserted.rows.find((r) => r.messages_synced === marker)!.id;
+
+    await expect(runRetentionPurge()).resolves.toBeUndefined();
+
+    const surviving = await pool.query<{ id: string }>(
+      'SELECT id FROM email_sync_jobs WHERE connected_account_id = $1',
+      [account.id],
+    );
+    const survivingIds = surviving.rows.map((r) => r.id);
+
+    // A backfill in progress survives: only age plus a terminal status purges a job, and
+    // the stale sweep leaves it alone because its updated_at is current.
+    expect(survivingIds).toContain(idFor(3));
+    expect(survivingIds).toContain(idFor(4));
+    expect(survivingIds).not.toContain(idFor(1));
+    expect(survivingIds).not.toContain(idFor(2));
   });
 });

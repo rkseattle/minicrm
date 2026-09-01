@@ -10680,6 +10680,14 @@
           "columns": [
             "connected_account_id"
           ]
+        },
+        {
+          "name": "email_sync_jobs_one_active_per_account_idx",
+          "def": "CREATE UNIQUE INDEX email_sync_jobs_one_active_per_account_idx ON public.email_sync_jobs USING btree (connected_account_id) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying])::text[]))",
+          "table": "public.email_sync_jobs",
+          "columns": [
+            "connected_account_id"
+          ]
         }
       ],
       "constraints": [
