@@ -16,6 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { BreakpointProvider } from '@/context/BreakpointContext.js';
 import { server } from '../test/setup.js';
 import { NavLayoutProvider, useNavLayout } from './NavLayoutContext.js';
+import { useNavLayoutPreference } from '@/hooks/useNavLayoutPreference.js';
 
 function makeQueryClient() {
   return new QueryClient({
@@ -39,14 +40,37 @@ function renderInProvider(ui: React.ReactElement) {
 }
 
 function LayoutConsumer() {
-  const { layout, saveLayout } = useNavLayout();
+  const { layout, workspaceLayout, saveLayout } = useNavLayout();
   return (
     <div>
       <span data-testid="current-layout">{layout}</span>
+      <span data-testid="workspace-layout">{workspaceLayout}</span>
       <button data-testid="save-left" onClick={() => void saveLayout('left')}>
         Set left
       </button>
     </div>
+  );
+}
+
+/** Reads the resolved layout and clears the personal preference through the real hook. */
+function ClearingConsumer() {
+  const { layout } = useNavLayout();
+  const { save } = useNavLayoutPreference();
+  return (
+    <div>
+      <span data-testid="current-layout">{layout}</span>
+      <button data-testid="clear-layout" onClick={() => save(null)}>
+        Clear
+      </button>
+    </div>
+  );
+}
+
+/** Pins both endpoints for one test: the workspace default and the personal value. */
+function mockLayouts(workspace: string, personal: string | null) {
+  server.use(
+    http.get('/api/v1/settings/nav-layout', () => HttpResponse.json({ layout: workspace })),
+    http.get('/api/v1/users/me/nav-layout', () => HttpResponse.json({ layout: personal })),
   );
 }
 
@@ -111,5 +135,51 @@ describe('NavLayoutContext', () => {
     }).toThrow('useNavLayout must be used within a NavLayoutProvider');
 
     console.error = consoleError;
+  });
+});
+
+describe('NavLayoutContext — resolving a personal preference', () => {
+  it('prefers the user value over the workspace value', async () => {
+    mockLayouts('top', 'left');
+    renderInProvider(<LayoutConsumer />);
+
+    await waitFor(() => expect(screen.getByTestId('current-layout').textContent).toBe('left'));
+    expect(screen.getByTestId('workspace-layout').textContent).toBe('top');
+  });
+
+  it('falls back to the workspace value when the user has no preference', async () => {
+    mockLayouts('hamburger', null);
+    renderInProvider(<LayoutConsumer />);
+
+    await waitFor(() => expect(screen.getByTestId('current-layout').textContent).toBe('hamburger'));
+  });
+
+  it('restores the workspace value when the preference is cleared in place', async () => {
+    mockLayouts('hamburger', 'left');
+    let stored: string | null = 'left';
+    server.use(
+      http.get('/api/v1/users/me/nav-layout', () => HttpResponse.json({ layout: stored })),
+      http.patch('/api/v1/users/me/nav-layout', async ({ request }) => {
+        const body = (await request.json()) as { layout: string | null };
+        stored = body.layout;
+        return HttpResponse.json({ layout: stored });
+      }),
+    );
+
+    renderInProvider(<ClearingConsumer />);
+    await waitFor(() => expect(screen.getByTestId('current-layout').textContent).toBe('left'));
+
+    // Drive the real mutation in the mounted tree, rather than remounting with a
+    // different mock — the fallback has to return through the cache, not a fresh read.
+    fireEvent.click(screen.getByTestId('clear-layout'));
+
+    await waitFor(() => expect(screen.getByTestId('current-layout').textContent).toBe('hamburger'));
+  });
+
+  it('falls back to "top" when neither value is set', async () => {
+    mockLayouts('top', null);
+    renderInProvider(<LayoutConsumer />);
+
+    await waitFor(() => expect(screen.getByTestId('current-layout').textContent).toBe('top'));
   });
 });

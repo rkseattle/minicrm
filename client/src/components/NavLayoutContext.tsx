@@ -1,20 +1,27 @@
 /**
  * NavLayoutContext — provides the active navigation layout to the whole app.
- * The layout is fetched from the server once and cached via React Query.
- * Any component can read the layout; only the admin settings page updates it.
+ *
+ * Two values back it: the user's own preference and the workspace default. The
+ * personal value wins; null means follow the workspace. Both are fetched here, so
+ * no consuming component learns about the two-level lookup.
+ *
+ * Mounted inside LayoutShell rather than at the app root, because the personal read
+ * is authenticated and would 401 on the login page.
  */
 
 import { createContext, useContext } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getNavLayout, setNavLayout, NAV_LAYOUT_QUERY_KEY } from '@/api/settings.js';
+import { getMyNavLayout, MY_NAV_LAYOUT_QUERY_KEY } from '@/api/users.js';
 import type { NavLayout } from '@shared/schemas/settingsSchema.js';
 
 interface NavLayoutContextValue {
-  /** The currently active navigation layout */
+  /** The layout to render: the user's own preference, else the workspace default. */
   layout: NavLayout;
+  /** The workspace default, ignoring any personal value — the admin control edits this row. */
+  workspaceLayout: NavLayout;
   /**
-   * Persists a new layout to the server and updates the cache immediately.
-   * Returns a promise that resolves once the mutation settles.
+   * Persists a new workspace-wide layout and updates the cache immediately.
    *
    * @param layout - The new nav layout to apply.
    */
@@ -23,24 +30,36 @@ interface NavLayoutContextValue {
 
 const NavLayoutContext = createContext<NavLayoutContextValue | null>(null);
 
+/** The layout used when neither a personal nor a workspace value has been stored. */
+const FALLBACK_LAYOUT: NavLayout = 'top';
+
 /**
  * Provides the active navigation layout to all descendant components.
- * Must be rendered inside QueryClientProvider.
+ * Must be rendered inside QueryClientProvider, below the authentication boundary.
  *
  * @param children - Child component tree.
  */
 export function NavLayoutProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
-  // Nav layout is admin-only and changes rarely — override the global staleTime: 0
-  // to avoid refetching on every window-focus event.
-  const { data } = useQuery({
+  // Workspace-scoped and rarely changed, so override the global staleTime: 0 to
+  // avoid refetching on every window-focus event.
+  const { data: workspaceData } = useQuery({
     queryKey: NAV_LAYOUT_QUERY_KEY,
     queryFn: getNavLayout,
     staleTime: 5 * 60 * 1000,
   });
 
-  const layout: NavLayout = data?.layout ?? 'top';
+  // Inherits the global staleTime: 0, as the language preference does. The key
+  // carries no user id and logout does not clear the cache, so a cached value
+  // would otherwise render for whoever logs in next in the same tab.
+  const { data: personalData } = useQuery({
+    queryKey: MY_NAV_LAYOUT_QUERY_KEY,
+    queryFn: getMyNavLayout,
+  });
+
+  const workspaceLayout: NavLayout = workspaceData?.layout ?? FALLBACK_LAYOUT;
+  const layout: NavLayout = personalData?.layout ?? workspaceLayout;
 
   /**
    * Saves the selected layout to the server and optimistically updates the cache.
@@ -53,7 +72,9 @@ export function NavLayoutProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <NavLayoutContext.Provider value={{ layout, saveLayout }}>{children}</NavLayoutContext.Provider>
+    <NavLayoutContext.Provider value={{ layout, workspaceLayout, saveLayout }}>
+      {children}
+    </NavLayoutContext.Provider>
   );
 }
 

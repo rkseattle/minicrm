@@ -1499,6 +1499,17 @@ export const handlers = [
     });
   }),
 
+  /** Users: GET /api/v1/users/me/nav-layout — returns null preference by default */
+  http.get('/api/v1/users/me/nav-layout', () => {
+    return HttpResponse.json({ layout: null });
+  }),
+
+  /** Users: PATCH /api/v1/users/me/nav-layout — echoes back the saved layout */
+  http.patch('/api/v1/users/me/nav-layout', async ({ request }) => {
+    const body = (await request.json()) as { layout: string | null };
+    return HttpResponse.json({ layout: body.layout });
+  }),
+
   /** Users: GET /api/v1/users/me/language — returns null preference by default */
   http.get('/api/v1/users/me/language', () => {
     return HttpResponse.json({ language: null });

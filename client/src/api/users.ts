@@ -6,7 +6,7 @@
 
 import apiClient from './axiosInstance.js';
 import type { UserResponse, UserRole, IssueApiTokenResponse } from '@shared/schemas/userSchema.js';
-import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
+import type { NavLayout, SupportedLocale } from '@shared/schemas/settingsSchema.js';
 
 /** Minimal user shape returned by the /active endpoint — sufficient for owner dropdowns */
 export interface ActiveUser {
@@ -299,6 +299,37 @@ export async function setMyLanguage(
 ): Promise<LanguagePreferenceResponse> {
   const response = await apiClient.patch<LanguagePreferenceResponse>('/users/me/language', {
     language,
+  });
+  return response.data;
+}
+
+/** Shape returned by the personal nav layout endpoints */
+export interface NavLayoutPreferenceResponse {
+  layout: NavLayout | null;
+}
+
+/** React Query cache key for the current user's nav layout preference */
+export const MY_NAV_LAYOUT_QUERY_KEY = ['users', 'me', 'navLayout'] as const;
+
+/**
+ * Returns the authenticated user's stored nav layout, or null if not set.
+ */
+export async function getMyNavLayout(): Promise<NavLayoutPreferenceResponse> {
+  const response = await apiClient.get<NavLayoutPreferenceResponse>('/users/me/nav-layout');
+  return response.data;
+}
+
+/**
+ * Persists the authenticated user's nav layout.
+ * Pass null to clear the preference and follow the workspace default.
+ *
+ * @param layout - The layout to store, or null to clear.
+ */
+export async function setMyNavLayout(
+  layout: NavLayout | null,
+): Promise<NavLayoutPreferenceResponse> {
+  const response = await apiClient.patch<NavLayoutPreferenceResponse>('/users/me/nav-layout', {
+    layout,
   });
   return response.data;
 }

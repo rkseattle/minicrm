@@ -5,7 +5,7 @@
  * save success/error feedback, checkbox toggling, and MFA section.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -408,5 +408,90 @@ describe('ProfilePage', () => {
       await waitFor(() => expect(screen.getByTestId('profile-mfa-section')).toBeInTheDocument());
       expect(screen.queryByTestId('profile-mfa-required-banner')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('nav layout preference form', () => {
+  it('renders the select with the workspace-default option first', async () => {
+    renderWithProviders(<ProfilePage />);
+
+    const select = await screen.findByTestId('profile-navlayout-select');
+    const options = within(select).getAllByRole('option');
+    expect(options[0]).toHaveValue('');
+    expect(options.map((o) => o.getAttribute('value'))).toEqual(['', 'top', 'left', 'hamburger']);
+  });
+
+  it('sends null when "Use workspace default" is saved, which is what clears it', async () => {
+    let patchedBody: { layout: string | null } | null = null;
+    server.use(
+      http.get('/api/v1/users/me/nav-layout', () => HttpResponse.json({ layout: 'left' })),
+      http.patch('/api/v1/users/me/nav-layout', async ({ request }) => {
+        patchedBody = (await request.json()) as { layout: string | null };
+        return HttpResponse.json(patchedBody);
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    const select = await screen.findByTestId('profile-navlayout-select');
+    await waitFor(() => expect(select).toHaveValue('left'));
+
+    fireEvent.change(select, { target: { value: '' } });
+    fireEvent.click(screen.getByTestId('profile-navlayout-save'));
+
+    await waitFor(() => expect(patchedBody).toEqual({ layout: null }));
+  });
+
+  it('sends the chosen layout on the wire and reports success', async () => {
+    let patchedBody: { layout: string | null } | null = null;
+    server.use(
+      http.patch('/api/v1/users/me/nav-layout', async ({ request }) => {
+        patchedBody = (await request.json()) as { layout: string | null };
+        return HttpResponse.json(patchedBody);
+      }),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    const select = await screen.findByTestId('profile-navlayout-select');
+
+    fireEvent.change(select, { target: { value: 'hamburger' } });
+    fireEvent.click(screen.getByTestId('profile-navlayout-save'));
+
+    expect(await screen.findByTestId('profile-navlayout-success')).toBeInTheDocument();
+    expect(patchedBody).toEqual({ layout: 'hamburger' });
+  });
+
+  it('keeps the picked layout visible and shows an error when the save fails', async () => {
+    server.use(
+      http.patch('/api/v1/users/me/nav-layout', () => HttpResponse.json({}, { status: 500 })),
+    );
+
+    renderWithProviders(<ProfilePage />);
+    const select = await screen.findByTestId('profile-navlayout-select');
+
+    fireEvent.change(select, { target: { value: 'left' } });
+    fireEvent.click(screen.getByTestId('profile-navlayout-save'));
+
+    expect(await screen.findByTestId('profile-navlayout-save-error')).toBeInTheDocument();
+    expect(select).toHaveValue('left');
+  });
+});
+
+describe('nav layout preference form — async states', () => {
+  it('shows the loading state before the preference arrives', () => {
+    server.use(http.get('/api/v1/users/me/nav-layout', () => new Promise(() => {})));
+
+    renderWithProviders(<ProfilePage />);
+
+    expect(screen.getByTestId('profile-navlayout-loading')).toBeInTheDocument();
+  });
+
+  it('shows the error state when the preference cannot be loaded', async () => {
+    server.use(
+      http.get('/api/v1/users/me/nav-layout', () => HttpResponse.json({}, { status: 500 })),
+    );
+
+    renderWithProviders(<ProfilePage />);
+
+    expect(await screen.findByTestId('profile-navlayout-error')).toBeInTheDocument();
   });
 });
