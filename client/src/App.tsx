@@ -1,8 +1,8 @@
 /**
  * App component — root routing configuration.
  * Declares all application routes using React Router v6.
- * Wraps the route tree in NavLayoutProvider so the active layout is available
- * to all page components.
+ * NavLayoutProvider sits inside LayoutShell rather than at the root: resolving a
+ * personal layout needs an authenticated read, and the public routes have no shell.
  *
  * Page components are loaded via React.lazy() so Vite splits each page into its
  * own chunk, reducing the initial bundle to only what the landing route needs.
@@ -52,6 +52,15 @@ const CoachingInsightsPage = lazy(() => import('@/pages/CoachingInsightsPage.js'
 const DataHygienePage = lazy(() => import('@/pages/DataHygienePage.js'));
 const AiUsageDashboardPage = lazy(() => import('@/pages/admin/AiUsageDashboardPage.js'));
 
+/** Owns the nav layout provider for every authenticated route. */
+function LayoutShell() {
+  return (
+    <NavLayoutProvider>
+      <ResolvedLayoutShell />
+    </NavLayoutProvider>
+  );
+}
+
 /**
  * Wraps the outlet in NavLeft when the left layout is active on desktop.
  * For top and hamburger layouts, each page renders its own NavBar inline,
@@ -60,7 +69,7 @@ const AiUsageDashboardPage = lazy(() => import('@/pages/admin/AiUsageDashboardPa
  * SetupChecklistWidget is rendered once here — it is position:fixed so layout
  * nesting doesn't affect its viewport placement.
  */
-function LayoutShell() {
+function ResolvedLayoutShell() {
   const { layout } = useNavLayout();
   const isMobile = useIsMobile();
   if (layout === 'left' && !isMobile) {
@@ -82,7 +91,8 @@ function LayoutShell() {
 }
 
 /**
- * Route tree wrapped in NavLayoutProvider.
+ * Route tree. Authenticated routes render through LayoutShell, which owns the
+ * nav layout provider.
  */
 function AppRoutes() {
   return (
@@ -174,9 +184,5 @@ function AppRoutes() {
  * Root application component with route definitions.
  */
 export default function App() {
-  return (
-    <NavLayoutProvider>
-      <AppRoutes />
-    </NavLayoutProvider>
-  );
+  return <AppRoutes />;
 }

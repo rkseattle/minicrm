@@ -627,7 +627,7 @@
     },
     "navLayout": {
       "label": "Diseño de navegación",
-      "hint": "Elige cómo se muestra la navegación para todos los usuarios en escritorio. En móvil, siempre se usa el menú hamburguesa.",
+      "hint": "El diseño de navegación predeterminado en escritorio. Los usuarios que eligen su propio diseño en Ajustes de perfil lo conservan. En móvil siempre se usa la barra superior.",
       "top": "Barra superior",
       "left": "Panel lateral",
       "hamburger": "Menú hamburguesa",
@@ -1002,6 +1002,9 @@
     "pageTitle": "Configuración de perfil",
     "languageLabel": "Idioma preferido",
     "languageHint": "Reemplaza el idioma predeterminado del sistema. Selecciona 'Usar predeterminado del sistema' para seguir el idioma configurado por el administrador.",
+    "navLayoutLabel": "Diseño de navegación",
+    "navLayoutHint": "Anula el diseño predeterminado de tu espacio de trabajo en escritorio. Elige «Usar el predeterminado del espacio de trabajo» para seguir lo que haya configurado tu administrador.",
+    "workspaceDefault": "Usar el predeterminado del espacio de trabajo",
     "systemDefault": "Usar predeterminado del sistema",
     "saveButton": "Guardar",
     "saving": "Guardando…",

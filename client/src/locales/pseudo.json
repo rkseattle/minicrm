@@ -627,7 +627,7 @@
     },
     "navLayout": {
       "label": "[Ñävïgätïöñ läyöüt~~~~~~]",
-      "hint": "[Ĉhööŝë höw ñävïgätïöñ ïŝ dïŝpläyëd för äll üŝërŝ öñ dëŝktöp. Öñ möbïlë, thë hämbürgër läyöüt ïŝ älwäyŝ üŝëd.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "hint": "[Thë dëfäült ñävïgätïöñ läyöüt öñ dëŝktöp. Üŝërŝ whö ĉhööŝë thëïr öwñ läyöüt ïñ Pröfïlë Ŝëttïñgŝ këëp ït. Möbïlë älwäyŝ üŝëŝ thë töp bär.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
       "top": "[Töp Ñäv~~~]",
       "left": "[Lëft Ñäv~~~]",
       "hamburger": "[Hämbürgër Mëñü~~~~~]",
@@ -967,6 +967,9 @@
     "pageTitle": "[Pröfïlë Ŝëttïñgŝ~~~~~]",
     "languageLabel": "[Prëfërrëd läñgüägë~~~~~~]",
     "languageHint": "[Övërrïdëŝ thë ŝyŝtëm dëfäült. Ŝëlëĉt 'Üŝë ŝyŝtëm dëfäült' tö föllöw thë ädmïñ-ĉöñfïgürëd läñgüägë.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "navLayoutLabel": "[Ñävïgätïöñ läyöüt~~~~~~]",
+    "navLayoutHint": "[Övërrïdëŝ yöür wörkŝpäĉë'ŝ dëfäült läyöüt öñ dëŝktöp. Ĉhööŝë 'Üŝë wörkŝpäĉë dëfäült' tö föllöw whätëvër yöür ädmïñ häŝ ŝët.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "workspaceDefault": "[Üŝë wörkŝpäĉë dëfäült~~~~~~~]",
     "systemDefault": "[Üŝë ŝyŝtëm dëfäült~~~~~~]",
     "saveButton": "[Ŝävë~~]",
     "saving": "[Ŝävïñg…~~~]",

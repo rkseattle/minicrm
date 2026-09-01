@@ -71,3 +71,55 @@ describe('GeneralSettings', () => {
     expect(screen.queryByTestId('mfa-required-section')).not.toBeInTheDocument();
   });
 });
+
+describe('GeneralSettings — nav layout control vs a personal override', () => {
+  it("checks the workspace radio, not the admin's own layout", async () => {
+    // This control edits the workspace row, so it shows the workspace value.
+    server.use(
+      http.get('/api/v1/settings/nav-layout', () => HttpResponse.json({ layout: 'top' })),
+      http.get('/api/v1/users/me/nav-layout', () => HttpResponse.json({ layout: 'left' })),
+    );
+
+    renderWithProviders(<GeneralSettings />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('nav-layout-option-top')).toHaveAttribute('aria-checked', 'true'),
+    );
+    expect(screen.getByTestId('nav-layout-option-left')).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it("saves a workspace layout equal to the admin's personal one", async () => {
+    // The workspace row is what this saves, independent of the admin's own layout.
+    server.use(
+      http.get('/api/v1/settings/nav-layout', () => HttpResponse.json({ layout: 'top' })),
+      http.get('/api/v1/users/me/nav-layout', () => HttpResponse.json({ layout: 'left' })),
+    );
+
+    let patched = false;
+    server.use(
+      http.patch('/api/v1/settings/nav-layout', async ({ request }) => {
+        patched = true;
+        const body = (await request.json()) as { layout: string };
+        return HttpResponse.json({ layout: body.layout });
+      }),
+    );
+
+    renderWithProviders(<GeneralSettings />);
+    await waitFor(() =>
+      expect(screen.getByTestId('nav-layout-option-top')).toHaveAttribute('aria-checked', 'true'),
+    );
+
+    await userEvent.click(screen.getByTestId('nav-layout-option-left'));
+
+    await waitFor(() => expect(patched).toBe(true));
+  });
+});
+
+describe('GeneralSettings — nav layout hint copy', () => {
+  it('says the workspace layout is a default a user can override', async () => {
+    renderWithProviders(<GeneralSettings />);
+
+    const hint = await screen.findByText(/default navigation layout/i);
+    expect(hint).toHaveTextContent(/Profile Settings/i);
+  });
+});

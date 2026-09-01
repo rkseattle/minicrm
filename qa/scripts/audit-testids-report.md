@@ -1,12 +1,12 @@
 # data-testid Audit Report
 
-Generated: 2026-08-31T18:18:22.637Z
+Generated: 2026-09-01T00:02:35.536Z
 
 ## Summary
 
 - Matched: 594
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1016
+- Unexercised (in app, not in tests): 1023
 - Dynamic (manual review required): 688
 
 ## Stale testids (action required)
@@ -597,22 +597,29 @@ _None — all test-referenced testids are present in the application source._
 | `completed-tasks-empty` | client/src/pages/MyTasksPage.tsx | 595 |
 | `my-tasks-error` | client/src/pages/MyTasksPage.tsx | 248 |
 | `my-tasks-loading` | client/src/pages/MyTasksPage.tsx | 241 |
-| `profile-lang-loading` | client/src/pages/ProfilePage.tsx | 173 |
-| `profile-lang-error` | client/src/pages/ProfilePage.tsx | 179 |
-| `profile-language-select` | client/src/pages/ProfilePage.tsx | 200 |
-| `profile-lang-success` | client/src/pages/ProfilePage.tsx | 217 |
-| `profile-lang-save-error` | client/src/pages/ProfilePage.tsx | 227 |
-| `profile-lang-save` | client/src/pages/ProfilePage.tsx | 238 |
-| `profile-lang-section` | client/src/pages/ProfilePage.tsx | 188 |
-| `profile-notifications-title` | client/src/pages/ProfilePage.tsx | 256 |
-| `profile-prefs-loading` | client/src/pages/ProfilePage.tsx | 265 |
-| `profile-prefs-error` | client/src/pages/ProfilePage.tsx | 271 |
-| `profile-prefs-save-error` | client/src/pages/ProfilePage.tsx | 321 |
-| `profile-mfa-title` | client/src/pages/ProfilePage.tsx | 348 |
-| `profile-mfa-required-banner` | client/src/pages/ProfilePage.tsx | 354 |
-| `profile-mfa-loading` | client/src/pages/ProfilePage.tsx | 363 |
-| `profile-mfa-error` | client/src/pages/ProfilePage.tsx | 369 |
-| `profile-mfa-recovery-count` | client/src/pages/ProfilePage.tsx | 386 |
+| `profile-lang-loading` | client/src/pages/ProfilePage.tsx | 206 |
+| `profile-lang-error` | client/src/pages/ProfilePage.tsx | 212 |
+| `profile-language-select` | client/src/pages/ProfilePage.tsx | 233 |
+| `profile-lang-success` | client/src/pages/ProfilePage.tsx | 250 |
+| `profile-lang-save-error` | client/src/pages/ProfilePage.tsx | 260 |
+| `profile-lang-save` | client/src/pages/ProfilePage.tsx | 271 |
+| `profile-lang-section` | client/src/pages/ProfilePage.tsx | 221 |
+| `profile-navlayout-loading` | client/src/pages/ProfilePage.tsx | 284 |
+| `profile-navlayout-error` | client/src/pages/ProfilePage.tsx | 290 |
+| `profile-navlayout-select` | client/src/pages/ProfilePage.tsx | 311 |
+| `profile-navlayout-success` | client/src/pages/ProfilePage.tsx | 328 |
+| `profile-navlayout-save-error` | client/src/pages/ProfilePage.tsx | 338 |
+| `profile-navlayout-save` | client/src/pages/ProfilePage.tsx | 349 |
+| `profile-navlayout-section` | client/src/pages/ProfilePage.tsx | 299 |
+| `profile-notifications-title` | client/src/pages/ProfilePage.tsx | 367 |
+| `profile-prefs-loading` | client/src/pages/ProfilePage.tsx | 376 |
+| `profile-prefs-error` | client/src/pages/ProfilePage.tsx | 382 |
+| `profile-prefs-save-error` | client/src/pages/ProfilePage.tsx | 432 |
+| `profile-mfa-title` | client/src/pages/ProfilePage.tsx | 459 |
+| `profile-mfa-required-banner` | client/src/pages/ProfilePage.tsx | 465 |
+| `profile-mfa-loading` | client/src/pages/ProfilePage.tsx | 474 |
+| `profile-mfa-error` | client/src/pages/ProfilePage.tsx | 480 |
+| `profile-mfa-recovery-count` | client/src/pages/ProfilePage.tsx | 497 |
 | `feature-disabled` | client/src/pages/ReportsPage.tsx | 108 |
 | `reset-password-hint` | client/src/pages/ResetPasswordPage.tsx | 29 |
 | `reset-password-request-new-link` | client/src/pages/ResetPasswordPage.tsx | 113 |
@@ -1385,8 +1392,8 @@ _None — all test-referenced testids are present in the application source._
 | `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 439 | app |
 | `mark-complete-*` | client/src/pages/MyTasksPage.tsx | 458 | app |
 | `task-row-*` | client/src/pages/MyTasksPage.tsx | 378 | app |
-| `notif-checkbox-*` | client/src/pages/ProfilePage.tsx | 300 | app |
-| `notif-toggle-*` | client/src/pages/ProfilePage.tsx | 293 | app |
+| `notif-checkbox-*` | client/src/pages/ProfilePage.tsx | 411 | app |
+| `notif-toggle-*` | client/src/pages/ProfilePage.tsx | 404 | app |
 | `reports-panel-*` | client/src/pages/ReportsPage.tsx | 158 | app |
 | `reports-panel-*` | client/src/pages/ReportsPage.tsx | 138 | app |
 | `step-edit-*` | client/src/pages/SequenceDetailPage.tsx | 353 | app |

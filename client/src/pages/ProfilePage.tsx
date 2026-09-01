@@ -15,16 +15,22 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
-import { getMyLanguage, MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
+import {
+  getMyLanguage,
+  MY_LANGUAGE_QUERY_KEY,
+  getMyNavLayout,
+  MY_NAV_LAYOUT_QUERY_KEY,
+} from '@/api/users.js';
 import {
   getMyNotificationPrefs,
   updateMyNotificationPrefs,
   MY_NOTIFICATION_PREFS_QUERY_KEY,
 } from '@/api/users.js';
 import type { NotificationPrefs } from '@/api/users.js';
-import { SUPPORTED_LOCALES } from '@shared/schemas/settingsSchema.js';
-import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
+import { NAV_LAYOUTS, SUPPORTED_LOCALES } from '@shared/schemas/settingsSchema.js';
+import type { NavLayout, SupportedLocale } from '@shared/schemas/settingsSchema.js';
 import { useLanguagePreference } from '@/hooks/useLanguagePreference.js';
+import { useNavLayoutPreference } from '@/hooks/useNavLayoutPreference.js';
 import { getMfaStatus, MFA_STATUS_QUERY_KEY } from '@/api/mfa.js';
 import MfaSetupModal from '@/components/MfaSetupModal.js';
 import MfaRecoveryCodesModal from '@/components/MfaRecoveryCodesModal.js';
@@ -82,6 +88,33 @@ export default function ProfilePage() {
   const languagePreference = useLanguagePreference({
     onSaved: () => setPendingLanguage(null),
   });
+
+  // ── Navigation layout preference ─────────────────────────────────────────────
+
+  const {
+    data: navLayoutData,
+    isLoading: navLayoutLoading,
+    isError: navLayoutError,
+  } = useQuery({
+    queryKey: MY_NAV_LAYOUT_QUERY_KEY,
+    queryFn: getMyNavLayout,
+  });
+
+  // '' is "Use workspace default"; null is "nothing picked this visit".
+  const [pendingNavLayout, setPendingNavLayout] = useState<NavLayout | '' | null>(null);
+  const savedNavLayout: NavLayout | '' = navLayoutData ? (navLayoutData.layout ?? '') : '';
+  const selectedNavLayout: NavLayout | '' = pendingNavLayout ?? savedNavLayout;
+
+  const navLayoutPreference = useNavLayoutPreference({
+    onSaved: () => setPendingNavLayout(null),
+  });
+
+  function handleNavLayoutSubmit(e: React.FormEvent<HTMLFormElement>): void {
+    e.preventDefault();
+    navLayoutPreference.reset();
+    // The empty option means "no personal preference", which the API takes as null.
+    navLayoutPreference.save(selectedNavLayout === '' ? null : selectedNavLayout);
+  }
 
   /**
    * Handles language form submission.
@@ -239,6 +272,84 @@ export default function ProfilePage() {
                 disabled={languagePreference.isPending}
               >
                 {languagePreference.isPending
+                  ? t('profileSettings.saving')
+                  : t('profileSettings.saveButton')}
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {/* ── Navigation layout section ────────────────────────────────────── */}
+        {navLayoutLoading && (
+          <p className="text-sm text-gray-500" data-testid="profile-navlayout-loading">
+            {t('profileSettings.loading')}
+          </p>
+        )}
+
+        {navLayoutError && (
+          <p role="alert" className="text-sm text-red-600" data-testid="profile-navlayout-error">
+            {t('profileSettings.loadError')}
+          </p>
+        )}
+
+        {!navLayoutLoading && !navLayoutError && (
+          <form
+            onSubmit={handleNavLayoutSubmit}
+            className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 space-y-4 max-w-2xl"
+            data-testid="profile-navlayout-section"
+          >
+            <div>
+              <label
+                htmlFor="profile-navlayout"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('profileSettings.navLayoutLabel')}
+              </label>
+              <p className="text-xs text-gray-500 mb-3">{t('profileSettings.navLayoutHint')}</p>
+              <Select
+                id="profile-navlayout"
+                data-testid="profile-navlayout-select"
+                value={selectedNavLayout}
+                onChange={(e) => setPendingNavLayout(e.target.value as NavLayout | '')}
+              >
+                <option value="">{t('profileSettings.workspaceDefault')}</option>
+                {NAV_LAYOUTS.map((layoutOption) => (
+                  <option key={layoutOption} value={layoutOption}>
+                    {t(`settings.navLayout.${layoutOption}`)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {navLayoutPreference.isSuccess && (
+              <p
+                role="status"
+                className="text-sm text-green-700"
+                data-testid="profile-navlayout-success"
+              >
+                {t('profileSettings.saveSuccess')}
+              </p>
+            )}
+
+            {navLayoutPreference.isError && (
+              <p
+                role="alert"
+                className="text-sm text-red-600"
+                data-testid="profile-navlayout-save-error"
+              >
+                {t('profileSettings.saveError')}
+              </p>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                data-testid="profile-navlayout-save"
+                disabled={navLayoutPreference.isPending}
+              >
+                {navLayoutPreference.isPending
                   ? t('profileSettings.saving')
                   : t('profileSettings.saveButton')}
               </Button>

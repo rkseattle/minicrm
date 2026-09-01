@@ -627,7 +627,7 @@
     },
     "navLayout": {
       "label": "Navigations-Layout",
-      "hint": "Wählen Sie, wie die Navigation für alle Desktop-Benutzer angezeigt wird. Auf Mobilgeräten wird immer das Hamburger-Menü verwendet.",
+      "hint": "Das Standard-Navigationslayout auf dem Desktop. Benutzer, die in den Profileinstellungen ein eigenes Layout wählen, behalten es. Auf Mobilgeräten wird immer die obere Leiste verwendet.",
       "top": "Obere Navigation",
       "left": "Linke Navigation",
       "hamburger": "Hamburger-Menü",
@@ -1002,6 +1002,9 @@
     "pageTitle": "Profileinstellungen",
     "languageLabel": "Bevorzugte Sprache",
     "languageHint": "Überschreibt die systemweite Standardsprache. Wählen Sie 'Systemstandard verwenden', um der vom Administrator konfigurierten Sprache zu folgen.",
+    "navLayoutLabel": "Navigationslayout",
+    "navLayoutHint": "Überschreibt das Standardlayout Ihres Arbeitsbereichs auf dem Desktop. Wählen Sie „Arbeitsbereichsstandard verwenden“, um der Einstellung Ihres Administrators zu folgen.",
+    "workspaceDefault": "Arbeitsbereichsstandard verwenden",
     "systemDefault": "Systemstandard verwenden",
     "saveButton": "Speichern",
     "saving": "Speichern…",

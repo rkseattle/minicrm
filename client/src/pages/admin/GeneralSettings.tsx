@@ -28,7 +28,7 @@ export default function GeneralSettings() {
     queryFn: getDefaultLanguage,
   });
 
-  const { layout: activeLayout, saveLayout } = useNavLayout();
+  const { workspaceLayout: activeLayout, saveLayout } = useNavLayout();
 
   const [pendingLanguage, setPendingLanguage] = useState<SupportedLocale | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -147,7 +147,7 @@ export default function GeneralSettings() {
         </form>
       )}
 
-      {/* Navigation Layout — desktop only (mobile always uses hamburger) */}
+      {/* Navigation Layout — desktop only; mobile always renders the top bar */}
       <div
         className="hidden lg:block mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="nav-layout-section"

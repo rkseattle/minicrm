@@ -48,8 +48,8 @@ export async function setDefaultLanguage(
 export const NAV_LAYOUT_QUERY_KEY = ['settings', 'navLayout'] as const;
 
 /**
- * Returns the current system-wide navigation layout.
- * Called before auth resolves so the shell can render immediately.
+ * Returns the current workspace-wide navigation layout.
+ * The endpoint is public, but the only caller now sits below the auth boundary.
  */
 export async function getNavLayout(): Promise<NavLayoutResponse> {
   const response = await apiClient.get<NavLayoutResponse>('/settings/nav-layout');

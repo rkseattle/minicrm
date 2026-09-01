@@ -627,7 +627,7 @@
     },
     "navLayout": {
       "label": "Navigation layout",
-      "hint": "Choose how navigation is displayed for all users on desktop. On mobile, the hamburger layout is always used.",
+      "hint": "The default navigation layout on desktop. Users who choose their own layout in Profile Settings keep it. Mobile always uses the top bar.",
       "top": "Top Nav",
       "left": "Left Nav",
       "hamburger": "Hamburger Menu",
@@ -967,6 +967,9 @@
     "pageTitle": "Profile Settings",
     "languageLabel": "Preferred language",
     "languageHint": "Overrides the system default. Select 'Use system default' to follow the admin-configured language.",
+    "navLayoutLabel": "Navigation layout",
+    "navLayoutHint": "Overrides your workspace's default layout on desktop. Choose 'Use workspace default' to follow whatever your admin has set.",
+    "workspaceDefault": "Use workspace default",
     "systemDefault": "Use system default",
     "saveButton": "Save",
     "saving": "Saving…",

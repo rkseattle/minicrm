@@ -627,7 +627,7 @@
     },
     "navLayout": {
       "label": "Disposition de navigation",
-      "hint": "Choisissez comment la navigation est affichée pour tous les utilisateurs sur ordinateur. Sur mobile, le menu hamburger est toujours utilisé.",
+      "hint": "La disposition de navigation par défaut sur ordinateur. Les utilisateurs qui choisissent la leur dans les Paramètres du profil la conservent. Sur mobile, la barre supérieure est toujours utilisée.",
       "top": "Barre supérieure",
       "left": "Panneau latéral",
       "hamburger": "Menu hamburger",
@@ -1002,6 +1002,9 @@
     "pageTitle": "Paramètres du profil",
     "languageLabel": "Langue préférée",
     "languageHint": "Remplace la langue par défaut du système. Sélectionnez 'Utiliser la langue par défaut du système' pour suivre la langue configurée par l'administrateur.",
+    "navLayoutLabel": "Disposition de navigation",
+    "navLayoutHint": "Remplace la disposition par défaut de votre espace de travail sur ordinateur. Choisissez « Utiliser la valeur par défaut de l'espace de travail » pour suivre le réglage de votre administrateur.",
+    "workspaceDefault": "Utiliser la valeur par défaut de l'espace de travail",
     "systemDefault": "Utiliser la langue par défaut du système",
     "saveButton": "Enregistrer",
     "saving": "Enregistrement…",
