@@ -626,8 +626,8 @@ After seeding, a service account API token is written to `.env.demo` in the proj
 
 ### Navigation Layout
 
-- Admin can choose between three navigation layouts from the **Admin Settings** page: **Top Nav** (tab bar, default), **Left Nav** (collapsible sidebar), and **Hamburger Menu** (icon-triggered overlay)
-- The selected layout is stored in the `system_settings` table (`nav_layout` key) and applies immediately to all users without a page reload
+- Admin sets the workspace default from the **Admin Settings** page, choosing between **Top Nav** (tab bar, default), **Left Nav** (collapsible sidebar), and **Hamburger Menu** (icon-triggered overlay); each user can override it for themselves in **Profile Settings**
+- The workspace default is stored in the `system_settings` table (`nav_layout` key) and applies without a page reload to every user who has not set `users.nav_layout`
 - API endpoints:
   - `GET /api/v1/settings/nav-layout` — public, returns `{ layout }` (used on app load)
   - `PATCH /api/v1/settings/nav-layout` — admin only, body `{ layout }`, returns `{ layout }`
