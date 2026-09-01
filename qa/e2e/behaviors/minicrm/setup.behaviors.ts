@@ -11,6 +11,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import type { NavLayout } from '@minicrm/shared/schemas/settingsSchema.js';
 import { gotoAndSettle } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { SetupChecklistPage } from '@pages/minicrm/SetupChecklistPage.js';
@@ -281,6 +282,34 @@ export async function setUserLanguage(
   language: string | null,
 ): Promise<void> {
   await restClient.patch('/api/v1/users/me/language', { language });
+}
+
+/**
+ * Reads the workspace-wide navigation layout. Read-only: it writes no shared row,
+ * so callers need no @serial tag.
+ *
+ * @param restClient - Any authenticated RestClient.
+ * @returns The workspace layout value.
+ */
+export async function getWorkspaceNavLayout(restClient: RestClient): Promise<NavLayout> {
+  const res = await restClient.get<{ layout: NavLayout }>('/api/v1/settings/nav-layout');
+  return res.body.layout;
+}
+
+/**
+ * Sets the caller's own navigation layout preference.
+ *
+ * Writes the caller's users row, never the shared system_settings row, so it needs
+ * no @serial tag — unlike setNavLayoutViaAPI.
+ *
+ * @param restClient - RestClient authenticated as the user whose layout is set.
+ * @param layout - Layout to store, or null to clear.
+ */
+export async function setUserNavLayout(
+  restClient: RestClient,
+  layout: NavLayout | null,
+): Promise<void> {
+  await restClient.patch('/api/v1/users/me/nav-layout', { layout });
 }
 
 /**

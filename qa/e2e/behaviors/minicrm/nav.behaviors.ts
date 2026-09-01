@@ -15,6 +15,7 @@ import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { gotoAndSettle, navigateAndSettle } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { NavPage } from '@pages/minicrm/NavPage.js';
+import { ProfilePage } from '@pages/minicrm/ProfilePage.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 
 /** Navigation layout modes supported by MiniCRM. */
@@ -892,6 +893,41 @@ export async function selectLanguageAndWaitForPatch(
   );
   await locator.selectOption(locale);
   await patchDone;
+}
+
+/**
+ * Picks a personal navigation layout on the profile page and saves it, waiting on the
+ * PATCH response rather than the DOM so the outcome is decided by the status code.
+ *
+ * @param layout - Layout to select, or '' to follow the workspace default.
+ * @param context - Playwright fixture context.
+ * @returns The HTTP status the save returned.
+ */
+export async function saveProfileNavLayout(
+  layout: string,
+  context: NavBehaviorContext,
+): Promise<number> {
+  const profilePage = new ProfilePage(context);
+  await profilePage.selectNavLayout(layout);
+
+  const patchDone = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/me/nav-layout') &&
+      response.request().method() === 'PATCH',
+  );
+  await profilePage.saveNavLayout();
+  const response = await patchDone;
+  return response.status();
+}
+
+/**
+ * Reads the layout the profile selector currently shows.
+ *
+ * @param context - Playwright fixture context.
+ * @returns The selected layout, or '' when following the workspace default.
+ */
+export async function readProfileNavLayout(context: NavBehaviorContext): Promise<string> {
+  return new ProfilePage(context).selectedNavLayout();
 }
 
 /**
