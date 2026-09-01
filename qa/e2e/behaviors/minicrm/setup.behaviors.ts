@@ -274,6 +274,9 @@ export async function setCurrencySettings(
 /**
  * Sets the authenticated user's preferred language via the API.
  *
+ * Needs no @serial tag only when restClient is authenticated as an ephemeral user;
+ * against the shared admin this is a cross-file shared write no guard detects.
+ *
  * @param restClient - Authenticated RestClient.
  * @param language - Language code (e.g. 'fr', 'en', null to clear).
  */
@@ -299,8 +302,9 @@ export async function getWorkspaceNavLayout(restClient: RestClient): Promise<Nav
 /**
  * Sets the caller's own navigation layout preference.
  *
- * Writes the caller's users row, never the shared system_settings row, so it needs
- * no @serial tag — unlike setNavLayoutViaAPI.
+ * Writes the caller's users row, never the shared system_settings row, so it needs no
+ * @serial tag — but only when restClient is authenticated as an ephemeral user. Against
+ * the shared admin this IS a cross-file shared write, and no guard detects it.
  *
  * @param restClient - RestClient authenticated as the user whose layout is set.
  * @param layout - Layout to store, or null to clear.

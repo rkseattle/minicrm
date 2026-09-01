@@ -2,8 +2,7 @@
  * Saves the signed-in user's navigation layout preference.
  *
  * The nav reads this value through NavLayoutContext, so the mutation seeds that cache
- * key on success — otherwise the saved layout would not appear until the query's
- * five-minute staleTime expired.
+ * key on success rather than waiting for a refetch to bring it back.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';

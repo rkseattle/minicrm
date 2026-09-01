@@ -27,6 +27,7 @@ import {
   readProfileNavLayout,
   setUserNavLayout,
   loginAsAdmin,
+  loginAs,
   getWorkspaceNavLayout,
 } from '@behaviors/minicrm/index.js';
 import { loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
@@ -111,10 +112,9 @@ test.describe('Personal navigation layout', () => {
     const personalLayout = layoutDifferentFrom(workspaceLayout);
 
     // Seed through the API as the rep, so the UI starts from a stored preference.
-    await restClient.post('/api/v1/auth/login', {
-      email: ephemeralRep.email,
-      password: ephemeralRep.password,
-    });
+    // A silent login failure here would write the admin's row instead.
+    const repLogin = await loginAs(restClient, ephemeralRep.email, ephemeralRep.password);
+    expect(repLogin, 'the rep should authenticate before its own row is written').toBe(200);
     await setUserNavLayout(restClient, personalLayout);
     await loginAsAdmin(restClient);
 
@@ -126,6 +126,17 @@ test.describe('Personal navigation layout', () => {
     expect(status, 'clearing the preference should succeed').toBe(200);
 
     await reloadCurrentPage({ page });
+
+    // The rendered nav, not just the form control — the control reads its own query and
+    // would still read empty even if resolution never consulted the personal value.
+    // Asserting the personal layout's absence needs no knowledge of the workspace row.
+    expect(
+      await isNavLinkHidden(personalLayout === 'left' ? 'nav-left-contacts' : 'nav-top-contacts', {
+        page,
+      }),
+      `the ${personalLayout} nav should stop rendering once the preference is cleared`,
+    ).toBe(true);
+
     await navigateToProfile({ page });
     expect(
       await readProfileNavLayout({ page }),

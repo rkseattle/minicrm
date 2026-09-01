@@ -50,6 +50,9 @@ function doc(relative: string): string {
 const QUOTED_CONTROLS: ReadonlyArray<{ page: string; localeKey: string }> = [
   { page: 'docs/user-guide/profile.md', localeKey: 'profileSettings.navLayoutLabel' },
   { page: 'docs/user-guide/profile.md', localeKey: 'profileSettings.workspaceDefault' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'settings.navLayout.top' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'settings.navLayout.left' },
+  { page: 'docs/user-guide/profile.md', localeKey: 'settings.navLayout.hamburger' },
   { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.connectGoogle' },
   // The key says Microsoft and the label says Outlook — exactly the drift this pins.
   { page: 'docs/user-guide/profile.md', localeKey: 'connectedAccounts.connectMicrosoft' },
