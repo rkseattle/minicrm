@@ -508,27 +508,86 @@ describe('bounded backfill', () => {
   });
 
   it('resumes the same job on the next tick rather than opening a second', async () => {
-    const endless = {
-      async fetchSince(): Promise<ProviderPage> {
-        return page({ messages: [message()], hasMore: true });
+    // No cursor is reset between the ticks: production has no such step, and resetting it
+    // here made this test pass whether or not the resume path existed at all.
+    // The fake reads the cursor it is handed and numbers from there, so a tick that
+    // restarted from null would re-deliver INBOX:1 instead of advancing — which is what
+    // makes the resumed position load-bearing rather than incidental.
+    let calls = 0;
+    const cursorsSeen: (string | null)[] = [];
+    const endless: MailProvider = {
+      async fetchSince(_auth, cursor): Promise<ProviderPage> {
+        calls += 1;
+        cursorsSeen.push(cursor);
+        const from = cursor === null ? 1 : Number(JSON.parse(cursor).INBOX.uidNext);
+        return page({
+          messages: [message({ providerMessageId: `INBOX:${String(from)}` })],
+          cursor: `{"INBOX":{"uidValidity":"900","uidNext":${String(from + 1)}}}`,
+          hasMore: true,
+        });
       },
     };
     const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
 
-    await syncOneAccount(await claimedFor(account.id), endless as MailProvider);
+    await syncOneAccount(await claimedFor(account.id), endless);
     const firstJob = await getActiveEmailSyncJob(account.id);
-    await pool.query('UPDATE connected_accounts SET sync_cursor = NULL WHERE id = $1', [
-      account.id,
-    ]);
-    await syncOneAccount(await claimedFor(account.id), endless as MailProvider);
+    const callsAfterFirstTick = calls;
+
+    await syncOneAccount(await claimedFor(account.id), endless);
     const secondJob = await getActiveEmailSyncJob(account.id);
 
+    // The second tick must spend its whole page budget too. Routing on the cursor rather
+    // than on the open job sent it down the single-page incremental path, so a mailbox
+    // larger than one tick's budget was truncated and never finished.
+    expect(calls - callsAfterFirstTick).toBe(callsAfterFirstTick);
     expect(secondJob?.id).toBe(firstJob?.id);
+    // Every page delivered a distinct message, so progress equals the pages read. A tick
+    // that restarted from null would re-deliver what tick 1 already stored and stall here.
+    expect(secondJob?.messages_synced).toBe(calls);
+    // The second tick's first fetch must resume from tick 1's final cursor, not from null.
+    expect(cursorsSeen[callsAfterFirstTick]).not.toBeNull();
     const count = await pool.query<{ n: string }>(
       'SELECT count(*)::int AS n FROM email_sync_jobs WHERE connected_account_id = $1',
       [account.id],
     );
     expect(Number(count.rows[0].n)).toBe(1);
+  });
+
+  it('counts messages created, not write operations', async () => {
+    // rowCount on an upsert counts updates too, so a re-read of the same page would
+    // inflate a job's progress without a single new message arriving.
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    const repeating: MailProvider = {
+      async fetchSince(): Promise<ProviderPage> {
+        return page({ messages: [message(), message({ providerMessageId: 'INBOX:2' })] });
+      },
+    };
+
+    const first = await syncOneAccount(await claimedFor(account.id), repeating);
+    const second = await syncOneAccount(await claimedFor(account.id), repeating);
+
+    expect(first.messagesStored).toBe(2);
+    expect(second.messagesStored).toBe(0);
+  });
+
+  it('keeps the claim lease while a backfill is still running', async () => {
+    // commitPage runs per page. Clearing the lease there would release the mailbox
+    // mid-backfill and let a second instance claim it while this one is still reading.
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    const endless: MailProvider = {
+      async fetchSince(): Promise<ProviderPage> {
+        return page({ messages: [message()], hasMore: true });
+      },
+    };
+
+    await syncOneAccount(await claimedFor(account.id), endless);
+
+    const row = await pool.query<{ sync_next_attempt_at: Date | null }>(
+      'SELECT sync_next_attempt_at FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+    expect(row.rows[0].sync_next_attempt_at).not.toBeNull();
+    expect(row.rows[0].sync_next_attempt_at!.getTime()).toBeGreaterThan(Date.now());
   });
 
   it('takes the backfill path when the provider invalidates the cursor', async () => {

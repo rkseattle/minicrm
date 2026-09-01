@@ -98,7 +98,7 @@ export const IMPLEMENTED_SYNC_PROVIDERS: readonly ConnectedAccountProvider[] = [
  * by a crashed process comes back on its own. Retrying an interrupted sync is safe: the
  * cursor only advances on a completed page and the message ingest is idempotent.
  */
-const SYNC_CLAIM_LEASE_MS = 15 * 60 * 1000;
+export const SYNC_CLAIM_LEASE_MS = 15 * 60 * 1000;
 
 /** One mailbox the scheduler has claimed. Carries no credential material. */
 export interface ClaimedSyncAccount {

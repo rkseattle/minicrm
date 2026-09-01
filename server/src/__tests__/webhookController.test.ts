@@ -5,11 +5,43 @@
  */
 
 import 'dotenv/config';
+import dns from 'node:dns';
 import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
+
+/**
+ * Resolves this file's fixture hostname without touching the network.
+ *
+ * Creating a webhook runs the SSRF guard, which resolves the URL's host for real. That
+ * made every test here depend on public DNS: a lookup that failed under load returned
+ * `unresolvable_hostname`, the guard correctly refused, and the controller answered 422
+ * where the test expected 201 — a failure with no connection to the code under test.
+ *
+ * Only the resolution is faked. The address returned is a real public one, so the
+ * blocked-range check still runs and a test that used a loopback or link-local host would
+ * still be refused.
+ */
+const FIXTURE_HOST_ADDRESS = '93.184.216.34';
+
+beforeAll(() => {
+  vi.spyOn(dns.promises, 'lookup').mockImplementation((async (
+    hostname: string,
+    options?: unknown,
+  ) => {
+    const entry = { address: FIXTURE_HOST_ADDRESS, family: 4 };
+    if (typeof options === 'object' && options !== null && 'all' in options && options.all) {
+      return [entry];
+    }
+    return entry;
+  }) as unknown as typeof dns.promises.lookup);
+});
+
+afterAll(() => {
+  vi.restoreAllMocks();
+});
 
 const FILE_PREFIX = 'wh-ctrl';
 
