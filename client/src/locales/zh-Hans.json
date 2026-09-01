@@ -1003,7 +1003,7 @@
     "languageLabel": "首选语言",
     "languageHint": "覆盖系统默认设置。选择「使用系统默认」以使用管理员配置的语言。",
     "navLayoutLabel": "导航布局",
-    "navLayoutHint": "在桌面端覆盖工作区的默认布局。选择\"使用工作区默认设置\"以沿用管理员的设置。",
+    "navLayoutHint": "在桌面端覆盖工作区的默认布局。选择「使用工作区默认设置」以沿用管理员的设置。",
     "workspaceDefault": "使用工作区默认设置",
     "systemDefault": "使用系统默认",
     "saveButton": "保存",
