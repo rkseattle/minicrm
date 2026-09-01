@@ -9,7 +9,8 @@ Non-obvious fields, enums, and constraints only. Standard columns (`id`, `create
 ```
 users
   role(admin|rep)  status(active|invited|inactive)
-  must_change_password  preferred_language  password_changed_at
+  must_change_password  preferred_language  nav_layout(top|left|hamburger)
+  password_changed_at
   notify_overdue_tasks  notify_assignments  notify_deal_stage_changes
   password_reset_token  password_reset_expires
 

@@ -1,13 +1,13 @@
 # Profile Settings
 
 Click your name in the top-right corner, then **Profile Settings**, to open your own
-account settings: the language MiniCRM shows you, which emails it sends you, two-factor
-authentication, and the mailboxes you have connected.
+account settings: the language MiniCRM shows you, how its navigation is laid out, which
+emails it sends you, two-factor authentication, and the mailboxes you have connected.
 
 Everything here applies to you alone. Nothing on this page changes what your teammates
 see, and nothing on it needs an admin.
 
-![The Profile Settings page with the user menu open in the top-right corner, showing Profile Settings, Log out, and the language selector; behind it the preferred-language selector and the three email notification checkboxes, each with its own Save button, above the two-factor authentication panel and the connected accounts panel](../screenshots/12-profile-settings.png)
+![The Profile Settings page with the user menu open in the top-right corner, showing Profile Settings, Log out, and the language selector; behind it the preferred-language selector, the navigation layout selector, and the three email notification checkboxes, each with its own Save button, above the two-factor authentication panel and the connected accounts panel](../screenshots/12-profile-settings.png)
 
 ---
 
@@ -27,7 +27,19 @@ current default, so you keep following the org if the admin later changes it.
 > _German_ — and offers no **Use system default** entry, so clearing a personal
 > preference has to be done here.
 
-### Step 2 — Choose which emails you get
+### Step 2 — Choose your navigation layout
+
+Under **Navigation layout**, pick **Top Nav**, **Left Nav**, or **Hamburger Menu**, then
+click **Save**. The navigation changes as soon as the save lands.
+
+**Use workspace default** is the first option and means "follow whatever the admin has set
+for everyone". Choosing it clears your personal choice rather than pinning you to the
+current default, so you keep following the workspace if the admin later changes it.
+
+> This applies to desktop only. On a phone or a narrow window MiniCRM always shows the top
+> bar, whichever layout you pick here.
+
+### Step 3 — Choose which emails you get
 
 **Email Notifications** has three checkboxes, all on unless you turn them off:
 
@@ -40,7 +52,7 @@ current default, so you keep following the org if the admin later changes it.
 Ticking a box does not save it. Click the **Save** button in this section — it is separate
 from the language one — or your changes are lost when you leave the page.
 
-### Step 3 — Turn on two-factor authentication
+### Step 4 — Turn on two-factor authentication
 
 Two-factor authentication asks for a code from your phone as well as your password.
 

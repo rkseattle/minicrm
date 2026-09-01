@@ -23,7 +23,7 @@ is required. If you are an admin setting up the system, see the
 | [Activities](activities.md)               | Logging calls, emails, meetings, and tasks, AI objection pattern matching, AI call/note summarizer, AI follow-up task suggestions, AI pre-meeting brief                                                                                                              |
 | [Leads](leads.md)                         | Capturing prospects, qualifying them, and converting to contacts/deals, AI lead score and narrative explanation                                                                                                                                                      |
 | [My Tasks](my-tasks.md)                   | Working the tasks assigned to you — overdue chips, mark complete, page-scoped counts                                                                                                                                                                                 |
-| [Profile Settings](profile.md)            | Your language, email notification preferences, two-factor authentication, and connected mailboxes                                                                                                                                                                    |
+| [Profile Settings](profile.md)            | Your language, navigation layout, email notification preferences, two-factor authentication, and connected mailboxes                                                                                                                                                 |
 | [Data Hygiene](data-hygiene.md)           | The nightly data-quality queue for records you own — update, merge, archive, dismiss                                                                                                                                                                                 |
 | [Notes](notes.md)                         | Adding contextual notes with visibility controls                                                                                                                                                                                                                     |
 | [Dashboard](dashboard.md)                 | Reading the stat cards, the pipeline-by-stage table, and the recent activity feed                                                                                                                                                                                    |
@@ -44,9 +44,10 @@ is required. If you are an admin setting up the system, see the
 
 ## Navigation
 
-Use the sidebar (or top navigation, depending on your admin's layout setting) to move
-between sections. The active section is highlighted. On smaller screens the sidebar
-collapses into a menu icon at the top.
+Use the sidebar (or top navigation, depending on the layout in effect) to move between
+sections. The active section is highlighted. On smaller screens the sidebar collapses into
+a menu icon at the top. Your admin sets the workspace default, and you can choose your own
+layout on the Profile Settings page.
 
 ---
 

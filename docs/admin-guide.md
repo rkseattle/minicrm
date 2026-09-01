@@ -225,17 +225,17 @@ rewrites any stored timestamp, so historical records and the audit trail are una
 
 ### Reference: all system settings
 
-| Setting                                       | Location          | Notes                                                         |
-| --------------------------------------------- | ----------------- | ------------------------------------------------------------- |
-| Default language                              | General           | Language for all users who have not set a personal preference |
-| Nav layout                                    | General           | _Sidebar_ or _Top bar_ navigation style                       |
-| Default currency                              | General           | 3-letter currency code (USD, EUR, GBP, etc.)                  |
-| Default timezone                              | General           | IANA timezone; see above                                      |
-| Email notifications enabled                   | Notifications     | Master on/off for all outbound email                          |
-| SMTP host / port / user / password / from     | Notifications     | Outbound mail relay config                                    |
-| File storage endpoint / bucket / key / secret | Files             | S3-compatible storage for attachments                         |
-| Branding                                      | Branding tab      | See Section 4                                                 |
-| Pipeline stages                               | Customisation tab | See Section 2                                                 |
+| Setting                                       | Location          | Notes                                                                                            |
+| --------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------ |
+| Default language                              | General           | Language for all users who have not set a personal preference                                    |
+| Nav layout                                    | General           | Default layout (_Top Nav_, _Left Nav_, _Hamburger Menu_) for users who have not chosen their own |
+| Default currency                              | General           | 3-letter currency code (USD, EUR, GBP, etc.)                                                     |
+| Default timezone                              | General           | IANA timezone; see above                                                                         |
+| Email notifications enabled                   | Notifications     | Master on/off for all outbound email                                                             |
+| SMTP host / port / user / password / from     | Notifications     | Outbound mail relay config                                                                       |
+| File storage endpoint / bucket / key / secret | Files             | S3-compatible storage for attachments                                                            |
+| Branding                                      | Branding tab      | See Section 4                                                                                    |
+| Pipeline stages                               | Customisation tab | See Section 2                                                                                    |
 
 ---
 
