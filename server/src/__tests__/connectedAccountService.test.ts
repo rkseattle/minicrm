@@ -633,8 +633,14 @@ describe('scheduler-facing account claim', () => {
   });
 
   it('honors the batch limit', async () => {
-    // Asserted against the raw return, not this file's fixtures: the limit applies to the
-    // whole due set, and other suites' accounts share the table.
+    // The limit applies to the whole due set, and other suites share this table — so the
+    // claim is bounded here by making this file's rows the only ones due. Asserting on
+    // the raw count instead makes the test depend on what ran alongside it.
+    await pool.query(
+      `UPDATE connected_accounts SET sync_next_attempt_at = NOW() + interval '1 hour'
+        WHERE user_id <> ALL($1::uuid[])`,
+      [[REP_A_ACTOR.id, REP_B_ACTOR.id]],
+    );
     await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
     await createImapAccount(
       REP_A_ACTOR.id,
@@ -642,8 +648,7 @@ describe('scheduler-facing account claim', () => {
       REP_A_ACTOR,
     );
 
-    expect((await claimAccountsDueForSync(1)).length).toBeLessThanOrEqual(1);
-    expect((await claimAccountsDueForSync(5)).length).toBeLessThanOrEqual(5);
+    expect(await claimAccountsDueForSync(1)).toHaveLength(1);
   });
 });
 
