@@ -41,8 +41,15 @@ A `ProviderPage` carries four things:
 4. Add the provider to `IMPLEMENTED_SYNC_PROVIDERS` in `connectedAccountService.ts`. Until
    it is there the scheduler never claims that provider's accounts, so a mailbox connected
    before its driver shipped simply does not sync rather than failing repeatedly.
-5. Bound anything that reaches an indexed column. `thread_id` and `provider_message_id`
-   both carry btree indexes, which reject an entry over roughly a third of a page.
+5. Bound anything that reaches an indexed column, by hashing on overflow rather than
+   truncating. `thread_id` and `provider_message_id` both carry btree indexes, which
+   reject an entry over roughly a third of a page. Truncation is not a safe way to get
+   under that: an id built by qualifying a value with a prefix loses the distinguishing
+   suffix first, so two distinct messages collapse onto one key and the ingest's
+   `ON CONFLICT` silently overwrites one with the other. `boundIndexedId` in
+   `imapProvider.ts` is the shape to reuse — identity while the value fits, a digest of
+   the whole value once it does not. Assert distinctness, not just length: a
+   length-only test passes against the truncating version.
 
 ## The IMAP provider
 
