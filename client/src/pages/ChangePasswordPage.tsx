@@ -60,6 +60,9 @@ export default function ChangePasswordPage() {
   const mutation = useMutation({
     mutationFn: () => changePassword({ currentPassword, newPassword }),
     onSuccess: () => {
+      // Invalidate, not clear: the other session-boundary paths clear the whole
+      // cache because the account can change across them. Here the same user's
+      // session continues, so their cached data is still theirs.
       queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
       navigate('/', { replace: true });
     },

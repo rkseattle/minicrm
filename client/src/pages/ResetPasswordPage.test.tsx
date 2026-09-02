@@ -13,9 +13,10 @@ import { Routes, Route } from 'react-router-dom';
 import ResetPasswordPage from './ResetPasswordPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
+import { QueryClient } from '@tanstack/react-query';
 
 /** Renders ResetPasswordPage at /reset-password with the given token query param */
-function renderResetPasswordPage(token?: string) {
+function renderResetPasswordPage(token?: string, queryClient?: QueryClient) {
   const path = token ? `/reset-password?token=${token}` : '/reset-password';
   return renderWithProviders(
     <Routes>
@@ -23,7 +24,7 @@ function renderResetPasswordPage(token?: string) {
       <Route path="/forgot-password" element={<div>Forgot Password</div>} />
       <Route path="/" element={<div>Home</div>} />
     </Routes>,
-    { initialEntries: [path] },
+    { initialEntries: [path], queryClient },
   );
 }
 
@@ -196,5 +197,27 @@ describe('ResetPasswordPage — with token', () => {
     await waitFor(() => {
       expect(screen.getByTestId('reset-password-error')).toBeInTheDocument();
     });
+  });
+});
+
+describe('ResetPasswordPage — cache isolation between accounts', () => {
+  it("clears a previous account's cached per-user data on a successful reset", async () => {
+    const user = userEvent.setup();
+    // A reset invalidates existing sessions, so this is a session entry like a
+    // login. gcTime must not be 0, or entries vanish on unmount regardless.
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
+
+    renderResetPasswordPage('valid-token', queryClient);
+
+    await user.type(screen.getByTestId('reset-password-new'), 'NewP@ssw0rd!');
+    await user.type(screen.getByTestId('reset-password-confirm'), 'NewP@ssw0rd!');
+    await user.click(screen.getByTestId('reset-password-submit'));
+
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
+    );
   });
 });
