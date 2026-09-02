@@ -983,6 +983,31 @@ describe('message normalization', () => {
     expect(message.threadId.length).toBeLessThanOrEqual(512);
   });
 
+  it('keeps thread ids distinct when two Message-IDs share a long prefix', async () => {
+    // The length bound above passes against a slice, which is what let the same flaw sit
+    // undetected on the provider-id path. Two conversations merging into one is milder
+    // than a dropped message, but it is the same defect.
+    const shared = 'x'.repeat(600);
+    const { client } = makeFakeClient([
+      inbox(
+        [
+          { uid: 1, from: 'a@example.net', messageId: `<${shared}a@example.net>` },
+          { uid: 2, from: 'b@example.net', messageId: `<${shared}b@example.net>` },
+        ],
+        { uidNext: 3 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const ids = (await provider.fetchSince(AUTH, null, SINCE)).messages.map(
+      (message) => message.threadId,
+    );
+
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+    for (const id of ids) expect(id.length).toBeLessThanOrEqual(512);
+  });
+
   it('bounds a provider message id, which carries a unique index', async () => {
     const longPath = `Sent ${'A'.repeat(5000)}`;
     const { client } = makeFakeClient([
