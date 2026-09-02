@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -6,6 +6,8 @@ import { Routes, Route } from 'react-router-dom';
 import NavLayout from './NavLayout.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
+import { installLocationHrefStub } from '@/test/stubLocationHref.js';
+import { QueryClient } from '@tanstack/react-query';
 
 function TestApp() {
   return (
@@ -18,6 +20,8 @@ function TestApp() {
 }
 
 describe('NavLayout', () => {
+  installLocationHrefStub();
+
   it('renders the nav bar and child route content', () => {
     renderWithProviders(<TestApp />);
     expect(screen.getByTestId('nav-link-overview')).toBeInTheDocument();
@@ -52,5 +56,42 @@ describe('NavLayout', () => {
       renderWithProviders(<TestApp />);
       expect(screen.queryByTestId('nav-logout-button')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('NavLayout — cache isolation between accounts', () => {
+  const assignedHref = installLocationHrefStub();
+
+  beforeEach(() => {
+    server.use(
+      http.post('*/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })),
+    );
+  });
+
+  it('clears cached coverage data on logout rather than nulling only the auth entry', async () => {
+    // gcTime must not be 0: renderWithProviders defaults to it, which collects
+    // entries on unmount and would make this pass whether or not logout cleared.
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    queryClient.setQueryData(['coverage', 'summary'], { pct: 91 });
+    queryClient.setQueryData(['coverage_sessions'], [{ id: 's1' }]);
+
+    renderWithProviders(<TestApp />, { queryClient });
+
+    await userEvent.click(screen.getByTestId('nav-logout-button'));
+
+    // Read the cache, not the DOM: rendered output cannot distinguish "cleared"
+    // from "stale but still readable", which is the whole defect.
+    await waitFor(() => expect(queryClient.getQueryData(['coverage', 'summary'])).toBeUndefined());
+    expect(queryClient.getQueryData(['coverage_sessions'])).toBeUndefined();
+  });
+
+  it('leaves for /login by assigning location.href rather than routing', async () => {
+    renderWithProviders(<TestApp />);
+
+    await userEvent.click(screen.getByTestId('nav-logout-button'));
+
+    await waitFor(() => expect(assignedHref()).toBe('/login'));
   });
 });

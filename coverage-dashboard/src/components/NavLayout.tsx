@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { logout, AUTH_ME_QUERY_KEY } from '@/api/auth.js';
+import { logout } from '@/api/auth.js';
 import { isNoAuthMode } from '@/hooks/useAuth.js';
 
 const NAV_LINK_CLASS = ({ isActive }: { isActive: boolean }): string =>
@@ -13,7 +13,13 @@ export default function NavLayout() {
 
   async function handleLogout(): Promise<void> {
     await logout();
-    queryClient.setQueryData(AUTH_ME_QUERY_KEY, null);
+    // Clear, not setQueryData(null): nulling the auth entry leaves every other
+    // key resident and readable on the next mount, so the next account on this
+    // tab sees the previous one's data.
+    // Document load, not a router navigation: a route change leaves root-level
+    // observers mounted to refetch after the clear and 401.
+    queryClient.clear();
+    window.location.href = '/login';
   }
 
   return (
