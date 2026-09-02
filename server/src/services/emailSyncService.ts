@@ -351,30 +351,40 @@ export async function syncOneAccount(
  * and that is a lifecycle event a user must be able to account for.
  */
 async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Promise<void> {
-  const failureCount = account.syncFailureCount + 1;
-  const retired = failureCount >= MAX_SYNC_FAILURES;
   const detail = err instanceof Error ? err.message : 'Sync failed';
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    // The count increments from the stored value, not the one captured at claim time: a
+    // backfill commits a page at a time and each commit resets the counter, so a tick
+    // that stores pages and then fails would otherwise write the pre-sync count and
+    // retire a mailbox that had just synced successfully.
+    //
     // A retired mailbox gets no next attempt at all: it waits for a connection test,
     // which is what clears the counter and puts it back in the schedule.
-    await client.query(
+    const updated = await client.query<{ sync_failure_count: number }>(
       `UPDATE connected_accounts
           SET status = 'error',
               status_detail = $2,
-              sync_failure_count = $3,
-              sync_next_attempt_at = $4
-        WHERE id = $1`,
+              sync_failure_count = sync_failure_count + 1,
+              sync_next_attempt_at = CASE
+                WHEN sync_failure_count + 1 >= $3 THEN NULL
+                ELSE NOW() + ($4 || ' milliseconds')::interval
+              END
+        WHERE id = $1
+    RETURNING sync_failure_count`,
       [
         account.id,
         detail.slice(0, 500),
-        failureCount,
-        retired ? null : new Date(Date.now() + backoffDelayMs(failureCount)),
+        MAX_SYNC_FAILURES,
+        backoffDelayMs(account.syncFailureCount + 1),
       ],
     );
+
+    const failureCount = updated.rows[0]?.sync_failure_count ?? account.syncFailureCount + 1;
+    const retired = failureCount >= MAX_SYNC_FAILURES;
 
     if (retired) {
       await writeAuditEntry(client, {
