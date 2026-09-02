@@ -399,7 +399,12 @@ describe('syncDueAccounts', () => {
       [account.id],
     );
     expect(row.rows[0].sync_failure_count).toBe(1);
-    expect(row.rows[0].sync_next_attempt_at).not.toBeNull();
+    // The delay must follow the stored count too. Scheduling from the claim-time snapshot
+    // would apply the eighth-failure backoff to what the row records as the first,
+    // parking a mailbox that had just made progress for roughly the maximum delay.
+    const nextAttempt = row.rows[0].sync_next_attempt_at;
+    expect(nextAttempt).not.toBeNull();
+    expect(nextAttempt!.getTime() - Date.now()).toBeLessThan(backoffDelayMs(2));
   });
 
   it('does not audit a failure below the ceiling, which is a remote answer not a change', async () => {

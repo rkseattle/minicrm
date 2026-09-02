@@ -357,34 +357,42 @@ async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Pro
   try {
     await client.query('BEGIN');
 
-    // The count increments from the stored value, not the one captured at claim time: a
+    // Everything derives from the stored count, never the one captured at claim time: a
     // backfill commits a page at a time and each commit resets the counter, so a tick
-    // that stores pages and then fails would otherwise write the pre-sync count and
-    // retire a mailbox that had just synced successfully.
+    // that stores pages and then fails would otherwise be recorded — and rescheduled —
+    // as though the successful pages had not happened.
     //
+    // The row is locked and read first so the count, the backoff, and the retirement
+    // decision all come from one value. Deriving any of them separately is what left the
+    // delay on a pre-sync snapshot after the count had already moved.
+    const current = await client.query<{ sync_failure_count: number }>(
+      `SELECT sync_failure_count FROM connected_accounts WHERE id = $1 FOR UPDATE`,
+      [account.id],
+    );
+    if (current.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return;
+    }
+
+    const failureCount = current.rows[0].sync_failure_count + 1;
+    const retired = failureCount >= MAX_SYNC_FAILURES;
+
     // A retired mailbox gets no next attempt at all: it waits for a connection test,
     // which is what clears the counter and puts it back in the schedule.
-    const updated = await client.query<{ sync_failure_count: number }>(
+    await client.query(
       `UPDATE connected_accounts
           SET status = 'error',
               status_detail = $2,
-              sync_failure_count = sync_failure_count + 1,
-              sync_next_attempt_at = CASE
-                WHEN sync_failure_count + 1 >= $3 THEN NULL
-                ELSE NOW() + ($4 || ' milliseconds')::interval
-              END
-        WHERE id = $1
-    RETURNING sync_failure_count`,
+              sync_failure_count = $3,
+              sync_next_attempt_at = $4
+        WHERE id = $1`,
       [
         account.id,
         detail.slice(0, 500),
-        MAX_SYNC_FAILURES,
-        backoffDelayMs(account.syncFailureCount + 1),
+        failureCount,
+        retired ? null : new Date(Date.now() + backoffDelayMs(failureCount)),
       ],
     );
-
-    const failureCount = updated.rows[0]?.sync_failure_count ?? account.syncFailureCount + 1;
-    const retired = failureCount >= MAX_SYNC_FAILURES;
 
     if (retired) {
       await writeAuditEntry(client, {
