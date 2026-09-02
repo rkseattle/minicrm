@@ -30,12 +30,22 @@ export function isNoAuthMode(): boolean {
   return import.meta.env.VITE_COVERAGE_DASHBOARD_NO_AUTH === 'true';
 }
 
+/**
+ * The current-user query's options, shared so a caller warming the cache writes
+ * an entry with the same staleTime this hook reads it under. Declared in two
+ * places, they drift, and a warm-up written under the client default is stale on
+ * arrival — the refetch it exists to avoid.
+ */
+export const authQueryOptions = {
+  queryKey: AUTH_ME_QUERY_KEY,
+  queryFn: fetchCurrentUser,
+  staleTime: 5 * 60 * 1000,
+  retry: false,
+} as const;
+
 export function useAuth() {
   const { data: user, isLoading } = useQuery({
-    queryKey: AUTH_ME_QUERY_KEY,
-    queryFn: fetchCurrentUser,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
+    ...authQueryOptions,
     enabled: !isNoAuthMode(),
   });
 

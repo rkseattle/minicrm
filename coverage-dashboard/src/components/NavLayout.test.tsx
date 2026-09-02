@@ -60,8 +60,6 @@ describe('NavLayout', () => {
 });
 
 describe('NavLayout — cache isolation between accounts', () => {
-  const assignedHref = installLocationHrefStub();
-
   beforeEach(() => {
     server.use(http.post('*/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })));
   });
@@ -85,11 +83,21 @@ describe('NavLayout — cache isolation between accounts', () => {
     expect(queryClient.getQueryData(['coverage_sessions'])).toBeUndefined();
   });
 
-  it('leaves for /login by assigning location.href rather than routing', async () => {
-    renderWithProviders(<TestApp />);
+  it('routes to /login after logout', async () => {
+    // A client-side navigation, unlike the main client app: nothing here holds
+    // module-level state that a document load would need to reset, and this app
+    // mounts no query observers above the router.
+    renderWithProviders(
+      <Routes>
+        <Route element={<NavLayout />}>
+          <Route path="/" element={<div>Page content</div>} />
+        </Route>
+        <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+      </Routes>,
+    );
 
     await userEvent.click(screen.getByTestId('nav-logout-button'));
 
-    await waitFor(() => expect(assignedHref()).toBe('/login'));
+    await waitFor(() => expect(screen.getByTestId('login-page')).toBeInTheDocument());
   });
 });
