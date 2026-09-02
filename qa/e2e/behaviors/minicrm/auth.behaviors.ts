@@ -281,7 +281,8 @@ export async function loginFromCurrentPage(
 /** Result returned by the logout behavior. */
 export interface LogoutResult {
   /**
-   * True when logout succeeded (browser landed back on the login route).
+   * True when logout succeeded: the browser landed on /login with no `reason`
+   * param, i.e. by the logout path rather than the session-expiry redirect.
    */
   success: boolean;
   /**
@@ -320,7 +321,12 @@ export async function logout(context: AuthBehaviorContext): Promise<LogoutResult
     .catch(() => null);
 
   const finalUrl = context.page.url();
-  const success = new URL(finalUrl).pathname === '/login';
+  const settled = new URL(finalUrl);
+  // A deliberate logout must land on a bare /login. Arriving with
+  // ?reason=session_expired means the 401 interceptor redirected instead — the
+  // user sees a session-expired banner for a sign-out they chose, which a
+  // pathname-only check would report as success.
+  const success = settled.pathname === '/login' && settled.searchParams.get('reason') === null;
   return { success, finalUrl };
 }
 
