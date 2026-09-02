@@ -375,6 +375,33 @@ describe('syncDueAccounts', () => {
     expect(audit.rows).toHaveLength(1);
   });
 
+  it('counts a failure from the stored count, not the one captured at claim time', async () => {
+    // A backfill commits a page at a time and each commit resets the counter. Counting
+    // from the claim-time snapshot would write the pre-sync count, so a mailbox that just
+    // stored messages could be retired by the next page's failure — and the claim query
+    // now enforces that ceiling, so it would stay suspended until a manual test.
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query('UPDATE connected_accounts SET sync_failure_count = 7 WHERE id = $1', [
+      account.id,
+    ]);
+
+    let call = 0;
+    await syncDueAccounts({
+      fetchSince: async () => {
+        call += 1;
+        if (call === 1) return page({ messages: [message()], hasMore: true });
+        throw new Error('dropped mid-backfill');
+      },
+    });
+
+    const row = await pool.query<{ sync_failure_count: number; sync_next_attempt_at: Date | null }>(
+      'SELECT sync_failure_count, sync_next_attempt_at FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+    expect(row.rows[0].sync_failure_count).toBe(1);
+    expect(row.rows[0].sync_next_attempt_at).not.toBeNull();
+  });
+
   it('does not audit a failure below the ceiling, which is a remote answer not a change', async () => {
     const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
 
