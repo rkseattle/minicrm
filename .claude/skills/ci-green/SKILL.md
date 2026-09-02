@@ -8,6 +8,11 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Task
 
 Drive PR $ARGUMENTS to fully green with no outstanding feedback.
 
+Set `"stage": "ci-green"` and `"pr"` to the PR number in
+`.claude/state/current-plan.json` now, and update `stage_step` on entering each step
+below. `/deliver`'s Step 0 resumes from those; recording the PR number saves a resumed
+session re-deriving it, and distinguishes a branch awaiting CI from one still unpushed.
+
 ## Step 1 — Arm the monitor, then stop talking
 
 Start monitoring the CI run. Once a background monitor is armed, **say nothing until it
@@ -114,3 +119,30 @@ When the loop exits, report the full status: final check status, every commit ad
 across all iterations, all files changed, total wall-clock, the acceptance criteria table
 with evidence — CI passing is evidence for an AC that a test covers, and now is when it
 becomes available — and the friction from this stage, proposed and not applied.
+
+## Step 6 — Clean up the run's scratch files
+
+**Only once the run is genuinely finished** — every check green, no unaddressed comment,
+the final report written. Report the deletions as part of that report.
+
+```bash
+rm -f .claude/state/current-plan.json .claude/state/blocked-*
+rm -f docs/plans/<primary-ticket>*.md
+```
+
+Both are working state for a delivery in flight, not artifacts of it: `docs/plans/` is
+gitignored, and the PR body plus the commits carry everything a reader needs afterward.
+Left behind, the state file is worse than clutter — `/deliver`'s Step 0 finds it and
+resumes a run that already shipped.
+
+Named files, not `find .claude/state -type f -delete`: that also removes
+`hook-invocations.log`, the Stop hook's only diagnostic trail, at the end of exactly the
+run whose hook behavior someone would want to inspect.
+
+The glob catches the plan and anything written alongside it — handoff notes, scratch
+drafts. Delete nothing outside `docs/plans/` and `.claude/state/`, and never a tracked
+file: `git status` must be clean afterward, exactly as it was before.
+
+If the PR is not merged yet, that is fine — the branch and the PR are the record from
+here on. But if anything is still red or unaddressed, the run has not finished and
+nothing gets deleted.

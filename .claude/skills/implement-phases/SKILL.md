@@ -33,9 +33,17 @@ hook reads to tell an unfinished plan from a finished one.
   "branch": "<ticket-slug>",
   "plan": "docs/plans/<primary-ticket>.md",
   "tickets": ["MINCRM-N"],
+  "stage": "implement-phases",
+  "stage_step": "2a — implement, phase 1",
   "phases": [{ "name": "Phase 1 — <name>", "done": false }]
 }
 ```
+
+`stage` and `stage_step` are what `/deliver`'s Step 0 resumes from. Update `stage_step`
+at the top of each step below — 2a, 2c, 2d — before doing the step, naming the phase it
+belongs to. A session killed without warning leaves behind whatever was written last, so
+a marker written on the way into a step survives the crash and one written on the way out
+does not.
 
 One entry per phase in the approved plan, all `done: false`. `branch` is the branch just
 created: the hook ignores a state file naming a branch that is not checked out, so
@@ -86,8 +94,10 @@ Set `"paused": true` before ending a turn deliberately, per `deliver`'s invarian
 guard for every remaining phase.
 
 If work is abandoned before `/ship-pr`, clear the state with
-`find .claude/state -type f -delete`; an unfinished plan nobody is working on nags the
-next session.
+`find .claude/state -type f -delete` and delete the plan from `docs/plans/`; an
+unfinished plan nobody is working on nags the next session, and `/deliver` resumes from
+it. A completed run is cleaned up by `/ci-green`'s Step 6 instead — not before, because
+every stage after this one resumes from this file.
 
 ## Step 2 — Run all phases straight through
 

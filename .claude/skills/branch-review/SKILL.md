@@ -10,6 +10,9 @@ Full branch review. Base ref: $ARGUMENTS (default `main`).
 
 Run this after every phase is committed and before `/ship-pr`.
 
+Set `"stage": "branch-review"` in `.claude/state/current-plan.json` now, and update
+`stage_step` on entering each step below. `/deliver`'s Step 0 resumes from those.
+
 ## Step 1 — Cold review
 
 Launch the `greptile-reviewer` subagent.
