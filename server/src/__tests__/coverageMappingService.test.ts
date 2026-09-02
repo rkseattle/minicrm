@@ -16,6 +16,7 @@ import {
   findUnitsForTest,
   findTestsForUnitAcrossBranches,
   findTestsForUnitsAcrossBranches,
+  packPairsIntoBatches,
   linkCoverageUnitsToTest,
   streamAllCoverageTestLinks,
   beginCoverageMapLoad,
@@ -452,7 +453,7 @@ describe('coverageMappingService', () => {
       expect(results).toEqual([]);
     });
 
-    it('resolves correctly across multiple internal chunks — exercises the chunking loop for an input larger than MAX_UNITS_PER_MAPPING_LOOKUP_BATCH (200)', async () => {
+    it('resolves correctly across multiple internal chunks — exercises the secondary key ceiling (200) for zero-fan-out keys, which contribute nothing to the row budget', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const realFilePath = `${FILE_PREFIX}/chunked-real.ts`;
       const realUnitKey = 'render#chunked1';
@@ -461,10 +462,10 @@ describe('coverageMappingService', () => {
         makeLink({ unitKey: realUnitKey, branchId: '0:0', filePath: realFilePath }),
       ]);
 
-      // 250 pairs spans two internal chunks (batch size 200) — 249 of them
-      // resolve to nothing, one (placed deliberately in the SECOND chunk,
-      // at index 210) is real, proving both chunks actually execute and
-      // attribute their own results correctly, not just the first.
+      // These 250 keys have almost no fan-out, so the row budget never fires
+      // and only the 200-key ceiling splits them. One real match sits past
+      // that boundary (index 210), proving the second batch executes and
+      // attributes its own results rather than the first silently covering.
       const padding = Array.from({ length: 249 }, (_, i) => ({
         filePath: `${FILE_PREFIX}/chunked-padding-${i}.ts`,
         unitKey: `padding#${i}`,
@@ -485,6 +486,156 @@ describe('coverageMappingService', () => {
       expect(realResult?.matches).toMatchObject([{ testId: 'spec:chunked.spec.ts::t' }]);
       const emptyResults = results.filter((r) => r !== realResult);
       expect(emptyResults.every((r) => r.matches.length === 0)).toBe(true);
+    });
+
+    it('splits keys into separate batches once their summed row count exceeds the budget, and packs them together below it', () => {
+      // The budget is injected rather than exercised at its real 250,000, which
+      // no test-scale fixture can reach — so this is the only test that reaches
+      // the wouldExceedRows branch at all. Deleting that branch fails it.
+      const pairs = [
+        { filePath: 'a.ts', unitKey: 'k1' },
+        { filePath: 'b.ts', unitKey: 'k2' },
+        { filePath: 'c.ts', unitKey: 'k3' },
+      ];
+      const counts = new Map([
+        ['k1', 60],
+        ['k2', 60],
+        ['k3', 60],
+      ]);
+
+      expect(packPairsIntoBatches(pairs, counts, 1000)).toHaveLength(1);
+      // 100 fits one key per batch but not two, so each key gets its own.
+      expect(packPairsIntoBatches(pairs, counts, 100)).toHaveLength(3);
+      // A single key over budget still forms a batch rather than being dropped.
+      expect(packPairsIntoBatches(pairs, counts, 10)).toHaveLength(3);
+    });
+
+    it('packs into much smaller batches when counts are unavailable, rather than the ordinary key ceiling', () => {
+      // An empty count map means every key looks free, so packing has no cost
+      // signal. Falling back to the ordinary 200-key ceiling would rebuild the
+      // batch shape that times out — the very failure the counts prevent.
+      const pairs = Array.from({ length: 60 }, (_, i) => ({
+        filePath: `f${i}.ts`,
+        unitKey: `k${i}`,
+      }));
+
+      const batches = packPairsIntoBatches(pairs, new Map());
+
+      expect(batches.length).toBeGreaterThan(1);
+      expect(Math.max(...batches.map((b) => b.length))).toBeLessThanOrEqual(25);
+    });
+
+    it('uses a default row budget small enough to split a batch that would otherwise time out', () => {
+      // Guards the production constant itself, which every other budget test
+      // bypasses by injecting its own. Without this, raising
+      // MAX_ROWS_PER_MAPPING_LOOKUP_BATCH back to an unbounded value — the exact
+      // regression this work exists to prevent — leaves the suite green.
+      const pairs = [
+        { filePath: 'a.ts', unitKey: 'k1' },
+        { filePath: 'b.ts', unitKey: 'k2' },
+      ];
+      // Two keys at the fan-out measured for the hottest real keys. A default
+      // that batches these together is one that lets a ~1.4M-row sort through.
+      const counts = new Map([
+        ['k1', 700_000],
+        ['k2', 700_000],
+      ]);
+
+      expect(packPairsIntoBatches(pairs, counts)).toHaveLength(2);
+    });
+
+    it('charges a duplicated unitKey once and keeps its pairs together, and treats an uncounted key as zero rows', () => {
+      const pairs = [
+        { filePath: 'a.ts', unitKey: 'shared' },
+        { filePath: 'b.ts', unitKey: 'shared' },
+        { filePath: 'c.ts', unitKey: 'uncounted' },
+      ];
+      // 'uncounted' is absent from the map — the shape both a genuinely
+      // unmapped key and a failed count produce.
+      const counts = new Map([['shared', 90]]);
+
+      const batches = packPairsIntoBatches(pairs, counts, 100);
+
+      // Charged once (90, not 180), so both its pairs stay in one batch with
+      // the zero-cost key alongside them.
+      expect(batches).toHaveLength(1);
+      expect(batches[0]).toHaveLength(3);
+    });
+
+    it('still returns complete results when the counting query fails, warning and degrading to key-count chunking', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const filePath = `${FILE_PREFIX}/count-fails.ts`;
+      const unitKey = 'countfail#1';
+
+      await linkAndCommit(commitSha, 'spec:count-fail.spec.ts::t', 't', [
+        makeLink({ unitKey, branchId: '0:0', filePath }),
+      ]);
+
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+      const realQuery = coverageDb.query.bind(coverageDb);
+      const querySpy = vi
+        .spyOn(coverageDb, 'query')
+        .mockImplementation((...args: Parameters<typeof coverageDb.query>) => {
+          const sql = typeof args[0] === 'string' ? args[0] : '';
+          // Fail ONLY the counting statement, so the fetch path is untouched
+          // and any incompleteness in the result is the fallback's own fault.
+          if (sql.includes('count(*) AS row_count')) {
+            return Promise.reject(new Error('simulated count failure'));
+          }
+          return realQuery(...args) as ReturnType<typeof coverageDb.query>;
+        });
+
+      try {
+        const results = await findTestsForUnitsAcrossBranches(commitSha, [{ filePath, unitKey }]);
+
+        // The counts are an optimization: losing them must slow selection down,
+        // never narrow it. A missing match here would silently drop a test.
+        expect(results).toHaveLength(1);
+        expect(results[0].matches).toMatchObject([{ testId: 'spec:count-fail.spec.ts::t' }]);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ commitSha }),
+          expect.stringContaining('unit-key row count failed'),
+        );
+      } finally {
+        querySpy.mockRestore();
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('keeps every pair sharing one unitKey in the same batch, so a duplicated key is charged and fetched once', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const sharedUnitKey = 'shared#budgetpacking';
+      const fileA = `${FILE_PREFIX}/packing-a.ts`;
+      const fileB = `${FILE_PREFIX}/packing-b.ts`;
+
+      await linkAndCommit(commitSha, 'spec:pack-a.spec.ts::t', 't', [
+        makeLink({ unitKey: sharedUnitKey, branchId: '0:0', filePath: fileA }),
+      ]);
+      await linkAndCommit(commitSha, 'spec:pack-b.spec.ts::t', 't', [
+        makeLink({ unitKey: sharedUnitKey, branchId: '0:0', filePath: fileB }),
+      ]);
+
+      const infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => logger);
+      const results = await findTestsForUnitsAcrossBranches(commitSha, [
+        { filePath: fileA, unitKey: sharedUnitKey },
+        { filePath: fileB, unitKey: sharedUnitKey },
+      ]);
+
+      // chunkCount is the only observable proof of batch STRUCTURE — results
+      // alone cannot distinguish one batch from two, because attribution runs
+      // per row afterward either way. Splitting a shared key across batches
+      // would fetch its rows twice and charge the budget once, so pin the count.
+      const fields = infoSpy.mock.calls.find(
+        (call) => call[1] === 'coverageMappingService: findTestsForUnitsAcrossBranches',
+      )?.[0];
+      expect(fields).toMatchObject({ uniqueUnitCount: 2, chunkCount: 1 });
+      infoSpy.mockRestore();
+
+      // The count query groups by unit_key while the input is pairs; both pairs
+      // must still resolve to their own file's links, with no cross-attribution.
+      expect(results).toHaveLength(2);
+      expect(results[0].matches).toMatchObject([{ testId: 'spec:pack-a.spec.ts::t' }]);
+      expect(results[1].matches).toMatchObject([{ testId: 'spec:pack-b.spec.ts::t' }]);
     });
 
     it('produces the same matches (branch coverage and function-granularity) as the singular findTestsForUnitAcrossBranches for the same pair', async () => {
