@@ -1060,9 +1060,10 @@ cannot drift apart. Two points worth knowing before reading it:
   autoanalyze — `ANY($2)` over a long array of correlated keys is hard to estimate. The
   budget bounds that sort's input.
 - **A counting pass runs first** to get per-key row counts, and is far cheaper than the
-  fetch it bounds. Budget for the cold plan rather than the warm one: the map-load path
-  never `VACUUM`s, so a freshly loaded table has no visibility map and the count cannot be
-  index-only.
+  fetch it bounds — including on the cold plan. The map-load path never `VACUUM`s, so a
+  freshly loaded table has no visibility map and the count runs as a bitmap heap scan
+  rather than index-only; measured there it is still roughly a sixth of the fetch's cost,
+  because counting never sorts.
 
 When the counting query itself fails — most plausibly a statement timeout on a large diff,
 this ticket's own symptom — packing falls back to `UNCOUNTED_UNITS_PER_MAPPING_LOOKUP_BATCH`,

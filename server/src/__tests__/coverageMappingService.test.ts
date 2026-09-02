@@ -578,6 +578,40 @@ describe('coverageMappingService', () => {
       expect(batches[0]).toHaveLength(3);
     });
 
+    it('chunks the counting query itself, so a large diff cannot build one unbounded count', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const filePath = `${FILE_PREFIX}/count-chunked.ts`;
+
+      await linkAndCommit(commitSha, 'spec:chunk-count.spec.ts::t', 't', [
+        makeLink({ unitKey: 'counted#1', branchId: '0:0', filePath }),
+      ]);
+
+      // 250 keys exceeds the 200-key ceiling, so the count must run twice.
+      // Without chunking this is one query whose array grows with the diff —
+      // the shape the fetch's own ceiling exists to prevent.
+      const units = [
+        { filePath, unitKey: 'counted#1' },
+        ...Array.from({ length: 249 }, (_, i) => ({
+          filePath: `${FILE_PREFIX}/unmapped-${i}.ts`,
+          unitKey: `uncounted#${i}`,
+        })),
+      ];
+
+      const querySpy = vi.spyOn(coverageDb, 'query');
+      try {
+        const results = await findTestsForUnitsAcrossBranches(commitSha, units);
+
+        const countCalls = querySpy.mock.calls.filter(
+          (call) => typeof call[0] === 'string' && call[0].includes('count(*) AS row_count'),
+        );
+        expect(countCalls).toHaveLength(2);
+        expect(results).toHaveLength(250);
+        expect(results[0].matches).toMatchObject([{ testId: 'spec:chunk-count.spec.ts::t' }]);
+      } finally {
+        querySpy.mockRestore();
+      }
+    });
+
     it('still returns complete results when the counting query fails, warning and degrading to key-count chunking', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const filePath = `${FILE_PREFIX}/count-fails.ts`;

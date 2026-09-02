@@ -69,9 +69,10 @@ export function UserMenu({ userName }: UserMenuProps) {
       // mount while it refetches, so the next user on this tab sees the previous
       // user's data. No ['users','me',...] key carries a user id.
       queryClient.clear();
-      // Document load, not navigate(): providers above the router survive a route
-      // change, so their observers would refetch after the clear and 401 into the
-      // session-expired redirect. Matches the 401 interceptor.
+      // Document load, not navigate(): useAuth's module-level languageApplied
+      // flag is set once and never reset, so a client-side logout would leave the
+      // next user on this tab with the previous user's language. Reloading resets
+      // the module. Matches what the 401 interceptor already does.
       window.location.href = '/login';
     },
     onError: () => {

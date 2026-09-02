@@ -9,8 +9,8 @@ import type { FormEvent } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { login, fetchCurrentUser, AUTH_ME_QUERY_KEY } from '@/api/auth.js';
-import { useAuth } from '@/hooks/useAuth.js';
+import { login } from '@/api/auth.js';
+import { useAuth, authQueryOptions } from '@/hooks/useAuth.js';
 
 interface LocationState {
   from?: { pathname: string };
@@ -44,9 +44,7 @@ export default function LoginPage() {
       // clear() empties it too, and ProtectedRoute renders a loading state on a
       // miss. Failure here must not surface as a login error — the session cookie
       // is already issued, so ProtectedRoute re-resolves it after navigating.
-      await queryClient
-        .fetchQuery({ queryKey: AUTH_ME_QUERY_KEY, queryFn: fetchCurrentUser })
-        .catch(() => undefined);
+      await queryClient.fetchQuery(authQueryOptions).catch(() => undefined);
       const from = (location.state as LocationState | null)?.from?.pathname ?? '/';
       navigate(from, { replace: true });
     } catch (err) {

@@ -53,12 +53,12 @@ const MAX_UNITS_PER_MAPPING_LOOKUP_BATCH = 200;
 // 250,000 sits well below the batch that produced those times while still
 // packing typical 140-row keys into one query.
 //
-// Counting first is what makes that affordable, but budget for the cold plan,
-// not the warm one: the load path never VACUUMs, so on a freshly loaded table
-// there is no visibility map and the count runs as a bitmap heap scan rather
-// than the index-only scan it becomes once vacuumed (~618ms for the 200 hottest
-// keys, ~2.1s for all 3,625, both measured warm). It stays far cheaper than the
-// fetch it bounds either way, which is the property this depends on.
+// Counting first is what makes that affordable, and it holds on the cold plan
+// too. The load path never VACUUMs, so a freshly loaded table has no visibility
+// map and the count runs as a bitmap heap scan (65,374 heap blocks) rather than
+// the index-only scan it becomes once vacuumed. Measured on the 200 hottest keys
+// of an unvacuumed 2.3M-row table: 490ms, against 2,908ms for the fetch it
+// bounds. Counting is cheaper than fetching because it never sorts.
 const MAX_ROWS_PER_MAPPING_LOOKUP_BATCH = 250_000;
 
 // Key ceiling used when per-key counts are unavailable, so packing has no cost
@@ -492,9 +492,12 @@ async function countLinksByUnitKey(
  * a batch to itself — it costs what it costs, and splitting it is not possible
  * without splitting a key's rows across queries.
  *
- * A key missing from `rowCountsByUnitKey` contributes zero rows. That covers
- * both a genuinely unmapped key and an empty map from a failed count, which is
- * what makes the failure path degrade to plain key-count chunking.
+ * A key missing from `rowCountsByUnitKey` contributes zero rows — a genuinely
+ * unmapped key. A null map is different: it means the count failed and cost is
+ * unknown, which is what selects the conservative ceiling.
+ *
+ * Exported, with the two bounds overridable, for tests only: the row budget is
+ * unreachable at fixture scale, so nothing else could exercise that branch.
  */
 export function packPairsIntoBatches(
   uniquePairs: readonly { filePath: string; unitKey: string }[],
