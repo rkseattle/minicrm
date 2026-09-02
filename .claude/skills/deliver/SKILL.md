@@ -20,6 +20,43 @@ Ignore the `argument-hint`, `allowed-tools`, and `disable-model-invocation` fiel
 those files when read this way; they apply only to direct slash-command invocation. The
 body is the procedure.
 
+## Step 0 — Resume or start fresh
+
+**Before stage 1, before anything else**, read `.claude/state/current-plan.json`.
+
+| State                                                | Action                                            |
+| ---------------------------------------------------- | ------------------------------------------------- |
+| Absent, or its `branch` is not checked out            | Fresh run — go to stage 1                         |
+| Present, unfinished, tickets match or none given      | **Resume path** below                             |
+| Present, but $ARGUMENTS names different tickets       | **Stop and ask.** Never start over the top of it. |
+
+A session resuming mid-run has read none of this workflow's machinery: stage files are
+read on arrival and gates when they apply, so a run entered in the middle skips every one
+of those reads. The state file records _where_ the work is and cannot carry the
+instructions — a gate copied into JSON is a copy free to drift — so a resume re-reads the
+real files in the order a run would have reached them.
+
+**The resume path's first action — before touching code, git, or a subagent:**
+
+1. This file's **Invariants** section below. It is already in context; do not skip it.
+2. The `SKILL.md` of the stage named in `stage`.
+3. That stage's gates: `definition-of-done.md` for stage 2 · `pre-push.md` and
+   `e2e-run.md` for stage 4 · `status-report.md` for any stage that reports.
+4. The plan document at `plan`.
+
+Then **report what you loaded and where you landed** — the file list, the stage and step,
+the phases done and remaining — and continue without waiting for a reply. The report is
+the verification: a resume that silently loaded nothing is visible because its list is
+missing or wrong. Skipping the report is how this failure recurs unnoticed.
+
+**An uncommitted phase never started.** A dirty tree never passed the Definition of Done,
+so it gets no credit for having been done: re-enter that phase at its first step, keep
+the existing edits as a starting point, and say so in the report. Trusting a partial diff
+ships code that skipped the gate it was interrupted before reaching.
+
+The marker may be stale by one step, since a crash lands between writes. `git status`,
+`git log`, and the phase list win wherever they disagree with it.
+
 ## Stages
 
 1. **`.claude/skills/plan-work/SKILL.md`** — substitute $ARGUMENTS for the ticket IDs.
@@ -40,7 +77,8 @@ body is the procedure.
 
 5. **`.claude/skills/ci-green/SKILL.md`** — the PR opened in stage 4. Monitor CI and PR
    feedback; root-cause every failure in an isolated subagent; loop until fully green
-   with no unaddressed comments.
+   with no unaddressed comments. Then, and only then, delete the run's scratch files —
+   the state file and the plan — so Step 0 cannot resume a run that already shipped.
 
 Stages 2 through 5 run without further approval gates. Surface real decisions as they
 arise; do not ask permission to continue.
@@ -229,6 +267,17 @@ better turn than arriving with the question alone.
 together — one `AskUserQuestion` with every open choice, each carrying a recommendation
 and its consequence — rather than serializing them across turns. Two questions asked
 separately cost two round trips and make a run look stalled twice.
+
+**Keep the stage marker current as you go.** Every stage writes `stage` and `stage_step`
+into `.claude/state/current-plan.json` when it starts and at each of its own step
+boundaries, naming the step as that stage's file names it (`"2c — adversarial review,
+phase 3"`). Write it _before_ the step, not after: the value of the marker is that a
+session killed without warning — a reboot, a lost terminal — left the last write behind,
+and a marker written on the way out is exactly the one a crash never writes.
+
+This is what Step 0 reads. A stage that skips these writes leaves the next session
+inferring its position from git alone, which cannot distinguish a branch awaiting review
+from one awaiting CI.
 
 **Declare a deliberate stop.** Any stage may end a turn to ask Rob something — a genuine
 decision, a deferral, persistent BLOCKERs, an ambiguous E2E scope. Whenever that happens

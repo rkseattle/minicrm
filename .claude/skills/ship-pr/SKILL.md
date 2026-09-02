@@ -10,6 +10,10 @@ Ship the branch covering: $ARGUMENTS
 
 Run only after `/branch-review` has returned APPROVE.
 
+Set `"stage": "ship-pr"` in `.claude/state/current-plan.json` now, and update `stage_step`
+on entering each step below. `/deliver`'s Step 0 resumes from those — and Step 4's push
+is the point where a resumed run must know whether the PR already exists.
+
 ## Step 1 — Rebase onto the parent, then local CI equivalence
 
 Read `.claude/gates/pre-push.md` and run the checklist in order. Everything CI will run,
@@ -100,14 +104,12 @@ If the lease check rejects the push, the remote branch has commits your local co
 not — someone else pushed, or an earlier run of this skill did. Do not re-force past it.
 Fetch, look at what is there, and reconcile.
 
-Once the PR exists, the phase state no longer describes live work — clear it. The file is
-per-checkout, and a checkout has one HEAD, so any concurrent session here is on this same
-branch and this same plan; a session on another branch has its own worktree and its own
-state:
-
-```bash
-find .claude/state -type f -delete
-```
+Once the PR exists, record it in `.claude/state/current-plan.json` — `"pr"` set to its
+number, `"stage": "ci-green"` — and **leave the state file in place.** The work is not
+finished until CI is green, and `/deliver`'s Step 0 resumes stage 5 from these fields: a
+run interrupted between the push and a green build must know the PR already exists, or it
+re-enters this stage and pushes again. `/ci-green` deletes the file when the run
+genuinely ends.
 
 Title lists every covered ticket ID in full — `MINCRM-542, MINCRM-565` — never
 abbreviated, never partial.
