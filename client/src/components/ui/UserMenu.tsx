@@ -74,6 +74,13 @@ export function UserMenu({ userName }: UserMenuProps) {
       // session-expired redirect. Matches the 401 interceptor.
       window.location.href = '/login';
     },
+    onError: () => {
+      // The server may already have dropped the session even though the response
+      // failed, so leaving the user signed in with a live cache is the worse of
+      // the two guesses. Clear and leave regardless.
+      queryClient.clear();
+      window.location.href = '/login';
+    },
   });
 
   return (

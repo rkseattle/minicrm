@@ -24,11 +24,11 @@ body is the procedure.
 
 **Before stage 1, before anything else**, read `.claude/state/current-plan.json`.
 
-| State                                                | Action                                            |
-| ---------------------------------------------------- | ------------------------------------------------- |
-| Absent, or its `branch` is not checked out            | Fresh run — go to stage 1                         |
-| Present, unfinished, tickets match or none given      | **Resume path** below                             |
-| Present, but $ARGUMENTS names different tickets       | **Stop and ask.** Never start over the top of it. |
+| State                                            | Action                                            |
+| ------------------------------------------------ | ------------------------------------------------- |
+| Absent, or its `branch` is not checked out       | Fresh run — go to stage 1                         |
+| Present, unfinished, tickets match or none given | **Resume path** below                             |
+| Present, but $ARGUMENTS names different tickets  | **Stop and ask.** Never start over the top of it. |
 
 A session resuming mid-run has read none of this workflow's machinery: stage files are
 read on arrival and gates when they apply, so a run entered in the middle skips every one

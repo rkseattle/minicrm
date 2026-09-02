@@ -16,10 +16,12 @@ import type { UserResponse } from '@shared/schemas/userSchema.js';
  * Ensures applyResolvedLanguage runs at most once per page load/session,
  * even though useAuth is called by multiple components (NavBar, ProtectedRoute, etc.).
  *
- * Safe across an account switch only because every session boundary leaves by a
- * full document load (UserMenu's logout, the 401 interceptor), which resets this
- * module along with everything else. A client-side logout would strand it set,
- * and the next user would keep the previous user's language.
+ * Safe across an account switch only because no client-side transition ever ENDS
+ * a session: logout and the 401 interceptor both leave by full document load,
+ * which resets this module. The in-tree session entries (login, MFA verify,
+ * password reset) all arrive on a fresh /login load, so the flag is already
+ * unset. A client-side logout would strand it set, and the next user would keep
+ * the previous user's language.
  */
 let languageApplied = false;
 

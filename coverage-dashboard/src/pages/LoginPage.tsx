@@ -40,10 +40,13 @@ export default function LoginPage() {
       // Clear rather than invalidate: a previous account's cached coverage data
       // on this tab is readable on the next mount even while it refetches.
       queryClient.clear();
-      // Refetch before navigating, as the awaited invalidate used to: clearing
-      // empties the auth entry too, and ProtectedRoute renders a loading state
-      // for a cache miss.
-      await queryClient.fetchQuery({ queryKey: AUTH_ME_QUERY_KEY, queryFn: fetchCurrentUser });
+      // Warm the auth entry before navigating, as the awaited invalidate used to:
+      // clear() empties it too, and ProtectedRoute renders a loading state on a
+      // miss. Failure here must not surface as a login error — the session cookie
+      // is already issued, so ProtectedRoute re-resolves it after navigating.
+      await queryClient
+        .fetchQuery({ queryKey: AUTH_ME_QUERY_KEY, queryFn: fetchCurrentUser })
+        .catch(() => undefined);
       const from = (location.state as LocationState | null)?.from?.pathname ?? '/';
       navigate(from, { replace: true });
     } catch (err) {

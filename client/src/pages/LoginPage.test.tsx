@@ -281,6 +281,36 @@ describe('LoginPage — session expired', () => {
       });
     });
 
+    it("clears a previous account's cached data when MFA verification completes the login", async () => {
+      // The path an MFA-enrolled user takes on every login — a session entry
+      // like any other, and the one completeLogin reaches via handleMfaSuccess.
+      server.use(
+        http.post('/api/v1/auth/login', () =>
+          HttpResponse.json({ mfaRequired: true, mfaToken: 'test-mfa-token' }),
+        ),
+        http.post('/api/v1/auth/mfa/verify-login', () => HttpResponse.json({ user: ADMIN_USER })),
+        http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })),
+      );
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+      queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
+
+      const user = userEvent.setup();
+      renderLoginPage(queryClient);
+      await user.type(screen.getByTestId('login-email'), 'admin@example.com');
+      await user.type(screen.getByTestId('login-password'), 'correct-password');
+      await user.click(screen.getByTestId('login-submit'));
+
+      await waitFor(() => expect(screen.getByTestId('mfa-login-modal')).toBeInTheDocument());
+      await user.type(screen.getByTestId('mfa-login-code-input'), '123456');
+      await user.click(screen.getByTestId('mfa-login-submit'));
+
+      await waitFor(() =>
+        expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
+      );
+    });
+
     it('redirects to /profile?mfa_setup_required=1 when login returns mfaSetupRequired:true', async () => {
       server.use(
         http.post('/api/v1/auth/login', () =>
@@ -326,7 +356,7 @@ describe('LoginPage — session expired', () => {
 });
 
 describe('LoginPage — cache isolation between accounts', () => {
-  it('clears a previous account\'s cached per-user data on a successful login', async () => {
+  it("clears a previous account's cached per-user data on a successful login", async () => {
     // gcTime must not be 0: renderWithProviders defaults to it, which collects
     // entries on unmount and would pass whether or not login cleared them.
     const queryClient = new QueryClient({

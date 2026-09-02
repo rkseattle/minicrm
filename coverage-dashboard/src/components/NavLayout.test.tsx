@@ -63,9 +63,7 @@ describe('NavLayout — cache isolation between accounts', () => {
   const assignedHref = installLocationHrefStub();
 
   beforeEach(() => {
-    server.use(
-      http.post('*/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })),
-    );
+    server.use(http.post('*/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })));
   });
 
   it('clears cached coverage data on logout rather than nulling only the auth entry', async () => {

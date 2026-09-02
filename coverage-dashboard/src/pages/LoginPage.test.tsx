@@ -65,14 +65,22 @@ describe('LoginPage', () => {
 });
 
 describe('LoginPage — cache isolation between accounts', () => {
-  beforeEach(() => {
-    server.use(
-      http.post('*/api/v1/auth/login', () => HttpResponse.json({ user: { id: 'u2', email: 'b@example.com' } })),
-      http.get('*/api/v1/auth/me', () => HttpResponse.json({ id: 'u2', email: 'b@example.com' })),
-    );
-  });
-
   it("clears a previous account's cached coverage data on a successful login", async () => {
+    // /auth/me must 401 until the login succeeds, or LoginPage sees an
+    // authenticated session and redirects instead of rendering the form.
+    let signedIn = false;
+    server.use(
+      http.post('*/api/v1/auth/login', () => {
+        signedIn = true;
+        return HttpResponse.json({ user: { id: 'u2', email: 'b@example.com' } });
+      }),
+      http.get('*/api/v1/auth/me', () =>
+        signedIn
+          ? HttpResponse.json({ user: { id: 'u2', email: 'b@example.com' } })
+          : new HttpResponse(null, { status: 401 }),
+      ),
+    );
+
     // gcTime must not be 0: renderWithProviders defaults to it, which collects
     // entries on unmount and would pass whether or not login cleared them.
     const queryClient = new QueryClient({
@@ -83,9 +91,10 @@ describe('LoginPage — cache isolation between accounts', () => {
 
     renderWithProviders(
       <Routes>
-        <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<div data-testid="dashboard-home">Dashboard</div>} />
       </Routes>,
-      { queryClient },
+      { queryClient, initialEntries: ['/login'] },
     );
     await waitFor(() => expect(screen.getByTestId('login-form')).toBeInTheDocument());
 
@@ -95,7 +104,38 @@ describe('LoginPage — cache isolation between accounts', () => {
 
     // Read the cache, not the DOM: rendered output cannot distinguish "cleared"
     // from "stale but still readable", which is the defect.
-    await waitFor(() => expect(queryClient.getQueryData(['coverage', 'summary'])).toBeUndefined());
+    // Assert the navigation too: the cache assertion alone passes on the error
+    // path as well, since a failed login clears nothing but also stores nothing.
+    await waitFor(() => expect(screen.getByTestId('dashboard-home')).toBeInTheDocument());
+    expect(queryClient.getQueryData(['coverage', 'summary'])).toBeUndefined();
     expect(queryClient.getQueryData(['coverage_sessions'])).toBeUndefined();
+  });
+
+  it('still navigates when the post-login auth refetch fails', async () => {
+    // The session cookie is already issued at this point, so a transient
+    // /auth/me failure must not be reported as a login failure — that would
+    // strand the user on the form holding a valid session.
+    server.use(
+      http.post('*/api/v1/auth/login', () =>
+        HttpResponse.json({ user: { id: 'u3', email: 'c@example.com' } }),
+      ),
+      http.get('*/api/v1/auth/me', () => new HttpResponse(null, { status: 500 })),
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<div data-testid="dashboard-home">Dashboard</div>} />
+      </Routes>,
+      { initialEntries: ['/login'] },
+    );
+    await waitFor(() => expect(screen.getByTestId('login-form')).toBeInTheDocument());
+
+    await userEvent.type(screen.getByTestId('login-email-input'), 'c@example.com');
+    await userEvent.type(screen.getByTestId('login-password-input'), 'correct-password');
+    await userEvent.click(screen.getByTestId('login-submit-button'));
+
+    await waitFor(() => expect(screen.getByTestId('dashboard-home')).toBeInTheDocument());
+    expect(screen.queryByTestId('login-error')).not.toBeInTheDocument();
   });
 });
