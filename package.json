@@ -6,8 +6,8 @@
     "node": ">=24",
     "npm": ">=11"
   },
-  "//engines": "DECLARATIVE, not enforced. npm honours engines only under engine-strict, and no .npmrc sets it — deliberately: 82 packages in the tree declare node >= 22 and would turn every npm ci into a hard failure. CI pins the real floor via .nvmrc + setup-node. (MINCRM-704)",
-  "//packageManager": "Also declarative — nothing here enables Corepack. Records the npm that ships with the node version .nvmrc pins (node:24-alpine -> npm 11.17.0), which is what CI actually runs. (MINCRM-704)",
+  "//engines": "DECLARATIVE, not enforced. npm honours engines only under engine-strict, and no .npmrc sets it \u2014 deliberately: 82 packages in the tree declare node >= 22 and would turn every npm ci into a hard failure. CI pins the real floor via .nvmrc + setup-node. (MINCRM-704)",
+  "//packageManager": "Also declarative \u2014 nothing here enables Corepack. Records the npm that ships with the node version .nvmrc pins (node:24-alpine -> npm 11.17.0), which is what CI actually runs. (MINCRM-704)",
   "packageManager": "npm@11.17.0",
   "workspaces": [
     "shared",
@@ -73,7 +73,11 @@
     "@hono/node-server": "2.0.11",
     "promptfoo": {
       "hono": "4.12.34"
-    }
+    },
+    "fast-uri": "3.1.7",
+    "qs": "6.16.0",
+    "@xmldom/xmldom": "0.9.12",
+    "decode-uri-component": "0.5.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.2",
