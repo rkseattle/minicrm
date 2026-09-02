@@ -178,6 +178,16 @@ could otherwise exhaust the pool on a large diff.
 > `select-tests.ts` today. See `docs/dev/coverage.md`'s "Test selection algorithm"
 > section for the current design.
 
+<!-- separator: keeps the two amendments as distinct blockquotes -->
+
+> **Amendment (MINCRM-741):** that batched function chunked by unit-key count, which is a
+> poor proxy for cost — measured per-key fan-out spans 140 links at the median to 51,200 at
+> the maximum, so a fixed 200-key batch returned anywhere from ~28,000 to 1,375,869 rows,
+> and the large end spilled its sort to disk against the pool's 30s `statement_timeout`.
+> Batches are now packed against a measured **row** budget, with the key count retained only
+> as a secondary ceiling. See `docs/dev/coverage.md`'s "Batch sizing and the statement
+> timeout" section.
+
 ### 6. Pure-deletion hunks and branch-agnostic mapping lookups (found via Greptile PR review)
 
 Two further correctness bugs surfaced by Greptile's automated PR review, after this
