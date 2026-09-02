@@ -53,6 +53,7 @@ Runtime code coverage collection from the live MiniCRM stack — backend and fro
 - [Change Impact Analysis & Test Selection (MINCRM-623/624/625/626/627, `pr-tia-6`)](#change-impact-analysis--test-selection-mincrm-623624625626627-pr-tia-6)
   - [Git-diff change detector (MINCRM-623)](#git-diff-change-detector-mincrm-623)
   - [Test selection algorithm (MINCRM-624, batched lookups MINCRM-637)](#test-selection-algorithm-mincrm-624-batched-lookups-mincrm-637)
+  - [Batch sizing and the statement timeout](#batch-sizing-and-the-statement-timeout)
   - [Config/infra dependency graph (MINCRM-625)](#configinfra-dependency-graph-mincrm-625)
   - [Safety-net selection policy (MINCRM-626)](#safety-net-selection-policy-mincrm-626)
   - [Pluggable scoring interface (MINCRM-627)](#pluggable-scoring-interface-mincrm-627)
@@ -1040,6 +1041,40 @@ production caller, never supplies `enclosingUnitsByUnitKey`, so that path is
 unreachable in production today. Output is deduplicated by `testId` (a `direct-hit`
 occurrence is kept over an `inherited` one for the same test) before being handed to
 the scorer for ranking.
+
+### Batch sizing and the statement timeout
+
+The coverage pool sets a 30s `statement_timeout` (`coverageDb.ts:56`). That ceiling is the
+binding constraint on the mapping lookup, and the reason batches are sized by rows rather
+than by unit keys: per-key fan-out spans a 366x range, so a fixed key count is a poor
+proxy for cost — a 200-key batch can return ~28,000 rows or 1.4M depending only on which
+keys land in it.
+
+The measured distribution, the `EXPLAIN` output behind it, and the derivation of the
+budget's value live in `MAX_ROWS_PER_MAPPING_LOOKUP_BATCH`'s own block comment in
+`coverageMappingService.ts` — recorded at the constant so the number and its justification
+cannot drift apart. Two points worth knowing before reading it:
+
+- **The cost is the sort, not the fetch.** The large batch spills its `ORDER BY` to disk
+  against a 4MB `work_mem`, on a plan chosen from a 163x row underestimate that survives
+  autoanalyze — `ANY($2)` over a long array of correlated keys is hard to estimate. The
+  budget bounds that sort's input.
+- **A counting pass runs first** to get per-key row counts, and is far cheaper than the
+  fetch it bounds. Budget for the cold plan rather than the warm one: the map-load path
+  never `VACUUM`s, so a freshly loaded table has no visibility map and the count cannot be
+  index-only.
+
+When the counting query itself fails — most plausibly a statement timeout on a large diff,
+this ticket's own symptom — packing falls back to `UNCOUNTED_UNITS_PER_MAPPING_LOOKUP_BATCH`,
+a key ceiling far below the ordinary one. Falling back to the ordinary ceiling would rebuild
+the batch shape that timed out in the first place. The `warn` in the logging table above is
+what surfaces this.
+
+Verified end to end against a 36.1M-row database: the 400 hottest `(file_path, unit_key)`
+pairs — 400 distinct unit keys — resolve 1,596,848 matches in ~7.4s, split across 7 batches
+where the key-count ceiling alone produced 2, and the selection output is byte-identical
+before and after: same pairs, same tests, same order. That last property is the one that
+matters most, because a narrowed selection is silent where a timeout is loud.
 
 ### Config/infra dependency graph (MINCRM-625)
 
