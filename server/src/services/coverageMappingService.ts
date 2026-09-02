@@ -443,14 +443,16 @@ export function unitPairKey(filePath: string, unitKey: string): string {
  * their real cost. Index-only against coverage_test_links_unit_idx, so it is a
  * small fraction of what fetching the same rows would cost.
  *
- * Returns an empty map if the count fails. The caller then packs against
- * UNCOUNTED_UNITS_PER_MAPPING_LOOKUP_BATCH rather than failing the lookup — see
- * that constant for why the fallback ceiling is not the ordinary one.
+ * Returns null if the count fails, which is NOT the same as an empty map: a
+ * successful count matching no rows means every key genuinely has zero links and
+ * the ordinary ceiling applies, while a failure means cost is unknown. Collapsing
+ * the two would put the common all-unmapped diff on the conservative ceiling and
+ * multiply its round trips for nothing.
  */
 async function countLinksByUnitKey(
   commitSha: string,
   unitKeys: readonly string[],
-): Promise<Map<string, number>> {
+): Promise<Map<string, number> | null> {
   if (unitKeys.length === 0) return new Map();
 
   try {
@@ -476,7 +478,7 @@ async function countLinksByUnitKey(
       { commitSha, unitKeyCount: unitKeys.length, err },
       'coverageMappingService: unit-key row count failed, falling back to key-count chunking',
     );
-    return new Map();
+    return null;
   }
 }
 
@@ -496,9 +498,9 @@ async function countLinksByUnitKey(
  */
 export function packPairsIntoBatches(
   uniquePairs: readonly { filePath: string; unitKey: string }[],
-  rowCountsByUnitKey: ReadonlyMap<string, number>,
+  rowCountsByUnitKey: ReadonlyMap<string, number> | null,
   maxRowsPerBatch: number = MAX_ROWS_PER_MAPPING_LOOKUP_BATCH,
-  maxKeysPerBatch: number = rowCountsByUnitKey.size === 0
+  maxKeysPerBatch: number = rowCountsByUnitKey === null
     ? UNCOUNTED_UNITS_PER_MAPPING_LOOKUP_BATCH
     : MAX_UNITS_PER_MAPPING_LOOKUP_BATCH,
 ): { filePath: string; unitKey: string }[][] {
@@ -515,7 +517,7 @@ export function packPairsIntoBatches(
   let currentKeys = 0;
 
   for (const [unitKey, pairs] of pairsByUnitKey) {
-    const keyRows = rowCountsByUnitKey.get(unitKey) ?? 0;
+    const keyRows = rowCountsByUnitKey?.get(unitKey) ?? 0;
     const wouldExceedRows = currentRows + keyRows > maxRowsPerBatch;
     const wouldExceedKeys = currentKeys + 1 > maxKeysPerBatch;
 

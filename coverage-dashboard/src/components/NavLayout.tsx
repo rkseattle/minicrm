@@ -12,7 +12,10 @@ export default function NavLayout() {
   const queryClient = useQueryClient();
 
   async function handleLogout(): Promise<void> {
-    await logout();
+    // Errors are swallowed deliberately: the server may already have dropped the
+    // session, so clearing and leaving is the safer of the two guesses, and an
+    // unhandled rejection here would escape the onClick handler.
+    await logout().catch(() => undefined);
     // Clear, not setQueryData(null): nulling the auth entry leaves every other
     // key resident and readable on the next mount, so the next account on this
     // tab sees the previous one's data.

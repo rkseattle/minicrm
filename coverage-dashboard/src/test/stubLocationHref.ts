@@ -35,7 +35,8 @@ export function installLocationHrefStub(): () => string | null {
         },
       },
     });
-    restore = () => Object.defineProperty(window, 'location', { configurable: true, value: original });
+    restore = () =>
+      Object.defineProperty(window, 'location', { configurable: true, value: original });
   });
 
   afterEach(() => {

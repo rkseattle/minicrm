@@ -358,9 +358,7 @@ describe('UserMenu', () => {
 });
 
 describe('UserMenu — cache isolation between accounts', () => {
-  // Installed for its side effect: logout assigns location.href, which jsdom
-  // refuses. This block asserts on the cache, not on where it navigated.
-  installLocationHrefStub();
+  const assignedHref = installLocationHrefStub();
 
   it('clears cached per-user data on logout, not merely invalidating it', async () => {
     server.use(
@@ -389,5 +387,25 @@ describe('UserMenu — cache isolation between accounts', () => {
     );
     expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined();
     expect(queryClient.getQueryData(['users', 'me', 'notification-preferences'])).toBeUndefined();
+  });
+
+  it('clears and leaves even when the logout request fails', async () => {
+    // The server may already have dropped the session; staying signed in with a
+    // live cache is the worse guess.
+    server.use(http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 500 })));
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
+
+    renderWithProviders(<UserMenu userName={USER_NAME} />, { queryClient });
+    fireEvent.click(screen.getByTestId('nav-user-menu-button'));
+    fireEvent.click(screen.getByTestId('nav-logout'));
+
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
+    );
+    expect(assignedHref()).toBe('/login');
   });
 });

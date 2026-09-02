@@ -519,29 +519,45 @@ describe('coverageMappingService', () => {
         unitKey: `k${i}`,
       }));
 
-      const batches = packPairsIntoBatches(pairs, new Map());
+      const batches = packPairsIntoBatches(pairs, null);
 
       expect(batches.length).toBeGreaterThan(1);
       expect(Math.max(...batches.map((b) => b.length))).toBeLessThanOrEqual(25);
     });
 
-    it('uses a default row budget small enough to split a batch that would otherwise time out', () => {
-      // Guards the production constant itself, which every other budget test
-      // bypasses by injecting its own. Without this, raising
-      // MAX_ROWS_PER_MAPPING_LOOKUP_BATCH back to an unbounded value — the exact
-      // regression this work exists to prevent — leaves the suite green.
+    it('keeps the ordinary key ceiling when the count succeeds but matches nothing', () => {
+      // An all-unmapped diff — new code, the common large-diff case — is free to
+      // fetch, so it must not be pushed onto the conservative ceiling reserved
+      // for a failed count. An empty map means "no links", not "cost unknown".
+      const pairs = Array.from({ length: 60 }, (_, i) => ({
+        filePath: `f${i}.ts`,
+        unitKey: `k${i}`,
+      }));
+
+      expect(packPairsIntoBatches(pairs, new Map())).toHaveLength(1);
+    });
+
+    it('pins the default row budget at its boundary, not merely somewhere below the failing batch', () => {
+      // Asserts the constant's actual value: two keys straddling 250,000 split,
+      // and two just under it pack together. A looser assertion (e.g. "these
+      // two huge keys split") passes for any budget below their sum, which
+      // would readmit the 1.4M-row batch this constant exists to prevent.
       const pairs = [
         { filePath: 'a.ts', unitKey: 'k1' },
         { filePath: 'b.ts', unitKey: 'k2' },
       ];
-      // Two keys at the fan-out measured for the hottest real keys. A default
-      // that batches these together is one that lets a ~1.4M-row sort through.
-      const counts = new Map([
-        ['k1', 700_000],
-        ['k2', 700_000],
-      ]);
 
-      expect(packPairsIntoBatches(pairs, counts)).toHaveLength(2);
+      const justOver = new Map([
+        ['k1', 125_000],
+        ['k2', 125_001],
+      ]);
+      expect(packPairsIntoBatches(pairs, justOver)).toHaveLength(2);
+
+      const justUnder = new Map([
+        ['k1', 125_000],
+        ['k2', 125_000],
+      ]);
+      expect(packPairsIntoBatches(pairs, justUnder)).toHaveLength(1);
     });
 
     it('charges a duplicated unitKey once and keeps its pairs together, and treats an uncounted key as zero rows', () => {
