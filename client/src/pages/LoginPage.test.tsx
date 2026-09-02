@@ -12,6 +12,7 @@ import { http, HttpResponse } from 'msw';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './LoginPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
+import { MY_LANGUAGE_QUERY_KEY, MY_NAV_LAYOUT_QUERY_KEY } from '@/api/users.js';
 import { QueryClient } from '@tanstack/react-query';
 import { server } from '../test/setup.js';
 import { ADMIN_USER } from '../test/msw/handlers.js';
@@ -294,7 +295,7 @@ describe('LoginPage — session expired', () => {
       const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
       });
-      queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
+      queryClient.setQueryData(MY_LANGUAGE_QUERY_KEY, { language: 'fr' });
 
       const user = userEvent.setup();
       renderLoginPage(queryClient);
@@ -306,9 +307,7 @@ describe('LoginPage — session expired', () => {
       await user.type(screen.getByTestId('mfa-login-code-input'), '123456');
       await user.click(screen.getByTestId('mfa-login-submit'));
 
-      await waitFor(() =>
-        expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
-      );
+      await waitFor(() => expect(queryClient.getQueryData(MY_LANGUAGE_QUERY_KEY)).toBeUndefined());
     });
 
     it('redirects to /profile?mfa_setup_required=1 when login returns mfaSetupRequired:true', async () => {
@@ -340,7 +339,7 @@ describe('LoginPage — session expired', () => {
       const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
       });
-      queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
+      queryClient.setQueryData(MY_LANGUAGE_QUERY_KEY, { language: 'fr' });
 
       const user = userEvent.setup();
       renderLoginPage(queryClient);
@@ -348,9 +347,7 @@ describe('LoginPage — session expired', () => {
       await user.type(screen.getByTestId('login-password'), 'correct-password');
       await user.click(screen.getByTestId('login-submit'));
 
-      await waitFor(() =>
-        expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
-      );
+      await waitFor(() => expect(queryClient.getQueryData(MY_LANGUAGE_QUERY_KEY)).toBeUndefined());
     });
   });
 });
@@ -362,8 +359,8 @@ describe('LoginPage — cache isolation between accounts', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
-    queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
-    queryClient.setQueryData(['users', 'me', 'navLayout'], { layout: 'left' });
+    queryClient.setQueryData(MY_LANGUAGE_QUERY_KEY, { language: 'fr' });
+    queryClient.setQueryData(MY_NAV_LAYOUT_QUERY_KEY, { layout: 'left' });
 
     renderLoginPage(queryClient);
 
@@ -373,9 +370,7 @@ describe('LoginPage — cache isolation between accounts', () => {
 
     // Read the cache: rendered output cannot distinguish "cleared" from "stale
     // but still readable", which is the defect.
-    await waitFor(() =>
-      expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
-    );
-    expect(queryClient.getQueryData(['users', 'me', 'navLayout'])).toBeUndefined();
+    await waitFor(() => expect(queryClient.getQueryData(MY_LANGUAGE_QUERY_KEY)).toBeUndefined());
+    expect(queryClient.getQueryData(MY_NAV_LAYOUT_QUERY_KEY)).toBeUndefined();
   });
 });

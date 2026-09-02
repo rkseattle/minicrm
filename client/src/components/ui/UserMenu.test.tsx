@@ -17,6 +17,7 @@ import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import { installLocationHrefStub } from '../../test/stubLocationHref.js';
 import { UserMenu } from './UserMenu.js';
+import { MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
 
 const USER_NAME = 'Ada Lovelace';
 
@@ -360,52 +361,37 @@ describe('UserMenu', () => {
 describe('UserMenu — cache isolation between accounts', () => {
   const assignedHref = installLocationHrefStub();
 
-  it('clears cached per-user data on logout, not merely invalidating it', async () => {
+  it('leaves by full document load, which is what discards the cache and resets module state', async () => {
     server.use(
       http.post('/api/v1/auth/logout', () => HttpResponse.json({ message: 'Logged out' })),
     );
 
-    // gcTime must not be 0 here: both renderWithProviders and this file's own
-    // renderMenuWithRoute default to it, which garbage-collects entries on
-    // unmount and makes the assertion pass whether or not logout cleared them.
+    // The reload is the mechanism, not a queryClient.clear(): clearing while
+    // this page is mounted makes its observers refetch into a cookieless
+    // server, and that 401 redirects to ?reason=session_expired — a
+    // session-expired banner for a sign-out the user chose. The reload also
+    // resets useAuth's languageApplied, which no cache operation reaches.
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
-    queryClient.setQueryData(['users', 'me', 'navLayout'], { layout: 'left' });
-    queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
-    queryClient.setQueryData(['users', 'me', 'notification-preferences'], { email: false });
+    queryClient.setQueryData(MY_LANGUAGE_QUERY_KEY, { language: 'fr' });
 
     renderWithProviders(<UserMenu userName={USER_NAME} />, { queryClient });
-
     fireEvent.click(screen.getByTestId('nav-user-menu-button'));
     fireEvent.click(screen.getByTestId('nav-logout'));
 
-    // Reading the cache is what distinguishes "cleared" from "stale but still
-    // readable" — the whole bug. Rendered output cannot tell them apart.
-    await waitFor(() =>
-      expect(queryClient.getQueryData(['users', 'me', 'navLayout'])).toBeUndefined(),
-    );
-    expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined();
-    expect(queryClient.getQueryData(['users', 'me', 'notification-preferences'])).toBeUndefined();
+    await waitFor(() => expect(assignedHref()).toBe('/login'));
   });
 
-  it('clears and leaves even when the logout request fails', async () => {
-    // The server may already have dropped the session; staying signed in with a
-    // live cache is the worse guess.
+  it('leaves even when the logout request fails', async () => {
+    // The server may already have dropped the session; staying signed in is the
+    // worse guess.
     server.use(http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 500 })));
 
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
-    queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
-
-    renderWithProviders(<UserMenu userName={USER_NAME} />, { queryClient });
+    renderWithProviders(<UserMenu userName={USER_NAME} />);
     fireEvent.click(screen.getByTestId('nav-user-menu-button'));
     fireEvent.click(screen.getByTestId('nav-logout'));
 
-    await waitFor(() =>
-      expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
-    );
-    expect(assignedHref()).toBe('/login');
+    await waitFor(() => expect(assignedHref()).toBe('/login'));
   });
 });

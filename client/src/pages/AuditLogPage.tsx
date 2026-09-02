@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Code, ConnectError } from '@connectrpc/connect';
@@ -120,7 +120,6 @@ function formatTimestamp(dateStr: string, locale: string): string {
 export default function AuditLogPage() {
   const { t, i18n } = useTranslation();
   const { isDesktop } = useBreakpoint();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // ── Filter state ──────────────────────────────────────────────────────────────
@@ -181,7 +180,11 @@ export default function AuditLogPage() {
           if (err.code === Code.Unauthenticated) {
             queryClient.clear();
             const next = encodeURIComponent(window.location.pathname);
-            navigate(`/login?reason=session_expired&next=${next}`);
+            // Document load, not navigate(): this ends a session, and useAuth's
+            // module-level languageApplied only resets on a reload. Routing here
+            // would leave the next user on this tab with the previous user's
+            // language. Matches what the axios 401 interceptor does.
+            window.location.href = `/login?reason=session_expired&next=${next}`;
           }
         }
         throw err;
@@ -235,7 +238,11 @@ export default function AuditLogPage() {
           if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
             queryClient.clear();
             const next = encodeURIComponent(window.location.pathname);
-            navigate(`/login?reason=session_expired&next=${next}`);
+            // Document load, not navigate(): this ends a session, and useAuth's
+            // module-level languageApplied only resets on a reload. Routing here
+            // would leave the next user on this tab with the previous user's
+            // language. Matches what the axios 401 interceptor does.
+            window.location.href = `/login?reason=session_expired&next=${next}`;
             return;
           }
           // Transient error (proxy timeout, network blip, server restart).
@@ -257,7 +264,7 @@ export default function AuditLogPage() {
     return () => {
       abortController.abort();
     };
-  }, [isUnfilteredFirstPage, navigate, queryClient, setLiveEvents]);
+  }, [isUnfilteredFirstPage, queryClient, setLiveEvents]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
 

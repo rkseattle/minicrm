@@ -14,7 +14,7 @@
  */
 
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { logout } from '@/api/auth.js';
 import { useLanguagePreference } from '@/hooks/useLanguagePreference.js';
@@ -47,7 +47,6 @@ const CHEVRON_PATH = 'M19 9l-7 7-7-7';
 export function UserMenu({ userName }: UserMenuProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const {
     isOpen,
@@ -65,21 +64,18 @@ export function UserMenu({ userName }: UserMenuProps) {
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: () => {
-      // Clear, not invalidate: invalidation leaves the value readable on the next
-      // mount while it refetches, so the next user on this tab sees the previous
-      // user's data. No ['users','me',...] key carries a user id.
-      queryClient.clear();
-      // Document load, not navigate(): useAuth's module-level languageApplied
-      // flag is set once and never reset, so a client-side logout would leave the
-      // next user on this tab with the previous user's language. Reloading resets
-      // the module. Matches what the 401 interceptor already does.
+      // A document load, which discards the whole in-memory cache — no
+      // queryClient.clear() first. Clearing while this page is still mounted
+      // makes its observers refetch into a now-cookieless server, and that 401
+      // sends the 401 interceptor to /login?reason=session_expired, so a
+      // deliberate sign-out ends on a session-expired banner. The reload is also
+      // what resets useAuth's module-level languageApplied, without which the
+      // next user on this tab keeps the previous user's language.
       window.location.href = '/login';
     },
     onError: () => {
       // The server may already have dropped the session even though the response
-      // failed, so leaving the user signed in with a live cache is the worse of
-      // the two guesses. Clear and leave regardless.
-      queryClient.clear();
+      // failed, so leaving the user signed in is the worse of the two guesses.
       window.location.href = '/login';
     },
   });

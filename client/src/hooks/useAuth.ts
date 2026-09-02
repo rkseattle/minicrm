@@ -16,12 +16,16 @@ import type { UserResponse } from '@shared/schemas/userSchema.js';
  * Ensures applyResolvedLanguage runs at most once per page load/session,
  * even though useAuth is called by multiple components (NavBar, ProtectedRoute, etc.).
  *
- * Safe across an account switch only because no client-side transition ever ENDS
- * a session: logout and the 401 interceptor both leave by full document load,
- * which resets this module. The in-tree session entries (login, MFA verify,
- * password reset) all arrive on a fresh /login load, so the flag is already
- * unset. A client-side logout would strand it set, and the next user would keep
- * the previous user's language.
+ * Safe across an account switch only while every session END leaves by full
+ * document load, which resets this module — logout (UserMenu), the axios 401
+ * interceptor, and AuditLogPage's two gRPC-unauthenticated paths. Session
+ * ENTRIES (login, MFA verify, password reset) may route freely: they arrive on a
+ * fresh /login load with the flag already unset.
+ *
+ * A session end that routes instead would strand this set, and the next user on
+ * the tab would keep the previous user's language for the life of the document.
+ * That is not hypothetical — the gRPC paths did exactly that until they were
+ * changed to match.
  */
 let languageApplied = false;
 

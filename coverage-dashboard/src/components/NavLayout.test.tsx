@@ -6,7 +6,6 @@ import { Routes, Route } from 'react-router-dom';
 import NavLayout from './NavLayout.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
-import { installLocationHrefStub } from '@/test/stubLocationHref.js';
 import { QueryClient } from '@tanstack/react-query';
 
 function TestApp() {
@@ -20,8 +19,6 @@ function TestApp() {
 }
 
 describe('NavLayout', () => {
-  installLocationHrefStub();
-
   it('renders the nav bar and child route content', () => {
     renderWithProviders(<TestApp />);
     expect(screen.getByTestId('nav-link-overview')).toBeInTheDocument();

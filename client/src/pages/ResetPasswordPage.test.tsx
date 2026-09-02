@@ -12,6 +12,7 @@ import { http, HttpResponse } from 'msw';
 import { Routes, Route } from 'react-router-dom';
 import ResetPasswordPage from './ResetPasswordPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
+import { MY_LANGUAGE_QUERY_KEY } from '@/api/users.js';
 import { server } from '../test/setup.js';
 import { QueryClient } from '@tanstack/react-query';
 
@@ -208,7 +209,7 @@ describe('ResetPasswordPage — cache isolation between accounts', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
-    queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
+    queryClient.setQueryData(MY_LANGUAGE_QUERY_KEY, { language: 'fr' });
 
     renderResetPasswordPage('valid-token', queryClient);
 
@@ -216,8 +217,6 @@ describe('ResetPasswordPage — cache isolation between accounts', () => {
     await user.type(screen.getByTestId('reset-password-confirm'), 'NewP@ssw0rd!');
     await user.click(screen.getByTestId('reset-password-submit'));
 
-    await waitFor(() =>
-      expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
-    );
+    await waitFor(() => expect(queryClient.getQueryData(MY_LANGUAGE_QUERY_KEY)).toBeUndefined());
   });
 });
