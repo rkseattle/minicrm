@@ -9,7 +9,7 @@ import type { FormEvent } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { login, AUTH_ME_QUERY_KEY } from '@/api/auth.js';
+import { login, fetchCurrentUser, AUTH_ME_QUERY_KEY } from '@/api/auth.js';
 import { useAuth } from '@/hooks/useAuth.js';
 
 interface LocationState {
@@ -37,7 +37,13 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      await queryClient.invalidateQueries({ queryKey: AUTH_ME_QUERY_KEY });
+      // Clear rather than invalidate: a previous account's cached coverage data
+      // on this tab is readable on the next mount even while it refetches.
+      queryClient.clear();
+      // Refetch before navigating, as the awaited invalidate used to: clearing
+      // empties the auth entry too, and ProtectedRoute renders a loading state
+      // for a cache miss.
+      await queryClient.fetchQuery({ queryKey: AUTH_ME_QUERY_KEY, queryFn: fetchCurrentUser });
       const from = (location.state as LocationState | null)?.from?.pathname ?? '/';
       navigate(from, { replace: true });
     } catch (err) {
