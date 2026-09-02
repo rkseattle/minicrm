@@ -304,7 +304,12 @@ export async function upsertOAuthAccount(
          key_version    = EXCLUDED.key_version,
          granted_scopes = EXCLUDED.granted_scopes,
          status         = 'active',
-         status_detail  = NULL
+         status_detail  = NULL,
+         -- Re-consenting is the ordinary way back for a retired mailbox, so it has to
+         -- clear the counter the claim query gates on; status alone would restore the
+         -- account without returning it to the schedule.
+         sync_failure_count = 0,
+         sync_next_attempt_at = NULL
        RETURNING ${PUBLIC_COLUMNS}`,
       [
         params.userId,
@@ -515,6 +520,10 @@ export async function getUsableAccessToken(
       } satisfies OAuthAuthPayload),
     );
 
+    // Deliberately leaves sync_failure_count alone, unlike the connect-test and
+    // re-consent paths. A refreshed token proves the credential is valid, not that the
+    // mailbox syncs — the failures that retire an account are usually fetch failures, and
+    // rearming here would let a background refresh silently defeat the ceiling.
     await client.query(
       `UPDATE connected_accounts
          SET auth_encrypted = $1, key_version = $2, status = 'active', status_detail = NULL
