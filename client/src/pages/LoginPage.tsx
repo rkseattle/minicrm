@@ -1,7 +1,7 @@
 /**
  * LoginPage component.
  * Renders the email/password login form.
- * On success, invalidates the auth query and redirects to the dashboard.
+ * On success, clears the query cache and redirects to the dashboard.
  * When the server returns mfaRequired:true, shows the MFA challenge modal.
  */
 
@@ -12,7 +12,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { login } from '@/api/auth.js';
 import { getSsoStatus, SSO_STATUS_QUERY_KEY } from '@/api/sso.js';
-import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
 import { resolveApiError } from '@/utils/apiError.js';
@@ -57,7 +56,11 @@ export default function LoginPage() {
   const [pendingMfaToken, setPendingMfaToken] = useState<string | null>(null);
 
   function completeLogin(mustChangePassword: boolean): void {
-    void queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+    // Clear rather than invalidate: a cached ['users','me',...] entry from a
+    // previous account on this tab stays readable on the next mount. Safe in
+    // place rather than behind a document load, unlike logout: a refetch here
+    // carries the new session's cookie, so it cannot 401 into the expiry redirect.
+    queryClient.clear();
     if (mustChangePassword) {
       navigate('/change-password', { replace: true });
     } else {
@@ -89,7 +92,9 @@ export default function LoginPage() {
       // Org-wide MFA is required but this user hasn't set it up. Session cookie
       // is issued so the user can reach the profile page to complete setup.
       if (data.mfaSetupRequired) {
-        void queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+        // A session cookie is issued here, so this is a session entry like any
+        // other and clears the previous account's cache for the same reason.
+        queryClient.clear();
         navigate('/profile?mfa_setup_required=1', { replace: true });
         return;
       }

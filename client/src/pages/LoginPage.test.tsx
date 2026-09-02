@@ -12,11 +12,12 @@ import { http, HttpResponse } from 'msw';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './LoginPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
+import { QueryClient } from '@tanstack/react-query';
 import { server } from '../test/setup.js';
 import { ADMIN_USER } from '../test/msw/handlers.js';
 
 /** Renders LoginPage with a mock dashboard route so redirect can be verified */
-function renderLoginPage() {
+function renderLoginPage(queryClient?: QueryClient) {
   return renderWithProviders(
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -26,7 +27,7 @@ function renderLoginPage() {
       <Route path="/forgot-password" element={<div>Forgot password page</div>} />
       <Route path="/profile" element={<div data-testid="profile-page">Profile</div>} />
     </Routes>,
-    { initialEntries: ['/login'] },
+    { initialEntries: ['/login'], queryClient },
   );
 }
 
@@ -296,5 +297,55 @@ describe('LoginPage — session expired', () => {
         expect(screen.getByTestId('profile-page')).toBeInTheDocument();
       });
     });
+
+    it("clears a previous account's cached data on the mfaSetupRequired path too", async () => {
+      // A session cookie is issued on this branch, so it is a session entry
+      // like any other and must not leave the last account's data readable.
+      server.use(
+        http.post('/api/v1/auth/login', () =>
+          HttpResponse.json({ user: ADMIN_USER, mfaSetupRequired: true }),
+        ),
+        http.get('/api/v1/auth/me', () => HttpResponse.json({ user: ADMIN_USER })),
+      );
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+      queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
+
+      const user = userEvent.setup();
+      renderLoginPage(queryClient);
+      await user.type(screen.getByTestId('login-email'), 'admin@example.com');
+      await user.type(screen.getByTestId('login-password'), 'correct-password');
+      await user.click(screen.getByTestId('login-submit'));
+
+      await waitFor(() =>
+        expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
+      );
+    });
+  });
+});
+
+describe('LoginPage — cache isolation between accounts', () => {
+  it('clears a previous account\'s cached per-user data on a successful login', async () => {
+    // gcTime must not be 0: renderWithProviders defaults to it, which collects
+    // entries on unmount and would pass whether or not login cleared them.
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
+    queryClient.setQueryData(['users', 'me', 'navLayout'], { layout: 'left' });
+
+    renderLoginPage(queryClient);
+
+    await userEvent.type(screen.getByTestId('login-email'), 'admin@example.com');
+    await userEvent.type(screen.getByTestId('login-password'), 'correct-password');
+    await userEvent.click(screen.getByTestId('login-submit'));
+
+    // Read the cache: rendered output cannot distinguish "cleared" from "stale
+    // but still readable", which is the defect.
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined(),
+    );
+    expect(queryClient.getQueryData(['users', 'me', 'navLayout'])).toBeUndefined();
   });
 });

@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
+import { installLocationHrefStub } from '../../test/stubLocationHref.js';
 import { UserMenu } from './UserMenu.js';
 
 const USER_NAME = 'Ada Lovelace';
@@ -48,6 +49,8 @@ function openMenu() {
 }
 
 describe('UserMenu', () => {
+  const assignedHref = installLocationHrefStub();
+
   it('renders the user name on the trigger', () => {
     renderMenu();
 
@@ -301,17 +304,20 @@ describe('UserMenu', () => {
     await waitFor(() => expect(logoutCalled).toBe(true));
   });
 
-  it('navigates to /login after a successful logout', async () => {
+  it('leaves for /login by full document load after a successful logout', async () => {
     server.use(
       http.post('/api/v1/auth/logout', () => HttpResponse.json({ message: 'Logged out' })),
     );
 
-    renderMenuWithRoute('/login', 'Login page');
+    renderMenu();
     openMenu();
 
     fireEvent.click(screen.getByTestId('nav-logout'));
 
-    await waitFor(() => expect(screen.getByText('Login page')).toBeInTheDocument());
+    // A document load, not a route change: providers above the router survive a
+    // client-side navigation, so their observers would refetch after the cache
+    // clear and 401 into the interceptor's session-expired redirect.
+    await waitFor(() => expect(assignedHref()).toBe('/login'));
   });
 
   it('renders a labeled language select', () => {
@@ -348,5 +354,40 @@ describe('UserMenu', () => {
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(screen.getByTestId('nav-user-menu-button')).toHaveFocus();
+  });
+});
+
+describe('UserMenu — cache isolation between accounts', () => {
+  // Installed for its side effect: logout assigns location.href, which jsdom
+  // refuses. This block asserts on the cache, not on where it navigated.
+  installLocationHrefStub();
+
+  it('clears cached per-user data on logout, not merely invalidating it', async () => {
+    server.use(
+      http.post('/api/v1/auth/logout', () => HttpResponse.json({ message: 'Logged out' })),
+    );
+
+    // gcTime must not be 0 here: both renderWithProviders and this file's own
+    // renderMenuWithRoute default to it, which garbage-collects entries on
+    // unmount and makes the assertion pass whether or not logout cleared them.
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    queryClient.setQueryData(['users', 'me', 'navLayout'], { layout: 'left' });
+    queryClient.setQueryData(['users', 'me', 'language'], { language: 'fr' });
+    queryClient.setQueryData(['users', 'me', 'notification-preferences'], { email: false });
+
+    renderWithProviders(<UserMenu userName={USER_NAME} />, { queryClient });
+
+    fireEvent.click(screen.getByTestId('nav-user-menu-button'));
+    fireEvent.click(screen.getByTestId('nav-logout'));
+
+    // Reading the cache is what distinguishes "cleared" from "stale but still
+    // readable" — the whole bug. Rendered output cannot tell them apart.
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['users', 'me', 'navLayout'])).toBeUndefined(),
+    );
+    expect(queryClient.getQueryData(['users', 'me', 'language'])).toBeUndefined();
+    expect(queryClient.getQueryData(['users', 'me', 'notification-preferences'])).toBeUndefined();
   });
 });

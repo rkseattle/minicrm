@@ -14,7 +14,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { AxiosError } from 'axios';
 import { resetPassword } from '@/api/auth.js';
-import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
 import { PASSWORD_MIN_LENGTH } from '@shared/schemas/userSchema.js';
@@ -50,7 +49,10 @@ export default function ResetPasswordPage() {
   const mutation = useMutation({
     mutationFn: () => resetPassword(token, newPassword),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+      // A reset invalidates existing sessions, so this is a session entry: clear
+      // rather than invalidate, or a previous account's cached per-user data on
+      // this tab stays readable on the next mount.
+      queryClient.clear();
       navigate('/', { replace: true });
     },
   });

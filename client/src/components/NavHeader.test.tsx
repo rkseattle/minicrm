@@ -16,12 +16,15 @@ import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/setup.js';
+import { installLocationHrefStub } from '../test/stubLocationHref.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { openUserMenu } from '../test/openUserMenu.js';
 import NavHeader from './NavHeader.js';
 import { ADMIN_USER } from '../test/msw/handlers.js';
 
 describe('NavHeader', () => {
+  installLocationHrefStub();
+
   it('renders the MiniCRM brand', () => {
     renderWithProviders(<NavHeader />);
 

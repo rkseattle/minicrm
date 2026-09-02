@@ -15,6 +15,11 @@ import type { UserResponse } from '@shared/schemas/userSchema.js';
  * Module-level flag — survives component remounts across navigations.
  * Ensures applyResolvedLanguage runs at most once per page load/session,
  * even though useAuth is called by multiple components (NavBar, ProtectedRoute, etc.).
+ *
+ * Safe across an account switch only because every session boundary leaves by a
+ * full document load (UserMenu's logout, the 401 interceptor), which resets this
+ * module along with everything else. A client-side logout would strand it set,
+ * and the next user would keep the previous user's language.
  */
 let languageApplied = false;
 

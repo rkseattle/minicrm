@@ -50,9 +50,9 @@ export function NavLayoutProvider({ children }: { children: React.ReactNode }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Inherits the global staleTime: 0, as the language preference does. The key
-  // carries no user id and logout does not clear the cache, so a cached value
-  // would otherwise render for whoever logs in next in the same tab.
+  // Inherits the global staleTime: 0, as the language preference does. Staleness
+  // alone would not stop the previous user's value rendering on the next mount —
+  // logout clears the whole cache for that (UserMenu's logout mutation).
   const { data: personalData } = useQuery({
     queryKey: MY_NAV_LAYOUT_QUERY_KEY,
     queryFn: getMyNavLayout,

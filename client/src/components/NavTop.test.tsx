@@ -8,12 +8,15 @@ import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { Routes, Route } from 'react-router-dom';
 import NavTop from './NavTop.js';
+import { installLocationHrefStub } from '../test/stubLocationHref.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { openUserMenu } from '../test/openUserMenu.js';
 import { server } from '../test/setup.js';
 import { ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
 
 describe('NavTop', () => {
+  const assignedHref = installLocationHrefStub();
+
   it('renders the MiniCRM brand name', async () => {
     renderWithProviders(<NavTop />);
     await waitFor(() => {
@@ -174,8 +177,11 @@ describe('NavTop', () => {
     );
     await user.click(await screen.findByTestId('nav-user-menu-button'));
     await user.click(screen.getByTestId('nav-logout'));
+    // A full document load, not a route change — logout clears the query cache,
+    // and a client-side navigation would leave root providers mounted to refetch
+    // into the 401 interceptor. jsdom cannot navigate, so assert the assignment.
     await waitFor(() => {
-      expect(screen.getByText('Login page')).toBeInTheDocument();
+      expect(assignedHref()).toBe('/login');
     });
   });
 });

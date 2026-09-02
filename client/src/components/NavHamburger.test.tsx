@@ -10,6 +10,7 @@ import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import NavHamburger from './NavHamburger.js';
+import { installLocationHrefStub } from '../test/stubLocationHref.js';
 import { server } from '../test/setup.js';
 import { openUserMenu } from '../test/openUserMenu.js';
 import { ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
@@ -34,6 +35,8 @@ function renderNavHamburger() {
 }
 
 describe('NavHamburger', () => {
+  const assignedHref = installLocationHrefStub();
+
   it('renders the MiniCRM brand name', async () => {
     renderNavHamburger();
     await waitFor(() => {
@@ -231,8 +234,11 @@ describe('NavHamburger', () => {
     );
     await user.click(await screen.findByTestId('nav-user-menu-button'));
     await user.click(screen.getByTestId('nav-logout'));
+    // A full document load, not a route change — logout clears the query cache,
+    // and a client-side navigation would leave root providers mounted to refetch
+    // into the 401 interceptor. jsdom cannot navigate, so assert the assignment.
     await waitFor(() => {
-      expect(screen.getByText('Login page')).toBeInTheDocument();
+      expect(assignedHref()).toBe('/login');
     });
   });
 });

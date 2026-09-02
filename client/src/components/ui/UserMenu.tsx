@@ -16,7 +16,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { logout } from '@/api/auth.js';
 import { useLanguagePreference } from '@/hooks/useLanguagePreference.js';
 import { useMenuButton } from '@/hooks/useMenuButton.js';
@@ -66,8 +65,14 @@ export function UserMenu({ userName }: UserMenuProps) {
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      navigate('/login', { replace: true });
+      // Clear, not invalidate: invalidation leaves the value readable on the next
+      // mount while it refetches, so the next user on this tab sees the previous
+      // user's data. No ['users','me',...] key carries a user id.
+      queryClient.clear();
+      // Document load, not navigate(): providers above the router survive a route
+      // change, so their observers would refetch after the clear and 401 into the
+      // session-expired redirect. Matches the 401 interceptor.
+      window.location.href = '/login';
     },
   });
 
