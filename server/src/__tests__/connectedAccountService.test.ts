@@ -209,6 +209,34 @@ describe('OAuth upsert', () => {
     grantedScopes: ['https://www.googleapis.com/auth/gmail.readonly'],
   };
 
+  it('re-consenting returns a retired mailbox to the schedule', async () => {
+    // Re-consent is the ordinary way back for an OAuth mailbox. Restoring status while
+    // leaving the counter at the ceiling would look repaired and never sync again — a
+    // failure only reachable once a Gmail or Graph driver joins IMPLEMENTED_SYNC_PROVIDERS,
+    // which is exactly when nobody would be looking for it.
+    const first = await upsertOAuthAccount(
+      { ...OAUTH_UPSERT, userId: REP_A_ACTOR.id },
+      REP_A_ACTOR,
+    );
+    await pool.query(
+      `UPDATE connected_accounts
+          SET status = 'error', sync_failure_count = $2, sync_next_attempt_at = NULL
+        WHERE id = $1`,
+      [first.id, MAX_SYNC_FAILURES],
+    );
+
+    await upsertOAuthAccount({ ...OAUTH_UPSERT, userId: REP_A_ACTOR.id }, REP_A_ACTOR);
+
+    const { rows } = await pool.query<{
+      sync_failure_count: number;
+      sync_next_attempt_at: Date | null;
+    }>(`SELECT sync_failure_count, sync_next_attempt_at FROM connected_accounts WHERE id = $1`, [
+      first.id,
+    ]);
+    expect(rows[0].sync_failure_count).toBe(0);
+    expect(rows[0].sync_next_attempt_at).toBeNull();
+  });
+
   it('re-connecting updates in place and preserves the sync cursor', async () => {
     const first = await upsertOAuthAccount(
       { ...OAUTH_UPSERT, userId: REP_A_ACTOR.id },

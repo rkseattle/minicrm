@@ -78,7 +78,7 @@ erDiagram
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
   integer sync_failure_count "Consecutive failed sync attempts. Drives the retry delay and the ceiling past which a mailbox is no longer claimed; reset when a connection test succeeds."
-  timestamp_with_time_zone sync_next_attempt_at "Earliest time this mailbox may be synced again. Null means due now. This, not status, is what gates a retry."
+  timestamp_with_time_zone sync_next_attempt_at "Earliest time this mailbox may be synced again. Null means due now while sync_failure_count is below the ceiling, and parked-until-a-user-acts once it reaches it; the two columns gate the claim together."
 }
 ```
 

@@ -10263,7 +10263,7 @@
           "name": "sync_next_attempt_at",
           "type": "timestamp with time zone",
           "nullable": true,
-          "comment": "Earliest time this mailbox may be synced again. Null means due now. This, not status, is what gates a retry."
+          "comment": "Earliest time this mailbox may be synced again. Null means due now while sync_failure_count is below the ceiling, and parked-until-a-user-acts once it reaches it; the two columns gate the claim together."
         }
       ],
       "indexes": [
