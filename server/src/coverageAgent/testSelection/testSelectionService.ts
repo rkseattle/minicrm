@@ -27,9 +27,9 @@
  * batched call (coverageMappingService.findTestsForUnitsAcrossBranches,
  *) rather than fanning out one query per changed unit — this
  * collapsed what was up to `ceil(N/MAX_CONCURRENT_MAPPING_LOOKUPS)`
- * sequential round trips into as many queries as
- * findTestsForUnitsAcrossBranches' own chunking needs (typically one, for
- * any diff under its per-batch chunk size). The inheritance-lookup step
+ * sequential round trips into a counting pass plus as many fetches as that
+ * function's row-budget packing needs — a count of links, not of units.
+ * The inheritance-lookup step
  * (changed units with zero direct matches, consulting a caller-supplied
  * enclosing/calling unit) stays per-unit via the singular
  * findTestsForUnitAcrossBranches and MAX_CONCURRENT_MAPPING_LOOKUPS —

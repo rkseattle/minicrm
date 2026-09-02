@@ -595,13 +595,16 @@ This is the standard liveness-endpoint carve-out, and
 ### Operational logging
 
 Three high-volume/latency-risk call sites log structured fields on every call via the
-shared app `logger` — no new logging infrastructure or dependency:
+shared app `logger` — no new logging infrastructure or dependency. The fourth row logs
+only on failure, and is listed here because it is the signal that a selection run just
+became slower:
 
-| Call site                                                          | Level   | Log message                                               | Fields                                                                                           |
-| ------------------------------------------------------------------ | ------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `coverageIngestionService.ingestCoverageDump`                      | `info`  | `coverageIngestionService: ingested coverage dump`        | `dumpId`, `commitSha`, `alreadyIngested`, `unitCount`, `unresolvedCount`, `testId`, `durationMs` |
-| `coverageMappingService.findTestsForUnitAcrossBranches` (singular) | `debug` | `coverageMappingService: findTestsForUnitAcrossBranches`  | `commitSha`, `filePath`, `unitKey`, `resultCount`, `durationMs`                                  |
-| `coverageMappingService.findTestsForUnitsAcrossBranches` (batched) | `info`  | `coverageMappingService: findTestsForUnitsAcrossBranches` | `commitSha`, `inputUnitCount`, `uniqueUnitCount`, `chunkCount`, `totalMatchCount`, `durationMs`  |
+| Call site                                                          | Level   | Log message                                                                             | Fields                                                                                           |
+| ------------------------------------------------------------------ | ------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `coverageIngestionService.ingestCoverageDump`                      | `info`  | `coverageIngestionService: ingested coverage dump`                                      | `dumpId`, `commitSha`, `alreadyIngested`, `unitCount`, `unresolvedCount`, `testId`, `durationMs` |
+| `coverageMappingService.findTestsForUnitAcrossBranches` (singular) | `debug` | `coverageMappingService: findTestsForUnitAcrossBranches`                                | `commitSha`, `filePath`, `unitKey`, `resultCount`, `durationMs`                                  |
+| `coverageMappingService.findTestsForUnitsAcrossBranches` (batched) | `info`  | `coverageMappingService: findTestsForUnitsAcrossBranches`                               | `commitSha`, `inputUnitCount`, `uniqueUnitCount`, `chunkCount`, `totalMatchCount`, `durationMs`  |
+| `coverageMappingService.countLinksByUnitKey`                       | `warn`  | `coverageMappingService: unit-key row count failed, falling back to key-count chunking` | `commitSha`, `unitKeyCount`, `err`                                                               |
 
 The singular per-unit lookup logs at `debug`, not `info` — it fires once per changed
 unit on `testSelectionService`'s inheritance-lookup fan-out, unlike the batched
@@ -1020,9 +1023,12 @@ logic didn't change, signaling the real edit is likely a sibling/structural move
 mapping in ONE batched call —
 `coverageMappingService.findTestsForUnitsAcrossBranches` (MINCRM-637) — instead of the
 per-unit fan-out this originally shipped with. This collapsed what was up to
-`ceil(N/MAX_CONCURRENT_MAPPING_LOOKUPS)` sequential round trips into as many queries as
-the batch function's own chunking needs (typically one, for any diff under its
-per-batch chunk size — see `findTestsForUnitsAcrossBranches`' own docblock). A changed
+`ceil(N/MAX_CONCURRENT_MAPPING_LOOKUPS)` sequential round trips into a counting pass plus
+as many fetches as the batch function's own packing needs. Batch size follows measured row
+fan-out rather than key count, so the number of queries depends on how many links the
+changed units attract, not how many units there are — see
+`findTestsForUnitsAcrossBranches`' own docblock and
+`MAX_ROWS_PER_MAPPING_LOOKUP_BATCH`. A changed
 unit with no direct mapping (new code, or a genuinely unmapped unit) falls through to a
 SEPARATE, still-per-unit inheritance step — bounded concurrency
 (`MAX_CONCURRENT_MAPPING_LOOKUPS = 5`) against `coverageDb`'s 10-connection pool cap

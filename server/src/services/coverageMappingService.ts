@@ -26,16 +26,49 @@ const TEST_LINK_INSERT_COLUMN_COUNT = 6;
 // parameters per statement at 65535.
 const MAX_LINKS_PER_INSERT_BATCH = Math.floor(65535 / TEST_LINK_INSERT_COLUMN_COUNT);
 
-// findTestsForUnitsAcrossBranches' own chunk size — NOT a
+// findTestsForUnitsAcrossBranches' secondary ceiling — NOT a
 // bind-parameter-ceiling concern like MAX_LINKS_PER_INSERT_BATCH above
 // (a `unit_key = ANY($2)` array is one bind parameter regardless of the
-// array's own length). The actual constraint is result-set size: a single
-// unit_key can fan out to many coverage_test_links rows (every test that
-// ever covered it, across every branch), so the row count returned is not
-// proportional to the number of input units alone. Chunking bounds one
-// query's result set and round-trip cost for an arbitrarily large diff,
-// rather than issuing a single unbounded query for hundreds of changed units.
+// array's own length). It bounds the key array itself, so a diff of
+// entirely-unmapped units — every key costing zero rows, contributing
+// nothing to the row budget below — still cannot build one enormous query.
 const MAX_UNITS_PER_MAPPING_LOOKUP_BATCH = 200;
+
+// The primary bound: rows returned by one batch, not keys requested by it.
+//
+// Key count is a poor proxy for cost because per-key fan-out spans orders of
+// magnitude. Measured against a 36.1M-row coverage database (3,625 distinct
+// keys for one commit_sha): median 140 rows per key, p90 939, p99 7,884,
+// max 51,200 — a 366x spread, with 2.4% of keys holding 43% of all rows. So a
+// 200-key batch holds ~28,000 rows of median keys or 1,375,869 rows of hot ones.
+//
+// What the ceiling buys is sort headroom, not fetch time. EXPLAIN on that
+// 1.37M-row batch shows `Sort Method: external merge Disk: 104832kB` — ORDER BY
+// spilling 105MB against work_mem=4MB, on a plan chosen because the planner
+// estimates 8,418 rows where 1,375,869 arrive. Its measured cost varies by an
+// order of magnitude with cache state: 2.9s warm, 12.3s cold, against a 30s
+// statement_timeout. Bounding the batch bounds the sort's input, which is what
+// keeps the cold case from approaching that ceiling.
+//
+// 250,000 sits well below the batch that produced those times while still
+// packing typical 140-row keys into one query.
+//
+// Counting first is what makes that affordable, but budget for the cold plan,
+// not the warm one: the load path never VACUUMs, so on a freshly loaded table
+// there is no visibility map and the count runs as a bitmap heap scan rather
+// than the index-only scan it becomes once vacuumed (~618ms for the 200 hottest
+// keys, ~2.1s for all 3,625, both measured warm). It stays far cheaper than the
+// fetch it bounds either way, which is the property this depends on.
+const MAX_ROWS_PER_MAPPING_LOOKUP_BATCH = 250_000;
+
+// Key ceiling used when per-key counts are unavailable, so packing has no cost
+// signal to work with. Deliberately far below MAX_UNITS_PER_MAPPING_LOOKUP_BATCH:
+// counts go missing when the counting query itself fails, and its most likely
+// cause is a statement timeout on a large diff against a big table — exactly the
+// case where falling back to the full 200-key ceiling would guarantee the fetch
+// times out too. Trading more round trips for batches small enough to survive is
+// the right side of that bargain when nothing is known about fan-out.
+const UNCOUNTED_UNITS_PER_MAPPING_LOOKUP_BATCH = 25;
 
 /** One unit's hit attributed to a specific test, for linking at ingestion time. */
 export interface CoverageTestLinkInput {
@@ -406,6 +439,103 @@ export function unitPairKey(filePath: string, unitKey: string): string {
 }
 
 /**
+ * Row counts per unit_key for one commit, used to pack lookup batches against
+ * their real cost. Index-only against coverage_test_links_unit_idx, so it is a
+ * small fraction of what fetching the same rows would cost.
+ *
+ * Returns an empty map if the count fails. The caller then packs against
+ * UNCOUNTED_UNITS_PER_MAPPING_LOOKUP_BATCH rather than failing the lookup — see
+ * that constant for why the fallback ceiling is not the ordinary one.
+ */
+async function countLinksByUnitKey(
+  commitSha: string,
+  unitKeys: readonly string[],
+): Promise<Map<string, number>> {
+  if (unitKeys.length === 0) return new Map();
+
+  try {
+    const counts = new Map<string, number>();
+    // Chunked by the same key ceiling the fetch obeys. The count is cheaper per
+    // key than the fetch, but its array grows with the diff exactly as the
+    // fetch's would, so leaving it unbounded would reintroduce ahead of the
+    // bounded queries the very shape they exist to prevent.
+    for (let start = 0; start < unitKeys.length; start += MAX_UNITS_PER_MAPPING_LOOKUP_BATCH) {
+      const chunk = unitKeys.slice(start, start + MAX_UNITS_PER_MAPPING_LOOKUP_BATCH);
+      const result = await coverageDb.query<{ unit_key: string; row_count: string }>(
+        `SELECT unit_key, count(*) AS row_count
+           FROM coverage_test_links
+          WHERE commit_sha = $1 AND unit_key = ANY($2)
+          GROUP BY unit_key`,
+        [commitSha, chunk],
+      );
+      for (const row of result.rows) counts.set(row.unit_key, Number(row.row_count));
+    }
+    return counts;
+  } catch (err) {
+    logger.warn(
+      { commitSha, unitKeyCount: unitKeys.length, err },
+      'coverageMappingService: unit-key row count failed, falling back to key-count chunking',
+    );
+    return new Map();
+  }
+}
+
+/**
+ * Packs pairs into batches bounded by MAX_ROWS_PER_MAPPING_LOOKUP_BATCH, with
+ * MAX_UNITS_PER_MAPPING_LOOKUP_BATCH as a secondary ceiling.
+ *
+ * Groups by unit_key first: the budget is charged once per distinct key, and
+ * every pair sharing a key lands in the same batch, so a pair's matches always
+ * come from exactly one query. A key whose own fan-out exceeds the budget gets
+ * a batch to itself — it costs what it costs, and splitting it is not possible
+ * without splitting a key's rows across queries.
+ *
+ * A key missing from `rowCountsByUnitKey` contributes zero rows. That covers
+ * both a genuinely unmapped key and an empty map from a failed count, which is
+ * what makes the failure path degrade to plain key-count chunking.
+ */
+export function packPairsIntoBatches(
+  uniquePairs: readonly { filePath: string; unitKey: string }[],
+  rowCountsByUnitKey: ReadonlyMap<string, number>,
+  maxRowsPerBatch: number = MAX_ROWS_PER_MAPPING_LOOKUP_BATCH,
+  maxKeysPerBatch: number = rowCountsByUnitKey.size === 0
+    ? UNCOUNTED_UNITS_PER_MAPPING_LOOKUP_BATCH
+    : MAX_UNITS_PER_MAPPING_LOOKUP_BATCH,
+): { filePath: string; unitKey: string }[][] {
+  const pairsByUnitKey = new Map<string, { filePath: string; unitKey: string }[]>();
+  for (const pair of uniquePairs) {
+    const existing = pairsByUnitKey.get(pair.unitKey);
+    if (existing) existing.push(pair);
+    else pairsByUnitKey.set(pair.unitKey, [pair]);
+  }
+
+  const batches: { filePath: string; unitKey: string }[][] = [];
+  let current: { filePath: string; unitKey: string }[] = [];
+  let currentRows = 0;
+  let currentKeys = 0;
+
+  for (const [unitKey, pairs] of pairsByUnitKey) {
+    const keyRows = rowCountsByUnitKey.get(unitKey) ?? 0;
+    const wouldExceedRows = currentRows + keyRows > maxRowsPerBatch;
+    const wouldExceedKeys = currentKeys + 1 > maxKeysPerBatch;
+
+    if (current.length > 0 && (wouldExceedRows || wouldExceedKeys)) {
+      batches.push(current);
+      current = [];
+      currentRows = 0;
+      currentKeys = 0;
+    }
+
+    current.push(...pairs);
+    currentRows += keyRows;
+    currentKeys += 1;
+  }
+
+  if (current.length > 0) batches.push(current);
+  return batches;
+}
+
+/**
  * Batched form of findTestsForUnitAcrossBranches — resolves
  * every (filePath, unitKey) pair in one call instead of testSelectionService's
  * former per-unit fan-out (up to `ceil(N/MAX_CONCURRENT_MAPPING_LOOKUPS)`
@@ -427,8 +557,17 @@ export function unitPairKey(filePath: string, unitKey: string): string {
  * check — this is the same tradeoff, just applied across a set of
  * unit_keys in one query instead of one unit_key per query.
  *
- * Chunked at MAX_UNITS_PER_MAPPING_LOOKUP_BATCH — see that constant's own
- * docblock for why (result-set size, not the bind-parameter ceiling).
+ * "AcrossBranches" describes the branch_id handling, not the commit set: this
+ * reads exactly one commit_sha and never another commit's rows. Within that
+ * one commit it does not filter by branch_id, so links attributed under any
+ * branch are returned, and branch_id appears only as an ORDER BY tie-breaker.
+ *
+ * A counting pass runs first so keys can be packed against their real cost —
+ * see MAX_ROWS_PER_MAPPING_LOOKUP_BATCH and packPairsIntoBatches for the
+ * bounds and the failure path. The one thing neither of those can say: every
+ * pair sharing a unit_key lands in the same batch, which is what lets the
+ * ordering guarantee below hold, since a pair's matches then come from exactly
+ * one query rather than being merged across two.
  *
  * Deduplicates input pairs before querying (two changed units can resolve
  * to the same (filePath, unitKey) — e.g. an anonymous callback appearing
@@ -462,9 +601,15 @@ export async function findTestsForUnitsAcrossBranches(
     matchesByPairKey.set(unitPairKey(pair.filePath, pair.unitKey), []);
   }
 
-  for (let start = 0; start < uniquePairs.length; start += MAX_UNITS_PER_MAPPING_LOOKUP_BATCH) {
-    const chunk = uniquePairs.slice(start, start + MAX_UNITS_PER_MAPPING_LOOKUP_BATCH);
-    const unitKeys = chunk.map((pair) => pair.unitKey);
+  const rowCountsByUnitKey = await countLinksByUnitKey(
+    commitSha,
+    Array.from(new Set(uniquePairs.map((pair) => pair.unitKey))),
+  );
+
+  const batches = packPairsIntoBatches(uniquePairs, rowCountsByUnitKey);
+
+  for (const chunk of batches) {
+    const unitKeys = Array.from(new Set(chunk.map((pair) => pair.unitKey)));
 
     const result = await coverageDb.query<CoverageMappingResultRow>(
       `${MAPPING_RESULT_SELECT}
@@ -502,7 +647,7 @@ export async function findTestsForUnitsAcrossBranches(
   }));
 
   const totalMatchCount = results.reduce((sum, r) => sum + r.matches.length, 0);
-  const chunkCount = Math.ceil(uniquePairs.length / MAX_UNITS_PER_MAPPING_LOOKUP_BATCH) || 0;
+  const chunkCount = batches.length;
   logger.info(
     {
       commitSha,
