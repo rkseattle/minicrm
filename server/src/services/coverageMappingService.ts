@@ -440,8 +440,10 @@ export function unitPairKey(filePath: string, unitKey: string): string {
 
 /**
  * Row counts per unit_key for one commit, used to pack lookup batches against
- * their real cost. Index-only against coverage_test_links_unit_idx, so it is a
- * small fraction of what fetching the same rows would cost.
+ * their real cost. Drives coverage_test_links_unit_idx and costs a fraction of
+ * fetching the same rows, because it never sorts — see
+ * MAX_ROWS_PER_MAPPING_LOOKUP_BATCH for the measurements, including why the plan
+ * is a bitmap heap scan rather than index-only on a freshly loaded table.
  *
  * Returns null if the count fails, which is NOT the same as an empty map: a
  * successful count matching no rows means every key genuinely has zero links and

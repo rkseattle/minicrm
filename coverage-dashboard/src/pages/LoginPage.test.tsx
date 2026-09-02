@@ -6,6 +6,8 @@ import { Routes, Route } from 'react-router-dom';
 import LoginPage from './LoginPage.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
+import { COVERAGE_SUMMARY_QUERY_KEY } from '@/api/coverageReporting.js';
+import { COVERAGE_SESSIONS_QUERY_KEY } from '@/api/coverageSessions.js';
 import { QueryClient } from '@tanstack/react-query';
 
 describe('LoginPage', () => {
@@ -86,8 +88,8 @@ describe('LoginPage — cache isolation between accounts', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
-    queryClient.setQueryData(['coverage', 'summary'], { pct: 91 });
-    queryClient.setQueryData(['coverage_sessions'], [{ id: 's1' }]);
+    queryClient.setQueryData(COVERAGE_SUMMARY_QUERY_KEY, { pct: 91 });
+    queryClient.setQueryData(COVERAGE_SESSIONS_QUERY_KEY, [{ id: 's1' }]);
 
     renderWithProviders(
       <Routes>
@@ -107,8 +109,8 @@ describe('LoginPage — cache isolation between accounts', () => {
     // Assert the navigation too: the cache assertion alone passes on the error
     // path as well, since a failed login clears nothing but also stores nothing.
     await waitFor(() => expect(screen.getByTestId('dashboard-home')).toBeInTheDocument());
-    expect(queryClient.getQueryData(['coverage', 'summary'])).toBeUndefined();
-    expect(queryClient.getQueryData(['coverage_sessions'])).toBeUndefined();
+    expect(queryClient.getQueryData(COVERAGE_SUMMARY_QUERY_KEY)).toBeUndefined();
+    expect(queryClient.getQueryData(COVERAGE_SESSIONS_QUERY_KEY)).toBeUndefined();
   });
 
   it('still navigates when the post-login auth refetch fails', async () => {
