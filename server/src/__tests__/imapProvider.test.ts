@@ -12,6 +12,10 @@ import logger from '../logger.js';
 import { createImapProvider, parseCursor, serializeCursor } from '../services/mail/imapProvider.js';
 import type { ImapAuthPayload } from '../services/connectedAccountService.js';
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 const ACCOUNT_ADDRESS = 'rep@example.com';
 
 const AUTH: ImapAuthPayload = {
@@ -1656,6 +1660,82 @@ describe('the body pass', () => {
         expect(page.messages[0].subject).toHaveLength(997);
         expect(page.messages[0].subject?.endsWith('z')).toBe(true);
       });
+  });
+
+  it('counts a message the server returned with no body part', async () => {
+    // Reachable only with `source` absent, which no other fixture exercises: the server
+    // answered the fetch but omitted the part, so the message stores headers alone.
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+    const { client } = makeFakeClient([
+      inbox([
+        { uid: 5, from: 'a@example.net', size: 100, source: sourceOf('read') },
+        { uid: 6, from: 'b@example.net', size: 100 },
+      ]),
+    ]);
+
+    const page = await providerWith(client).fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages[1].bodyText).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ withoutSource: 1 }),
+      expect.stringContaining('headers without a body'),
+    );
+  });
+
+  it('counts an oversized message rather than logging one line each', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+    const { client } = makeFakeClient([
+      inbox([
+        { uid: 3, from: 'small@example.net', size: 500, source: sourceOf('kept') },
+        { uid: 4, from: 'huge@example.net', size: 3_000_000, source: sourceOf('skipped') },
+      ]),
+    ]);
+
+    await providerWith(client).fetchSince(AUTH, null, SINCE);
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ oversized: 1 }),
+      expect.stringContaining('too large'),
+    );
+  });
+
+  it('counts a UID the server never answered at all', async () => {
+    // A requested UID that comes back in no form leaves no trace downstream: the missing
+    // map entry and a message with no body read identically at the call site.
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+    const { client } = makeFakeClient([
+      inbox([
+        { uid: 5, from: 'a@example.net', size: 100, source: sourceOf('read') },
+        { uid: 6, from: 'b@example.net', size: 100, source: sourceOf('dropped') },
+      ]),
+    ]);
+    const dropping = new Proxy(client, {
+      get(target, prop, receiver) {
+        if (prop !== 'fetch') return Reflect.get(target, prop, receiver);
+        return (query: unknown, options?: unknown, uid?: unknown) => {
+          const inner = Reflect.get(target, 'fetch', receiver) as (
+            q: unknown,
+            o?: unknown,
+            u?: unknown,
+          ) => AsyncGenerator<{ uid: number }>;
+          if (!(options as { source?: unknown } | undefined)?.source) {
+            return inner(query, options, uid);
+          }
+          return (async function* () {
+            for await (const message of inner(query, options, uid)) {
+              if (message.uid !== 6) yield message;
+            }
+          })();
+        };
+      },
+    });
+
+    await providerWith(dropping).fetchSince(AUTH, null, SINCE);
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ unanswered: 1 }),
+      expect.stringContaining('headers without a body'),
+    );
   });
 
   it('makes no body fetch when the first pass delivered nothing', async () => {

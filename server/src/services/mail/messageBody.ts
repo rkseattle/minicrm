@@ -11,8 +11,6 @@
 import { simpleParser } from 'mailparser';
 import { htmlToText } from 'html-to-text';
 
-import logger from '../../logger.js';
-
 /** Characters of body text kept for a list view that must not load a whole body. */
 const SNIPPET_LENGTH = 200;
 
@@ -23,10 +21,10 @@ const SNIPPET_LENGTH = 200;
  * to far more — base64 expands, and deep HTML flattens to a long string. These are
  * unindexed `text` columns whose contents a sender chooses, so nothing else bounds them.
  *
- * Chosen against the PAGE, not the message: two body fields per message, two hundred
- * messages per mailbox, two mailboxes, all held at once through the insert. At 64 KiB
- * that ceiling is about 50 MB of strings per tick, which the sequential tick can carry.
- * Raising this raises that product by the same factor.
+ * Chosen against the PAGE, not the message: two body fields, two hundred messages, two
+ * mailboxes, all held at once through the insert. At 64 Ki characters that is roughly
+ * 50-100 MB per tick depending on whether the text stays Latin-1 in the engine, which
+ * the sequential tick carries. Raising this raises that product by the same factor.
  */
 const MAX_BODY_LENGTH = 65_536;
 
@@ -78,6 +76,14 @@ export interface ParsedMessageBody {
   bodyText: string | null;
   bodyHtml: string | null;
   snippet: string | null;
+  /**
+   * Why a message stored no body, or null when it stored one.
+   *
+   * Returned rather than logged, so the caller can count these per mailbox: a backfill
+   * page holds two hundred messages, and automated mail — calendar invites, read
+   * receipts, delivery notifications — legitimately carries no body at all.
+   */
+  noBodyReason: 'unreadable' | 'no-body-part' | null;
 }
 
 /** What a message with no usable body stores: headers land, bodies do not. */
@@ -85,6 +91,7 @@ export const EMPTY_MESSAGE_BODY: ParsedMessageBody = Object.freeze({
   bodyText: null,
   bodyHtml: null,
   snippet: null,
+  noBodyReason: 'no-body-part',
 });
 
 /**
@@ -113,7 +120,11 @@ export function snippetOf(bodyText: string | null): string | null {
 function bodyTextOf(text: string | undefined, html: string | false): string | null {
   if (typeof text === 'string' && text.trim() !== '') return storable(text);
   if (typeof html === 'string' && html !== '') {
-    return storable(htmlToText(html, { wordwrap: false }));
+    // Tested after converting, not before: markup that is only a spacer or an entity —
+    // a signature-only reply, a tracking pixel — converts to whitespace or to nothing,
+    // and storing that would put text in the column with no snippet beside it.
+    const converted = htmlToText(html, { wordwrap: false });
+    return converted.trim() === '' ? null : storable(converted);
   }
   return null;
 }
@@ -127,22 +138,15 @@ function bodyTextOf(text: string | undefined, html: string | false): string | nu
  * alternative is one unreadable message costing its whole mailbox the headers already
  * read.
  *
- * The failure is logged here rather than by the caller, precisely because it does not
- * propagate: a caller cannot catch what never throws, and an unreadable body that is
- * silently null is indistinguishable from a message that carried none.
+ * A body that goes missing is reported through `noBodyReason` rather than thrown or
+ * logged: a caller cannot catch what never throws, and the caller is where the count
+ * belongs, since it sees the whole mailbox.
  *
- * Both outcomes are logged, because the parse result cannot tell them apart — a document
- * of raw bytes and a message that genuinely has only headers both come back with no text
- * and no HTML. A body that went missing is worth a line either way; which of the two it
- * was is the operator's to judge from the id.
- *
- * @param providerMessageId - Identifies the message in the log, since a body that fails
- *   to parse is otherwise untraceable to the row that stored no body.
+ * The two reasons are distinguished only by whether the parser rejected the document.
+ * A document of raw bytes and a message that genuinely has only headers otherwise come
+ * back identically, both with no text and no HTML.
  */
-export async function parseMessageBody(
-  source: Buffer,
-  providerMessageId: string,
-): Promise<ParsedMessageBody> {
+export async function parseMessageBody(source: Buffer): Promise<ParsedMessageBody> {
   // Held outside the try so a failed text conversion still stores the HTML the parser
   // had already returned: it is the more faithful record of the two.
   let bodyHtml: string | null = null;
@@ -160,19 +164,13 @@ export async function parseMessageBody(
     bodyHtml = typeof parsed.html === 'string' && parsed.html !== '' ? storable(parsed.html) : null;
     const bodyText = bodyTextOf(parsed.text, parsed.html);
 
-    if (bodyText === null && bodyHtml === null && source.length > 0) {
-      logger.warn(
-        { providerMessageId, sourceBytes: source.length },
-        'messageBody: document yielded no body — storing headers without one',
-      );
-    }
-
-    return { bodyText, bodyHtml, snippet: snippetOf(bodyText) };
-  } catch (err) {
-    logger.warn(
-      { err, providerMessageId },
-      'messageBody: could not parse message body — storing headers without it',
-    );
-    return { ...EMPTY_MESSAGE_BODY, bodyHtml };
+    return {
+      bodyText,
+      bodyHtml,
+      snippet: snippetOf(bodyText),
+      noBodyReason: bodyText === null && bodyHtml === null ? 'no-body-part' : null,
+    };
+  } catch {
+    return { ...EMPTY_MESSAGE_BODY, bodyHtml, noBodyReason: 'unreadable' };
   }
 }
