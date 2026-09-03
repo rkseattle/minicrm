@@ -266,12 +266,12 @@ describe('parseMessageBody — structures a part-selector would get wrong', () =
 });
 
 describe('parseMessageBody — malformed input', () => {
-  it('reports that a document of raw bytes yielded no body', async () => {
+  it('reports lost text for a document of raw bytes', async () => {
     // simpleParser does not reject these: it returns no text and no HTML, so the outcome
     // is all the caller gets — which is why it is reported rather than thrown.
     const body = await parseMessageBody(Buffer.from([0x00, 0xff, 0xfe, 0x42, 0x00, 0x99]));
 
-    expect(body.yieldedNoBody).toBe(true);
+    expect(body.lostText).toBe(true);
   });
 
   it('stores no body for a document of raw bytes', async () => {
@@ -280,7 +280,7 @@ describe('parseMessageBody — malformed input', () => {
     expect(body).toEqual(EMPTY_MESSAGE_BODY);
   });
 
-  it('reports no body when the parser rejects the input outright', async () => {
+  it('reports lost text when the parser rejects the input outright', async () => {
     // The failure has to be logged where it is caught: parseMessageBody never throws, so
     // a caller cannot log it, and a silently-null body is indistinguishable from a
     // message that carried none.
@@ -288,7 +288,7 @@ describe('parseMessageBody — malformed input', () => {
 
     const body = await parseMessageBody(notADocument);
 
-    expect(body.yieldedNoBody).toBe(true);
+    expect(body.lostText).toBe(true);
   });
 
   it('stores no body when the HTML converter overflows on deep nesting', async () => {
@@ -314,6 +314,9 @@ describe('parseMessageBody — malformed input', () => {
     expect(body.bodyText).toBeNull();
     expect(body.snippet).toBeNull();
     expect(body.bodyHtml).toContain('<div>');
+    // The HTML survived but the text did not, and a null text column is the loss the
+    // caller reports — keeping the HTML must not make it look like nothing was lost.
+    expect(body.lostText).toBe(true);
   });
 
   it('drops a NUL byte, which a text column cannot store', async () => {

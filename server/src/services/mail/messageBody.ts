@@ -77,14 +77,16 @@ export interface ParsedMessageBody {
   bodyHtml: string | null;
   snippet: string | null;
   /**
-   * True when the document produced neither text nor HTML.
+   * True when the document was expected to yield text and did not.
    *
    * Reported rather than logged here, so the caller can name the message: this module
-   * knows the outcome but not the id. Deliberately not a reason — an unreadable document
-   * and one that genuinely carries no body both come back with no text and no HTML, and
-   * the parser cannot distinguish them.
+   * knows the outcome but not the id. It covers a document that produced nothing at all
+   * and one whose HTML survived while the text conversion failed — both leave the text
+   * and snippet columns permanently null, which is the loss worth reporting. It is not a
+   * reason: an unreadable document and one that genuinely carries no body arrive
+   * identically, and the parser cannot tell them apart.
    */
-  yieldedNoBody: boolean;
+  lostText: boolean;
 }
 
 /** What a message with no usable body stores: headers land, bodies do not. */
@@ -92,7 +94,7 @@ export const EMPTY_MESSAGE_BODY: ParsedMessageBody = Object.freeze({
   bodyText: null,
   bodyHtml: null,
   snippet: null,
-  yieldedNoBody: true,
+  lostText: true,
 });
 
 /**
@@ -139,13 +141,8 @@ function bodyTextOf(text: string | undefined, html: string | false): string | nu
  * alternative is one unreadable message costing its whole mailbox the headers already
  * read.
  *
- * A body that goes missing is reported through `noBodyReason` rather than thrown or
- * logged: a caller cannot catch what never throws, and the caller is where the count
- * belongs, since it sees the whole mailbox.
- *
- * The two reasons are distinguished only by whether the parser rejected the document.
- * A document of raw bytes and a message that genuinely has only headers otherwise come
- * back identically, both with no text and no HTML.
+ * A lost body is reported through `lostText` rather than thrown: a caller cannot catch
+ * what never throws, and only the caller knows which message this was.
  */
 export async function parseMessageBody(source: Buffer): Promise<ParsedMessageBody> {
   // Held outside the try so a failed text conversion still stores the HTML the parser
@@ -169,9 +166,11 @@ export async function parseMessageBody(source: Buffer): Promise<ParsedMessageBod
       bodyText,
       bodyHtml,
       snippet: snippetOf(bodyText),
-      yieldedNoBody: bodyText === null && bodyHtml === null,
+      lostText: bodyText === null,
     };
   } catch {
-    return { ...EMPTY_MESSAGE_BODY, bodyHtml, yieldedNoBody: bodyHtml === null };
+    // lostText stays true even when the HTML survived: the text and snippet columns are
+    // null either way, and that is what the caller reports.
+    return { ...EMPTY_MESSAGE_BODY, bodyHtml };
   }
 }
