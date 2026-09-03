@@ -266,12 +266,12 @@ describe('parseMessageBody — structures a part-selector would get wrong', () =
 });
 
 describe('parseMessageBody — malformed input', () => {
-  it('reports no-body-part for a document the parser could read', async () => {
-    // simpleParser does not reject raw bytes: it returns no text and no HTML, so nothing
-    // throws and only the reason separates this from a message that carried none.
+  it('reports that a document of raw bytes yielded no body', async () => {
+    // simpleParser does not reject these: it returns no text and no HTML, so the outcome
+    // is all the caller gets — which is why it is reported rather than thrown.
     const body = await parseMessageBody(Buffer.from([0x00, 0xff, 0xfe, 0x42, 0x00, 0x99]));
 
-    expect(body.noBodyReason).toBe('no-body-part');
+    expect(body.yieldedNoBody).toBe(true);
   });
 
   it('stores no body for a document of raw bytes', async () => {
@@ -280,7 +280,7 @@ describe('parseMessageBody — malformed input', () => {
     expect(body).toEqual(EMPTY_MESSAGE_BODY);
   });
 
-  it('reports unreadable when the parser rejects the input outright', async () => {
+  it('reports no body when the parser rejects the input outright', async () => {
     // The failure has to be logged where it is caught: parseMessageBody never throws, so
     // a caller cannot log it, and a silently-null body is indistinguishable from a
     // message that carried none.
@@ -288,7 +288,7 @@ describe('parseMessageBody — malformed input', () => {
 
     const body = await parseMessageBody(notADocument);
 
-    expect(body.noBodyReason).toBe('unreadable');
+    expect(body.yieldedNoBody).toBe(true);
   });
 
   it('stores no body when the HTML converter overflows on deep nesting', async () => {
