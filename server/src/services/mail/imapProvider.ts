@@ -390,10 +390,10 @@ async function resolveMailboxPaths(client: ImapFlow): Promise<string[]> {
  * two hundred messages.
  *
  * Every failure degrades to null bodies rather than propagating. `fetchSince` catches per
- * mailbox, so an escaping body error would cost this mailbox every header it had already
- * read and leave its cursor unadvanced — a body nobody can read yet is not worth that.
- * The loss is permanent: the cursor moves past these messages and they are never
- * re-requested.
+ * mailbox and restores its stored cursor, so an escaping body error would discard every
+ * header the page had already read and re-read them next tick, repeatedly. Degrading
+ * costs one body instead — permanently, since the cursor advances past the message and
+ * nothing re-reads it under the same id.
  */
 async function fetchBodies(
   client: ImapFlow,
