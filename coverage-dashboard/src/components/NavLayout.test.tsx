@@ -127,4 +127,32 @@ describe('NavLayout — cache isolation between accounts', () => {
     // The cache must survive too: the session did not end.
     expect(queryClient.getQueryData(COVERAGE_SUMMARY_QUERY_KEY)).toEqual({ pct: 91 });
   });
+
+  it('completes the logout when the session has already expired (401)', async () => {
+    // authenticate guards POST /auth/logout, so an expired session answers 401 —
+    // which is the outcome logout was asking for. Reporting failure there would
+    // strand the user on protected UI holding the previous account's cache.
+    server.use(http.post('*/api/v1/auth/logout', () => new HttpResponse(null, { status: 401 })));
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    queryClient.setQueryData(COVERAGE_SUMMARY_QUERY_KEY, { pct: 91 });
+
+    renderWithProviders(
+      <Routes>
+        <Route element={<NavLayout />}>
+          <Route path="/" element={<div>Page content</div>} />
+        </Route>
+        <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+      </Routes>,
+      { queryClient },
+    );
+
+    await userEvent.click(screen.getByTestId('nav-logout-button'));
+
+    await waitFor(() => expect(screen.getByTestId('login-page')).toBeInTheDocument());
+    expect(queryClient.getQueryData(COVERAGE_SUMMARY_QUERY_KEY)).toBeUndefined();
+    expect(screen.queryByTestId('nav-logout-error')).not.toBeInTheDocument();
+  });
 });

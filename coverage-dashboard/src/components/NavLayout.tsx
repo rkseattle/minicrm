@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { logout } from '@/api/auth.js';
@@ -21,9 +22,15 @@ export default function NavLayout() {
     // dashboard still signed in, having been told they signed out.
     try {
       await logout();
-    } catch {
-      setLogoutError('Sign out failed. Please try again.');
-      return;
+    } catch (err) {
+      // A 401 means the session had already expired, which is the outcome logout
+      // was asking for — treat it as success. Anything else may have left the
+      // cookie valid, and LoginPage redirects an authenticated visitor back to
+      // '/', so proceeding would land the user on the dashboard still signed in.
+      if (!axios.isAxiosError(err) || err.response?.status !== 401) {
+        setLogoutError('Sign out failed. Please try again.');
+        return;
+      }
     }
     // Clear, not setQueryData(null): nulling the auth entry leaves every other
     // key resident and readable on the next mount, so the next account on this
