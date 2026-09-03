@@ -38,7 +38,12 @@ import {
   PROVIDER_AUTH_EXPIRED,
 } from '../imapConnectionService.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mailProvider.js';
-import { EMPTY_MESSAGE_BODY, parseMessageBody, type ParsedMessageBody } from './messageBody.js';
+import {
+  EMPTY_MESSAGE_BODY,
+  parseMessageBody,
+  stripNul,
+  type ParsedMessageBody,
+} from './messageBody.js';
 import { extractHeaderField, resolveThreadId } from './threading.js';
 
 /** The mailbox every IMAP server has, under this exact name. */
@@ -192,7 +197,14 @@ export function serializeCursor(cursors: CursorByMailbox): string {
 function addressesOf(list: MessageAddressObject[] | undefined): string[] {
   return (list ?? [])
     .map((entry) => entry.address?.trim().toLowerCase())
-    .filter((address): address is string => Boolean(address));
+    .filter((address): address is string => Boolean(address))
+    .map(stripNul);
+}
+
+/** The subject a `text` column can hold: bounded, and stripped of what Postgres rejects. */
+function subjectOf(subject: string | undefined): string | null {
+  if (subject === undefined) return null;
+  return stripNul(subject.slice(0, MAX_SUBJECT_LENGTH));
 }
 
 /**
@@ -267,7 +279,7 @@ function normalize(
   // more fields than were requested — so the References field is read out by name.
   const headerBlock = message.headers?.toString('utf8') ?? null;
   const referencesHeader = headerBlock ? extractHeaderField(headerBlock, 'references') : null;
-  const qualifiedId = qualifiedMessageId(mailboxPath, message.uid);
+  const qualifiedId = stripNul(qualifiedMessageId(mailboxPath, message.uid));
   const rawThreadId =
     resolveThreadId({
       messageId: envelope?.messageId ?? null,
@@ -278,7 +290,7 @@ function normalize(
     // qualified by mailbox: the same message filed in both INBOX and Sent must land in one
     // thread, and the UID is the only handle it has.
     `uid-${String(message.uid)}`;
-  const threadId = boundIndexedId(rawThreadId);
+  const threadId = stripNul(boundIndexedId(rawThreadId));
 
   return {
     providerMessageId: qualifiedId,
@@ -287,7 +299,10 @@ function normalize(
     fromAddress,
     toAddresses: addressesOf(envelope?.to),
     ccAddresses: addressesOf(envelope?.cc),
-    subject: envelope?.subject?.slice(0, MAX_SUBJECT_LENGTH) ?? null,
+    // Every field below this line comes from a header the sender wrote. NUL is stripped
+    // from all of them, not just bodies: Postgres rejects it outright, and one such
+    // message would fail the whole page rather than itself.
+    subject: subjectOf(envelope?.subject),
     hasAttachments: hasAttachments(message),
     sentAt: usableDate(envelope?.date) ?? usableDate(message.internalDate),
     bodyText: body.bodyText,
@@ -420,16 +435,12 @@ async function fetchBodies(
       { uid: true },
     )) {
       if (!message.source) continue;
-      try {
-        bodies.set(message.uid, await parseMessageBody(message.source));
-      } catch (err) {
-        logger.warn(
-          // The stored id, not just a qualified one: it is bounded the same way, so a
-          // long mailbox path logs the digest the row actually carries.
-          { err, providerMessageId: qualifiedMessageId(mailboxPath, message.uid) },
-          'imapProvider: could not parse message body — storing headers without it',
-        );
-      }
+      // The stored id, not just a qualified one: it is bounded the same way, so a long
+      // mailbox path logs the digest the row actually carries.
+      bodies.set(
+        message.uid,
+        await parseMessageBody(message.source, qualifiedMessageId(mailboxPath, message.uid)),
+      );
     }
   } catch (err) {
     logger.warn(

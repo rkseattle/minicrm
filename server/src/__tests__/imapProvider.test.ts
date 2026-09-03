@@ -118,10 +118,10 @@ function selectMessages(messages: FakeMessage[], query: unknown): FakeMessage[] 
  */
 function makeFakeClient(mailboxes: FakeMailbox[]): {
   client: ImapFlow;
-  fetchCalls: Array<{ path: string; query: unknown; options?: unknown }>;
+  fetchCalls: Array<{ path: string; query: unknown; options?: unknown; uid?: unknown }>;
   loggedOut: () => boolean;
 } {
-  const fetchCalls: Array<{ path: string; query: unknown; options?: unknown }> = [];
+  const fetchCalls: Array<{ path: string; query: unknown; options?: unknown; uid?: unknown }> = [];
   let didLogout = false;
   let open: FakeMailbox | undefined;
 
@@ -175,9 +175,13 @@ function makeFakeClient(mailboxes: FakeMailbox[]): {
     // The options argument is honoured rather than ignored: a fake that returns every
     // field regardless of what was asked cannot fail when the provider requests the wrong
     // one, which is the defect the body pass is most likely to have.
-    fetch: (query: unknown, options?: unknown) => {
+    // imapflow's signature is fetch(range, query, options); `query` here is the range it
+    // selects by, `options` the fields it returns, and `uid` the third argument. The
+    // third is recorded because reading a UID set as sequence numbers would attach every
+    // body to the wrong message, and no assertion on the bodies themselves shows that.
+    fetch: (query: unknown, options?: unknown, uid?: unknown) => {
       const mailbox = open;
-      fetchCalls.push({ path: mailbox?.path ?? '(none)', query, options });
+      fetchCalls.push({ path: mailbox?.path ?? '(none)', query, options, uid });
       const wants = (options ?? {}) as { source?: boolean; size?: boolean };
       const selected = selectMessages(mailbox?.messages ?? [], query);
       const messages = mailbox?.arrivalOrder === 'descending' ? [...selected].reverse() : selected;
@@ -1457,9 +1461,17 @@ describe('the body pass', () => {
 
   /** The queries of every fetch that asked for message source. */
   function bodyFetches(
-    calls: Array<{ query: unknown; options?: unknown }>,
+    calls: Array<{ query: unknown; options?: unknown; uid?: unknown }>,
   ): Array<{ query: unknown }> {
-    return calls.filter((call) => (call.options as { source?: boolean } | undefined)?.source);
+    const bodyCalls = calls.filter(
+      (call) => (call.options as { source?: unknown } | undefined)?.source,
+    );
+    // Without `uid: true` the server reads the set as sequence numbers and every body
+    // lands on the wrong message, which no assertion on the returned bodies would catch.
+    for (const call of bodyCalls) {
+      expect(call.uid).toMatchObject({ uid: true });
+    }
+    return bodyCalls;
   }
 
   it('parses the body of a delivered message onto the normalized message', async () => {
@@ -1569,6 +1581,30 @@ describe('the body pass', () => {
     expect(page.messages).toHaveLength(1);
     expect(page.messages[0].bodyText).toBeNull();
     expect(page.messages[0].snippet).toBeNull();
+  });
+
+  it('strips NUL from a subject, which Postgres would reject outright', async () => {
+    // A subject arrives decoded through RFC 2047, which carries NUL straight through.
+    // Unstripped it fails the whole INSERT with SQLSTATE 22021 — every message in the
+    // page lost and the cursor unadvanced, so the same failure repeats on every tick.
+    const nul = String.fromCharCode(0);
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 5,
+          from: 'someone@example.net',
+          subject: `Quarter${nul}End review`,
+          size: 100,
+          source: sourceOf('body'),
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages[0].subject).toBe('QuarterEnd review');
+    expect(page.messages[0].subject).not.toContain(nul);
   });
 
   it('makes no body fetch when the first pass delivered nothing', async () => {

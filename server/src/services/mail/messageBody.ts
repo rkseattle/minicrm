@@ -11,6 +11,8 @@
 import { simpleParser } from 'mailparser';
 import { htmlToText } from 'html-to-text';
 
+import logger from '../../logger.js';
+
 /** Characters of body text kept for a list view that must not load a whole body. */
 const SNIPPET_LENGTH = 200;
 
@@ -20,8 +22,13 @@ const SNIPPET_LENGTH = 200;
  * The fetch caps the raw document at two megabytes, but a document that size can decode
  * to far more — base64 expands, and deep HTML flattens to a long string. These are
  * unindexed `text` columns whose contents a sender chooses, so nothing else bounds them.
+ *
+ * Chosen against the PAGE, not the message: two body fields per message, two hundred
+ * messages per mailbox, two mailboxes, all held at once through the insert. At 64 KiB
+ * that ceiling is about 50 MB of strings per tick, which the sequential tick can carry.
+ * Raising this raises that product by the same factor.
  */
-const MAX_BODY_LENGTH = 262_144;
+const MAX_BODY_LENGTH = 65_536;
 
 /**
  * Cuts to a length without splitting an astral character.
@@ -39,18 +46,29 @@ function truncate(value: string, limit: number): string {
 }
 
 /**
- * Strips what a `text` column cannot hold and bounds what it should.
- *
- * Exported because every provider owes this, not just IMAP: the column enforces neither
- * rule, so a driver that skips it fails the whole page on one hostile message.
+ * Strips what a `text` column cannot hold.
  *
  * Postgres rejects NUL in a text value with SQLSTATE 22021, which is not a mapped error:
- * it would escape as a 500 and fail the whole page, so one sender with a broken encoder
- * wedges an account's sync indefinitely. A body is sender-controlled, and mailparser
- * passes NUL straight through, so it is removed here rather than trusted not to appear.
+ * it would escape as a 500 and fail the whole page, so one sender wedges an account's
+ * sync indefinitely — every message in that page lost, the cursor unadvanced, and the
+ * same failure on every tick after.
+ *
+ * Every sender-controlled string owes this, not just a body. A subject arrives decoded
+ * through RFC 2047, which carries NUL straight through, and an address or a Message-ID is
+ * no more trustworthy. Exported for that reason, and because a second provider owes it
+ * too: the column enforces nothing.
+ */
+export function stripNul(value: string): string {
+  return value.replace(/\u0000/g, '');
+}
+
+/**
+ * What a body column can hold: NUL removed and length bounded.
+ *
+ * Exported because every provider owes both rules, not just IMAP.
  */
 export function storable(value: string): string {
-  return truncate(value.replace(/\u0000/g, ''), MAX_BODY_LENGTH);
+  return truncate(stripNul(value), MAX_BODY_LENGTH);
 }
 
 /** The body fields parsed out of one message. */
@@ -61,11 +79,11 @@ export interface ParsedMessageBody {
 }
 
 /** What a message with no usable body stores: headers land, bodies do not. */
-export const EMPTY_MESSAGE_BODY: ParsedMessageBody = {
+export const EMPTY_MESSAGE_BODY: ParsedMessageBody = Object.freeze({
   bodyText: null,
   bodyHtml: null,
   snippet: null,
-};
+});
 
 /**
  * Collapses runs of whitespace and cuts to the snippet length.
@@ -103,21 +121,40 @@ function bodyTextOf(text: string | undefined, html: string | false): string | nu
  * reads sender-controlled markup. Both have to converge on null bodies, because the
  * alternative is one unreadable message costing its whole mailbox the headers already
  * read.
+ *
+ * The failure is logged here rather than by the caller, precisely because it does not
+ * propagate: a caller cannot catch what never throws, and an unreadable body that is
+ * silently null is indistinguishable from a message that carried none.
+ *
+ * @param providerMessageId - Identifies the message in the log, since a body that fails
+ *   to parse is otherwise untraceable to the row that stored no body.
  */
-export async function parseMessageBody(source: Buffer): Promise<ParsedMessageBody> {
+export async function parseMessageBody(
+  source: Buffer,
+  providerMessageId: string,
+): Promise<ParsedMessageBody> {
+  // Held outside the try so a failed text conversion still stores the HTML the parser
+  // had already returned: it is the more faithful record of the two.
+  let bodyHtml: string | null = null;
   try {
-    const parsed = await simpleParser(source);
+    // None of these outputs is read, and each costs memory proportional to the document:
+    // textAsHtml duplicates the body as markup, and the link rewrites walk it again.
+    const parsed = await simpleParser(source, {
+      skipTextToHtml: true,
+      skipTextLinks: true,
+      skipImageLinks: true,
+    });
     // Inside the try, not after it: htmlToText recurses over sender-controlled markup and
     // overflows the stack on deep nesting, which a 220 KB document already reaches.
+    // `html` is false, not undefined, when a message has no HTML part.
+    bodyHtml = typeof parsed.html === 'string' && parsed.html !== '' ? storable(parsed.html) : null;
     const bodyText = bodyTextOf(parsed.text, parsed.html);
-    return {
-      bodyText,
-      // `html` is false, not undefined, when a message has no HTML part.
-      bodyHtml:
-        typeof parsed.html === 'string' && parsed.html !== '' ? storable(parsed.html) : null,
-      snippet: snippetOf(bodyText),
-    };
-  } catch {
-    return EMPTY_MESSAGE_BODY;
+    return { bodyText, bodyHtml, snippet: snippetOf(bodyText) };
+  } catch (err) {
+    logger.warn(
+      { err, providerMessageId },
+      'messageBody: could not parse message body — storing headers without it',
+    );
+    return { ...EMPTY_MESSAGE_BODY, bodyHtml };
   }
 }
