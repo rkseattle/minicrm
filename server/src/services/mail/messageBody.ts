@@ -77,13 +77,14 @@ export interface ParsedMessageBody {
   bodyHtml: string | null;
   snippet: string | null;
   /**
-   * Why a message stored no body, or null when it stored one.
+   * True when the document produced neither text nor HTML.
    *
-   * Returned rather than logged, so the caller can count these per mailbox: a backfill
-   * page holds two hundred messages, and automated mail — calendar invites, read
-   * receipts, delivery notifications — legitimately carries no body at all.
+   * Reported rather than logged here, so the caller can name the message: this module
+   * knows the outcome but not the id. Deliberately not a reason — an unreadable document
+   * and one that genuinely carries no body both come back with no text and no HTML, and
+   * the parser cannot distinguish them.
    */
-  noBodyReason: 'unreadable' | 'no-body-part' | null;
+  yieldedNoBody: boolean;
 }
 
 /** What a message with no usable body stores: headers land, bodies do not. */
@@ -91,7 +92,7 @@ export const EMPTY_MESSAGE_BODY: ParsedMessageBody = Object.freeze({
   bodyText: null,
   bodyHtml: null,
   snippet: null,
-  noBodyReason: 'no-body-part',
+  yieldedNoBody: true,
 });
 
 /**
@@ -168,9 +169,9 @@ export async function parseMessageBody(source: Buffer): Promise<ParsedMessageBod
       bodyText,
       bodyHtml,
       snippet: snippetOf(bodyText),
-      noBodyReason: bodyText === null && bodyHtml === null ? 'no-body-part' : null,
+      yieldedNoBody: bodyText === null && bodyHtml === null,
     };
   } catch {
-    return { ...EMPTY_MESSAGE_BODY, bodyHtml, noBodyReason: 'unreadable' };
+    return { ...EMPTY_MESSAGE_BODY, bodyHtml, yieldedNoBody: bodyHtml === null };
   }
 }

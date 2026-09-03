@@ -1662,6 +1662,45 @@ describe('the body pass', () => {
       });
   });
 
+  it('names the message that stored no body', async () => {
+    // Individually, not as a count: the loss is permanent, so an operator has to be able
+    // to reach the row from the log line.
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+    const { client } = makeFakeClient([
+      inbox([
+        { uid: 5, from: 'good@example.net', size: 100, source: sourceOf('readable') },
+        { uid: 6, from: 'bad@example.net', size: 100, source: '\u0000\u00ff not a document' },
+      ]),
+    ]);
+
+    await providerWith(client).fetchSince(AUTH, null, SINCE);
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ providerMessageId: 'INBOX:6' }),
+      expect.stringContaining('yielded no body'),
+    );
+  });
+
+  it('packs a contiguous run of UIDs into a range', async () => {
+    // Two hundred unpacked UIDs run past the command-line length RFC 2683 asks clients to
+    // stay under; a contiguous page is the common case on an incremental sync.
+    const { client, fetchCalls } = makeFakeClient([
+      inbox(
+        [
+          { uid: 7, from: 'a@example.net', size: 100, source: sourceOf('seven') },
+          { uid: 8, from: 'b@example.net', size: 100, source: sourceOf('eight') },
+          { uid: 9, from: 'c@example.net', size: 100, source: sourceOf('nine') },
+        ],
+        { uidNext: 10 },
+      ),
+    ]);
+
+    const page = await providerWith(client).fetchSince(AUTH, null, SINCE);
+
+    expect(bodyFetches(fetchCalls)[0].query).toEqual({ uid: '7:9' });
+    expect(page.messages.map((m) => m.bodyText?.trim())).toEqual(['seven', 'eight', 'nine']);
+  });
+
   it('counts a message the server returned with no body part', async () => {
     // Reachable only with `source` absent, which no other fixture exercises: the server
     // answered the fetch but omitted the part, so the message stores headers alone.

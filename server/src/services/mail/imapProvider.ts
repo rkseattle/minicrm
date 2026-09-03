@@ -129,7 +129,9 @@ function boundIndexedId(id: string): string {
  * the id is qualified by path and then bounded, because it lands under a btree index.
  */
 function qualifiedMessageId(mailboxPath: string, uid: number): string {
-  return boundIndexedId(`${mailboxPath}:${String(uid)}`);
+  // Stripped before the length bound, not after, so the decision counts characters that
+  // will actually be stored — the order every other sanitizing site here uses.
+  return boundIndexedId(stripNul(`${mailboxPath}:${String(uid)}`));
 }
 
 /** Messages read per mailbox per fetch, bounding both memory and time per tick. */
@@ -283,7 +285,7 @@ function normalize(
   // more fields than were requested — so the References field is read out by name.
   const headerBlock = message.headers?.toString('utf8') ?? null;
   const referencesHeader = headerBlock ? extractHeaderField(headerBlock, 'references') : null;
-  const qualifiedId = stripNul(qualifiedMessageId(mailboxPath, message.uid));
+  const qualifiedId = qualifiedMessageId(mailboxPath, message.uid);
   const rawThreadId =
     resolveThreadId({
       messageId: envelope?.messageId ?? null,
@@ -294,7 +296,7 @@ function normalize(
     // qualified by mailbox: the same message filed in both INBOX and Sent must land in one
     // thread, and the UID is the only handle it has.
     `uid-${String(message.uid)}`;
-  const threadId = stripNul(boundIndexedId(rawThreadId));
+  const threadId = boundIndexedId(stripNul(rawThreadId));
 
   return {
     providerMessageId: qualifiedId,
@@ -401,6 +403,25 @@ async function resolveMailboxPaths(client: ImapFlow): Promise<string[]> {
 }
 
 /**
+ * Collapses a sorted UID list into an IMAP sequence set.
+ *
+ * A delivered page is nearly always contiguous — the first pass asks for a range and the
+ * cap keeps the lowest UIDs — so an unpacked list sends two hundred numbers where two
+ * would do. RFC 2683 §3.2.1.5 asks clients to keep a command line under 1000 octets, and
+ * a server that refuses a long one would degrade every body in the page to null.
+ */
+function packUidSet(uids: readonly number[]): string {
+  const runs: string[] = [];
+  for (let index = 0; index < uids.length; index += 1) {
+    const start = uids[index];
+    while (index + 1 < uids.length && uids[index + 1] === uids[index] + 1) index += 1;
+    const end = uids[index];
+    runs.push(start === end ? String(start) : `${String(start)}:${String(end)}`);
+  }
+  return runs.join(',');
+}
+
+/**
  * Reads and parses the bodies of the messages this tick will deliver.
  *
  * A second pass, because the message cap is applied to what the first fetch returns
@@ -441,15 +462,12 @@ async function fetchBodies(
 
   if (wanted.length === 0) return bodies;
 
-  // Counted, not logged per message: a page holds two hundred, and automated mail —
-  // calendar invites, read receipts, delivery notifications — legitimately has no body.
+  // Counted rather than named: these are properties of the fetch, not of one message.
   let withoutSource = 0;
-  let unreadable = 0;
-  let withoutBodyPart = 0;
 
   try {
     for await (const message of client.fetch(
-      { uid: wanted.map((m) => String(m.uid)).join(',') },
+      { uid: packUidSet(wanted.map((m) => m.uid)) },
       // Bounded on the request, so a message the server never sized cannot arrive
       // unbounded. A truncated document still parses; its body is simply cut short.
       { uid: true, source: { maxLength: MAX_MESSAGE_SOURCE_BYTES } },
@@ -459,9 +477,29 @@ async function fetchBodies(
         withoutSource += 1;
         continue;
       }
+      // imapflow declares `uid` non-optional but assigns `|| undefined`, so a
+      // non-conforming server can yield one. Keying the map on it would store an entry
+      // nothing can look up and inflate the shortfall count below.
+      if (typeof message.uid !== 'number') {
+        withoutSource += 1;
+        continue;
+      }
+
       const parsed = await parseMessageBody(message.source);
-      if (parsed.noBodyReason === 'unreadable') unreadable += 1;
-      else if (parsed.noBodyReason === 'no-body-part') withoutBodyPart += 1;
+      if (parsed.yieldedNoBody) {
+        // Named individually rather than counted: the loss is permanent, and a count on a
+        // two-hundred-message page cannot be chased back to the row that lost its body.
+        // The parser cannot say whether the document was unreadable or genuinely carried
+        // no body — both come back with no text and no HTML — so both are reported.
+        logger.warn(
+          {
+            mailbox: mailboxPath,
+            providerMessageId: qualifiedMessageId(mailboxPath, message.uid),
+            sourceBytes: message.source.length,
+          },
+          'imapProvider: message yielded no body — storing headers without one',
+        );
+      }
       bodies.set(message.uid, parsed);
     }
   } catch (err) {
@@ -475,19 +513,10 @@ async function fetchBodies(
   // since a missing entry and a message with no body read the same downstream.
   const unanswered = wanted.length - bodies.size - withoutSource;
 
-  if (unreadable > 0 || withoutSource > 0 || unanswered > 0) {
+  if (withoutSource > 0 || unanswered > 0) {
     logger.warn(
-      { mailbox: mailboxPath, unreadable, withoutSource, unanswered },
+      { mailbox: mailboxPath, withoutSource, unanswered },
       'imapProvider: some messages stored headers without a body',
-    );
-  }
-
-  if (withoutBodyPart > 0) {
-    // Not a warning: a message with no body part is ordinary, and the count is here so a
-    // mailbox reporting nothing but these is still visible.
-    logger.debug(
-      { mailbox: mailboxPath, withoutBodyPart },
-      'imapProvider: messages carried no body part',
     );
   }
 
