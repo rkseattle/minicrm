@@ -33,11 +33,13 @@ const MAX_BODY_LENGTH = 65_536;
 /**
  * Cuts to a length without splitting an astral character.
  *
+ * Exported because every bounded sender-controlled string owes this, not just a body.
+ *
  * A plain slice cuts by UTF-16 code unit, so it can leave a lone high surrogate that
  * reaches the column as a replacement character — silent corruption of the last
  * character rather than a failure.
  */
-function truncate(value: string, limit: number): string {
+export function truncate(value: string, limit: number): string {
   if (value.length <= limit) return value;
   const cut = value.slice(0, limit);
   const lastCode = cut.charCodeAt(cut.length - 1);
@@ -90,6 +92,9 @@ export const EMPTY_MESSAGE_BODY: ParsedMessageBody = Object.freeze({
  *
  * Normalizing before testing for empty is what makes a whitespace-only body null rather
  * than a string of spaces: such a body parses to non-empty text, so the order matters.
+ *
+ * Call this on text that has already been through `storable`. It bounds length but does
+ * not strip NUL, because the text it summarizes is expected to carry none by then.
  */
 export function snippetOf(bodyText: string | null): string | null {
   if (bodyText === null) return null;
@@ -126,6 +131,11 @@ function bodyTextOf(text: string | undefined, html: string | false): string | nu
  * propagate: a caller cannot catch what never throws, and an unreadable body that is
  * silently null is indistinguishable from a message that carried none.
  *
+ * Both outcomes are logged, because the parse result cannot tell them apart — a document
+ * of raw bytes and a message that genuinely has only headers both come back with no text
+ * and no HTML. A body that went missing is worth a line either way; which of the two it
+ * was is the operator's to judge from the id.
+ *
  * @param providerMessageId - Identifies the message in the log, since a body that fails
  *   to parse is otherwise untraceable to the row that stored no body.
  */
@@ -137,11 +147,11 @@ export async function parseMessageBody(
   // had already returned: it is the more faithful record of the two.
   let bodyHtml: string | null = null;
   try {
-    // None of these outputs is read, and each costs memory proportional to the document:
-    // textAsHtml duplicates the body as markup, and the link rewrites walk it again.
+    // Neither output is read, and each costs memory proportional to the document.
+    // `skipTextLinks` is deliberately absent: the library returns on `skipTextToHtml`
+    // before it is ever consulted, so setting it would be dead configuration.
     const parsed = await simpleParser(source, {
       skipTextToHtml: true,
-      skipTextLinks: true,
       skipImageLinks: true,
     });
     // Inside the try, not after it: htmlToText recurses over sender-controlled markup and
@@ -149,6 +159,14 @@ export async function parseMessageBody(
     // `html` is false, not undefined, when a message has no HTML part.
     bodyHtml = typeof parsed.html === 'string' && parsed.html !== '' ? storable(parsed.html) : null;
     const bodyText = bodyTextOf(parsed.text, parsed.html);
+
+    if (bodyText === null && bodyHtml === null && source.length > 0) {
+      logger.warn(
+        { providerMessageId, sourceBytes: source.length },
+        'messageBody: document yielded no body — storing headers without one',
+      );
+    }
+
     return { bodyText, bodyHtml, snippet: snippetOf(bodyText) };
   } catch (err) {
     logger.warn(

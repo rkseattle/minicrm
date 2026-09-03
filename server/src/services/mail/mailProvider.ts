@@ -35,7 +35,12 @@ export interface NormalizedMessage {
    * parse.
    */
   bodyText: string | null;
-  /** HTML body as the sender wrote it, unsanitized. Null on the same terms as bodyText. */
+  /**
+   * HTML body as the sender wrote it, unsanitized. Null when the message carried no HTML
+   * part, when it exceeded the size cap, or when it would not parse — but NOT merely
+   * because `bodyText` is null: a message whose text derivation failed still stores the
+   * HTML the parser returned.
+   */
   bodyHtml: string | null;
   /** Leading characters of bodyText, whitespace collapsed. Null whenever bodyText is. */
   snippet: string | null;

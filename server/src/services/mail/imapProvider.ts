@@ -42,6 +42,7 @@ import {
   EMPTY_MESSAGE_BODY,
   parseMessageBody,
   stripNul,
+  truncate,
   type ParsedMessageBody,
 } from './messageBody.js';
 import { extractHeaderField, resolveThreadId } from './threading.js';
@@ -204,7 +205,7 @@ function addressesOf(list: MessageAddressObject[] | undefined): string[] {
 /** The subject a `text` column can hold: bounded, and stripped of what Postgres rejects. */
 function subjectOf(subject: string | undefined): string | null {
   if (subject === undefined) return null;
-  return stripNul(subject.slice(0, MAX_SUBJECT_LENGTH));
+  return stripNul(truncate(subject, MAX_SUBJECT_LENGTH));
 }
 
 /**
@@ -424,7 +425,22 @@ async function fetchBodies(
   const wanted = delivered.filter(
     (message) => message.size === undefined || message.size <= MAX_MESSAGE_SOURCE_BYTES,
   );
+
+  // Counted rather than logged per message: a backfill page holds two hundred, and a
+  // line each would bury the mailbox's other warnings.
+  const oversized = delivered.length - wanted.length;
+  if (oversized > 0) {
+    logger.warn(
+      { mailbox: mailboxPath, oversized, maxBytes: MAX_MESSAGE_SOURCE_BYTES },
+      'imapProvider: messages too large for a body fetch — storing their headers only',
+    );
+  }
+
   if (wanted.length === 0) return bodies;
+
+  // A server may answer a fetch without the part it was asked for; counted for the same
+  // reason as the oversized skip above.
+  let withoutSource = 0;
 
   try {
     for await (const message of client.fetch(
@@ -434,7 +450,10 @@ async function fetchBodies(
       { uid: true, source: { maxLength: MAX_MESSAGE_SOURCE_BYTES } },
       { uid: true },
     )) {
-      if (!message.source) continue;
+      if (!message.source) {
+        withoutSource += 1;
+        continue;
+      }
       // The stored id, not just a qualified one: it is bounded the same way, so a long
       // mailbox path logs the digest the row actually carries.
       bodies.set(
@@ -446,6 +465,13 @@ async function fetchBodies(
     logger.warn(
       { err, mailbox: mailboxPath, messageCount: wanted.length },
       'imapProvider: body fetch failed — storing these headers without bodies, permanently',
+    );
+  }
+
+  if (withoutSource > 0) {
+    logger.warn(
+      { mailbox: mailboxPath, withoutSource },
+      'imapProvider: server returned no body for some messages — storing their headers only',
     );
   }
 
