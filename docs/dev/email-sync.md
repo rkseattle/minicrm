@@ -30,7 +30,18 @@ A `ProviderPage` carries four things:
 ### Writing a second provider
 
 1. Implement `MailProvider`. Return `NormalizedMessage` values — the engine does no
-   provider-specific parsing.
+   provider-specific parsing. Its `bodyText`, `bodyHtml`, and `snippet` are yours to
+   fill: Gmail and Graph return body parts as JSON fields, so neither needs a MIME parser,
+   though a driver that gets only HTML still needs `html-to-text` as IMAP's does. Match
+   the rules IMAP follows, or one mailbox reads differently depending on which driver
+   synced it — plain text preferred over HTML, HTML converted when it is the only part,
+   `snippet` derived from the stored text with whitespace collapsed, and all three null
+   when a body is unavailable rather than empty. `messageBody.ts` exports `snippetOf` and
+   `storable` — use both rather than reimplementing them, since `storable` also strips
+   NUL, which Postgres rejects outright, and bounds a decoded body the column does not.
+   The columns are `message_`-prefixed for the reason [schema.md](schema.md) gives: the
+   AI PII filter matches bare column names at every depth, and `notes.body_text` is a
+   live column the note tools deliberately surface.
 2. Choose your own cursor encoding. It is an opaque string to everything but you; the
    engine stores it verbatim and hands it back. Use a format that round-trips every value
    your provider can produce — IMAP's uses JSON because a mailbox path may contain any
@@ -104,9 +115,15 @@ body does not depend on whether the sender used a multipart wrapper. Bodies are 
 of NUL, which a `text` column cannot hold and which would otherwise fail the whole page.
 
 Every body failure degrades to a null body rather than propagating — a parse error, a
-refused fetch, an oversized message. The per-mailbox handler discards a whole page on a
-throw, so an escaping body error would cost every message in the mailbox the headers
-already read.
+refused fetch, an oversized message. The message stores its headers, the cursor advances
+past it, and nothing fetches that body again: the only path that re-reads old mail is a
+UIDVALIDITY re-backfill, which renumbers every UID and so stores the message under a new
+`provider_message_id` rather than filling the old row.
+
+Degrading is still right, because the alternative is worse. `fetchSince` catches per
+mailbox and restores that mailbox's stored cursor, so an escaping body error would discard
+every header the page had already read and re-read them all next tick — repeatedly, for
+as long as the message that threw stays in range.
 
 ## Threading
 
@@ -184,7 +201,9 @@ tested against a hand-written fake `ImapFlow` injected as a client factory.
 
 **That fake is the load-bearing risk in this area.** Several defects here were invisible
 because the fake disagreed with the real library rather than because the provider was
-wrong: it reported `name` as the whole path where imapflow reports the leaf, it yielded
+wrong: it accepted any fetch query rather than the sequence set the body pass sends, turning a
+wrong query shape into every body arriving null, it reported `name` as the whole path
+where imapflow reports the leaf, it yielded
 messages in array order where a real server may use any, and it synthesized a special-use
 source that made a fallback branch unreachable. Audit it field by field against
 `FetchMessageObject` and `ListResponse` before trusting a new assertion built on it.
@@ -204,6 +223,7 @@ the ambient value.
   nothing yet reads. `is_private` ships defaulted to `false` with no writer.
 - **GDPR erasure for synced mail, and the backfill window as an admin setting** — the
   window is a module constant until that lands.
-- **Validation against a real IMAP server** — two behaviors here are reasoned from RFC
-  3501 rather than observed: `UIDNEXT` as a lower bound, and `bodyStructure`-derived
-  `has_attachments`.
+- **Validation against a real IMAP server** — three behaviors here are reasoned from RFC
+  3501 and imapflow's own source rather than observed: `UIDNEXT` as a lower bound,
+  `bodyStructure`-derived `has_attachments`, and the body pass's `source` fetch over a
+  comma-separated UID set.

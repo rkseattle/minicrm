@@ -39,14 +39,17 @@ function truncate(value: string, limit: number): string {
 }
 
 /**
- * Strips what a `text` column cannot hold.
+ * Strips what a `text` column cannot hold and bounds what it should.
+ *
+ * Exported because every provider owes this, not just IMAP: the column enforces neither
+ * rule, so a driver that skips it fails the whole page on one hostile message.
  *
  * Postgres rejects NUL in a text value with SQLSTATE 22021, which is not a mapped error:
  * it would escape as a 500 and fail the whole page, so one sender with a broken encoder
  * wedges an account's sync indefinitely. A body is sender-controlled, and mailparser
  * passes NUL straight through, so it is removed here rather than trusted not to appear.
  */
-function storable(value: string): string {
+export function storable(value: string): string {
   return truncate(value.replace(/\u0000/g, ''), MAX_BODY_LENGTH);
 }
 
