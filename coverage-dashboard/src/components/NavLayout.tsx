@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { logout } from '@/api/auth.js';
@@ -11,12 +12,19 @@ const NAV_LINK_CLASS = ({ isActive }: { isActive: boolean }): string =>
 export default function NavLayout() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   async function handleLogout(): Promise<void> {
-    // Errors are swallowed deliberately: the server may already have dropped the
-    // session, so clearing and leaving is the safer of the two guesses, and an
-    // unhandled rejection here would escape the onClick handler.
-    await logout().catch(() => undefined);
+    // A failed logout must not proceed as though it succeeded. The cookie may
+    // still be valid, and LoginPage redirects an authenticated visitor straight
+    // back to '/' — so clearing and navigating would land the user on the
+    // dashboard still signed in, having been told they signed out.
+    try {
+      await logout();
+    } catch {
+      setLogoutError('Sign out failed. Please try again.');
+      return;
+    }
     // Clear, not setQueryData(null): nulling the auth entry leaves every other
     // key resident and readable on the next mount, so the next account on this
     // tab sees the previous one's data.
@@ -58,6 +66,11 @@ export default function NavLayout() {
             </button>
           )}
         </div>
+        {logoutError && (
+          <p role="alert" data-testid="nav-logout-error" className="mt-2 text-sm text-red-600">
+            {logoutError}
+          </p>
+        )}
       </nav>
       <Outlet />
     </div>
