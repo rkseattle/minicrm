@@ -19,6 +19,11 @@ subject_ appears in its addresses is a separate question — the messages hold c
 data while belonging to the connected user — and is decided by the email privacy story, which
 owns whether that is address redaction or row deletion and extends `gdpr_deletion_log` to match.
 
+That question is wider than addresses: the table stores message **bodies**, so a data subject's
+personal data can appear anywhere in free text rather than only in an indexed address column,
+and address redaction alone would not erase it. Note that `docs/gdpr.md`'s `body_text` scrub
+covers **notes**, a different column on a different table, and does not reach these.
+
 `email_sync_jobs` holds no personal data — a status, a count, and an error string — and rides the
 same cascade when its mailbox is disconnected. Age alone never purges an unfinished job, because
 a backfill legitimately spans many scheduler ticks. Staleness does: the same nightly run first

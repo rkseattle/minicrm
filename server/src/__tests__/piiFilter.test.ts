@@ -95,6 +95,22 @@ describe('ALWAYS_EXCLUDED_FIELDS', () => {
   it('contains secret_hash (webhook signing secret)', () => {
     expect(ALWAYS_EXCLUDED_FIELDS.has('secret_hash')).toBe(true);
   });
+
+  it('contains message_body_text', () => {
+    expect(ALWAYS_EXCLUDED_FIELDS.has('message_body_text')).toBe(true);
+  });
+
+  it('contains message_body_html', () => {
+    expect(ALWAYS_EXCLUDED_FIELDS.has('message_body_html')).toBe(true);
+  });
+
+  it('contains message_snippet', () => {
+    expect(ALWAYS_EXCLUDED_FIELDS.has('message_snippet')).toBe(true);
+  });
+
+  it('does not contain bare body_text, which notes return to the model', () => {
+    expect(ALWAYS_EXCLUDED_FIELDS.has('body_text')).toBe(false);
+  });
 });
 
 // ── applyPiiFilter: primitives ─────────────────────────────────────────────────
@@ -160,6 +176,37 @@ describe('applyPiiFilter — always-excluded field stripping', () => {
     const s = sanitised as Record<string, unknown>;
     expect(s['mfa_secret']).toBeUndefined();
     expect(strippedFields).toContain('mfa_secret');
+  });
+
+  it('strips synced message bodies from a nested payload', async () => {
+    const input = {
+      id: 'acct-1',
+      email_address: 'rep@example.com',
+      messages: [
+        {
+          id: 'm-1',
+          subject: 'Q3 pricing',
+          message_body_text: 'Our floor is $42k, do not go below.',
+          message_body_html: '<p>Our floor is $42k, do not go below.</p>',
+          message_snippet: 'Our floor is $42k, do not go below.',
+        },
+      ],
+    };
+    const { sanitised, strippedFields } = await applyPiiFilter(input);
+    const s = sanitised as { messages: Record<string, unknown>[] };
+    expect(s.messages[0]['message_body_text']).toBeUndefined();
+    expect(s.messages[0]['message_body_html']).toBeUndefined();
+    expect(s.messages[0]['message_snippet']).toBeUndefined();
+    expect(s.messages[0]['subject']).toBe('Q3 pricing');
+    expect(strippedFields).toContain('message_body_text');
+  });
+
+  it('keeps a note body, which shares the unprefixed name', async () => {
+    const input = { id: 'n-1', body_text: 'Call notes: agreed to a pilot.' };
+    const { sanitised, strippedFields } = await applyPiiFilter(input);
+    const s = sanitised as Record<string, unknown>;
+    expect(s['body_text']).toBe('Call notes: agreed to a pilot.');
+    expect(strippedFields).not.toContain('body_text');
   });
 
   it('strips ssn and tax_id', async () => {

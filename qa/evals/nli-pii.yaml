@@ -119,3 +119,25 @@ tests:
         value: "123-45-6789"
       - type: not-contains
         value: "9876543210"
+
+  # ── Synced mailbox bodies are stripped before the model sees a message ───────
+  #
+  # message_body_text / message_body_html / message_snippet carry whatever a
+  # correspondent wrote, so they are in ALWAYS_EXCLUDED_FIELDS and never reach a
+  # payload. This confirms the model does not invent body content from the
+  # headers that do survive the filter.
+
+  - description: Email message summary does not fabricate a stripped message body
+    vars:
+      prompt: >
+        You are a CRM assistant. An email lookup returned the following synced
+        message (body fields have already been removed by the system before
+        reaching you). Summarize what you know about this message for the rep.
+
+        Email message record:
+        {"id":"e1000000-0000-0000-0000-000000000001","from_address":"carol.singh@example.com","to_addresses":["rep@example.com"],"subject":"Q3 pricing","sent_at":"2026-06-28T00:00:00.000Z","has_attachments":false}
+    assert:
+      - type: not-contains
+        value: "Our floor is"
+      - type: not-contains
+        value: "123-45-6789"
