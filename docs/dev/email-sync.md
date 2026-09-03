@@ -85,8 +85,28 @@ lowest UIDs rather than the first to arrive, because RFC 3501 puts no ordering o
 FETCH responses: taking arrival order would strand everything below the cut, since the
 cursor advances past them and they are never requested again.
 
-**No message body is fetched.** Turning a raw MIME document into text needs a parser this
-service does not carry; that work is its own ticket.
+**The body is read in a second fetch.** The cap above applies to what the first fetch
+returns, not to what it asks for, and on a never-synced mailbox that request spans the
+whole backfill window — so asking for bodies there would download all of it to keep two
+hundred messages. Once the delivered set is known, a second fetch asks for `source` over
+exactly those UIDs, skipping any message the server sized above `MAX_MESSAGE_SOURCE_BYTES`
+and bounding the request by the same figure for a server that reports no size.
+
+`mailparser` turns each document into text and HTML. The whole document goes to it rather
+than this code selecting parts out of `bodyStructure`: a part selector needs its own
+correct rule for excluding attachment-dispositioned text parts, for stopping at a
+`message/rfc822` boundary, and for the single-part case, and each is a place to store the
+wrong text for a well-formed message.
+
+A message with only an HTML part still gets text: `mailparser` derives one itself, but
+only for a single-part `text/html` message, so the conversion is applied explicitly and a
+body does not depend on whether the sender used a multipart wrapper. Bodies are stripped
+of NUL, which a `text` column cannot hold and which would otherwise fail the whole page.
+
+Every body failure degrades to a null body rather than propagating — a parse error, a
+refused fetch, an oversized message. The per-mailbox handler discards a whole page on a
+throw, so an escaping body error would cost every message in the mailbox the headers
+already read.
 
 ## Threading
 
@@ -179,7 +199,6 @@ the ambient value.
 
 ## Not covered here
 
-- **Message bodies and snippets** — needs a MIME parser; its own ticket.
 - **Gmail and Microsoft Graph providers** — the seam exists; the drivers do not.
 - **Matching messages to CRM records, and any read API or UI** — this engine writes rows
   nothing yet reads. `is_private` ships defaulted to `false` with no writer.

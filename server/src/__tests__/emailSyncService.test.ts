@@ -48,6 +48,9 @@ function message(overrides: Partial<NormalizedMessage> = {}): NormalizedMessage 
     subject: 'Hello',
     hasAttachments: false,
     sentAt: new Date('2026-08-01T12:00:00Z'),
+    bodyText: null,
+    bodyHtml: null,
+    snippet: null,
     ...overrides,
   };
 }
@@ -118,6 +121,29 @@ async function storedMessages(
   return result.rows;
 }
 
+/** Reads the body columns back, which is the only way to prove they were written. */
+async function storedBodies(accountId: string): Promise<
+  {
+    provider_message_id: string;
+    message_body_text: string | null;
+    message_body_html: string | null;
+    message_snippet: string | null;
+  }[]
+> {
+  const result = await pool.query<{
+    provider_message_id: string;
+    message_body_text: string | null;
+    message_body_html: string | null;
+    message_snippet: string | null;
+  }>(
+    `SELECT provider_message_id, message_body_text, message_body_html, message_snippet
+       FROM email_messages
+      WHERE connected_account_id = $1 ORDER BY provider_message_id`,
+    [accountId],
+  );
+  return result.rows;
+}
+
 async function deleteFixtureUsers(): Promise<void> {
   await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
 }
@@ -165,6 +191,75 @@ describe('syncOneAccount', () => {
     );
     expect(row.rows[0].sync_cursor).toBe(page().cursor);
     expect(row.rows[0].last_sync_at).not.toBeNull();
+  });
+
+  it('stores the parsed body, html, and snippet', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    const provider = fakeProvider([
+      page({
+        messages: [
+          message({
+            bodyText: 'The plain text of the message.',
+            bodyHtml: '<p>The plain text of the message.</p>',
+            snippet: 'The plain text of the message.',
+          }),
+        ],
+      }),
+    ]);
+
+    await syncOneAccount(await claimedFor(account.id), provider);
+
+    const [row] = await storedBodies(account.id);
+    expect(row.message_body_text).toBe('The plain text of the message.');
+    expect(row.message_body_html).toBe('<p>The plain text of the message.</p>');
+    expect(row.message_snippet).toBe('The plain text of the message.');
+  });
+
+  it('stores null bodies for a message that carried none', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    const provider = fakeProvider([page({ messages: [message()] })]);
+
+    await syncOneAccount(await claimedFor(account.id), provider);
+
+    const [row] = await storedBodies(account.id);
+    expect(row.message_body_text).toBeNull();
+    expect(row.message_body_html).toBeNull();
+    expect(row.message_snippet).toBeNull();
+  });
+
+  it('takes a corrected body on re-sync', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [message({ bodyText: 'first read' })] })]),
+    );
+
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [message({ bodyText: 'corrected read' })] })]),
+    );
+
+    const [row] = await storedBodies(account.id);
+    expect(row.message_body_text).toBe('corrected read');
+  });
+
+  it('keeps a stored body when a later sync of the same message has none', async () => {
+    // A body can regress to null where a subject cannot — an oversized message, a refused
+    // body fetch — and a bare assignment would erase what had already landed.
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [message({ bodyText: 'the body', snippet: 'the body' })] })]),
+    );
+
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [message({ bodyText: null, snippet: null })] })]),
+    );
+
+    const [row] = await storedBodies(account.id);
+    expect(row.message_body_text).toBe('the body');
+    expect(row.message_snippet).toBe('the body');
   });
 
   it('re-syncing the same page stores no duplicate row', async () => {

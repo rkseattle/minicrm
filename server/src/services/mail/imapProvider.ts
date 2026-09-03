@@ -10,9 +10,10 @@
  * to a mailbox. A mailbox absent from a stored cursor is treated as never-synced, which
  * is what lets Sent be added to an account already syncing INBOX without a migration.
  *
- * No message body is fetched. Turning a raw MIME document into text needs a parser this
- * service does not carry, so only headers and metadata are read — which also keeps the
- * fetch small enough that a mailbox syncs in a few round trips.
+ * Bodies are read in a second fetch, over the messages the first one delivered. The
+ * message cap applies to what the first fetch returns rather than to what it asks for, so
+ * asking for bodies there would pull a whole backfill window to keep two hundred
+ * messages.
  */
 
 import { createHash } from 'node:crypto';
@@ -37,6 +38,7 @@ import {
   PROVIDER_AUTH_EXPIRED,
 } from '../imapConnectionService.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mailProvider.js';
+import { EMPTY_MESSAGE_BODY, parseMessageBody, type ParsedMessageBody } from './messageBody.js';
 import { extractHeaderField, resolveThreadId } from './threading.js';
 
 /** The mailbox every IMAP server has, under this exact name. */
@@ -114,8 +116,28 @@ function boundIndexedId(id: string): string {
   return `sha256:${createHash('sha256').update(id, 'utf8').digest('hex')}`;
 }
 
+/**
+ * The id a message is stored under.
+ *
+ * An IMAP UID is unique only within one mailbox — INBOX and Sent both number from 1 — so
+ * the id is qualified by path and then bounded, because it lands under a btree index.
+ */
+function qualifiedMessageId(mailboxPath: string, uid: number): string {
+  return boundIndexedId(`${mailboxPath}:${String(uid)}`);
+}
+
 /** Messages read per mailbox per fetch, bounding both memory and time per tick. */
 const MAX_MESSAGES_PER_MAILBOX = 200;
+
+/**
+ * Largest body read per message, in bytes of raw MIME.
+ *
+ * Applied twice: a message the server sized above this is never requested, and the
+ * request itself carries the same bound for a server that reports no size. A document
+ * past this is carrying attachments rather than prose — the largest realistic text and
+ * HTML pair is a long quoted reply chain in the low hundreds of kilobytes.
+ */
+const MAX_MESSAGE_SOURCE_BYTES = 2_097_152;
 
 /** Where one mailbox's sync stopped. */
 interface MailboxCursor {
@@ -235,6 +257,7 @@ function normalize(
   message: FetchMessageObject,
   mailboxPath: string,
   accountAddress: string,
+  body: ParsedMessageBody,
 ): NormalizedMessage | null {
   const envelope = message.envelope;
   const fromAddress = addressesOf(envelope?.from)[0] ?? '';
@@ -244,8 +267,7 @@ function normalize(
   // more fields than were requested — so the References field is read out by name.
   const headerBlock = message.headers?.toString('utf8') ?? null;
   const referencesHeader = headerBlock ? extractHeaderField(headerBlock, 'references') : null;
-  // Both ids are bounded because both land under a btree index; see the constant.
-  const qualifiedId = boundIndexedId(`${mailboxPath}:${String(message.uid)}`);
+  const qualifiedId = qualifiedMessageId(mailboxPath, message.uid);
   const rawThreadId =
     resolveThreadId({
       messageId: envelope?.messageId ?? null,
@@ -268,6 +290,9 @@ function normalize(
     subject: envelope?.subject?.slice(0, MAX_SUBJECT_LENGTH) ?? null,
     hasAttachments: hasAttachments(message),
     sentAt: usableDate(envelope?.date) ?? usableDate(message.internalDate),
+    bodyText: body.bodyText,
+    bodyHtml: body.bodyHtml,
+    snippet: body.snippet,
   };
 }
 
@@ -356,6 +381,66 @@ async function resolveMailboxPaths(client: ImapFlow): Promise<string[]> {
   return paths;
 }
 
+/**
+ * Reads and parses the bodies of the messages this tick will deliver.
+ *
+ * A second pass, because the message cap is applied to what the first fetch returns
+ * rather than to what it asks for — and on a never-synced mailbox the first fetch asks
+ * for a whole backfill window. Requesting bodies there would download all of it to keep
+ * two hundred messages.
+ *
+ * Every failure degrades to null bodies rather than propagating. `fetchSince` catches per
+ * mailbox, so an escaping body error would cost this mailbox every header it had already
+ * read and leave its cursor unadvanced — a body nobody can read yet is not worth that.
+ * The loss is permanent: the cursor moves past these messages and they are never
+ * re-requested.
+ */
+async function fetchBodies(
+  client: ImapFlow,
+  delivered: readonly FetchMessageObject[],
+  mailboxPath: string,
+): Promise<Map<number, ParsedMessageBody>> {
+  const bodies = new Map<number, ParsedMessageBody>();
+
+  // A message whose reported size is over the cap is not asked for at all. Where the
+  // server reports no size — RFC822.SIZE is not universal — it is still asked for, and
+  // the byte range on the request below is what bounds it. Filtering those out instead
+  // would silently sync no body at all from such a server.
+  const wanted = delivered.filter(
+    (message) => message.size === undefined || message.size <= MAX_MESSAGE_SOURCE_BYTES,
+  );
+  if (wanted.length === 0) return bodies;
+
+  try {
+    for await (const message of client.fetch(
+      { uid: wanted.map((m) => String(m.uid)).join(',') },
+      // Bounded on the request, so a message the server never sized cannot arrive
+      // unbounded. A truncated document still parses; its body is simply cut short.
+      { uid: true, source: { maxLength: MAX_MESSAGE_SOURCE_BYTES } },
+      { uid: true },
+    )) {
+      if (!message.source) continue;
+      try {
+        bodies.set(message.uid, await parseMessageBody(message.source));
+      } catch (err) {
+        logger.warn(
+          // The stored id, not just a qualified one: it is bounded the same way, so a
+          // long mailbox path logs the digest the row actually carries.
+          { err, providerMessageId: qualifiedMessageId(mailboxPath, message.uid) },
+          'imapProvider: could not parse message body — storing headers without it',
+        );
+      }
+    }
+  } catch (err) {
+    logger.warn(
+      { err, mailbox: mailboxPath, messageCount: wanted.length },
+      'imapProvider: body fetch failed — storing these headers without bodies, permanently',
+    );
+  }
+
+  return bodies;
+}
+
 /** Reads one mailbox from its stored position, or from `since` when it has none. */
 async function fetchMailbox(
   client: ImapFlow,
@@ -416,6 +501,7 @@ async function fetchMailbox(
           envelope: true,
           internalDate: true,
           bodyStructure: true,
+          size: true,
           headers: ['references'],
         },
         { uid: true },
@@ -435,8 +521,12 @@ async function fetchMailbox(
     const truncated = collected.length > MAX_MESSAGES_PER_MAILBOX;
     const delivered = truncated ? collected.slice(0, MAX_MESSAGES_PER_MAILBOX) : collected;
 
+    const bodies = await fetchBodies(client, delivered, path);
+
     const messages = delivered
-      .map((message) => normalize(message, path, accountAddress))
+      .map((message) =>
+        normalize(message, path, accountAddress, bodies.get(message.uid) ?? EMPTY_MESSAGE_BODY),
+      )
       .filter((message): message is NormalizedMessage => message !== null);
 
     // The cursor only ever moves forward. A server can report a uidNext below where this
