@@ -196,16 +196,19 @@ export function serializeCursor(cursors: CursorByMailbox): string {
 
 /** Every address on a header, lowercased so matching is case-insensitive downstream. */
 function addressesOf(list: MessageAddressObject[] | undefined): string[] {
-  return (list ?? [])
-    .map((entry) => entry.address?.trim().toLowerCase())
-    .filter((address): address is string => Boolean(address))
-    .map(stripNul);
+  return (
+    (list ?? [])
+      // Stripped before the emptiness test, not after: trim() leaves NUL in place, so a
+      // NUL-only address would survive the filter and land as an empty array element.
+      .map((entry) => (entry.address ? stripNul(entry.address).trim().toLowerCase() : undefined))
+      .filter((address): address is string => Boolean(address))
+  );
 }
 
 /** The subject a `text` column can hold: bounded, and stripped of what Postgres rejects. */
 function subjectOf(subject: string | undefined): string | null {
   if (subject === undefined) return null;
-  return stripNul(truncate(subject, MAX_SUBJECT_LENGTH));
+  return truncate(stripNul(subject), MAX_SUBJECT_LENGTH);
 }
 
 /**
@@ -438,9 +441,11 @@ async function fetchBodies(
 
   if (wanted.length === 0) return bodies;
 
-  // A server may answer a fetch without the part it was asked for; counted for the same
-  // reason as the oversized skip above.
+  // Counted, not logged per message: a page holds two hundred, and automated mail —
+  // calendar invites, read receipts, delivery notifications — legitimately has no body.
   let withoutSource = 0;
+  let unreadable = 0;
+  let withoutBodyPart = 0;
 
   try {
     for await (const message of client.fetch(
@@ -454,12 +459,10 @@ async function fetchBodies(
         withoutSource += 1;
         continue;
       }
-      // The stored id, not just a qualified one: it is bounded the same way, so a long
-      // mailbox path logs the digest the row actually carries.
-      bodies.set(
-        message.uid,
-        await parseMessageBody(message.source, qualifiedMessageId(mailboxPath, message.uid)),
-      );
+      const parsed = await parseMessageBody(message.source);
+      if (parsed.noBodyReason === 'unreadable') unreadable += 1;
+      else if (parsed.noBodyReason === 'no-body-part') withoutBodyPart += 1;
+      bodies.set(message.uid, parsed);
     }
   } catch (err) {
     logger.warn(
@@ -468,10 +471,23 @@ async function fetchBodies(
     );
   }
 
-  if (withoutSource > 0) {
+  // Requested but never answered in any form: without this the shortfall is invisible,
+  // since a missing entry and a message with no body read the same downstream.
+  const unanswered = wanted.length - bodies.size - withoutSource;
+
+  if (unreadable > 0 || withoutSource > 0 || unanswered > 0) {
     logger.warn(
-      { mailbox: mailboxPath, withoutSource },
-      'imapProvider: server returned no body for some messages — storing their headers only',
+      { mailbox: mailboxPath, unreadable, withoutSource, unanswered },
+      'imapProvider: some messages stored headers without a body',
+    );
+  }
+
+  if (withoutBodyPart > 0) {
+    // Not a warning: a message with no body part is ordinary, and the count is here so a
+    // mailbox reporting nothing but these is still visible.
+    logger.debug(
+      { mailbox: mailboxPath, withoutBodyPart },
+      'imapProvider: messages carried no body part',
     );
   }
 

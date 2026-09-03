@@ -6,25 +6,9 @@
  * produces — is decided by the parser reading real bytes, so a mock would test the mock.
  */
 
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
-import logger from '../logger.js';
-
-import {
-  EMPTY_MESSAGE_BODY,
-  parseMessageBody,
-  snippetOf,
-  type ParsedMessageBody,
-} from '../services/mail/messageBody.js';
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
-/** Supplies the id every call needs, since these fixtures are about the document. */
-async function parse(source: Buffer): Promise<ParsedMessageBody> {
-  return parseMessageBody(source, 'INBOX:1');
-}
+import { EMPTY_MESSAGE_BODY, parseMessageBody, snippetOf } from '../services/mail/messageBody.js';
 
 /** Builds a document from raw header and body text, with the CRLF line endings MIME uses. */
 function mime(...lines: string[]): Buffer {
@@ -33,7 +17,7 @@ function mime(...lines: string[]): Buffer {
 
 describe('parseMessageBody — body selection', () => {
   it('reads a plain-text-only message', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Subject: Plain',
@@ -50,7 +34,7 @@ describe('parseMessageBody — body selection', () => {
   });
 
   it('prefers the text part of a multipart/alternative message', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: multipart/alternative; boundary="B"',
@@ -74,7 +58,7 @@ describe('parseMessageBody — body selection', () => {
   });
 
   it('converts HTML to text for a single-part HTML message', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: text/html; charset=utf-8',
@@ -90,7 +74,7 @@ describe('parseMessageBody — body selection', () => {
   });
 
   it('converts HTML to text for a multipart-wrapped HTML message', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: multipart/mixed; boundary="B"',
@@ -110,8 +94,43 @@ describe('parseMessageBody — body selection', () => {
     expect(body.snippet).toBe('Alpha Beta & gamma');
   });
 
+  it('stores no body when HTML converts to nothing but whitespace', async () => {
+    // A signature-only reply or a tracking pixel converts to a few newlines. Storing that
+    // puts text in the column with no snippet beside it, and the upsert's COALESCE would
+    // then never replace it with a real body.
+    const body = await parseMessageBody(
+      mime(
+        'From: sender@example.com',
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        '<p>&nbsp;</p><br><br>',
+        '',
+      ),
+    );
+
+    expect(body.bodyText).toBeNull();
+    expect(body.snippet).toBeNull();
+  });
+
+  it('stores no body when HTML converts to an empty string', async () => {
+    const body = await parseMessageBody(
+      mime(
+        'From: sender@example.com',
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        '<div> </div>',
+        '',
+      ),
+    );
+
+    expect(body.bodyText).toBeNull();
+    expect(body.snippet).toBeNull();
+  });
+
   it('stores no body for a message carrying neither a text nor an HTML part', async () => {
-    const body = await parse(mime('From: sender@example.com', 'Subject: Headers only', '', ''));
+    const body = await parseMessageBody(
+      mime('From: sender@example.com', 'Subject: Headers only', '', ''),
+    );
 
     expect(body).toEqual(EMPTY_MESSAGE_BODY);
   });
@@ -119,7 +138,7 @@ describe('parseMessageBody — body selection', () => {
 
 describe('parseMessageBody — transfer encodings and charsets', () => {
   it('decodes a non-UTF-8 charset', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       Buffer.concat([
         Buffer.from(
           ['From: sender@example.com', 'Content-Type: text/plain; charset=iso-8859-1', '', ''].join(
@@ -136,7 +155,7 @@ describe('parseMessageBody — transfer encodings and charsets', () => {
   });
 
   it('decodes quoted-printable, including a soft line break', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: text/plain; charset=utf-8',
@@ -152,7 +171,7 @@ describe('parseMessageBody — transfer encodings and charsets', () => {
   });
 
   it('decodes base64', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: text/plain; charset=utf-8',
@@ -169,7 +188,7 @@ describe('parseMessageBody — transfer encodings and charsets', () => {
 
 describe('parseMessageBody — structures a part-selector would get wrong', () => {
   it('does not take a text/plain attachment as the body', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: multipart/mixed; boundary="B"',
@@ -193,7 +212,7 @@ describe('parseMessageBody — structures a part-selector would get wrong', () =
   });
 
   it('does not take a forwarded message as the body', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: multipart/mixed; boundary="B"',
@@ -219,7 +238,7 @@ describe('parseMessageBody — structures a part-selector would get wrong', () =
   });
 
   it('reads an alternative nested inside a mixed container', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: multipart/mixed; boundary="A"',
@@ -247,52 +266,29 @@ describe('parseMessageBody — structures a part-selector would get wrong', () =
 });
 
 describe('parseMessageBody — malformed input', () => {
-  it('logs the provider id when a real document yields no body', async () => {
-    // The path a hostile message actually takes: simpleParser does not reject raw bytes,
-    // it returns no text and no HTML. Keying the log on the throw alone left this silent,
-    // which is the state the ticket requires be traceable.
-    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+  it('reports no-body-part for a document the parser could read', async () => {
+    // simpleParser does not reject raw bytes: it returns no text and no HTML, so nothing
+    // throws and only the reason separates this from a message that carried none.
+    const body = await parseMessageBody(Buffer.from([0x00, 0xff, 0xfe, 0x42, 0x00, 0x99]));
 
-    await parseMessageBody(Buffer.from([0x00, 0xff, 0xfe, 0x42, 0x00, 0x99]), 'INBOX:7');
-
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toMatchObject({ providerMessageId: 'INBOX:7' });
-  });
-
-  it('does not log for a message that legitimately carries no body', async () => {
-    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
-
-    await parse(Buffer.alloc(0));
-
-    expect(warn).not.toHaveBeenCalled();
+    expect(body.noBodyReason).toBe('no-body-part');
   });
 
   it('stores no body for a document of raw bytes', async () => {
-    const body = await parse(Buffer.from([0x00, 0xff, 0xfe, 0x42, 0x00, 0x99]));
+    const body = await parseMessageBody(Buffer.from([0x00, 0xff, 0xfe, 0x42, 0x00, 0x99]));
 
     expect(body).toEqual(EMPTY_MESSAGE_BODY);
   });
 
-  it('logs the provider id when the parser rejects the input outright', async () => {
+  it('reports unreadable when the parser rejects the input outright', async () => {
     // The failure has to be logged where it is caught: parseMessageBody never throws, so
     // a caller cannot log it, and a silently-null body is indistinguishable from a
     // message that carried none.
-    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
     const notADocument = 42 as unknown as Buffer;
 
-    await parseMessageBody(notADocument, 'INBOX:42');
+    const body = await parseMessageBody(notADocument);
 
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toMatchObject({ providerMessageId: 'INBOX:42' });
-  });
-
-  it('stores no body rather than throwing when handed something that is not a buffer', async () => {
-    // simpleParser rejects a non-stream input outright, where it merely returns undefined
-    // text for a malformed document. Both have to converge on null bodies: a throw here
-    // would cost every message in the mailbox the headers already read.
-    const notADocument = 42 as unknown as Buffer;
-
-    await expect(parse(notADocument)).resolves.toEqual(EMPTY_MESSAGE_BODY);
+    expect(body.noBodyReason).toBe('unreadable');
   });
 
   it('stores no body when the HTML converter overflows on deep nesting', async () => {
@@ -301,7 +297,7 @@ describe('parseMessageBody — malformed input', () => {
     // has to cover the conversion and not just the parse — and the HTML the parser had
     // already returned is kept, since only the text derivation failed.
     const depth = 20000;
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: multipart/mixed; boundary="B"',
@@ -322,7 +318,7 @@ describe('parseMessageBody — malformed input', () => {
 
   it('drops a NUL byte, which a text column cannot store', async () => {
     const nul = String.fromCharCode(0);
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: text/plain; charset=utf-8',
@@ -339,7 +335,7 @@ describe('parseMessageBody — malformed input', () => {
   });
 
   it('still reads the body of a message whose boundary is never closed', async () => {
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: multipart/mixed; boundary="B"',
@@ -398,7 +394,7 @@ describe('the stored body bound', () => {
   it('cuts an over-long body without splitting an astral character', async () => {
     // The emoji straddles the 65536-character bound, so a plain slice would leave a lone
     // high surrogate and the column would receive a replacement character.
-    const body = await parse(
+    const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
         'Content-Type: text/plain; charset=utf-8',
