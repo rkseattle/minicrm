@@ -1636,7 +1636,27 @@ describe('the body pass', () => {
     expect(message.toAddresses[0]).not.toContain(nul);
     expect(message.ccAddresses[0]).not.toContain(nul);
     expect(message.threadId).not.toContain(nul);
-    expect(message.providerMessageId).not.toContain(nul);
+  });
+
+  it('strips NUL from a Sent path, which reaches the provider message id', async () => {
+    // providerMessageId is built from the mailbox path, so only a path carrying NUL
+    // exercises the strip inside qualifiedMessageId; a NUL in the Message-ID reaches
+    // threadId instead. INBOX cannot carry one — the provider resolves it by exact name.
+    const nul = String.fromCharCode(0);
+    const { client } = makeFakeClient([
+      inbox([]),
+      {
+        path: `Sent${nul}Mail`,
+        uidValidity: '900',
+        uidNext: 6,
+        specialUse: '\\Sent',
+        messages: [{ uid: 5, from: ACCOUNT_ADDRESS, size: 100, source: sourceOf('body') }],
+      },
+    ]);
+
+    const [message] = (await providerWith(client).fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.providerMessageId).toBe('SentMail:5');
   });
 
   it('cuts an over-long subject without splitting an astral character', () => {
@@ -1677,7 +1697,7 @@ describe('the body pass', () => {
 
     expect(warn).toHaveBeenCalledWith(
       expect.objectContaining({ providerMessageId: 'INBOX:6' }),
-      expect.stringContaining('yielded no body'),
+      expect.stringContaining('stored no body text'),
     );
   });
 

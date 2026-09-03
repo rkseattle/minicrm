@@ -409,6 +409,10 @@ async function resolveMailboxPaths(client: ImapFlow): Promise<string[]> {
  * cap keeps the lowest UIDs — so an unpacked list sends two hundred numbers where two
  * would do. RFC 2683 §3.2.1.5 asks clients to keep a command line under 1000 octets, and
  * a server that refuses a long one would degrade every body in the page to null.
+ *
+ * Local rather than imapflow's own `packMessageRange`, which is not on the typed surface:
+ * reaching into the internal module for four lines would trade a typed dependency for an
+ * untyped one.
  */
 function packUidSet(uids: readonly number[]): string {
   const runs: string[] = [];
@@ -432,8 +436,12 @@ function packUidSet(uids: readonly number[]): string {
  * Every failure degrades to null bodies rather than propagating. `fetchSince` catches per
  * mailbox and restores its stored cursor, so an escaping body error would discard every
  * header the page had already read and re-read them next tick, repeatedly. Degrading
- * costs one body instead — permanently, since the cursor advances past the message and
- * nothing re-reads it under the same id.
+ * costs one body instead.
+ *
+ * That body is not re-fetched on the ordinary path — the cursor advances past it — but it
+ * is not unrecoverable: a mailbox whose page is discarded keeps its stored cursor and is
+ * re-read, and the upsert COALESCEs the body columns so the second read fills what the
+ * first left null.
  */
 async function fetchBodies(
   client: ImapFlow,
@@ -464,6 +472,7 @@ async function fetchBodies(
 
   // Counted rather than named: these are properties of the fetch, not of one message.
   let withoutSource = 0;
+  let fetchFailed = false;
 
   try {
     for await (const message of client.fetch(
@@ -486,7 +495,7 @@ async function fetchBodies(
       }
 
       const parsed = await parseMessageBody(message.source);
-      if (parsed.yieldedNoBody) {
+      if (parsed.lostText) {
         // Named individually rather than counted: the loss is permanent, and a count on a
         // two-hundred-message page cannot be chased back to the row that lost its body.
         // The parser cannot say whether the document was unreadable or genuinely carried
@@ -496,16 +505,20 @@ async function fetchBodies(
             mailbox: mailboxPath,
             providerMessageId: qualifiedMessageId(mailboxPath, message.uid),
             sourceBytes: message.source.length,
+            // At exactly the cap the document was cut, so a body part after the cut was
+            // never delivered — a different cause from one the parser could not read.
+            truncated: message.source.length === MAX_MESSAGE_SOURCE_BYTES,
           },
-          'imapProvider: message yielded no body — storing headers without one',
+          'imapProvider: message stored no body text — storing headers without it',
         );
       }
       bodies.set(message.uid, parsed);
     }
   } catch (err) {
+    fetchFailed = true;
     logger.warn(
       { err, mailbox: mailboxPath, messageCount: wanted.length },
-      'imapProvider: body fetch failed — storing these headers without bodies, permanently',
+      'imapProvider: body fetch failed — storing these headers without bodies',
     );
   }
 
@@ -513,7 +526,9 @@ async function fetchBodies(
   // since a missing entry and a message with no body read the same downstream.
   const unanswered = wanted.length - bodies.size - withoutSource;
 
-  if (withoutSource > 0 || unanswered > 0) {
+  // Suppressed when the fetch itself failed: that is already reported above, and every
+  // message would otherwise be counted a second time as unanswered.
+  if (!fetchFailed && (withoutSource > 0 || unanswered > 0)) {
     logger.warn(
       { mailbox: mailboxPath, withoutSource, unanswered },
       'imapProvider: some messages stored headers without a body',

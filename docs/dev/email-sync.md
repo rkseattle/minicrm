@@ -115,10 +115,12 @@ body does not depend on whether the sender used a multipart wrapper. Bodies are 
 of NUL, which a `text` column cannot hold and which would otherwise fail the whole page.
 
 Every body failure degrades to a null body rather than propagating — a parse error, a
-refused fetch, an oversized message. The message stores its headers, the cursor advances
-past it, and nothing fetches that body again: the only path that re-reads old mail is a
-UIDVALIDITY re-backfill, which renumbers every UID and so stores the message under a new
-`provider_message_id` rather than filling the old row.
+refused fetch, an oversized message. The message stores its headers and the cursor
+advances past it, so the ordinary path does not fetch that body again. It is not beyond
+recovery: a mailbox whose page is discarded keeps its stored cursor and is re-read, and
+the upsert COALESCEs the body columns, so a later read fills what the first left null. A
+UIDVALIDITY re-backfill does not, since it renumbers every UID and the message arrives
+under a new `provider_message_id`.
 
 Degrading is still right, because the alternative is worse. `fetchSince` catches per
 mailbox and restores that mailbox's stored cursor, so an escaping body error would discard
