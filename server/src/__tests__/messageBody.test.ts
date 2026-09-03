@@ -247,13 +247,33 @@ describe('parseMessageBody — structures a part-selector would get wrong', () =
 });
 
 describe('parseMessageBody — malformed input', () => {
+  it('logs the provider id when a real document yields no body', async () => {
+    // The path a hostile message actually takes: simpleParser does not reject raw bytes,
+    // it returns no text and no HTML. Keying the log on the throw alone left this silent,
+    // which is the state the ticket requires be traceable.
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+
+    await parseMessageBody(Buffer.from([0x00, 0xff, 0xfe, 0x42, 0x00, 0x99]), 'INBOX:7');
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatchObject({ providerMessageId: 'INBOX:7' });
+  });
+
+  it('does not log for a message that legitimately carries no body', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+
+    await parse(Buffer.alloc(0));
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it('stores no body for a document of raw bytes', async () => {
     const body = await parse(Buffer.from([0x00, 0xff, 0xfe, 0x42, 0x00, 0x99]));
 
     expect(body).toEqual(EMPTY_MESSAGE_BODY);
   });
 
-  it('logs the provider id when a document cannot be parsed', async () => {
+  it('logs the provider id when the parser rejects the input outright', async () => {
     // The failure has to be logged where it is caught: parseMessageBody never throws, so
     // a caller cannot log it, and a silently-null body is indistinguishable from a
     // message that carried none.

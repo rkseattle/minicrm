@@ -1607,6 +1607,57 @@ describe('the body pass', () => {
     expect(page.messages[0].subject).not.toContain(nul);
   });
 
+  it('strips NUL from every sender-controlled field, not only the subject', async () => {
+    // to_addresses and cc_addresses are text[], and Postgres rejects NUL in an array
+    // element with the same unmapped SQLSTATE that would fail the whole page.
+    const nul = String.fromCharCode(0);
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 5,
+          from: `send${nul}er@example.net`,
+          to: [`to${nul}@example.com`],
+          cc: [`cc${nul}@example.com`],
+          messageId: `<ro${nul}ot@example.net>`,
+          size: 100,
+          source: sourceOf('body'),
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.fromAddress).not.toContain(nul);
+    expect(message.toAddresses[0]).not.toContain(nul);
+    expect(message.ccAddresses[0]).not.toContain(nul);
+    expect(message.threadId).not.toContain(nul);
+    expect(message.providerMessageId).not.toContain(nul);
+  });
+
+  it('cuts an over-long subject without splitting an astral character', () => {
+    // Same hazard the body bound already guards: a lone high surrogate reaches the column
+    // as a replacement character rather than failing.
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 5,
+          from: 'someone@example.net',
+          subject: 'z'.repeat(997) + String.fromCodePoint(0x1f600) + 'tail',
+          size: 100,
+          source: sourceOf('body'),
+        },
+      ]),
+    ]);
+
+    return providerWith(client)
+      .fetchSince(AUTH, null, SINCE)
+      .then((page) => {
+        expect(page.messages[0].subject).toHaveLength(997);
+        expect(page.messages[0].subject?.endsWith('z')).toBe(true);
+      });
+  });
+
   it('makes no body fetch when the first pass delivered nothing', async () => {
     const { client, fetchCalls } = makeFakeClient([inbox([])]);
     const provider = providerWith(client);
