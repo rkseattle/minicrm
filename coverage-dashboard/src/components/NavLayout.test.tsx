@@ -7,6 +7,7 @@ import NavLayout from './NavLayout.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 import { QueryClient } from '@tanstack/react-query';
+import { COVERAGE_SUMMARY_QUERY_KEY } from '@/api/coverageReporting.js';
 
 function TestApp() {
   return (
@@ -96,5 +97,34 @@ describe('NavLayout — cache isolation between accounts', () => {
     await userEvent.click(screen.getByTestId('nav-logout-button'));
 
     await waitFor(() => expect(screen.getByTestId('login-page')).toBeInTheDocument());
+  });
+
+  it('does not navigate away when the logout request fails', async () => {
+    // LoginPage redirects an authenticated visitor back to '/', so navigating on
+    // a failed logout would land the user on the dashboard still signed in —
+    // having been told they signed out.
+    server.use(http.post('*/api/v1/auth/logout', () => new HttpResponse(null, { status: 500 })));
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    queryClient.setQueryData(COVERAGE_SUMMARY_QUERY_KEY, { pct: 91 });
+
+    renderWithProviders(
+      <Routes>
+        <Route element={<NavLayout />}>
+          <Route path="/" element={<div>Page content</div>} />
+        </Route>
+        <Route path="/login" element={<div data-testid="login-page">Login</div>} />
+      </Routes>,
+      { queryClient },
+    );
+
+    await userEvent.click(screen.getByTestId('nav-logout-button'));
+
+    await waitFor(() => expect(screen.getByTestId('nav-logout-error')).toBeInTheDocument());
+    expect(screen.queryByTestId('login-page')).not.toBeInTheDocument();
+    // The cache must survive too: the session did not end.
+    expect(queryClient.getQueryData(COVERAGE_SUMMARY_QUERY_KEY)).toEqual({ pct: 91 });
   });
 });

@@ -40,11 +40,17 @@ export default function LoginPage() {
       // Clear rather than invalidate: a previous account's cached coverage data
       // on this tab is readable on the next mount even while it refetches.
       queryClient.clear();
-      // Warm the auth entry before navigating, as the awaited invalidate used to:
-      // clear() empties it too, and ProtectedRoute renders a loading state on a
-      // miss. Failure here must not surface as a login error — the session cookie
-      // is already issued, so ProtectedRoute re-resolves it after navigating.
-      await queryClient.fetchQuery(authQueryOptions).catch(() => undefined);
+      // Warm the auth entry before navigating: clear() emptied it, and
+      // ProtectedRoute renders a loading state on a miss. This is a latency
+      // optimization, not a correctness step — ProtectedRoute refetches on
+      // arrival either way — so a failure here must not be reported as a login
+      // error. It is logged rather than discarded: silently swallowing it would
+      // hide a /auth/me outage behind nothing worse than a brief spinner.
+      try {
+        await queryClient.fetchQuery(authQueryOptions);
+      } catch (warmupErr) {
+        console.warn('Post-login auth warm-up failed; continuing.', warmupErr);
+      }
       const from = (location.state as LocationState | null)?.from?.pathname ?? '/';
       navigate(from, { replace: true });
     } catch (err) {
