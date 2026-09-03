@@ -190,6 +190,11 @@ email_messages
     legally run to 998 octets.
   is_private  ← defaulted false, no writer yet. Excluded from the sync upsert's
     update list: a user's own decision, which nothing upstream may overwrite.
+  message_body_text  message_body_html  message_snippet  ← prefixed because the AI PII
+    filter matches bare column names at every depth, and notes.body_text is a live
+    column the note tools deliberately surface. message_body_html is stored exactly as
+    the sender wrote it, unsanitized: whatever first renders it must sanitize there,
+    since doing it at write time would discard markup a renderer needs.
 
 email_sync_jobs
   status(pending|running|complete|failed)

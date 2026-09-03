@@ -89,6 +89,9 @@ erDiagram
   timestamp_with_time_zone sent_at ""
   boolean is_private "Restricts a message to the mailbox owner; enforced at the service layer."
   timestamp_with_time_zone created_at ""
+  text message_body_text "Plain-text body. Taken from the text part where one exists, otherwise converted from the HTML part so a message reads the same either way. Null when neither part exists or the document could not be parsed."
+  text message_body_html "HTML body exactly as the sender wrote it, stored UNSANITIZED. Nothing renders it today; whatever first does must sanitize at render, since sanitizing here would discard markup a renderer needs."
+  text message_snippet "First 200 characters of the plain-text body with whitespace collapsed, for list views that must not load a whole body. Derived from message_body_text, so it is null whenever that is."
 }
 "public.email_sync_jobs" {
   uuid id ""

@@ -2,7 +2,7 @@
 
 ## Description
 
-Messages synced from a connected mailbox. Headers and metadata; bodies are not stored.
+Messages synced from a connected mailbox. Headers, metadata, and body text. All three body columns are nullable: a message may store its headers with no body.
 
 ## Columns
 
@@ -21,6 +21,9 @@ Messages synced from a connected mailbox. Headers and metadata; bodies are not s
 | sent_at | timestamp with time zone |  | true |  |  |  |
 | is_private | boolean | false | false |  |  | Restricts a message to the mailbox owner; enforced at the service layer. |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| message_body_text | text |  | true |  |  | Plain-text body. Taken from the text part where one exists, otherwise converted from the HTML part so a message reads the same either way. Null when neither part exists or the document could not be parsed. |
+| message_body_html | text |  | true |  |  | HTML body exactly as the sender wrote it, stored UNSANITIZED. Nothing renders it today; whatever first does must sanitize at render, since sanitizing here would discard markup a renderer needs. |
+| message_snippet | text |  | true |  |  | First 200 characters of the plain-text body with whitespace collapsed, for list views that must not load a whole body. Derived from message_body_text, so it is null whenever that is. |
 
 ## Constraints
 
@@ -62,6 +65,9 @@ erDiagram
   timestamp_with_time_zone sent_at ""
   boolean is_private "Restricts a message to the mailbox owner; enforced at the service layer."
   timestamp_with_time_zone created_at ""
+  text message_body_text "Plain-text body. Taken from the text part where one exists, otherwise converted from the HTML part so a message reads the same either way. Null when neither part exists or the document could not be parsed."
+  text message_body_html "HTML body exactly as the sender wrote it, stored UNSANITIZED. Nothing renders it today; whatever first does must sanitize at render, since sanitizing here would discard markup a renderer needs."
+  text message_snippet "First 200 characters of the plain-text body with whitespace collapsed, for list views that must not load a whole body. Derived from message_body_text, so it is null whenever that is."
 }
 "public.connected_accounts" {
   uuid id ""

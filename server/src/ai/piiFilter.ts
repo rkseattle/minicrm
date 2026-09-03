@@ -79,6 +79,13 @@ export const ALWAYS_EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   'card_number',
   'cvv',
   'account_number',
+
+  // Synced mailbox content. Prefixed at the column, because this set matches bare names
+  // at every depth and bare `body_text` would also strip `notes.body_text`, which the
+  // note tools deliberately surface.
+  'message_body_text',
+  'message_body_html',
+  'message_snippet',
 ]);
 
 // ── Admin-configurable exclusion cache ────────────────────────────
