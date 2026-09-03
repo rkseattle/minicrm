@@ -28,6 +28,17 @@ export interface NormalizedMessage {
   hasAttachments: boolean;
   /** When the message was sent, or null when the provider reported no usable date. */
   sentAt: Date | null;
+  /**
+   * Plain-text body. Taken from the message's text part, or converted from its HTML when
+   * it has only that, so the same content reads the same either way. Null when the
+   * message carries neither, when it exceeded the body size cap, or when it would not
+   * parse.
+   */
+  bodyText: string | null;
+  /** HTML body as the sender wrote it, unsanitized. Null on the same terms as bodyText. */
+  bodyHtml: string | null;
+  /** Leading characters of bodyText, whitespace collapsed. Null whenever bodyText is. */
+  snippet: string | null;
 }
 
 /** One page of history, plus where to resume. */

@@ -36,6 +36,10 @@ interface FakeMessage {
   /** The server's own INTERNALDATE, which is a different field from the header date. */
   internalDate?: Date;
   bodyStructure?: unknown;
+  /** RFC822.SIZE, which the server reports without transferring the body. */
+  size?: number;
+  /** Raw MIME the server returns for BODY.PEEK[], when the body pass asks for it. */
+  source?: string;
 }
 
 interface FakeMailbox {
@@ -78,9 +82,17 @@ function selectMessages(messages: FakeMessage[], query: unknown): FakeMessage[] 
   if (uidRange) {
     const highestUid = messages.reduce((highest, m) => Math.max(highest, m.uid), 0);
     const bound = (token: string): number => (token === '*' ? highestUid : Number(token));
-    const [start, end = start] = uidRange.split(':').map(bound);
-    const [low, high] = start <= end ? [start, end] : [end, start];
-    return messages.filter((m) => m.uid >= low && m.uid <= high);
+    // RFC 3501 §9 sequence-set: comma-separated items, each a single UID or a range.
+    // Splitting on ':' alone turns "3,7,11" into NaN, which matches nothing silently.
+    const selected = new Set<number>();
+    for (const item of uidRange.split(',')) {
+      const [start, end = start] = item.split(':').map(bound);
+      const [low, high] = start <= end ? [start, end] : [end, start];
+      for (const m of messages) {
+        if (m.uid >= low && m.uid <= high) selected.add(m.uid);
+      }
+    }
+    return messages.filter((m) => selected.has(m.uid));
   }
 
   const since = (query as { since?: Date }).since;
@@ -106,10 +118,10 @@ function selectMessages(messages: FakeMessage[], query: unknown): FakeMessage[] 
  */
 function makeFakeClient(mailboxes: FakeMailbox[]): {
   client: ImapFlow;
-  fetchCalls: Array<{ path: string; query: unknown }>;
+  fetchCalls: Array<{ path: string; query: unknown; options?: unknown }>;
   loggedOut: () => boolean;
 } {
-  const fetchCalls: Array<{ path: string; query: unknown }> = [];
+  const fetchCalls: Array<{ path: string; query: unknown; options?: unknown }> = [];
   let didLogout = false;
   let open: FakeMailbox | undefined;
 
@@ -160,13 +172,25 @@ function makeFakeClient(mailboxes: FakeMailbox[]): {
         ? { path: open.path, uidValidity: BigInt(open.uidValidity), uidNext: open.uidNext }
         : false;
     },
-    fetch: (query: unknown) => {
+    // The options argument is honoured rather than ignored: a fake that returns every
+    // field regardless of what was asked cannot fail when the provider requests the wrong
+    // one, which is the defect the body pass is most likely to have.
+    fetch: (query: unknown, options?: unknown) => {
       const mailbox = open;
-      fetchCalls.push({ path: mailbox?.path ?? '(none)', query });
+      fetchCalls.push({ path: mailbox?.path ?? '(none)', query, options });
+      const wants = (options ?? {}) as { source?: boolean; size?: boolean };
       const selected = selectMessages(mailbox?.messages ?? [], query);
       const messages = mailbox?.arrivalOrder === 'descending' ? [...selected].reverse() : selected;
       return (async function* () {
         for (const m of messages) {
+          if (wants.source) {
+            // The body pass asks for the raw document and nothing else.
+            yield {
+              uid: m.uid,
+              source: m.source === undefined ? undefined : Buffer.from(m.source, 'utf8'),
+            };
+            continue;
+          }
           yield {
             uid: m.uid,
             envelope: {
@@ -180,6 +204,7 @@ function makeFakeClient(mailboxes: FakeMailbox[]): {
             },
             internalDate: m.internalDate ?? m.date,
             bodyStructure: m.bodyStructure,
+            size: wants.size ? m.size : undefined,
             headers: m.referencesHeader ? Buffer.from(m.referencesHeader, 'utf8') : undefined,
           };
         }
@@ -1421,5 +1446,175 @@ describe('connection handling', () => {
         SINCE,
       ),
     ).rejects.toThrow(/not an IMAP account/);
+  });
+});
+
+describe('the body pass', () => {
+  /** A minimal message document, since these tests are about which UIDs get fetched. */
+  function sourceOf(text: string): string {
+    return ['Content-Type: text/plain; charset=utf-8', '', text, ''].join('\r\n');
+  }
+
+  /** The queries of every fetch that asked for message source. */
+  function bodyFetches(
+    calls: Array<{ query: unknown; options?: unknown }>,
+  ): Array<{ query: unknown }> {
+    return calls.filter((call) => (call.options as { source?: boolean } | undefined)?.source);
+  }
+
+  it('parses the body of a delivered message onto the normalized message', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 5,
+          from: 'someone@example.net',
+          messageId: '<a@example.net>',
+          size: 400,
+          source: sourceOf('The body of the message.'),
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages[0].bodyText?.trim()).toBe('The body of the message.');
+    expect(page.messages[0].snippet).toBe('The body of the message.');
+  });
+
+  it('asks for the body only of the UIDs the first pass delivered', async () => {
+    const { client, fetchCalls } = makeFakeClient([
+      inbox(
+        [
+          { uid: 7, from: 'a@example.net', size: 100, source: sourceOf('seven') },
+          { uid: 11, from: 'b@example.net', size: 100, source: sourceOf('eleven') },
+        ],
+        { uidNext: 12 },
+      ),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    // A comma-separated sequence set, not a range: delivered UIDs are not contiguous.
+    expect(bodyFetches(fetchCalls)).toHaveLength(1);
+    expect(bodyFetches(fetchCalls)[0].query).toEqual({ uid: '7,11' });
+    expect(page.messages.map((m) => m.bodyText?.trim())).toEqual(['seven', 'eleven']);
+  });
+
+  it('does not request a message whose reported size is over the cap', async () => {
+    const { client, fetchCalls } = makeFakeClient([
+      inbox([
+        { uid: 3, from: 'small@example.net', size: 500, source: sourceOf('kept') },
+        {
+          uid: 4,
+          from: 'huge@example.net',
+          subject: 'Large attachment',
+          size: 3_000_000,
+          source: sourceOf('never asked for'),
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(bodyFetches(fetchCalls)[0].query).toEqual({ uid: '3' });
+    const oversized = page.messages.find((m) => m.fromAddress === 'huge@example.net');
+    expect(oversized?.bodyText).toBeNull();
+    expect(oversized?.snippet).toBeNull();
+    // Its headers still store: an oversized body costs the body, not the message.
+    expect(oversized?.subject).toBe('Large attachment');
+  });
+
+  it('still fetches a body for a message the server reported no size for', async () => {
+    // RFC822.SIZE is not universal. Filtering unsized messages out would silently store
+    // no body at all from such a server; the request carries its own byte bound instead.
+    const { client, fetchCalls } = makeFakeClient([
+      inbox([{ uid: 5, from: 'someone@example.net', source: sourceOf('unsized but read') }]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(bodyFetches(fetchCalls)[0].query).toEqual({ uid: '5' });
+    expect(page.messages[0].bodyText?.trim()).toBe('unsized but read');
+  });
+
+  it('stores headers without bodies when the whole body fetch fails', async () => {
+    const { client } = makeFakeClient([
+      inbox([{ uid: 5, from: 'someone@example.net', size: 100, source: sourceOf('never seen') }]),
+    ]);
+    // A Proxy rather than a spread: the fake exposes `mailbox` as a getter, and spreading
+    // would freeze it at its pre-open value so no mailbox ever opens.
+    const failing = new Proxy(client, {
+      get(target, prop, receiver) {
+        if (prop !== 'fetch') return Reflect.get(target, prop, receiver);
+        return (query: unknown, options?: unknown) => {
+          if ((options as { source?: unknown } | undefined)?.source) {
+            throw new Error('server refused BODY.PEEK[]');
+          }
+          return (Reflect.get(target, 'fetch', receiver) as (q: unknown, o?: unknown) => unknown)(
+            query,
+            options,
+          );
+        };
+      },
+    });
+    const provider = providerWith(failing);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    // The headers the first pass already read must survive a body failure.
+    expect(page.messages).toHaveLength(1);
+    expect(page.messages[0].bodyText).toBeNull();
+    expect(page.messages[0].snippet).toBeNull();
+  });
+
+  it('makes no body fetch when the first pass delivered nothing', async () => {
+    const { client, fetchCalls } = makeFakeClient([inbox([])]);
+    const provider = providerWith(client);
+
+    await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(bodyFetches(fetchCalls)).toHaveLength(0);
+  });
+
+  it('stores headers without a body for a message that carries no text', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        { uid: 5, from: 'good@example.net', size: 100, source: sourceOf('readable') },
+        { uid: 6, from: 'bad@example.net', size: 100, source: '\u0000\u00ff not a document' },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages).toHaveLength(2);
+    expect(page.messages[0].bodyText?.trim()).toBe('readable');
+    expect(page.messages[1].bodyText).toBeNull();
+  });
+
+  it('still derives the thread id from the References header block', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 5,
+          from: 'someone@example.net',
+          messageId: '<reply@example.net>',
+          referencesHeader: 'References: <root@example.net> <mid@example.net>\r\n',
+          size: 100,
+          source: sourceOf('body'),
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    // The body pass must not disturb the header block the first pass read.
+    expect(page.messages[0].threadId).toBe('root@example.net');
+    expect(page.messages[0].bodyText?.trim()).toBe('body');
   });
 });

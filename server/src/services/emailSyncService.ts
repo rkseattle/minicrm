@@ -87,7 +87,7 @@ const SYSTEM_ACTOR: AuditActor = {
 };
 
 /** Columns in the message insert, for the bind-parameter arithmetic below. */
-const MESSAGE_INSERT_COLUMN_COUNT = 10;
+const MESSAGE_INSERT_COLUMN_COUNT = 13;
 
 /**
  * Rows per INSERT.
@@ -132,6 +132,11 @@ function collapseDuplicateIds(messages: readonly NormalizedMessage[]): Normalize
  * date resolved. `is_private` is deliberately not in the update list: it is a user's own
  * decision about a message and nothing upstream may overwrite it.
  *
+ * The body columns are COALESCEd rather than assigned. The envelope is always fetched, so
+ * a subject cannot regress to null; a body can — an oversized message, a refused body
+ * fetch, a document that would not parse — and a bare assignment would erase a body that
+ * had already landed.
+ *
  * @returns the number of rows this call CREATED. Updates are excluded so a job's
  *   progress counts messages rather than write operations — a re-read of the same page
  *   would otherwise inflate it without a single new message arriving.
@@ -160,14 +165,23 @@ async function storeMessages(
         message.subject,
         message.hasAttachments,
         message.sentAt,
+        message.bodyText,
+        message.bodyHtml,
+        message.snippet,
       );
-      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10})`;
+      // Generated rather than written out, so the count and the placeholders cannot drift.
+      const placeholders = Array.from(
+        { length: MESSAGE_INSERT_COLUMN_COUNT },
+        (_, offsetInRow) => `$${base + offsetInRow + 1}`,
+      );
+      return `(${placeholders.join(', ')})`;
     });
 
     const result = await client.query<{ inserted: boolean }>(
       `INSERT INTO email_messages
          (connected_account_id, provider_message_id, thread_id, direction, from_address,
-          to_addresses, cc_addresses, subject, has_attachments, sent_at)
+          to_addresses, cc_addresses, subject, has_attachments, sent_at,
+          message_body_text, message_body_html, message_snippet)
        VALUES ${tuples.join(', ')}
        ON CONFLICT (connected_account_id, provider_message_id) DO UPDATE
          SET thread_id = EXCLUDED.thread_id,
@@ -177,7 +191,13 @@ async function storeMessages(
              cc_addresses = EXCLUDED.cc_addresses,
              subject = EXCLUDED.subject,
              has_attachments = EXCLUDED.has_attachments,
-             sent_at = EXCLUDED.sent_at
+             sent_at = EXCLUDED.sent_at,
+             message_body_text =
+               COALESCE(EXCLUDED.message_body_text, email_messages.message_body_text),
+             message_body_html =
+               COALESCE(EXCLUDED.message_body_html, email_messages.message_body_html),
+             message_snippet =
+               COALESCE(EXCLUDED.message_snippet, email_messages.message_snippet)
        RETURNING (xmax = 0) AS inserted`,
       values,
     );
