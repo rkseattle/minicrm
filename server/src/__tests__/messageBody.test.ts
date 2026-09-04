@@ -15,6 +15,7 @@ import { describe, it, expect } from 'vitest';
 import {
   boundIndexedId,
   EMPTY_MESSAGE_BODY,
+  parseMessage,
   parseMessageBody,
   snippetOf,
   subjectOf,
@@ -445,5 +446,122 @@ describe('subjectOf', () => {
     // The provider suite covers the bound and the surrogate rule through a real message;
     // an absent header is the one case that never reaches it.
     expect(subjectOf(undefined)).toBeNull();
+  });
+});
+
+describe('parseMessage', () => {
+  it('reads the header fields a stored message needs', async () => {
+    const parsed = await parseMessage(
+      mime(
+        'From: Sender <Sender@Example.COM>',
+        'To: one@example.net, two@example.net',
+        'Cc: three@example.net',
+        'Subject: Quarterly review',
+        'Date: Tue, 02 Jun 2026 10:00:00 +0000',
+        'Message-ID: <root@example.net>',
+        'Content-Type: text/plain',
+        '',
+        'Body text.',
+        '',
+      ),
+    );
+
+    expect(parsed.fromAddress).toBe('sender@example.com');
+    expect(parsed.toAddresses).toEqual(['one@example.net', 'two@example.net']);
+    expect(parsed.ccAddresses).toEqual(['three@example.net']);
+    expect(parsed.subject).toBe('Quarterly review');
+    expect(parsed.sentAt?.toISOString()).toBe('2026-06-02T10:00:00.000Z');
+    expect(parsed.bodyText?.trim()).toBe('Body text.');
+  });
+
+  it('reports an attachment-dispositioned part', async () => {
+    const parsed = await parseMessage(
+      mime(
+        'From: a@b.c',
+        'Content-Type: multipart/mixed; boundary="b"',
+        '',
+        '--b',
+        'Content-Type: text/plain',
+        '',
+        'see attached',
+        '--b',
+        'Content-Type: application/pdf; name="report.pdf"',
+        'Content-Disposition: attachment; filename="report.pdf"',
+        'Content-Transfer-Encoding: base64',
+        '',
+        'JVBERi0xLjQK',
+        '--b--',
+        '',
+      ),
+    );
+
+    expect(parsed.hasAttachments).toBe(true);
+  });
+
+  it('does not count an embedded image a cid: URL references', async () => {
+    // `related` marks body content rather than something to download, so a signature logo
+    // must not flag every message in a thread as carrying an attachment.
+    const parsed = await parseMessage(
+      mime(
+        'From: a@b.c',
+        'Content-Type: multipart/related; boundary="r"',
+        '',
+        '--r',
+        'Content-Type: text/html',
+        '',
+        '<p>hi <img src="cid:logo"></p>',
+        '--r',
+        'Content-Type: image/png',
+        'Content-ID: <logo>',
+        'Content-Transfer-Encoding: base64',
+        '',
+        'iVBORw0KGgo=',
+        '--r--',
+        '',
+      ),
+    );
+
+    expect(parsed.hasAttachments).toBe(false);
+  });
+
+  it('surfaces the threading headers a provider without a native id falls back on', async () => {
+    const parsed = await parseMessage(
+      mime(
+        'From: a@b.c',
+        'Message-ID: <reply@example.net>',
+        'In-Reply-To: <parent@example.net>',
+        'References: <root@example.net> <parent@example.net>',
+        'Content-Type: text/plain',
+        '',
+        'Reply body.',
+        '',
+      ),
+    );
+
+    expect(parsed.threading.messageId).toContain('reply@example.net');
+    expect(parsed.threading.references).toContain('root@example.net');
+  });
+
+  it('keeps headers and drops the body when asked for headers only', async () => {
+    // What an oversized message stores: the correspondence is still worth recording, and
+    // dropping the row would lose it permanently once the cursor moves past it.
+    const parsed = await parseMessage(
+      mime('From: a@b.c', 'Subject: Big one', 'Content-Type: text/plain', '', 'a body', ''),
+      { headersOnly: true },
+    );
+
+    expect(parsed.fromAddress).toBe('a@b.c');
+    expect(parsed.subject).toBe('Big one');
+    expect(parsed.bodyText).toBeNull();
+    expect(parsed.bodyHtml).toBeNull();
+    expect(parsed.snippet).toBeNull();
+  });
+
+  it('returns empty fields for a document that will not parse', async () => {
+    const parsed = await parseMessage(Buffer.from([0x00, 0xff, 0xfe, 0x42]));
+
+    expect(parsed.fromAddress).toBe('');
+    expect(parsed.bodyText).toBeNull();
+    expect(parsed.hasAttachments).toBe(false);
   });
 });

@@ -15,7 +15,10 @@
 import { createHash } from 'node:crypto';
 
 import { simpleParser } from 'mailparser';
+import type { AddressObject } from 'mailparser';
 import { htmlToText } from 'html-to-text';
+
+import type { ThreadingHeaders } from './threading.js';
 
 /** Characters of body text kept for a list view that must not load a whole body. */
 const SNIPPET_LENGTH = 200;
@@ -201,45 +204,117 @@ function bodyTextOf(text: string | undefined, html: string | false): string | nu
   return null;
 }
 
+/** Everything a provider needs from one document, parsed once. */
+export interface ParsedMessage extends ParsedMessageBody {
+  /** Sender address, lowercased. Empty when the document carries none. */
+  fromAddress: string;
+  toAddresses: string[];
+  ccAddresses: string[];
+  subject: string | null;
+  /** Send time, or null when the document carried no usable date. */
+  sentAt: Date | null;
+  hasAttachments: boolean;
+  /** RFC 5322 headers, for a provider with no native thread id to fall back on. */
+  threading: ThreadingHeaders;
+}
+
+/** An address list, lowercased and stripped of what a text column cannot hold. */
+function addressesOf(value: AddressObject | AddressObject[] | undefined): string[] {
+  const groups = value === undefined ? [] : Array.isArray(value) ? value : [value];
+  return groups
+    .flatMap((group) => group.value)
+    .map((entry) => (entry.address ? stripNul(entry.address).trim().toLowerCase() : ''))
+    .filter((address) => address !== '');
+}
+
+/** A date the database will accept, or null. An Invalid Date reaches timestamptz as neither. */
+function usableDate(value: Date | undefined): Date | null {
+  return value instanceof Date && !Number.isNaN(value.getTime()) ? value : null;
+}
+
 /**
- * Parses one raw MIME document.
+ * Parses one document into every field a stored message needs.
  *
- * Never throws, and the try/catch is what makes that true rather than any promise from
- * the libraries: simpleParser rejects input that is not a document at all, and htmlToText
- * reads sender-controlled markup. Both have to converge on null bodies, because the
- * alternative is one unreadable message costing its whole mailbox the headers already
- * read.
+ * One parse, not two: simpleParser is the most expensive thing a driver does per message,
+ * and it already returns the headers a caller would otherwise re-read the document for.
  *
- * A lost body is reported through `lostText` rather than thrown: a caller cannot catch
- * what never throws, and only the caller knows which message this was.
+ * Never throws, for the reason parseMessageBody does not — a caller cannot catch what an
+ * unreadable document does to a page it shares with well-formed messages.
  */
-export async function parseMessageBody(source: Buffer): Promise<ParsedMessageBody> {
-  // Held outside the try so a failed text conversion still stores the HTML the parser
-  // had already returned: it is the more faithful record of the two.
+export async function parseMessage(
+  source: Buffer,
+  options?: { headersOnly?: boolean },
+): Promise<ParsedMessage> {
+  const empty: ParsedMessage = {
+    ...EMPTY_MESSAGE_BODY,
+    fromAddress: '',
+    toAddresses: [],
+    ccAddresses: [],
+    subject: null,
+    sentAt: null,
+    hasAttachments: false,
+    threading: {},
+  };
+
+  // Held outside the try so a failed text conversion still stores the HTML the parser had
+  // already returned: it is the more faithful record of the two.
   let bodyHtml: string | null = null;
   try {
     // Neither output is read, and each costs memory proportional to the document.
     // `skipTextLinks` is deliberately absent: the library returns on `skipTextToHtml`
     // before it is ever consulted, so setting it would be dead configuration.
-    const parsed = await simpleParser(source, {
-      skipTextToHtml: true,
-      skipImageLinks: true,
-    });
+    const parsed = await simpleParser(source, { skipTextToHtml: true, skipImageLinks: true });
+
     // Inside the try, not after it: htmlToText recurses over sender-controlled markup and
     // overflows the stack on deep nesting, which a 220 KB document already reaches.
     // `html` is false, not undefined, when a message has no HTML part.
-    bodyHtml = typeof parsed.html === 'string' && parsed.html !== '' ? storable(parsed.html) : null;
-    const bodyText = bodyTextOf(parsed.text, parsed.html);
+    //
+    // A caller that asked for headers only still gets them: a message too large to store
+    // a body for is worth keeping as correspondence, and dropping it would lose it
+    // permanently — the cursor advances past it either way. The document is parsed either
+    // way, since the headers come out of the same pass; this bounds the columns, not the work.
+    bodyHtml =
+      !options?.headersOnly && typeof parsed.html === 'string' && parsed.html !== ''
+        ? storable(parsed.html)
+        : null;
+    const bodyText = options?.headersOnly ? null : bodyTextOf(parsed.text, parsed.html);
 
     return {
       bodyText,
       bodyHtml,
       snippet: snippetOf(bodyText),
       lostText: bodyText === null,
+      fromAddress: addressesOf(parsed.from)[0] ?? '',
+      toAddresses: addressesOf(parsed.to),
+      ccAddresses: addressesOf(parsed.cc),
+      subject: subjectOf(parsed.subject),
+      sentAt: usableDate(parsed.date),
+      // `related` marks a part the parser says should not be offered for download — an
+      // embedded image a cid: URL references — so those are body content, not attachments.
+      hasAttachments: parsed.attachments.some((part) => !part.related),
+      threading: {
+        messageId: parsed.messageId ?? null,
+        inReplyTo: parsed.inReplyTo ?? null,
+        references: Array.isArray(parsed.references)
+          ? parsed.references.join(' ')
+          : (parsed.references ?? null),
+      },
     };
   } catch {
     // lostText stays true even when the HTML survived: the text and snippet columns are
     // null either way, and that is what the caller reports.
-    return { ...EMPTY_MESSAGE_BODY, bodyHtml };
+    return { ...empty, bodyHtml };
   }
+}
+
+/**
+ * Parses one raw MIME document for its body fields alone.
+ *
+ * Delegates to parseMessage rather than parsing again: two implementations of the same
+ * rules is how two drivers start storing the same message differently, which is the whole
+ * reason these rules live in one module.
+ */
+export async function parseMessageBody(source: Buffer): Promise<ParsedMessageBody> {
+  const { bodyText, bodyHtml, snippet, lostText } = await parseMessage(source);
+  return { bodyText, bodyHtml, snippet, lostText };
 }
