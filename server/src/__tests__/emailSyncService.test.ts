@@ -9,8 +9,14 @@
 import 'dotenv/config';
 
 import pool from '../db.js';
+import type { ConnectedAccountProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 import { createUser } from '../services/userService.js';
-import { createImapAccount } from '../services/connectedAccountService.js';
+import {
+  claimAccountsDueForSync,
+  createImapAccount,
+  MAX_SYNC_FAILURES,
+  upsertOAuthAccount,
+} from '../services/connectedAccountService.js';
 import type { ClaimedSyncAccount } from '../services/connectedAccountService.js';
 import type {
   MailProvider,
@@ -85,7 +91,7 @@ async function claimedFor(accountId: string): Promise<ClaimedSyncAccount> {
   const row = await pool.query<{
     id: string;
     user_id: string;
-    provider: 'imap';
+    provider: ConnectedAccountProvider;
     email_address: string;
     sync_cursor: string | null;
     sync_failure_count: number;
@@ -207,7 +213,11 @@ describe('syncOneAccount', () => {
       }),
     ]);
 
-    await syncOneAccount(await claimedFor(account.id), provider);
+    await syncOneAccount(await claimedFor(account.id), provider, async () => ({
+      accessToken: 'rotated',
+      refreshToken: 'refresh-two',
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    }));
 
     const [row] = await storedBodies(account.id);
     expect(row.message_body_text).toBe('The plain text of the message.');
@@ -219,7 +229,11 @@ describe('syncOneAccount', () => {
     const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
     const provider = fakeProvider([page({ messages: [message()] })]);
 
-    await syncOneAccount(await claimedFor(account.id), provider);
+    await syncOneAccount(await claimedFor(account.id), provider, async () => ({
+      accessToken: 'rotated',
+      refreshToken: 'refresh-two',
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    }));
 
     const [row] = await storedBodies(account.id);
     expect(row.message_body_text).toBeNull();
@@ -266,8 +280,16 @@ describe('syncOneAccount', () => {
     const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
     const provider = fakeProvider([page({ messages: [message()] })]);
 
-    await syncOneAccount(await claimedFor(account.id), provider);
-    await syncOneAccount(await claimedFor(account.id), provider);
+    await syncOneAccount(await claimedFor(account.id), provider, async () => ({
+      accessToken: 'rotated',
+      refreshToken: 'refresh-two',
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    }));
+    await syncOneAccount(await claimedFor(account.id), provider, async () => ({
+      accessToken: 'rotated',
+      refreshToken: 'refresh-two',
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    }));
 
     expect(await storedMessages(account.id)).toHaveLength(1);
   });
@@ -772,5 +794,97 @@ describe('bounded backfill', () => {
     await syncOneAccount(await claimedFor(account.id), fakeProvider([page()]));
 
     expect(await latestJob(account.id)).toBeNull();
+  });
+});
+
+describe('syncOneAccount — OAuth credentials', () => {
+  it('refreshes an expired token before the provider is asked for a page', async () => {
+    // The AC's "token refresh during a sync" case, end to end: the engine passes the real
+    // refresh seam through getAccountAuthForSync, so a stale token is rotated and stored
+    // before fetchSince ever runs.
+    const account = await upsertOAuthAccount(
+      {
+        userId: ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-oauth-sync@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'stale',
+          refresh_token: 'refresh-one',
+          expires_at: Date.now() - 1000,
+        },
+        grantedScopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+      },
+      ACTOR,
+    );
+
+    let seenToken: string | null = null;
+    const provider: MailProvider = {
+      async fetchSince(auth) {
+        seenToken = auth.kind === 'oauth' ? auth.access_token : null;
+        return { messages: [], cursor: 'h-1', cursorInvalid: false, hasMore: false };
+      },
+    };
+
+    await syncOneAccount(await claimedFor(account.id), provider, async () => ({
+      accessToken: 'rotated',
+      refreshToken: 'refresh-two',
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    }));
+
+    expect(seenToken).toBe('rotated');
+  });
+
+  it('parks a mailbox whose refresh token the provider revoked', async () => {
+    // A revoked token is not transient: leaving the row claimable means asking the same
+    // dead question every lease and writing an audit entry each time. Two ticks is what
+    // distinguishes "parked" from "retried with a longer delay".
+    const account = await upsertOAuthAccount(
+      {
+        userId: ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-revoked@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'stale',
+          refresh_token: 'revoked',
+          expires_at: Date.now() - 1000,
+        },
+        grantedScopes: [],
+      },
+      ACTOR,
+    );
+    const refuse = () => {
+      throw new Error('invalid_grant');
+    };
+
+    await expect(
+      syncOneAccount(await claimedFor(account.id), fakeProvider([]), refuse),
+    ).rejects.toThrow();
+
+    const parked = await pool.query<{
+      status: string;
+      status_detail: string | null;
+      sync_failure_count: number;
+      sync_next_attempt_at: Date | null;
+    }>(
+      `SELECT status, status_detail, sync_failure_count, sync_next_attempt_at
+         FROM connected_accounts WHERE id = $1`,
+      [account.id],
+    );
+    expect(parked.rows[0].status).toBe('error');
+    expect(parked.rows[0].sync_failure_count).toBeGreaterThanOrEqual(MAX_SYNC_FAILURES);
+    expect(parked.rows[0].sync_next_attempt_at).toBeNull();
+
+    // The claim query is what has to stop returning it — a status alone would not.
+    const claimed = await claimAccountsDueForSync(50);
+    expect(claimed.map((a) => a.id)).not.toContain(account.id);
+
+    const audits = await pool.query<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM audit_log
+        WHERE record_id = $1 AND event_type = 'connected_account_disconnected'`,
+      [account.id],
+    );
+    expect(Number(audits.rows[0].count)).toBe(1);
   });
 });
