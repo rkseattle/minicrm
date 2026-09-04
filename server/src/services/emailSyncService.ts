@@ -23,8 +23,7 @@ import pool from '../db.js';
 import logger from '../logger.js';
 import { captureException } from '../sentry.js';
 
-import type { AuditActor } from './auditService.js';
-import { writeAuditEntry } from './auditService.js';
+import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import {
   claimAccountsDueForSync,
   getAccountAuthForSync,
@@ -40,8 +39,11 @@ import {
   updateEmailSyncJobProgress,
 } from './emailSyncJobService.js';
 import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js';
+import { refreshAccessToken } from './oauthProviderService.js';
+import type { RefreshedTokens } from './oauthProviderService.js';
 import { createImapProvider } from './mail/imapProvider.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mail/mailProvider.js';
+import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 /** The org-wide kill switch. Off means no mailbox syncs, whatever a user's own flag says. */
 const EMAIL_SYNC_FLAG = 'email_sync';
@@ -80,11 +82,6 @@ const BACKOFF_MAX_MS = 24 * 60 * 60 * 1000;
  * the server returns, which is the thundering herd that keeps it down.
  */
 const BACKOFF_JITTER = 0.2;
-
-const SYSTEM_ACTOR: AuditActor = {
-  id: '00000000-0000-0000-0000-000000000000',
-  name: 'System',
-};
 
 /** Columns in the message insert, for the bind-parameter arithmetic below. */
 const MESSAGE_INSERT_COLUMN_COUNT = 13;
@@ -217,6 +214,9 @@ function providerFor(account: ClaimedSyncAccount): MailProvider {
   return createImapProvider(account.emailAddress);
 }
 
+/** The token-refresh seam, injected so no unit test reaches a real OIDC endpoint. */
+type TokenRefresh = (provider: OAuthProvider, refreshToken: string) => Promise<RefreshedTokens>;
+
 /** The delay before the next attempt, doubling per failure with jitter and a ceiling. */
 export function backoffDelayMs(failureCount: number): number {
   const doubled = BACKOFF_BASE_MS * 2 ** Math.max(0, failureCount - 1);
@@ -329,12 +329,15 @@ async function backfillAccount(
  * resyncing everything.
  *
  * @param provider - Injected so tests can drive a fake without a live IMAP server.
+ * @param refresh - Injected for the same reason: the default reaches Google's OIDC
+ *   discovery endpoint, which no unit test may depend on.
  */
 export async function syncOneAccount(
   account: ClaimedSyncAccount,
   provider?: MailProvider,
+  refresh: TokenRefresh = refreshAccessToken,
 ): Promise<SyncOutcome> {
-  const auth = await getAccountAuthForSync(account.id);
+  const auth = await getAccountAuthForSync(account.id, refresh);
   if (!auth) {
     throw new Error('emailSyncService: no usable credentials for this account');
   }
@@ -446,7 +449,10 @@ async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Pro
  * @param provider - Injected for tests; production resolves one per account's provider.
  * @returns one outcome per account that synced successfully.
  */
-export async function syncDueAccounts(provider?: MailProvider): Promise<SyncOutcome[]> {
+export async function syncDueAccounts(
+  provider?: MailProvider,
+  refresh: TokenRefresh = refreshAccessToken,
+): Promise<SyncOutcome[]> {
   if (!(await isFeatureEnabled(EMAIL_SYNC_FLAG))) return [];
 
   const claimed = await claimAccountsDueForSync(MAX_ACCOUNTS_PER_TICK);
@@ -460,7 +466,7 @@ export async function syncDueAccounts(provider?: MailProvider): Promise<SyncOutc
     }
 
     try {
-      outcomes.push(await syncOneAccount(account, provider));
+      outcomes.push(await syncOneAccount(account, provider, refresh));
     } catch (err) {
       // Per account, so one dead server cannot end the tick for every other mailbox.
       logger.warn({ err, accountId: account.id }, 'emailSyncService: account sync failed');

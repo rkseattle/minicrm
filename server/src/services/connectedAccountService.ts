@@ -29,7 +29,7 @@ import pool from '../db.js';
 import logger from '../logger.js';
 
 import type { AuditActor } from './auditService.js';
-import { writeAuditEntry } from './auditService.js';
+import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import { decryptVersioned, encryptVersioned } from './cryptoService.js';
 import { PROVIDER_AUTH_EXPIRED } from './imapConnectionService.js';
 import type { RefreshedTokens } from './oauthProviderService.js';
@@ -143,6 +143,35 @@ export interface OAuthAccountUpsert {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Narrows a stored provider to one that has OAuth configuration.
+ *
+ * Without this an `imap` row carrying an OAuth payload reaches refreshAccessToken, where
+ * the provider table has no entry and the thunk throws a TypeError the caller's catch
+ * silently converts into a permanent auth failure.
+ */
+function isOAuthProvider(provider: ConnectedAccountProvider): provider is OAuthProvider {
+  return provider === 'google' || provider === 'microsoft';
+}
+
+/**
+ * Decrypts one row's stored credentials.
+ *
+ * Returns null rather than throwing: every caller's answer to unreadable ciphertext is
+ * the same — treat the account as unusable — and a key that has been retired from the
+ * environment makes this the expected outcome, not an exception.
+ */
+function decryptAuth(row: ConnectedAccountRow, context: string): ConnectedAccountAuth | null {
+  try {
+    return JSON.parse(
+      decryptVersioned(row.auth_encrypted, row.key_version),
+    ) as ConnectedAccountAuth;
+  } catch (err) {
+    logger.error({ err, accountId: row.id, context }, 'connectedAccountService: decrypt failed');
+    return null;
+  }
+}
+
 /** Maps a row to the shape the API returns. The only exit from this module. */
 function toConnectedAccountResponse(
   row: Omit<ConnectedAccountRow, 'auth_encrypted' | 'key_version' | 'user_id' | 'sync_cursor'>,
@@ -199,18 +228,8 @@ export async function getConnectedAccountInternal(
   const row = result.rows[0];
   if (!row) return null;
 
-  let auth: ConnectedAccountAuth;
-  try {
-    auth = JSON.parse(
-      decryptVersioned(row.auth_encrypted, row.key_version),
-    ) as ConnectedAccountAuth;
-  } catch (err) {
-    logger.error(
-      { err, accountId },
-      'connectedAccountService: failed to decrypt auth_encrypted — treating as unset',
-    );
-    return null;
-  }
+  const auth = decryptAuth(row, 'internal-read');
+  if (auth === null) return null;
 
   return {
     id: row.id,
@@ -384,15 +403,9 @@ export async function deleteConnectedAccount(
 
     await client.query('COMMIT');
 
-    let auth: ConnectedAccountAuth | null = null;
-    try {
-      auth = JSON.parse(
-        decryptVersioned(row.auth_encrypted, row.key_version),
-      ) as ConnectedAccountAuth;
-    } catch (err) {
-      // The row is already gone and the disconnect succeeded; only revocation is lost.
-      logger.warn({ err, accountId }, 'connectedAccountService: could not decrypt for revocation');
-    }
+    // The row is already gone and the disconnect succeeded; a null here costs only the
+    // provider-side revocation, which is best-effort anyway.
+    const auth = decryptAuth(row, 'revocation');
 
     return { provider: row.provider, auth };
   } catch (err) {
@@ -412,6 +425,12 @@ const TOKEN_EXPIRY_MARGIN_MS = 60_000;
  * Audited, unlike the transient probe result `updateAccountStatus` records: this is the
  * end of the account's working life until the user re-consents, which is exactly the
  * lifecycle event the connect and disconnect entries exist to sit alongside.
+ *
+ * The mailbox is parked at the same time, and that is not decoration: a refused refresh
+ * token is not a transient failure, so leaving the row claimable means the scheduler asks
+ * the provider the same dead question every lease and writes one of these entries each
+ * time. `sync_failure_count` is what the claim query filters on, so it is the field that
+ * has to move; the way back is a connection test, which clears it.
  */
 async function markAuthExpired(
   client: PoolClient,
@@ -419,8 +438,13 @@ async function markAuthExpired(
   actor: AuditActor,
 ): Promise<void> {
   await client.query(
-    `UPDATE connected_accounts SET status = 'error', status_detail = $1 WHERE id = $2`,
-    [PROVIDER_AUTH_EXPIRED, account.id],
+    `UPDATE connected_accounts
+        SET status = 'error',
+            status_detail = $1,
+            sync_failure_count = $3,
+            sync_next_attempt_at = NULL
+      WHERE id = $2`,
+    [PROVIDER_AUTH_EXPIRED, account.id, MAX_SYNC_FAILURES],
   );
   await writeAuditEntry(client, {
     recordType: 'connected_account',
@@ -434,19 +458,95 @@ async function markAuthExpired(
 }
 
 /**
- * Returns a usable access token for an OAuth account, refreshing it if it has expired.
+ * The locked check-and-refresh, over a row the caller has already selected FOR UPDATE.
  *
- * The row is locked for the whole check-and-write. Without that, two concurrent callers
- * both see an expired token and both spend the refresh token — and Microsoft rotates it,
- * so the loser persists one the provider has already invalidated. The expiry is read after
- * the lock is granted, so the loser sees the winner's refreshed row rather than the stale
- * one it queued on.
+ * Shared by both entry points because the rule is the same and the reasoning is subtle:
+ * without the lock, two concurrent callers both see an expired token and both spend the
+ * refresh token — and Microsoft rotates it, so the loser persists one the provider has
+ * already invalidated. The expiry is read after the lock is granted, so the loser sees the
+ * winner's refreshed row rather than the stale one it queued on.
  *
  * This deliberately holds the lock across a third-party call, which deleteConnectedAccount
  * avoids doing. The difference is that revocation is fire-and-forget — losing it costs
  * nothing — whereas the refresh result must be written atomically with the check that
  * decided to refresh. refreshAccessToken carries its own timeout so a hung provider
  * cannot hold the lock indefinitely.
+ *
+ * @returns the OAuth payload carrying a usable access token, or null when the row is not
+ *   OAuth, will not decrypt, or the provider refused the refresh — the row is then marked
+ *   `error` and the caller's transaction is left to commit that.
+ */
+async function refreshLockedRow(
+  client: PoolClient,
+  row: ConnectedAccountRow,
+  actor: AuditActor,
+  refresh: (provider: OAuthProvider, refreshToken: string) => Promise<RefreshedTokens>,
+): Promise<OAuthAuthPayload | null> {
+  const auth = decryptAuth(row, 'refresh');
+  if (auth === null) return null;
+
+  if (auth.kind !== 'oauth') {
+    logger.warn(
+      { accountId: row.id, provider: row.provider },
+      'connectedAccountService: refusing to refresh an account whose payload is not OAuth',
+    );
+    return null;
+  }
+
+  const stillValid =
+    auth.expires_at === null || auth.expires_at - TOKEN_EXPIRY_MARGIN_MS > Date.now();
+  if (stillValid) return auth;
+
+  if (!auth.refresh_token) {
+    await markAuthExpired(client, row, actor);
+    return null;
+  }
+
+  if (!isOAuthProvider(row.provider)) {
+    // Not marked expired: that message names an OAuth failure, and a password mailbox
+    // reaching here has a bug upstream rather than a credential a user must re-grant.
+    logger.warn(
+      { accountId: row.id, provider: row.provider },
+      'connectedAccountService: refusing to refresh a provider that has no OAuth config',
+    );
+    return null;
+  }
+
+  let refreshed: RefreshedTokens;
+  try {
+    refreshed = await refresh(row.provider, auth.refresh_token);
+  } catch {
+    await markAuthExpired(client, row, actor);
+    return null;
+  }
+
+  const rotated: OAuthAuthPayload = {
+    kind: 'oauth',
+    access_token: refreshed.accessToken,
+    refresh_token: refreshed.refreshToken,
+    expires_at: refreshed.expiresAt,
+  };
+  const encrypted = encryptVersioned(JSON.stringify(rotated));
+
+  // Deliberately leaves sync_failure_count alone, unlike the connect-test and
+  // re-consent paths. A refreshed token proves the credential is valid, not that the
+  // mailbox syncs — the failures that retire an account are usually fetch failures, and
+  // rearming here would let a background refresh silently defeat the ceiling.
+  await client.query(
+    `UPDATE connected_accounts
+       SET auth_encrypted = $1, key_version = $2, status = 'active', status_detail = NULL
+     WHERE id = $3`,
+    [encrypted.ciphertext, encrypted.keyVersion, row.id],
+  );
+
+  return rotated;
+}
+
+/**
+ * Returns a usable access token for an OAuth account, refreshing it if it has expired.
+ *
+ * Scoped by user_id: this serves a request made by a person, so the account must be
+ * theirs. The sync path deliberately is not — see getAccountAuthForSync.
  *
  * @param refresh - Injected so the seam is explicit and testable; there is no in-repo
  *   precedent for mocking openid-client.
@@ -474,64 +574,9 @@ export async function getUsableAccessToken(
       return null;
     }
 
-    let auth: ConnectedAccountAuth;
-    try {
-      auth = JSON.parse(
-        decryptVersioned(row.auth_encrypted, row.key_version),
-      ) as ConnectedAccountAuth;
-    } catch {
-      await client.query('ROLLBACK');
-      return null;
-    }
-
-    if (auth.kind !== 'oauth') {
-      await client.query('ROLLBACK');
-      return null;
-    }
-
-    const stillValid =
-      auth.expires_at === null || auth.expires_at - TOKEN_EXPIRY_MARGIN_MS > Date.now();
-    if (stillValid) {
-      await client.query('COMMIT');
-      return auth.access_token;
-    }
-
-    if (!auth.refresh_token) {
-      await markAuthExpired(client, row, actor);
-      await client.query('COMMIT');
-      return null;
-    }
-
-    let refreshed: RefreshedTokens;
-    try {
-      refreshed = await refresh(row.provider as OAuthProvider, auth.refresh_token);
-    } catch {
-      await markAuthExpired(client, row, actor);
-      await client.query('COMMIT');
-      return null;
-    }
-
-    const encrypted = encryptVersioned(
-      JSON.stringify({
-        kind: 'oauth',
-        access_token: refreshed.accessToken,
-        refresh_token: refreshed.refreshToken,
-        expires_at: refreshed.expiresAt,
-      } satisfies OAuthAuthPayload),
-    );
-
-    // Deliberately leaves sync_failure_count alone, unlike the connect-test and
-    // re-consent paths. A refreshed token proves the credential is valid, not that the
-    // mailbox syncs — the failures that retire an account are usually fetch failures, and
-    // rearming here would let a background refresh silently defeat the ceiling.
-    await client.query(
-      `UPDATE connected_accounts
-         SET auth_encrypted = $1, key_version = $2, status = 'active', status_detail = NULL
-       WHERE id = $3`,
-      [encrypted.ciphertext, encrypted.keyVersion, row.id],
-    );
+    const auth = await refreshLockedRow(client, row, actor, refresh);
     await client.query('COMMIT');
-    return refreshed.accessToken;
+    return auth?.access_token ?? null;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -707,44 +752,60 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
 }
 
 /**
- * Decrypts one already-claimed mailbox's credentials.
+ * Decrypts one already-claimed mailbox's credentials, refreshing an OAuth token that has
+ * expired.
  *
  * Not scoped by user_id, because the scheduler has no user — the account id comes from
  * claimAccountsDueForSync, which has already applied every ownership and status rule.
  *
- * IMAP only. An OAuth account needs the refresh-and-retry path getUsableAccessToken owns,
- * and the claim query cannot return one until a Gmail or Graph driver exists, so an OAuth
- * branch here would be code no test could reach.
+ * An OAuth account takes the same locked check-and-refresh a person's request does, for
+ * the same reason: a sync and a user action can race for one rotating refresh token. The
+ * actor is SYSTEM_ACTOR because no human initiates a sync, and the audit entry a refused
+ * refresh writes has to be attributable to something.
  *
- * @returns the decrypted credentials, or null when the account is gone, is not IMAP, or
- *   its ciphertext will not decrypt under any known key version.
+ * @param refresh - Injected rather than defaulted so this module keeps its type-only
+ *   import of oauthProviderService; a runtime one would pull openid-client into every
+ *   consumer of connectedAccountService.
+ * @returns the decrypted credentials, or null when the account is gone, has no driver,
+ *   will not decrypt, or its OAuth token could not be refreshed.
  */
-export async function getAccountAuthForSync(accountId: string): Promise<ImapAuthPayload | null> {
-  const result = await pool.query<ConnectedAccountRow>(
-    `SELECT id, provider, auth_encrypted, key_version FROM connected_accounts WHERE id = $1`,
-    [accountId],
-  );
-  const row = result.rows[0];
-  if (!row) return null;
-
-  if (row.provider !== 'imap') {
-    logger.warn(
-      { accountId, provider: row.provider },
-      'connectedAccountService: refusing to decrypt a non-IMAP account for sync',
-    );
-    return null;
-  }
-
+export async function getAccountAuthForSync(
+  accountId: string,
+  refresh: (provider: OAuthProvider, refreshToken: string) => Promise<RefreshedTokens>,
+): Promise<ConnectedAccountAuth | null> {
+  const client: PoolClient = await pool.connect();
   try {
-    const auth = JSON.parse(
-      decryptVersioned(row.auth_encrypted, row.key_version),
-    ) as ConnectedAccountAuth;
-    return auth.kind === 'imap' ? auth : null;
-  } catch (err) {
-    logger.error(
-      { err, accountId },
-      'connectedAccountService: failed to decrypt auth_encrypted for sync',
+    await client.query('BEGIN');
+
+    const result = await client.query<ConnectedAccountRow>(
+      `SELECT id, provider, email_address, auth_encrypted, key_version FROM connected_accounts
+       WHERE id = $1 FOR UPDATE`,
+      [accountId],
     );
-    return null;
+    const row = result.rows[0];
+    if (!row) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    // The provider column decides which payload is acceptable, never the ciphertext's
+    // own shape: a row whose credentials happen to look like IMAP's must not reach the
+    // IMAP driver when its provider says otherwise. Which providers the scheduler may
+    // claim is IMPLEMENTED_SYNC_PROVIDERS' job, applied by the claim query — repeating it
+    // here would leave this seam untestable for a driver that has not shipped yet.
+    if (row.provider === 'imap') {
+      const auth = decryptAuth(row, 'sync');
+      await client.query('COMMIT');
+      return auth?.kind === 'imap' ? auth : null;
+    }
+
+    const auth = await refreshLockedRow(client, row, SYSTEM_ACTOR, refresh);
+    await client.query('COMMIT');
+    return auth;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
 }

@@ -23,6 +23,7 @@ import {
   updateAccountStatus,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
+import type { RefreshedTokens } from '../services/oauthProviderService.js';
 
 import { clearAuditLogFor } from './testUtils.js';
 
@@ -781,11 +782,31 @@ describe('sync recovery', () => {
 });
 
 describe('getAccountAuthForSync', () => {
+  /**
+   * A refresh that records being called.
+   *
+   * Throwing here would prove nothing: refreshLockedRow catches, marks the row expired,
+   * and returns null, so a spurious call reaches the test as the same null it expected.
+   * The counter is what makes "was not called" an assertion rather than an assumption.
+   */
+  function countingRefresh(): { fn: () => Promise<RefreshedTokens>; calls: number } {
+    const state = {
+      calls: 0,
+      fn: (): Promise<RefreshedTokens> => {
+        state.calls += 1;
+        return Promise.resolve({ accessToken: 'unexpected', refreshToken: null, expiresAt: null });
+      },
+    };
+    return state;
+  }
+
   it('round-trips IMAP credentials without a user id', async () => {
     const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
 
-    const auth = await getAccountAuthForSync(account.id);
+    const refresh = countingRefresh();
+    const auth = await getAccountAuthForSync(account.id, refresh.fn);
 
+    expect(refresh.calls).toBe(0);
     expect(auth).toEqual({
       kind: 'imap',
       host: IMAP_INPUT.host,
@@ -796,25 +817,108 @@ describe('getAccountAuthForSync', () => {
     });
   });
 
-  it('refuses an OAuth account, whose refresh path this seam does not carry', async () => {
+  it('returns a still-valid OAuth token without refreshing it', async () => {
     const account = await upsertOAuthAccount(
       {
         userId: REP_A_ACTOR.id,
         provider: 'google',
-        emailAddress: `${FILE_PREFIX}-oauth@example.com`,
-        auth: { kind: 'oauth', access_token: 'token', refresh_token: 'refresh', expires_at: null },
+        emailAddress: `${FILE_PREFIX}-fresh@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'still-good',
+          refresh_token: 'refresh-one',
+          expires_at: Date.now() + 60 * 60 * 1000,
+        },
         grantedScopes: [],
       },
       REP_A_ACTOR,
     );
 
-    expect(await getAccountAuthForSync(account.id)).toBeNull();
+    const refresh = countingRefresh();
+    const auth = await getAccountAuthForSync(account.id, refresh.fn);
+
+    expect(refresh.calls).toBe(0);
+    expect(auth).toMatchObject({ kind: 'oauth', access_token: 'still-good' });
   });
 
-  it('refuses a non-IMAP provider even when the stored payload looks like IMAP', async () => {
-    // The provider column is the gate, not the payload's shape. Checking only the payload
-    // would let a Google account with IMAP-shaped credentials through to a driver whose
-    // token-refresh path it needs and this seam does not carry.
+  it('refreshes an expired OAuth token and persists the new one', async () => {
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-expired@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'stale',
+          refresh_token: 'refresh-one',
+          expires_at: Date.now() - 1000,
+        },
+        grantedScopes: [],
+      },
+      REP_A_ACTOR,
+    );
+
+    const auth = await getAccountAuthForSync(account.id, async () => ({
+      accessToken: 'rotated',
+      refreshToken: 'refresh-two',
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    }));
+
+    expect(auth).toMatchObject({ kind: 'oauth', access_token: 'rotated' });
+
+    // Re-read proves it was written, not just returned: a sync that refreshed in memory
+    // would spend the refresh token again on every tick.
+    const second = countingRefresh();
+    const stored = await getAccountAuthForSync(account.id, second.fn);
+    expect(second.calls).toBe(0);
+    expect(stored).toMatchObject({ access_token: 'rotated', refresh_token: 'refresh-two' });
+  });
+
+  it('marks the row error when the provider refuses the refresh', async () => {
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-refused@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'stale',
+          refresh_token: 'revoked',
+          expires_at: Date.now() - 1000,
+        },
+        grantedScopes: [],
+      },
+      REP_A_ACTOR,
+    );
+
+    const auth = await getAccountAuthForSync(account.id, () => {
+      throw new Error('invalid_grant');
+    });
+
+    expect(auth).toBeNull();
+    const row = await pool.query<{ status: string; status_detail: string | null }>(
+      `SELECT status, status_detail FROM connected_accounts WHERE id = $1`,
+      [account.id],
+    );
+    expect(row.rows[0]).toEqual({ status: 'error', status_detail: 'PROVIDER_AUTH_EXPIRED' });
+
+    // Attributed to SYSTEM_ACTOR, since no human initiated this sync.
+    const audit = await pool.query<{ changed_by_id: string; changed_by_name: string }>(
+      `SELECT changed_by_id, changed_by_name FROM audit_log
+        WHERE record_id = $1 AND event_type = 'connected_account_disconnected'`,
+      [account.id],
+    );
+    expect(audit.rows).toHaveLength(1);
+    expect(audit.rows[0]).toEqual({
+      changed_by_id: '00000000-0000-0000-0000-000000000000',
+      changed_by_name: 'System',
+    });
+  });
+
+  it('refuses an OAuth provider whose stored payload is not an OAuth token set', async () => {
+    // The provider column decides which payload is acceptable. A Microsoft row carrying
+    // IMAP-shaped credentials must not reach the IMAP driver just because it looks like
+    // one — which provider gets claimed at all is the claim query's rule, not this seam's.
     const account = await upsertOAuthAccount(
       {
         userId: REP_A_ACTOR.id,
@@ -825,12 +929,10 @@ describe('getAccountAuthForSync', () => {
       },
       REP_A_ACTOR,
     );
-
-    // Rewrite the ciphertext to an IMAP payload, leaving provider = 'microsoft'.
     const imapLike = await createImapAccount(
-      REP_B_ACTOR.id,
+      REP_A_ACTOR.id,
       { ...IMAP_INPUT, email_address: `${FILE_PREFIX}-donor@example.com` },
-      REP_B_ACTOR,
+      REP_A_ACTOR,
     );
     await pool.query(
       `UPDATE connected_accounts SET auth_encrypted = donor.auth_encrypted,
@@ -840,10 +942,17 @@ describe('getAccountAuthForSync', () => {
       [account.id, imapLike.id],
     );
 
-    expect(await getAccountAuthForSync(account.id)).toBeNull();
+    const refresh = countingRefresh();
+    expect(await getAccountAuthForSync(account.id, refresh.fn)).toBeNull();
+    expect(refresh.calls).toBe(0);
   });
 
   it('returns null for an account that no longer exists', async () => {
-    expect(await getAccountAuthForSync('00000000-0000-0000-0000-000000000000')).toBeNull();
+    // Not the nil UUID, which is SYSTEM_ACTOR's id and meaningful on this path.
+    const refresh = countingRefresh();
+    expect(
+      await getAccountAuthForSync('11111111-2222-3333-4444-555555555555', refresh.fn),
+    ).toBeNull();
+    expect(refresh.calls).toBe(0);
   });
 });
