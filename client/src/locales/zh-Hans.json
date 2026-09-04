@@ -1871,7 +1871,13 @@
       "FEATURE_DISABLED": "您的账户已停用邮箱连接功能。",
       "SESSION_EXPIRED": "连接完成前您的会话已过期。请重试。",
       "INSUFFICIENT_CAPABILITY": "您没有连接邮箱的权限。",
-      "OAUTH_FAILED": "无法连接该邮箱。请重试。"
+      "OAUTH_FAILED": "无法连接该邮箱。请重试。",
+      "SYNC_FAILED": "同步失败。MiniCRM 将继续重试。",
+      "INSUFFICIENT_SCOPE": "此邮箱未授予读取邮件的权限。请重新连接以继续同步。",
+      "CONNECTION_FAILED": "MiniCRM 无法连接此邮件服务商，将继续重试。",
+      "PROVIDER_AUTH_EXPIRED": "服务商已不再接受已保存的登录信息。请重新连接此邮箱。",
+      "UNTESTABLE_PROVIDER": "暂不支持测试此服务商。",
+      "TEST_REQUEST_FAILED": "MiniCRM 无法执行该测试，请重试。"
     },
     "secureLabel": "连接时使用 TLS（若服务器在 143 端口使用 STARTTLS，请取消勾选）",
     "testButton": "测试"

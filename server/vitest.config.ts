@@ -247,6 +247,16 @@ const SERIAL_FILES = [
   // and read global ai_sessions/ai_messages counts; running in parallel with any test that
   // creates AI sessions (e.g. aiConfigController) would make the count/purge assertions flap.
   'src/__tests__/retentionService.test.ts',
+  // The three files that assert on claimAccountsDueForSync. Unlike every other entry
+  // here, scoping the writes cannot fix these: the claim query selects by due time across
+  // ALL users with a 25-row batch, so what one file must make claimable is exactly what
+  // another must not. Each per-file attempt to defer the others' rows broke whichever
+  // file was mid-assertion — they are writes to rows a sibling suite owns and asserts on.
+  // A per-file database would fix it properly; short of that, serializing is the only
+  // correct answer rather than the cheap one.
+  'src/__tests__/emailSyncService.test.ts',
+  'src/__tests__/connectedAccountService.test.ts',
+  'src/__tests__/connectedAccountController.test.ts',
   'src/__tests__/aiRetentionController.test.ts',
   // piiFilter deletes and writes ai_field_exclusions (global table, no per-test scoping
   // key) and exercises piiFilter's in-memory admin-exclusion cache; running in parallel

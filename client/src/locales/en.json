@@ -1871,7 +1871,13 @@
       "FEATURE_DISABLED": "Mailbox connections are turned off for your account.",
       "SESSION_EXPIRED": "Your session expired before the connection finished. Please try again.",
       "INSUFFICIENT_CAPABILITY": "You do not have permission to connect a mailbox.",
-      "OAUTH_FAILED": "The mailbox could not be connected. Please try again."
+      "OAUTH_FAILED": "The mailbox could not be connected. Please try again.",
+      "SYNC_FAILED": "Syncing failed. MiniCRM will keep trying.",
+      "INSUFFICIENT_SCOPE": "This mailbox did not grant permission to read mail. Reconnect it to continue syncing.",
+      "CONNECTION_FAILED": "MiniCRM could not reach this mail provider. It will keep trying.",
+      "PROVIDER_AUTH_EXPIRED": "The provider stopped accepting the saved sign-in. Reconnect this mailbox.",
+      "UNTESTABLE_PROVIDER": "Testing this provider is not supported yet.",
+      "TEST_REQUEST_FAILED": "MiniCRM could not run that test. Please try again."
     },
     "secureLabel": "Use TLS on connect (uncheck for servers that use STARTTLS on port 143)",
     "testButton": "Test"

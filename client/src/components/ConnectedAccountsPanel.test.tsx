@@ -98,6 +98,44 @@ describe('ConnectedAccountsPanel', () => {
     );
   });
 
+  it('says why a mailbox needs attention, not just that it does', async () => {
+    // A badge alone makes an under-scoped mailbox look like a transient timeout, and the
+    // two need opposite actions from the user — reconnect versus wait.
+    enableEmailSync();
+    respondWithAccounts([{ ...ACCOUNT, status: 'error', status_detail: 'INSUFFICIENT_SCOPE' }]);
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    expect(
+      await screen.findByTestId(`connected-account-status-detail-${ACCOUNT_ID}`),
+    ).toHaveTextContent('did not grant permission to read mail');
+  });
+
+  it('falls back to the generic reason for a code it does not know', async () => {
+    // status_detail is written by the server; a code this build has no key for must not
+    // reach the user as a raw token.
+    enableEmailSync();
+    respondWithAccounts([{ ...ACCOUNT, status: 'error', status_detail: 'SOME_NEW_CODE' }]);
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    expect(
+      await screen.findByTestId(`connected-account-status-detail-${ACCOUNT_ID}`),
+    ).toHaveTextContent('Syncing failed');
+  });
+
+  it('shows no reason for a healthy mailbox', async () => {
+    enableEmailSync();
+    respondWithAccounts([{ ...ACCOUNT, status: 'active', status_detail: null }]);
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await screen.findByTestId(`connected-account-status-${ACCOUNT_ID}`);
+    expect(
+      screen.queryByTestId(`connected-account-status-detail-${ACCOUNT_ID}`),
+    ).not.toBeInTheDocument();
+  });
+
   it('asks for confirmation before disconnecting, and refetches after', async () => {
     enableEmailSync();
     respondWithAccounts([ACCOUNT]);
@@ -287,5 +325,74 @@ describe('ConnectedAccountsPanel', () => {
     await userEvent.click(await screen.findByTestId(`connected-account-test-button-${ACCOUNT_ID}`));
 
     await waitFor(() => expect(testCalls).toBe(1));
+  });
+
+  it('drops a stale test reason once the mailbox reports healthy', async () => {
+    // A reason that outlived its subject would sit under a green badge for the rest of
+    // the session — the refetched row is the newer fact.
+    enableEmailSync();
+    respondWithAccounts([{ ...ACCOUNT, status: 'error', status_detail: 'CONNECTION_FAILED' }]);
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+    expect(
+      await screen.findByTestId(`connected-account-status-detail-${ACCOUNT_ID}`),
+    ).toBeInTheDocument();
+
+    // The test FAILS while the row comes back healthy — a background sync recovered the
+    // mailbox. Without the guard the failed answer outlives its subject.
+    respondWithAccounts([{ ...ACCOUNT, status: 'active', status_detail: null }]);
+    server.use(
+      http.post(`/api/v1/connected-accounts/${ACCOUNT_ID}/test`, () =>
+        HttpResponse.json({ success: false, error: 'CONNECTION_FAILED' }),
+      ),
+    );
+    await userEvent.click(await screen.findByTestId(`connected-account-test-button-${ACCOUNT_ID}`));
+
+    // Neither element: a guard that only moves the message from one to the other still
+    // leaves it under a green badge.
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId(`connected-account-status-detail-${ACCOUNT_ID}`),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/could not reach this mail provider/)).not.toBeInTheDocument();
+  });
+
+  it('says so when the test request itself fails', async () => {
+    // The provider was never asked, so naming it unreachable points at the wrong system.
+    enableEmailSync();
+    respondWithAccounts([{ ...ACCOUNT, status: 'active', status_detail: null }]);
+    server.use(
+      http.post(`/api/v1/connected-accounts/${ACCOUNT_ID}/test`, () =>
+        HttpResponse.json({ error: { code: 'INTERNAL', message: 'boom' } }, { status: 500 }),
+      ),
+    );
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+    await userEvent.click(await screen.findByTestId(`connected-account-test-button-${ACCOUNT_ID}`));
+
+    expect(await screen.findByText(/could not run that test/)).toBeInTheDocument();
+  });
+
+  it('says why a test failed for a provider that has none', async () => {
+    // The server writes nothing to the row in this case, deliberately — a healthy mailbox
+    // must not be marked broken for having no test. So the response body is the only
+    // place the answer exists, and discarding it leaves the button doing nothing visible.
+    enableEmailSync();
+    respondWithAccounts([{ ...ACCOUNT, provider: 'microsoft', status: 'active' }]);
+    server.use(
+      http.post(`/api/v1/connected-accounts/${ACCOUNT_ID}/test`, () =>
+        HttpResponse.json({ success: false, error: 'UNTESTABLE_PROVIDER' }),
+      ),
+    );
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+    await userEvent.click(await screen.findByTestId(`connected-account-test-button-${ACCOUNT_ID}`));
+
+    // Survives a healthy row: the server writes nothing for a provider it cannot test, so
+    // this answer is the only one that will ever exist for it.
+    expect(
+      await screen.findByTestId(`connected-account-status-detail-${ACCOUNT_ID}`),
+    ).toHaveTextContent('not supported yet');
   });
 });

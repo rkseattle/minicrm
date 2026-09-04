@@ -1871,7 +1871,13 @@
       "FEATURE_DISABLED": "Les connexions de boîtes mail sont désactivées pour votre compte.",
       "SESSION_EXPIRED": "Votre session a expiré avant la fin de la connexion. Veuillez réessayer.",
       "INSUFFICIENT_CAPABILITY": "Vous n’avez pas l’autorisation de connecter une boîte mail.",
-      "OAUTH_FAILED": "La boîte mail n’a pas pu être connectée. Veuillez réessayer."
+      "OAUTH_FAILED": "La boîte mail n’a pas pu être connectée. Veuillez réessayer.",
+      "SYNC_FAILED": "Échec de la synchronisation. MiniCRM réessaiera.",
+      "INSUFFICIENT_SCOPE": "Cette boîte n'a pas accordé l'autorisation de lire les messages. Reconnectez-la pour continuer la synchronisation.",
+      "CONNECTION_FAILED": "MiniCRM n'a pas pu joindre ce fournisseur de messagerie. Il réessaiera.",
+      "PROVIDER_AUTH_EXPIRED": "Le fournisseur n'accepte plus la connexion enregistrée. Reconnectez cette boîte.",
+      "UNTESTABLE_PROVIDER": "Le test de ce fournisseur n'est pas encore pris en charge.",
+      "TEST_REQUEST_FAILED": "MiniCRM n'a pas pu exécuter ce test. Veuillez réessayer."
     },
     "secureLabel": "Utiliser TLS à la connexion (décochez pour les serveurs utilisant STARTTLS sur le port 143)",
     "testButton": "Tester"

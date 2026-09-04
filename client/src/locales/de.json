@@ -1871,7 +1871,13 @@
       "FEATURE_DISABLED": "Postfachverbindungen sind für Ihr Konto deaktiviert.",
       "SESSION_EXPIRED": "Ihre Sitzung ist abgelaufen, bevor die Verbindung abgeschlossen war. Bitte versuchen Sie es erneut.",
       "INSUFFICIENT_CAPABILITY": "Sie haben keine Berechtigung, ein Postfach zu verbinden.",
-      "OAUTH_FAILED": "Das Postfach konnte nicht verbunden werden. Bitte versuchen Sie es erneut."
+      "OAUTH_FAILED": "Das Postfach konnte nicht verbunden werden. Bitte versuchen Sie es erneut.",
+      "SYNC_FAILED": "Synchronisierung fehlgeschlagen. MiniCRM versucht es weiter.",
+      "INSUFFICIENT_SCOPE": "Dieses Postfach hat keine Leseberechtigung erteilt. Verbinden Sie es erneut, um weiter zu synchronisieren.",
+      "CONNECTION_FAILED": "MiniCRM konnte diesen E-Mail-Anbieter nicht erreichen. Es wird weiter versucht.",
+      "PROVIDER_AUTH_EXPIRED": "Der Anbieter akzeptiert die gespeicherte Anmeldung nicht mehr. Verbinden Sie dieses Postfach erneut.",
+      "UNTESTABLE_PROVIDER": "Das Testen dieses Anbieters wird noch nicht unterstützt.",
+      "TEST_REQUEST_FAILED": "MiniCRM konnte diesen Test nicht ausführen. Bitte versuchen Sie es erneut."
     },
     "secureLabel": "TLS beim Verbinden verwenden (abwählen für Server mit STARTTLS auf Port 143)",
     "testButton": "Testen"

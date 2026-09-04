@@ -156,7 +156,7 @@ export async function testConnectedAccountHandler(req: Request, res: Response): 
   // 'error' would flip a healthy mailbox to a badge nothing ever clears, since no sync
   // runs for a provider that has no driver.
   if (account.auth.kind === 'oauth' && account.provider !== 'google') {
-    res.status(200).json({ success: false, error: UNTESTABLE_PROVIDER_MESSAGE });
+    res.status(200).json({ success: false, error: UNTESTABLE_PROVIDER });
     return;
   }
 
@@ -178,18 +178,26 @@ export async function testConnectedAccountHandler(req: Request, res: Response): 
     account.id,
     req.user!.id,
     attempt.ok ? 'active' : 'error',
-    attempt.ok ? null : attempt.message,
+    // The code, not the message: the panel translates this column, so prose would
+    // arrive as a key no locale file matches and degrade to a generic reason.
+    attempt.ok ? null : attempt.code,
   );
 
   if (attempt.ok) {
     res.status(200).json({ success: true });
     return;
   }
-  res.status(200).json({ success: false, error: attempt.message });
+  res.status(200).json({ success: false, error: attempt.code });
 }
 
-/** Shown when a provider has no connection test of its own. */
-const UNTESTABLE_PROVIDER_MESSAGE = 'Testing this provider is not supported yet.';
+/**
+ * Reported when a provider has no connection test of its own.
+ *
+ * A code rather than a sentence: the client translates it, as it does status_detail, so
+ * one mailbox does not explain itself in English while another explains itself in the
+ * user's language.
+ */
+const UNTESTABLE_PROVIDER = 'UNTESTABLE_PROVIDER';
 
 /**
  * Refreshes a Gmail mailbox's token, then asks whether it can still read mail.

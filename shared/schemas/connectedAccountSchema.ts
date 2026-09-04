@@ -21,6 +21,44 @@ export const OAUTH_PROVIDERS = ['google', 'microsoft'] as const;
  * CHECK constraint and here for the sync work, which needs to retire a mailbox without
  * discarding its cursor. Until then it is unreachable, so no user-facing surface claims it.
  */
+/**
+ * Reasons a mailbox can be in error, as stored in `status_detail` and returned by the
+ * connection test.
+ *
+ * A closed set because the client renders these by translating them: an unlisted value
+ * reaches a user as a raw token or a generic fallback, and a database error code or a
+ * transport errno is exactly what would otherwise leak here. Both sides import this list
+ * rather than restating it, so a rename cannot silently degrade every mailbox to the
+ * generic reason.
+ */
+export const CONNECTED_ACCOUNT_STATUS_DETAILS = [
+  'INSUFFICIENT_SCOPE',
+  'PROVIDER_AUTH_EXPIRED',
+  'CONNECTION_FAILED',
+  'UNTESTABLE_PROVIDER',
+  'TEST_REQUEST_FAILED',
+  'SYNC_FAILED',
+] as const;
+
+export type ConnectedAccountStatusDetail = (typeof CONNECTED_ACCOUNT_STATUS_DETAILS)[number];
+
+/** Recorded when a failure carries no reason of its own. */
+export const SYNC_FAILED_DETAIL = 'SYNC_FAILED';
+
+/** Reported when a provider has no connection test of its own. */
+export const UNTESTABLE_PROVIDER = 'UNTESTABLE_PROVIDER';
+
+/** Reported when the request to MiniCRM failed, so the provider was never asked. */
+export const TEST_REQUEST_FAILED = 'TEST_REQUEST_FAILED';
+
+/** True when a value is one of the reasons a client knows how to render. */
+export function isStatusDetail(value: unknown): value is ConnectedAccountStatusDetail {
+  return (
+    typeof value === 'string' &&
+    (CONNECTED_ACCOUNT_STATUS_DETAILS as readonly string[]).includes(value)
+  );
+}
+
 export const CONNECTED_ACCOUNT_STATUSES = ['active', 'error', 'disconnected'] as const;
 
 export type ConnectedAccountProvider = (typeof CONNECTED_ACCOUNT_PROVIDERS)[number];
