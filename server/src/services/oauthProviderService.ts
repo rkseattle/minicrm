@@ -46,6 +46,15 @@ interface ProviderDefinition {
 }
 
 /**
+ * The scope a sync driver needs to read Gmail.
+ *
+ * Exported because the driver has to require exactly what the consent flow requests. Two
+ * copies of this string drifting apart is the silent-sync-nothing failure the scope check
+ * exists to prevent, and nothing else would notice.
+ */
+export const GMAIL_READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+
+/**
  * Provider metadata. Credentials are read through thunks rather than captured at module
  * load so a test can set the environment after import, and so a missing variable surfaces
  * as PROVIDER_NOT_CONFIGURED at use rather than a boot crash.
@@ -53,12 +62,7 @@ interface ProviderDefinition {
 const PROVIDERS: Record<OAuthProvider, ProviderDefinition> = {
   google: {
     issuer: 'https://accounts.google.com',
-    scopes: [
-      'openid',
-      'email',
-      'https://www.googleapis.com/auth/gmail.readonly',
-      'https://www.googleapis.com/auth/gmail.send',
-    ],
+    scopes: ['openid', 'email', GMAIL_READ_SCOPE, 'https://www.googleapis.com/auth/gmail.send'],
     clientId: () => process.env.GOOGLE_OAUTH_CLIENT_ID,
     clientSecret: () => process.env.GOOGLE_OAUTH_CLIENT_SECRET,
   },
