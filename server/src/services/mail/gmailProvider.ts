@@ -5,7 +5,7 @@
  * written against the Discovery Document rather than against observed behavior, and its
  * tests validate every fake response against that same schema.
  *
- * No SDK. `googleapis` would pull a large transitive tree to wrap three REST endpoints,
+ * No SDK. `googleapis` would pull a large transitive tree to wrap four REST endpoints,
  * and its main draw is an auth layer the connected-account service already owns. The
  * precedent for reaching Google directly is `revokeProviderTokens`: raw fetch, a hardcoded
  * URL, and an AbortController for the timeout.
@@ -54,7 +54,7 @@ const MAX_BACKFILL_MESSAGES_PER_PAGE = 50;
  * the anchor as still owed, so the phase cannot flip to a position nothing can resume
  * from. It is not a value Gmail can return: history ids are decimal.
  */
-const UNANCHORED = 'unanchored';
+export const UNANCHORED = 'unanchored';
 
 /** Bound on each Gmail request, so a hung endpoint cannot stall the whole tick. */
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -428,7 +428,8 @@ async function readMessages(
  *
  * @param accountAddress - The mailbox's own address, used to decide message direction.
  * @param grantedScopes - What the provider actually granted, which may be fewer than were
- *   requested. Checked before any request so an under-scoped mailbox costs nothing.
+ *   requested.
+ * @throws with code INSUFFICIENT_SCOPE when those scopes cannot read mail.
  * @param fetchImpl - Injected so tests drive the driver without reaching Google, which
  *   publishes no sandbox to reach.
  */
@@ -437,6 +438,20 @@ export function createGmailProvider(
   grantedScopes: readonly string[],
   fetchImpl: FetchLike = fetch,
 ): MailProvider {
+  // Checked at construction, not at fetch: the engine builds the provider before it
+  // decrypts and refreshes credentials, so refusing here is what keeps an under-scoped
+  // mailbox from spending a locked token refresh every tick.
+  if (!grantedScopes.includes(GMAIL_READ_SCOPE)) {
+    logger.warn(
+      { accountAddress, grantedScopes },
+      'gmailProvider: mailbox lacks the scope needed to read mail',
+    );
+    throw providerError(
+      'This mailbox did not grant permission to read mail. Reconnect it to continue syncing.',
+      INSUFFICIENT_SCOPE,
+    );
+  }
+
   return {
     async fetchSince(
       auth: ConnectedAccountAuth,
@@ -445,18 +460,6 @@ export function createGmailProvider(
     ): Promise<ProviderPage> {
       if (auth.kind !== 'oauth') {
         throw providerError('Gmail requires an OAuth account.', PROVIDER_AUTH_EXPIRED);
-      }
-
-      // The same constant the consent flow requests, so the two cannot drift apart.
-      if (!grantedScopes.includes(GMAIL_READ_SCOPE)) {
-        logger.warn(
-          { accountAddress, grantedScopes },
-          'gmailProvider: mailbox lacks the scope needed to read mail',
-        );
-        throw providerError(
-          'This mailbox did not grant permission to read mail. Reconnect it to continue syncing.',
-          INSUFFICIENT_SCOPE,
-        );
       }
 
       const stored = parseCursor(cursor);
@@ -488,6 +491,9 @@ async function readBackfill(
     ? stored.historyId
     : ((await fetchProfileHistoryId(fetchImpl, accessToken)) ?? null);
 
+  // `q` rides every page, not just the first: a page token positions within a result set
+  // the other parameters define, so dropping the filter would let page two enumerate the
+  // whole mailbox — drafts, chats, and everything outside the window.
   const afterSeconds = Math.floor(since.getTime() / 1000);
   const params: Record<string, string> = {
     q: `after:${String(afterSeconds)} ${EXCLUDED_LABELS}`,
@@ -500,14 +506,14 @@ async function readBackfill(
   const nextPageToken = (body as { nextPageToken?: unknown } | null)?.nextPageToken;
   const pageToken = typeof nextPageToken === 'string' && nextPageToken ? nextPageToken : null;
 
-  // A mailbox that reported no history position keeps reading its window — the listing
-  // token is what makes that progress — but never flips to the incremental phase, because
-  // there is no position for one to resume from. The anchor is re-attempted on the next
-  // page, and the phase flips once one answers.
+  // The phase flips only when the listing is exhausted; until then every page carries the
+  // same historyId, so the incremental sync that follows resumes from before the backfill
+  // began rather than from wherever it happened to stop.
   //
-  // Otherwise the phase flips only when the listing is exhausted; until then every page
-  // carries the same historyId, so the incremental sync that follows resumes from before
-  // the backfill began rather than from wherever it happened to stop.
+  // A mailbox still owed an anchor keeps a backfill cursor only while the listing has
+  // pages left. Once it is exhausted the cursor goes null, which is what routes the next
+  // tick back through backfillAccount — the engine reads a non-null cursor with no open
+  // job as "incremental", and that path has no page budget and opens no job.
   const next: GmailCursor | null =
     historyId === null
       ? pageToken === null

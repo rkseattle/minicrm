@@ -213,8 +213,7 @@ describe('OAuth upsert', () => {
   it('re-consenting returns a retired mailbox to the schedule', async () => {
     // Re-consent is the ordinary way back for an OAuth mailbox. Restoring status while
     // leaving the counter at the ceiling would look repaired and never sync again — a
-    // failure only reachable once a Gmail or Graph driver joins IMPLEMENTED_SYNC_PROVIDERS,
-    // which is exactly when nobody would be looking for it.
+    // failure reachable now that a Gmail driver is in IMPLEMENTED_SYNC_PROVIDERS.
     const first = await upsertOAuthAccount(
       { ...OAUTH_UPSERT, userId: REP_A_ACTOR.id },
       REP_A_ACTOR,
@@ -675,19 +674,57 @@ describe('scheduler-facing account claim', () => {
   });
 
   it('never claims a provider with no driver', async () => {
+    // A mailbox connected before its driver ships simply does not sync, rather than
+    // failing repeatedly for lacking one.
     const account = await upsertOAuthAccount(
       {
         userId: REP_A_ACTOR.id,
-        provider: 'google',
-        emailAddress: `${FILE_PREFIX}-google@example.com`,
+        provider: 'microsoft',
+        emailAddress: `${FILE_PREFIX}-graph@example.com`,
         auth: { kind: 'oauth', access_token: 'token', refresh_token: 'refresh', expires_at: null },
         grantedScopes: [],
       },
       REP_A_ACTOR,
     );
 
-    expect(IMPLEMENTED_SYNC_PROVIDERS).not.toContain('google');
+    expect(IMPLEMENTED_SYNC_PROVIDERS).not.toContain('microsoft');
     expect(await claimOwn()).not.toContain(account.id);
+  });
+
+  it('claims a Gmail mailbox now that its driver ships', async () => {
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-google@example.com`,
+        auth: { kind: 'oauth', access_token: 'token', refresh_token: 'refresh', expires_at: null },
+        grantedScopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+      },
+      REP_A_ACTOR,
+    );
+
+    expect(await claimOwn()).toContain(account.id);
+  });
+
+  it('carries the granted scopes, so the driver needs no per-account lookup', async () => {
+    // Built by hand from the row, so an omitted RETURNING column arrives as undefined with
+    // no type error — and the scope check would then refuse every Gmail mailbox.
+    const scopes = ['https://www.googleapis.com/auth/gmail.readonly'];
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-scoped@example.com`,
+        auth: { kind: 'oauth', access_token: 'token', refresh_token: 'refresh', expires_at: null },
+        grantedScopes: scopes,
+      },
+      REP_A_ACTOR,
+    );
+
+    await withholdOtherSuites();
+    const claimed = (await claimAccountsDueForSync(10)).find((a) => a.id === account.id);
+
+    expect(claimed?.grantedScopes).toEqual(scopes);
   });
 
   it('leases what it claims, so a second tick does not resync the same mailbox', async () => {

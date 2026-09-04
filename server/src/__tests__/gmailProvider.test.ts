@@ -18,6 +18,7 @@ import {
   INSUFFICIENT_SCOPE,
   parseCursor,
   serializeCursor,
+  UNANCHORED,
   type FetchLike,
 } from '../services/mail/gmailProvider.js';
 
@@ -100,15 +101,15 @@ describe('parseCursor', () => {
 });
 
 describe('createGmailProvider — scope check', () => {
-  it('refuses a mailbox that did not grant read access, before any request', async () => {
+  it('refuses a mailbox that did not grant read access, at construction', () => {
+    // Thrown when the provider is built, not when it fetches: the engine constructs the
+    // driver before it decrypts and refreshes credentials, so an under-scoped mailbox
+    // costs nothing per tick — no locked row, no round trip to Google.
     const fetcher = fakeFetch([]);
-    const provider = createGmailProvider(ACCOUNT_ADDRESS, ['openid', 'email'], fetcher.fn);
 
-    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toMatchObject({
-      code: INSUFFICIENT_SCOPE,
-    });
-    // The point of checking first: an under-scoped mailbox costs nothing per tick, and
-    // spends no refresh token proving what its scopes already say.
+    expect(() => createGmailProvider(ACCOUNT_ADDRESS, ['openid', 'email'], fetcher.fn)).toThrow(
+      expect.objectContaining({ code: INSUFFICIENT_SCOPE }) as Error,
+    );
     expect(fetcher.urls).toHaveLength(0);
   });
 
@@ -179,6 +180,25 @@ describe('createGmailProvider — backfill', () => {
     expect(fetcher.urls.some((url) => url.includes('/profile'))).toBe(false);
   });
 
+  it('carries the filter onto every page, not just the first', async () => {
+    // A page token positions within a result set the other parameters define. Dropping the
+    // filter on page two would let it enumerate the whole mailbox — drafts, chats, and
+    // everything outside the window — and commitPage would store all of it.
+    const fetcher = fakeFetch([{ match: '/messages?', body: { messages: [] } }]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    await provider.fetchSince(
+      AUTH,
+      serializeCursor({ phase: 'backfill', historyId: '5000', pageToken: 'page-2' }),
+      SINCE,
+    );
+
+    const listing = fetcher.urls.find((url) => url.includes('/messages?'));
+    expect(listing).toContain('pageToken=page-2');
+    expect(listing).toContain('-in%3Adrafts');
+    expect(listing).toContain('-in%3Achats');
+  });
+
   it('asks Gmail to exclude drafts and chats', async () => {
     // IMAP syncs INBOX and Sent only. Without this a half-written draft lands as real
     // correspondence, and the same mailbox reads differently per driver.
@@ -196,9 +216,10 @@ describe('createGmailProvider — backfill', () => {
     expect(listing).toContain(`after%3A${String(Math.floor(SINCE.getTime() / 1000))}`);
   });
 
-  it('stores no cursor when the mailbox reports no history position', async () => {
-    // Without an anchor there is nothing an incremental sync could resume from, so the
-    // window is re-read rather than a cursor stored that cannot serve one.
+  it('stores no cursor when an exhausted listing never got its anchor', async () => {
+    // Null, not a backfill cursor: the engine routes a non-null cursor with no open job
+    // down the incremental path, which has no page budget and opens no job. Null is what
+    // sends the next tick back through backfillAccount as a proper job.
     const fetcher = fakeFetch([
       { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS } },
       { match: '/messages?', body: { messages: [] } },
@@ -207,8 +228,8 @@ describe('createGmailProvider — backfill', () => {
 
     const page = await provider.fetchSince(AUTH, null, SINCE);
 
-    expect(page.cursor).toBeNull();
     expect(page.cursorInvalid).toBe(false);
+    expect(page.cursor).toBeNull();
   });
 });
 
@@ -473,7 +494,7 @@ describe('createGmailProvider — truncation', () => {
 
     const page = await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'backfill', historyId: 'unanchored', pageToken: 'page-2' }),
+      serializeCursor({ phase: 'backfill', historyId: UNANCHORED, pageToken: 'page-2' }),
       SINCE,
     );
 

@@ -127,6 +127,50 @@ mailbox and restores that mailbox's stored cursor, so an escaping body error wou
 every header the page had already read and re-read them all next tick — repeatedly, for
 as long as the message that threw stays in range.
 
+## The Gmail provider
+
+Reads the REST API directly — no SDK. `googleapis` would pull a large transitive tree to
+wrap four endpoints, and the auth layer that is its main draw already exists in
+`connectedAccountService`. `revokeProviderTokens` is the precedent: raw `fetch`, a
+hardcoded URL, an `AbortController` for the timeout.
+
+**The cursor is JSON carrying an explicit phase**, not a bare `historyId`. The engine feeds
+each backfill page's cursor straight back into `fetchSince`, so a driver that routed on the
+presence of a history id would switch to the incremental endpoint on page two and abandon
+the rest of the window permanently.
+
+**The backfill's anchor is read once**, from `users.getProfile`, before the first page — not
+from the newest listed message as Google's sync guide suggests. That value is read _after_
+the listing, so a message arriving while the listing ran is never seen again. A mailbox whose
+profile returns no `historyId` keeps paging under a placeholder anchor while the listing has
+pages left, and stores no cursor once it is exhausted — a null cursor is what routes the next
+tick back through the backfill job, where a stored one would take the incremental path and
+lose the page budget.
+
+**Every ref a history page reports is delivered**, however many that is. `maxResults` bounds
+history _records_, not the messages inside them, so one record set can exceed it — but the
+API offers no way to resume inside a page, so a client-side cap could only discard the
+remainder while the cursor advanced past it. An oversized page is recoverable; dropped refs
+are not.
+
+**Bodies come from `format=RAW`** and the same `parseMessage` the IMAP driver uses, so a
+message reads identically whichever driver synced it. Walking Gmail's own `payload.parts[]`
+would mean a second rule for part selection, HTML-only conversion, and attachment
+disposition, kept in agreement with IMAP's forever. A document over
+`MAX_MESSAGE_SOURCE_BYTES` stores its headers with no body rather than being dropped —
+unlike IMAP this cannot avoid the download, since RAW carries the whole document and its
+size is only known once it has arrived.
+
+**Scope is checked when the provider is built**, not when it fetches. The engine constructs
+the driver before it decrypts and refreshes credentials, so refusing at construction is what
+stops an under-scoped mailbox from spending a locked token refresh every tick. The required
+scope is one constant shared with the consent flow; two copies drifting apart is the
+silent-sync-nothing failure the check exists to prevent.
+
+**A 403 is only a credential failure when its body says so.** Quota exhaustion arrives the
+same way, and `status_detail` reaches the user — telling a rep to reconnect a mailbox does
+nothing for a limit that resets in a minute.
+
 ## Threading
 
 IMAP has no native thread id, so one is derived from RFC 5322 headers: the first entry of
@@ -220,7 +264,7 @@ the ambient value.
 
 ## Not covered here
 
-- **Gmail and Microsoft Graph providers** — the seam exists; the drivers do not.
+- **The Microsoft Graph provider** — the seam exists; the driver does not.
 - **Matching messages to CRM records, and any read API or UI** — this engine writes rows
   nothing yet reads. `is_private` ships defaulted to `false` with no writer.
 - **GDPR erasure for synced mail, and the backfill window as an admin setting** — the

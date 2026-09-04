@@ -87,9 +87,9 @@ export type ConnectedAccountAuth = ImapAuthPayload | OAuthAuthPayload;
  * The single source of truth for what the scheduler may claim. A provider absent from
  * this list is never picked up and so never marked failed for lacking a driver — it
  * simply does not sync, which is what a mailbox connected before its provider shipped
- * should do. Gmail and Microsoft Graph join this list when their drivers land.
+ * should do. Microsoft Graph joins this list when its driver lands.
  */
-export const IMPLEMENTED_SYNC_PROVIDERS: readonly ConnectedAccountProvider[] = ['imap'];
+export const IMPLEMENTED_SYNC_PROVIDERS: readonly ConnectedAccountProvider[] = ['imap', 'google'];
 
 /**
  * How long a claimed mailbox is withheld from other ticks.
@@ -120,6 +120,12 @@ export interface ClaimedSyncAccount {
   emailAddress: string;
   syncCursor: string | null;
   syncFailureCount: number;
+  /**
+   * What the provider actually granted, joined here for the same reason userRole is: the
+   * driver has to check it before reading a mailbox and the scheduler has nowhere else to
+   * read it from.
+   */
+  grantedScopes: string[];
 }
 
 /** A connected account with its credentials decrypted, for internal use only. */
@@ -736,7 +742,7 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
        ) due
       WHERE ca.id = due.id
   RETURNING ca.id, ca.user_id, ca.provider, ca.email_address, ca.sync_cursor,
-            ca.sync_failure_count, due.user_role`,
+            ca.sync_failure_count, ca.granted_scopes, due.user_role`,
     [IMPLEMENTED_SYNC_PROVIDERS, limit, SYNC_CLAIM_LEASE_MS, MAX_SYNC_FAILURES],
   );
 
@@ -748,6 +754,7 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
     emailAddress: row.email_address,
     syncCursor: row.sync_cursor,
     syncFailureCount: row.sync_failure_count,
+    grantedScopes: row.granted_scopes,
   }));
 }
 
