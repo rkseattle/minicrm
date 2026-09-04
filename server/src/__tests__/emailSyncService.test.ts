@@ -443,7 +443,8 @@ describe('syncDueAccounts', () => {
       [account.id],
     );
     expect(row.rows[0].status).toBe('error');
-    expect(row.rows[0].status_detail).toContain('imap unreachable');
+    // A failure with no domain code of its own records the generic one.
+    expect(row.rows[0].status_detail).toBe('SYNC_FAILED');
     expect(row.rows[0].sync_failure_count).toBe(1);
     expect(row.rows[0].sync_next_attempt_at).not.toBeNull();
   });
@@ -911,7 +912,8 @@ describe('syncOneAccount — OAuth credentials', () => {
       [account.id],
     );
     expect(row.rows[0].status).toBe('error');
-    expect(row.rows[0].status_detail).toContain('did not grant permission to read mail');
+    // The code, not prose: this is what the panel translates into the user's language.
+    expect(row.rows[0].status_detail).toBe('INSUFFICIENT_SCOPE');
   });
 });
 

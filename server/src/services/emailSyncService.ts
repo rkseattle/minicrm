@@ -19,6 +19,11 @@
 
 import type { PoolClient } from 'pg';
 
+import {
+  isStatusDetail,
+  SYNC_FAILED_DETAIL,
+} from '@minicrm/shared/schemas/connectedAccountSchema.js';
+
 import pool from '../db.js';
 import logger from '../logger.js';
 import { captureException } from '../sentry.js';
@@ -346,7 +351,11 @@ export async function syncOneAccount(
 
   const auth = await getAccountAuthForSync(account.id, refresh);
   if (!auth) {
-    throw new Error('emailSyncService: no usable credentials for this account');
+    // Coded, because "keep trying" is the wrong advice: the credential is unusable and
+    // the mailbox needs a person to reconnect it.
+    throw Object.assign(new Error('emailSyncService: no usable credentials for this account'), {
+      code: 'PROVIDER_AUTH_EXPIRED',
+    });
   }
 
   const since = new Date(Date.now() - BACKFILL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
@@ -380,7 +389,10 @@ export async function syncOneAccount(
  * and that is a lifecycle event a user must be able to account for.
  */
 async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Promise<void> {
-  const detail = err instanceof Error ? err.message : 'Sync failed';
+  // Only a known reason: the client renders this column by translating it, so a pg error
+  // code or a transport errno would reach a user as a raw token.
+  const code: unknown = err instanceof Error ? (err as { code?: unknown }).code : undefined;
+  const detail = isStatusDetail(code) ? code : SYNC_FAILED_DETAIL;
 
   const client = await pool.connect();
   try {

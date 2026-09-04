@@ -15,6 +15,11 @@ import type {
   ConnectedAccountResponse,
   ConnectedAccountStatus,
 } from '@shared/schemas/connectedAccountSchema.js';
+import {
+  SYNC_FAILED_DETAIL,
+  TEST_REQUEST_FAILED,
+  UNTESTABLE_PROVIDER,
+} from '@shared/schemas/connectedAccountSchema.js';
 
 import {
   CONNECTED_ACCOUNTS_QUERY_KEY,
@@ -39,6 +44,9 @@ const STATUS_VARIANT: Record<ConnectedAccountStatus, 'success' | 'error' | 'neut
   error: 'error',
   disconnected: 'neutral',
 };
+
+/** Test answers no row will ever carry, so a healthy row does not supersede them. */
+const SURVIVES_HEALTHY_ROW: readonly string[] = [UNTESTABLE_PROVIDER, TEST_REQUEST_FAILED];
 
 export default function ConnectedAccountsPanel() {
   const { t } = useTranslation();
@@ -90,11 +98,59 @@ export default function ConnectedAccountsPanel() {
     onError: () => setFormError(t('connectedAccounts.connectError')),
   });
 
+  const [testResult, setTestResult] = useState<{ id: string; error: string } | null>(null);
+
   const testMutation = useMutation({
     mutationFn: testConnectedAccount,
+    // Cleared first so a second attempt cannot leave the previous answer on screen while
+    // it runs, or after it fails before any response arrives.
+    onMutate: () => setTestResult(null),
+    // A provider with no test of its own writes nothing to the row, so the answer exists
+    // only in this response — without reading it the button does nothing visible at all.
+    onSuccess: (result, accountId) => {
+      setTestResult(
+        result.success ? null : { id: accountId, error: result.error ?? SYNC_FAILED_DETAIL },
+      );
+    },
+    // The request to MiniCRM failed, so the provider was never asked — saying it was
+    // unreachable would point the user at the wrong system.
+    onError: (_err, accountId) => setTestResult({ id: accountId, error: TEST_REQUEST_FAILED }),
     // The row's status is what the server just recorded, so re-read rather than guess.
     onSettled: () => queryClient.invalidateQueries({ queryKey: CONNECTED_ACCOUNTS_QUERY_KEY }),
   });
+
+  /**
+   * Turns a server-recorded code into a sentence in the viewer's language.
+   *
+   * The fallback matters: codes are written by the server, and a build may have no key for
+   * one it has never seen — that must degrade to a generic reason, not a raw token.
+   */
+  function resultMessage(code: string | null, fallback: string = SYNC_FAILED_DETAIL): string {
+    return t(`connectedAccounts.results.${code ?? fallback}`, {
+      defaultValue: t(`connectedAccounts.results.${fallback}`),
+    });
+  }
+
+  /**
+   * The reason to show for one mailbox, or null when there is nothing to say.
+   *
+   * A just-pressed Test wins over the stored column: it is the fresher answer, and for a
+   * provider that writes no row it is the only one.
+   */
+  function reasonFor(account: ConnectedAccountResponse): string | null {
+    // One element, not two: a second one rendering on the complement of this condition is
+    // how a superseded answer reappears under a healthy badge.
+    //
+    // Two answers survive a healthy row, because for them the row was never going to say
+    // anything: the server writes nothing for a provider it cannot test, and a request
+    // that failed never reached the server at all. Every other test answer is superseded
+    // by what the row reports.
+    if (testResult?.id === account.id) {
+      if (SURVIVES_HEALTHY_ROW.includes(testResult.error)) return testResult.error;
+      if (account.status === 'error') return testResult.error;
+    }
+    return account.status === 'error' ? account.status_detail : null;
+  }
 
   const disconnectMutation = useMutation({
     mutationFn: deleteConnectedAccount,
@@ -129,9 +185,7 @@ export default function ConnectedAccountsPanel() {
           }`}
           data-testid="connected-accounts-connect-result"
         >
-          {t(`connectedAccounts.results.${connectResult}`, {
-            defaultValue: t('connectedAccounts.results.OAUTH_FAILED'),
-          })}{' '}
+          {resultMessage(connectResult, 'OAUTH_FAILED')}{' '}
           <button
             type="button"
             className="underline"
@@ -184,12 +238,23 @@ export default function ConnectedAccountsPanel() {
                 </p>
               </div>
 
-              <Badge
-                variant={STATUS_VARIANT[account.status]}
-                data-testid={`connected-account-status-${account.id}`}
-              >
-                {t(`connectedAccounts.statuses.${account.status}`)}
-              </Badge>
+              <div className="flex flex-col items-start gap-1 min-w-0">
+                <Badge
+                  variant={STATUS_VARIANT[account.status]}
+                  data-testid={`connected-account-status-${account.id}`}
+                >
+                  {t(`connectedAccounts.statuses.${account.status}`)}
+                </Badge>
+                {reasonFor(account) !== null ? (
+                  <p
+                    className="text-xs text-red-600 break-words"
+                    role="alert"
+                    data-testid={`connected-account-status-detail-${account.id}`}
+                  >
+                    {resultMessage(reasonFor(account))}
+                  </p>
+                ) : null}
+              </div>
 
               {confirmingDisconnectId === account.id ? (
                 <div

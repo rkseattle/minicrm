@@ -1871,7 +1871,13 @@
       "FEATURE_DISABLED": "Las conexiones de buzones están desactivadas para su cuenta.",
       "SESSION_EXPIRED": "Su sesión caducó antes de completar la conexión. Inténtelo de nuevo.",
       "INSUFFICIENT_CAPABILITY": "No tiene permiso para conectar un buzón.",
-      "OAUTH_FAILED": "No se pudo conectar el buzón. Inténtelo de nuevo."
+      "OAUTH_FAILED": "No se pudo conectar el buzón. Inténtelo de nuevo.",
+      "SYNC_FAILED": "Error de sincronización. MiniCRM seguirá intentándolo.",
+      "INSUFFICIENT_SCOPE": "Este buzón no concedió permiso para leer el correo. Vuelve a conectarlo para seguir sincronizando.",
+      "CONNECTION_FAILED": "MiniCRM no pudo conectar con este proveedor de correo. Seguirá intentándolo.",
+      "PROVIDER_AUTH_EXPIRED": "El proveedor dejó de aceptar el inicio de sesión guardado. Vuelve a conectar este buzón.",
+      "UNTESTABLE_PROVIDER": "Todavía no se admite la comprobación de este proveedor.",
+      "TEST_REQUEST_FAILED": "MiniCRM no pudo ejecutar esa comprobación. Inténtalo de nuevo."
     },
     "secureLabel": "Usar TLS al conectar (desmarque para servidores que usan STARTTLS en el puerto 143)",
     "testButton": "Probar"

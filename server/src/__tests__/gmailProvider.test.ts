@@ -511,7 +511,7 @@ describe('createGmailProvider — truncation', () => {
 describe('createGmailProvider — failures', () => {
   it('treats a quota refusal as transient, not as a bad credential', async () => {
     // Telling a rep to reconnect a mailbox does nothing for a quota that resets in a
-    // minute, and status_detail is rendered to them verbatim.
+    // minute, and the code recorded here is what the panel shows them.
     const fetcher = fakeFetch([
       {
         match: '/profile',

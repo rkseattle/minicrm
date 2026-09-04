@@ -1871,7 +1871,13 @@
       "FEATURE_DISABLED": "[Mäïlböx ĉöññëĉtïöñŝ ärë türñëd öff för yöür äĉĉöüñt.~~~~~~~~~~~~~~~~]",
       "SESSION_EXPIRED": "[Yöür ŝëŝŝïöñ ëxpïrëd bëförë thë ĉöññëĉtïöñ fïñïŝhëd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~~~~~]",
       "INSUFFICIENT_CAPABILITY": "[Yöü dö ñöt hävë përmïŝŝïöñ tö ĉöññëĉt ä mäïlböx.~~~~~~~~~~~~~~~]",
-      "OAUTH_FAILED": "[Thë mäïlböx ĉöüld ñöt bë ĉöññëĉtëd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~]"
+      "OAUTH_FAILED": "[Thë mäïlböx ĉöüld ñöt bë ĉöññëĉtëd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~]",
+      "SYNC_FAILED": "[Ŝyñĉïñg fäïlëd. MïñïĈRM wïll këëp tryïñg.~~~~~~~~~~~~~]",
+      "INSUFFICIENT_SCOPE": "[Thïŝ mäïlböx dïd ñöt gräñt përmïŝŝïöñ tö rëäd mäïl. Rëĉöññëĉt ït tö ĉöñtïñüë ŝyñĉïñg.~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "CONNECTION_FAILED": "[MïñïĈRM ĉöüld ñöt rëäĉh thïŝ mäïl prövïdër. Ït wïll këëp tryïñg.~~~~~~~~~~~~~~~~~~~~]",
+      "PROVIDER_AUTH_EXPIRED": "[Thë prövïdër ŝtöppëd äĉĉëptïñg thë ŝävëd ŝïgñ-ïñ. Rëĉöññëĉt thïŝ mäïlböx.~~~~~~~~~~~~~~~~~~~~~~]",
+      "UNTESTABLE_PROVIDER": "[Tëŝtïñg thïŝ prövïdër ïŝ ñöt ŝüppörtëd yët.~~~~~~~~~~~~~]",
+      "TEST_REQUEST_FAILED": "[MïñïĈRM ĉöüld ñöt rüñ thät tëŝt. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~]"
     },
     "secureLabel": "[Üŝë TLŜ öñ ĉöññëĉt (üñĉhëĉk för ŝërvërŝ thät üŝë ŜTÄRTTLŜ öñ pört 143)~~~~~~~~~~~~~~~~~~~~~]",
     "testButton": "[Tëŝt~~]"

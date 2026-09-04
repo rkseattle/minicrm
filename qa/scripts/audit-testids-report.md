@@ -1,13 +1,13 @@
 # data-testid Audit Report
 
-Generated: 2026-09-01T00:24:28.575Z
+Generated: 2026-09-04T21:46:18.375Z
 
 ## Summary
 
 - Matched: 597
 - Stale (broken locators): 0
 - Unexercised (in app, not in tests): 1021
-- Dynamic (manual review required): 688
+- Dynamic (manual review required): 690
 
 ## Stale testids (action required)
 
@@ -72,20 +72,20 @@ _None — all test-referenced testids are present in the application source._
 | `confirm-delete-title` | client/src/components/ConfirmDeleteModal.tsx | 102 |
 | `confirm-delete-message` | client/src/components/ConfirmDeleteModal.tsx | 107 |
 | `confirm-delete-modal-overlay` | client/src/components/ConfirmDeleteModal.tsx | 82 |
-| `connected-accounts-title` | client/src/components/ConnectedAccountsPanel.tsx | 118 |
-| `connected-accounts-dismiss-result` | client/src/components/ConnectedAccountsPanel.tsx | 138 |
-| `connected-accounts-loading` | client/src/components/ConnectedAccountsPanel.tsx | 151 |
-| `connected-accounts-load-error` | client/src/components/ConnectedAccountsPanel.tsx | 160 |
-| `connected-accounts-empty` | client/src/components/ConnectedAccountsPanel.tsx | 167 |
-| `connected-accounts-show-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 270 |
-| `connected-accounts-imap-email` | client/src/components/ConnectedAccountsPanel.tsx | 302 |
-| `connected-accounts-imap-host` | client/src/components/ConnectedAccountsPanel.tsx | 320 |
-| `connected-accounts-imap-port` | client/src/components/ConnectedAccountsPanel.tsx | 334 |
-| `connected-accounts-imap-username` | client/src/components/ConnectedAccountsPanel.tsx | 350 |
-| `connected-accounts-imap-password` | client/src/components/ConnectedAccountsPanel.tsx | 367 |
-| `connected-accounts-imap-secure` | client/src/components/ConnectedAccountsPanel.tsx | 379 |
-| `connected-accounts-imap-submit` | client/src/components/ConnectedAccountsPanel.tsx | 402 |
-| `connected-accounts-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 280 |
+| `connected-accounts-title` | client/src/components/ConnectedAccountsPanel.tsx | 159 |
+| `connected-accounts-dismiss-result` | client/src/components/ConnectedAccountsPanel.tsx | 177 |
+| `connected-accounts-loading` | client/src/components/ConnectedAccountsPanel.tsx | 190 |
+| `connected-accounts-load-error` | client/src/components/ConnectedAccountsPanel.tsx | 199 |
+| `connected-accounts-empty` | client/src/components/ConnectedAccountsPanel.tsx | 206 |
+| `connected-accounts-show-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 331 |
+| `connected-accounts-imap-email` | client/src/components/ConnectedAccountsPanel.tsx | 363 |
+| `connected-accounts-imap-host` | client/src/components/ConnectedAccountsPanel.tsx | 381 |
+| `connected-accounts-imap-port` | client/src/components/ConnectedAccountsPanel.tsx | 395 |
+| `connected-accounts-imap-username` | client/src/components/ConnectedAccountsPanel.tsx | 411 |
+| `connected-accounts-imap-password` | client/src/components/ConnectedAccountsPanel.tsx | 428 |
+| `connected-accounts-imap-secure` | client/src/components/ConnectedAccountsPanel.tsx | 440 |
+| `connected-accounts-imap-submit` | client/src/components/ConnectedAccountsPanel.tsx | 463 |
+| `connected-accounts-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 341 |
 | `contact-enrichment-error` | client/src/components/ContactEnrichmentModal.tsx | 120 |
 | `contact-enrichment-insufficient` | client/src/components/ContactEnrichmentModal.tsx | 130 |
 | `contact-enrichment-cancel` | client/src/components/ContactEnrichmentModal.tsx | 163 |
@@ -364,15 +364,15 @@ _None — all test-referenced testids are present in the application source._
 | `ai-delete-cancel-button` | client/src/pages/AiPage.tsx | 764 |
 | `ai-retention-window-notice` | client/src/pages/AiPage.tsx | 872 |
 | `ai-thinking-indicator` | client/src/pages/AiPage.tsx | 948 |
-| `filter-from` | client/src/pages/AuditLogPage.tsx | 368 |
-| `filter-to` | client/src/pages/AuditLogPage.tsx | 386 |
-| `filter-user` | client/src/pages/AuditLogPage.tsx | 402 |
-| `filter-event-type` | client/src/pages/AuditLogPage.tsx | 448 |
-| `filter-source` | client/src/pages/AuditLogPage.tsx | 471 |
-| `clear-filters-button` | client/src/pages/AuditLogPage.tsx | 495 |
-| `audit-log-loading` | client/src/pages/AuditLogPage.tsx | 508 |
-| `audit-log-error` | client/src/pages/AuditLogPage.tsx | 519 |
-| `audit-log-empty-state` | client/src/pages/AuditLogPage.tsx | 531 |
+| `filter-from` | client/src/pages/AuditLogPage.tsx | 375 |
+| `filter-to` | client/src/pages/AuditLogPage.tsx | 393 |
+| `filter-user` | client/src/pages/AuditLogPage.tsx | 409 |
+| `filter-event-type` | client/src/pages/AuditLogPage.tsx | 455 |
+| `filter-source` | client/src/pages/AuditLogPage.tsx | 478 |
+| `clear-filters-button` | client/src/pages/AuditLogPage.tsx | 502 |
+| `audit-log-loading` | client/src/pages/AuditLogPage.tsx | 515 |
+| `audit-log-error` | client/src/pages/AuditLogPage.tsx | 526 |
+| `audit-log-empty-state` | client/src/pages/AuditLogPage.tsx | 538 |
 | `logs-drawer-title` | client/src/pages/AutomationRulesPage.tsx | 222 |
 | `logs-drawer-rule-name` | client/src/pages/AutomationRulesPage.tsx | 226 |
 | `logs-drawer-close` | client/src/pages/AutomationRulesPage.tsx | 235 |
@@ -587,8 +587,8 @@ _None — all test-referenced testids are present in the application source._
 | `filter-status` | client/src/pages/LeadsPage.tsx | 545 |
 | `filter-source` | client/src/pages/LeadsPage.tsx | 563 |
 | `leads-empty-state` | client/src/pages/LeadsPage.tsx | 607 |
-| `sso-error-banner` | client/src/pages/LoginPage.tsx | 134 |
-| `login-forgot-password` | client/src/pages/LoginPage.tsx | 215 |
+| `sso-error-banner` | client/src/pages/LoginPage.tsx | 139 |
+| `login-forgot-password` | client/src/pages/LoginPage.tsx | 220 |
 | `tasks-bulk-delete-button` | client/src/pages/MyTasksPage.tsx | 219 |
 | `complete-error` | client/src/pages/MyTasksPage.tsx | 255 |
 | `tasks-select-all` | client/src/pages/MyTasksPage.tsx | 335 |
@@ -597,31 +597,31 @@ _None — all test-referenced testids are present in the application source._
 | `completed-tasks-empty` | client/src/pages/MyTasksPage.tsx | 595 |
 | `my-tasks-error` | client/src/pages/MyTasksPage.tsx | 248 |
 | `my-tasks-loading` | client/src/pages/MyTasksPage.tsx | 241 |
-| `profile-lang-loading` | client/src/pages/ProfilePage.tsx | 206 |
-| `profile-lang-error` | client/src/pages/ProfilePage.tsx | 212 |
-| `profile-language-select` | client/src/pages/ProfilePage.tsx | 233 |
-| `profile-lang-success` | client/src/pages/ProfilePage.tsx | 250 |
-| `profile-lang-save-error` | client/src/pages/ProfilePage.tsx | 260 |
-| `profile-lang-save` | client/src/pages/ProfilePage.tsx | 271 |
-| `profile-lang-section` | client/src/pages/ProfilePage.tsx | 221 |
-| `profile-navlayout-loading` | client/src/pages/ProfilePage.tsx | 284 |
-| `profile-navlayout-error` | client/src/pages/ProfilePage.tsx | 290 |
-| `profile-navlayout-success` | client/src/pages/ProfilePage.tsx | 328 |
-| `profile-navlayout-save-error` | client/src/pages/ProfilePage.tsx | 338 |
-| `profile-navlayout-section` | client/src/pages/ProfilePage.tsx | 299 |
-| `profile-notifications-title` | client/src/pages/ProfilePage.tsx | 367 |
-| `profile-prefs-loading` | client/src/pages/ProfilePage.tsx | 376 |
-| `profile-prefs-error` | client/src/pages/ProfilePage.tsx | 382 |
-| `profile-prefs-save-error` | client/src/pages/ProfilePage.tsx | 432 |
-| `profile-mfa-title` | client/src/pages/ProfilePage.tsx | 459 |
-| `profile-mfa-required-banner` | client/src/pages/ProfilePage.tsx | 465 |
-| `profile-mfa-loading` | client/src/pages/ProfilePage.tsx | 474 |
-| `profile-mfa-error` | client/src/pages/ProfilePage.tsx | 480 |
-| `profile-mfa-recovery-count` | client/src/pages/ProfilePage.tsx | 497 |
+| `profile-lang-loading` | client/src/pages/ProfilePage.tsx | 207 |
+| `profile-lang-error` | client/src/pages/ProfilePage.tsx | 213 |
+| `profile-language-select` | client/src/pages/ProfilePage.tsx | 234 |
+| `profile-lang-success` | client/src/pages/ProfilePage.tsx | 251 |
+| `profile-lang-save-error` | client/src/pages/ProfilePage.tsx | 261 |
+| `profile-lang-save` | client/src/pages/ProfilePage.tsx | 272 |
+| `profile-lang-section` | client/src/pages/ProfilePage.tsx | 222 |
+| `profile-navlayout-loading` | client/src/pages/ProfilePage.tsx | 285 |
+| `profile-navlayout-error` | client/src/pages/ProfilePage.tsx | 291 |
+| `profile-navlayout-success` | client/src/pages/ProfilePage.tsx | 329 |
+| `profile-navlayout-save-error` | client/src/pages/ProfilePage.tsx | 339 |
+| `profile-navlayout-section` | client/src/pages/ProfilePage.tsx | 300 |
+| `profile-notifications-title` | client/src/pages/ProfilePage.tsx | 368 |
+| `profile-prefs-loading` | client/src/pages/ProfilePage.tsx | 377 |
+| `profile-prefs-error` | client/src/pages/ProfilePage.tsx | 383 |
+| `profile-prefs-save-error` | client/src/pages/ProfilePage.tsx | 433 |
+| `profile-mfa-title` | client/src/pages/ProfilePage.tsx | 460 |
+| `profile-mfa-required-banner` | client/src/pages/ProfilePage.tsx | 466 |
+| `profile-mfa-loading` | client/src/pages/ProfilePage.tsx | 475 |
+| `profile-mfa-error` | client/src/pages/ProfilePage.tsx | 481 |
+| `profile-mfa-recovery-count` | client/src/pages/ProfilePage.tsx | 498 |
 | `feature-disabled` | client/src/pages/ReportsPage.tsx | 108 |
-| `reset-password-hint` | client/src/pages/ResetPasswordPage.tsx | 29 |
-| `reset-password-request-new-link` | client/src/pages/ResetPasswordPage.tsx | 113 |
-| `reset-password-request-new-link` | client/src/pages/ResetPasswordPage.tsx | 174 |
+| `reset-password-hint` | client/src/pages/ResetPasswordPage.tsx | 28 |
+| `reset-password-request-new-link` | client/src/pages/ResetPasswordPage.tsx | 115 |
+| `reset-password-request-new-link` | client/src/pages/ResetPasswordPage.tsx | 176 |
 | `feature-disabled` | client/src/pages/SequenceDetailPage.tsx | 174 |
 | `sequence-detail-loading` | client/src/pages/SequenceDetailPage.tsx | 185 |
 | `sequence-detail-error` | client/src/pages/SequenceDetailPage.tsx | 198 |
@@ -1077,13 +1077,15 @@ _None — all test-referenced testids are present in the application source._
 | `champion-blocker-dismiss-*` | client/src/components/ChampionBlockerBadge.tsx | 87 | app |
 | `change-history-time-*` | client/src/components/ChangeHistory.tsx | 206 | app |
 | `change-history-entry-*` | client/src/components/ChangeHistory.tsx | 198 | app |
-| `connected-account-status-*` | client/src/components/ConnectedAccountsPanel.tsx | 189 | app |
-| `connected-account-test-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 228 | app |
-| `connected-account-disconnect-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 238 | app |
-| `connected-account-disconnect-confirm-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 206 | app |
-| `connected-account-disconnect-cancel-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 216 | app |
-| `connected-account-disconnect-confirm-*` | client/src/components/ConnectedAccountsPanel.tsx | 197 | app |
-| `connected-account-row-*` | client/src/components/ConnectedAccountsPanel.tsx | 178 | app |
+| `connected-account-status-*` | client/src/components/ConnectedAccountsPanel.tsx | 229 | app |
+| `connected-account-test-result-*` | client/src/components/ConnectedAccountsPanel.tsx | 237 | app |
+| `connected-account-status-detail-*` | client/src/components/ConnectedAccountsPanel.tsx | 248 | app |
+| `connected-account-test-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 289 | app |
+| `connected-account-disconnect-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 299 | app |
+| `connected-account-disconnect-confirm-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 267 | app |
+| `connected-account-disconnect-cancel-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 277 | app |
+| `connected-account-disconnect-confirm-*` | client/src/components/ConnectedAccountsPanel.tsx | 258 | app |
+| `connected-account-row-*` | client/src/components/ConnectedAccountsPanel.tsx | 217 | app |
 | `**-remove-*` | client/src/components/ContactSelector.tsx | 125 | app |
 | `**-chip-*` | client/src/components/ContactSelector.tsx | 116 | app |
 | `**-selected-list` | client/src/components/ContactSelector.tsx | 109 | app |
@@ -1275,14 +1277,14 @@ _None — all test-referenced testids are present in the application source._
 | `ai-message-*` | client/src/pages/AiPage.tsx | 87 | app |
 | `ai-session-delete-*` | client/src/pages/AiPage.tsx | 200 | app |
 | `ai-session-item-*` | client/src/pages/AiPage.tsx | 183 | app |
-| `audit-log-time-*` | client/src/pages/AuditLogPage.tsx | 603 | app |
-| `audit-log-actor-*` | client/src/pages/AuditLogPage.tsx | 609 | app |
-| `audit-log-event-*` | client/src/pages/AuditLogPage.tsx | 622 | app |
-| `audit-log-record-type-*` | client/src/pages/AuditLogPage.tsx | 628 | app |
-| `audit-log-summary-*` | client/src/pages/AuditLogPage.tsx | 634 | app |
-| `audit-log-row-button-*` | client/src/pages/AuditLogPage.tsx | 597 | app |
-| `audit-log-detail-*` | client/src/pages/AuditLogPage.tsx | 650 | app |
-| `audit-log-row-*` | client/src/pages/AuditLogPage.tsx | 589 | app |
+| `audit-log-time-*` | client/src/pages/AuditLogPage.tsx | 610 | app |
+| `audit-log-actor-*` | client/src/pages/AuditLogPage.tsx | 616 | app |
+| `audit-log-event-*` | client/src/pages/AuditLogPage.tsx | 629 | app |
+| `audit-log-record-type-*` | client/src/pages/AuditLogPage.tsx | 635 | app |
+| `audit-log-summary-*` | client/src/pages/AuditLogPage.tsx | 641 | app |
+| `audit-log-row-button-*` | client/src/pages/AuditLogPage.tsx | 604 | app |
+| `audit-log-detail-*` | client/src/pages/AuditLogPage.tsx | 657 | app |
+| `audit-log-row-*` | client/src/pages/AuditLogPage.tsx | 596 | app |
 | `log-outcome-*` | client/src/pages/AutomationRulesPage.tsx | 271 | app |
 | `log-timestamp-*` | client/src/pages/AutomationRulesPage.tsx | 277 | app |
 | `log-record-*` | client/src/pages/AutomationRulesPage.tsx | 281 | app |
@@ -1390,8 +1392,8 @@ _None — all test-referenced testids are present in the application source._
 | `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 439 | app |
 | `mark-complete-*` | client/src/pages/MyTasksPage.tsx | 458 | app |
 | `task-row-*` | client/src/pages/MyTasksPage.tsx | 378 | app |
-| `notif-checkbox-*` | client/src/pages/ProfilePage.tsx | 411 | app |
-| `notif-toggle-*` | client/src/pages/ProfilePage.tsx | 404 | app |
+| `notif-checkbox-*` | client/src/pages/ProfilePage.tsx | 412 | app |
+| `notif-toggle-*` | client/src/pages/ProfilePage.tsx | 405 | app |
 | `reports-panel-*` | client/src/pages/ReportsPage.tsx | 158 | app |
 | `reports-panel-*` | client/src/pages/ReportsPage.tsx | 138 | app |
 | `step-edit-*` | client/src/pages/SequenceDetailPage.tsx | 353 | app |
@@ -1727,7 +1729,7 @@ _None — all test-referenced testids are present in the application source._
 | `feature-flag-role-override-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2692 | test |
 | `group-detail-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2723 | test |
 | `group-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2738 | test |
-| `custom-field-delete-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 593 | test |
-| `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 612 | test |
-| `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 635 | test |
-| `custom-field-label-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 648 | test |
+| `custom-field-delete-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 597 | test |
+| `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 616 | test |
+| `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 639 | test |
+| `custom-field-label-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 652 | test |

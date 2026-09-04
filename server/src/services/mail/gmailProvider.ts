@@ -25,11 +25,13 @@ const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 /** Reported when a mailbox's granted scopes cannot read mail. */
 export const INSUFFICIENT_SCOPE = 'INSUFFICIENT_SCOPE';
 
-/** What a user is told when the grant cannot read mail. One copy: tests assert on it. */
+/** Message for a grant that cannot read mail. The user sees the locale string keyed by
+ * INSUFFICIENT_SCOPE; this reaches logs and any caller that reports a raw provider error. */
 export const INSUFFICIENT_SCOPE_MESSAGE =
   'This mailbox did not grant permission to read mail. Reconnect it to continue syncing.';
 
-/** Shown when the provider refused the stored credential outright. */
+/** Message for a credential the provider refused. Logged, not rendered — the panel
+ * translates PROVIDER_AUTH_EXPIRED instead. */
 export const REJECTED_CREDENTIAL_MESSAGE = 'Google rejected the stored credentials.';
 
 /** Outcome of a Gmail connection test. */

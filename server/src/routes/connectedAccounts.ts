@@ -207,7 +207,13 @@ router.use(requireCapability(Capability.ConnectedAccountsManage));
  *                       email_address: { type: string }
  *                       granted_scopes: { type: array, items: { type: string } }
  *                       status: { type: string, enum: [active, error, disconnected] }
- *                       status_detail: { type: string, nullable: true }
+ *                       status_detail:
+ *                         type: string
+ *                         nullable: true
+ *                         description: >-
+ *                           A stable reason code, not prose — INSUFFICIENT_SCOPE,
+ *                           PROVIDER_AUTH_EXPIRED, CONNECTION_FAILED, SYNC_FAILED.
+ *                           Clients localize it; new codes may appear.
  *                       last_sync_at: { type: string, format: date-time, nullable: true }
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
@@ -305,7 +311,12 @@ router.delete('/:id', asyncHandler(deleteConnectedAccountHandler));
  *               type: object
  *               properties:
  *                 success: { type: boolean }
- *                 error: { type: string }
+ *                 error:
+ *                   type: string
+ *                   description: >-
+ *                     A stable reason code, not prose — UNTESTABLE_PROVIDER,
+ *                     INSUFFICIENT_SCOPE, PROVIDER_AUTH_EXPIRED, CONNECTION_FAILED.
+ *                     Present only when success is false.
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:

@@ -627,7 +627,9 @@ export function createImapProvider(
       since: Date,
     ): Promise<ProviderPage> {
       if (auth.kind !== 'imap') {
-        throw new Error('imapProvider: account is not an IMAP account');
+        throw Object.assign(new Error('imapProvider: account is not an IMAP account'), {
+          code: CONNECTION_FAILED,
+        });
       }
 
       // Checked before the client is built, and on its own seam: the host is stored, so it

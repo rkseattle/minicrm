@@ -417,10 +417,8 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
       .set('Cookie', repACookie);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({
-      success: false,
-      error: 'Testing this provider is not supported yet.',
-    });
+    // A code, not a sentence: the panel translates it into the user's language.
+    expect(res.body).toEqual({ success: false, error: 'UNTESTABLE_PROVIDER' });
 
     const row = await pool.query<{ status: string; status_detail: string | null }>(
       'SELECT status, status_detail FROM connected_accounts WHERE id = $1',
@@ -457,14 +455,14 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
       .set('Cookie', repACookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.error).not.toBe('Testing this provider is not supported yet.');
+    expect(res.body.error).not.toBe('UNTESTABLE_PROVIDER');
 
     const row = await pool.query<{ status_detail: string | null }>(
       'SELECT status_detail FROM connected_accounts WHERE id = $1',
       [account.id],
     );
-    // The grant cannot read mail, so the scope check answers before any network call.
-    expect(row.rows[0].status_detail).toContain('did not grant permission');
+    // The code, not prose: the panel translates this column into the user's language.
+    expect(row.rows[0].status_detail).toBe('INSUFFICIENT_SCOPE');
   });
 });
 
