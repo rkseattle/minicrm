@@ -1,14 +1,24 @@
 /**
- * MIME parsing tests over fixture documents.
+ * MIME parsing tests over fixture documents, plus the field rules that need no document.
  *
  * The fixtures are raw MIME rather than a mocked parser: every rule worth testing here —
  * which part becomes the body, how a charset is decoded, what a malformed document
  * produces — is decided by the parser reading real bytes, so a mock would test the mock.
+ *
+ * The rules below the parsing blocks are asserted here only where the IMAP provider suite
+ * cannot reach them; where it drives the same rule through a real message, that is the
+ * stronger test and this file does not repeat it.
  */
 
 import { describe, it, expect } from 'vitest';
 
-import { EMPTY_MESSAGE_BODY, parseMessageBody, snippetOf } from '../services/mail/messageBody.js';
+import {
+  boundIndexedId,
+  EMPTY_MESSAGE_BODY,
+  parseMessageBody,
+  snippetOf,
+  subjectOf,
+} from '../services/mail/messageBody.js';
 
 /** Builds a document from raw header and body text, with the CRLF line endings MIME uses. */
 function mime(...lines: string[]): Buffer {
@@ -409,5 +419,31 @@ describe('the stored body bound', () => {
 
     expect(body.bodyText).toHaveLength(65_535);
     expect(body.bodyText?.endsWith('a')).toBe(true);
+  });
+});
+
+describe('boundIndexedId — NUL handling', () => {
+  it('strips NUL, which the indexed column cannot hold', () => {
+    // Folded into the function rather than left to each call site: a provider that
+    // forgets fails its whole page on SQLSTATE 22021, not just the one message.
+    expect(boundIndexedId('thread\u0000id')).toBe('threadid');
+  });
+
+  it('counts the stripped length when deciding to hash', () => {
+    // A value that only exceeds the bound because of NUL must stay readable.
+    expect(boundIndexedId('a'.repeat(512) + '\u0000')).toBe('a'.repeat(512));
+  });
+
+  it('keeps two long ids distinct rather than truncating to a shared prefix', () => {
+    const prefix = 'a'.repeat(600);
+    expect(boundIndexedId(`${prefix}-one`)).not.toBe(boundIndexedId(`${prefix}-two`));
+  });
+});
+
+describe('subjectOf', () => {
+  it('returns null for a message with no subject header', () => {
+    // The provider suite covers the bound and the surrogate rule through a real message;
+    // an absent header is the one case that never reaches it.
+    expect(subjectOf(undefined)).toBeNull();
   });
 });

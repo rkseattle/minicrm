@@ -16,8 +16,6 @@
  * messages.
  */
 
-import { createHash } from 'node:crypto';
-
 import {
   type ImapFlow,
   type FetchMessageObject,
@@ -39,10 +37,12 @@ import {
 } from '../imapConnectionService.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mailProvider.js';
 import {
+  boundIndexedId,
+  directionOf,
   EMPTY_MESSAGE_BODY,
   parseMessageBody,
   stripNul,
-  truncate,
+  subjectOf,
   type ParsedMessageBody,
 } from './messageBody.js';
 import { extractHeaderField, resolveThreadId } from './threading.js';
@@ -84,54 +84,13 @@ const SYNC_TIMEOUTS: ImapClientTimeouts = {
 };
 
 /**
- * Longest subject stored.
- *
- * RFC 5322 §2.1.1 caps a header line at 998 octets; anything past that is a sender doing
- * something deliberate, and `subject` is an unindexed `text` column with no bound.
- * Measured in UTF-16 code units, so a CJK or emoji subject keeps more than 998 octets —
- * acceptable here precisely because nothing indexes this column.
- */
-const MAX_SUBJECT_LENGTH = 998;
-
-/**
- * Longest value stored in a column that carries a btree index.
- *
- * Postgres refuses an index entry larger than about a third of a page — 2704 bytes on a
- * default build — and `thread_id` and `provider_message_id` are both indexed. A
- * `Message-ID` may legally run to RFC 5322's 998-octet line limit and a hostile one is
- * unbounded, so an unbounded derived id fails the INSERT with SQLSTATE 54000. That is not
- * a mapped error, so it would escape as a 500 and fail the whole page — one broken sender
- * wedging an account's sync indefinitely.
- *
- * The bound is well under the limit because it counts UTF-16 code units, not bytes: a
- * 4-byte character costs two units, so the worst case is twice this in bytes.
- */
-const MAX_INDEXED_ID_LENGTH = 512;
-
-/**
- * Brings an identifier under the index bound without letting two distinct values become
- * one. Plain truncation cannot do that: a mailbox path is the PREFIX of a qualified id,
- * so two deep mailboxes sharing their first bytes lose the UID that told them apart, and
- * the ingest's ON CONFLICT then overwrites one message with the other.
- *
- * Overflow is rare, so the readable form is kept whenever it fits and a digest of the
- * whole value is substituted only when it does not.
- */
-function boundIndexedId(id: string): string {
-  if (id.length <= MAX_INDEXED_ID_LENGTH) return id;
-  return `sha256:${createHash('sha256').update(id, 'utf8').digest('hex')}`;
-}
-
-/**
  * The id a message is stored under.
  *
  * An IMAP UID is unique only within one mailbox — INBOX and Sent both number from 1 — so
  * the id is qualified by path and then bounded, because it lands under a btree index.
  */
 function qualifiedMessageId(mailboxPath: string, uid: number): string {
-  // Stripped before the length bound, not after, so the decision counts characters that
-  // will actually be stored — the order every other sanitizing site here uses.
-  return boundIndexedId(stripNul(`${mailboxPath}:${String(uid)}`));
+  return boundIndexedId(`${mailboxPath}:${String(uid)}`);
 }
 
 /** Messages read per mailbox per fetch, bounding both memory and time per tick. */
@@ -207,23 +166,6 @@ function addressesOf(list: MessageAddressObject[] | undefined): string[] {
   );
 }
 
-/** The subject a `text` column can hold: bounded, and stripped of what Postgres rejects. */
-function subjectOf(subject: string | undefined): string | null {
-  if (subject === undefined) return null;
-  return truncate(stripNul(subject), MAX_SUBJECT_LENGTH);
-}
-
-/**
- * Decides whether the account sent this message.
- *
- * Compares the sender against the mailbox's own address rather than trusting the folder:
- * a copy of a sent message can appear in INBOX (self-addressed mail, some server-side
- * rules), and an inbound message can be filed into Sent by a misconfigured client.
- */
-function directionOf(fromAddress: string, accountAddress: string): 'inbound' | 'outbound' {
-  return fromAddress === accountAddress.trim().toLowerCase() ? 'outbound' : 'inbound';
-}
-
 /**
  * True when the message has a part that is not body text.
  *
@@ -296,7 +238,7 @@ function normalize(
     // qualified by mailbox: the same message filed in both INBOX and Sent must land in one
     // thread, and the UID is the only handle it has.
     `uid-${String(message.uid)}`;
-  const threadId = boundIndexedId(stripNul(rawThreadId));
+  const threadId = boundIndexedId(rawThreadId);
 
   return {
     providerMessageId: qualifiedId,
