@@ -15,6 +15,7 @@
 
 import 'dotenv/config';
 import pool from '../db.js';
+import { parkFromScheduler } from './testUtils.js';
 import { createUser } from '../services/userService.js';
 import { createSession } from '../services/aiSessionService.js';
 import { createImapAccount } from '../services/connectedAccountService.js';
@@ -139,6 +140,7 @@ describe('runRetentionPurge', () => {
       },
       { id: userId, name: 'Retention Svc User' },
     );
+    await parkFromScheduler(account.id);
     const stalled = await pool.query<{ id: string }>(
       `INSERT INTO email_sync_jobs (connected_account_id, status, updated_at)
        VALUES ($1, 'running', now() - interval '48 hours')
@@ -169,6 +171,7 @@ describe('runRetentionPurge', () => {
       },
       { id: userId, name: 'Retention Svc User' },
     );
+    await parkFromScheduler(account.id);
 
     // Keyed on messages_synced rather than RETURNING order: a multi-row INSERT does not
     // promise to emit rows in VALUES order, and the assertions below invert if it does not.

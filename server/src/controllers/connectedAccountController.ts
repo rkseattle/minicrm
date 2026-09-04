@@ -5,6 +5,8 @@
 
 import type { Request, Response } from 'express';
 
+import type { AuditActor } from '../services/auditService.js';
+
 import { z } from 'zod';
 
 import {
@@ -20,18 +22,26 @@ import {
   createImapAccount,
   createOAuthFlowState,
   deleteConnectedAccount,
+  type ConnectedAccountInternal,
   getConnectedAccountInternal,
+  getUsableAccessToken,
   listConnectedAccounts,
   updateAccountStatus,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
-import { testImapConnection } from '../services/imapConnectionService.js';
+import { PROVIDER_AUTH_EXPIRED, testImapConnection } from '../services/imapConnectionService.js';
+import {
+  type GmailTestResult,
+  REJECTED_CREDENTIAL_MESSAGE,
+  testGmailAccess,
+} from '../services/mail/gmailProvider.js';
 import {
   OAUTH_STATE_TTL_MS,
   buildAuthorizationRequest,
   exchangeAuthorizationCode,
   getOAuthCallbackUrl,
   isProviderConfigured,
+  refreshAccessToken,
   revokeProviderTokens,
 } from '../services/oauthProviderService.js';
 
@@ -142,18 +152,27 @@ export async function testConnectedAccountHandler(req: Request, res: Response): 
     return;
   }
 
-  if (account.auth.kind !== 'imap') {
-    res.status(200).json({ success: false, error: 'Testing this provider is not supported yet.' });
+  // A provider with no test of its own is reported without touching the row: writing
+  // 'error' would flip a healthy mailbox to a badge nothing ever clears, since no sync
+  // runs for a provider that has no driver.
+  if (account.auth.kind === 'oauth' && account.provider !== 'google') {
+    res.status(200).json({ success: false, error: UNTESTABLE_PROVIDER_MESSAGE });
     return;
   }
 
-  const attempt = await testImapConnection({
-    host: account.auth.host,
-    port: account.auth.port,
-    username: account.auth.username,
-    password: account.auth.password,
-    secure: account.auth.secure,
-  });
+  const attempt =
+    account.auth.kind === 'imap'
+      ? await testImapConnection({
+          host: account.auth.host,
+          port: account.auth.port,
+          username: account.auth.username,
+          password: account.auth.password,
+          secure: account.auth.secure,
+        })
+      : // Refreshed first: a mailbox retires after hours of failures, so the token it
+        // stored is reliably expired by the time a user clicks Test — probing it raw
+        // would fail exactly the accounts this endpoint exists to rescue.
+        await testStoredGmailCredential(account, { id: req.user!.id, name: req.user!.name });
 
   await updateAccountStatus(
     account.id,
@@ -167,6 +186,31 @@ export async function testConnectedAccountHandler(req: Request, res: Response): 
     return;
   }
   res.status(200).json({ success: false, error: attempt.message });
+}
+
+/** Shown when a provider has no connection test of its own. */
+const UNTESTABLE_PROVIDER_MESSAGE = 'Testing this provider is not supported yet.';
+
+/**
+ * Refreshes a Gmail mailbox's token, then asks whether it can still read mail.
+ *
+ * The refresh and the probe live in different modules on purpose — one owns the row lock,
+ * the other owns Google's API — so this is where they meet.
+ */
+async function testStoredGmailCredential(
+  account: ConnectedAccountInternal,
+  actor: AuditActor,
+): Promise<GmailTestResult> {
+  const accessToken = await getUsableAccessToken(
+    account.id,
+    account.userId,
+    actor,
+    refreshAccessToken,
+  );
+  if (accessToken === null) {
+    return { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE };
+  }
+  return testGmailAccess(accessToken, account.grantedScopes);
 }
 
 // ── OAuth flow ────────────────────────────────────────────────────────────────

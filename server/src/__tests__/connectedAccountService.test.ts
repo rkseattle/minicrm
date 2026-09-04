@@ -25,7 +25,7 @@ import {
 } from '../services/connectedAccountService.js';
 import type { RefreshedTokens } from '../services/oauthProviderService.js';
 
-import { clearAuditLogFor } from './testUtils.js';
+import { clearAuditLogFor, deadGrantError } from './testUtils.js';
 
 const FILE_PREFIX = 'connacct';
 const REP_A_ACTOR = { id: '', name: 'Connected Rep A' };
@@ -417,7 +417,7 @@ describe('access token refresh', () => {
     const id = await seedOAuthAccount(EXPIRED, 'refresh-one');
 
     const token = await getUsableAccessToken(id, REP_A_ACTOR.id, REP_A_ACTOR, () => {
-      throw new Error('invalid_grant');
+      throw deadGrantError();
     });
 
     expect(token).toBeNull();
@@ -528,7 +528,7 @@ describe('audit entries for an expired refresh token', () => {
     await clearAuditLogFor(REP_A_ACTOR.id);
 
     await getUsableAccessToken(account.id, REP_A_ACTOR.id, REP_A_ACTOR, () => {
-      throw new Error('invalid_grant');
+      throw deadGrantError();
     });
 
     const entries = await pool.query<{ event_type: string; old_value: string }>(
@@ -911,6 +911,39 @@ describe('getAccountAuthForSync', () => {
     expect(stored).toMatchObject({ access_token: 'rotated', refresh_token: 'refresh-two' });
   });
 
+  it('leaves a mailbox alone when the refresh fails without a verdict', async () => {
+    // A timeout says nothing about the grant, and markAuthExpired is not reversible
+    // without re-consent — so a blip must not permanently disconnect a working mailbox,
+    // least of all through the Test button a user presses to recover one.
+    const account = await upsertOAuthAccount(
+      {
+        userId: REP_A_ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-blip@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'stale',
+          refresh_token: 'still-good',
+          expires_at: Date.now() - 1000,
+        },
+        grantedScopes: [],
+      },
+      REP_A_ACTOR,
+    );
+
+    await expect(
+      getAccountAuthForSync(account.id, () => {
+        throw new Error('oauth token refresh timed out after 10000ms');
+      }),
+    ).rejects.toThrow(/timed out/);
+
+    const row = await pool.query<{ status: string; status_detail: string | null }>(
+      `SELECT status, status_detail FROM connected_accounts WHERE id = $1`,
+      [account.id],
+    );
+    expect(row.rows[0]).toEqual({ status: 'active', status_detail: null });
+  });
+
   it('marks the row error when the provider refuses the refresh', async () => {
     const account = await upsertOAuthAccount(
       {
@@ -929,7 +962,7 @@ describe('getAccountAuthForSync', () => {
     );
 
     const auth = await getAccountAuthForSync(account.id, () => {
-      throw new Error('invalid_grant');
+      throw deadGrantError();
     });
 
     expect(auth).toBeNull();
