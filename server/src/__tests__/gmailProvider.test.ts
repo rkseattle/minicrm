@@ -18,6 +18,7 @@ import {
   INSUFFICIENT_SCOPE,
   parseCursor,
   serializeCursor,
+  testGmailAccess,
   UNANCHORED,
   type FetchLike,
 } from '../services/mail/gmailProvider.js';
@@ -618,5 +619,61 @@ describe('createGmailProvider — failures', () => {
 
     expect(page.messages).toHaveLength(1);
     expect(page.messages[0].providerMessageId).toBe('kept');
+  });
+});
+
+describe('testGmailAccess', () => {
+  it('accepts a mailbox the profile call can read', async () => {
+    const fetcher = fakeFetch([{ match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS } }]);
+
+    expect(await testGmailAccess('token', [READ_SCOPE], fetcher.fn)).toEqual({ ok: true });
+  });
+
+  it('refuses a grant that cannot read mail, before any request', async () => {
+    const fetcher = fakeFetch([]);
+
+    const result = await testGmailAccess('token', ['openid'], fetcher.fn);
+
+    expect(result).toMatchObject({ ok: false, code: INSUFFICIENT_SCOPE });
+    expect(fetcher.urls).toHaveLength(0);
+  });
+
+  it('refuses a mailbox the provider says is gone', async () => {
+    // gmailRequest hands a 404 back rather than throwing, because on the sync paths it
+    // means an expired cursor. Reporting that as healthy here would clear the failure
+    // count and put a deleted mailbox back on the schedule to fail eight more times.
+    const fetcher = fakeFetch([{ match: '/profile', status: 404 }]);
+
+    expect(await testGmailAccess('token', [READ_SCOPE], fetcher.fn)).toMatchObject({
+      ok: false,
+      code: 'PROVIDER_AUTH_EXPIRED',
+    });
+  });
+
+  it('refuses a profile response carrying no mailbox', async () => {
+    const fetcher = fakeFetch([{ match: '/profile', body: {} }]);
+
+    expect(await testGmailAccess('token', [READ_SCOPE], fetcher.fn)).toMatchObject({
+      ok: false,
+      code: 'PROVIDER_AUTH_EXPIRED',
+    });
+  });
+
+  it('reports a rejected token as a credential failure', async () => {
+    const fetcher = fakeFetch([{ match: '/profile', status: 401 }]);
+
+    expect(await testGmailAccess('token', [READ_SCOPE], fetcher.fn)).toMatchObject({
+      ok: false,
+      code: 'PROVIDER_AUTH_EXPIRED',
+    });
+  });
+
+  it('reports a server failure as unreachable, not as a bad credential', async () => {
+    const fetcher = fakeFetch([{ match: '/profile', status: 503 }]);
+
+    expect(await testGmailAccess('token', [READ_SCOPE], fetcher.fn)).toMatchObject({
+      ok: false,
+      code: 'CONNECTION_FAILED',
+    });
   });
 });

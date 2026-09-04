@@ -25,6 +25,22 @@ const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 /** Reported when a mailbox's granted scopes cannot read mail. */
 export const INSUFFICIENT_SCOPE = 'INSUFFICIENT_SCOPE';
 
+/** What a user is told when the grant cannot read mail. One copy: tests assert on it. */
+export const INSUFFICIENT_SCOPE_MESSAGE =
+  'This mailbox did not grant permission to read mail. Reconnect it to continue syncing.';
+
+/** Shown when the provider refused the stored credential outright. */
+export const REJECTED_CREDENTIAL_MESSAGE = 'Google rejected the stored credentials.';
+
+/** Outcome of a Gmail connection test. */
+export type GmailTestResult =
+  | { ok: true }
+  | {
+      ok: false;
+      code: typeof CONNECTION_FAILED | typeof PROVIDER_AUTH_EXPIRED | typeof INSUFFICIENT_SCOPE;
+      message: string;
+    };
+
 /**
  * History records requested per incremental page.
  *
@@ -240,6 +256,45 @@ async function gmailRequest(
   }
 }
 
+/**
+ * Confirms a token and grant can still read this mailbox, for the connection test.
+ *
+ * Lives here rather than in connectedAccountService because it needs this module's
+ * request path, its scope constant, and its error mapping — and that service deliberately
+ * keeps oauthProviderService type-only so openid-client does not load for every consumer
+ * of it.
+ *
+ * The caller supplies the access token: refreshing it needs a row lock this module has no
+ * business taking.
+ */
+export async function testGmailAccess(
+  accessToken: string,
+  grantedScopes: readonly string[],
+  fetchImpl: FetchLike = fetch,
+): Promise<GmailTestResult> {
+  if (!grantedScopes.includes(GMAIL_READ_SCOPE)) {
+    return { ok: false, code: INSUFFICIENT_SCOPE, message: INSUFFICIENT_SCOPE_MESSAGE };
+  }
+
+  try {
+    const { status, body } = await gmailRequest(fetchImpl, accessToken, '/profile', {});
+
+    // gmailRequest hands a 404 back rather than throwing, because on the sync paths it
+    // means an expired cursor or a deleted message. Here it means the mailbox itself is
+    // gone — a suspended or deleted account — and reporting that as healthy would clear
+    // the failure count and put a dead mailbox back on the schedule.
+    if (status === 404 || (body as { emailAddress?: unknown } | null)?.emailAddress === undefined) {
+      return { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE };
+    }
+    return { ok: true };
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    return code === PROVIDER_AUTH_EXPIRED
+      ? { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE }
+      : { ok: false, code: CONNECTION_FAILED, message: 'Could not reach Gmail.' };
+  }
+}
+
 /** Reads the mailbox's current history position, which anchors a backfill. */
 async function fetchProfileHistoryId(
   fetchImpl: FetchLike,
@@ -446,10 +501,7 @@ export function createGmailProvider(
       { accountAddress, grantedScopes },
       'gmailProvider: mailbox lacks the scope needed to read mail',
     );
-    throw providerError(
-      'This mailbox did not grant permission to read mail. Reconnect it to continue syncing.',
-      INSUFFICIENT_SCOPE,
-    );
+    throw providerError(INSUFFICIENT_SCOPE_MESSAGE, INSUFFICIENT_SCOPE);
   }
 
   return {

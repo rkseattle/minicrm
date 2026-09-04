@@ -25,6 +25,7 @@ import {
   randomPKCECodeVerifier,
   randomState,
   refreshTokenGrant,
+  ResponseBodyError,
 } from 'openid-client';
 
 import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
@@ -240,6 +241,27 @@ export async function exchangeAuthorizationCode(
 }
 
 /** A refreshed token set. `refreshToken` is re-issued by providers that rotate it. */
+/**
+ * OAuth error codes that mean the grant itself is gone.
+ *
+ * Anything else — a timeout, a 5xx, a DNS failure — is the provider being unreachable,
+ * which says nothing about whether the credential is still good. RFC 6749 §5.2.
+ */
+const DEAD_GRANT_ERRORS = ['invalid_grant', 'invalid_client', 'unauthorized_client'];
+
+/**
+ * True when the provider answered that this refresh token will never work again.
+ *
+ * The distinction matters because callers retire a mailbox on it: treating a transient
+ * outage as a dead grant means a working mailbox is permanently disconnected by a blip.
+ * Only a parsed OAuth error body counts — an exception that never reached the provider,
+ * or one it never answered, is not evidence about the grant.
+ */
+export function isDeadGrantError(err: unknown): boolean {
+  if (!(err instanceof ResponseBodyError)) return false;
+  return DEAD_GRANT_ERRORS.includes(err.error);
+}
+
 export interface RefreshedTokens {
   accessToken: string;
   refreshToken: string | null;

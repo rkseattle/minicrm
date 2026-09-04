@@ -28,7 +28,7 @@ import { getActiveEmailSyncJob } from '../services/emailSyncJobService.js';
 import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 
-import { clearAuditLogFor } from './testUtils.js';
+import { clearAuditLogFor, deadGrantError } from './testUtils.js';
 
 const FILE_PREFIX = 'emailsync';
 const ACTOR = { id: '', name: 'Email Sync Rep' };
@@ -935,7 +935,8 @@ it('parks a mailbox whose refresh token the provider revoked', async () => {
     ACTOR,
   );
   const refuse = () => {
-    throw new Error('invalid_grant');
+    // A real revocation: only a provider that answered retires a mailbox.
+    throw deadGrantError();
   };
 
   await expect(

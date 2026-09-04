@@ -32,6 +32,7 @@ import type { AuditActor } from './auditService.js';
 import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import { decryptVersioned, encryptVersioned } from './cryptoService.js';
 import { PROVIDER_AUTH_EXPIRED } from './imapConnectionService.js';
+import { isDeadGrantError } from './oauthProviderService.js';
 import type { RefreshedTokens } from './oauthProviderService.js';
 
 // ── Row type ──────────────────────────────────────────────────────────────────
@@ -136,6 +137,8 @@ export interface ConnectedAccountInternal {
   emailAddress: string;
   auth: ConnectedAccountAuth;
   keyVersion: number;
+  /** What the provider granted. A connection test checks it alongside the token. */
+  grantedScopes: string[];
 }
 
 /** Fields an OAuth callback persists for a newly connected or re-connected mailbox. */
@@ -227,7 +230,8 @@ export async function getConnectedAccountInternal(
   userId: string,
 ): Promise<ConnectedAccountInternal | null> {
   const result = await pool.query<ConnectedAccountRow>(
-    `SELECT id, user_id, provider, email_address, auth_encrypted, key_version
+    `SELECT id, user_id, provider, email_address, auth_encrypted, key_version,
+            granted_scopes
        FROM connected_accounts WHERE id = $1 AND user_id = $2`,
     [accountId, userId],
   );
@@ -244,6 +248,7 @@ export async function getConnectedAccountInternal(
     emailAddress: row.email_address,
     auth,
     keyVersion: row.key_version,
+    grantedScopes: row.granted_scopes,
   };
 }
 
@@ -487,6 +492,7 @@ async function refreshLockedRow(
   row: ConnectedAccountRow,
   actor: AuditActor,
   refresh: (provider: OAuthProvider, refreshToken: string) => Promise<RefreshedTokens>,
+  isDeadGrant: (err: unknown) => boolean = isDeadGrantError,
 ): Promise<OAuthAuthPayload | null> {
   const auth = decryptAuth(row, 'refresh');
   if (auth === null) return null;
@@ -521,9 +527,21 @@ async function refreshLockedRow(
   let refreshed: RefreshedTokens;
   try {
     refreshed = await refresh(row.provider, auth.refresh_token);
-  } catch {
-    await markAuthExpired(client, row, actor);
-    return null;
+  } catch (err) {
+    // Only a provider that ANSWERED that the grant is gone retires the mailbox. A timeout
+    // or a 5xx says nothing about the credential, and markAuthExpired is not reversible
+    // without re-consent — so treating an outage as a revocation would let one blip
+    // permanently disconnect a working mailbox, including from the Test button a user
+    // presses to recover.
+    if (isDeadGrant(err)) {
+      await markAuthExpired(client, row, actor);
+      return null;
+    }
+    logger.warn(
+      { err, accountId: row.id },
+      'connectedAccountService: refresh failed without a verdict on the grant',
+    );
+    throw err;
   }
 
   const rotated: OAuthAuthPayload = {

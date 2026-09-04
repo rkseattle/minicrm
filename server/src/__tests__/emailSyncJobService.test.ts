@@ -10,6 +10,7 @@
 import 'dotenv/config';
 
 import pool from '../db.js';
+import { parkFromScheduler } from './testUtils.js';
 import { createUser } from '../services/userService.js';
 import { createImapAccount } from '../services/connectedAccountService.js';
 import {
@@ -54,6 +55,7 @@ beforeAll(async () => {
     },
     ACTOR,
   );
+  await parkFromScheduler(account.id);
   accountId = account.id;
 });
 
@@ -285,6 +287,7 @@ describe('the email_sync_jobs schema', () => {
       },
       { id: rep.id, name: 'Cascade Rep' },
     );
+    await parkFromScheduler(doomed.id);
     const doomedJob = await createEmailSyncJob(doomed.id);
 
     await pool.query('DELETE FROM connected_accounts WHERE id = $1', [doomed.id]);

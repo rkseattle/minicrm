@@ -6,6 +6,8 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
+import { ResponseBodyError } from 'openid-client';
+
 import pool from '../db.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
@@ -418,4 +420,38 @@ export async function restoreLeadRoutingFlag(): Promise<void> {
   );
   await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'ai_features'`);
   __clearCacheForTest();
+}
+
+/**
+ * Makes a connected account invisible to the sync scheduler.
+ *
+ * `claimAccountsDueForSync` is global — it selects by due time across every user — so a
+ * due row in one test file is claimed by another file's tick and counted against its
+ * batch limit or its failure ceiling. Files that create mailboxes without asserting on
+ * claim behavior call this at creation, not in an afterEach: a hook only narrows the
+ * window a parallel tick can land in.
+ */
+export async function parkFromScheduler(accountId: string): Promise<void> {
+  await pool.query(
+    `UPDATE connected_accounts SET sync_next_attempt_at = NOW() + interval '1 hour'
+      WHERE id = $1`,
+    [accountId],
+  );
+}
+
+/**
+ * The error a provider raises when a refresh token is genuinely dead.
+ *
+ * A bare Error will not do: the refresh path distinguishes a provider that ANSWERED that
+ * the grant is gone from one that never answered, and only the former retires a mailbox.
+ * A test throwing something typeless asserts the conflation that fix removed.
+ *
+ * Built by hand rather than constructed: the real constructor wants a `Response`, which
+ * this repo's Node version range guards, and only `error` is ever read.
+ */
+export function deadGrantError(): Error {
+  return Object.assign(Object.create(ResponseBodyError.prototype) as ResponseBodyError, {
+    message: 'invalid_grant',
+    error: 'invalid_grant',
+  });
 }

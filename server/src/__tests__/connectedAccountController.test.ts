@@ -18,7 +18,7 @@ import { createImapAccount, upsertOAuthAccount } from '../services/connectedAcco
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 import { createUser } from '../services/userService.js';
 
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, parkFromScheduler } from './testUtils.js';
 
 const FILE_PREFIX = 'connacctctl';
 
@@ -395,6 +395,76 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
       .set('Cookie', repACookie);
 
     expect(res.status).toBe(404);
+  });
+
+  it('leaves a Microsoft mailbox active rather than marking it broken', async () => {
+    // Microsoft has no driver and no test. Writing 'error' for that would flip a healthy
+    // row to a badge nothing ever clears, since no sync runs to set it back.
+    const account = await upsertOAuthAccount(
+      {
+        userId: repAId,
+        provider: 'microsoft',
+        emailAddress: `${FILE_PREFIX}-graph@example.com`,
+        auth: { kind: 'oauth', access_token: 'token', refresh_token: 'r', expires_at: null },
+        grantedScopes: [],
+      },
+      { id: repAId, name: 'Contract Rep A' },
+    );
+    await parkFromScheduler(account.id);
+
+    const res = await request(app)
+      .post(`/api/v1/connected-accounts/${account.id}/test`)
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      success: false,
+      error: 'Testing this provider is not supported yet.',
+    });
+
+    const row = await pool.query<{ status: string; status_detail: string | null }>(
+      'SELECT status, status_detail FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+    expect(row.rows[0].status).toBe('active');
+    expect(row.rows[0].status_detail).toBeNull();
+  });
+
+  it('attempts a Gmail mailbox rather than refusing it outright', async () => {
+    // The branch this phase adds. Before it, every non-IMAP account was told its provider
+    // was unsupported and the row was never touched — so a retired Gmail mailbox had no
+    // way back. The refresh reaches a real provider here and fails, which is why the row
+    // ends in error; what this pins is that the attempt was made at all.
+    const account = await upsertOAuthAccount(
+      {
+        userId: repAId,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-gmail-test@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'token',
+          refresh_token: 'r',
+          expires_at: Date.now() + 3_600_000,
+        },
+        grantedScopes: ['openid'],
+      },
+      { id: repAId, name: 'Contract Rep A' },
+    );
+    await parkFromScheduler(account.id);
+
+    const res = await request(app)
+      .post(`/api/v1/connected-accounts/${account.id}/test`)
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.error).not.toBe('Testing this provider is not supported yet.');
+
+    const row = await pool.query<{ status_detail: string | null }>(
+      'SELECT status_detail FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+    // The grant cannot read mail, so the scope check answers before any network call.
+    expect(row.rows[0].status_detail).toContain('did not grant permission');
   });
 });
 
