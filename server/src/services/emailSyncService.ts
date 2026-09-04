@@ -41,6 +41,7 @@ import {
 import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js';
 import { refreshAccessToken } from './oauthProviderService.js';
 import type { RefreshedTokens } from './oauthProviderService.js';
+import { createGmailProvider } from './mail/gmailProvider.js';
 import { createImapProvider } from './mail/imapProvider.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mail/mailProvider.js';
 import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
@@ -206,12 +207,13 @@ async function storeMessages(
   return stored;
 }
 
-/** Builds the provider for one account. IMAP is the only implementation today. */
+/** Builds the provider for one account. */
 function providerFor(account: ClaimedSyncAccount): MailProvider {
-  if (account.provider !== 'imap') {
-    throw new Error(`emailSyncService: no provider implementation for ${account.provider}`);
+  if (account.provider === 'imap') return createImapProvider(account.emailAddress);
+  if (account.provider === 'google') {
+    return createGmailProvider(account.emailAddress, account.grantedScopes);
   }
-  return createImapProvider(account.emailAddress);
+  throw new Error(`emailSyncService: no provider implementation for ${account.provider}`);
 }
 
 /** The token-refresh seam, injected so no unit test reaches a real OIDC endpoint. */
@@ -337,12 +339,16 @@ export async function syncOneAccount(
   provider?: MailProvider,
   refresh: TokenRefresh = refreshAccessToken,
 ): Promise<SyncOutcome> {
+  // Built before the credentials are fetched: a driver that refuses the account outright
+  // — no implementation, or scopes that cannot read mail — should not first spend a token
+  // refresh under a row lock to learn something its own inputs already say.
+  const resolved = provider ?? providerFor(account);
+
   const auth = await getAccountAuthForSync(account.id, refresh);
   if (!auth) {
     throw new Error('emailSyncService: no usable credentials for this account');
   }
 
-  const resolved = provider ?? providerFor(account);
   const since = new Date(Date.now() - BACKFILL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
   // An unfinished job is what says a backfill is in progress — not the cursor, which

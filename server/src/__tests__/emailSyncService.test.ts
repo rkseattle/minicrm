@@ -25,6 +25,7 @@ import type {
 } from '../services/mail/mailProvider.js';
 import { backoffDelayMs, syncDueAccounts, syncOneAccount } from '../services/emailSyncService.js';
 import { getActiveEmailSyncJob } from '../services/emailSyncJobService.js';
+import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 
 import { clearAuditLogFor } from './testUtils.js';
@@ -95,8 +96,10 @@ async function claimedFor(accountId: string): Promise<ClaimedSyncAccount> {
     email_address: string;
     sync_cursor: string | null;
     sync_failure_count: number;
+    granted_scopes: string[];
   }>(
-    `SELECT id, user_id, provider, email_address, sync_cursor, sync_failure_count
+    `SELECT id, user_id, provider, email_address, sync_cursor, sync_failure_count,
+            granted_scopes
        FROM connected_accounts WHERE id = $1`,
     [accountId],
   );
@@ -109,6 +112,7 @@ async function claimedFor(accountId: string): Promise<ClaimedSyncAccount> {
     emailAddress: r.email_address,
     syncCursor: r.sync_cursor,
     syncFailureCount: r.sync_failure_count,
+    grantedScopes: r.granted_scopes,
   };
 }
 
@@ -835,56 +839,131 @@ describe('syncOneAccount — OAuth credentials', () => {
     expect(seenToken).toBe('rotated');
   });
 
-  it('parks a mailbox whose refresh token the provider revoked', async () => {
-    // A revoked token is not transient: leaving the row claimable means asking the same
-    // dead question every lease and writing an audit entry each time. Two ticks is what
-    // distinguishes "parked" from "retried with a longer delay".
+  it('refuses an under-scoped mailbox without spending a token refresh', async () => {
+    // The reorder in syncOneAccount is what this asserts: no locked row, no refresh.
     const account = await upsertOAuthAccount(
       {
         userId: ACTOR.id,
         provider: 'google',
-        emailAddress: `${FILE_PREFIX}-revoked@example.com`,
+        emailAddress: `${FILE_PREFIX}-noscope@example.com`,
         auth: {
           kind: 'oauth',
           access_token: 'stale',
-          refresh_token: 'revoked',
+          refresh_token: 'refresh-one',
           expires_at: Date.now() - 1000,
         },
-        grantedScopes: [],
+        grantedScopes: ['openid', 'email'],
       },
       ACTOR,
     );
-    const refuse = () => {
-      throw new Error('invalid_grant');
-    };
 
+    let refreshCalls = 0;
     await expect(
-      syncOneAccount(await claimedFor(account.id), fakeProvider([]), refuse),
-    ).rejects.toThrow();
+      syncOneAccount(await claimedFor(account.id), undefined, () => {
+        refreshCalls += 1;
+        throw new Error('refresh should not have been reached');
+      }),
+    ).rejects.toMatchObject({ code: 'INSUFFICIENT_SCOPE' });
 
-    const parked = await pool.query<{
-      status: string;
-      status_detail: string | null;
-      sync_failure_count: number;
-      sync_next_attempt_at: Date | null;
-    }>(
-      `SELECT status, status_detail, sync_failure_count, sync_next_attempt_at
-         FROM connected_accounts WHERE id = $1`,
-      [account.id],
-    );
-    expect(parked.rows[0].status).toBe('error');
-    expect(parked.rows[0].sync_failure_count).toBeGreaterThanOrEqual(MAX_SYNC_FAILURES);
-    expect(parked.rows[0].sync_next_attempt_at).toBeNull();
-
-    // The claim query is what has to stop returning it — a status alone would not.
-    const claimed = await claimAccountsDueForSync(50);
-    expect(claimed.map((a) => a.id)).not.toContain(account.id);
-
-    const audits = await pool.query<{ count: number }>(
-      `SELECT COUNT(*) AS count FROM audit_log
-        WHERE record_id = $1 AND event_type = 'connected_account_disconnected'`,
-      [account.id],
-    );
-    expect(Number(audits.rows[0].count)).toBe(1);
+    expect(refreshCalls).toBe(0);
   });
+
+  it('records why an under-scoped mailbox stopped, where the user can read it', async () => {
+    // The AC's observable is status_detail, not the thrown code: a tick that failed
+    // silently would satisfy the throw and still leave the user with a bare badge.
+    const account = await upsertOAuthAccount(
+      {
+        userId: ACTOR.id,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-detail@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'token',
+          refresh_token: 'refresh',
+          expires_at: Date.now() + 60 * 60 * 1000,
+        },
+        grantedScopes: ['openid', 'email'],
+      },
+      ACTOR,
+    );
+
+    // status_detail is written by recordSyncFailure, which only syncDueAccounts calls, so
+    // this needs a whole tick with no injected provider — the scope check lives in the
+    // driver providerFor builds, and an injected one would skip it.
+    //
+    // The claim query is global, so every other file's mailboxes are deferred first: left
+    // due, they would be claimed here and build real drivers, dialling an IMAP host and
+    // Google's discovery endpoint from a unit test. connectedAccountService.test.ts makes
+    // the same write and re-establishes it immediately before each of its own claims, so
+    // the two files defer each other rather than stranding one. The refresh seam is
+    // injected for the same reason, since credentials are read before any refusal.
+    await pool.query(
+      `UPDATE connected_accounts SET sync_next_attempt_at = NOW() + interval '1 hour'
+        WHERE user_id <> $1`,
+      [ACTOR.id],
+    );
+    await syncDueAccounts(undefined, () => {
+      throw new Error('refresh must not be reached from a unit test');
+    });
+
+    const row = await pool.query<{ status: string; status_detail: string | null }>(
+      `SELECT status, status_detail FROM connected_accounts WHERE id = $1`,
+      [account.id],
+    );
+    expect(row.rows[0].status).toBe('error');
+    expect(row.rows[0].status_detail).toContain('did not grant permission to read mail');
+  });
+});
+
+it('parks a mailbox whose refresh token the provider revoked', async () => {
+  // A revoked token is not transient: leaving the row claimable means asking the same
+  // dead question every lease and writing an audit entry each time. Two ticks is what
+  // distinguishes "parked" from "retried with a longer delay".
+  const account = await upsertOAuthAccount(
+    {
+      userId: ACTOR.id,
+      provider: 'google',
+      emailAddress: `${FILE_PREFIX}-revoked@example.com`,
+      auth: {
+        kind: 'oauth',
+        access_token: 'stale',
+        refresh_token: 'revoked',
+        expires_at: Date.now() - 1000,
+      },
+      grantedScopes: [GMAIL_READ_SCOPE],
+    },
+    ACTOR,
+  );
+  const refuse = () => {
+    throw new Error('invalid_grant');
+  };
+
+  await expect(
+    syncOneAccount(await claimedFor(account.id), fakeProvider([]), refuse),
+  ).rejects.toThrow();
+
+  const parked = await pool.query<{
+    status: string;
+    status_detail: string | null;
+    sync_failure_count: number;
+    sync_next_attempt_at: Date | null;
+  }>(
+    `SELECT status, status_detail, sync_failure_count, sync_next_attempt_at
+         FROM connected_accounts WHERE id = $1`,
+    [account.id],
+  );
+  expect(parked.rows[0].status).toBe('error');
+  expect(parked.rows[0].sync_failure_count).toBeGreaterThanOrEqual(MAX_SYNC_FAILURES);
+  expect(parked.rows[0].sync_next_attempt_at).toBeNull();
+
+  // The claim query is what has to stop returning it — a status alone would not.
+  const claimed = await claimAccountsDueForSync(50);
+  expect(claimed.map((a) => a.id)).not.toContain(account.id);
+
+  const audits = await pool.query<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM audit_log
+        WHERE record_id = $1 AND event_type = 'connected_account_disconnected'`,
+    [account.id],
+  );
+  expect(Number(audits.rows[0].count)).toBe(1);
 });
