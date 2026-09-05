@@ -882,6 +882,70 @@ describe('syncOneAccount — OAuth credentials', () => {
     expect(stored).toMatchObject({ kind: 'oauth', refresh_token: 'refresh-two' });
   });
 
+  it('re-backfills an Outlook mailbox whose delta link expired', async () => {
+    // The recovery half of the expiry AC: the driver reporting cursorInvalid is only
+    // useful if the engine then re-reads the window. Outlook delta tokens have no fixed
+    // lifetime, so this is a routine path rather than an exceptional one.
+    const account = await upsertOAuthAccount(
+      {
+        userId: ACTOR.id,
+        provider: 'microsoft',
+        emailAddress: `${FILE_PREFIX}-graph-expired@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'token',
+          refresh_token: 'refresh',
+          expires_at: Date.now() + 60 * 60 * 1000,
+        },
+        grantedScopes: [GRAPH_MAIL_READ_SCOPE],
+      },
+      ACTOR,
+    );
+
+    const expired = serializeCursor(
+      new Map([
+        [
+          'inbox',
+          {
+            link: 'https://graph.microsoft.com/v1.0/me/mailFolders/i/messages/delta?$deltatoken=x',
+            opening: false,
+          },
+        ],
+      ] as const),
+    );
+    await pool.query(`UPDATE connected_accounts SET sync_cursor = $2 WHERE id = $1`, [
+      account.id,
+      expired,
+    ]);
+
+    const invalidated = fakeProvider([
+      { messages: [], cursor: null, cursorInvalid: true, hasMore: false },
+    ]);
+    await syncOneAccount(await claimedFor(account.id), invalidated);
+
+    // The cursor is cleared, which is what routes the next tick back into a backfill
+    // bounded by the window rather than a full resync.
+    const row = await pool.query<{ sync_cursor: string | null }>(
+      `SELECT sync_cursor FROM connected_accounts WHERE id = $1`,
+      [account.id],
+    );
+    expect(row.rows[0].sync_cursor).toBeNull();
+
+    const resumed = fakeProvider([
+      {
+        messages: [message({ providerMessageId: 'after-expiry', threadId: 'conv-9' })],
+        cursor: expired,
+        cursorInvalid: false,
+        hasMore: false,
+      },
+    ]);
+    await syncOneAccount(await claimedFor(account.id), resumed);
+
+    expect(await storedMessages(account.id)).toEqual([
+      { provider_message_id: 'after-expiry', subject: 'Hello', thread_id: 'conv-9' },
+    ]);
+  });
+
   it('records a failure when an Outlook folder cannot be read', async () => {
     // The loop this rules out: a folder failure reported as a healthy page leaves the
     // cursor unchanged AND clears sync_failure_count, so the identical tick repeats
