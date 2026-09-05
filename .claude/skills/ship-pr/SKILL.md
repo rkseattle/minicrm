@@ -37,6 +37,16 @@ Two things are still yours to do before pushing, because the hook cannot:
   `up -d server`, with `GIT_COMMIT_SHA` exported first). A stale container silently runs
   old server code, and the resulting failures look like test bugs. The hook warns when the
   running stack's SHA is not HEAD, but it cannot rebuild for you.
+
+  A branch that changed a shared schema makes this mandatory rather than advisable: the
+  old image exits at startup with `does not provide an export named 'X'`, which reads as a
+  missing export rather than as a container built before the export existed. The rebuild
+  is the whole fix — the image compiles `shared` itself, so nothing local needs building.
+
+  **One `-f`.** `docker-compose.test.yml` is a separate Compose project, not an overlay;
+  adding `-f docker-compose.yml` merges the dev DB's 5432 mapping into `minicrm-test-db`,
+  which then fails to bind and leaves the test stack stopped.
+
 - **Confirm the client is serving** on :5175 (`npm run e2e:client`).
 
 Read the counts from `qa/e2e/test-results/results.xml`, never the console and never the

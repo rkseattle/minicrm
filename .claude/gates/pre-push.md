@@ -19,6 +19,11 @@ In order, all green, before every `git push`:
    stacked branch rebases onto its own parent, not past it. `git merge-base` against the
    candidate confirms it when you are unsure.
 
+   `merge-base HEAD origin/<parent>` equal to `origin/<parent>` means the branch already
+   sits directly on it and the rebase would replay nothing — which satisfies this step and
+   is the check to run when `git rebase` itself is refused, as the plan-state hook refuses
+   any command that moves HEAD during a `/deliver` run.
+
    **This is step 1 because every step below it certifies a specific tree.** A rebase
    rewrites the branch onto commits that were not present when lint, typecheck, tests,
    or E2E ran, so a gate run before the rebase describes code you are no longer pushing —
