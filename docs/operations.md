@@ -23,13 +23,14 @@ docker compose -f docker-compose.test.yml up -d
 
 This starts the `minicrm-test` project:
 
-| Service  | Purpose                        | Host port(s)                 |
-| -------- | ------------------------------ | ---------------------------- |
-| Postgres | Test databases                 | 5433                         |
-| Server   | App server for E2E             | 3002                         |
-| Client   | Static build (E2E uses Vite)   | 8080                         |
-| MinIO    | S3-compatible attachment store | 9002 (API), 9003 (console)   |
-| Mailhog  | SMTP capture for email tests   | 1025 (SMTP), 8025 (HTTP API) |
+| Service   | Purpose                             | Host port(s)                 |
+| --------- | ----------------------------------- | ---------------------------- |
+| Postgres  | Test databases                      | 5433                         |
+| Server    | App server for E2E                  | 3002                         |
+| Client    | Static build (E2E uses Vite)        | 8080                         |
+| MinIO     | S3-compatible attachment store      | 9002 (API), 9003 (console)   |
+| Mailhog   | SMTP capture for email tests        | 1025 (SMTP), 8025 (HTTP API) |
+| GreenMail | Real IMAP server for provider tests | 3143 (IMAP), 3025 (SMTP)     |
 
 Every port that the dev stack also uses is offset, so both can run at once and a
 misconfigured test process fails to connect rather than silently writing into dev data.
