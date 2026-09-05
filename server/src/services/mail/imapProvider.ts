@@ -40,6 +40,7 @@ import {
   boundIndexedId,
   directionOf,
   EMPTY_MESSAGE_BODY,
+  MAX_MESSAGE_SOURCE_BYTES,
   parseMessageBody,
   stripNul,
   subjectOf,
@@ -95,16 +96,6 @@ function qualifiedMessageId(mailboxPath: string, uid: number): string {
 
 /** Messages read per mailbox per fetch, bounding both memory and time per tick. */
 const MAX_MESSAGES_PER_MAILBOX = 200;
-
-/**
- * Largest body read per message, in bytes of raw MIME.
- *
- * Applied twice: a message the server sized above this is never requested, and the
- * request itself carries the same bound for a server that reports no size. A document
- * past this is carrying attachments rather than prose — the largest realistic text and
- * HTML pair is a long quoted reply chain in the low hundreds of kilobytes.
- */
-const MAX_MESSAGE_SOURCE_BYTES = 2_097_152;
 
 /** Where one mailbox's sync stopped. */
 interface MailboxCursor {

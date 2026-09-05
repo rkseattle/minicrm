@@ -106,6 +106,16 @@ const MAX_SUBJECT_LENGTH = 998;
 const MAX_INDEXED_ID_LENGTH = 512;
 
 /**
+ * The largest raw document any driver stores a body from, in bytes.
+ *
+ * One value because all three drivers must agree: a message stored with a body by one and
+ * headers-only by another reads differently depending on which synced it. Past this a
+ * document is carrying attachments rather than prose, and each driver degrades to
+ * headers-only rather than dropping the message — the cursor advances past it either way.
+ */
+export const MAX_MESSAGE_SOURCE_BYTES = 2_097_152;
+
+/**
  * Brings an identifier under the index bound without letting two distinct values become
  * one. Plain truncation cannot do that: a mailbox path is the PREFIX of a qualified id,
  * so two deep mailboxes sharing their first bytes lose the UID that told them apart, and

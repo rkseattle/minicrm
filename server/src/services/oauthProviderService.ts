@@ -56,6 +56,15 @@ interface ProviderDefinition {
 export const GMAIL_READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
 /**
+ * The Graph permission a sync driver needs to read a mailbox.
+ *
+ * Exported for the reason GMAIL_READ_SCOPE is: the driver has to require what the consent
+ * flow requests. Unlike Google's, this one is matched loosely — Microsoft may return the
+ * bare `Mail.Read`, and `Mail.ReadWrite` supersedes it. See `graphProvider`'s scope check.
+ */
+export const GRAPH_MAIL_READ_SCOPE = 'https://graph.microsoft.com/Mail.Read';
+
+/**
  * Provider metadata. Credentials are read through thunks rather than captured at module
  * load so a test can set the environment after import, and so a missing variable surfaces
  * as PROVIDER_NOT_CONFIGURED at use rather than a boot crash.
@@ -73,7 +82,7 @@ const PROVIDERS: Record<OAuthProvider, ProviderDefinition> = {
       'openid',
       'email',
       'offline_access',
-      'https://graph.microsoft.com/Mail.Read',
+      GRAPH_MAIL_READ_SCOPE,
       'https://graph.microsoft.com/Mail.Send',
     ],
     clientId: () => process.env.MICROSOFT_OAUTH_CLIENT_ID,

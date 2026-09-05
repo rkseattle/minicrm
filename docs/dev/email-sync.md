@@ -31,10 +31,13 @@ A `ProviderPage` carries four things:
 
 1. Implement `MailProvider`. Return `NormalizedMessage` values — the engine does no
    provider-specific parsing. Its `bodyText`, `bodyHtml`, and `snippet` are yours to
-   fill: Gmail and Graph return body parts as JSON fields, so neither needs a MIME parser,
-   though a driver that gets only HTML still needs `html-to-text` as IMAP's does. Match
-   the rules IMAP follows, or one mailbox reads differently depending on which driver
-   synced it — plain text preferred over HTML, HTML converted when it is the only part,
+   fill. Gmail and Graph both expose body parts as JSON fields, but neither driver uses
+   them: each fetches the raw MIME document instead — `format=RAW` and `$value` — and hands
+   it to the shared `parseMessage`, because a second part-selection rule kept in agreement
+   with IMAP's forever is how one mailbox starts reading differently depending on which
+   driver synced it. A driver that gets only HTML still needs `html-to-text` as IMAP's
+   does. Match the rules IMAP follows —
+   plain text preferred over HTML, HTML converted when it is the only part,
    `snippet` derived from the stored text with whitespace collapsed, and all three null
    when a body is unavailable rather than empty. `messageBody.ts` exports `snippetOf` and
    `storable` — use both rather than reimplementing them, since `storable` also strips

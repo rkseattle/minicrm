@@ -21,8 +21,18 @@ import logger from '../../logger.js';
 import type { ConnectedAccountAuth } from '../connectedAccountService.js';
 import { GMAIL_READ_SCOPE } from '../oauthProviderService.js';
 
-import type { MailProvider, NormalizedMessage, ProviderPage } from './mailProvider.js';
-import { boundIndexedId, directionOf, parseMessage } from './messageBody.js';
+import type {
+  MailboxTestResult,
+  MailProvider,
+  NormalizedMessage,
+  ProviderPage,
+} from './mailProvider.js';
+import {
+  boundIndexedId,
+  directionOf,
+  MAX_MESSAGE_SOURCE_BYTES,
+  parseMessage,
+} from './messageBody.js';
 import { resolveThreadId } from './threading.js';
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
@@ -40,15 +50,6 @@ const INSUFFICIENT_SCOPE_MESSAGE =
 /** Message for a credential the provider refused. Logged, not rendered — the panel
  * translates PROVIDER_AUTH_EXPIRED instead. */
 export const REJECTED_CREDENTIAL_MESSAGE = 'Google rejected the stored credentials.';
-
-/** Outcome of a Gmail connection test. */
-export type GmailTestResult =
-  | { ok: true }
-  | {
-      ok: false;
-      code: typeof CONNECTION_FAILED | typeof PROVIDER_AUTH_EXPIRED | typeof INSUFFICIENT_SCOPE;
-      message: string;
-    };
 
 /**
  * History records requested per incremental page.
@@ -304,7 +305,7 @@ export async function testGmailAccess(
   accessToken: string,
   grantedScopes: readonly string[],
   fetchImpl: FetchLike = fetch,
-): Promise<GmailTestResult> {
+): Promise<MailboxTestResult> {
   if (!grantedScopes.includes(GMAIL_READ_SCOPE)) {
     return { ok: false, code: INSUFFICIENT_SCOPE, message: INSUFFICIENT_SCOPE_MESSAGE };
   }
@@ -405,21 +406,6 @@ function addedRefsOf(body: unknown): GmailMessageRef[] {
   }
   return refs;
 }
-
-/**
- * The largest raw document whose body is stored, in bytes.
- *
- * Bounds what reaches the body COLUMNS, not what is downloaded or parsed: with RAW the
- * whole document has already crossed the wire by the time its size is known, and the
- * headers still have to be parsed out of it. A document past this is carrying attachments
- * rather than prose, so it is stored as headers with no body.
- *
- * Applied to the decoded buffer rather than to the response's `sizeEstimate`, because
- * Google documents RAW as "the full email message data" without stating which metadata
- * survives the projection, and a cap that stops applying when a field is absent is worse
- * than one that always applies.
- */
-const MAX_MESSAGE_SOURCE_BYTES = 2_097_152;
 
 /**
  * Turns one Gmail message resource into the row the engine stores.
