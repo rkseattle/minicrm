@@ -399,7 +399,7 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
   });
 
   it('leaves a Microsoft mailbox active rather than marking it broken', async () => {
-    // Microsoft has no driver and no test. Writing 'error' for that would flip a healthy
+    // Microsoft has no probe registered yet. Writing 'error' for that would flip a healthy
     // row to a badge nothing ever clears, since no sync runs to set it back.
     const account = await upsertOAuthAccount(
       {

@@ -51,6 +51,9 @@ const INSUFFICIENT_SCOPE_MESSAGE =
  * translates PROVIDER_AUTH_EXPIRED instead. */
 export const REJECTED_CREDENTIAL_MESSAGE = 'Google rejected the stored credentials.';
 
+/** Message for a mailbox that could not be reached at all. */
+export const UNREACHABLE_MESSAGE = 'Could not reach Gmail.';
+
 /**
  * History records requested per incremental page.
  *
@@ -241,7 +244,7 @@ function errorForStatus(status: number, body: unknown): Error {
   if (status === 401 || status === 403) {
     return providerError('Google rejected the stored credentials.', PROVIDER_AUTH_EXPIRED);
   }
-  return providerError('Could not reach Gmail.', CONNECTION_FAILED);
+  return providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
 }
 
 interface GmailRequestResult {
@@ -284,7 +287,7 @@ async function gmailRequest(
     if (err instanceof Error && 'code' in err) throw err;
     // undici reports every transport failure as the same TypeError, so the cause matters
     // more than the name; either way the mailbox is unreachable rather than unauthorized.
-    throw providerError('Could not reach Gmail.', CONNECTION_FAILED);
+    throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
   } finally {
     clearTimeout(timer);
   }
@@ -325,7 +328,7 @@ export async function testGmailAccess(
     const code = (err as { code?: string }).code;
     return code === PROVIDER_AUTH_EXPIRED
       ? { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE }
-      : { ok: false, code: CONNECTION_FAILED, message: 'Could not reach Gmail.' };
+      : { ok: false, code: CONNECTION_FAILED, message: UNREACHABLE_MESSAGE };
   }
 }
 
