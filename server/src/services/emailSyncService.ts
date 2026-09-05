@@ -425,11 +425,26 @@ async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Pro
     // The row is locked and read first so the count, the backoff, and the retirement
     // decision all come from one value. Deriving any of them separately is what left the
     // delay on a pre-sync snapshot after the count had already moved.
-    const current = await client.query<{ sync_failure_count: number }>(
-      `SELECT sync_failure_count FROM connected_accounts WHERE id = $1 FOR UPDATE`,
+    const current = await client.query<{
+      sync_failure_count: number;
+      sync_next_attempt_at: Date | null;
+    }>(
+      `SELECT sync_failure_count, sync_next_attempt_at
+         FROM connected_accounts WHERE id = $1 FOR UPDATE`,
       [account.id],
     );
     if (current.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return;
+    }
+
+    // A row already parked was retired by the credential path, which does this same
+    // bookkeeping before throwing the error that lands here. Recording it again pushes the
+    // count past its own ceiling and writes a second audit entry for one event.
+    const alreadyParked =
+      current.rows[0].sync_next_attempt_at === null &&
+      current.rows[0].sync_failure_count >= MAX_SYNC_FAILURES;
+    if (alreadyParked) {
       await client.query('ROLLBACK');
       return;
     }

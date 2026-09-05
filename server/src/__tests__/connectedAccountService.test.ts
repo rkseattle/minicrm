@@ -23,6 +23,7 @@ import {
   updateAccountStatus,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
+import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
 import type { RefreshedTokens } from '../services/oauthProviderService.js';
 
 import { clearAuditLogFor, deadGrantError } from './testUtils.js';
@@ -170,7 +171,7 @@ describe('horizontal privilege enforcement', () => {
   it("does not change status on rep B's account when rep A writes it", async () => {
     const account = await createImapAccount(REP_B_ACTOR.id, IMAP_INPUT, REP_B_ACTOR);
 
-    await updateAccountStatus(account.id, REP_A_ACTOR.id, 'error', 'attacker');
+    await updateAccountStatus(account.id, REP_A_ACTOR.id, 'error', 'CONNECTION_FAILED');
 
     const [survivor] = await listConnectedAccounts(REP_B_ACTOR.id);
     expect(survivor.status).toBe('active');
@@ -207,7 +208,7 @@ describe('OAuth upsert', () => {
       refresh_token: 'refresh-one',
       expires_at: 1_800_000_000_000,
     },
-    grantedScopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+    grantedScopes: [GMAIL_READ_SCOPE],
   };
 
   it('re-consenting returns a retired mailbox to the schedule', async () => {
@@ -698,7 +699,7 @@ describe('scheduler-facing account claim', () => {
         provider: 'google',
         emailAddress: `${FILE_PREFIX}-google@example.com`,
         auth: { kind: 'oauth', access_token: 'token', refresh_token: 'refresh', expires_at: null },
-        grantedScopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+        grantedScopes: [GMAIL_READ_SCOPE],
       },
       REP_A_ACTOR,
     );
@@ -709,7 +710,7 @@ describe('scheduler-facing account claim', () => {
   it('carries the granted scopes, so the driver needs no per-account lookup', async () => {
     // Built by hand from the row, so an omitted RETURNING column arrives as undefined with
     // no type error — and the scope check would then refuse every Gmail mailbox.
-    const scopes = ['https://www.googleapis.com/auth/gmail.readonly'];
+    const scopes = [GMAIL_READ_SCOPE];
     const account = await upsertOAuthAccount(
       {
         userId: REP_A_ACTOR.id,
@@ -807,7 +808,7 @@ describe('sync recovery', () => {
       [account.id, due],
     );
 
-    await updateAccountStatus(account.id, REP_A_ACTOR.id, 'error', 'still failing');
+    await updateAccountStatus(account.id, REP_A_ACTOR.id, 'error', 'SYNC_FAILED');
 
     const row = await pool.query<{ sync_failure_count: number; sync_next_attempt_at: Date | null }>(
       'SELECT sync_failure_count, sync_next_attempt_at FROM connected_accounts WHERE id = $1',

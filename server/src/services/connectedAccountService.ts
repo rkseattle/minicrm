@@ -21,6 +21,7 @@ import type {
   ConnectedAccountProvider,
   ConnectedAccountResponse,
   ConnectedAccountStatus,
+  ConnectedAccountStatusDetail,
   ImapCredentialsInput,
   OAuthProvider,
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
@@ -686,7 +687,9 @@ export async function updateAccountStatus(
   accountId: string,
   userId: string,
   status: ConnectedAccountStatus,
-  statusDetail: string | null,
+  // The closed set, not a string: this column is rendered by translating it, so prose
+  // reaches a user as a key no locale matches and degrades to the generic reason.
+  statusDetail: ConnectedAccountStatusDetail | null,
 ): Promise<void> {
   // Going active clears the backoff. Without this a mailbox past MAX_SYNC_FAILURES could
   // never be claimed again: POST /:id/test is the documented way back, and it would fix

@@ -142,10 +142,18 @@ the rest of the window permanently.
 **The backfill's anchor is read once**, from `users.getProfile`, before the first page — not
 from the newest listed message as Google's sync guide suggests. That value is read _after_
 the listing, so a message arriving while the listing ran is never seen again. A mailbox whose
-profile returns no `historyId` keeps paging under a placeholder anchor while the listing has
-pages left, and stores no cursor once it is exhausted — a null cursor is what routes the next
-tick back through the backfill job, where a stored one would take the incremental path and
-lose the page budget.
+profile returns no `historyId` pages under a placeholder anchor and **keeps** that cursor
+once the listing is exhausted. A null cursor there would be indistinguishable from
+never-synced, and the engine re-backfills the whole window on one — so the mailbox would
+re-read 90 days every tick forever, with each committed page resetting the failure count so
+the retirement ceiling never fired either. The placeholder bounds it to a single listing
+page per tick until the profile answers.
+
+**A backfill cursor carries the `after:` epoch its page token was issued against.** The
+engine recomputes `since` from the clock every tick, and Google treats a `pageToken` as
+valid only for the request that produced it, so a resumed page rebuilds the original query
+rather than the current one. A stored token that lost its window is discarded rather than
+replayed.
 
 **Every ref a history page reports is delivered**, however many that is. `maxResults` bounds
 history _records_, not the messages inside them, so one record set can exceed it — but the

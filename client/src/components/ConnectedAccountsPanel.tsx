@@ -248,7 +248,9 @@ export default function ConnectedAccountsPanel() {
                 {reasonFor(account) !== null ? (
                   <p
                     className="text-xs text-red-600 break-words"
-                    role="alert"
+                    // status, not alert: this renders from a stored row, so on page load
+                    // every errored mailbox would interrupt a screen reader at once.
+                    role="status"
                     data-testid={`connected-account-status-detail-${account.id}`}
                   >
                     {resultMessage(reasonFor(account))}

@@ -13,6 +13,7 @@
 import { describe, it, expect } from 'vitest';
 
 import type { OAuthAuthPayload } from '../services/connectedAccountService.js';
+import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
 import { assertMatchesGmailSchema } from './gmailSchema.js';
 import {
   createGmailProvider,
@@ -25,7 +26,7 @@ import {
 } from '../services/mail/gmailProvider.js';
 
 const ACCOUNT_ADDRESS = 'rep@example.com';
-const READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+const READ_SCOPE = GMAIL_READ_SCOPE;
 const SINCE = new Date('2026-06-01T00:00:00Z');
 
 const AUTH: OAuthAuthPayload = {

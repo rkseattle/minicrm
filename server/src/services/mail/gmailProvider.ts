@@ -34,7 +34,7 @@ export { INSUFFICIENT_SCOPE };
 
 /** Message for a grant that cannot read mail. The user sees the locale string keyed by
  * INSUFFICIENT_SCOPE; this reaches logs and any caller that reports a raw provider error. */
-export const INSUFFICIENT_SCOPE_MESSAGE =
+const INSUFFICIENT_SCOPE_MESSAGE =
   'This mailbox did not grant permission to read mail. Reconnect it to continue syncing.';
 
 /** Message for a credential the provider refused. Logged, not rendered — the panel
@@ -335,7 +335,7 @@ async function fetchProfileHistoryId(
 }
 
 /** One message id and the thread Gmail places it in. */
-export interface GmailMessageRef {
+interface GmailMessageRef {
   id: string;
   threadId: string | null;
 }
@@ -488,7 +488,10 @@ async function readMessages(
   const messages: NormalizedMessage[] = [];
 
   for (const ref of refs) {
-    const { status, body } = await gmailRequest(fetchImpl, accessToken, `/messages/${ref.id}`, {
+    // Encoded like any remote string reaching a URL, though Gmail ids are hex: every other
+    // value from the wire is bounded here, and this was the one that was not.
+    const path = `/messages/${encodeURIComponent(ref.id)}`;
+    const { status, body } = await gmailRequest(fetchImpl, accessToken, path, {
       format: 'RAW',
     });
 
@@ -599,8 +602,8 @@ async function readBackfill(
   // exhausted. Writing null there would be indistinguishable from never-synced, and the
   // engine re-backfills the whole window on a null cursor — so a profile that never
   // answers with a historyId would re-read 90 days every tick, forever, with the failure
-  // ceiling reset by each successful page. Keeping the placeholder means the next tick
-  // re-attempts only the profile call.
+  // ceiling reset by each successful page. The placeholder bounds that to one listing
+  // page a tick until the profile answers, which Discovery says it must.
   const next: GmailCursor =
     historyId === null
       ? { phase: 'backfill', historyId: UNANCHORED, pageToken, afterSeconds }

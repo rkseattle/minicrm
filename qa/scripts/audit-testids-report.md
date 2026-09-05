@@ -1,13 +1,13 @@
 # data-testid Audit Report
 
-Generated: 2026-09-04T21:46:18.375Z
+Generated: 2026-09-05T01:11:39.979Z
 
 ## Summary
 
 - Matched: 597
 - Stale (broken locators): 0
 - Unexercised (in app, not in tests): 1021
-- Dynamic (manual review required): 690
+- Dynamic (manual review required): 689
 
 ## Stale testids (action required)
 
@@ -72,20 +72,20 @@ _None — all test-referenced testids are present in the application source._
 | `confirm-delete-title` | client/src/components/ConfirmDeleteModal.tsx | 102 |
 | `confirm-delete-message` | client/src/components/ConfirmDeleteModal.tsx | 107 |
 | `confirm-delete-modal-overlay` | client/src/components/ConfirmDeleteModal.tsx | 82 |
-| `connected-accounts-title` | client/src/components/ConnectedAccountsPanel.tsx | 159 |
-| `connected-accounts-dismiss-result` | client/src/components/ConnectedAccountsPanel.tsx | 177 |
-| `connected-accounts-loading` | client/src/components/ConnectedAccountsPanel.tsx | 190 |
-| `connected-accounts-load-error` | client/src/components/ConnectedAccountsPanel.tsx | 199 |
-| `connected-accounts-empty` | client/src/components/ConnectedAccountsPanel.tsx | 206 |
-| `connected-accounts-show-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 331 |
-| `connected-accounts-imap-email` | client/src/components/ConnectedAccountsPanel.tsx | 363 |
-| `connected-accounts-imap-host` | client/src/components/ConnectedAccountsPanel.tsx | 381 |
-| `connected-accounts-imap-port` | client/src/components/ConnectedAccountsPanel.tsx | 395 |
-| `connected-accounts-imap-username` | client/src/components/ConnectedAccountsPanel.tsx | 411 |
-| `connected-accounts-imap-password` | client/src/components/ConnectedAccountsPanel.tsx | 428 |
-| `connected-accounts-imap-secure` | client/src/components/ConnectedAccountsPanel.tsx | 440 |
-| `connected-accounts-imap-submit` | client/src/components/ConnectedAccountsPanel.tsx | 463 |
-| `connected-accounts-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 341 |
+| `connected-accounts-title` | client/src/components/ConnectedAccountsPanel.tsx | 174 |
+| `connected-accounts-dismiss-result` | client/src/components/ConnectedAccountsPanel.tsx | 192 |
+| `connected-accounts-loading` | client/src/components/ConnectedAccountsPanel.tsx | 205 |
+| `connected-accounts-load-error` | client/src/components/ConnectedAccountsPanel.tsx | 214 |
+| `connected-accounts-empty` | client/src/components/ConnectedAccountsPanel.tsx | 221 |
+| `connected-accounts-show-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 335 |
+| `connected-accounts-imap-email` | client/src/components/ConnectedAccountsPanel.tsx | 367 |
+| `connected-accounts-imap-host` | client/src/components/ConnectedAccountsPanel.tsx | 385 |
+| `connected-accounts-imap-port` | client/src/components/ConnectedAccountsPanel.tsx | 399 |
+| `connected-accounts-imap-username` | client/src/components/ConnectedAccountsPanel.tsx | 415 |
+| `connected-accounts-imap-password` | client/src/components/ConnectedAccountsPanel.tsx | 432 |
+| `connected-accounts-imap-secure` | client/src/components/ConnectedAccountsPanel.tsx | 444 |
+| `connected-accounts-imap-submit` | client/src/components/ConnectedAccountsPanel.tsx | 467 |
+| `connected-accounts-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 345 |
 | `contact-enrichment-error` | client/src/components/ContactEnrichmentModal.tsx | 120 |
 | `contact-enrichment-insufficient` | client/src/components/ContactEnrichmentModal.tsx | 130 |
 | `contact-enrichment-cancel` | client/src/components/ContactEnrichmentModal.tsx | 163 |
@@ -1077,15 +1077,14 @@ _None — all test-referenced testids are present in the application source._
 | `champion-blocker-dismiss-*` | client/src/components/ChampionBlockerBadge.tsx | 87 | app |
 | `change-history-time-*` | client/src/components/ChangeHistory.tsx | 206 | app |
 | `change-history-entry-*` | client/src/components/ChangeHistory.tsx | 198 | app |
-| `connected-account-status-*` | client/src/components/ConnectedAccountsPanel.tsx | 229 | app |
-| `connected-account-test-result-*` | client/src/components/ConnectedAccountsPanel.tsx | 237 | app |
-| `connected-account-status-detail-*` | client/src/components/ConnectedAccountsPanel.tsx | 248 | app |
-| `connected-account-test-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 289 | app |
-| `connected-account-disconnect-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 299 | app |
-| `connected-account-disconnect-confirm-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 267 | app |
-| `connected-account-disconnect-cancel-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 277 | app |
-| `connected-account-disconnect-confirm-*` | client/src/components/ConnectedAccountsPanel.tsx | 258 | app |
-| `connected-account-row-*` | client/src/components/ConnectedAccountsPanel.tsx | 217 | app |
+| `connected-account-status-*` | client/src/components/ConnectedAccountsPanel.tsx | 244 | app |
+| `connected-account-status-detail-*` | client/src/components/ConnectedAccountsPanel.tsx | 252 | app |
+| `connected-account-test-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 293 | app |
+| `connected-account-disconnect-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 303 | app |
+| `connected-account-disconnect-confirm-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 271 | app |
+| `connected-account-disconnect-cancel-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 281 | app |
+| `connected-account-disconnect-confirm-*` | client/src/components/ConnectedAccountsPanel.tsx | 262 | app |
+| `connected-account-row-*` | client/src/components/ConnectedAccountsPanel.tsx | 232 | app |
 | `**-remove-*` | client/src/components/ContactSelector.tsx | 125 | app |
 | `**-chip-*` | client/src/components/ContactSelector.tsx | 116 | app |
 | `**-selected-list` | client/src/components/ContactSelector.tsx | 109 | app |
