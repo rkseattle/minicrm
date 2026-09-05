@@ -10,6 +10,7 @@ import type { AuditActor } from '../services/auditService.js';
 import { z } from 'zod';
 
 import {
+  CONNECTION_FAILED,
   imapCredentialsSchema,
   oauthProviderSchema,
   UNTESTABLE_PROVIDER,
@@ -201,12 +202,17 @@ async function testStoredGmailCredential(
   account: ConnectedAccountInternal,
   actor: AuditActor,
 ): Promise<GmailTestResult> {
-  const accessToken = await getUsableAccessToken(
-    account.id,
-    account.userId,
-    actor,
-    refreshAccessToken,
-  );
+  let accessToken: string | null;
+  try {
+    accessToken = await getUsableAccessToken(account.id, account.userId, actor, refreshAccessToken);
+  } catch (err) {
+    // The refresh rethrows anything it cannot call a dead grant, which is right for the
+    // scheduler — its backoff needs the throw. On this path it would be a 500 on a handler
+    // documented to always answer 200, and would skip the status write that a retired
+    // mailbox depends on to recover.
+    logger.warn({ err, accountId: account.id }, 'connectedAccount: Gmail refresh failed on test');
+    return { ok: false, code: CONNECTION_FAILED, message: 'Could not reach Gmail.' };
+  }
   if (accessToken === null) {
     return { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE };
   }

@@ -818,7 +818,7 @@ describe('syncOneAccount — OAuth credentials', () => {
           refresh_token: 'refresh-one',
           expires_at: Date.now() - 1000,
         },
-        grantedScopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+        grantedScopes: [GMAIL_READ_SCOPE],
       },
       ACTOR,
     );
@@ -956,7 +956,9 @@ it('parks a mailbox whose refresh token the provider revoked', async () => {
     [account.id],
   );
   expect(parked.rows[0].status).toBe('error');
-  expect(parked.rows[0].sync_failure_count).toBeGreaterThanOrEqual(MAX_SYNC_FAILURES);
+  // Exactly the ceiling, not merely past it: a count above it means a second writer
+  // recorded the same event, which is how the double audit entry below stayed hidden.
+  expect(parked.rows[0].sync_failure_count).toBe(MAX_SYNC_FAILURES);
   expect(parked.rows[0].sync_next_attempt_at).toBeNull();
 
   // The claim query is what has to stop returning it — a status alone would not.
@@ -969,4 +971,48 @@ it('parks a mailbox whose refresh token the provider revoked', async () => {
     [account.id],
   );
   expect(Number(audits.rows[0].count)).toBe(1);
+});
+
+it('records a revoked grant once through a whole tick, not once per writer', async () => {
+  // Driven through syncDueAccounts rather than syncOneAccount: the retirement is written
+  // by the credential path, and the throw it raises then reaches recordSyncFailure, which
+  // owns the same bookkeeping. Calling the inner function skips the second writer, which
+  // is why one event was recorded as two.
+  const account = await upsertOAuthAccount(
+    {
+      userId: ACTOR.id,
+      provider: 'google',
+      emailAddress: `${FILE_PREFIX}-revoked-tick@example.com`,
+      auth: {
+        kind: 'oauth',
+        access_token: 'stale',
+        refresh_token: 'revoked',
+        expires_at: Date.now() - 1000,
+      },
+      grantedScopes: [GMAIL_READ_SCOPE],
+    },
+    ACTOR,
+  );
+
+  await syncDueAccounts(fakeProvider([]), () => {
+    throw deadGrantError();
+  });
+
+  const row = await pool.query<{ sync_failure_count: number; status_detail: string | null }>(
+    `SELECT sync_failure_count, status_detail FROM connected_accounts WHERE id = $1`,
+    [account.id],
+  );
+  expect(row.rows[0].sync_failure_count).toBe(MAX_SYNC_FAILURES);
+  expect(row.rows[0].status_detail).toBe('PROVIDER_AUTH_EXPIRED');
+
+  const entries = await pool.query<{ event_type: string }>(
+    `SELECT event_type FROM audit_log WHERE record_id = $1 ORDER BY created_at`,
+    [account.id],
+  );
+  const retirements = entries.rows.filter((entry) =>
+    ['connected_account_disconnected', 'connected_account_sync_suspended'].includes(
+      entry.event_type,
+    ),
+  );
+  expect(retirements).toHaveLength(1);
 });

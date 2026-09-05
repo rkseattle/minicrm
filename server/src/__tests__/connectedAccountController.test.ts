@@ -16,6 +16,7 @@ import app from '../app.js';
 import pool from '../db.js';
 import { createImapAccount, upsertOAuthAccount } from '../services/connectedAccountService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
+import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
 import { createUser } from '../services/userService.js';
 
 import { makeAuthCookie, parkFromScheduler } from './testUtils.js';
@@ -462,6 +463,36 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
     );
     // The code, not prose: the panel translates this column into the user's language.
     expect(row.rows[0].status_detail).toBe('INSUFFICIENT_SCOPE');
+  });
+
+  it('answers 200 when the refresh itself fails, rather than 500', async () => {
+    // An expired token forces a real refresh, which cannot reach Google from a test. The
+    // handler's contract is that a remote failure is data about that server, not a failed
+    // request — and a 500 would also skip the status write, stranding a retired mailbox
+    // with a stale reason on the one path documented to clear it.
+    const account = await upsertOAuthAccount(
+      {
+        userId: repAId,
+        provider: 'google',
+        emailAddress: `${FILE_PREFIX}-gmail-refresh-fails@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'stale',
+          refresh_token: 'r',
+          expires_at: Date.now() - 1_000,
+        },
+        grantedScopes: [GMAIL_READ_SCOPE],
+      },
+      { id: repAId, name: 'Contract Rep A' },
+    );
+
+    const res = await request(app)
+      .post(`/api/v1/connected-accounts/${account.id}/test`)
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toBe('CONNECTION_FAILED');
   });
 });
 

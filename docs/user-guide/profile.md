@@ -139,14 +139,27 @@ stored, so a failure here means nothing was written.
 
 ### Read the status
 
-| Status              | What it means                                                                                                                                             |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Active**          | The mailbox is connected and working.                                                                                                                     |
-| **Needs attention** | The provider stopped accepting the stored credentials, or email syncing has been failing. Click **Test** to re-check — a successful test resumes syncing. |
+| Status              | What it means                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| **Active**          | The mailbox is connected and working.                                                |
+| **Needs attention** | Something is stopping this mailbox from syncing. The reason appears under the badge. |
+
+**What the reason tells you to do.** Some of these clear themselves once the cause is
+gone; others cannot, however many times you test.
+
+| Reason shown                                          | What to do                                                                                      |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| "MiniCRM could not reach this mail provider."         | Click **Test** once the provider is reachable. A successful test resumes syncing.               |
+| "Syncing failed."                                     | Click **Test**. If it keeps failing, the mail server is refusing something MiniCRM asks of it.  |
+| "MiniCRM could not run that test."                    | Nothing is wrong with the mailbox — the request to MiniCRM itself failed. Try again.            |
+| "Testing this provider is not supported yet."         | Nothing to do. The mailbox is unaffected; only the **Test** button does not work for it yet.    |
+| "This mailbox did not grant permission to read mail." | **Disconnect and reconnect it**, accepting the mail permission. Testing cannot fix this.        |
+| "The provider stopped accepting the saved sign-in."   | **Disconnect and reconnect it.** The provider withdrew access, and only you can grant it again. |
 
 Repeated sync failures slow the retries down, and after enough of them MiniCRM stops
-retrying until you click **Test**. A successful test clears the failure count and puts the
-mailbox straight back into the sync schedule.
+retrying. For the reasons a test can clear, a successful test resets the failure count and
+puts the mailbox straight back into the sync schedule; for the two that need reconnecting,
+that is what puts it back.
 
 ### Disconnect a mailbox
 
