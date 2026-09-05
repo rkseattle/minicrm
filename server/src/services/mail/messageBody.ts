@@ -18,7 +18,9 @@ import { simpleParser } from 'mailparser';
 import type { AddressObject, Attachment } from 'mailparser';
 import { htmlToText } from 'html-to-text';
 
-import type { ThreadingHeaders } from './threading.js';
+import logger from '../../logger.js';
+import type { NormalizedMessage } from './mailProvider.js';
+import { resolveThreadId, type ThreadingHeaders } from './threading.js';
 
 /** Characters of body text kept for a list view that must not load a whole body. */
 const SNIPPET_LENGTH = 200;
@@ -212,6 +214,72 @@ function bodyTextOf(text: string | undefined, html: string | false): string | nu
     return converted.trim() === '' ? null : storable(converted);
   }
   return null;
+}
+
+/**
+ * Turns one raw MIME document into the row the engine stores.
+ *
+ * Shared because Gmail and Graph do the same thing with the same parser over the same kind
+ * of document — both fetch the whole message rather than walking the provider's own body
+ * parts — so a message must read identically whichever synced it. IMAP is not a caller:
+ * it knows a message's size before fetching and can decline the download, which this
+ * cannot.
+ *
+ * @param nativeThreadId - The provider's own conversation id, where it has one.
+ * @param fallbackThreadId - Identity for a message carrying neither a native id nor
+ *   RFC 5322 threading headers. Prefixed per driver so two providers' synthetic ids
+ *   cannot collide.
+ * @returns null when the document carries no usable sender — the one field with no
+ *   sensible default.
+ */
+export async function normalizeFromSource(
+  source: Buffer,
+  message: {
+    providerMessageId: string;
+    nativeThreadId: string | null;
+    fallbackThreadId: string;
+    accountAddress: string;
+    driver: string;
+  },
+): Promise<NormalizedMessage | null> {
+  // Oversized documents keep their headers and store no body. Dropping the message
+  // instead would lose it for good: the cursor advances past it in the same transaction
+  // that stores the page.
+  const oversized = source.byteLength > MAX_MESSAGE_SOURCE_BYTES;
+  if (oversized) {
+    logger.warn(
+      { messageId: message.providerMessageId, bytes: source.byteLength },
+      `${message.driver}: storing headers only for an oversized message`,
+    );
+  }
+
+  const parsed = await parseMessage(source, { headersOnly: oversized });
+  if (!parsed.fromAddress) return null;
+
+  // Reported per message so a silent body loss stays observable.
+  if (parsed.lostText && !oversized) {
+    logger.warn(
+      { messageId: message.providerMessageId },
+      `${message.driver}: stored a message with no body text`,
+    );
+  }
+
+  return {
+    providerMessageId: boundIndexedId(message.providerMessageId),
+    threadId: boundIndexedId(
+      message.nativeThreadId ?? resolveThreadId(parsed.threading) ?? message.fallbackThreadId,
+    ),
+    direction: directionOf(parsed.fromAddress, message.accountAddress),
+    fromAddress: parsed.fromAddress,
+    toAddresses: parsed.toAddresses,
+    ccAddresses: parsed.ccAddresses,
+    subject: parsed.subject,
+    hasAttachments: parsed.hasAttachments,
+    sentAt: parsed.sentAt,
+    bodyText: parsed.bodyText,
+    bodyHtml: parsed.bodyHtml,
+    snippet: parsed.snippet,
+  };
 }
 
 /** Everything a provider needs from one document, parsed once. */

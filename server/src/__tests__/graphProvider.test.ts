@@ -44,6 +44,11 @@ interface Route {
   match: string;
   status?: number;
   body?: unknown;
+  /** Rejects the request at the transport, as undici does when the host is unreachable. */
+  transportError?: true;
+  /** Rejects `json()` the way a truncated or non-JSON body does. */
+  malformedJson?: true;
+  retryAfter?: string;
   /** Raw MIME, for the `$value` route. Served as bytes, never as JSON. */
   source?: Buffer;
   /**
@@ -85,11 +90,15 @@ function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[]; headers: H
       return next === undefined || next === '?' || next === '&' || next === '/';
     });
     const status = route?.status ?? (route ? 200 : 500);
+    if (route?.transportError) return Promise.reject(new TypeError('fetch failed'));
     return Promise.resolve({
       ok: status >= 200 && status < 300,
       status,
-      headers: { get: () => null },
+      headers: {
+        get: (name: string) => (name === 'retry-after' ? (route?.retryAfter ?? null) : null),
+      },
       json: () => {
+        if (route?.malformedJson) return Promise.reject(new SyntaxError('Unexpected end of JSON'));
         const body = route?.body ?? {};
         const schema =
           status >= 200 && status < 300 && !route?.contractViolation ? schemaForUrl(url) : null;
@@ -235,6 +244,13 @@ describe('parseCursor', () => {
       inbox: { link: 'https://evil.example.com/steal', opening: false },
     });
     expect(parseCursor(cursor).size).toBe(0);
+  });
+
+  it('reads an entry with no phase as still opening', () => {
+    // The safe direction: one window filter applied to an incremental page costs a page,
+    // where the opposite mistake ingests everything the mailbox has ever held.
+    const cursor = JSON.stringify({ inbox: { link: `${INBOX_DELTA}?$skiptoken=p2` } });
+    expect(parseCursor(cursor).get('inbox')?.opening).toBe(true);
   });
 
   it('drops a folder it does not sync', () => {
@@ -424,7 +440,12 @@ describe('createGraphProvider — paging', () => {
     const page = await provider.fetchSince(AUTH, null, SINCE);
 
     expect(page.hasMore).toBe(true);
-    expect(parseCursor(page.cursor).get('inbox')?.link).toBe(`${INBOX_DELTA}?$skiptoken=p2`);
+    // The phase, not just the link: a page stored as finished makes page two read as
+    // incremental, which drops the window and ingests the mailbox's whole history.
+    expect(parseCursor(page.cursor).get('inbox')).toEqual({
+      link: `${INBOX_DELTA}?$skiptoken=p2`,
+      opening: true,
+    });
   });
 
   it('resumes a stored link without resolving folders again', async () => {
@@ -613,6 +634,58 @@ describe('createGraphProvider — a discarded page', () => {
 
     expect(page.cursorInvalid).toBe(true);
     expect(fetcher.urls.some((url) => url.includes('$value'))).toBe(false);
+  });
+});
+
+describe('createGraphProvider — the phase a page records', () => {
+  it('still applies the window on the page its own cursor resumes', async () => {
+    // The two halves of the invariant, connected: page one's OUTPUT cursor is what page
+    // two is driven with, so a phase written wrong here is a mailbox's entire history.
+    const first = fakeFetch([
+      ...FOLDER_ROUTES,
+      {
+        match: INBOX_DELTA,
+        body: { value: [], '@odata.nextLink': `${INBOX_DELTA}?$skiptoken=p2` },
+      },
+      { match: SENT_DELTA, body: emptyRound(`${SENT_DELTA}?$deltatoken=s1`) },
+    ]);
+    const pageOne = await createGraphProvider(
+      ACCOUNT_ADDRESS,
+      [GRAPH_MAIL_READ_SCOPE],
+      first.fn,
+    ).fetchSince(AUTH, null, SINCE);
+
+    const second = fakeFetch([
+      {
+        match: `${INBOX_DELTA}?$skiptoken=p2`,
+        body: {
+          value: [{ id: 'old', conversationId: 'c1', receivedDateTime: '2019-01-01T00:00:00Z' }],
+          '@odata.deltaLink': `${INBOX_DELTA}?$deltatoken=d1`,
+        },
+      },
+      { match: `${SENT_DELTA}?$deltatoken=s1`, body: emptyRound(`${SENT_DELTA}?$deltatoken=s2`) },
+    ]);
+    const pageTwo = await createGraphProvider(
+      ACCOUNT_ADDRESS,
+      [GRAPH_MAIL_READ_SCOPE],
+      second.fn,
+    ).fetchSince(AUTH, pageOne.cursor, SINCE);
+
+    expect(pageTwo.messages).toHaveLength(0);
+    expect(second.urls.some((url) => url.includes('$value'))).toBe(false);
+  });
+
+  it('records a completed round as finished', async () => {
+    const fetcher = fakeFetch([
+      ...FOLDER_ROUTES,
+      { match: INBOX_DELTA, body: emptyRound(`${INBOX_DELTA}?$deltatoken=d1`) },
+      { match: SENT_DELTA, body: emptyRound(`${SENT_DELTA}?$deltatoken=s1`) },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(parseCursor(page.cursor).get('inbox')?.opening).toBe(false);
   });
 });
 
@@ -1096,6 +1169,90 @@ describe('createGraphProvider — failures', () => {
       { match: INBOX_DELTA, body: { value: [] }, contractViolation: true },
       { match: SENT_DELTA, body: emptyRound(`${SENT_DELTA}?$deltatoken=s1`) },
     ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
+  });
+});
+
+describe('createGraphProvider — failures reading a body', () => {
+  const listing: Route[] = [
+    ...FOLDER_ROUTES,
+    {
+      match: INBOX_DELTA,
+      body: {
+        value: [{ id: 'm1', conversationId: 'c1', receivedDateTime: RECENT }],
+        '@odata.deltaLink': `${INBOX_DELTA}?$deltatoken=d1`,
+      },
+    },
+    { match: SENT_DELTA, body: emptyRound(`${SENT_DELTA}?$deltatoken=s1`) },
+  ];
+
+  it('reads a throttled body fetch as a connection failure', async () => {
+    // The error envelope decides it: a 4xx on $value is otherwise indistinguishable from
+    // a refused credential, and telling a rep to reconnect does nothing for a rate limit.
+    const fetcher = fakeFetch([
+      ...listing,
+      {
+        match: '/messages/m1/$value',
+        status: 429,
+        body: { error: { code: 'TooManyRequests' } },
+        retryAfter: '30',
+      },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
+  });
+
+  it('reads a refused body fetch as a dead credential', async () => {
+    const fetcher = fakeFetch([
+      ...listing,
+      {
+        match: '/messages/m1/$value',
+        status: 401,
+        body: { error: { code: 'InvalidAuthenticationToken' } },
+      },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'PROVIDER_AUTH_EXPIRED' }),
+    );
+  });
+
+  it('survives a failure whose own error body will not parse', async () => {
+    const fetcher = fakeFetch([
+      ...listing,
+      { match: '/messages/m1/$value', status: 500, malformedJson: true },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
+  });
+});
+
+describe('createGraphProvider — transport failures', () => {
+  it('reads an unreachable host as a connection failure', async () => {
+    // undici reports every transport failure as the same TypeError, so the driver cannot
+    // classify it further than "unreachable" — but it must not escape uncoded, which
+    // would land as the generic SYNC_FAILED.
+    const fetcher = fakeFetch([{ match: '/mailFolders/inbox', transportError: true }]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
+  });
+
+  it('reads a truncated JSON body as a connection failure', async () => {
+    const fetcher = fakeFetch([{ match: '/mailFolders/inbox', malformedJson: true }]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
 
     await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
