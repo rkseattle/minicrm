@@ -129,6 +129,9 @@ shows them again — not to you, and not to an administrator.
 the provider's own sign-in page, where you approve the access MiniCRM is asking for, and
 then returned here. MiniCRM never sees your password on this path.
 
+Both sync on the same schedule, and **Test** works for either — it is the way back for a
+mailbox MiniCRM has stopped retrying.
+
 **Any other provider.** Click **Connect via IMAP** and fill in the address, server, port,
 username, and password your mail provider publishes. Many providers require an
 _app password_ rather than your normal one — check their documentation if your usual
@@ -147,14 +150,14 @@ stored, so a failure here means nothing was written.
 **What the reason tells you to do.** Some of these clear themselves once the cause is
 gone; others cannot, however many times you test.
 
-| Reason shown                                          | What to do                                                                                      |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| "MiniCRM could not reach this mail provider."         | Click **Test** once the provider is reachable. A successful test resumes syncing.               |
-| "Syncing failed."                                     | Click **Test**. If it keeps failing, the mail server is refusing something MiniCRM asks of it.  |
-| "MiniCRM could not run that test."                    | Nothing is wrong with the mailbox — the request to MiniCRM itself failed. Try again.            |
-| "Testing this provider is not supported yet."         | Nothing to do. The mailbox is unaffected; only the **Test** button does not work for it yet.    |
-| "This mailbox did not grant permission to read mail." | **Disconnect and reconnect it**, accepting the mail permission. Testing cannot fix this.        |
-| "The provider stopped accepting the saved sign-in."   | **Disconnect and reconnect it.** The provider withdrew access, and only you can grant it again. |
+| Reason shown                                          | What to do                                                                                       |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| "MiniCRM could not reach this mail provider."         | Click **Test** once the provider is reachable. A successful test resumes syncing.                |
+| "Syncing failed."                                     | Click **Test**. If it keeps failing, the mail server is refusing something MiniCRM asks of it.   |
+| "MiniCRM could not run that test."                    | Nothing is wrong with the mailbox — the request to MiniCRM itself failed. Try again.             |
+| "Testing this provider is not supported yet."         | Rare — no provider you can connect today reports this. Nothing to do; the mailbox is unaffected. |
+| "This mailbox did not grant permission to read mail." | **Disconnect and reconnect it**, accepting the mail permission. Testing cannot fix this.         |
+| "The provider stopped accepting the saved sign-in."   | **Disconnect and reconnect it.** The provider withdrew access, and only you can grant it again.  |
 
 Repeated sync failures slow the retries down, and after enough of them MiniCRM stops
 retrying. For the reasons a test can clear, a successful test resets the failure count and
