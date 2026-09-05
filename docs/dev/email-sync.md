@@ -242,8 +242,8 @@ producing an invalid cron expression.
 
 ## Testing
 
-There is no IMAP server in the test stack — MailHog speaks SMTP only — so the provider is
-tested against a hand-written fake `ImapFlow` injected as a client factory.
+Most IMAP specs drive a hand-written fake `ImapFlow` injected as a client factory, because
+a fake is the only way to reach an error path a real server will not produce on demand.
 
 **That fake is the load-bearing risk in this area.** Several defects here were invisible
 because the fake disagreed with the real library rather than because the provider was
@@ -253,6 +253,54 @@ where imapflow reports the leaf, it yielded
 messages in array order where a real server may use any, and it synthesized a special-use
 source that made a fallback branch unreachable. Audit it field by field against
 `FetchMessageObject` and `ListResponse` before trusting a new assertion built on it.
+
+`imapProviderLive.test.ts` closes part of that gap by running the provider against
+GreenMail, a real IMAP server in the test stack (IMAP 3143, SMTP 3025). It is a server
+test rather than an E2E spec: nothing triggers a sync over HTTP, there is no read API for
+stored messages, and CI never invokes Compose. It stubs `assertHostSafe`, which the SSRF
+guard's own seam sanctions, because GreenMail sits on a private address.
+
+**Now observed rather than reasoned:** that bodies and subjects survive a real `source`
+fetch, that a real attachment sets `has_attachments`, that the cursor advances so a re-sync
+returns nothing new, and that a `uidValidity` mismatch invalidates a cursor. GreenMail
+reports RFC 6154 special-use for both `\Inbox` and `\Sent` — measured, not assumed — and
+`name` is the leaf while `path` carries the full `INBOX.Sent`, which is the fake's second
+defect above, directly confirmed.
+
+**Still reasoned, not observed:** every error and timeout path, which is why the fake stays.
+The suite skips when GreenMail is unreachable, so a developer who has not started the test
+stack gets a skip rather than a red build — which also means a broken GreenMail service
+would go quiet rather than loud. Check that it reports 4 passed, not 4 skipped, when you
+depend on it.
+
+The mailbox login is `rep`, **not** `rep@example.com`: GreenMail reads
+`-Dgreenmail.users=rep:secret-pass-12@example.com` as user `rep`, password
+`secret-pass-12`, domain `example.com`.
+
+### The Gmail fake and Google's Discovery Document
+
+Gmail has no sandbox, so `gmailProvider.test.ts` drives a fake — and its failure mode is
+agreeing with us rather than with Google. Every 2xx body it returns is validated against a
+vendored copy of the Discovery Document
+(`server/src/__tests__/__fixtures__/gmail-discovery.json`).
+
+Discovery is not JSON Schema: nothing in the published document carries `required` or
+`additionalProperties`, so `gmailSchema.ts` injects both. `required` lists only fields the
+driver dereferences unguarded — `Message.threadId` is deliberately absent, because the RFC
+5322 fallback exists for a message that arrives without one.
+
+To refresh it, re-run the transitive closure rather than hand-adding a schema — the fixture
+holds the schemas the driver reads plus everything they `$ref`, and a dangling reference
+fails at compile time inside an unrelated test:
+
+```bash
+curl -s 'https://gmail.googleapis.com/$discovery/rest?version=v1' > /tmp/discovery.json
+# then re-derive the closure from Message, Profile, ListMessagesResponse, ListHistoryResponse
+```
+
+No test fetches it: a green build must not depend on Google being reachable. The revision
+is recorded in the fixture, and the suite asserts it is present — which catches a copy
+pasted in without provenance, not a fabricated one.
 
 Run server tests from `server/`, not the repo root — from the root every test errors with
 `describe is not defined` before the file loads, which during mutation testing looks

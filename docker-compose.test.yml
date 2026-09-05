@@ -251,5 +251,27 @@ services:
       - '1025:1025'
       - '8025:8025'
 
+  # GreenMail — a real IMAP server, so the provider is tested against something other than
+  # our own reading of imapflow. Beside Mailhog rather than replacing it: Mailhog serves the
+  # outbound SMTP specs through its API, which this does not speak.
+  # Its own API server binds 8080 inside the container, which the test client already
+  # publishes, so it is deliberately left unpublished — the tests use IMAP, not the API.
+  # In greenmail.users, `rep:secret-pass-12@example.com` is login `rep`, password
+  # `secret-pass-12`, domain `example.com`. The IMAP login is `rep`, NOT the address.
+  greenmail:
+    container_name: minicrm-test-greenmail
+    logging: *default-logging
+    image: greenmail/standalone:latest
+    restart: 'no'
+    environment:
+      GREENMAIL_OPTS: >-
+        -Dgreenmail.setup.test.smtp
+        -Dgreenmail.setup.test.imap
+        -Dgreenmail.hostname=0.0.0.0
+        -Dgreenmail.users=rep:secret-pass-12@example.com
+    ports:
+      - '3143:3143'
+      - '3025:3025'
+
 volumes:
   db_data:
