@@ -1163,6 +1163,24 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # A real IMAP server for imapProviderLive.test.ts, which skips when it cannot reach
+      # one. Without this the suite reports 4 skipped and a regression in the very code it
+      # exists to cover goes unnoticed. Pinned for the same reason the compose file pins
+      # it: the tests assert on protocol behavior, not just reachability.
+      # greenmail.users reads as login `rep`, password `secret-pass-12`, domain
+      # example.com — the IMAP login is `rep`, not the address.
+      greenmail:
+        image: greenmail/standalone:2.1.13
+        env:
+          GREENMAIL_OPTS: >-
+            -Dgreenmail.setup.test.smtp
+            -Dgreenmail.setup.test.imap
+            -Dgreenmail.hostname=0.0.0.0
+            -Dgreenmail.users=rep:secret-pass-12@example.com
+        ports:
+          - 3143:3143
+          - 3025:3025
+
     steps:
       - uses: actions/checkout@v4
 

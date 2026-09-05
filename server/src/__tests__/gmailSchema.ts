@@ -149,7 +149,7 @@ function validatorFor(name: string): ValidateFunction {
  * replace every schema message with the one diagnostic that hides it, inside tests whose
  * assertions expect exactly that error.
  */
-export const SCHEMA_VIOLATION = 'GMAIL_FAKE_SCHEMA_VIOLATION';
+const SCHEMA_VIOLATION = 'GMAIL_FAKE_SCHEMA_VIOLATION';
 
 /**
  * Throws unless `body` matches the named Gmail schema.

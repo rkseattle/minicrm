@@ -15,13 +15,6 @@ export const CONNECTED_ACCOUNT_PROVIDERS = ['google', 'microsoft', 'imap'] as co
 export const OAUTH_PROVIDERS = ['google', 'microsoft'] as const;
 
 /**
- * Lifecycle states a connected account can be in.
- *
- * `disconnected` has no writer yet — disconnecting deletes the row outright. It is in the
- * CHECK constraint and here for the sync work, which needs to retire a mailbox without
- * discarding its cursor. Until then it is unreachable, so no user-facing surface claims it.
- */
-/**
  * Reasons a mailbox can be in error, as stored in `status_detail` and returned by the
  * connection test.
  *
@@ -42,14 +35,26 @@ export const CONNECTED_ACCOUNT_STATUS_DETAILS = [
 
 export type ConnectedAccountStatusDetail = (typeof CONNECTED_ACCOUNT_STATUS_DETAILS)[number];
 
+// Each is typed to the union rather than to its own literal, so renaming an entry in the
+// list above is a compile error at every name below instead of a silent divergence.
+
 /** Recorded when a failure carries no reason of its own. */
-export const SYNC_FAILED_DETAIL = 'SYNC_FAILED';
+export const SYNC_FAILED_DETAIL: ConnectedAccountStatusDetail = 'SYNC_FAILED';
 
 /** Reported when a provider has no connection test of its own. */
-export const UNTESTABLE_PROVIDER = 'UNTESTABLE_PROVIDER';
+export const UNTESTABLE_PROVIDER: ConnectedAccountStatusDetail = 'UNTESTABLE_PROVIDER';
 
 /** Reported when the request to MiniCRM failed, so the provider was never asked. */
-export const TEST_REQUEST_FAILED = 'TEST_REQUEST_FAILED';
+export const TEST_REQUEST_FAILED: ConnectedAccountStatusDetail = 'TEST_REQUEST_FAILED';
+
+/** Reported when a mailbox did not grant the scope its driver needs to read mail. */
+export const INSUFFICIENT_SCOPE: ConnectedAccountStatusDetail = 'INSUFFICIENT_SCOPE';
+
+/** Reported when the stored credential is no longer usable and needs a person. */
+export const PROVIDER_AUTH_EXPIRED: ConnectedAccountStatusDetail = 'PROVIDER_AUTH_EXPIRED';
+
+/** Reported when the provider could not be reached at all. */
+export const CONNECTION_FAILED: ConnectedAccountStatusDetail = 'CONNECTION_FAILED';
 
 /** True when a value is one of the reasons a client knows how to render. */
 export function isStatusDetail(value: unknown): value is ConnectedAccountStatusDetail {
@@ -59,6 +64,13 @@ export function isStatusDetail(value: unknown): value is ConnectedAccountStatusD
   );
 }
 
+/**
+ * Lifecycle states a connected account can be in.
+ *
+ * `disconnected` has no writer yet — disconnecting deletes the row outright. It is in the
+ * CHECK constraint and here for the sync work, which needs to retire a mailbox without
+ * discarding its cursor. Until then it is unreachable, so no user-facing surface claims it.
+ */
 export const CONNECTED_ACCOUNT_STATUSES = ['active', 'error', 'disconnected'] as const;
 
 export type ConnectedAccountProvider = (typeof CONNECTED_ACCOUNT_PROVIDERS)[number];

@@ -15,7 +15,7 @@
 import { createHash } from 'node:crypto';
 
 import { simpleParser } from 'mailparser';
-import type { AddressObject } from 'mailparser';
+import type { AddressObject, Attachment } from 'mailparser';
 import { htmlToText } from 'html-to-text';
 
 import type { ThreadingHeaders } from './threading.js';
@@ -228,6 +228,23 @@ function addressesOf(value: AddressObject | AddressObject[] | undefined): string
 }
 
 /** A date the database will accept, or null. An Invalid Date reaches timestamptz as neither. */
+/**
+ * True when a parsed message carries a part a user would call an attachment.
+ *
+ * The rule is the one imapProvider reads off BODYSTRUCTURE — disposition, plus a filename
+ * for an inline part — so the same message reports the same flag whichever driver synced
+ * it. mailparser's `related` cannot carry this: it is set from a Content-ID under a
+ * multipart/related ancestor and ignores disposition entirely, so a genuine PDF that
+ * happens to have a Content-ID reads as body content.
+ */
+function hasRealAttachment(attachments: readonly Attachment[]): boolean {
+  return attachments.some((part) => {
+    const disposition = part.contentDisposition?.toLowerCase();
+    if (disposition === 'attachment') return true;
+    return disposition === 'inline' && Boolean(part.filename);
+  });
+}
+
 function usableDate(value: Date | undefined): Date | null {
   return value instanceof Date && !Number.isNaN(value.getTime()) ? value : null;
 }
@@ -289,9 +306,7 @@ export async function parseMessage(
       ccAddresses: addressesOf(parsed.cc),
       subject: subjectOf(parsed.subject),
       sentAt: usableDate(parsed.date),
-      // `related` marks a part the parser says should not be offered for download — an
-      // embedded image a cid: URL references — so those are body content, not attachments.
-      hasAttachments: parsed.attachments.some((part) => !part.related),
+      hasAttachments: hasRealAttachment(parsed.attachments),
       threading: {
         messageId: parsed.messageId ?? null,
         inReplyTo: parsed.inReplyTo ?? null,

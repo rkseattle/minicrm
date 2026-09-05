@@ -261,7 +261,10 @@ services:
   greenmail:
     container_name: minicrm-test-greenmail
     logging: *default-logging
-    image: greenmail/standalone:latest
+    # Pinned, unlike the images beside it: this is the one service whose protocol behavior
+    # the tests assert on — special-use flags, UID semantics — so an upstream change would
+    # arrive as an unexplained failure rather than a version bump.
+    image: greenmail/standalone:2.1.13
     restart: 'no'
     environment:
       GREENMAIL_OPTS: >-

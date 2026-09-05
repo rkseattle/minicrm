@@ -498,6 +498,68 @@ describe('parseMessage', () => {
     expect(parsed.hasAttachments).toBe(true);
   });
 
+  it('counts a real attachment that also carries a Content-ID', async () => {
+    // The case the two drivers used to disagree on. mailparser marks this `related`
+    // — Content-ID under multipart/related — which reads as body content even though
+    // imapProvider's disposition rule, and the user, both call it an attachment.
+    const parsed = await parseMessage(
+      Buffer.from(
+        [
+          'From: a@b.c',
+          'To: rep@example.com',
+          'Subject: Signed contract',
+          'Content-Type: multipart/related; boundary="r"',
+          '',
+          '--r',
+          'Content-Type: text/plain; charset=utf-8',
+          '',
+          'Contract attached.',
+          '--r',
+          'Content-Type: application/pdf; name="contract.pdf"',
+          'Content-Disposition: attachment; filename="contract.pdf"',
+          'Content-ID: <contract@example.com>',
+          'Content-Transfer-Encoding: base64',
+          '',
+          'JVBERi0xLjQK',
+          '--r--',
+          '',
+        ].join('\r\n'),
+      ),
+    );
+
+    expect(parsed.hasAttachments).toBe(true);
+  });
+
+  it('does not count an inline image with no filename', async () => {
+    // The other side of the same rule: a quoted signature image is body content.
+    const parsed = await parseMessage(
+      Buffer.from(
+        [
+          'From: a@b.c',
+          'To: rep@example.com',
+          'Subject: Just a signature',
+          'Content-Type: multipart/related; boundary="r"',
+          '',
+          '--r',
+          'Content-Type: text/plain; charset=utf-8',
+          '',
+          'Regards.',
+          '--r',
+          'Content-Type: image/png',
+          'Content-Disposition: inline',
+          'Content-ID: <sig@example.com>',
+          'Content-Transfer-Encoding: base64',
+          '',
+          'iVBORw0KGgo=',
+          '--r--',
+          '',
+        ].join('\r\n'),
+      ),
+    );
+
+    expect(parsed.hasAttachments).toBe(false);
+  });
+
   it('does not count an embedded image a cid: URL references', async () => {
     // `related` marks body content rather than something to download, so a signature logo
     // must not flag every message in a thread as carrying an attachment.

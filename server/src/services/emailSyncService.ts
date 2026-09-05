@@ -212,11 +212,30 @@ async function storeMessages(
   return stored;
 }
 
+/**
+ * A transport that refuses to leave the machine, used in place of `fetch` under test.
+ *
+ * The scope check runs at construction, so tests legitimately build the real Gmail driver
+ * to assert an under-scoped mailbox is refused. What must never happen is a test that
+ * gets *past* that check reaching gmail.googleapis.com — so the refusal belongs on the
+ * wire rather than on the constructor, the same place resolveTransport puts it for SMTP.
+ */
+function refuseLiveFetch(url: string): never {
+  throw new Error(
+    `emailSyncService: a test tried to reach ${new URL(url).host}; inject a provider`,
+  );
+}
+
 /** Builds the provider for one account. */
 function providerFor(account: ClaimedSyncAccount): MailProvider {
+  const underTest = process.env.NODE_ENV === 'test';
   if (account.provider === 'imap') return createImapProvider(account.emailAddress);
   if (account.provider === 'google') {
-    return createGmailProvider(account.emailAddress, account.grantedScopes);
+    return createGmailProvider(
+      account.emailAddress,
+      account.grantedScopes,
+      underTest ? refuseLiveFetch : undefined,
+    );
   }
   throw new Error(`emailSyncService: no provider implementation for ${account.provider}`);
 }

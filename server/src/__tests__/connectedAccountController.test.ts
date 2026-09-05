@@ -429,10 +429,9 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
   });
 
   it('attempts a Gmail mailbox rather than refusing it outright', async () => {
-    // The branch this phase adds. Before it, every non-IMAP account was told its provider
-    // was unsupported and the row was never touched — so a retired Gmail mailbox had no
-    // way back. The refresh reaches a real provider here and fails, which is why the row
-    // ends in error; what this pins is that the attempt was made at all.
+    // A Gmail mailbox told its provider is unsupported has no way back, so what this pins
+    // is that the attempt is made. The stored token is unexpired, so no refresh dials out
+    // — the scope check refuses it first, which is what leaves the row in error.
     const account = await upsertOAuthAccount(
       {
         userId: repAId,
