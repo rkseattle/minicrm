@@ -102,6 +102,7 @@
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "@vitest/coverage-v8": "^4.1.1",
+    "ajv": "^8.20.0",
     "eslint-plugin-jsdoc": "^62.8.1",
     "eslint-plugin-n": "^17.24.0",
     "nodemon": "^3.1.4",

@@ -6,13 +6,14 @@
  * touches a real mailbox.
  *
  * The fake is the load-bearing risk here, exactly as the IMAP fake is: it agrees with our
- * reading of the API rather than with the API itself. Holding it to Google's published
- * Discovery Document is what closes that gap, and it is a later phase of this work.
+ * reading of the API rather than with the API itself. Every success body it returns is
+ * validated against Google's published Discovery Document, which is what closes that gap.
  */
 
 import { describe, it, expect } from 'vitest';
 
 import type { OAuthAuthPayload } from '../services/connectedAccountService.js';
+import { assertMatchesGmailSchema } from './gmailSchema.js';
 import {
   createGmailProvider,
   INSUFFICIENT_SCOPE,
@@ -39,6 +40,26 @@ interface Route {
   match: string;
   status?: number;
   body?: unknown;
+  /**
+   * Skips schema validation, for the handful of tests asserting what the driver does when
+   * Google breaks its own contract. Every other route is validated, so this has to be
+   * asked for by name rather than reached by omitting a field.
+   */
+  contractViolation?: true;
+}
+
+/**
+ * Which Discovery schema a success body must satisfy, derived from the URL rather than
+ * declared per route — a route added later cannot opt out of validation by omitting it.
+ * Order matters: `/messages/<id>` is a Message, bare `/messages` is a list of them.
+ */
+function schemaForUrl(url: string): string | null {
+  const path = url.split('?')[0];
+  if (path.endsWith('/profile')) return 'Profile';
+  if (path.includes('/history')) return 'ListHistoryResponse';
+  if (/\/messages\/[^/]+$/.test(path)) return 'Message';
+  if (path.endsWith('/messages')) return 'ListMessagesResponse';
+  return null;
 }
 
 /** Records every request the driver makes and answers from a route table. */
@@ -46,12 +67,30 @@ function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[] } {
   const urls: string[] = [];
   const fn: FetchLike = (url) => {
     urls.push(url);
-    const route = routes.find((candidate) => url.includes(candidate.match));
+    // A boundary, not a bare substring: '/messages/m1' otherwise also answers for m15,
+    // m123 and m199, and the driver builds providerMessageId from the id it asked for
+    // rather than the body it got, so serving the wrong message goes unnoticed. A fragment
+    // ending in its own delimiter ('/messages?') already carries the boundary.
+    const route = routes.find((candidate) => {
+      const at = url.indexOf(candidate.match);
+      if (at === -1) return false;
+      if (/[?&/]$/.test(candidate.match)) return true;
+      const next = url[at + candidate.match.length];
+      return next === undefined || next === '?' || next === '&' || next === '/';
+    });
     const status = route?.status ?? (route ? 200 : 500);
     return Promise.resolve({
       ok: status >= 200 && status < 300,
       status,
-      json: () => Promise.resolve(route?.body ?? {}),
+      json: () => {
+        const body = route?.body ?? {};
+        // Only success bodies are Discovery-shaped; an error body is Google's error
+        // envelope, which the document does not describe.
+        const schema =
+          status >= 200 && status < 300 && !route?.contractViolation ? schemaForUrl(url) : null;
+        if (schema) assertMatchesGmailSchema(schema, body);
+        return Promise.resolve(body);
+      },
     });
   };
   return { fn, urls };
@@ -73,6 +112,39 @@ function rawMessage(options: { from: string; subject?: string; body?: string }):
 
 /** A body whose encoding uses the `-` and `_` that distinguish base64url. */
 const ALPHABET_SENSITIVE_BODY = 'café ~ olé ÿþ';
+
+describe('the fake itself', () => {
+  it('does not serve one message id from another that shares its prefix', async () => {
+    // Not hypothetical: the driver builds providerMessageId from the id it requested, not
+    // from the body it received, so a route collision serves the wrong message silently.
+    const fetcher = fakeFetch([
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '1' } },
+      { match: '/messages?', body: { messages: [{ id: 'm12', threadId: 't1' }] } },
+      {
+        match: '/messages/m1',
+        body: { id: 'm1', threadId: 't1', raw: rawMessage({ from: 'a@b.c' }) },
+      },
+    ]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    // m12 has no route of its own, so it must 500 rather than quietly receive m1's body.
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow();
+  });
+
+  it('surfaces a schema violation instead of the driver reporting an unreachable mailbox', async () => {
+    const fetcher = fakeFetch([
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '1' } },
+      { match: '/messages?', body: { messages: [{ id: 'm1', threadId: 't1' }] } },
+      {
+        match: '/messages/m1',
+        body: { id: 'm1', invented: true, raw: rawMessage({ from: 'a@b.c' }) },
+      },
+    ]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(/does not match Message/);
+  });
+});
 
 describe('parseCursor', () => {
   it('treats an absent cursor as never-synced', () => {
@@ -160,7 +232,7 @@ describe('createGmailProvider — backfill', () => {
     // incremental resume point, so re-reading it per page would skip whatever arrived
     // while the earlier pages were being fetched.
     const fetcher = fakeFetch([
-      { match: '/profile', body: { historyId: '9999' } },
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '9999' } },
       { match: '/messages?', body: { messages: [] } },
     ]);
     const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
@@ -204,7 +276,7 @@ describe('createGmailProvider — backfill', () => {
     // IMAP syncs INBOX and Sent only. Without this a half-written draft lands as real
     // correspondence, and the same mailbox reads differently per driver.
     const fetcher = fakeFetch([
-      { match: '/profile', body: { historyId: '1' } },
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '1' } },
       { match: '/messages?', body: { messages: [] } },
     ]);
     const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
@@ -338,7 +410,7 @@ describe('createGmailProvider — messages that cannot be fully stored', () => {
     // so returning nothing loses it permanently. IMAP keeps the row and nulls the body.
     const huge = 'x'.repeat(2_200_000);
     const fetcher = fakeFetch([
-      { match: '/profile', body: { historyId: '1' } },
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '1' } },
       { match: '/messages?', body: { messages: [{ id: 'big', threadId: 't1' }] } },
       {
         match: '/messages/big',
@@ -488,7 +560,7 @@ describe('createGmailProvider — truncation', () => {
 
   it('re-attempts the anchor on the next page and flips phase once it answers', async () => {
     const fetcher = fakeFetch([
-      { match: '/profile', body: { historyId: '7777' } },
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '7777' } },
       { match: '/messages?', body: { messages: [] } },
     ]);
     const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
@@ -578,7 +650,7 @@ describe('createGmailProvider — failures', () => {
     // between the two labels; it asserts that a body carrying non-ASCII characters
     // survives the decode and reaches the column intact.
     const fetcher = fakeFetch([
-      { match: '/profile', body: { historyId: '1' } },
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '1' } },
       { match: '/messages?', body: { messages: [{ id: 'm1', threadId: 't1' }] } },
       {
         match: '/messages/m1',
@@ -600,7 +672,7 @@ describe('createGmailProvider — failures', () => {
     // A page is worth more than the one message that went missing from it: failing here
     // would discard every message beside it and re-read them all next tick.
     const fetcher = fakeFetch([
-      { match: '/profile', body: { historyId: '1' } },
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '1' } },
       {
         match: '/messages?',
         body: {
@@ -651,7 +723,9 @@ describe('testGmailAccess', () => {
   });
 
   it('refuses a profile response carrying no mailbox', async () => {
-    const fetcher = fakeFetch([{ match: '/profile', body: {} }]);
+    // A profile always names the mailbox it describes, so this is Google breaking its own
+    // contract — the point of the test is that the driver survives it.
+    const fetcher = fakeFetch([{ match: '/profile', body: {}, contractViolation: true }]);
 
     expect(await testGmailAccess('token', [READ_SCOPE], fetcher.fn)).toMatchObject({
       ok: false,
