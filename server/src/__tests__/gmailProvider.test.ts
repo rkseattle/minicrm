@@ -170,6 +170,41 @@ describe('createGmailProvider — a mailbox that cannot be anchored', () => {
     expect(parseCursor(second.cursor)).toMatchObject({ historyId: UNANCHORED });
   });
 
+  it('fails a mailbox whose profile is gone, rather than syncing it as empty', async () => {
+    // A 404 on the profile is a suspended or deleted mailbox, not a missing history
+    // position. Read as the latter it backfills to an empty page and reports success,
+    // which clears the failure count — so the mailbox is never retired and never asks
+    // the user to reconnect.
+    const fetcher = fakeFetch([{ match: '/profile', status: 404 }]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toMatchObject({
+      code: 'PROVIDER_AUTH_EXPIRED',
+    });
+  });
+
+  it('fails a mailbox that dies mid-backfill, rather than ending the window early', async () => {
+    // An anchored page never reads the profile, so the guard there cannot see this. Read
+    // as an empty terminal page it would flip the cursor to incremental and skip whatever
+    // the window still held — a false success that also loses mail.
+    const fetcher = fakeFetch([{ match: '/messages?', status: 404 }]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    await expect(
+      provider.fetchSince(
+        AUTH,
+        serializeCursor({
+          phase: 'backfill',
+          historyId: '5000',
+          pageToken: 'page-2',
+          afterSeconds: 1_700_000_000,
+        }),
+        SINCE,
+      ),
+    ).rejects.toMatchObject({ code: 'PROVIDER_AUTH_EXPIRED' });
+    expect(fetcher.urls.some((url) => url.includes('/profile'))).toBe(false);
+  });
+
   it('anchors as soon as the profile answers, without re-reading what it already read', async () => {
     const anchored = fakeFetch([
       { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '900' } },

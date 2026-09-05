@@ -333,7 +333,19 @@ async function fetchProfileHistoryId(
   fetchImpl: FetchLike,
   accessToken: string,
 ): Promise<string | null> {
-  const { body } = await gmailRequest(fetchImpl, accessToken, '/profile', {});
+  const { status, body } = await gmailRequest(fetchImpl, accessToken, '/profile', {});
+
+  // gmailRequest hands a 404 back rather than throwing, because elsewhere it means an
+  // expired cursor or a deleted message. On the profile it means the mailbox itself is
+  // gone — suspended or deleted — and returning null here would be read as "no history
+  // position", which backfills to an empty page and reports the tick as a success. The
+  // engine would then clear the failure count and re-run that forever, so a dead mailbox
+  // would never be retired and never ask the user to reconnect. testGmailAccess refuses
+  // the same status, and additionally a 200 carrying no emailAddress.
+  if (status === 404) {
+    throw providerError(REJECTED_CREDENTIAL_MESSAGE, PROVIDER_AUTH_EXPIRED);
+  }
+
   const historyId = (body as { historyId?: unknown } | null)?.historyId;
   return typeof historyId === 'string' && historyId !== '' ? historyId : null;
 }
@@ -598,7 +610,16 @@ async function readBackfill(
   };
   if (stored?.pageToken) params.pageToken = stored.pageToken;
 
-  const { body } = await gmailRequest(fetchImpl, accessToken, '/messages', params);
+  const { status, body } = await gmailRequest(fetchImpl, accessToken, '/messages', params);
+
+  // Unlike /history and /messages/<id>, a listing has no 404 that means anything but a
+  // mailbox that is gone. Read as an empty page it would end the backfill: the cursor
+  // flips to incremental and the unread remainder of the window is skipped for good. An
+  // anchored page never calls the profile, so this is the only place to catch it.
+  if (status === 404) {
+    throw providerError(REJECTED_CREDENTIAL_MESSAGE, PROVIDER_AUTH_EXPIRED);
+  }
+
   const refs = messageRefsOf(body);
   const nextPageToken = (body as { nextPageToken?: unknown } | null)?.nextPageToken;
   const pageToken = typeof nextPageToken === 'string' && nextPageToken ? nextPageToken : null;
