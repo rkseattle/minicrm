@@ -145,11 +145,17 @@ export default function ConnectedAccountsPanel() {
     // anything: the server writes nothing for a provider it cannot test, and a request
     // that failed never reached the server at all. Every other test answer is superseded
     // by what the row reports.
-    if (testResult?.id === account.id) {
-      if (SURVIVES_HEALTHY_ROW.includes(testResult.error)) return testResult.error;
-      if (account.status === 'error') return testResult.error;
+    if (account.status === 'error') {
+      // The row's own reason is the newer fact whenever it has one; a test answer only
+      // fills in for a row that has not been written since.
+      if (account.status_detail !== null) return account.status_detail;
+      if (testResult?.id === account.id) return testResult.error;
+      return null;
     }
-    return account.status === 'error' ? account.status_detail : null;
+    if (testResult?.id === account.id && SURVIVES_HEALTHY_ROW.includes(testResult.error)) {
+      return testResult.error;
+    }
+    return null;
   }
 
   const disconnectMutation = useMutation({

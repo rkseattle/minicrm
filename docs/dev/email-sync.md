@@ -169,6 +169,12 @@ disposition, kept in agreement with IMAP's forever. A document over
 unlike IMAP this cannot avoid the download, since RAW carries the whole document and its
 size is only known once it has arrived.
 
+**The two drivers do not sync the same scope**, and that is deliberate. IMAP selects INBOX
+and Sent; Gmail queries the mailbox with `-in:drafts -in:chats` and drops the SPAM, TRASH,
+DRAFT and CHAT labels, so it also ingests archived mail. Gmail has no folder to select and
+its labels do not map onto IMAP's two, so matching IMAP would mean inventing a narrowing
+the user never asked for. Parsing is shared; scope is not.
+
 **Scope is checked when the provider is built**, not when it fetches. The engine constructs
 the driver before it decrypts and refreshes credentials, so refusing at construction is what
 stops an under-scoped mailbox from spending a locked token refresh every tick. The required

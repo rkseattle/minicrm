@@ -213,8 +213,7 @@ describe('OAuth upsert', () => {
 
   it('re-consenting returns a retired mailbox to the schedule', async () => {
     // Re-consent is the ordinary way back for an OAuth mailbox. Restoring status while
-    // leaving the counter at the ceiling would look repaired and never sync again — a
-    // failure reachable now that a Gmail driver is in IMPLEMENTED_SYNC_PROVIDERS.
+    // leaving the counter at the ceiling would look repaired and never sync again.
     const first = await upsertOAuthAccount(
       { ...OAUTH_UPSERT, userId: REP_A_ACTOR.id },
       REP_A_ACTOR,
