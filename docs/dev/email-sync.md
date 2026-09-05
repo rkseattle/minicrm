@@ -61,7 +61,7 @@ A `ProviderPage` carries four things:
    under that: an id built by qualifying a value with a prefix loses the distinguishing
    suffix first, so two distinct messages collapse onto one key and the ingest's
    `ON CONFLICT` silently overwrites one with the other. `boundIndexedId` in
-   `imapProvider.ts` is the shape to reuse — identity while the value fits, a digest of
+   `messageBody.ts` is the shape to reuse — identity while the value fits, a digest of
    the whole value once it does not. Assert distinctness, not just length: a
    length-only test passes against the truncating version.
 
@@ -187,6 +187,66 @@ silent-sync-nothing failure the check exists to prevent.
 **A 403 is only a credential failure when its body says so.** Quota exhaustion arrives the
 same way, and `status_detail` reaches the user — telling a rep to reconnect a mailbox does
 nothing for a limit that resets in a minute.
+
+## The Microsoft Graph provider
+
+Reads the REST API directly — no SDK, for the reason the Gmail driver gives: the client
+library wraps four endpoints and its main draw is an auth layer `connectedAccountService`
+already owns.
+
+**Delta is per-folder, so the cursor is too.** There is no mailbox-wide
+`/me/messages/delta`; every documented request is
+`GET /me/mailFolders/{id}/messages/delta`. That is IMAP's constraint rather than Gmail's,
+so the cursor is a JSON map of folder to link and both folders are read inside one
+`fetchSince` — the IMAP driver's shape. Reading one folder per call would halve every
+mailbox's sync rate, since the engine calls `fetchSince` once per tick on the incremental
+path and `commitPage` then pushes the next attempt a full lease away.
+
+**The stored value is Graph's own link, whole.** A `@odata.nextLink` or `@odata.deltaLink`
+already encodes the folder id and every query parameter of the request that issued it, so
+nothing is re-derived — and a `$skiptoken` in the stored link is what tells the driver the
+opening round is still in progress. That distinction is load-bearing: the engine feeds each
+page's cursor straight back in, so treating a resumed page as incremental would let page two
+ingest the mailbox's entire history. Gmail carries `afterSeconds` for the same reason.
+
+**No `$filter`.** Microsoft documents a filtered delta round as returning at most 5,000
+messages, silently, with the delta link then advancing past whatever was cut. The 90-day
+window is applied client-side instead, from each message's `receivedDateTime` before its
+body is fetched, and only while the round is still opening — once a link exists the cursor
+is authoritative, so a message the user files into the folder today is new to this mailbox
+however old the message itself is.
+
+**Folders are addressed by well-known name** — `inbox` and `sentitems`, which Microsoft
+documents as locale-independent — so unlike IMAP there is no discovery step and no
+`\Sent` heuristic. A folder answering 404 is absent and skipped; a folder answering 200
+with no `id` is malformed and raises a failure, because reading it as absent would report
+the tick a success and let `commitPage` clear the failure count forever.
+
+**Bodies come from `$value` and the shared `parseMessage`**, read as bytes rather than
+text: the response is labelled `text/plain` but a MIME document carries per-part charsets,
+and decoding the whole thing as UTF-8 replaces every non-UTF-8 byte before the parser sees
+it. Over `MAX_MESSAGE_SOURCE_BYTES` the document stores headers only, as both other drivers
+do.
+
+**Every request sends `Prefer: IdType="ImmutableId"`.** The default id changes when a
+message moves between folders, which would re-deliver refiled mail under a new
+`provider_message_id` as a duplicate row. With the immutable id, message ids are _not_
+folder-qualified the way IMAP's are: a Graph id is unique across the mailbox, so qualifying
+it would store a self-sent message twice.
+
+**Expiry is routine here, not exceptional.** Outlook delta tokens have no documented
+lifetime — Microsoft bounds them by an internal cache size — so `410 Gone`, and any 4xx
+carrying `syncStateNotFound` or `resyncRequired`, sets `cursorInvalid`. An auth code in the
+body wins over either, so a refused credential is never re-read as a stale cursor. One
+folder's invalidation invalidates the account, because the seam requires a null cursor
+beside `cursorInvalid` — which is why bodies are fetched only after every folder's page has
+been read, so a discarded page costs no `$value` request.
+
+**Scope matching is looser than Gmail's, deliberately.** Microsoft may echo the bare
+`Mail.Read` rather than the resource URI that was requested, and `Mail.ReadWrite`
+supersedes it, so the check strips the `https://graph.microsoft.com/` prefix and accepts
+either. `Mail.ReadBasic` is refused: it excludes bodies, so a mailbox holding only it would
+sync headers and store nothing readable.
 
 ## Threading
 
@@ -321,6 +381,21 @@ No test fetches it: a green build must not depend on Google being reachable. The
 is recorded in the fixture, and the suite asserts it is present — which catches a copy
 pasted in without provenance, not a fabricated one.
 
+### The Graph fake, and why its fixture is weaker
+
+`graphProvider.test.ts` drives the same kind of route-table fake, validated against
+`server/src/__tests__/__fixtures__/graph-message-schema.json`. That fixture is **written by
+hand**, where Gmail's is a subset of a document Google publishes: Microsoft publishes CSDL
+and a very large OpenAPI document, and `gmailSchema.ts`'s Discovery normalizer reads
+neither. So it encodes the same reading of the API the fake does, and cannot catch a
+misreading the two share.
+
+What it does catch is the failure that bit the IMAP fake repeatedly — a fake drifting from
+itself as cases are added: an invented field, a missing `id`, a wrong type. It is written
+once and every JSON route is checked against it, with `$value` exempt because it returns
+MIME rather than JSON. The API version is recorded in the fixture. Treat a Graph behavior
+this suite asserts as reasoned rather than observed, the way the IMAP error paths are.
+
 Run server tests from `server/`, not the repo root — from the root every test errors with
 `describe is not defined` before the file loads, which during mutation testing looks
 exactly like a caught mutation and proves nothing.
@@ -331,7 +406,6 @@ the ambient value.
 
 ## Not covered here
 
-- **The Microsoft Graph provider** — the seam exists; the driver does not.
 - **Matching messages to CRM records, and any read API or UI** — this engine writes rows
   nothing yet reads. `is_private` ships defaulted to `false` with no writer.
 - **GDPR erasure for synced mail, and the backfill window as an admin setting** — the

@@ -1,7 +1,7 @@
 {
   "apiVersion": "v1.0",
   "source": "https://learn.microsoft.com/en-us/graph/api/resources/message",
-  "note": "Hand-narrowed to the properties graphProvider reads plus the delta envelope that carries them. Microsoft publishes CSDL and OpenAPI rather than a normalizable JSON document, so unlike gmail-discovery.json this is written directly — see docs/dev/email-sync.md for what that does and does not catch.",
+  "note": "Exactly the properties graphProvider reads off Graph JSON — $select requests these four and no more; subject, hasAttachments and the body come from the MIME document instead. Anything wider would let the fake return a field no driver behavior depends on, weakening the drift check. Microsoft publishes CSDL and OpenAPI rather than a normalizable JSON document, so unlike gmail-discovery.json this is written directly — see docs/dev/email-sync.md for what that does and does not catch.",
   "definitions": {
     "Message": {
       "type": "object",
@@ -12,9 +12,6 @@
         "conversationId": { "type": "string" },
         "isDraft": { "type": "boolean" },
         "receivedDateTime": { "type": "string" },
-        "subject": { "type": "string" },
-        "hasAttachments": { "type": "boolean" },
-        "internetMessageId": { "type": "string" },
         "@removed": {
           "type": "object",
           "additionalProperties": false,
