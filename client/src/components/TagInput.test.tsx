@@ -353,6 +353,46 @@ describe('ConnectedTagInput — contact entity type', () => {
     expect(await screen.findByTestId(`tag-badge-${EXISTING_TAG.id}`)).toBeInTheDocument();
   });
 
+  it('restores the tag list when an attach fired during the initial load fails', async () => {
+    // onMutate cancels the list's own fetch. Only the success path re-seeds it, so a
+    // failed attach would otherwise leave the tags the user already had hidden.
+    let releaseInitialGet: (() => void) | undefined;
+    const initialGetHeld = new Promise<void>((resolve) => {
+      releaseInitialGet = resolve;
+    });
+    let getCalls = 0;
+
+    server.use(
+      http.get(`/api/v1/contacts/${CONNECTED_ID}/tags`, async () => {
+        getCalls += 1;
+        if (getCalls === 1) await initialGetHeld;
+        return HttpResponse.json({ tags: [EXISTING_TAG] });
+      }),
+      http.post(
+        `/api/v1/contacts/${CONNECTED_ID}/tags`,
+        () => new HttpResponse(null, { status: 500 }),
+      ),
+    );
+
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="contact"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`tag-input-${CONNECTED_ID}`)).toBeInTheDocument(),
+    );
+    await userEvent.type(screen.getByTestId(`tag-input-${CONNECTED_ID}`), 'doomed');
+    await userEvent.keyboard('{Enter}');
+    releaseInitialGet?.();
+
+    // The attach failed, but the tags that were already on the contact must come back.
+    expect(await screen.findByTestId(`tag-badge-${EXISTING_TAG.id}`)).toBeInTheDocument();
+  });
+
   it('detaches a tag via the contact detach endpoint', async () => {
     let detachCalled = false;
     server.use(

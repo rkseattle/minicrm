@@ -98,23 +98,32 @@ export default function ConnectedAccountsPanel() {
     onError: () => setFormError(t('connectedAccounts.connectError')),
   });
 
-  const [testResult, setTestResult] = useState<{ id: string; error: string } | null>(null);
+  // Keyed by account, not one slot for the list: an answer that exists only in the
+  // response — an untestable provider's — is not on the row to be read back, so a single
+  // slot would drop it the moment any other account was tested.
+  const [testResults, setTestResults] = useState<Record<string, string>>({});
+
+  /** Replaces one account's answer, leaving every other account's untouched. */
+  function setTestResultFor(accountId: string, error: string | null): void {
+    setTestResults((previous) => {
+      const { [accountId]: _cleared, ...rest } = previous;
+      return error === null ? rest : { ...rest, [accountId]: error };
+    });
+  }
 
   const testMutation = useMutation({
     mutationFn: testConnectedAccount,
     // Cleared first so a second attempt cannot leave the previous answer on screen while
     // it runs, or after it fails before any response arrives.
-    onMutate: () => setTestResult(null),
+    onMutate: (accountId) => setTestResultFor(accountId, null),
     // A provider with no test of its own writes nothing to the row, so the answer exists
     // only in this response — without reading it the button does nothing visible at all.
     onSuccess: (result, accountId) => {
-      setTestResult(
-        result.success ? null : { id: accountId, error: result.error ?? SYNC_FAILED_DETAIL },
-      );
+      setTestResultFor(accountId, result.success ? null : (result.error ?? SYNC_FAILED_DETAIL));
     },
     // The request to MiniCRM failed, so the provider was never asked — saying it was
     // unreachable would point the user at the wrong system.
-    onError: (_err, accountId) => setTestResult({ id: accountId, error: TEST_REQUEST_FAILED }),
+    onError: (_err, accountId) => setTestResultFor(accountId, TEST_REQUEST_FAILED),
     // The row's status is what the server just recorded, so re-read rather than guess.
     onSettled: () => queryClient.invalidateQueries({ queryKey: CONNECTED_ACCOUNTS_QUERY_KEY }),
   });
@@ -145,17 +154,14 @@ export default function ConnectedAccountsPanel() {
     // anything: the server writes nothing for a provider it cannot test, and a request
     // that failed never reached the server at all. Every other test answer is superseded
     // by what the row reports.
+    const tested = testResults[account.id];
     if (account.status === 'error') {
       // The row's own reason is the newer fact whenever it has one; a test answer only
       // fills in for a row that has not been written since.
       if (account.status_detail !== null) return account.status_detail;
-      if (testResult?.id === account.id) return testResult.error;
-      return null;
+      return tested ?? null;
     }
-    if (testResult?.id === account.id && SURVIVES_HEALTHY_ROW.includes(testResult.error)) {
-      return testResult.error;
-    }
-    return null;
+    return tested !== undefined && SURVIVES_HEALTHY_ROW.includes(tested) ? tested : null;
   }
 
   const disconnectMutation = useMutation({

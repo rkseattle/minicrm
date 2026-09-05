@@ -297,6 +297,12 @@ export function ConnectedTagInput({
       void queryClient.invalidateQueries({ queryKey: TAGS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: ALL_TAGS_QUERY_KEY });
     },
+    onError: () => {
+      // onMutate cancelled the list's own fetch, and only the success path re-seeds it —
+      // so without this a failed attach leaves the tags the user already had hidden until
+      // something unrelated refetches them.
+      void queryClient.invalidateQueries({ queryKey: tagsQueryKey });
+    },
   });
 
   const detachMutation = useMutation({
@@ -335,14 +341,17 @@ export function ConnectedTagInput({
     },
   });
 
+  // Callers fire these without awaiting, so a rejection here has nowhere to go and
+  // surfaces as an unhandled rejection. The mutations' own onError already owns what a
+  // failure means for the UI; this only keeps the promise from escaping.
   async function handleAttach(name: string) {
-    await attachMutation.mutateAsync(name);
+    await attachMutation.mutateAsync(name).catch(() => undefined);
   }
 
   async function handleDetach(tagId: string) {
     detachingIdsRef.current.add(tagId);
     setDetachingIds(new Set(detachingIdsRef.current));
-    await detachMutation.mutateAsync(tagId);
+    await detachMutation.mutateAsync(tagId).catch(() => undefined);
   }
 
   return (
