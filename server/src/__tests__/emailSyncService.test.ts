@@ -14,6 +14,7 @@ import { createUser } from '../services/userService.js';
 import {
   claimAccountsDueForSync,
   createImapAccount,
+  getAccountAuthForSync,
   MAX_SYNC_FAILURES,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
@@ -25,7 +26,8 @@ import type {
 } from '../services/mail/mailProvider.js';
 import { backoffDelayMs, syncDueAccounts, syncOneAccount } from '../services/emailSyncService.js';
 import { getActiveEmailSyncJob } from '../services/emailSyncJobService.js';
-import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
+import { GMAIL_READ_SCOPE, GRAPH_MAIL_READ_SCOPE } from '../services/oauthProviderService.js';
+import { parseCursor, serializeCursor } from '../services/mail/graphProvider.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 
 import { clearAuditLogFor, deadGrantError, deferMailboxesOfOtherSuites } from './testUtils.js';
@@ -838,6 +840,100 @@ describe('syncOneAccount — OAuth credentials', () => {
     }));
 
     expect(seenToken).toBe('rotated');
+  });
+
+  it('persists a rotated refresh token for an Outlook mailbox', async () => {
+    // Microsoft rotates the refresh token on every use, so the one stored before a sync is
+    // spent by it: storing the NEW one is what makes the next tick possible at all.
+    //
+    // No injected provider, so providerFor builds the real Graph driver — which is what
+    // makes this a Microsoft test rather than a provider-agnostic one. Its transport is
+    // refuseLiveFetch under NODE_ENV=test, so every folder fails at the wire and the
+    // driver's own all-folders-failed throw is what surfaces — after the refresh has been
+    // committed, which is the ordering being pinned.
+    const account = await upsertOAuthAccount(
+      {
+        userId: ACTOR.id,
+        provider: 'microsoft',
+        emailAddress: `${FILE_PREFIX}-graph-rotate@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'stale',
+          refresh_token: 'refresh-one',
+          expires_at: Date.now() - 1000,
+        },
+        grantedScopes: [GRAPH_MAIL_READ_SCOPE],
+      },
+      ACTOR,
+    );
+
+    await expect(
+      syncOneAccount(await claimedFor(account.id), undefined, async () => ({
+        accessToken: 'rotated',
+        refreshToken: 'refresh-two',
+        expiresAt: Date.now() + 60 * 60 * 1000,
+      })),
+    ).rejects.toThrow(/no folder on this mailbox could be read/);
+
+    // Read back through the service rather than the row: the payload is encrypted, and
+    // what matters is that the next sync decrypts the rotated value.
+    const stored = await getAccountAuthForSync(account.id, async () => {
+      throw new Error('a valid token must not trigger a second refresh');
+    });
+    expect(stored).toMatchObject({ kind: 'oauth', refresh_token: 'refresh-two' });
+  });
+
+  it('round-trips a Graph delta link through the cursor column', async () => {
+    // The engine stores a cursor verbatim, so what this pins is that a delta link survives
+    // the column an IMAP or Gmail cursor also uses — JSON with embedded URLs, which a
+    // narrower column type or an escaping bug would corrupt.
+    const account = await upsertOAuthAccount(
+      {
+        userId: ACTOR.id,
+        provider: 'microsoft',
+        emailAddress: `${FILE_PREFIX}-graph-cursor@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'token',
+          refresh_token: 'refresh',
+          expires_at: Date.now() + 60 * 60 * 1000,
+        },
+        grantedScopes: [GRAPH_MAIL_READ_SCOPE],
+      },
+      ACTOR,
+    );
+
+    const deltaLink = serializeCursor(
+      new Map([
+        [
+          'inbox',
+          'https://graph.microsoft.com/v1.0/me/mailFolders/i/messages/delta?$deltatoken=d1',
+        ],
+      ] as const),
+    );
+    const provider = fakeProvider([
+      {
+        messages: [message({ providerMessageId: 'graph-msg-1', threadId: 'conv-1' })],
+        cursor: deltaLink,
+        cursorInvalid: false,
+        hasMore: false,
+      },
+    ]);
+
+    await syncOneAccount(await claimedFor(account.id), provider);
+
+    const row = await pool.query<{ sync_cursor: string | null }>(
+      `SELECT sync_cursor FROM connected_accounts WHERE id = $1`,
+      [account.id],
+    );
+    // Parsed back by the driver's own reader: a link that survives storage but not
+    // parseCursor would strand the mailbox on a re-backfill every tick.
+    expect(parseCursor(row.rows[0].sync_cursor).get('inbox')).toBe(
+      'https://graph.microsoft.com/v1.0/me/mailFolders/i/messages/delta?$deltatoken=d1',
+    );
+    expect(await storedMessages(account.id)).toEqual([
+      { provider_message_id: 'graph-msg-1', subject: 'Hello', thread_id: 'conv-1' },
+    ]);
   });
 
   it('refuses an under-scoped mailbox without spending a token refresh', async () => {
