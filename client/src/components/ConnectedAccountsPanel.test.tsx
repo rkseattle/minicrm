@@ -396,6 +396,37 @@ describe('ConnectedAccountsPanel', () => {
     ).toHaveTextContent('not supported yet');
   });
 
+  it('keeps a response-only answer for one account when another is tested', async () => {
+    // UNTESTABLE_PROVIDER is never written to the row, so it lives only in the response.
+    // Held in one slot for the whole list, testing a second account would erase it.
+    const OTHER_ID = '00000000-0000-0000-0000-0000000000c2';
+    enableEmailSync();
+    respondWithAccounts([
+      { ...ACCOUNT, provider: 'microsoft', status: 'active' },
+      { ...ACCOUNT, id: OTHER_ID, email_address: 'other@example.com', status: 'active' },
+    ]);
+    server.use(
+      http.post(`/api/v1/connected-accounts/${ACCOUNT_ID}/test`, () =>
+        HttpResponse.json({ success: false, error: 'UNTESTABLE_PROVIDER' }),
+      ),
+      http.post(`/api/v1/connected-accounts/${OTHER_ID}/test`, () =>
+        HttpResponse.json({ success: true }),
+      ),
+    );
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+    await userEvent.click(await screen.findByTestId(`connected-account-test-button-${ACCOUNT_ID}`));
+    await screen.findByTestId(`connected-account-status-detail-${ACCOUNT_ID}`);
+
+    await userEvent.click(screen.getByTestId(`connected-account-test-button-${OTHER_ID}`));
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`connected-account-status-detail-${ACCOUNT_ID}`)).toHaveTextContent(
+        'not supported yet',
+      ),
+    );
+  });
+
   it('prefers a reason the row carries over an older test answer', async () => {
     // A test answer stands in only for a row that says nothing. Once the row carries a
     // reason of its own it is the newer fact, and the more specific one.
