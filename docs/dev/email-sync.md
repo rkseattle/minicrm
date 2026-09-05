@@ -202,12 +202,27 @@ so the cursor is a JSON map of folder to link and both folders are read inside o
 mailbox's sync rate, since the engine calls `fetchSince` once per tick on the incremental
 path and `commitPage` then pushes the next attempt a full lease away.
 
-**The stored value is Graph's own link, whole.** A `@odata.nextLink` or `@odata.deltaLink`
-already encodes the folder id and every query parameter of the request that issued it, so
-nothing is re-derived — and a `$skiptoken` in the stored link is what tells the driver the
-opening round is still in progress. That distinction is load-bearing: the engine feeds each
-page's cursor straight back in, so treating a resumed page as incremental would let page two
-ingest the mailbox's entire history. Gmail carries `afterSeconds` for the same reason.
+**The stored value is Graph's own link, whole, beside a recorded phase.** A
+`@odata.nextLink` or `@odata.deltaLink` already encodes the folder id and every query
+parameter of the request that issued it, so nothing about the request is re-derived — but
+whether the opening round is still running is stored explicitly rather than read back out of
+the URL. That flag is load-bearing twice over: the engine feeds each page's cursor straight
+back in, so a resumed page mistaken for an incremental one ingests the mailbox's entire
+history, and it is what tells a folder that failed mid-round from one that had finished.
+Too much to rest on Microsoft continuing to spell a query parameter `$skiptoken`; Gmail
+stores an explicit `phase` for the same reason.
+
+**`hasMore` is reported for a folder that failed mid-round.** The engine reads a false as
+"the backfill finished" and completes the job, after which the mailbox takes the incremental
+path — one page per lease, with no job row and no progress a user can see. A folder that had
+already reached its `deltaLink` still suppresses it, so one gone for good cannot page
+forever.
+
+**Nothing readable is a failure, and "readable" excludes absent folders.** A folder that
+404s at resolve is skipped, but it does not count toward the folders that answered — so a
+mailbox with one missing folder and one failing folder still raises rather than reporting a
+healthy empty page whose `commitPage` clears the failure count every tick. Every folder
+absent raises too: Inbox is not a folder a live mailbox lacks.
 
 **No `$filter`.** Microsoft documents a filtered delta round as returning at most 5,000
 messages, silently, with the delta link then advancing past whatever was cut. The 90-day

@@ -907,7 +907,10 @@ describe('syncOneAccount — OAuth credentials', () => {
       new Map([
         [
           'inbox',
-          'https://graph.microsoft.com/v1.0/me/mailFolders/i/messages/delta?$deltatoken=d1',
+          {
+            link: 'https://graph.microsoft.com/v1.0/me/mailFolders/i/messages/delta?$deltatoken=d1',
+            opening: false,
+          },
         ],
       ] as const),
     );
@@ -928,7 +931,7 @@ describe('syncOneAccount — OAuth credentials', () => {
     );
     // Parsed back by the driver's own reader: a link that survives storage but not
     // parseCursor would strand the mailbox on a re-backfill every tick.
-    expect(parseCursor(row.rows[0].sync_cursor).get('inbox')).toBe(
+    expect(parseCursor(row.rows[0].sync_cursor).get('inbox')?.link).toBe(
       'https://graph.microsoft.com/v1.0/me/mailFolders/i/messages/delta?$deltatoken=d1',
     );
     expect(await storedMessages(account.id)).toEqual([

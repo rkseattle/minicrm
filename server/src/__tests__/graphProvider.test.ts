@@ -166,6 +166,32 @@ describe('the fake itself', () => {
     expect(page.messages[0].fromAddress).toBe('right@example.com');
   });
 
+  it('does not serve one message from another whose id it prefixes before a query', async () => {
+    // The `&` half of the boundary rule: a resumed link carries more parameters after the
+    // token, so a matcher that stopped at `?` alone would collide there.
+    const fetcher = fakeFetch([
+      ...FOLDER_ROUTES,
+      {
+        match: INBOX_DELTA,
+        body: {
+          value: [{ id: 'm1', conversationId: 'c1', receivedDateTime: RECENT }],
+          '@odata.deltaLink': `${INBOX_DELTA}?$deltatoken=d1&$select=id`,
+        },
+      },
+      { match: SENT_DELTA, body: emptyRound(`${SENT_DELTA}?$deltatoken=s1`) },
+      { match: '/messages/m1/$value', source: rawMessage({ from: 'right@example.com' }) },
+      { match: '/messages/m10/$value', source: rawMessage({ from: 'wrong@example.com' }) },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    const page = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(page.messages[0].fromAddress).toBe('right@example.com');
+    expect(parseCursor(page.cursor).get('inbox')?.link).toBe(
+      `${INBOX_DELTA}?$deltatoken=d1&$select=id`,
+    );
+  });
+
   it('rejects a delta body carrying a field Graph does not define', async () => {
     const fetcher = fakeFetch([
       ...FOLDER_ROUTES,
@@ -188,12 +214,12 @@ describe('parseCursor', () => {
   it('round-trips a link per folder', () => {
     const cursor = serializeCursor(
       new Map([
-        ['inbox', `${INBOX_DELTA}?$deltatoken=a`],
-        ['sentitems', `${SENT_DELTA}?$deltatoken=b`],
+        ['inbox', { link: `${INBOX_DELTA}?$deltatoken=a`, opening: false }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=b`, opening: false }],
       ] as const),
     );
-    expect(parseCursor(cursor).get('inbox')).toBe(`${INBOX_DELTA}?$deltatoken=a`);
-    expect(parseCursor(cursor).get('sentitems')).toBe(`${SENT_DELTA}?$deltatoken=b`);
+    expect(parseCursor(cursor).get('inbox')?.link).toBe(`${INBOX_DELTA}?$deltatoken=a`);
+    expect(parseCursor(cursor).get('sentitems')?.link).toBe(`${SENT_DELTA}?$deltatoken=b`);
   });
 
   it('treats an unparseable cursor as absent rather than throwing', () => {
@@ -205,12 +231,16 @@ describe('parseCursor', () => {
   it('drops a link pointing anywhere but Graph', () => {
     // The driver replays a stored link with a bearer token attached, so a tampered row
     // must not be able to redirect that token.
-    const cursor = JSON.stringify({ inbox: 'https://evil.example.com/steal' });
+    const cursor = JSON.stringify({
+      inbox: { link: 'https://evil.example.com/steal', opening: false },
+    });
     expect(parseCursor(cursor).size).toBe(0);
   });
 
   it('drops a folder it does not sync', () => {
-    const cursor = JSON.stringify({ drafts: `${GRAPH}/mailFolders/x/messages/delta` });
+    const cursor = JSON.stringify({
+      drafts: { link: `${GRAPH}/mailFolders/x/messages/delta`, opening: false },
+    });
     expect(parseCursor(cursor).size).toBe(0);
   });
 });
@@ -280,8 +310,11 @@ describe('createGraphProvider — an opening round', () => {
     expect(page.hasMore).toBe(false);
     expect(page.cursorInvalid).toBe(false);
     const stored = parseCursor(page.cursor);
-    expect(stored.get('inbox')).toBe(`${INBOX_DELTA}?$deltatoken=d1`);
-    expect(stored.get('sentitems')).toBe(`${SENT_DELTA}?$deltatoken=s1`);
+    expect(stored.get('inbox')).toEqual({ link: `${INBOX_DELTA}?$deltatoken=d1`, opening: false });
+    expect(stored.get('sentitems')).toEqual({
+      link: `${SENT_DELTA}?$deltatoken=s1`,
+      opening: false,
+    });
   });
 
   it('reads both folders in one call rather than one per tick', async () => {
@@ -391,7 +424,7 @@ describe('createGraphProvider — paging', () => {
     const page = await provider.fetchSince(AUTH, null, SINCE);
 
     expect(page.hasMore).toBe(true);
-    expect(parseCursor(page.cursor).get('inbox')).toBe(`${INBOX_DELTA}?$skiptoken=p2`);
+    expect(parseCursor(page.cursor).get('inbox')?.link).toBe(`${INBOX_DELTA}?$skiptoken=p2`);
   });
 
   it('resumes a stored link without resolving folders again', async () => {
@@ -405,8 +438,8 @@ describe('createGraphProvider — paging', () => {
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
     const cursor = serializeCursor(
       new Map([
-        ['inbox', `${INBOX_DELTA}?$skiptoken=p2`],
-        ['sentitems', `${SENT_DELTA}?$deltatoken=s1`],
+        ['inbox', { link: `${INBOX_DELTA}?$skiptoken=p2`, opening: true }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
       ] as const),
     );
 
@@ -414,7 +447,7 @@ describe('createGraphProvider — paging', () => {
 
     // The resolve endpoint, not the delta URL that embeds the resolved id.
     expect(fetcher.urls.some((url) => url.endsWith('/mailFolders/inbox'))).toBe(false);
-    expect(parseCursor(page.cursor).get('inbox')).toBe(`${INBOX_DELTA}?$deltatoken=d2`);
+    expect(parseCursor(page.cursor).get('inbox')?.link).toBe(`${INBOX_DELTA}?$deltatoken=d2`);
   });
 
   it('re-delivers nothing when a resumed round reports no changes', async () => {
@@ -427,8 +460,8 @@ describe('createGraphProvider — paging', () => {
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
     const cursor = serializeCursor(
       new Map([
-        ['inbox', `${INBOX_DELTA}?$deltatoken=d1`],
-        ['sentitems', `${SENT_DELTA}?$deltatoken=s1`],
+        ['inbox', { link: `${INBOX_DELTA}?$deltatoken=d1`, opening: false }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
       ] as const),
     );
 
@@ -436,7 +469,7 @@ describe('createGraphProvider — paging', () => {
 
     expect(page.messages).toHaveLength(0);
     expect(page.cursorInvalid).toBe(false);
-    expect(parseCursor(page.cursor).get('inbox')).toBe(`${INBOX_DELTA}?$deltatoken=d2`);
+    expect(parseCursor(page.cursor).get('inbox')?.link).toBe(`${INBOX_DELTA}?$deltatoken=d2`);
   });
 });
 
@@ -459,8 +492,8 @@ describe('createGraphProvider — the backfill window', () => {
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
     const cursor = serializeCursor(
       new Map([
-        ['inbox', `${INBOX_DELTA}?$deltatoken=d1`],
-        ['sentitems', `${SENT_DELTA}?$deltatoken=s1`],
+        ['inbox', { link: `${INBOX_DELTA}?$deltatoken=d1`, opening: false }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
       ] as const),
     );
 
@@ -502,7 +535,7 @@ describe('createGraphProvider — folder resolution', () => {
     const page = await provider.fetchSince(AUTH, null, SINCE);
 
     expect(parseCursor(page.cursor).has('inbox')).toBe(false);
-    expect(parseCursor(page.cursor).get('sentitems')).toBe(`${SENT_DELTA}?$deltatoken=s1`);
+    expect(parseCursor(page.cursor).get('sentitems')?.link).toBe(`${SENT_DELTA}?$deltatoken=s1`);
   });
 
   it('fails rather than reporting success when a folder answers with no id', async () => {
@@ -538,7 +571,9 @@ describe('createGraphProvider — a paginated opening round', () => {
       { match: '/mailFolders/sentitems', body: { id: 'sent-id' } },
     ]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
-    const cursor = serializeCursor(new Map([['inbox', `${INBOX_DELTA}?$skiptoken=p2`]] as const));
+    const cursor = serializeCursor(
+      new Map([['inbox', { link: `${INBOX_DELTA}?$skiptoken=p2`, opening: true }]] as const),
+    );
 
     const page = await provider.fetchSince(AUTH, cursor, SINCE);
 
@@ -569,8 +604,8 @@ describe('createGraphProvider — a discarded page', () => {
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
     const cursor = serializeCursor(
       new Map([
-        ['inbox', `${INBOX_DELTA}?$deltatoken=old`],
-        ['sentitems', `${SENT_DELTA}?$deltatoken=s1`],
+        ['inbox', { link: `${INBOX_DELTA}?$deltatoken=old`, opening: false }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
       ] as const),
     );
 
@@ -594,8 +629,8 @@ describe('createGraphProvider — an expired delta link', () => {
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
     const cursor = serializeCursor(
       new Map([
-        ['inbox', `${INBOX_DELTA}?$deltatoken=old`],
-        ['sentitems', `${SENT_DELTA}?$deltatoken=s1`],
+        ['inbox', { link: `${INBOX_DELTA}?$deltatoken=old`, opening: false }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
       ] as const),
     );
 
@@ -620,8 +655,8 @@ describe('createGraphProvider — an expired delta link', () => {
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
     const cursor = serializeCursor(
       new Map([
-        ['inbox', `${INBOX_DELTA}?$deltatoken=old`],
-        ['sentitems', `${SENT_DELTA}?$deltatoken=s1`],
+        ['inbox', { link: `${INBOX_DELTA}?$deltatoken=old`, opening: false }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
       ] as const),
     );
 
@@ -644,7 +679,9 @@ describe('createGraphProvider — an expired delta link', () => {
       { match: SENT_DELTA, body: emptyRound(`${SENT_DELTA}?$deltatoken=s2`) },
     ]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
-    const cursor = serializeCursor(new Map([['inbox', `${INBOX_DELTA}?$deltatoken=old`]] as const));
+    const cursor = serializeCursor(
+      new Map([['inbox', { link: `${INBOX_DELTA}?$deltatoken=old`, opening: false }]] as const),
+    );
 
     await expect(provider.fetchSince(AUTH, cursor, SINCE)).resolves.toMatchObject({
       cursorInvalid: true,
@@ -964,39 +1001,89 @@ describe('createGraphProvider — failures', () => {
       { match: '/messages/m2/$value', source: rawMessage({ from: ACCOUNT_ADDRESS }) },
     ]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
-    const cursor = serializeCursor(new Map([['inbox', `${INBOX_DELTA}?$deltatoken=d1`]] as const));
+    const cursor = serializeCursor(
+      new Map([['inbox', { link: `${INBOX_DELTA}?$deltatoken=d1`, opening: false }]] as const),
+    );
 
     const page = await provider.fetchSince(AUTH, cursor, SINCE);
 
     expect(page.messages).toHaveLength(1);
     // The failed folder keeps its stored position so it resumes rather than re-backfills.
-    expect(parseCursor(page.cursor).get('inbox')).toBe(`${INBOX_DELTA}?$deltatoken=d1`);
-    expect(parseCursor(page.cursor).get('sentitems')).toBe(`${SENT_DELTA}?$deltatoken=s2`);
+    expect(parseCursor(page.cursor).get('inbox')?.link).toBe(`${INBOX_DELTA}?$deltatoken=d1`);
+    expect(parseCursor(page.cursor).get('sentitems')?.link).toBe(`${SENT_DELTA}?$deltatoken=s2`);
   });
 
-  it('does not set hasMore for a folder that failed', async () => {
-    // A folder gone for good would otherwise keep the engine paging forever to deliver
-    // nothing. The healthy folder finishes its round here, so hasMore can only be true if
-    // the failed folder contributed it.
+  it('keeps hasMore for a mid-round folder that failed', async () => {
+    // The engine reads a false hasMore as "the backfill finished" and completes the job,
+    // so suppressing it here would retire the mailbox to one page per lease — no job row,
+    // no visible progress — while its opening round is still unread.
     const fetcher = fakeFetch([
       { match: `${INBOX_DELTA}?$skiptoken=p2`, status: 500, body: {} },
       { match: `${SENT_DELTA}?$deltatoken=s1`, body: emptyRound(`${SENT_DELTA}?$deltatoken=s2`) },
     ]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
-    // The inbox is mid-round: its stored link is a skiptoken, so a driver that reported
-    // the failed folder's pending work would set hasMore.
     const cursor = serializeCursor(
       new Map([
-        ['inbox', `${INBOX_DELTA}?$skiptoken=p2`],
-        ['sentitems', `${SENT_DELTA}?$deltatoken=s1`],
+        ['inbox', { link: `${INBOX_DELTA}?$skiptoken=p2`, opening: true }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
+      ] as const),
+    );
+
+    const page = await provider.fetchSince(AUTH, cursor, SINCE);
+
+    expect(page.hasMore).toBe(true);
+    // Its position is kept, so the folder resumes rather than re-backfilling.
+    expect(parseCursor(page.cursor).get('inbox')?.link).toBe(`${INBOX_DELTA}?$skiptoken=p2`);
+  });
+
+  it('does not set hasMore for a finished folder that failed', async () => {
+    // A folder gone for good sits at its deltaLink, so it must not keep the engine paging
+    // forever to deliver nothing — the case the suppression above exists for.
+    const fetcher = fakeFetch([
+      { match: `${INBOX_DELTA}?$deltatoken=d1`, status: 500, body: {} },
+      { match: `${SENT_DELTA}?$deltatoken=s1`, body: emptyRound(`${SENT_DELTA}?$deltatoken=s2`) },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+    const cursor = serializeCursor(
+      new Map([
+        ['inbox', { link: `${INBOX_DELTA}?$deltatoken=d1`, opening: false }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
       ] as const),
     );
 
     const page = await provider.fetchSince(AUTH, cursor, SINCE);
 
     expect(page.hasMore).toBe(false);
-    // Its position is kept, so the folder resumes rather than re-backfilling.
-    expect(parseCursor(page.cursor).get('inbox')).toBe(`${INBOX_DELTA}?$skiptoken=p2`);
+  });
+
+  it('throws when the only readable folder failed and the other is absent', async () => {
+    // An absent folder never enters the failure count, so counting it as readable would
+    // leave this mailbox reporting a healthy empty page on every tick — never retired,
+    // never surfaced to the user.
+    const fetcher = fakeFetch([
+      { match: '/mailFolders/inbox', status: 404 },
+      { match: '/mailFolders/sentitems', body: { id: 'sent-id' } },
+      { match: SENT_DELTA, status: 500, body: {} },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
+  });
+
+  it('throws when every folder is absent', async () => {
+    // Inbox is not a folder a live mailbox lacks, so a 404 on all of them means the token
+    // cannot see the mailbox — not that there is nothing to sync.
+    const fetcher = fakeFetch([
+      { match: '/mailFolders/inbox', status: 404 },
+      { match: '/mailFolders/sentitems', status: 404 },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
   });
 
   it('throws when no folder on the mailbox can be read', async () => {
@@ -1083,7 +1170,7 @@ describe('createGraphProvider — failures', () => {
     expect(page.cursorInvalid).toBe(false);
     // The healthy folder still advances; the broken one contributes no cursor entry.
     expect(parseCursor(page.cursor).has('inbox')).toBe(false);
-    expect(parseCursor(page.cursor).get('sentitems')).toBe(`${SENT_DELTA}?$deltatoken=s1`);
+    expect(parseCursor(page.cursor).get('sentitems')?.link).toBe(`${SENT_DELTA}?$deltatoken=s1`);
   });
 });
 
