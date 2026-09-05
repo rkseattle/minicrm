@@ -27,13 +27,7 @@ import type {
   NormalizedMessage,
   ProviderPage,
 } from './mailProvider.js';
-import {
-  boundIndexedId,
-  directionOf,
-  MAX_MESSAGE_SOURCE_BYTES,
-  parseMessage,
-} from './messageBody.js';
-import { resolveThreadId } from './threading.js';
+import { normalizeFromSource } from './messageBody.js';
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
@@ -411,69 +405,6 @@ function addedRefsOf(body: unknown): GmailMessageRef[] {
 }
 
 /**
- * Turns one Gmail message resource into the row the engine stores.
- *
- * The body comes from the same parser IMAP uses, over the same kind of document, so a
- * message reads identically whichever driver synced it.
- *
- * @returns null when the document carries no usable sender — the one field with no
- *   sensible default, and the same rule the IMAP driver applies.
- */
-async function normalizeMessage(
-  body: unknown,
-  ref: GmailMessageRef,
-  accountAddress: string,
-): Promise<NormalizedMessage | null> {
-  const raw = (body as { raw?: unknown } | null)?.raw;
-  if (typeof raw !== 'string' || raw === '') return null;
-
-  // Named for what Gmail sends. Node's 'base64' happens to accept this alphabet too, so
-  // the label documents the encoding rather than guarding against a decode failure.
-  const source = Buffer.from(raw, 'base64url');
-
-  // Oversized documents keep their headers and store no body, which is what IMAP does
-  // with a message it declined to fetch. Dropping the message instead would lose it for
-  // good: the cursor advances past it in the same transaction that stores the page.
-  // Unlike IMAP this cannot avoid the download — RAW carries the whole document, and its
-  // size is only known once it has arrived.
-  const oversized = source.byteLength > MAX_MESSAGE_SOURCE_BYTES;
-  if (oversized) {
-    logger.warn(
-      { messageId: ref.id, bytes: source.byteLength },
-      'gmailProvider: storing headers only for an oversized message',
-    );
-  }
-
-  const parsed = await parseMessage(source, { headersOnly: oversized });
-  if (!parsed.fromAddress) return null;
-
-  // Reported per message so a silent body loss stays observable, as the IMAP driver does.
-  if (parsed.lostText && !oversized) {
-    logger.warn({ messageId: ref.id }, 'gmailProvider: stored a message with no body text');
-  }
-
-  return {
-    providerMessageId: boundIndexedId(ref.id),
-    // Gmail's own thread id where it has one — the Discovery Document puts threadId on
-    // every Message. The RFC 5322 fallback covers a response that somehow lacks it, and
-    // the id itself covers a message that carries neither.
-    threadId: boundIndexedId(
-      ref.threadId ?? resolveThreadId(parsed.threading) ?? `gmail-${ref.id}`,
-    ),
-    direction: directionOf(parsed.fromAddress, accountAddress),
-    fromAddress: parsed.fromAddress,
-    toAddresses: parsed.toAddresses,
-    ccAddresses: parsed.ccAddresses,
-    subject: parsed.subject,
-    hasAttachments: parsed.hasAttachments,
-    sentAt: parsed.sentAt,
-    bodyText: parsed.bodyText,
-    bodyHtml: parsed.bodyHtml,
-    snippet: parsed.snippet,
-  };
-}
-
-/**
  * Reads each selected message and turns it into a stored row.
  *
  * `format=RAW` returns the whole RFC 2822 document, which `parseMessageBody` already
@@ -514,7 +445,20 @@ async function readMessages(
     // TRASH — and the fetched body carries the authoritative list at no extra cost.
     if (isExcludedByLabel(body)) continue;
 
-    const normalized = await normalizeMessage(body, ref, accountAddress);
+    const raw = (body as { raw?: unknown } | null)?.raw;
+    if (typeof raw !== 'string' || raw === '') continue;
+
+    // Named for what Gmail sends. Node's 'base64' happens to accept this alphabet too, so
+    // the label documents the encoding rather than guarding against a decode failure.
+    const normalized = await normalizeFromSource(Buffer.from(raw, 'base64url'), {
+      providerMessageId: ref.id,
+      // Gmail's own thread id where it has one — the Discovery Document puts threadId on
+      // every Message.
+      nativeThreadId: ref.threadId,
+      fallbackThreadId: `gmail-${ref.id}`,
+      accountAddress,
+      driver: 'gmailProvider',
+    });
     if (normalized !== null) messages.push(normalized);
   }
 

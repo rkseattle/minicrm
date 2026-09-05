@@ -28,13 +28,7 @@ import type {
   NormalizedMessage,
   ProviderPage,
 } from './mailProvider.js';
-import {
-  boundIndexedId,
-  directionOf,
-  MAX_MESSAGE_SOURCE_BYTES,
-  parseMessage,
-} from './messageBody.js';
-import { resolveThreadId } from './threading.js';
+import { normalizeFromSource } from './messageBody.js';
 
 const GRAPH_API_BASE = 'https://graph.microsoft.com/v1.0/me';
 
@@ -71,10 +65,14 @@ type SyncedFolder = (typeof SYNCED_FOLDERS)[number];
  *
  * Graph chooses the page size otherwise and documents it as varying, and this driver
  * issues one `$value` GET per delivered message — so an unbounded page is an unbounded
- * tick. Lower than Gmail's incremental cap because every message here costs a second
- * request, and the engine runs up to MAX_BACKFILL_PAGES_PER_TICK of these back to back.
+ * tick.
+ *
+ * Per FOLDER, and both are read in one call, so the bound that matters is twice this.
+ * Halved against Gmail's own 50 so a Graph page costs the same 50 body fetches: at 50 each
+ * the worst case is 100 sequential requests against a REQUEST_TIMEOUT_MS budget, which can
+ * outlast SYNC_CLAIM_LEASE_MS and let a second instance claim the mailbox mid-page.
  */
-const MAX_MESSAGES_PER_PAGE = 50;
+const MAX_MESSAGES_PER_PAGE = 25;
 
 /** Bound on each Graph request, so a hung endpoint cannot stall the whole tick. */
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -211,7 +209,12 @@ function errorCodeOf(body: unknown): string {
 }
 
 /** Error codes that mean the credential, not the cursor, whatever status carries them. */
-const AUTH_CODES = ['invalidauthenticationtoken', 'accessdenied', 'unauthenticated'];
+const AUTH_CODES = [
+  'invalidauthenticationtoken',
+  'accessdenied',
+  'erroraccessdenied',
+  'unauthenticated',
+];
 
 /** True when a response says the stored delta link has aged out. */
 function isResyncRequired(status: number, body: unknown): boolean {
@@ -534,62 +537,6 @@ function messageRefsOf(body: unknown, since: Date | null): GraphMessageRef[] {
 }
 
 /**
- * Turns one MIME document into the row the engine stores.
- *
- * The body comes from the same parser IMAP and Gmail use, over the same kind of document,
- * so a message reads identically whichever driver synced it.
- *
- * @returns null when the document carries no usable sender — the one field with no
- *   sensible default, and the same rule the other two drivers apply.
- */
-async function normalizeMessage(
-  source: Buffer,
-  ref: GraphMessageRef,
-  accountAddress: string,
-): Promise<NormalizedMessage | null> {
-  // Oversized documents keep their headers and store no body, which is what both other
-  // drivers do. Dropping the message instead would lose it for good: the cursor advances
-  // past it in the same transaction that stores the page.
-  const oversized = source.byteLength > MAX_MESSAGE_SOURCE_BYTES;
-  if (oversized) {
-    logger.warn(
-      { messageId: ref.id, bytes: source.byteLength },
-      'graphProvider: storing headers only for an oversized message',
-    );
-  }
-
-  const parsed = await parseMessage(source, { headersOnly: oversized });
-  if (!parsed.fromAddress) return null;
-
-  // Reported per message so a silent body loss stays observable, as both other drivers do.
-  if (parsed.lostText && !oversized) {
-    logger.warn({ messageId: ref.id }, 'graphProvider: stored a message with no body text');
-  }
-
-  return {
-    // Not folder-qualified, unlike IMAP's: a UID means nothing outside its mailbox, but a
-    // Graph id is unique across the whole mailbox, so qualifying it would store a message
-    // moved between folders twice.
-    providerMessageId: boundIndexedId(ref.id),
-    // Graph's own conversation id where it has one; the RFC 5322 fallback covers a
-    // response that lacks it, and the id itself covers a message that carries neither.
-    threadId: boundIndexedId(
-      ref.conversationId ?? resolveThreadId(parsed.threading) ?? `graph-${ref.id}`,
-    ),
-    direction: directionOf(parsed.fromAddress, accountAddress),
-    fromAddress: parsed.fromAddress,
-    toAddresses: parsed.toAddresses,
-    ccAddresses: parsed.ccAddresses,
-    subject: parsed.subject,
-    hasAttachments: parsed.hasAttachments,
-    sentAt: parsed.sentAt,
-    bodyText: parsed.bodyText,
-    bodyHtml: parsed.bodyHtml,
-    snippet: parsed.snippet,
-  };
-}
-
-/**
  * Reads each selected message's MIME document and turns it into a stored row.
  *
  * `$value` returns the whole RFC 2822 document, which `parseMessage` already handles.
@@ -624,7 +571,16 @@ async function readMessages(
       continue;
     }
 
-    const normalized = await normalizeMessage(source, ref, accountAddress);
+    const normalized = await normalizeFromSource(source, {
+      // Not folder-qualified, unlike IMAP's: a UID means nothing outside its mailbox, but
+      // a Graph id is unique across the whole mailbox, so qualifying it would store a
+      // message moved between folders twice.
+      providerMessageId: ref.id,
+      nativeThreadId: ref.conversationId,
+      fallbackThreadId: `graph-${ref.id}`,
+      accountAddress,
+      driver: 'graphProvider',
+    });
     if (normalized !== null) messages.push(normalized);
   }
 
@@ -770,7 +726,7 @@ export function createGraphProvider(
       }
 
       const stored = parseCursor(cursor);
-      const pending: { folder: SyncedFolder; refs: GraphMessageRef[] }[] = [];
+      const pending: GraphMessageRef[][] = [];
       const nextCursor: CursorByFolder = new Map();
       let readableFolders = 0;
       let anyInvalid = false;
@@ -794,7 +750,7 @@ export function createGraphProvider(
           stored.get(folder),
           since,
         );
-        pending.push({ folder, refs: result.refs });
+        pending.push(result.refs);
         if (result.position !== null) nextCursor.set(folder, result.position);
         if (result.present) readableFolders += 1;
         anyInvalid ||= result.invalid;
@@ -823,7 +779,7 @@ export function createGraphProvider(
       // sequential to protect.
       const seen = new Set<string>();
       const unique: GraphMessageRef[] = [];
-      for (const { refs } of pending) {
+      for (const refs of pending) {
         for (const ref of refs) {
           if (seen.has(ref.id)) continue;
           seen.add(ref.id);
