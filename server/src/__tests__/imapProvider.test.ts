@@ -1312,9 +1312,30 @@ describe('connection handling', () => {
     };
     const provider = providerWith(client);
 
-    await provider.fetchSince(AUTH, null, SINCE);
+    // Every mailbox failing is an unusable account, so this reports the failure rather
+    // than an empty page — what matters here is that the session is still closed on the
+    // way out.
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow();
 
     expect(loggedOut()).toBe(true);
+  });
+
+  it('fails an account where no mailbox can be read, rather than reporting it empty', async () => {
+    // Tolerating one failed folder is not tolerating all of them. An empty page here
+    // would clear the failure count and mark a dead account healthy on every tick, so it
+    // would never be retired and the user would never be told to reconnect.
+    const { client } = makeFakeClient([
+      {
+        path: 'INBOX',
+        uidValidity: '900',
+        uidNext: 2,
+        messages: [],
+        failsToOpen: 'NONEXISTENT: mailbox does not exist',
+      },
+    ]);
+    const provider = providerWith(client);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow();
   });
 
   it('skips an unreadable mailbox rather than discarding the ones that worked', async () => {

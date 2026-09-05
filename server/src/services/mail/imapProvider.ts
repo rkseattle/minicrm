@@ -671,6 +671,7 @@ export function createImapProvider(
         const nextCursor: CursorByMailbox = new Map();
         let anyInvalid = false;
         let anyMore = false;
+        let failedPaths = 0;
 
         for (const path of paths) {
           const storedForPath = stored.get(path);
@@ -692,7 +693,19 @@ export function createImapProvider(
             // good would otherwise keep the engine paging an account forever to deliver
             // nothing, and the next tick retries this mailbox regardless.
             if (storedForPath) nextCursor.set(path, storedForPath);
+            failedPaths += 1;
           }
+        }
+
+        // Tolerating one failed folder is not the same as tolerating all of them. A
+        // renamed Sent folder is routine; a mailbox where nothing at all can be read is an
+        // account that no longer works, and reporting an empty page for it would clear the
+        // failure count and mark it healthy on every tick — so it would never be retired
+        // and the user would never be told to reconnect.
+        if (failedPaths === paths.length) {
+          throw Object.assign(new Error('imapProvider: no mailbox on this account could be read'), {
+            code: CONNECTION_FAILED,
+          });
         }
 
         // One invalidated mailbox invalidates the account: the engine's recovery is a
