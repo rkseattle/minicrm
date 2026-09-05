@@ -212,17 +212,20 @@ history, and it is what tells a folder that failed mid-round from one that had f
 Too much to rest on Microsoft continuing to spell a query parameter `$skiptoken`; Gmail
 stores an explicit `phase` for the same reason.
 
-**`hasMore` is reported for a folder that failed mid-round.** The engine reads a false as
-"the backfill finished" and completes the job, after which the mailbox takes the incremental
-path — one page per lease, with no job row and no progress a user can see. A folder that had
-already reached its `deltaLink` still suppresses it, so one gone for good cannot page
-forever.
+**A folder that cannot be read fails the whole page**, where IMAP skips it. The two
+drivers differ deliberately, and the reason is what the engine does with a success: a
+committed page clears `sync_failure_count` and writes `status = 'active'`. So a skipped
+folder whose stored position is left unchanged produces a tick that is identical to the
+last one and reports health — the mailbox is retried forever, never retired, and never
+surfaces to the user. Only the engine's backoff and retirement ceiling can bound a
+persistent failure, and they are reached only by throwing. Losing the sibling folder's
+page to that is cheap: its stored position is untouched, so the next tick re-reads exactly
+what this one discarded.
 
-**Nothing readable is a failure, and "readable" excludes absent folders.** A folder that
-404s at resolve is skipped, but it does not count toward the folders that answered — so a
-mailbox with one missing folder and one failing folder still raises rather than reporting a
-healthy empty page whose `commitPage` clears the failure count every tick. Every folder
-absent raises too: Inbox is not a folder a live mailbox lacks.
+**An absent folder is not a failure.** A 404 at resolve is skipped — a mailbox may
+genuinely lack Sent Items, and failing there would stop it syncing at all. But a mailbox
+where _neither_ folder resolves raises: Inbox is not a folder a live mailbox lacks, so a
+404 on all of them means the token cannot see the mailbox rather than that it is empty.
 
 **No `$filter`.** Microsoft documents a filtered delta round as returning at most 5,000
 messages, silently, with the delta link then advancing past whatever was cut. The 90-day

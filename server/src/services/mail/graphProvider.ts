@@ -772,7 +772,6 @@ export function createGraphProvider(
       const stored = parseCursor(cursor);
       const pending: { folder: SyncedFolder; refs: GraphMessageRef[] }[] = [];
       const nextCursor: CursorByFolder = new Map();
-      const failureCodes: string[] = [];
       let readableFolders = 0;
       let anyInvalid = false;
       let anyMore = false;
@@ -780,67 +779,37 @@ export function createGraphProvider(
       // Every folder is read in one call, as the IMAP driver does. Reading one per call
       // would halve the effective sync rate: the engine calls fetchSince once per tick on
       // the incremental path, so the unread folder would wait a whole interval.
-      for (const folder of SYNCED_FOLDERS) {
-        const storedForFolder = stored.get(folder);
-        try {
-          const result = await readFolder(
-            fetchImpl,
-            auth.access_token,
-            folder,
-            storedForFolder,
-            since,
-          );
-          pending.push({ folder, refs: result.refs });
-          if (result.position !== null) nextCursor.set(folder, result.position);
-          if (result.present) readableFolders += 1;
-          anyInvalid ||= result.invalid;
-          anyMore ||= result.hasMore;
-        } catch (err) {
-          // Only a failure this driver classified is a folder failure. Anything else is a
-          // bug in the process — a programming error, or a test double breaking its own
-          // contract — and tolerating it would hide the defect behind a skipped folder.
-          if (!isProviderError(err)) throw err;
-
-          // One folder failing must not discard the folders that succeeded; its stored
-          // position is kept so it resumes rather than re-backfills.
-          logger.warn({ err, folder }, 'graphProvider: skipping unreadable folder');
-          if (storedForFolder) nextCursor.set(folder, storedForFolder);
-          failureCodes.push(String((err as { code?: unknown }).code));
-          readableFolders += 1;
-
-          // `hasMore` is reported only for a folder that was mid-round. The engine reads a
-          // false as "the backfill finished" and completes the job, so suppressing it for
-          // an unfinished folder retires that mailbox to one page per lease with no job
-          // row and no progress the user can see. A folder that had already reached its
-          // deltaLink still suppresses it, so one gone for good cannot page forever.
-          anyMore ||= storedForFolder?.opening === true;
-        }
-      }
-
-      // Tolerating one failed folder is not the same as tolerating all of them. A mailbox
-      // where nothing at all can be read is an account that no longer works, and reporting
-      // an empty page for it would clear the failure count and mark it healthy on every
-      // tick — so it would never be retired and the user would never be told to reconnect.
-      // Nothing readable is an account that no longer works, and reporting an empty page
-      // for it would clear the failure count on every tick — so it would never be retired
-      // and the user would never be told to reconnect.
       //
-      // Counted against the folders that ANSWERED, not the static list: an absent folder
-      // never enters failureCodes, so treating it as readable would let a mailbox with one
-      // missing folder and one failing one report healthy forever. Every folder absent
-      // reaches the same throw: Inbox is not a folder a live mailbox lacks, so a 404 on
-      // all of them means the token cannot see the mailbox at all.
-      if (readableFolders === 0 || failureCodes.length === readableFolders) {
-        // The shared code where the folders agree, so a revoked token still reports
-        // PROVIDER_AUTH_EXPIRED and asks the user to reconnect. Reporting CONNECTION_FAILED
-        // there would advise waiting for a retry that can never succeed.
-        const agreed =
-          failureCodes.length > 0 && failureCodes.every((code) => code === failureCodes[0])
-            ? failureCodes[0]
-            : CONNECTION_FAILED;
-        throw providerError('graphProvider: no folder on this mailbox could be read', agreed);
+      // A folder that cannot be read fails the whole page rather than being skipped. The
+      // engine's backoff and retirement ceiling are the only things that can bound a
+      // persistent failure — a page reported as a success clears the failure count, so a
+      // folder failing forever would be retried forever, never retired and never surfaced
+      // to the user. Losing the sibling folder's page to that is cheap: its stored
+      // position is untouched, so the next tick re-reads exactly what this one discarded.
+      for (const folder of SYNCED_FOLDERS) {
+        const result = await readFolder(
+          fetchImpl,
+          auth.access_token,
+          folder,
+          stored.get(folder),
+          since,
+        );
+        pending.push({ folder, refs: result.refs });
+        if (result.position !== null) nextCursor.set(folder, result.position);
+        if (result.present) readableFolders += 1;
+        anyInvalid ||= result.invalid;
+        anyMore ||= result.hasMore;
       }
 
+      // A mailbox with neither folder is one the token cannot see rather than an empty
+      // one: Inbox is not a folder a live mailbox lacks. Reporting an empty page for it
+      // would clear the failure count on every tick, so it would never be retired.
+      if (readableFolders === 0) {
+        throw providerError(
+          'graphProvider: no folder on this mailbox could be read',
+          CONNECTION_FAILED,
+        );
+      }
       // One invalidated folder invalidates the account: the seam requires a null cursor
       // beside cursorInvalid, and the engine's recovery is a bounded re-backfill. Bodies
       // are fetched only once that is settled, so a discarded page costs no `$value` call.

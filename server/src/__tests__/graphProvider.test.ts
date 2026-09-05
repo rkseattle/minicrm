@@ -680,7 +680,10 @@ describe('createGraphProvider — an expired delta link', () => {
     ]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
     const cursor = serializeCursor(
-      new Map([['inbox', { link: `${INBOX_DELTA}?$deltatoken=old`, opening: false }]] as const),
+      new Map([
+        ['inbox', { link: `${INBOX_DELTA}?$deltatoken=old`, opening: false }],
+        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
+      ] as const),
     );
 
     await expect(provider.fetchSince(AUTH, cursor, SINCE)).resolves.toMatchObject({
@@ -987,58 +990,12 @@ describe('createGraphProvider — threading', () => {
 });
 
 describe('createGraphProvider — failures', () => {
-  it('keeps the other folder when one cannot be read', async () => {
-    const fetcher = fakeFetch([
-      ...FOLDER_ROUTES,
-      { match: INBOX_DELTA, status: 500, body: { error: { code: 'InternalServerError' } } },
-      {
-        match: SENT_DELTA,
-        body: {
-          value: [{ id: 'm2', conversationId: 'c2', receivedDateTime: RECENT }],
-          '@odata.deltaLink': `${SENT_DELTA}?$deltatoken=s2`,
-        },
-      },
-      { match: '/messages/m2/$value', source: rawMessage({ from: ACCOUNT_ADDRESS }) },
-    ]);
-    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
-    const cursor = serializeCursor(
-      new Map([['inbox', { link: `${INBOX_DELTA}?$deltatoken=d1`, opening: false }]] as const),
-    );
-
-    const page = await provider.fetchSince(AUTH, cursor, SINCE);
-
-    expect(page.messages).toHaveLength(1);
-    // The failed folder keeps its stored position so it resumes rather than re-backfills.
-    expect(parseCursor(page.cursor).get('inbox')?.link).toBe(`${INBOX_DELTA}?$deltatoken=d1`);
-    expect(parseCursor(page.cursor).get('sentitems')?.link).toBe(`${SENT_DELTA}?$deltatoken=s2`);
-  });
-
-  it('keeps hasMore for a mid-round folder that failed', async () => {
-    // The engine reads a false hasMore as "the backfill finished" and completes the job,
-    // so suppressing it here would retire the mailbox to one page per lease — no job row,
-    // no visible progress — while its opening round is still unread.
-    const fetcher = fakeFetch([
-      { match: `${INBOX_DELTA}?$skiptoken=p2`, status: 500, body: {} },
-      { match: `${SENT_DELTA}?$deltatoken=s1`, body: emptyRound(`${SENT_DELTA}?$deltatoken=s2`) },
-    ]);
-    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
-    const cursor = serializeCursor(
-      new Map([
-        ['inbox', { link: `${INBOX_DELTA}?$skiptoken=p2`, opening: true }],
-        ['sentitems', { link: `${SENT_DELTA}?$deltatoken=s1`, opening: false }],
-      ] as const),
-    );
-
-    const page = await provider.fetchSince(AUTH, cursor, SINCE);
-
-    expect(page.hasMore).toBe(true);
-    // Its position is kept, so the folder resumes rather than re-backfilling.
-    expect(parseCursor(page.cursor).get('inbox')?.link).toBe(`${INBOX_DELTA}?$skiptoken=p2`);
-  });
-
-  it('does not set hasMore for a finished folder that failed', async () => {
-    // A folder gone for good sits at its deltaLink, so it must not keep the engine paging
-    // forever to deliver nothing — the case the suppression above exists for.
+  it('fails the page when one folder cannot be read', async () => {
+    // Not skipped: a page reported as a success clears the failure count, so a folder
+    // failing forever would be retried forever — never retired, never surfaced to the
+    // user. Failing lets the engine's backoff and ceiling do their job. The sibling
+    // folder's stored position is untouched, so the next tick re-reads what this
+    // discarded.
     const fetcher = fakeFetch([
       { match: `${INBOX_DELTA}?$deltatoken=d1`, status: 500, body: {} },
       { match: `${SENT_DELTA}?$deltatoken=s1`, body: emptyRound(`${SENT_DELTA}?$deltatoken=s2`) },
@@ -1051,52 +1008,28 @@ describe('createGraphProvider — failures', () => {
       ] as const),
     );
 
-    const page = await provider.fetchSince(AUTH, cursor, SINCE);
-
-    expect(page.hasMore).toBe(false);
+    await expect(provider.fetchSince(AUTH, cursor, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
   });
 
-  it('throws when the only readable folder failed and the other is absent', async () => {
-    // An absent folder never enters the failure count, so counting it as readable would
-    // leave this mailbox reporting a healthy empty page on every tick — never retired,
-    // never surfaced to the user.
+  it('carries a refused credential up rather than reporting it unreachable', async () => {
+    // The code decides the advice the user is given: PROVIDER_AUTH_EXPIRED asks them to
+    // reconnect, where CONNECTION_FAILED tells them to wait for a retry that can never
+    // succeed.
     const fetcher = fakeFetch([
-      { match: '/mailFolders/inbox', status: 404 },
+      {
+        match: '/mailFolders/inbox',
+        status: 401,
+        body: { error: { code: 'InvalidAuthenticationToken' } },
+      },
       { match: '/mailFolders/sentitems', body: { id: 'sent-id' } },
-      { match: SENT_DELTA, status: 500, body: {} },
+      { match: SENT_DELTA, body: emptyRound(`${SENT_DELTA}?$deltatoken=s1`) },
     ]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
 
     await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
-      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
-    );
-  });
-
-  it('throws when every folder is absent', async () => {
-    // Inbox is not a folder a live mailbox lacks, so a 404 on all of them means the token
-    // cannot see the mailbox — not that there is nothing to sync.
-    const fetcher = fakeFetch([
-      { match: '/mailFolders/inbox', status: 404 },
-      { match: '/mailFolders/sentitems', status: 404 },
-    ]);
-    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
-
-    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
-      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
-    );
-  });
-
-  it('throws when no folder on the mailbox can be read', async () => {
-    // Reporting an empty page would clear the failure count on every tick, so a dead
-    // mailbox would never retire and the user would never be told to reconnect.
-    const fetcher = fakeFetch([
-      { match: '/mailFolders/inbox', status: 500, body: {} },
-      { match: '/mailFolders/sentitems', status: 500, body: {} },
-    ]);
-    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
-
-    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
-      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+      expect.objectContaining({ code: 'PROVIDER_AUTH_EXPIRED' }),
     );
   });
 
@@ -1154,10 +1087,10 @@ describe('createGraphProvider — failures', () => {
     ).rejects.toThrow(expect.objectContaining({ code: 'PROVIDER_AUTH_EXPIRED' }));
   });
 
-  it('counts a delta page with no continuation link as a folder failure', async () => {
+  it('fails the page when a delta response carries no continuation link', async () => {
     // Not an invalidation: that would re-read from null every tick while commitPage
     // cleared the failure count, so a persistently malformed folder would never retire and
-    // never reach the user.
+    // never reach the user. Failing puts it under the engine's backoff instead.
     const fetcher = fakeFetch([
       ...FOLDER_ROUTES,
       { match: INBOX_DELTA, body: { value: [] }, contractViolation: true },
@@ -1165,12 +1098,9 @@ describe('createGraphProvider — failures', () => {
     ]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
 
-    const page = await provider.fetchSince(AUTH, null, SINCE);
-
-    expect(page.cursorInvalid).toBe(false);
-    // The healthy folder still advances; the broken one contributes no cursor entry.
-    expect(parseCursor(page.cursor).has('inbox')).toBe(false);
-    expect(parseCursor(page.cursor).get('sentitems')?.link).toBe(`${SENT_DELTA}?$deltatoken=s1`);
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
   });
 });
 
