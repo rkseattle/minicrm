@@ -398,15 +398,20 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
     expect(res.status).toBe(404);
   });
 
-  it('leaves a Microsoft mailbox active rather than marking it broken', async () => {
-    // Microsoft has no probe registered yet. Writing 'error' for that would flip a healthy
-    // row to a badge nothing ever clears, since no sync runs to set it back.
+  it('attempts an Outlook mailbox rather than refusing it outright', async () => {
+    // The stored token is unexpired so no refresh dials out — the scope check refuses it
+    // first, which is what leaves the row in error.
     const account = await upsertOAuthAccount(
       {
         userId: repAId,
         provider: 'microsoft',
         emailAddress: `${FILE_PREFIX}-graph@example.com`,
-        auth: { kind: 'oauth', access_token: 'token', refresh_token: 'r', expires_at: null },
+        auth: {
+          kind: 'oauth',
+          access_token: 'token',
+          refresh_token: 'r',
+          expires_at: Date.now() + 60 * 60 * 1000,
+        },
         grantedScopes: [],
       },
       { id: repAId, name: 'Contract Rep A' },
@@ -419,14 +424,14 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
 
     expect(res.status).toBe(200);
     // A code, not a sentence: the panel translates it into the user's language.
-    expect(res.body).toEqual({ success: false, error: 'UNTESTABLE_PROVIDER' });
+    expect(res.body).toEqual({ success: false, error: 'INSUFFICIENT_SCOPE' });
 
     const row = await pool.query<{ status: string; status_detail: string | null }>(
       'SELECT status, status_detail FROM connected_accounts WHERE id = $1',
       [account.id],
     );
-    expect(row.rows[0].status).toBe('active');
-    expect(row.rows[0].status_detail).toBeNull();
+    expect(row.rows[0].status).toBe('error');
+    expect(row.rows[0].status_detail).toBe('INSUFFICIENT_SCOPE');
   });
 
   it('attempts a Gmail mailbox rather than refusing it outright', async () => {

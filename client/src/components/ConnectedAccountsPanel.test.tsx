@@ -375,11 +375,12 @@ describe('ConnectedAccountsPanel', () => {
   });
 
   it('says why a test failed for a provider that has none', async () => {
-    // The server writes nothing to the row in this case, deliberately — a healthy mailbox
-    // must not be marked broken for having no test. So the response body is the only
-    // place the answer exists, and discarding it leaves the button doing nothing visible.
+    // The server writes nothing to the row for this code, deliberately — a healthy mailbox
+    // must not be marked broken for having no test. So the response body is the only place
+    // the answer exists, and discarding it leaves the button doing nothing visible. The
+    // rendering path is shared with TEST_REQUEST_FAILED, which any failed request emits.
     enableEmailSync();
-    respondWithAccounts([{ ...ACCOUNT, provider: 'microsoft', status: 'active' }]);
+    respondWithAccounts([{ ...ACCOUNT, status: 'active' }]);
     server.use(
       http.post(`/api/v1/connected-accounts/${ACCOUNT_ID}/test`, () =>
         HttpResponse.json({ success: false, error: 'UNTESTABLE_PROVIDER' }),
@@ -402,7 +403,7 @@ describe('ConnectedAccountsPanel', () => {
     const OTHER_ID = '00000000-0000-0000-0000-0000000000c2';
     enableEmailSync();
     respondWithAccounts([
-      { ...ACCOUNT, provider: 'microsoft', status: 'active' },
+      { ...ACCOUNT, status: 'active' },
       { ...ACCOUNT, id: OTHER_ID, email_address: 'other@example.com', status: 'active' },
     ]);
     server.use(
@@ -431,9 +432,7 @@ describe('ConnectedAccountsPanel', () => {
     // A test answer stands in only for a row that says nothing. Once the row carries a
     // reason of its own it is the newer fact, and the more specific one.
     enableEmailSync();
-    respondWithAccounts([
-      { ...ACCOUNT, provider: 'microsoft', status: 'error', status_detail: 'INSUFFICIENT_SCOPE' },
-    ]);
+    respondWithAccounts([{ ...ACCOUNT, status: 'error', status_detail: 'INSUFFICIENT_SCOPE' }]);
     server.use(
       http.post(`/api/v1/connected-accounts/${ACCOUNT_ID}/test`, () =>
         HttpResponse.json({ success: false, error: 'UNTESTABLE_PROVIDER' }),

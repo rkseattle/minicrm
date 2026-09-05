@@ -314,9 +314,10 @@ router.delete('/:id', asyncHandler(deleteConnectedAccountHandler));
  *                 error:
  *                   type: string
  *                   description: >-
- *                     A stable reason code, not prose — UNTESTABLE_PROVIDER,
- *                     INSUFFICIENT_SCOPE, PROVIDER_AUTH_EXPIRED, CONNECTION_FAILED.
- *                     Present only when success is false.
+ *                     A stable reason code, not prose — INSUFFICIENT_SCOPE,
+ *                     PROVIDER_AUTH_EXPIRED, CONNECTION_FAILED. UNTESTABLE_PROVIDER is
+ *                     reserved for a provider connectable before its driver ships, and no
+ *                     provider is in that state today. Present only when success is false.
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:

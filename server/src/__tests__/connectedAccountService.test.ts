@@ -23,10 +23,10 @@ import {
   updateAccountStatus,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
-import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
+import { GMAIL_READ_SCOPE, GRAPH_MAIL_READ_SCOPE } from '../services/oauthProviderService.js';
 import type { RefreshedTokens } from '../services/oauthProviderService.js';
 
-import { clearAuditLogFor, deadGrantError } from './testUtils.js';
+import { clearAuditLogFor, deadGrantError, deferMailboxesOfOtherSuites } from './testUtils.js';
 
 const FILE_PREFIX = 'connacct';
 const REP_A_ACTOR = { id: '', name: 'Connected Rep A' };
@@ -550,11 +550,7 @@ describe('audit entries for an expired refresh token', () => {
  * enough: by then the batch has already been chosen.
  */
 async function withholdOtherSuites(): Promise<void> {
-  await pool.query(
-    `UPDATE connected_accounts SET sync_next_attempt_at = NOW() + interval '1 hour'
-      WHERE user_id <> ALL($1::uuid[])`,
-    [[REP_A_ACTOR.id, REP_B_ACTOR.id]],
-  );
+  await deferMailboxesOfOtherSuites([REP_A_ACTOR.id, REP_B_ACTOR.id]);
 }
 
 describe('scheduler-facing account claim', () => {
@@ -673,22 +669,25 @@ describe('scheduler-facing account claim', () => {
     }
   });
 
-  it('never claims a provider with no driver', async () => {
-    // A mailbox connected before its driver ships simply does not sync, rather than
-    // failing repeatedly for lacking one.
+  // A mailbox whose provider is absent from IMPLEMENTED_SYNC_PROVIDERS has no test: the
+  // service validates the provider on write and the column's CHECK rejects anything else,
+  // so with every allowed provider now implemented the case cannot be constructed. It
+  // becomes testable again the moment a provider is added ahead of its driver, which is
+  // the situation the list exists for.
+  it('claims an Outlook mailbox now that its driver ships', async () => {
     const account = await upsertOAuthAccount(
       {
         userId: REP_A_ACTOR.id,
         provider: 'microsoft',
         emailAddress: `${FILE_PREFIX}-graph@example.com`,
         auth: { kind: 'oauth', access_token: 'token', refresh_token: 'refresh', expires_at: null },
-        grantedScopes: [],
+        grantedScopes: [GRAPH_MAIL_READ_SCOPE],
       },
       REP_A_ACTOR,
     );
 
-    expect(IMPLEMENTED_SYNC_PROVIDERS).not.toContain('microsoft');
-    expect(await claimOwn()).not.toContain(account.id);
+    expect(IMPLEMENTED_SYNC_PROVIDERS).toContain('microsoft');
+    expect(await claimOwn()).toContain(account.id);
   });
 
   it('claims a Gmail mailbox now that its driver ships', async () => {

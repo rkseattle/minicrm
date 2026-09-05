@@ -28,7 +28,7 @@ import { getActiveEmailSyncJob } from '../services/emailSyncJobService.js';
 import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 
-import { clearAuditLogFor, deadGrantError } from './testUtils.js';
+import { clearAuditLogFor, deadGrantError, deferMailboxesOfOtherSuites } from './testUtils.js';
 
 const FILE_PREFIX = 'emailsync';
 const ACTOR = { id: '', name: 'Email Sync Rep' };
@@ -870,14 +870,24 @@ describe('syncOneAccount — OAuth credentials', () => {
     expect(refreshCalls).toBe(0);
   });
 
-  it('records why an under-scoped mailbox stopped, where the user can read it', async () => {
-    // The AC's observable is status_detail, not the thrown code: a tick that failed
-    // silently would satisfy the throw and still leave the user with a bare badge.
+  /**
+   * Runs one real tick against a freshly seeded under-scoped mailbox.
+   *
+   * A whole tick with no injected provider, because status_detail is written by
+   * recordSyncFailure — which only syncDueAccounts calls — and the scope check lives in
+   * the driver providerFor builds, which an injected provider would skip. Other files'
+   * mailboxes are deferred first so no real driver dials out, and the refresh seam throws
+   * for the same reason: credentials are read before any refusal.
+   */
+  async function tickUnderScopedMailbox(
+    provider: 'google' | 'microsoft',
+    suffix: string,
+  ): Promise<{ status: string; status_detail: string | null }> {
     const account = await upsertOAuthAccount(
       {
         userId: ACTOR.id,
-        provider: 'google',
-        emailAddress: `${FILE_PREFIX}-detail@example.com`,
+        provider,
+        emailAddress: `${FILE_PREFIX}-${suffix}@example.com`,
         auth: {
           kind: 'oauth',
           access_token: 'token',
@@ -889,21 +899,7 @@ describe('syncOneAccount — OAuth credentials', () => {
       ACTOR,
     );
 
-    // status_detail is written by recordSyncFailure, which only syncDueAccounts calls, so
-    // this needs a whole tick with no injected provider — the scope check lives in the
-    // driver providerFor builds, and an injected one would skip it.
-    //
-    // The claim query is global, so every other file's mailboxes are deferred first: left
-    // due, they would be claimed here and build real drivers, dialling an IMAP host and
-    // Google's discovery endpoint from a unit test. connectedAccountService.test.ts makes
-    // the same write and re-establishes it immediately before each of its own claims, so
-    // the two files defer each other rather than stranding one. The refresh seam is
-    // injected for the same reason, since credentials are read before any refusal.
-    await pool.query(
-      `UPDATE connected_accounts SET sync_next_attempt_at = NOW() + interval '1 hour'
-        WHERE user_id <> $1`,
-      [ACTOR.id],
-    );
+    await deferMailboxesOfOtherSuites([ACTOR.id]);
     await syncDueAccounts(undefined, () => {
       throw new Error('refresh must not be reached from a unit test');
     });
@@ -912,9 +908,27 @@ describe('syncOneAccount — OAuth credentials', () => {
       `SELECT status, status_detail FROM connected_accounts WHERE id = $1`,
       [account.id],
     );
-    expect(row.rows[0].status).toBe('error');
+    return row.rows[0];
+  }
+
+  it('builds the Graph driver for an Outlook mailbox', async () => {
+    // Pins providerFor's microsoft branch as far as a scope refusal reaches: with the
+    // branch removed the tick throws "no provider implementation" and status_detail lands
+    // on the generic SYNC_FAILED instead.
+    const row = await tickUnderScopedMailbox('microsoft', 'graph-detail');
+
+    expect(row.status).toBe('error');
+    expect(row.status_detail).toBe('INSUFFICIENT_SCOPE');
+  });
+
+  it('records why an under-scoped mailbox stopped, where the user can read it', async () => {
+    // The AC's observable is status_detail, not the thrown code: a tick that failed
+    // silently would satisfy the throw and still leave the user with a bare badge.
+    const row = await tickUnderScopedMailbox('google', 'detail');
+
+    expect(row.status).toBe('error');
     // The code, not prose: this is what the panel translates into the user's language.
-    expect(row.rows[0].status_detail).toBe('INSUFFICIENT_SCOPE');
+    expect(row.status_detail).toBe('INSUFFICIENT_SCOPE');
   });
 });
 
