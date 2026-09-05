@@ -11,9 +11,14 @@
  * URL, and an AbortController for the timeout.
  */
 
+import {
+  CONNECTION_FAILED,
+  INSUFFICIENT_SCOPE,
+  PROVIDER_AUTH_EXPIRED,
+} from '@minicrm/shared/schemas/connectedAccountSchema.js';
+
 import logger from '../../logger.js';
 import type { ConnectedAccountAuth } from '../connectedAccountService.js';
-import { CONNECTION_FAILED, PROVIDER_AUTH_EXPIRED } from '../imapConnectionService.js';
 import { GMAIL_READ_SCOPE } from '../oauthProviderService.js';
 
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mailProvider.js';
@@ -22,8 +27,10 @@ import { resolveThreadId } from './threading.js';
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
-/** Reported when a mailbox's granted scopes cannot read mail. */
-export const INSUFFICIENT_SCOPE = 'INSUFFICIENT_SCOPE';
+// Re-exported from the shared list rather than restated: this value reaches status_detail,
+// which the client renders by translating, so a copy that drifts degrades the mailbox to
+// the generic reason instead of failing loudly.
+export { INSUFFICIENT_SCOPE };
 
 /** Message for a grant that cannot read mail. The user sees the locale string keyed by
  * INSUFFICIENT_SCOPE; this reaches logs and any caller that reports a raw provider error. */
@@ -120,6 +127,15 @@ interface GmailCursor {
    * whole page set is read.
    */
   pageToken: string | null;
+  /**
+   * The `after:` epoch the backfill's listing was opened with, in seconds.
+   *
+   * A pageToken positions within the result set its own parameters define, and the engine
+   * recomputes `since` from the clock on every tick — so a token resumed against a fresh
+   * `after:` addresses a set Google never issued it for. Carrying the window makes the
+   * query reconstructible. Null on the incremental phase, which is scoped by historyId.
+   */
+  afterSeconds: number | null;
 }
 
 /**
@@ -140,16 +156,27 @@ export function parseCursor(cursor: string | null): GmailCursor | null {
   }
   if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return null;
 
-  const { phase, historyId, pageToken } = decoded as {
+  const { phase, historyId, pageToken, afterSeconds } = decoded as {
     phase?: unknown;
     historyId?: unknown;
     pageToken?: unknown;
+    afterSeconds?: unknown;
   };
   if (phase !== 'backfill' && phase !== 'incremental') return null;
   if (typeof historyId !== 'string' || historyId === '') return null;
   if (pageToken !== null && typeof pageToken !== 'string') return null;
 
-  return { phase, historyId, pageToken: pageToken ?? null };
+  // A backfill pageToken is only meaningful against the `after:` query that produced it,
+  // so one stored without its window is discarded rather than replayed against a
+  // different one. The incremental phase's token is scoped by startHistoryId instead, so
+  // it needs no window and must not be rejected for lacking one.
+  const window =
+    typeof afterSeconds === 'number' && Number.isSafeInteger(afterSeconds) && afterSeconds > 0
+      ? afterSeconds
+      : null;
+  if (phase === 'backfill' && pageToken && window === null) return null;
+
+  return { phase, historyId, pageToken: pageToken ?? null, afterSeconds: window };
 }
 
 /** Serializes the cursor for storage. */
@@ -548,7 +575,11 @@ async function readBackfill(
   // `q` rides every page, not just the first: a page token positions within a result set
   // the other parameters define, so dropping the filter would let page two enumerate the
   // whole mailbox — drafts, chats, and everything outside the window.
-  const afterSeconds = Math.floor(since.getTime() / 1000);
+  // A resumed page reuses the window its token was issued against; only a fresh listing
+  // takes the caller's `since`, which the engine recomputes from the clock every tick.
+  const afterSeconds = stored?.pageToken
+    ? (stored.afterSeconds ?? Math.floor(since.getTime() / 1000))
+    : Math.floor(since.getTime() / 1000);
   const params: Record<string, string> = {
     q: `after:${String(afterSeconds)} ${EXCLUDED_LABELS}`,
     maxResults: String(MAX_BACKFILL_MESSAGES_PER_PAGE),
@@ -564,22 +595,22 @@ async function readBackfill(
   // same historyId, so the incremental sync that follows resumes from before the backfill
   // began rather than from wherever it happened to stop.
   //
-  // A mailbox still owed an anchor keeps a backfill cursor only while the listing has
-  // pages left. Once it is exhausted the cursor goes null, which is what routes the next
-  // tick back through backfillAccount — the engine reads a non-null cursor with no open
-  // job as "incremental", and that path has no page budget and opens no job.
-  const next: GmailCursor | null =
+  // A mailbox still owed an anchor keeps its backfill cursor even once the listing is
+  // exhausted. Writing null there would be indistinguishable from never-synced, and the
+  // engine re-backfills the whole window on a null cursor — so a profile that never
+  // answers with a historyId would re-read 90 days every tick, forever, with the failure
+  // ceiling reset by each successful page. Keeping the placeholder means the next tick
+  // re-attempts only the profile call.
+  const next: GmailCursor =
     historyId === null
-      ? pageToken === null
-        ? null
-        : { phase: 'backfill', historyId: UNANCHORED, pageToken }
+      ? { phase: 'backfill', historyId: UNANCHORED, pageToken, afterSeconds }
       : pageToken
-        ? { phase: 'backfill', historyId, pageToken }
-        : { phase: 'incremental', historyId, pageToken: null };
+        ? { phase: 'backfill', historyId, pageToken, afterSeconds }
+        : { phase: 'incremental', historyId, pageToken: null, afterSeconds: null };
 
   return {
     messages: await readMessages(fetchImpl, accessToken, refs, accountAddress),
-    cursor: next === null ? null : serializeCursor(next),
+    cursor: serializeCursor(next),
     cursorInvalid: false,
     hasMore: pageToken !== null,
   };
@@ -637,7 +668,12 @@ async function readIncremental(
 
   return {
     messages: await readMessages(fetchImpl, accessToken, refs, accountAddress),
-    cursor: serializeCursor({ phase: 'incremental', historyId: advanced, pageToken }),
+    cursor: serializeCursor({
+      phase: 'incremental',
+      historyId: advanced,
+      pageToken,
+      afterSeconds: null,
+    }),
     cursorInvalid: false,
     hasMore: pageToken !== null,
   };

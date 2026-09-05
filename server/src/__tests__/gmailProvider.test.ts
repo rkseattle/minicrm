@@ -146,6 +146,84 @@ describe('the fake itself', () => {
   });
 });
 
+describe('createGmailProvider — a mailbox that cannot be anchored', () => {
+  it('keeps a cursor when the listing ends with no history position, rather than re-reading the window every tick', async () => {
+    // A null cursor is indistinguishable from never-synced, and the engine re-backfills
+    // the whole window on one — so a profile that never answers would re-read 90 days
+    // forever, with each successful page resetting the failure ceiling.
+    const fetcher = fakeFetch([
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS } },
+      { match: '/messages?', body: { messages: [] } },
+    ]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    const first = await provider.fetchSince(AUTH, null, SINCE);
+    expect(first.cursor).not.toBeNull();
+    expect(parseCursor(first.cursor)).toMatchObject({
+      phase: 'backfill',
+      historyId: UNANCHORED,
+      pageToken: null,
+    });
+
+    const second = await provider.fetchSince(AUTH, first.cursor, SINCE);
+    expect(parseCursor(second.cursor)).toMatchObject({ historyId: UNANCHORED });
+  });
+
+  it('anchors as soon as the profile answers, without re-reading what it already read', async () => {
+    const anchored = fakeFetch([
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '900' } },
+      { match: '/messages?', body: { messages: [] } },
+    ]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], anchored.fn);
+
+    const page = await provider.fetchSince(
+      AUTH,
+      serializeCursor({
+        phase: 'backfill',
+        historyId: UNANCHORED,
+        pageToken: null,
+        afterSeconds: 1_700_000_000,
+      }),
+      SINCE,
+    );
+
+    expect(parseCursor(page.cursor)).toEqual({
+      phase: 'incremental',
+      historyId: '900',
+      pageToken: null,
+      afterSeconds: null,
+    });
+  });
+});
+
+describe('createGmailProvider — a resumed backfill page', () => {
+  it('reuses the window its page token was issued against', async () => {
+    // The engine recomputes `since` from the clock every tick, and Google treats a
+    // pageToken as valid only for the request that produced it.
+    const fetcher = fakeFetch([
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '500' } },
+      { match: '/messages?', body: { messages: [], nextPageToken: 'PAGE2' } },
+    ]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    const first = await provider.fetchSince(AUTH, null, new Date(1_700_000_000_000));
+    await provider.fetchSince(AUTH, first.cursor, new Date(1_700_086_400_000));
+
+    const listings = fetcher.urls.filter((url) => url.includes('/messages?'));
+    const windowOf = (url: string): string | null =>
+      new URL(url).searchParams.get('q')?.match(/after:(\d+)/)?.[1] ?? null;
+
+    expect(windowOf(listings[1])).toBe(windowOf(listings[0]));
+    expect(new URL(listings[1]).searchParams.get('pageToken')).toBe('PAGE2');
+  });
+
+  it('discards a stored page token that lost the window it belongs to', () => {
+    expect(
+      parseCursor(JSON.stringify({ phase: 'backfill', historyId: '5', pageToken: 'PAGE2' })),
+    ).toBeNull();
+  });
+});
+
 describe('parseCursor', () => {
   it('treats an absent cursor as never-synced', () => {
     expect(parseCursor(null)).toBeNull();
@@ -168,7 +246,12 @@ describe('parseCursor', () => {
   });
 
   it('round-trips a backfill cursor', () => {
-    const cursor = { phase: 'backfill' as const, historyId: '4242', pageToken: 'page-2' };
+    const cursor = {
+      phase: 'backfill' as const,
+      historyId: '4242',
+      pageToken: 'page-2',
+      afterSeconds: 1_700_000_000,
+    };
     expect(parseCursor(serializeCursor(cursor))).toEqual(cursor);
   });
 });
@@ -222,6 +305,7 @@ describe('createGmailProvider — backfill', () => {
     expect(parseCursor(page.cursor)).toEqual({
       phase: 'backfill',
       historyId: '5000',
+      afterSeconds: Math.floor(SINCE.getTime() / 1000),
       pageToken: 'page-2',
     });
     expect(page.messages).toHaveLength(1);
@@ -239,7 +323,12 @@ describe('createGmailProvider — backfill', () => {
 
     const page = await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'backfill', historyId: '5000', pageToken: 'page-2' }),
+      serializeCursor({
+        phase: 'backfill',
+        historyId: '5000',
+        pageToken: 'page-2',
+        afterSeconds: 1_700_000_000,
+      }),
       SINCE,
     );
 
@@ -247,6 +336,7 @@ describe('createGmailProvider — backfill', () => {
     expect(parseCursor(page.cursor)).toEqual({
       phase: 'incremental',
       historyId: '5000',
+      afterSeconds: null,
       pageToken: null,
     });
     // The profile is read only to anchor a fresh backfill, never to re-anchor one.
@@ -262,7 +352,12 @@ describe('createGmailProvider — backfill', () => {
 
     await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'backfill', historyId: '5000', pageToken: 'page-2' }),
+      serializeCursor({
+        phase: 'backfill',
+        historyId: '5000',
+        pageToken: 'page-2',
+        afterSeconds: 1_700_000_000,
+      }),
       SINCE,
     );
 
@@ -288,22 +383,6 @@ describe('createGmailProvider — backfill', () => {
     expect(listing).toContain('-in%3Achats');
     expect(listing).toContain(`after%3A${String(Math.floor(SINCE.getTime() / 1000))}`);
   });
-
-  it('stores no cursor when an exhausted listing never got its anchor', async () => {
-    // Null, not a backfill cursor: the engine routes a non-null cursor with no open job
-    // down the incremental path, which has no page budget and opens no job. Null is what
-    // sends the next tick back through backfillAccount as a proper job.
-    const fetcher = fakeFetch([
-      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS } },
-      { match: '/messages?', body: { messages: [] } },
-    ]);
-    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
-
-    const page = await provider.fetchSince(AUTH, null, SINCE);
-
-    expect(page.cursorInvalid).toBe(false);
-    expect(page.cursor).toBeNull();
-  });
 });
 
 describe('createGmailProvider — incremental', () => {
@@ -322,7 +401,12 @@ describe('createGmailProvider — incremental', () => {
 
     const page = await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'incremental', historyId: '5000', pageToken: null }),
+      serializeCursor({
+        phase: 'incremental',
+        historyId: '5000',
+        pageToken: null,
+        afterSeconds: null,
+      }),
       SINCE,
     );
 
@@ -348,7 +432,12 @@ describe('createGmailProvider — incremental', () => {
 
     const page = await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'incremental', historyId: '5000', pageToken: null }),
+      serializeCursor({
+        phase: 'incremental',
+        historyId: '5000',
+        pageToken: null,
+        afterSeconds: null,
+      }),
       SINCE,
     );
 
@@ -364,7 +453,12 @@ describe('createGmailProvider — incremental', () => {
 
     const page = await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'incremental', historyId: '1', pageToken: null }),
+      serializeCursor({
+        phase: 'incremental',
+        historyId: '1',
+        pageToken: null,
+        afterSeconds: null,
+      }),
       SINCE,
     );
 
@@ -395,7 +489,12 @@ describe('createGmailProvider — incremental', () => {
 
     const page = await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'incremental', historyId: '5000', pageToken: null }),
+      serializeCursor({
+        phase: 'incremental',
+        historyId: '5000',
+        pageToken: null,
+        afterSeconds: null,
+      }),
       SINCE,
     );
 
@@ -429,9 +528,8 @@ describe('createGmailProvider — messages that cannot be fully stored', () => {
   });
 
   it('keeps a listed page when the mailbox reports no history position', async () => {
-    // No anchor means no cursor, but the messages this page already listed are still
-    // worth storing: the ingest is idempotent and the window may have moved by the time
-    // it is re-read.
+    // The messages this page already listed are worth storing whether or not the anchor
+    // arrived: the ingest is idempotent and the window may have moved by a re-read.
     const fetcher = fakeFetch([
       { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS } },
       { match: '/messages?', body: { messages: [{ id: 'm1', threadId: 't1' }] } },
@@ -441,7 +539,7 @@ describe('createGmailProvider — messages that cannot be fully stored', () => {
 
     const page = await provider.fetchSince(AUTH, null, SINCE);
 
-    expect(page.cursor).toBeNull();
+    expect(parseCursor(page.cursor)).toMatchObject({ historyId: UNANCHORED });
     expect(page.messages).toHaveLength(1);
   });
 });
@@ -465,7 +563,12 @@ describe('createGmailProvider — incremental paging', () => {
 
     const first = await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'incremental', historyId: '5000', pageToken: null }),
+      serializeCursor({
+        phase: 'incremental',
+        historyId: '5000',
+        pageToken: null,
+        afterSeconds: null,
+      }),
       SINCE,
     );
 
@@ -473,6 +576,7 @@ describe('createGmailProvider — incremental paging', () => {
     expect(parseCursor(first.cursor)).toEqual({
       phase: 'incremental',
       historyId: '5000',
+      afterSeconds: null,
       pageToken: 'hist-2',
     });
 
@@ -497,6 +601,7 @@ describe('createGmailProvider — incremental paging', () => {
     expect(parseCursor(second.cursor)).toEqual({
       phase: 'incremental',
       historyId: '6000',
+      afterSeconds: null,
       pageToken: null,
     });
   });
@@ -526,7 +631,12 @@ describe('createGmailProvider — truncation', () => {
 
     const page = await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'incremental', historyId: '5000', pageToken: null }),
+      serializeCursor({
+        phase: 'incremental',
+        historyId: '5000',
+        pageToken: null,
+        afterSeconds: null,
+      }),
       SINCE,
     );
 
@@ -567,7 +677,12 @@ describe('createGmailProvider — truncation', () => {
 
     const page = await provider.fetchSince(
       AUTH,
-      serializeCursor({ phase: 'backfill', historyId: UNANCHORED, pageToken: 'page-2' }),
+      serializeCursor({
+        phase: 'backfill',
+        historyId: UNANCHORED,
+        pageToken: 'page-2',
+        afterSeconds: 1_700_000_000,
+      }),
       SINCE,
     );
 
@@ -575,6 +690,7 @@ describe('createGmailProvider — truncation', () => {
     expect(parseCursor(page.cursor)).toEqual({
       phase: 'incremental',
       historyId: '7777',
+      afterSeconds: null,
       pageToken: null,
     });
   });
