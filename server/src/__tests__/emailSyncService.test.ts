@@ -848,9 +848,8 @@ describe('syncOneAccount — OAuth credentials', () => {
     //
     // No injected provider, so providerFor builds the real Graph driver — which is what
     // makes this a Microsoft test rather than a provider-agnostic one. Its transport is
-    // refuseLiveFetch under NODE_ENV=test, so every folder fails at the wire and the
-    // driver's own all-folders-failed throw is what surfaces — after the refresh has been
-    // committed, which is the ordering being pinned.
+    // refuseLiveFetch under NODE_ENV=test, so the first folder fails at the wire — after
+    // the refresh has been committed, which is the ordering being pinned.
     const account = await upsertOAuthAccount(
       {
         userId: ACTOR.id,
@@ -873,7 +872,7 @@ describe('syncOneAccount — OAuth credentials', () => {
         refreshToken: 'refresh-two',
         expiresAt: Date.now() + 60 * 60 * 1000,
       })),
-    ).rejects.toThrow(/no folder on this mailbox could be read/);
+    ).rejects.toThrow(/Could not reach Outlook/);
 
     // Read back through the service rather than the row: the payload is encrypted, and
     // what matters is that the next sync decrypts the rotated value.
@@ -881,6 +880,40 @@ describe('syncOneAccount — OAuth credentials', () => {
       throw new Error('a valid token must not trigger a second refresh');
     });
     expect(stored).toMatchObject({ kind: 'oauth', refresh_token: 'refresh-two' });
+  });
+
+  it('records a failure when an Outlook folder cannot be read', async () => {
+    // The loop this rules out: a folder failure reported as a healthy page leaves the
+    // cursor unchanged AND clears sync_failure_count, so the identical tick repeats
+    // forever — never retired, never surfaced. The failure must reach the counter.
+    const account = await upsertOAuthAccount(
+      {
+        userId: ACTOR.id,
+        provider: 'microsoft',
+        emailAddress: `${FILE_PREFIX}-graph-stuck@example.com`,
+        auth: {
+          kind: 'oauth',
+          access_token: 'token',
+          refresh_token: 'refresh',
+          expires_at: Date.now() + 60 * 60 * 1000,
+        },
+        grantedScopes: [GRAPH_MAIL_READ_SCOPE],
+      },
+      ACTOR,
+    );
+
+    await deferMailboxesOfOtherSuites([ACTOR.id]);
+    // No injected provider, so the real driver runs and refuseLiveFetch fails its folders.
+    await syncDueAccounts(undefined, () => {
+      throw new Error('refresh must not be reached from a unit test');
+    });
+
+    const row = await pool.query<{ status: string; sync_failure_count: number }>(
+      `SELECT status, sync_failure_count FROM connected_accounts WHERE id = $1`,
+      [account.id],
+    );
+    expect(row.rows[0].status).toBe('error');
+    expect(row.rows[0].sync_failure_count).toBeGreaterThan(0);
   });
 
   it('round-trips a Graph delta link through the cursor column', async () => {
