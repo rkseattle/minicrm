@@ -80,14 +80,24 @@ const MAX_MESSAGES_PER_PAGE = 50;
 const REQUEST_TIMEOUT_MS = 15_000;
 
 /**
- * Where each folder's sync stopped.
+ * Where one folder's sync stopped.
  *
- * The value is Graph's own `@odata.nextLink` or `@odata.deltaLink`, stored whole. Those
- * URLs already encode the folder id and every query parameter of the request that issued
- * them, so re-deriving either would create a second source of truth for something the
- * link already states.
+ * `link` is Graph's own `@odata.nextLink` or `@odata.deltaLink`, stored whole: those URLs
+ * already encode the folder id and every query parameter of the request that issued them,
+ * so re-deriving either would create a second source of truth.
+ *
+ * `opening` is recorded rather than read back out of the link. It decides whether the
+ * backfill window still applies, and a wrong answer ingests the mailbox's entire history —
+ * too much to rest on Microsoft continuing to spell a query parameter `$skiptoken`. Gmail's
+ * cursor carries an explicit `phase` for the same reason.
  */
-type CursorByFolder = Map<SyncedFolder, string>;
+interface FolderPosition {
+  link: string;
+  /** True while the round that started this folder is still paging. */
+  opening: boolean;
+}
+
+type CursorByFolder = Map<SyncedFolder, FolderPosition>;
 
 function isSyncedFolder(value: string): value is SyncedFolder {
   return (SYNCED_FOLDERS as readonly string[]).includes(value);
@@ -128,10 +138,17 @@ export function parseCursor(cursor: string | null): CursorByFolder {
   if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return parsed;
 
   // Safe: the guard above rejects anything that is not a non-array object.
-  for (const [folder, link] of Object.entries(decoded as Record<string, unknown>)) {
+  for (const [folder, value] of Object.entries(decoded as Record<string, unknown>)) {
     if (!isSyncedFolder(folder)) continue;
+    if (typeof value !== 'object' || value === null) continue;
+
+    const { link, opening } = value as { link?: unknown; opening?: unknown };
     if (typeof link !== 'string' || !isGraphUrl(link)) continue;
-    parsed.set(folder, link);
+
+    // An absent flag reads as an unfinished round, which is the safe direction: the worst
+    // it costs is one window filter applied to an incremental page, where the opposite
+    // mistake ingests everything the mailbox has ever held.
+    parsed.set(folder, { link, opening: opening !== false });
   }
   return parsed;
 }
@@ -148,6 +165,9 @@ export function serializeCursor(cursors: CursorByFolder): string {
  * guards by Node version. `arrayBuffer` rather than `text` is load-bearing — a MIME
  * document carries per-part charsets, so decoding it as UTF-8 would replace every
  * non-UTF-8 byte before the parser saw it.
+ *
+ * Exactly one body reader is called per response, as a real `Response` requires — the
+ * `$value` path reads `json()` only on a failure, whose body it has not otherwise touched.
  */
 export interface GraphResponse {
   ok: boolean;
@@ -359,6 +379,17 @@ async function graphFetchSource(
 }
 
 /**
+ * The permissions that authorize reading a message body, bare of their resource prefix.
+ *
+ * `Mail.ReadBasic` is deliberately absent: it excludes bodies and attachments, so a mailbox
+ * holding only it would sync headers and store nothing readable.
+ */
+const MAIL_READ_SCOPES = [
+  GRAPH_MAIL_READ_SCOPE.slice(GRAPH_MAIL_READ_SCOPE.lastIndexOf('/') + 1).toLowerCase(),
+  'mail.readwrite',
+];
+
+/**
  * True when a granted scope authorizes reading a message body.
  *
  * Looser than Gmail's exact match, because Microsoft's is a looser contract: the token
@@ -366,15 +397,11 @@ async function graphFetchSource(
  * requested, and `Mail.ReadWrite` supersedes it. An equality check would refuse a
  * correctly-granted mailbox and park it with a badge reconnecting cannot clear.
  *
- * `Mail.ReadBasic` is deliberately absent: it excludes bodies and attachments, so a
- * mailbox holding only it would sync headers and store nothing readable.
  */
 function grantsMailRead(grantedScopes: readonly string[]): boolean {
-  const bare = GRAPH_MAIL_READ_SCOPE.slice(GRAPH_MAIL_READ_SCOPE.lastIndexOf('/') + 1);
-  const accepted = [bare.toLowerCase(), 'mail.readwrite'];
   return grantedScopes.some((scope) => {
     const withoutHost = scope.replace(/^https:\/\/graph\.microsoft\.com\//i, '');
-    return accepted.includes(withoutHost.toLowerCase());
+    return MAIL_READ_SCOPES.includes(withoutHost.toLowerCase());
   });
 }
 
@@ -614,10 +641,12 @@ async function readMessages(
  */
 interface FolderPage {
   refs: GraphMessageRef[];
-  /** The link the next fetch resumes from, or null when the folder is gone. */
-  cursor: string | null;
+  /** Where the next fetch resumes, or null when the folder is absent. */
+  position: FolderPosition | null;
   invalid: boolean;
   hasMore: boolean;
+  /** False when the folder does not exist, as distinct from failing to be read. */
+  present: boolean;
 }
 
 /**
@@ -634,23 +663,24 @@ async function readFolder(
   fetchImpl: FetchLike,
   accessToken: string,
   folder: SyncedFolder,
-  stored: string | undefined,
+  stored: FolderPosition | undefined,
   since: Date,
 ): Promise<FolderPage> {
-  // The window bounds the whole opening round, not just its first page. A `$skiptoken`
-  // link is a position INSIDE that round — Graph hands one back until the round completes
-  // with a `$deltatoken` — so treating a resumed page as incremental would let page two
-  // ingest the mailbox's entire history. Gmail carries `afterSeconds` for the same reason.
-  const opening = stored === undefined || stored.includes('$skiptoken');
+  // The window bounds the whole opening round, not just its first page: a stored position
+  // inside that round is still opening, so treating it as incremental would let page two
+  // ingest the mailbox's entire history.
+  const opening = stored === undefined || stored.opening;
   let url: string;
   if (stored === undefined) {
     const folderId = await resolveFolderId(fetchImpl, accessToken, folder);
-    if (folderId === null) return { refs: [], cursor: null, invalid: false, hasMore: false };
+    if (folderId === null) {
+      return { refs: [], position: null, invalid: false, hasMore: false, present: false };
+    }
     url =
       `${GRAPH_API_BASE}/mailFolders/${encodeURIComponent(folderId)}/messages/delta` +
       `?$select=${DELTA_SELECT}`;
   } else {
-    url = stored;
+    url = stored.link;
   }
 
   const { status, body } = await graphRequest(
@@ -663,12 +693,14 @@ async function readFolder(
   // The stored link has aged out of Graph's token cache. The engine answers with a
   // bounded re-backfill, not a full resync.
   if (isResyncRequired(status, body)) {
-    return { refs: [], cursor: null, invalid: true, hasMore: false };
+    return { refs: [], position: null, invalid: true, hasMore: false, present: true };
   }
 
   // A folder that answers 404 on a link it issued has been deleted under us. Treating it
   // as invalid rather than empty is what re-reads it from scratch once it returns.
-  if (status === 404) return { refs: [], cursor: null, invalid: true, hasMore: false };
+  if (status === 404) {
+    return { refs: [], position: null, invalid: true, hasMore: false, present: true };
+  }
 
   const page = body as { '@odata.nextLink'?: unknown; '@odata.deltaLink'?: unknown } | null;
   const nextLink = page?.['@odata.nextLink'];
@@ -686,14 +718,18 @@ async function readFolder(
     );
   }
 
+  // The round is still opening while Graph hands back a nextLink; a deltaLink ends it.
+  const stillOpening = typeof nextLink === 'string';
+
   return {
-    // The window bounds an opening round only. Once a link exists the cursor is
+    // The window bounds an opening round only. Once the round has closed the cursor is
     // authoritative, per the seam — a message filed into the folder today is new to this
     // mailbox however old the message itself is.
     refs: messageRefsOf(body, opening ? since : null),
-    cursor: resume,
+    position: { link: resume, opening: opening && stillOpening },
     invalid: false,
-    hasMore: typeof nextLink === 'string',
+    hasMore: stillOpening,
+    present: true,
   };
 }
 
@@ -737,6 +773,7 @@ export function createGraphProvider(
       const pending: { folder: SyncedFolder; refs: GraphMessageRef[] }[] = [];
       const nextCursor: CursorByFolder = new Map();
       const failureCodes: string[] = [];
+      let readableFolders = 0;
       let anyInvalid = false;
       let anyMore = false;
 
@@ -754,7 +791,8 @@ export function createGraphProvider(
             since,
           );
           pending.push({ folder, refs: result.refs });
-          if (result.cursor !== null) nextCursor.set(folder, result.cursor);
+          if (result.position !== null) nextCursor.set(folder, result.position);
+          if (result.present) readableFolders += 1;
           anyInvalid ||= result.invalid;
           anyMore ||= result.hasMore;
         } catch (err) {
@@ -763,13 +801,19 @@ export function createGraphProvider(
           // contract — and tolerating it would hide the defect behind a skipped folder.
           if (!isProviderError(err)) throw err;
 
-          // One folder failing must not discard the folders that succeeded. Its stored
-          // position is kept so it resumes rather than re-backfills, and `hasMore` is
-          // deliberately not set: a folder gone for good would otherwise keep the engine
-          // paging an account forever to deliver nothing.
+          // One folder failing must not discard the folders that succeeded; its stored
+          // position is kept so it resumes rather than re-backfills.
           logger.warn({ err, folder }, 'graphProvider: skipping unreadable folder');
           if (storedForFolder) nextCursor.set(folder, storedForFolder);
           failureCodes.push(String((err as { code?: unknown }).code));
+          readableFolders += 1;
+
+          // `hasMore` is reported only for a folder that was mid-round. The engine reads a
+          // false as "the backfill finished" and completes the job, so suppressing it for
+          // an unfinished folder retires that mailbox to one page per lease with no job
+          // row and no progress the user can see. A folder that had already reached its
+          // deltaLink still suppresses it, so one gone for good cannot page forever.
+          anyMore ||= storedForFolder?.opening === true;
         }
       }
 
@@ -777,13 +821,23 @@ export function createGraphProvider(
       // where nothing at all can be read is an account that no longer works, and reporting
       // an empty page for it would clear the failure count and mark it healthy on every
       // tick — so it would never be retired and the user would never be told to reconnect.
-      if (failureCodes.length === SYNCED_FOLDERS.length) {
+      // Nothing readable is an account that no longer works, and reporting an empty page
+      // for it would clear the failure count on every tick — so it would never be retired
+      // and the user would never be told to reconnect.
+      //
+      // Counted against the folders that ANSWERED, not the static list: an absent folder
+      // never enters failureCodes, so treating it as readable would let a mailbox with one
+      // missing folder and one failing one report healthy forever. Every folder absent
+      // reaches the same throw: Inbox is not a folder a live mailbox lacks, so a 404 on
+      // all of them means the token cannot see the mailbox at all.
+      if (readableFolders === 0 || failureCodes.length === readableFolders) {
         // The shared code where the folders agree, so a revoked token still reports
         // PROVIDER_AUTH_EXPIRED and asks the user to reconnect. Reporting CONNECTION_FAILED
         // there would advise waiting for a retry that can never succeed.
-        const agreed = failureCodes.every((code) => code === failureCodes[0])
-          ? failureCodes[0]
-          : CONNECTION_FAILED;
+        const agreed =
+          failureCodes.length > 0 && failureCodes.every((code) => code === failureCodes[0])
+            ? failureCodes[0]
+            : CONNECTION_FAILED;
         throw providerError('graphProvider: no folder on this mailbox could be read', agreed);
       }
 
