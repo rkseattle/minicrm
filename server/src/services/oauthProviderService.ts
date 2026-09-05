@@ -240,7 +240,6 @@ export async function exchangeAuthorizationCode(
   };
 }
 
-/** A refreshed token set. `refreshToken` is re-issued by providers that rotate it. */
 /**
  * OAuth error codes that mean the grant itself is gone.
  *
@@ -262,6 +261,7 @@ export function isDeadGrantError(err: unknown): boolean {
   return DEAD_GRANT_ERRORS.includes(err.error);
 }
 
+/** A refreshed token set. `refreshToken` is re-issued by providers that rotate it. */
 export interface RefreshedTokens {
   accessToken: string;
   refreshToken: string | null;

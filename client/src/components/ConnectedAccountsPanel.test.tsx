@@ -395,4 +395,25 @@ describe('ConnectedAccountsPanel', () => {
       await screen.findByTestId(`connected-account-status-detail-${ACCOUNT_ID}`),
     ).toHaveTextContent('not supported yet');
   });
+
+  it('prefers a reason the row carries over an older test answer', async () => {
+    // A test answer stands in only for a row that says nothing. Once the row carries a
+    // reason of its own it is the newer fact, and the more specific one.
+    enableEmailSync();
+    respondWithAccounts([
+      { ...ACCOUNT, provider: 'microsoft', status: 'error', status_detail: 'INSUFFICIENT_SCOPE' },
+    ]);
+    server.use(
+      http.post(`/api/v1/connected-accounts/${ACCOUNT_ID}/test`, () =>
+        HttpResponse.json({ success: false, error: 'UNTESTABLE_PROVIDER' }),
+      ),
+    );
+
+    renderWithProviders(<ConnectedAccountsPanel />);
+    await userEvent.click(await screen.findByTestId(`connected-account-test-button-${ACCOUNT_ID}`));
+
+    expect(
+      await screen.findByTestId(`connected-account-status-detail-${ACCOUNT_ID}`),
+    ).toHaveTextContent('did not grant permission');
+  });
 });

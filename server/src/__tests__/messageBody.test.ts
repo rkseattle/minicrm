@@ -499,9 +499,9 @@ describe('parseMessage', () => {
   });
 
   it('counts a real attachment that also carries a Content-ID', async () => {
-    // The case the two drivers used to disagree on. mailparser marks this `related`
-    // — Content-ID under multipart/related — which reads as body content even though
-    // imapProvider's disposition rule, and the user, both call it an attachment.
+    // mailparser marks this `related` — a Content-ID under multipart/related — which
+    // would read as body content, though disposition, imapProvider, and the user all
+    // call it an attachment.
     const parsed = await parseMessage(
       Buffer.from(
         [

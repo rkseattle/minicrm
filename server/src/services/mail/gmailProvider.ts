@@ -87,9 +87,13 @@ const REQUEST_TIMEOUT_MS = 15_000;
 /**
  * What Gmail is asked to exclude.
  *
- * IMAP syncs exactly INBOX and Sent, so a driver that ingested drafts and chats would
- * make a mailbox read differently depending on which one synced it — a half-written draft
- * stored as real correspondence. `includeSpamTrash` defaults to false and is left alone.
+ * Drafts and chats are not correspondence — a half-written draft stored as a real message
+ * is wrong however it arrived. `includeSpamTrash` defaults to false and is left alone.
+ *
+ * This is not IMAP's scope. That driver syncs INBOX and Sent only, where this enumerates
+ * everything else the query allows, archived mail included. Gmail has no folder to select
+ * and its labels do not map onto IMAP's two, so matching would mean inventing a narrowing
+ * the user never asked for; the wider read is the deliberate choice.
  */
 const EXCLUDED_LABELS = '-in:drafts -in:chats';
 
@@ -362,6 +366,13 @@ function messageRefsOf(body: unknown): GmailMessageRef[] {
  * here: a message added straight to SPAM is a messageAdded record like any other, and the
  * backfill query excludes the same labels.
  */
+/** True when a message's own labels put it somewhere this driver does not sync. */
+function isExcludedByLabel(message: unknown): boolean {
+  const labelIds = (message as { labelIds?: unknown } | null)?.labelIds;
+  if (!Array.isArray(labelIds)) return false;
+  return labelIds.some((label) => typeof label === 'string' && EXCLUDED_LABEL_IDS.includes(label));
+}
+
 function addedRefsOf(body: unknown): GmailMessageRef[] {
   const history = (body as { history?: unknown } | null)?.history;
   if (!Array.isArray(history)) return [];
@@ -374,15 +385,9 @@ function addedRefsOf(body: unknown): GmailMessageRef[] {
     for (const entry of added) {
       const message = (entry as { message?: unknown } | null)?.message;
       if (typeof message !== 'object' || message === null) continue;
-      const { id, threadId, labelIds } = message as {
-        id?: unknown;
-        threadId?: unknown;
-        labelIds?: unknown;
-      };
+      const { id, threadId } = message as { id?: unknown; threadId?: unknown };
       if (typeof id !== 'string' || id === '') continue;
-      const labels = Array.isArray(labelIds) ? labelIds : [];
-      if (labels.some((label) => typeof label === 'string' && EXCLUDED_LABEL_IDS.includes(label)))
-        continue;
+      if (isExcludedByLabel(message)) continue;
       refs.push({ id, threadId: typeof threadId === 'string' && threadId ? threadId : null });
     }
   }
@@ -503,6 +508,11 @@ async function readMessages(
       continue;
     }
 
+    // Re-checked against the message's own labels, not just the history record's. A record
+    // that reports none reads as unlabelled, which passes a filter looking for SPAM or
+    // TRASH — and the fetched body carries the authoritative list at no extra cost.
+    if (isExcludedByLabel(body)) continue;
+
     const normalized = await normalizeMessage(body, ref, accountAddress);
     if (normalized !== null) messages.push(normalized);
   }
@@ -580,9 +590,8 @@ async function readBackfill(
   // whole mailbox — drafts, chats, and everything outside the window.
   // A resumed page reuses the window its token was issued against; only a fresh listing
   // takes the caller's `since`, which the engine recomputes from the clock every tick.
-  const afterSeconds = stored?.pageToken
-    ? (stored.afterSeconds ?? Math.floor(since.getTime() / 1000))
-    : Math.floor(since.getTime() / 1000);
+  const resumedWindow = stored?.pageToken ? stored.afterSeconds : null;
+  const afterSeconds = resumedWindow ?? Math.floor(since.getTime() / 1000);
   const params: Record<string, string> = {
     q: `after:${String(afterSeconds)} ${EXCLUDED_LABELS}`,
     maxResults: String(MAX_BACKFILL_MESSAGES_PER_PAGE),

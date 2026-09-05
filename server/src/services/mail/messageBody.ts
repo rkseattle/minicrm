@@ -46,7 +46,7 @@ const MAX_BODY_LENGTH = 65_536;
  * reaches the column as a replacement character — silent corruption of the last
  * character rather than a failure.
  */
-export function truncate(value: string, limit: number): string {
+function truncate(value: string, limit: number): string {
   if (value.length <= limit) return value;
   const cut = value.slice(0, limit);
   const lastCode = cut.charCodeAt(cut.length - 1);
@@ -76,7 +76,7 @@ export function stripNul(value: string): string {
  *
  * Exported because every provider owes both rules, not just IMAP.
  */
-export function storable(value: string): string {
+function storable(value: string): string {
   return truncate(stripNul(value), MAX_BODY_LENGTH);
 }
 
@@ -227,7 +227,6 @@ function addressesOf(value: AddressObject | AddressObject[] | undefined): string
     .filter((address) => address !== '');
 }
 
-/** A date the database will accept, or null. An Invalid Date reaches timestamptz as neither. */
 /**
  * True when a parsed message carries a part a user would call an attachment.
  *
@@ -245,6 +244,7 @@ function hasRealAttachment(attachments: readonly Attachment[]): boolean {
   });
 }
 
+/** A date the database will accept, or null. An Invalid Date reaches timestamptz as neither. */
 function usableDate(value: Date | undefined): Date | null {
   return value instanceof Date && !Number.isNaN(value.getTime()) ? value : null;
 }

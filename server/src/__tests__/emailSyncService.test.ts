@@ -841,7 +841,8 @@ describe('syncOneAccount — OAuth credentials', () => {
   });
 
   it('refuses an under-scoped mailbox without spending a token refresh', async () => {
-    // The reorder in syncOneAccount is what this asserts: no locked row, no refresh.
+    // A driver that refuses its own inputs costs nothing per tick: no locked row, no
+    // round trip to Google.
     const account = await upsertOAuthAccount(
       {
         userId: ACTOR.id,
@@ -956,8 +957,8 @@ it('parks a mailbox whose refresh token the provider revoked', async () => {
     [account.id],
   );
   expect(parked.rows[0].status).toBe('error');
-  // Exactly the ceiling, not merely past it: a count above it means a second writer
-  // recorded the same event, which is how the double audit entry below stayed hidden.
+  // Exactly the ceiling, not merely past it: a higher count means two writers recorded
+  // one event, which also shows up as the duplicate audit entry asserted below.
   expect(parked.rows[0].sync_failure_count).toBe(MAX_SYNC_FAILURES);
   expect(parked.rows[0].sync_next_attempt_at).toBeNull();
 

@@ -502,6 +502,43 @@ describe('createGmailProvider — incremental', () => {
     expect(page.messages).toEqual([]);
     expect(fetcher.urls.some((url) => url.includes('/messages/spam'))).toBe(false);
   });
+
+  it('drops a message whose history record reported no labels but whose own say SPAM', async () => {
+    // A record carrying no labelIds reads as unlabelled, which passes a filter looking for
+    // SPAM — and only the fetched message says otherwise.
+    const fetcher = fakeFetch([
+      {
+        match: '/history',
+        body: {
+          historyId: '6000',
+          history: [{ id: '1', messagesAdded: [{ message: { id: 'sneaky', threadId: 't' } }] }],
+        },
+      },
+      {
+        match: '/messages/sneaky',
+        body: {
+          id: 'sneaky',
+          threadId: 't',
+          labelIds: ['SPAM'],
+          raw: rawMessage({ from: 'a@b.c' }),
+        },
+      },
+    ]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    const page = await provider.fetchSince(
+      AUTH,
+      serializeCursor({
+        phase: 'incremental',
+        historyId: '5000',
+        pageToken: null,
+        afterSeconds: null,
+      }),
+      SINCE,
+    );
+
+    expect(page.messages).toEqual([]);
+  });
 });
 
 describe('createGmailProvider — messages that cannot be fully stored', () => {
