@@ -10,9 +10,38 @@
  * chooses its own encoding — IMAP's is per-mailbox UIDVALIDITY/UIDNEXT, Gmail's a
  * historyId, Graph's a delta link — and is the only code that parses it. A shared shape
  * would be a schema three providers must agree on for no benefit.
+ *
+ * This module also carries the connection-test result, which is not part of the sync
+ * contract but needs the same neutral home: the controller dispatches a test over every
+ * provider, and no driver may import another.
  */
 
+import type {
+  CONNECTION_FAILED,
+  INSUFFICIENT_SCOPE,
+  PROVIDER_AUTH_EXPIRED,
+} from '@minicrm/shared/schemas/connectedAccountSchema.js';
+
 import type { ConnectedAccountAuth } from '../connectedAccountService.js';
+
+/**
+ * What a connection test answers.
+ *
+ * Here rather than in a driver because the controller dispatches over providers and must
+ * name one type for all of them; this is the only module every driver and the controller
+ * already reach without importing each other.
+ *
+ * `message` is for logs and for a caller reporting a raw provider error — the panel
+ * renders `code` by translating it, so prose put there would arrive as a key no locale
+ * file matches.
+ */
+export type MailboxTestResult =
+  | { ok: true }
+  | {
+      ok: false;
+      code: typeof CONNECTION_FAILED | typeof PROVIDER_AUTH_EXPIRED | typeof INSUFFICIENT_SCOPE;
+      message: string;
+    };
 
 /** A message normalized out of whatever shape its provider returned. */
 export interface NormalizedMessage {

@@ -32,11 +32,8 @@ import {
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
 import { PROVIDER_AUTH_EXPIRED, testImapConnection } from '../services/imapConnectionService.js';
-import {
-  type GmailTestResult,
-  REJECTED_CREDENTIAL_MESSAGE,
-  testGmailAccess,
-} from '../services/mail/gmailProvider.js';
+import { REJECTED_CREDENTIAL_MESSAGE, testGmailAccess } from '../services/mail/gmailProvider.js';
+import type { MailboxTestResult } from '../services/mail/mailProvider.js';
 import {
   OAUTH_STATE_TTL_MS,
   buildAuthorizationRequest,
@@ -201,7 +198,7 @@ export async function testConnectedAccountHandler(req: Request, res: Response): 
 async function testStoredGmailCredential(
   account: ConnectedAccountInternal,
   actor: AuditActor,
-): Promise<GmailTestResult> {
+): Promise<MailboxTestResult> {
   let accessToken: string | null;
   try {
     accessToken = await getUsableAccessToken(account.id, account.userId, actor, refreshAccessToken);

@@ -1,0 +1,821 @@
+/**
+ * The Microsoft Graph implementation of the provider seam.
+ *
+ * No SDK. `@microsoft/microsoft-graph-client` wraps the four REST calls this driver
+ * makes, and its main draw is an auth layer connectedAccountService already owns. The
+ * precedent for reaching a provider directly is `revokeProviderTokens`: raw fetch, a
+ * hardcoded URL, an AbortController for the timeout.
+ *
+ * Graph's delta function is per-folder — there is no mailbox-wide `/me/messages/delta` —
+ * so the cursor carries one link per folder and both are read in one call, which is the
+ * IMAP driver's shape rather than Gmail's. Microsoft publishes no sandbox, so the tests
+ * validate every fake response against a vendored schema.
+ */
+
+import {
+  CONNECTION_FAILED,
+  INSUFFICIENT_SCOPE,
+  PROVIDER_AUTH_EXPIRED,
+} from '@minicrm/shared/schemas/connectedAccountSchema.js';
+
+import logger from '../../logger.js';
+import type { ConnectedAccountAuth } from '../connectedAccountService.js';
+import { GRAPH_MAIL_READ_SCOPE } from '../oauthProviderService.js';
+
+import type {
+  MailProvider,
+  MailboxTestResult,
+  NormalizedMessage,
+  ProviderPage,
+} from './mailProvider.js';
+import {
+  boundIndexedId,
+  directionOf,
+  MAX_MESSAGE_SOURCE_BYTES,
+  parseMessage,
+} from './messageBody.js';
+import { resolveThreadId } from './threading.js';
+
+const GRAPH_API_BASE = 'https://graph.microsoft.com/v1.0/me';
+
+// Re-exported from the shared list rather than restated: this value reaches status_detail,
+// which the client renders by translating, so a copy that drifts degrades the mailbox to
+// the generic reason instead of failing loudly.
+export { INSUFFICIENT_SCOPE };
+
+/** Message for a grant that cannot read mail. The user sees the locale string keyed by
+ * INSUFFICIENT_SCOPE; this reaches logs and any caller that reports a raw provider error. */
+const INSUFFICIENT_SCOPE_MESSAGE =
+  'This mailbox did not grant permission to read mail. Reconnect it to continue syncing.';
+
+/** Message for a credential the provider refused. Logged, not rendered — the panel
+ * translates PROVIDER_AUTH_EXPIRED instead. */
+export const REJECTED_CREDENTIAL_MESSAGE = 'Microsoft rejected the stored credentials.';
+
+/** Message for a mailbox that could not be reached at all. */
+export const UNREACHABLE_MESSAGE = 'Could not reach Outlook.';
+
+/**
+ * The folders this driver syncs, by Microsoft's locale-independent well-known names.
+ *
+ * The same scope the IMAP driver takes — a conversation is only half recorded without the
+ * replies the user sent. Unlike IMAP this needs no discovery heuristic: Microsoft
+ * documents these names as substitutes for a folder id whatever the mailbox's language.
+ */
+const SYNCED_FOLDERS = ['inbox', 'sentitems'] as const;
+
+type SyncedFolder = (typeof SYNCED_FOLDERS)[number];
+
+/**
+ * Messages requested per delta page, sent as `Prefer: odata.maxpagesize`.
+ *
+ * Graph chooses the page size otherwise and documents it as varying, and this driver
+ * issues one `$value` GET per delivered message — so an unbounded page is an unbounded
+ * tick. Lower than Gmail's incremental cap because every message here costs a second
+ * request, and the engine runs up to MAX_BACKFILL_PAGES_PER_TICK of these back to back.
+ */
+const MAX_MESSAGES_PER_PAGE = 50;
+
+/** Bound on each Graph request, so a hung endpoint cannot stall the whole tick. */
+const REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * Where each folder's sync stopped.
+ *
+ * The value is Graph's own `@odata.nextLink` or `@odata.deltaLink`, stored whole. Those
+ * URLs already encode the folder id and every query parameter of the request that issued
+ * them, so re-deriving either would create a second source of truth for something the
+ * link already states.
+ */
+type CursorByFolder = Map<SyncedFolder, string>;
+
+function isSyncedFolder(value: string): value is SyncedFolder {
+  return (SYNCED_FOLDERS as readonly string[]).includes(value);
+}
+
+/**
+ * Graph's own host, the only one a stored link may point at.
+ *
+ * A cursor is data read back from a column, and the driver replays it with a bearer token
+ * attached. Pinning the host is what stops a tampered row from directing that token
+ * somewhere else.
+ */
+function isGraphUrl(value: string): boolean {
+  try {
+    return new URL(value).origin === 'https://graph.microsoft.com';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Parses the stored cursor.
+ *
+ * A cursor that will not parse is treated as absent rather than thrown on: forgetting
+ * where a mailbox stopped costs a bounded re-backfill, where refusing to sync at all is
+ * unbounded. Each folder is validated independently for the same reason.
+ */
+export function parseCursor(cursor: string | null): CursorByFolder {
+  const parsed: CursorByFolder = new Map();
+  if (!cursor) return parsed;
+
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(cursor);
+  } catch {
+    return parsed;
+  }
+  if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return parsed;
+
+  // Safe: the guard above rejects anything that is not a non-array object.
+  for (const [folder, link] of Object.entries(decoded as Record<string, unknown>)) {
+    if (!isSyncedFolder(folder)) continue;
+    if (typeof link !== 'string' || !isGraphUrl(link)) continue;
+    parsed.set(folder, link);
+  }
+  return parsed;
+}
+
+export function serializeCursor(cursors: CursorByFolder): string {
+  return JSON.stringify(Object.fromEntries(cursors));
+}
+
+/**
+ * What this driver reads off a response.
+ *
+ * Narrower than the global `Response` on purpose: it states the contract a fake has to
+ * meet, and it keeps the module off a global whose availability the lint config still
+ * guards by Node version. `arrayBuffer` rather than `text` is load-bearing — a MIME
+ * document carries per-part charsets, so decoding it as UTF-8 would replace every
+ * non-UTF-8 byte before the parser saw it.
+ */
+export interface GraphResponse {
+  ok: boolean;
+  status: number;
+  json: () => Promise<unknown>;
+  arrayBuffer: () => Promise<ArrayBuffer>;
+  headers: { get: (name: string) => string | null };
+}
+
+/** The fetch seam, injected so tests drive the driver without reaching Microsoft. */
+export type FetchLike = (url: string, init: RequestInit) => Promise<GraphResponse>;
+
+/** The domain codes this driver raises, and the only ones a folder failure may carry. */
+const PROVIDER_ERROR_CODES: readonly string[] = [
+  CONNECTION_FAILED,
+  PROVIDER_AUTH_EXPIRED,
+  INSUFFICIENT_SCOPE,
+];
+
+/** A Graph request that failed in a way the engine should record. */
+function providerError(message: string, code: string): Error {
+  return Object.assign(new Error(message), { code });
+}
+
+/** True when this driver raised the error, rather than something upstream throwing. */
+function isProviderError(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && PROVIDER_ERROR_CODES.includes(code);
+}
+
+/** Error codes Graph returns when a stored delta link no longer means anything. */
+const RESYNC_CODES = ['syncstatenotfound', 'resyncrequired'];
+
+/** Error codes Graph returns for throttling, which is not a credential problem. */
+const THROTTLE_CODES = ['toomanyrequests', 'applicationthrottled'];
+
+/** The `error.code` a Graph error body carries, lowercased. */
+function errorCodeOf(body: unknown): string {
+  const code = (body as { error?: { code?: unknown } } | null)?.error?.code;
+  return typeof code === 'string' ? code.toLowerCase() : '';
+}
+
+/** Error codes that mean the credential, not the cursor, whatever status carries them. */
+const AUTH_CODES = ['invalidauthenticationtoken', 'accessdenied', 'unauthenticated'];
+
+/** True when a response says the stored delta link has aged out. */
+function isResyncRequired(status: number, body: unknown): boolean {
+  // Microsoft documents 410 for a sync reset, and separately "a 40X-series error with
+  // error codes such as syncStateNotFound" for an expired token — so the status alone
+  // cannot decide it, and neither can the body. An auth code wins over either: re-reading
+  // a mailbox whose token was refused would loop rather than ask the user to reconnect.
+  const code = errorCodeOf(body);
+  if (AUTH_CODES.includes(code)) return false;
+  return status === 410 || (status >= 400 && status < 500 && RESYNC_CODES.includes(code));
+}
+
+interface GraphRequestResult {
+  status: number;
+  body: unknown;
+}
+
+/**
+ * Turns a non-OK response into one of the engine's domain codes.
+ *
+ * Never leaks the provider's own body: it is a remote server's prose, and `status_detail`
+ * is rendered to a user.
+ *
+ * Throttling and a refused credential both arrive as a 4xx, and the two produce opposite
+ * advice — reconnecting a mailbox does nothing for a limit that resets in a minute, and
+ * the engine's backoff already handles the waiting. `Retry-After` is logged rather than
+ * honored for that reason: the engine owns when the next attempt happens.
+ */
+function errorForStatus(status: number, body: unknown, retryAfter: string | null): Error {
+  if (status === 429 || THROTTLE_CODES.includes(errorCodeOf(body))) {
+    logger.warn({ status, retryAfter }, 'graphProvider: throttled by Microsoft');
+    return providerError('Outlook is rate limiting this mailbox.', CONNECTION_FAILED);
+  }
+  if (status === 401 || status === 403) {
+    return providerError(REJECTED_CREDENTIAL_MESSAGE, PROVIDER_AUTH_EXPIRED);
+  }
+  return providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
+}
+
+/**
+ * Without this the id changes when a message moves between folders, which would
+ * re-deliver moved mail under a new provider_message_id as a duplicate row.
+ */
+const IMMUTABLE_ID_PREFERENCE = 'IdType="ImmutableId"';
+
+/**
+ * The headers every Graph request carries.
+ *
+ * A caller's preference is comma-joined onto the immutable-id one rather than replacing
+ * it: RFC 7240 allows several on one header, and every stored id depends on that one
+ * surviving.
+ */
+function graphHeaders(
+  accessToken: string,
+  extra: Record<string, string>,
+  preference?: string,
+): HeadersInit {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    Prefer: preference ? `${IMMUTABLE_ID_PREFERENCE}, ${preference}` : IMMUTABLE_ID_PREFERENCE,
+    ...extra,
+  };
+}
+
+/**
+ * Issues one bounded Graph request against an absolute URL.
+ *
+ * Absolute rather than a path fragment because a delta link is returned whole and replayed
+ * whole; callers building a fresh URL join it to GRAPH_API_BASE themselves.
+ */
+async function graphSend(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  url: string,
+  accept: string,
+  preference?: string,
+): Promise<GraphResponse> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetchImpl(url, {
+      method: 'GET',
+      headers: graphHeaders(accessToken, { Accept: accept }, preference),
+      signal: controller.signal,
+      // A redirect would carry the bearer token to wherever it points.
+      redirect: 'manual',
+    });
+  } catch (err) {
+    if (isProviderError(err)) throw err;
+    // undici reports every transport failure as the same TypeError, so the cause matters
+    // more than the name; either way the mailbox is unreachable rather than unauthorized.
+    throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Issues one bounded Graph request expecting JSON, against an absolute URL.
+ *
+ * Absolute rather than a path fragment because a delta link is returned whole and replayed
+ * whole; callers building a fresh URL join it to GRAPH_API_BASE themselves.
+ */
+async function graphRequest(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  url: string,
+  preference?: string,
+): Promise<GraphRequestResult> {
+  const response = await graphSend(fetchImpl, accessToken, url, 'application/json', preference);
+
+  // A 404 is a routine answer on several paths — a folder the mailbox does not have, a
+  // message deleted between listing and fetching — so the caller decides, not this helper.
+  if (response.status === 404) return { status: 404, body: null };
+
+  // Read before branching: the body is the only thing separating a spent quota and an
+  // expired delta link from a refused credential, and the three need different handling.
+  // A body that will not decode is a truncated or non-JSON response, which means the
+  // mailbox is unreachable rather than unauthorized. Only a genuine decode failure is
+  // rewritten that way: anything else thrown here is a fault in the caller's stack, and
+  // burying it as CONNECTION_FAILED would hide the defect behind a retry.
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch (err) {
+    if (err instanceof SyntaxError) throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
+    throw err;
+  }
+
+  if (!response.ok) {
+    if (isResyncRequired(response.status, body)) return { status: response.status, body };
+    throw errorForStatus(response.status, body, response.headers.get('retry-after'));
+  }
+  return { status: response.status, body };
+}
+
+/**
+ * Reads one message's MIME document as bytes.
+ *
+ * @returns null when the message is gone — listed a moment ago, deleted since.
+ */
+async function graphFetchSource(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  url: string,
+): Promise<Buffer | null> {
+  const response = await graphSend(fetchImpl, accessToken, url, 'text/plain');
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    // The error body decides a throttled 403 from a refused credential, exactly as on the
+    // JSON path — this response is MIME on success, but a failure still carries Graph's
+    // JSON error envelope, and reading it is what keeps a rate limit from telling the rep
+    // to reconnect.
+    let body: unknown = null;
+    try {
+      body = await response.json();
+    } catch {
+      // A failure whose body will not decode leaves the status to classify it.
+    }
+    throw errorForStatus(response.status, body, response.headers.get('retry-after'));
+  }
+  // Bytes, never text: the document's parts carry their own charsets, and decoding the
+  // whole thing as UTF-8 would corrupt every one that is not.
+  return Buffer.from(await response.arrayBuffer());
+}
+
+/**
+ * True when a granted scope authorizes reading a message body.
+ *
+ * Looser than Gmail's exact match, because Microsoft's is a looser contract: the token
+ * response may carry the bare `Mail.Read` rather than the full resource URI that was
+ * requested, and `Mail.ReadWrite` supersedes it. An equality check would refuse a
+ * correctly-granted mailbox and park it with a badge reconnecting cannot clear.
+ *
+ * `Mail.ReadBasic` is deliberately absent: it excludes bodies and attachments, so a
+ * mailbox holding only it would sync headers and store nothing readable.
+ */
+function grantsMailRead(grantedScopes: readonly string[]): boolean {
+  const bare = GRAPH_MAIL_READ_SCOPE.slice(GRAPH_MAIL_READ_SCOPE.lastIndexOf('/') + 1);
+  const accepted = [bare.toLowerCase(), 'mail.readwrite'];
+  return grantedScopes.some((scope) => {
+    const withoutHost = scope.replace(/^https:\/\/graph\.microsoft\.com\//i, '');
+    return accepted.includes(withoutHost.toLowerCase());
+  });
+}
+
+/**
+ * Confirms a token and grant can still read this mailbox, for the connection test.
+ *
+ * Lives here rather than in connectedAccountService because it needs this module's
+ * request path, its scope rule, and its error mapping — and that service deliberately
+ * keeps oauthProviderService type-only so openid-client does not load for every consumer
+ * of it.
+ *
+ * The caller supplies the access token: refreshing it needs a row lock this module has no
+ * business taking.
+ */
+export async function testGraphAccess(
+  accessToken: string,
+  grantedScopes: readonly string[],
+  fetchImpl: FetchLike = fetch,
+): Promise<MailboxTestResult> {
+  if (!grantsMailRead(grantedScopes)) {
+    return { ok: false, code: INSUFFICIENT_SCOPE, message: INSUFFICIENT_SCOPE_MESSAGE };
+  }
+
+  try {
+    const { status, body } = await graphRequest(
+      fetchImpl,
+      accessToken,
+      `${GRAPH_API_BASE}/mailFolders/inbox`,
+    );
+
+    // graphRequest hands a 404 back rather than throwing, because on the sync paths it
+    // means a missing folder or a deleted message. On the inbox it means the mailbox
+    // itself is gone, and reporting that as healthy would clear the failure count and put
+    // a dead mailbox back on the schedule.
+    if (status === 404 || typeof (body as { id?: unknown } | null)?.id !== 'string') {
+      return { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE };
+    }
+    return { ok: true };
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    return code === PROVIDER_AUTH_EXPIRED
+      ? { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE }
+      : { ok: false, code: CONNECTION_FAILED, message: UNREACHABLE_MESSAGE };
+  }
+}
+
+async function resolveFolderId(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  folder: SyncedFolder,
+): Promise<string | null> {
+  const { status, body } = await graphRequest(
+    fetchImpl,
+    accessToken,
+    `${GRAPH_API_BASE}/mailFolders/${folder}`,
+  );
+
+  // A folder the mailbox does not have. Only this answer is an absent folder.
+  if (status === 404) return null;
+
+  // A 200 carrying no id is malformed, and must not read as "no folder": that would report
+  // the tick a success, so commitPage would clear the failure count on every run and a
+  // mailbox syncing nothing would never be retired nor surface to the user.
+  const id = (body as { id?: unknown } | null)?.id;
+  if (typeof id !== 'string' || id === '') {
+    throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
+  }
+  return id;
+}
+
+/** Only what routing needs: the body arrives separately, from `$value`. */
+const DELTA_SELECT = 'id,conversationId,isDraft,receivedDateTime';
+
+/** One message the delta page reported as present. */
+interface GraphMessageRef {
+  id: string;
+  conversationId: string | null;
+}
+
+/**
+ * Pulls the messages worth fetching out of a delta page.
+ *
+ * Three kinds are dropped here rather than after their body is downloaded, because each
+ * costs a request that cannot be taken back:
+ *
+ * - `@removed`, which Graph uses for a message deleted OR moved out of the folder. The
+ *   engine has no delete path and a stored row is the record of a conversation that did
+ *   happen, so a removal is not acted on.
+ * - drafts, which are not correspondence — a half-written draft stored as a real message
+ *   is wrong however it arrived, the rule both other drivers apply.
+ * - anything older than the backfill window, which the opening round returns in full
+ *   because `$filter` cannot be used here. Only the opening round: the seam makes the
+ *   cursor authoritative once one exists, and a resumed round reports a message the user
+ *   just filed into the folder, whose own date may be years old.
+ */
+function messageRefsOf(body: unknown, since: Date | null): GraphMessageRef[] {
+  const value = (body as { value?: unknown } | null)?.value;
+  if (!Array.isArray(value)) return [];
+
+  const refs: GraphMessageRef[] = [];
+  for (const entry of value) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const message = entry as {
+      id?: unknown;
+      conversationId?: unknown;
+      isDraft?: unknown;
+      receivedDateTime?: unknown;
+      '@removed'?: unknown;
+    };
+    if (message['@removed'] !== undefined) continue;
+    if (typeof message.id !== 'string' || message.id === '') continue;
+    if (message.isDraft === true) continue;
+
+    // A message with no readable date is kept: the window is an optimization, and dropping
+    // a message over a missing field would lose it for good once the cursor advanced.
+    if (since !== null && typeof message.receivedDateTime === 'string') {
+      const received = new Date(message.receivedDateTime);
+      if (!Number.isNaN(received.getTime()) && received < since) continue;
+    }
+
+    refs.push({
+      id: message.id,
+      conversationId:
+        typeof message.conversationId === 'string' && message.conversationId
+          ? message.conversationId
+          : null,
+    });
+  }
+  return refs;
+}
+
+/**
+ * Turns one MIME document into the row the engine stores.
+ *
+ * The body comes from the same parser IMAP and Gmail use, over the same kind of document,
+ * so a message reads identically whichever driver synced it.
+ *
+ * @returns null when the document carries no usable sender — the one field with no
+ *   sensible default, and the same rule the other two drivers apply.
+ */
+async function normalizeMessage(
+  source: Buffer,
+  ref: GraphMessageRef,
+  accountAddress: string,
+): Promise<NormalizedMessage | null> {
+  // Oversized documents keep their headers and store no body, which is what both other
+  // drivers do. Dropping the message instead would lose it for good: the cursor advances
+  // past it in the same transaction that stores the page.
+  const oversized = source.byteLength > MAX_MESSAGE_SOURCE_BYTES;
+  if (oversized) {
+    logger.warn(
+      { messageId: ref.id, bytes: source.byteLength },
+      'graphProvider: storing headers only for an oversized message',
+    );
+  }
+
+  const parsed = await parseMessage(source, { headersOnly: oversized });
+  if (!parsed.fromAddress) return null;
+
+  // Reported per message so a silent body loss stays observable, as both other drivers do.
+  if (parsed.lostText && !oversized) {
+    logger.warn({ messageId: ref.id }, 'graphProvider: stored a message with no body text');
+  }
+
+  return {
+    // Not folder-qualified, unlike IMAP's: a UID means nothing outside its mailbox, but a
+    // Graph id is unique across the whole mailbox, so qualifying it would store a message
+    // moved between folders twice.
+    providerMessageId: boundIndexedId(ref.id),
+    // Graph's own conversation id where it has one; the RFC 5322 fallback covers a
+    // response that lacks it, and the id itself covers a message that carries neither.
+    threadId: boundIndexedId(
+      ref.conversationId ?? resolveThreadId(parsed.threading) ?? `graph-${ref.id}`,
+    ),
+    direction: directionOf(parsed.fromAddress, accountAddress),
+    fromAddress: parsed.fromAddress,
+    toAddresses: parsed.toAddresses,
+    ccAddresses: parsed.ccAddresses,
+    subject: parsed.subject,
+    hasAttachments: parsed.hasAttachments,
+    sentAt: parsed.sentAt,
+    bodyText: parsed.bodyText,
+    bodyHtml: parsed.bodyHtml,
+    snippet: parsed.snippet,
+  };
+}
+
+/**
+ * Reads each selected message's MIME document and turns it into a stored row.
+ *
+ * `$value` returns the whole RFC 2822 document, which `parseMessage` already handles.
+ * Walking Graph's own `body` property instead would mean a second rule for part
+ * selection, HTML-only conversion, and attachment disposition, kept in agreement with the
+ * other two drivers forever — the duplication that makes a mailbox read differently
+ * depending on which driver synced it.
+ *
+ * Sequential rather than concurrent: Graph throttles per mailbox, and the engine runs
+ * several pages back to back.
+ */
+async function readMessages(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  refs: readonly GraphMessageRef[],
+  accountAddress: string,
+): Promise<NormalizedMessage[]> {
+  const messages: NormalizedMessage[] = [];
+
+  for (const ref of refs) {
+    const source = await graphFetchSource(
+      fetchImpl,
+      accessToken,
+      `${GRAPH_API_BASE}/messages/${encodeURIComponent(ref.id)}/$value`,
+    );
+
+    // A message listed a moment ago can be gone by the time it is fetched. Skipping it
+    // costs one message; failing the page would discard every message beside it and
+    // re-read them all next tick.
+    if (source === null) {
+      logger.warn({ messageId: ref.id }, 'graphProvider: message vanished between list and fetch');
+      continue;
+    }
+
+    const normalized = await normalizeMessage(source, ref, accountAddress);
+    if (normalized !== null) messages.push(normalized);
+  }
+
+  return messages;
+}
+
+/**
+ * What one folder's delta page reported, before any body is fetched.
+ *
+ * Metadata and bodies are two passes because an invalidation in EITHER folder discards the
+ * whole account's page: the seam requires a null cursor beside `cursorInvalid`. Fetching
+ * bodies as each folder is read would pay a `$value` request per message for a page the
+ * sibling folder is about to throw away.
+ */
+interface FolderPage {
+  refs: GraphMessageRef[];
+  /** The link the next fetch resumes from, or null when the folder is gone. */
+  cursor: string | null;
+  invalid: boolean;
+  hasMore: boolean;
+}
+
+/**
+ * Reads one folder's next delta page.
+ *
+ * A round opened with no stored link returns the folder's current contents and pages via
+ * `@odata.nextLink` until it hands back an `@odata.deltaLink`; the next round resumes from
+ * that link. One endpoint carries both phases, so there is no phase field to keep in
+ * agreement with the link beside it.
+ *
+ * Returns what to fetch, not what was fetched — see FolderPage.
+ */
+async function readFolder(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  folder: SyncedFolder,
+  stored: string | undefined,
+  since: Date,
+): Promise<FolderPage> {
+  // The window bounds the whole opening round, not just its first page. A `$skiptoken`
+  // link is a position INSIDE that round — Graph hands one back until the round completes
+  // with a `$deltatoken` — so treating a resumed page as incremental would let page two
+  // ingest the mailbox's entire history. Gmail carries `afterSeconds` for the same reason.
+  const opening = stored === undefined || stored.includes('$skiptoken');
+  let url: string;
+  if (stored === undefined) {
+    const folderId = await resolveFolderId(fetchImpl, accessToken, folder);
+    if (folderId === null) return { refs: [], cursor: null, invalid: false, hasMore: false };
+    url =
+      `${GRAPH_API_BASE}/mailFolders/${encodeURIComponent(folderId)}/messages/delta` +
+      `?$select=${DELTA_SELECT}`;
+  } else {
+    url = stored;
+  }
+
+  const { status, body } = await graphRequest(
+    fetchImpl,
+    accessToken,
+    url,
+    `odata.maxpagesize=${String(MAX_MESSAGES_PER_PAGE)}`,
+  );
+
+  // The stored link has aged out of Graph's token cache. The engine answers with a
+  // bounded re-backfill, not a full resync.
+  if (isResyncRequired(status, body)) {
+    return { refs: [], cursor: null, invalid: true, hasMore: false };
+  }
+
+  // A folder that answers 404 on a link it issued has been deleted under us. Treating it
+  // as invalid rather than empty is what re-reads it from scratch once it returns.
+  if (status === 404) return { refs: [], cursor: null, invalid: true, hasMore: false };
+
+  const page = body as { '@odata.nextLink'?: unknown; '@odata.deltaLink'?: unknown } | null;
+  const nextLink = page?.['@odata.nextLink'];
+  const deltaLink = page?.['@odata.deltaLink'];
+  const resume = typeof nextLink === 'string' ? nextLink : deltaLink;
+
+  // Graph documents a page as carrying exactly one of the two, so a page with neither is
+  // a malformed response rather than a stale cursor. Raised as a folder failure so the
+  // failure ceiling can retire the mailbox: treating it as an invalidation would re-read
+  // from null on every tick while commitPage cleared the failure count, forever.
+  if (typeof resume !== 'string' || !isGraphUrl(resume)) {
+    throw providerError(
+      'graphProvider: delta page carried no usable continuation link',
+      CONNECTION_FAILED,
+    );
+  }
+
+  return {
+    // The window bounds an opening round only. Once a link exists the cursor is
+    // authoritative, per the seam — a message filed into the folder today is new to this
+    // mailbox however old the message itself is.
+    refs: messageRefsOf(body, opening ? since : null),
+    cursor: resume,
+    invalid: false,
+    hasMore: typeof nextLink === 'string',
+  };
+}
+
+/**
+ * Builds a Graph provider for one account.
+ *
+ * @param accountAddress - The mailbox's own address, used to decide message direction.
+ * @param grantedScopes - What the provider actually granted, which may be fewer than were
+ *   requested.
+ * @throws with code INSUFFICIENT_SCOPE when those scopes cannot read mail.
+ * @param fetchImpl - Injected so tests drive the driver without reaching Microsoft, which
+ *   publishes no sandbox to reach.
+ */
+export function createGraphProvider(
+  accountAddress: string,
+  grantedScopes: readonly string[],
+  fetchImpl: FetchLike = fetch,
+): MailProvider {
+  // Checked at construction, not at fetch: the engine builds the provider before it
+  // decrypts and refreshes credentials, so refusing here is what keeps an under-scoped
+  // mailbox from spending a locked token refresh every tick.
+  if (!grantsMailRead(grantedScopes)) {
+    logger.warn(
+      { accountAddress, grantedScopes },
+      'graphProvider: mailbox lacks the scope needed to read mail',
+    );
+    throw providerError(INSUFFICIENT_SCOPE_MESSAGE, INSUFFICIENT_SCOPE);
+  }
+
+  return {
+    async fetchSince(
+      auth: ConnectedAccountAuth,
+      cursor: string | null,
+      since: Date,
+    ): Promise<ProviderPage> {
+      if (auth.kind !== 'oauth') {
+        throw providerError('Outlook requires an OAuth account.', PROVIDER_AUTH_EXPIRED);
+      }
+
+      const stored = parseCursor(cursor);
+      const pending: { folder: SyncedFolder; refs: GraphMessageRef[] }[] = [];
+      const nextCursor: CursorByFolder = new Map();
+      const failureCodes: string[] = [];
+      let anyInvalid = false;
+      let anyMore = false;
+
+      // Every folder is read in one call, as the IMAP driver does. Reading one per call
+      // would halve the effective sync rate: the engine calls fetchSince once per tick on
+      // the incremental path, so the unread folder would wait a whole interval.
+      for (const folder of SYNCED_FOLDERS) {
+        const storedForFolder = stored.get(folder);
+        try {
+          const result = await readFolder(
+            fetchImpl,
+            auth.access_token,
+            folder,
+            storedForFolder,
+            since,
+          );
+          pending.push({ folder, refs: result.refs });
+          if (result.cursor !== null) nextCursor.set(folder, result.cursor);
+          anyInvalid ||= result.invalid;
+          anyMore ||= result.hasMore;
+        } catch (err) {
+          // Only a failure this driver classified is a folder failure. Anything else is a
+          // bug in the process — a programming error, or a test double breaking its own
+          // contract — and tolerating it would hide the defect behind a skipped folder.
+          if (!isProviderError(err)) throw err;
+
+          // One folder failing must not discard the folders that succeeded. Its stored
+          // position is kept so it resumes rather than re-backfills, and `hasMore` is
+          // deliberately not set: a folder gone for good would otherwise keep the engine
+          // paging an account forever to deliver nothing.
+          logger.warn({ err, folder }, 'graphProvider: skipping unreadable folder');
+          if (storedForFolder) nextCursor.set(folder, storedForFolder);
+          failureCodes.push(String((err as { code?: unknown }).code));
+        }
+      }
+
+      // Tolerating one failed folder is not the same as tolerating all of them. A mailbox
+      // where nothing at all can be read is an account that no longer works, and reporting
+      // an empty page for it would clear the failure count and mark it healthy on every
+      // tick — so it would never be retired and the user would never be told to reconnect.
+      if (failureCodes.length === SYNCED_FOLDERS.length) {
+        // The shared code where the folders agree, so a revoked token still reports
+        // PROVIDER_AUTH_EXPIRED and asks the user to reconnect. Reporting CONNECTION_FAILED
+        // there would advise waiting for a retry that can never succeed.
+        const agreed = failureCodes.every((code) => code === failureCodes[0])
+          ? failureCodes[0]
+          : CONNECTION_FAILED;
+        throw providerError('graphProvider: no folder on this mailbox could be read', agreed);
+      }
+
+      // One invalidated folder invalidates the account: the seam requires a null cursor
+      // beside cursorInvalid, and the engine's recovery is a bounded re-backfill. Bodies
+      // are fetched only once that is settled, so a discarded page costs no `$value` call.
+      if (anyInvalid) {
+        return { messages: [], cursor: null, cursorInvalid: true, hasMore: false };
+      }
+
+      // Deduplicated across folders before any body is fetched: a Graph id is unique in
+      // the mailbox, so a self-sent message listed by both folders is one document, and
+      // downloading it twice spends the per-mailbox throttle budget this pass is
+      // sequential to protect.
+      const seen = new Set<string>();
+      const unique: GraphMessageRef[] = [];
+      for (const { refs } of pending) {
+        for (const ref of refs) {
+          if (seen.has(ref.id)) continue;
+          seen.add(ref.id);
+          unique.push(ref);
+        }
+      }
+
+      const messages = await readMessages(fetchImpl, auth.access_token, unique, accountAddress);
+
+      return {
+        messages,
+        cursor: serializeCursor(nextCursor),
+        cursorInvalid: false,
+        hasMore: anyMore,
+      };
+    },
+  };
+}
