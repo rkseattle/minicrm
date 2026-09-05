@@ -1063,12 +1063,26 @@ describe('createGraphProvider — threading', () => {
 });
 
 describe('createGraphProvider — failures', () => {
+  it('throws when every folder is absent', async () => {
+    // The only path to the readable-folder guard: any other failure throws out of
+    // readFolder first. Inbox is not a folder a live mailbox lacks, so a 404 on all of
+    // them means the token cannot see the mailbox — reporting an empty page would clear
+    // the failure count every tick and the mailbox would never be retired.
+    const fetcher = fakeFetch([
+      { match: '/mailFolders/inbox', status: 404 },
+      { match: '/mailFolders/sentitems', status: 404 },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
+  });
+
   it('fails the page when one folder cannot be read', async () => {
     // Not skipped: a page reported as a success clears the failure count, so a folder
     // failing forever would be retried forever — never retired, never surfaced to the
-    // user. Failing lets the engine's backoff and ceiling do their job. The sibling
-    // folder's stored position is untouched, so the next tick re-reads what this
-    // discarded.
+    // user. Failing lets the engine's backoff and ceiling do their job.
     const fetcher = fakeFetch([
       { match: `${INBOX_DELTA}?$deltatoken=d1`, status: 500, body: {} },
       { match: `${SENT_DELTA}?$deltatoken=s1`, body: emptyRound(`${SENT_DELTA}?$deltatoken=s2`) },
@@ -1106,7 +1120,7 @@ describe('createGraphProvider — failures', () => {
     );
   });
 
-  it('reports a refused credential rather than an unreachable server', async () => {
+  it('stops at the first unreadable folder rather than reading on', async () => {
     const fetcher = fakeFetch([
       {
         match: '/mailFolders/inbox',
@@ -1121,12 +1135,12 @@ describe('createGraphProvider — failures', () => {
     ]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
 
-    // Where the folders agree the credential was refused, the account-level throw carries
-    // that code — CONNECTION_FAILED would tell the rep to wait for a retry that can never
-    // succeed, and burn the whole backoff ceiling doing it.
     await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
       expect.objectContaining({ code: 'PROVIDER_AUTH_EXPIRED' }),
     );
+    // The page fails at the first folder, so the second is never requested — a spent
+    // request against a mailbox already known to be failing.
+    expect(fetcher.urls.some((url) => url.includes('sentitems'))).toBe(false);
   });
 
   it('treats throttling as a connection failure, not a bad credential', async () => {

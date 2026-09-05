@@ -178,22 +178,9 @@ export interface GraphResponse {
 /** The fetch seam, injected so tests drive the driver without reaching Microsoft. */
 export type FetchLike = (url: string, init: RequestInit) => Promise<GraphResponse>;
 
-/** The domain codes this driver raises, and the only ones a folder failure may carry. */
-const PROVIDER_ERROR_CODES: readonly string[] = [
-  CONNECTION_FAILED,
-  PROVIDER_AUTH_EXPIRED,
-  INSUFFICIENT_SCOPE,
-];
-
 /** A Graph request that failed in a way the engine should record. */
 function providerError(message: string, code: string): Error {
   return Object.assign(new Error(message), { code });
-}
-
-/** True when this driver raised the error, rather than something upstream throwing. */
-function isProviderError(err: unknown): boolean {
-  const code = (err as { code?: unknown } | null)?.code;
-  return typeof code === 'string' && PROVIDER_ERROR_CODES.includes(code);
 }
 
 /** Error codes Graph returns when a stored delta link no longer means anything. */
@@ -302,10 +289,11 @@ async function graphSend(
       // A redirect would carry the bearer token to wherever it points.
       redirect: 'manual',
     });
-  } catch (err) {
-    if (isProviderError(err)) throw err;
-    // undici reports every transport failure as the same TypeError, so the cause matters
-    // more than the name; either way the mailbox is unreachable rather than unauthorized.
+  } catch {
+    // Only the fetch itself is inside this try — every classified failure is raised by a
+    // caller, after it has read the response. undici reports every transport failure as
+    // the same TypeError, so there is nothing here to tell apart: the mailbox is
+    // unreachable rather than unauthorized.
     throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
   } finally {
     clearTimeout(timer);
