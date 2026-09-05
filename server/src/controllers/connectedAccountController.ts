@@ -34,6 +34,7 @@ import {
 } from '../services/connectedAccountService.js';
 import { PROVIDER_AUTH_EXPIRED, testImapConnection } from '../services/imapConnectionService.js';
 import { testGmailAccess } from '../services/mail/gmailProvider.js';
+import { testGraphAccess } from '../services/mail/graphProvider.js';
 import type { MailboxTestResult } from '../services/mail/mailProvider.js';
 import {
   OAUTH_STATE_TTL_MS,
@@ -216,13 +217,13 @@ type MailboxProbe = (
  * Which providers have a probe.
  *
  * Total over OAuth providers rather than partial, so adding one to OAUTH_PROVIDERS forces
- * a decision here instead of defaulting to UNTESTABLE_PROVIDER. `null` records that the
- * decision was made and the answer is "none yet"; it is not a guarantee that a provider
- * with a driver has been wired up.
+ * a decision here instead of defaulting to UNTESTABLE_PROVIDER. Every provider has a probe
+ * today, which makes the null branch below unreachable — it is kept because `null` is the
+ * only way to add a provider ahead of its driver without that silence returning.
  */
 const OAUTH_PROBES: Record<OAuthProvider, MailboxProbe | null> = {
   google: testGmailAccess,
-  microsoft: null,
+  microsoft: testGraphAccess,
 };
 
 /**

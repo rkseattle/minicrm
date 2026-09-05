@@ -440,6 +440,22 @@ export async function parkFromScheduler(accountId: string): Promise<void> {
 }
 
 /**
+ * Defers every mailbox this test file does not own, for the length of one tick.
+ *
+ * `claimAccountsDueForSync` is global, so a file that runs a real tick claims every other
+ * file's due mailboxes too — building real drivers, which dial an IMAP host and a
+ * provider's discovery endpoint from a unit test. Each file defers the others immediately
+ * before claiming, so the two defer each other rather than one stranding the rest.
+ */
+export async function deferMailboxesOfOtherSuites(ownerIds: readonly string[]): Promise<void> {
+  await pool.query(
+    `UPDATE connected_accounts SET sync_next_attempt_at = NOW() + interval '1 hour'
+      WHERE user_id <> ALL($1::uuid[])`,
+    [ownerIds],
+  );
+}
+
+/**
  * The error a provider raises when a refresh token is genuinely dead.
  *
  * A bare Error will not do: the refresh path distinguishes a provider that ANSWERED that

@@ -47,6 +47,7 @@ import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js'
 import { refreshAccessToken } from './oauthProviderService.js';
 import type { RefreshedTokens } from './oauthProviderService.js';
 import { createGmailProvider } from './mail/gmailProvider.js';
+import { createGraphProvider } from './mail/graphProvider.js';
 import { createImapProvider } from './mail/imapProvider.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mail/mailProvider.js';
 import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
@@ -232,6 +233,13 @@ function providerFor(account: ClaimedSyncAccount): MailProvider {
   if (account.provider === 'imap') return createImapProvider(account.emailAddress);
   if (account.provider === 'google') {
     return createGmailProvider(
+      account.emailAddress,
+      account.grantedScopes,
+      underTest ? refuseLiveFetch : undefined,
+    );
+  }
+  if (account.provider === 'microsoft') {
+    return createGraphProvider(
       account.emailAddress,
       account.grantedScopes,
       underTest ? refuseLiveFetch : undefined,

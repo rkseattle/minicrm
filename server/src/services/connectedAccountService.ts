@@ -89,9 +89,13 @@ export type ConnectedAccountAuth = ImapAuthPayload | OAuthAuthPayload;
  * The single source of truth for what the scheduler may claim. A provider absent from
  * this list is never picked up and so never marked failed for lacking a driver — it
  * simply does not sync, which is what a mailbox connected before its provider shipped
- * should do. Microsoft Graph joins this list when its driver lands.
+ * should do.
  */
-export const IMPLEMENTED_SYNC_PROVIDERS: readonly ConnectedAccountProvider[] = ['imap', 'google'];
+export const IMPLEMENTED_SYNC_PROVIDERS: readonly ConnectedAccountProvider[] = [
+  'imap',
+  'google',
+  'microsoft',
+];
 
 /**
  * How long a claimed mailbox is withheld from other ticks.
