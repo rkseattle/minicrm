@@ -11,6 +11,11 @@
 
 import { ImapFlow } from 'imapflow';
 
+import {
+  CONNECTION_FAILED,
+  PROVIDER_AUTH_EXPIRED,
+} from '@minicrm/shared/schemas/connectedAccountSchema.js';
+
 import logger from '../logger.js';
 import { UrlNotSafeError, assertHostnameIsSafe } from '../utils/urlSafetyUtils.js';
 
@@ -23,11 +28,10 @@ export interface ImapConnectionCandidate {
   secure: boolean;
 }
 
-/** The provider rejected the stored credentials; the user must supply new ones. */
-export const PROVIDER_AUTH_EXPIRED = 'PROVIDER_AUTH_EXPIRED';
-
-/** The destination could not be reached, or refused the connection. */
-export const CONNECTION_FAILED = 'CONNECTION_FAILED';
+// Re-exported from the shared list rather than restated: both reach status_detail, which
+// the client renders by translating, so a copy that drifts degrades the mailbox to the
+// generic reason instead of failing loudly.
+export { PROVIDER_AUTH_EXPIRED, CONNECTION_FAILED };
 
 /** Outcome of a connection attempt. `code` is absent only when the attempt succeeded. */
 export type ImapConnectionResult =

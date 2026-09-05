@@ -268,10 +268,12 @@ reports RFC 6154 special-use for both `\Inbox` and `\Sent` — measured, not ass
 defect above, directly confirmed.
 
 **Still reasoned, not observed:** every error and timeout path, which is why the fake stays.
-The suite skips when GreenMail is unreachable, so a developer who has not started the test
-stack gets a skip rather than a red build — which also means a broken GreenMail service
-would go quiet rather than loud. Check that it reports 4 passed, not 4 skipped, when you
-depend on it.
+
+Locally the suite skips when GreenMail is unreachable, so a developer who has not started
+the test stack gets a skip rather than a red build. In CI it does not: `server-tests`
+declares GreenMail as a service, so `CI=true` turns an unreachable server into a hard
+failure rather than a silent skip — a suite that exists to catch what a fake cannot must
+not be able to pass by not running.
 
 The mailbox login is `rep`, **not** `rep@example.com`: GreenMail reads
 `-Dgreenmail.users=rep:secret-pass-12@example.com` as user `rep`, password

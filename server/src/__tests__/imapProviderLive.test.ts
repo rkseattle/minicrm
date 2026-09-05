@@ -42,7 +42,7 @@ const AUTH: ImapAuthPayload = {
 /** GreenMail is on a private address, which the SSRF guard refuses by design. */
 const allowPrivateHost = (): Promise<void> => Promise.resolve();
 
-async function greenmailIsUp(): Promise<boolean> {
+async function connects(): Promise<boolean> {
   const client = new ImapFlow({
     host: IMAP_HOST,
     port: IMAP_PORT,
@@ -59,7 +59,29 @@ async function greenmailIsUp(): Promise<boolean> {
   }
 }
 
-const reachable = await greenmailIsUp();
+/**
+ * Waits for the server, because a service container is not always listening the instant
+ * the job starts. Returns false rather than throwing so a developer without the test
+ * stack gets a skip.
+ */
+async function greenmailIsUp(attempts: number): Promise<boolean> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (await connects()) return true;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  return false;
+}
+
+// CI declares GreenMail as a service, so a skip there means the service is broken — which
+// is exactly the silence this suite exists to remove. Locally an absent stack is ordinary,
+// so it skips instead.
+const inCi = process.env.CI === 'true';
+const reachable = await greenmailIsUp(inCi ? 30 : 1);
+if (inCi && !reachable) {
+  throw new Error(
+    `imapProviderLive: GreenMail is declared as a CI service but nothing answered on ${IMAP_HOST}:${String(IMAP_PORT)}`,
+  );
+}
 
 describe.skipIf(!reachable)('imapProvider against a real IMAP server', () => {
   beforeAll(async () => {

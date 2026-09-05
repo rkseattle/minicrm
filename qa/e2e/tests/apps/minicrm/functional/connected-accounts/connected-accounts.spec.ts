@@ -12,9 +12,10 @@
  * have contract-test coverage in connectedAccountController.test.ts, including the
  * flag-off 403 and the unreachable-server 400. Nothing here would be additive.
  *
- * A successful IMAP connect is untestable regardless: the test stack's only mail service
- * is MailHog, which speaks SMTP and runs no IMAP listener. A live OAuth connect needs a
- * real provider consent screen. Both wait on the sync story.
+ * A successful IMAP connect is not covered here: the test stack does run GreenMail, but
+ * reaching it from the app would need the SSRF guard bypassed for a private address, so
+ * the provider is exercised directly by imapProviderLive.test.ts instead. A live OAuth
+ * connect needs a real provider consent screen.
  *
  * Framework conventions:
  *   - All tests tagged @functional

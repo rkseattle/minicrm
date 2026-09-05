@@ -12,6 +12,7 @@ import { z } from 'zod';
 import {
   imapCredentialsSchema,
   oauthProviderSchema,
+  UNTESTABLE_PROVIDER,
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import logger from '../logger.js';
@@ -189,15 +190,6 @@ export async function testConnectedAccountHandler(req: Request, res: Response): 
   }
   res.status(200).json({ success: false, error: attempt.code });
 }
-
-/**
- * Reported when a provider has no connection test of its own.
- *
- * A code rather than a sentence: the client translates it, as it does status_detail, so
- * one mailbox does not explain itself in English while another explains itself in the
- * user's language.
- */
-const UNTESTABLE_PROVIDER = 'UNTESTABLE_PROVIDER';
 
 /**
  * Refreshes a Gmail mailbox's token, then asks whether it can still read mail.

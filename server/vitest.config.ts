@@ -257,6 +257,10 @@ const SERIAL_FILES = [
   'src/__tests__/emailSyncService.test.ts',
   'src/__tests__/connectedAccountService.test.ts',
   'src/__tests__/connectedAccountController.test.ts',
+  // A different shared resource from the three above: GreenMail's INBOX, which this file
+  // delivers into and empties wholesale in afterAll. Nothing else touches it today, so
+  // serializing it is what keeps that true rather than a fix for a live collision.
+  'src/__tests__/imapProviderLive.test.ts',
   'src/__tests__/aiRetentionController.test.ts',
   // piiFilter deletes and writes ai_field_exclusions (global table, no per-test scoping
   // key) and exercises piiFilter's in-memory admin-exclusion cache; running in parallel
