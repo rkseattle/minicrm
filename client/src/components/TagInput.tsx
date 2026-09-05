@@ -274,7 +274,24 @@ export function ConnectedTagInput({
       const { attachDealTag } = await import('@/api/tags.js');
       return attachDealTag(entityId, name);
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      // The list's FIRST fetch can still be open when this fires — the input is
+      // interactive during it. invalidateQueries would then join that in-flight GET
+      // rather than restarting it, because the restart branch is gated on
+      // `data !== undefined`; its pre-attach response would land and clear
+      // `isInvalidated`, leaving the new tag out of the cache with nothing to refetch.
+      await queryClient.cancelQueries({ queryKey: tagsQueryKey });
+    },
+    onSuccess: (attached) => {
+      // Seeded from the response rather than refetched: the badge then does not depend
+      // on the invalidate/refetch handshake at all, matching what aiPage does for the
+      // same race. The invalidations below still reconcile the other views.
+      queryClient.setQueryData<{ tags: TagResponse[] }>(tagsQueryKey, (old) => {
+        const existing = old?.tags ?? [];
+        return existing.some((t) => t.id === attached.tag.id)
+          ? { tags: existing }
+          : { tags: [...existing, attached.tag] };
+      });
       void queryClient.invalidateQueries({ queryKey: tagsQueryKey });
       void queryClient.invalidateQueries({ queryKey: entityQueryKey });
       void queryClient.invalidateQueries({ queryKey: TAGS_QUERY_KEY });

@@ -313,6 +313,46 @@ describe('ConnectedTagInput — contact entity type', () => {
     await waitFor(() => expect(attachCalled).toBe(true));
   });
 
+  it('shows the badge when the attach resolves before the first tag list does', async () => {
+    // The ordering the E2E hit on mobile-web, controlled here rather than raced: the
+    // input is interactive while the initial GET is open, so a POST can land first. An
+    // invalidate would join that pending GET instead of restarting it, and its empty
+    // pre-attach body would then settle the query as fresh with the new tag missing.
+    let releaseInitialGet: (() => void) | undefined;
+    const initialGetHeld = new Promise<void>((resolve) => {
+      releaseInitialGet = resolve;
+    });
+
+    server.use(
+      http.get(`/api/v1/contacts/${CONNECTED_ID}/tags`, async () => {
+        await initialGetHeld;
+        return HttpResponse.json({ tags: [] });
+      }),
+      http.post(`/api/v1/contacts/${CONNECTED_ID}/tags`, () =>
+        HttpResponse.json({ tag: EXISTING_TAG }),
+      ),
+    );
+
+    renderWithProviders(
+      <ConnectedTagInput
+        entityId={CONNECTED_ID}
+        entityType="contact"
+        entityQueryKey={ENTITY_QUERY_KEY}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`tag-input-${CONNECTED_ID}`)).toBeInTheDocument(),
+    );
+    await userEvent.type(screen.getByTestId(`tag-input-${CONNECTED_ID}`), EXISTING_TAG.name);
+    await userEvent.keyboard('{Enter}');
+
+    // Only now does the pre-attach list answer, with the tag absent.
+    releaseInitialGet?.();
+
+    expect(await screen.findByTestId(`tag-badge-${EXISTING_TAG.id}`)).toBeInTheDocument();
+  });
+
   it('detaches a tag via the contact detach endpoint', async () => {
     let detachCalled = false;
     server.use(
