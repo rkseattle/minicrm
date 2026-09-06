@@ -18,7 +18,8 @@ import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
 import {
   deleteLinksForDeletedEntity,
-  relinkAccountLinksForContact,
+  messagesLinkedToContacts,
+  reconcileDerivedLinks,
   relinkLinksToConvertedLead,
 } from './emailMatchingService.js';
 import { computeLeadRoutingSuggestion, persistRoutingDecision } from './leadRoutingService.js';
@@ -642,12 +643,10 @@ export async function convertLead(
     // than staying on a record nothing joins from.
     await relinkLinksToConvertedLead(client, leadId, contactId);
 
-    // The contact now has an account, so rule 3 applies to the mail that just moved onto
-    // it — otherwise a message synced a minute later reaches the account and this one
-    // never does.
-    if (accountId) {
-      await relinkAccountLinksForContact(client, contactId, accountId);
-    }
+    // The contact now has an account and a deal, so rules 3 and 4 apply to the mail that
+    // just moved onto it — otherwise a message synced a minute later reaches both and
+    // this one never does.
+    await reconcileDerivedLinks(client, await messagesLinkedToContacts(client, [contactId]));
 
     // Write status history entry if status changed
     if (prevStatus !== 'Qualified') {

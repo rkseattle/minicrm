@@ -361,20 +361,30 @@ not apply at all — but migration 092 created a NOBYPASSRLS role for the app to
 and on that day these queries need an explicit bypass or they match nothing, silently.
 
 **Links do not outlive their record.** Every hard delete of a contact, lead, account, or
-deal clears its links in the same transaction, and the two consolidating paths move them
-instead: a contact merge re-points the loser's links to the winner, and a lead conversion
-moves them to the contact. Both guard against the composite UNIQUE, because a message that
-named both records already has a row for the survivor and a bare UPDATE would raise `23505`
-and roll the whole operation back.
+deal clears its own links in the same transaction, and the two consolidating paths move
+them instead: a contact merge re-points the loser's links to the winner, and a lead
+conversion moves them to the contact. Both guard against the composite UNIQUE, because a
+message that named both records already has a row for the survivor and a bare UPDATE would
+raise `23505` and roll the whole operation back.
+
+Clearing a record's own links is not enough on its own, though — deleting a contact also
+destroys the basis for the `account` and `deal` links it justified, which is why the delete
+paths reconcile as well as clear.
 
 **Rules 3 and 4 are derived, so they are reconciled rather than left to rot.** Both compute
 a link from a _relationship_ — `contacts.account_id`, `deal_contacts` — and a relationship
 changes after the mail arrives. A contact who moves employer would otherwise keep filing
 correspondence against the old account forever, and a contact dropped from a deal would
 leave the deal holding mail nothing justifies. So every write to those relationships
-reconciles the links it invalidates: `updateContact`, `setAccountContacts`, a contact merge
-that moves the winner's account, and a lead conversion for the account side;
-`unlinkContactFromDeal` for the deal side.
+reconciles the links it invalidates. `reconcileDerivedLinks` recomputes both rules over a
+set of messages from current state, so every path calls the same thing: `updateContact` and
+`setAccountContacts` when `account_id` moves, `unlinkContactFromDeal` when a participant
+leaves, `mergeContacts` after the loser's links land on the winner, `convertLead` once the
+new contact has its account and deal, and all three contact-delete paths — single, bulk,
+and bulk v2 — which destroy the basis for a link without touching the link itself.
+
+Each caller reads the affected message ids _before_ the write that invalidates them, since
+the lookup joins through the contact links a delete is about to remove.
 
 Two guards apply to every one of those. Only `match_type = 'auto'` links move — a manual
 link is somebody's deliberate filing decision and the engine does not overrule it. And a

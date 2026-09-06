@@ -7,7 +7,11 @@ import pool from '../db.js';
 import type { PoolClient } from 'pg';
 import { writeAuditEntry } from './auditService.js';
 import { deleteFindingsForDeletedEntities } from './dataHygieneService.js';
-import { deleteLinksForDeletedEntities } from './emailMatchingService.js';
+import {
+  deleteLinksForDeletedEntities,
+  messagesLinkedToContacts,
+  reconcileDerivedLinks,
+} from './emailMatchingService.js';
 import { queueAssignmentNotification } from './notificationService.js';
 import { findUserById } from './userService.js';
 import { fireAutomationTrigger } from './automationService.js';
@@ -140,8 +144,12 @@ export async function bulkContacts(
 
     if (action === 'delete') {
       await deleteFindingsForDeletedEntities(client, 'contact', actualIds);
+      // Read before the links go: the account and deal links these contacts justified
+      // outlive them otherwise, and the lookup joins through the links being removed.
+      const affectedMessages = await messagesLinkedToContacts(client, actualIds);
       await deleteLinksForDeletedEntities(client, 'contact', actualIds);
       await client.query('DELETE FROM contacts WHERE id = ANY($1)', [actualIds]);
+      await reconcileDerivedLinks(client, affectedMessages);
 
       for (const id of actualIds) {
         await writeAuditEntry(client, {

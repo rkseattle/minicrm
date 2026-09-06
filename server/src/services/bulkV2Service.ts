@@ -22,7 +22,11 @@ import { getStageNames } from './pipelineStageService.js';
 import { writeDealStageHistoryEntry } from './dealService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
-import { deleteLinksForDeletedEntity } from './emailMatchingService.js';
+import {
+  deleteLinksForDeletedEntity,
+  messagesLinkedToContacts,
+  reconcileDerivedLinks,
+} from './emailMatchingService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import { fireAutomationTrigger } from './automationService.js';
 import logger from '../logger.js';
@@ -436,8 +440,12 @@ export async function bulkDeleteContacts(
 
         await softDeleteNotesByEntity(client, 'contact', id);
         await deleteFindingsForDeletedEntity(client, 'contact', id);
+        // Read before the links go: the account and deal links this contact justified
+        // outlive it otherwise, and the lookup joins through the links being removed.
+        const affectedMessages = await messagesLinkedToContacts(client, [id]);
         await deleteLinksForDeletedEntity(client, 'contact', id);
         await client.query(`DELETE FROM contacts WHERE id = $1`, [id]);
+        await reconcileDerivedLinks(client, affectedMessages);
 
         await writeAuditEntry(client, {
           recordType: 'contact',
