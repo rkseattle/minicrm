@@ -326,6 +326,69 @@ tick, then `isFlagEnabledForUser` per account. Both are needed — a per-user `f
 override beats every downstream targeting rule, so only the org-wide check can stop a
 rollout wholesale.
 
+## Matching
+
+Every message a page creates is linked to the CRM records its addresses name, inside the
+same transaction that stored it. Sharing the transaction is the point: nothing re-reads a
+message once its provider id is on file, so a commit that stored mail without linking it
+would leave rows nothing points at.
+
+Only newly created messages are matched. `storeMessages` returns the rows it inserted, and
+a re-sync of the same page takes the upsert's UPDATE branch — which is what stops a later
+tick restoring a link a user deliberately removed.
+
+**The rules**, each one set-based statement over the whole page rather than a query per
+message:
+
+1. Every from, to, and cc address is matched against `contacts.email`, case-insensitively.
+2. A lead is linked only for an address no contact answered — that is the precedence rule,
+   contact over lead — and never when the lead is converted. Conversion takes the contact's
+   address from the request body, so a rep who corrects it leaves the lead holding the old
+   one, and precedence alone would not cover it.
+3. Each matched contact's account is linked.
+4. Open deals the matched contact participates in are linked, unless the `deal_auto_link`
+   system setting is off. Open means not in a terminal stage, resolved through the stage FK
+   rather than the denormalized `deals.stage` text.
+
+Addresses arrive already lowercased by every provider's shared parser, so `LOWER()` sits
+only on the CRM column — where `contacts_lower_email_idx` and `leads_lower_email_idx` serve
+it. Without those the matcher seq-scans both tables once per page.
+
+The reads are deliberately unscoped by RLS. A message arrives in one user's mailbox and may
+name another user's contact, so matching must see every record regardless of owner; it acts
+for the scheduler, not for a user. Today the app connects as a superuser so the policies do
+not apply at all — but migration 092 created a NOBYPASSRLS role for the app to use one day,
+and on that day these queries need an explicit bypass or they match nothing, silently.
+
+**Links do not outlive their record.** Every hard delete of a contact, lead, account, or
+deal clears its links in the same transaction, and the two consolidating paths move them
+instead: a contact merge re-points the loser's links to the winner, and a lead conversion
+moves them to the contact. Both guard against the composite UNIQUE, because a message that
+named both records already has a row for the survivor and a bare UPDATE would raise `23505`
+and roll the whole operation back.
+
+## Reading synced mail
+
+`GET /api/v1/email-messages?record_type=&record_id=` returns the caller's own mail linked to
+one record; `GET /api/v1/email-messages/unmatched` returns the mail no record claims yet.
+
+Both are scoped to the caller's own mailboxes in the WHERE clause. That is not a
+convenience: every rep holds `connected_accounts:manage`, so scoping by `is_private` alone
+would let one rep read another's correspondence with a shared contact. The record endpoint
+additionally checks that the caller can see the record itself — through `visibilityService`
+for contacts, accounts and deals, and through leads' own owner-or-admin rule, since leads
+have no visibility policy anywhere in the product.
+
+Both page by **thread**, not by message, so a conversation is never split across a page
+boundary and `total` counts the same unit `limit` bounds. Threads are keyed by
+`(connected_account_id, thread_id)`: Gmail and Graph thread ids are provider-local and
+`email_messages`' own UNIQUE is per account, so one user with two mailboxes can hold the
+same thread id twice.
+
+Neither endpoint returns a body. `message_body_html` is stored exactly as the sender wrote
+it and is never sanitized, so the projection stops at the snippet until something exists
+that can render one safely.
+
 ## Configuration
 
 | Variable                      | Default | Meaning                      |
@@ -424,8 +487,11 @@ the ambient value.
 
 ## Not covered here
 
-- **Matching messages to CRM records, and any read API or UI** — this engine writes rows
-  nothing yet reads. `is_private` ships defaulted to `false` with no writer.
+- **Any UI over synced mail** — the read API exists, but nothing renders it yet.
+  `is_private` still ships defaulted to `false` with no writer, so the filter that honors it
+  is exercised only by tests that set the column directly.
+- **Linking a message to a record by hand** — the table records `match_type = 'manual'` for
+  it, and nothing writes that value yet.
 - **GDPR erasure for synced mail, and the backfill window as an admin setting** — the
   window is a module constant until that lands.
 - **Validation against a real IMAP server** — three behaviors here are reasoned from RFC

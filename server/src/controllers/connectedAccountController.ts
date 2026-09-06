@@ -36,6 +36,7 @@ import { PROVIDER_AUTH_EXPIRED, testImapConnection } from '../services/imapConne
 import { testGmailAccess } from '../services/mail/gmailProvider.js';
 import { testGraphAccess } from '../services/mail/graphProvider.js';
 import type { MailboxTestResult } from '../services/mail/mailProvider.js';
+import { errorBody } from '../utils/errorBody.js';
 import {
   OAUTH_STATE_TTL_MS,
   buildAuthorizationRequest,
@@ -48,11 +49,6 @@ import {
 
 /** Path parameter guard — an unvalidated string reaching a uuid column throws a PG error. */
 const accountIdSchema = z.string().uuid();
-
-/** Shape every failure path returns, per the repo-wide error contract. */
-function errorBody(code: string, message: string): { error: { code: string; message: string } } {
-  return { error: { code, message } };
-}
 
 /**
  * GET /api/v1/connected-accounts
