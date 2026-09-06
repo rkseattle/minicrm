@@ -41,6 +41,52 @@ export const SWAGGER_UI_PATH = '/api-docs';
  * a single change point when a schema evolves.
  */
 const componentSchemas = {
+  // ── Email messages ─────────────────────────────────────────────────────────
+  EmailMessage: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      connected_account_id: { type: 'string', format: 'uuid' },
+      thread_id: { type: 'string' },
+      direction: { type: 'string', enum: ['inbound', 'outbound'] },
+      from_address: { type: 'string' },
+      to_addresses: { type: 'array', items: { type: 'string' } },
+      cc_addresses: { type: 'array', items: { type: 'string' } },
+      subject: { type: 'string', nullable: true },
+      snippet: {
+        type: 'string',
+        nullable: true,
+        description:
+          'First 200 characters of the plain-text body. Bodies themselves are never returned: the stored HTML is unsanitized.',
+      },
+      has_attachments: { type: 'boolean' },
+      sent_at: { type: 'string', format: 'date-time', nullable: true },
+      is_private: { type: 'boolean' },
+    },
+  },
+  EmailThread: {
+    type: 'object',
+    description:
+      'One conversation, keyed by mailbox and thread id together — provider thread ids are unique only within an account.',
+    properties: {
+      thread_id: { type: 'string' },
+      connected_account_id: { type: 'string', format: 'uuid' },
+      messages: { type: 'array', items: { $ref: '#/components/schemas/EmailMessage' } },
+    },
+  },
+  EmailThreadPage: {
+    type: 'object',
+    properties: {
+      data: { type: 'array', items: { $ref: '#/components/schemas/EmailThread' } },
+      total: {
+        type: 'integer',
+        description: 'Matching THREADS, not messages — a thread is the page unit.',
+      },
+      page: { type: 'integer' },
+      limit: { type: 'integer' },
+    },
+  },
+
   // ── Error ──────────────────────────────────────────────────────────────────
   ErrorResponse: {
     type: 'object',
@@ -1582,6 +1628,11 @@ Endpoints require a valid session cookie obtained by calling \`POST /api/v1/auth
         name: 'Connected Accounts',
         description:
           "Per-user linked mailboxes. Every endpoint is scoped to the calling user's own accounts — an administrator cannot read or delete another user's mailbox credentials.",
+      },
+      {
+        name: 'Email Messages',
+        description:
+          "Synced mail, read through the CRM records it names. Scoped to the caller's own mailboxes and to the records they can see, so one user never reads another's correspondence with a shared contact.",
       },
     ],
     components: {

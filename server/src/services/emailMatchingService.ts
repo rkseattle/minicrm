@@ -21,6 +21,8 @@
 
 import type { PoolClient } from 'pg';
 
+import type { EmailLinkRecordType } from '@minicrm/shared/schemas/emailMessageSchema.js';
+
 import { NON_TERMINAL_STAGE_PREDICATE } from './pipelineStageService.js';
 
 /**
@@ -28,14 +30,6 @@ import { NON_TERMINAL_STAGE_PREDICATE } from './pipelineStageService.js';
  * link is the API's to write.
  */
 const AUTO_MATCH = 'auto';
-
-/**
- * Record types a link may point at. Mirrors the table's record_type CHECK.
- *
- * Deliberately not the same list as `RECORD_LINK_TYPES` in shared/types: that one includes
- * `activity`, which a message never names.
- */
-export type LinkRecordType = 'contact' | 'lead' | 'account' | 'deal';
 
 /** A message this page created, with the addresses matching reads. */
 export interface MatchableMessage {
@@ -213,7 +207,7 @@ export async function matchMessagesToRecords(
  */
 export async function deleteLinksForDeletedEntity(
   client: PoolClient,
-  recordType: LinkRecordType,
+  recordType: EmailLinkRecordType,
   recordId: string,
 ): Promise<void> {
   await client.query('DELETE FROM email_message_links WHERE record_type = $1 AND record_id = $2', [
@@ -225,7 +219,7 @@ export async function deleteLinksForDeletedEntity(
 /** Set-based counterpart for bulk deletes, which remove many rows in one statement. */
 export async function deleteLinksForDeletedEntities(
   client: PoolClient,
-  recordType: LinkRecordType,
+  recordType: EmailLinkRecordType,
   recordIds: readonly string[],
 ): Promise<void> {
   if (recordIds.length === 0) return;

@@ -43,6 +43,7 @@ Messages synced from a connected mailbox. Headers, metadata, and body text. All 
 | email_messages_thread_id_idx | CREATE INDEX email_messages_thread_id_idx ON public.email_messages USING btree (thread_id) |
 | email_messages_sent_at_idx | CREATE INDEX email_messages_sent_at_idx ON public.email_messages USING btree (sent_at) |
 | email_messages_account_sent_at_idx | CREATE INDEX email_messages_account_sent_at_idx ON public.email_messages USING btree (connected_account_id, sent_at DESC) |
+| email_messages_account_thread_idx | CREATE INDEX email_messages_account_thread_idx ON public.email_messages USING btree (connected_account_id, thread_id) |
 
 ## Relations
 

@@ -10613,6 +10613,15 @@
             "connected_account_id",
             "sent_at"
           ]
+        },
+        {
+          "name": "email_messages_account_thread_idx",
+          "def": "CREATE INDEX email_messages_account_thread_idx ON public.email_messages USING btree (connected_account_id, thread_id)",
+          "table": "public.email_messages",
+          "columns": [
+            "connected_account_id",
+            "thread_id"
+          ]
         }
       ],
       "constraints": [
