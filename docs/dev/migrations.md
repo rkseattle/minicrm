@@ -53,12 +53,19 @@ When `npm run migrate` runs on a DB that does not yet have `000_baseline` in `pg
 Regenerate `000_baseline.js` every ~50 migrations or once per major release. Goal: keep fresh-install time under 10 seconds.
 
 ```bash
-# 1. Ensure all migrations are applied
+# 1. Build a database BY the migrations — not a dev database.
+#    A dev database's pgmigrations rows may be fake-marked from an earlier baseline, so
+#    "all migrations applied" can be true while a migration never actually ran. Dumping
+#    one of those resurrects columns a later migration dropped — 094's six contacts
+#    address columns and 097's notes.tags survived two baselines this way — and every
+#    object-count check in step 4 still passes. Create an empty database and run the
+#    chain into it, then verify no migration is fake-marked:
+#      SELECT name FROM pgmigrations ORDER BY id;   -- compare against ls db/migrations/
 DATABASE_URL=postgres://... npm run migrate --workspace=minicrm-server
 
-# 2. Dump the full schema (run inside the DB container)
-docker exec minicrm-db pg_dump \
-  --username=minicrm --dbname=minicrm \
+# 2. Dump the full schema of THAT database (run inside the DB container)
+docker exec minicrm-test-db pg_dump \
+  --username=minicrm --dbname=<the database from step 1> \
   --schema-only --no-owner --no-acl --schema=public \
   > /tmp/minicrm_schema_dump.sql
 
@@ -93,9 +100,14 @@ docker exec minicrm-test-db psql -U minicrm -d postgres \
   -c "CREATE DATABASE minicrm_baseline_test"
 DATABASE_URL=postgres://minicrm:password@localhost:5433/minicrm_baseline_test \
   npm run migrate:fresh --workspace=minicrm-server
-# Compare table/index/constraint counts against the dev DB
+# Compare table/index/constraint counts against step 1's migration-built database
 
-# 5. Drop the test DB
+# 5. Run server/src/__tests__/baselineSchemaParity.test.ts. It pins the specific facts a
+#    regeneration is known to get wrong — dropped columns, seeds, the notify payload, the
+#    minicrm_app role — against the database the suite runs on, which globalSetup builds
+#    through the baseline. Add a case for anything this regeneration got wrong.
+
+# 6. Drop the test DB
 docker exec minicrm-test-db psql -U minicrm -d postgres \
   -c "DROP DATABASE minicrm_baseline_test"
 ```
