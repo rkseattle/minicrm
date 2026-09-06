@@ -19,7 +19,10 @@ import {
 } from './pipelineStageService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
-import { deleteLinksForDeletedEntity } from './emailMatchingService.js';
+import {
+  deleteDealLinksForRemovedParticipant,
+  deleteLinksForDeletedEntity,
+} from './emailMatchingService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 
@@ -816,10 +819,23 @@ export async function linkContactToDeal(dealId: string, contactId: string): Prom
  * @param contactId - Contact UUID
  */
 export async function unlinkContactFromDeal(dealId: string, contactId: string): Promise<void> {
-  await pool.query('DELETE FROM deal_contacts WHERE deal_id = $1 AND contact_id = $2', [
-    dealId,
-    contactId,
-  ]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM deal_contacts WHERE deal_id = $1 AND contact_id = $2', [
+      dealId,
+      contactId,
+    ]);
+    // Rule 4 linked the deal because this contact participated in it; without the
+    // participation the link has no basis left.
+    await deleteDealLinksForRemovedParticipant(client, dealId, contactId);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**

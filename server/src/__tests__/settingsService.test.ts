@@ -16,6 +16,7 @@ import {
   getEmailNotificationsEnabled,
   setEmailNotificationsEnabled,
   getDealAutoLink,
+  setDealAutoLink,
   getDefaultCurrency,
   setDefaultCurrency,
   getOnboardingStatus,
@@ -183,6 +184,31 @@ describe('getDealAutoLink', () => {
 });
 
 // ── setEmailNotificationsEnabled ─────────────────────────────────
+
+describe('setDealAutoLink', () => {
+  it('persists false and returns false', async () => {
+    const result = await setDealAutoLink(false);
+    expect(result).toBe(false);
+    expect(await getDealAutoLink()).toBe(false);
+  });
+
+  it('persists true and returns true', async () => {
+    await setDealAutoLink(false);
+    const result = await setDealAutoLink(true);
+    expect(result).toBe(true);
+    expect(await getDealAutoLink()).toBe(true);
+  });
+
+  it('writes the row when seeding never created one', async () => {
+    // The engine reads this on every tick, so an admin turning it off before the seed
+    // has run must still produce a row rather than silently no-op.
+    await pool.query(`DELETE FROM system_settings WHERE key = 'deal_auto_link'`);
+
+    await setDealAutoLink(false);
+
+    expect(await getDealAutoLink()).toBe(false);
+  });
+});
 
 describe('setEmailNotificationsEnabled', () => {
   it('persists false and returns false', async () => {

@@ -275,6 +275,100 @@ export async function relinkLinksToConvertedLead(
  * roll the whole merge back. What the guard skips is deleted, exactly as
  * custom_field_values is handled two statements above the call site.
  */
+/**
+ * Re-points a contact's `account` auto-links after the contact changes employer.
+ *
+ * Rule 3 derives the account from `contacts.account_id` at sync time, so a contact who
+ * moves companies would otherwise leave the old account's timeline showing correspondence
+ * with someone who no longer works there. Only auto-links move: a manual link is somebody's
+ * deliberate filing decision, and re-pointing it would silently overrule them.
+ *
+ * @param client - The transaction updating the contact.
+ * @param contactId - The contact whose account changed.
+ * @param newAccountId - The account it now belongs to, or null if it now belongs to none.
+ */
+export async function relinkAccountLinksForContact(
+  client: PoolClient,
+  contactId: string,
+  newAccountId: string | null,
+): Promise<void> {
+  const messages = await client.query<{ email_message_id: string }>(
+    `SELECT email_message_id FROM email_message_links
+      WHERE record_type = 'contact' AND record_id = $1`,
+    [contactId],
+  );
+  const messageIds = messages.rows.map((row) => row.email_message_id);
+  if (messageIds.length === 0) {
+    return;
+  }
+
+  // Only links this contact justifies: another contact on the same message may hold the
+  // same account, and that link stays.
+  await client.query(
+    `DELETE FROM email_message_links stale
+      WHERE stale.record_type = 'account'
+        AND stale.match_type = $3
+        AND stale.email_message_id = ANY($1::uuid[])
+        AND NOT EXISTS (
+          SELECT 1 FROM email_message_links other
+            JOIN contacts c ON c.id = other.record_id
+           WHERE other.email_message_id = stale.email_message_id
+             AND other.record_type = 'contact'
+             AND other.record_id <> $2
+             AND c.account_id = stale.record_id
+        )`,
+    [messageIds, contactId, AUTO_MATCH],
+  );
+
+  if (newAccountId !== null) {
+    await client.query(
+      `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
+       SELECT id, 'account', $2, $3 FROM unnest($1::uuid[]) AS id
+       ON CONFLICT DO NOTHING`,
+      [messageIds, newAccountId, AUTO_MATCH],
+    );
+  }
+}
+
+/**
+ * Removes the `deal` auto-links a contact justified, when they stop participating in it.
+ *
+ * Rule 4 links a message to a deal because the matched contact is a participant, so
+ * removing that participation removes the reason. A manual link is left alone, and so is a
+ * link another participant on the same message still justifies.
+ *
+ * @param client - The transaction removing the participant.
+ * @param dealId - The deal losing a participant.
+ * @param contactId - The contact being removed from it.
+ */
+export async function deleteDealLinksForRemovedParticipant(
+  client: PoolClient,
+  dealId: string,
+  contactId: string,
+): Promise<void> {
+  await client.query(
+    `DELETE FROM email_message_links stale
+      WHERE stale.record_type = 'deal'
+        AND stale.record_id = $1
+        AND stale.match_type = $3
+        AND EXISTS (
+          SELECT 1 FROM email_message_links mine
+           WHERE mine.email_message_id = stale.email_message_id
+             AND mine.record_type = 'contact'
+             AND mine.record_id = $2
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM email_message_links other
+            JOIN deal_contacts dc ON dc.contact_id = other.record_id
+           WHERE other.email_message_id = stale.email_message_id
+             AND other.record_type = 'contact'
+             AND other.record_id <> $2
+             AND dc.deal_id = $1
+        )`,
+    [dealId, contactId, AUTO_MATCH],
+  );
+}
+
 export async function relinkLinksToMergedContact(
   client: PoolClient,
   winnerId: string,

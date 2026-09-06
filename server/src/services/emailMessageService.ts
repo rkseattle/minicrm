@@ -258,6 +258,10 @@ export async function findLinkedRecordOwner(
   recordType: EmailLinkRecordType,
   recordId: string,
 ): Promise<string | null> {
+  // Reads the owner outside RLS, unlike the detail finders. Inert while the app connects
+  // as superuser, and the caller gates on the owner it returns; under minicrm_app the
+  // row would simply be invisible and the caller would answer 404.
+
   const result = await pool.query<{ owner_id: string }>(
     `SELECT owner_id FROM ${OWNER_TABLES[recordType]} WHERE id = $1 LIMIT 1`,
     [recordId],

@@ -16,7 +16,11 @@ import type { AuditActor } from './auditService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
-import { deleteLinksForDeletedEntity, relinkLinksToConvertedLead } from './emailMatchingService.js';
+import {
+  deleteLinksForDeletedEntity,
+  relinkAccountLinksForContact,
+  relinkLinksToConvertedLead,
+} from './emailMatchingService.js';
 import { computeLeadRoutingSuggestion, persistRoutingDecision } from './leadRoutingService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -637,6 +641,13 @@ export async function convertLead(
     // Every read hides a converted lead, so its synced mail moves to the contact rather
     // than staying on a record nothing joins from.
     await relinkLinksToConvertedLead(client, leadId, contactId);
+
+    // The contact now has an account, so rule 3 applies to the mail that just moved onto
+    // it — otherwise a message synced a minute later reaches the account and this one
+    // never does.
+    if (accountId) {
+      await relinkAccountLinksForContact(client, contactId, accountId);
+    }
 
     // Write status history entry if status changed
     if (prevStatus !== 'Qualified') {

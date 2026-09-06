@@ -11,6 +11,8 @@ import {
   setNavLayout,
   getEmailNotificationsEnabled,
   setEmailNotificationsEnabled,
+  getDealAutoLink,
+  setDealAutoLink,
   getDefaultCurrency,
   setDefaultCurrency,
   getDefaultTimezone,
@@ -184,6 +186,53 @@ export async function setEmailNotificationsEnabledHandler(
     recordName: 'Email Notifications',
     eventType: 'updated',
     fieldName: 'Email Notifications',
+    oldValue: String(previousEnabled),
+    newValue: String(enabled),
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
+}
+
+// ── Deal auto-link ───────────────────────────────────────────────
+
+/**
+ * GET /api/v1/settings/deal-auto-link
+ * Returns whether synced email auto-links to a matched contact's open deals.
+ *
+ * @param _req - Express request (unused).
+ * @param res - Express response.
+ */
+export async function getDealAutoLinkHandler(_req: Request, res: Response): Promise<void> {
+  const enabled = await getDealAutoLink();
+  res.status(200).json({ enabled });
+}
+
+/**
+ * PATCH /api/v1/settings/deal-auto-link
+ * Sets whether synced email auto-links to a matched contact's open deals. Admin only.
+ *
+ * @param req - Express request with body `{ enabled: boolean }`.
+ * @param res - Express response.
+ */
+export async function setDealAutoLinkHandler(req: Request, res: Response): Promise<void> {
+  if (typeof req.body.enabled !== 'boolean') {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'enabled must be a boolean' },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const previousEnabled = await getDealAutoLink();
+  const enabled = await setDealAutoLink(req.body.enabled as boolean, actor);
+  res.status(200).json({ enabled });
+
+  // Audit: system settings updated
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'Deal Auto-Link',
+    eventType: 'updated',
+    fieldName: 'Deal Auto-Link',
     oldValue: String(previousEnabled),
     newValue: String(enabled),
     changedById: req.user!.id,
