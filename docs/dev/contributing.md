@@ -10,7 +10,7 @@ In order, all green:
 
 ```bash
 npm run typecheck        # all workspaces plus the root scripts
-npm run lint             # eslint across the repo
+npm run lint             # eslint across the repo, then prettier --check
 bash scripts/npm-audit-gate.sh
 npm run unit_test        # server, client, coverage-dashboard — in series
 ```

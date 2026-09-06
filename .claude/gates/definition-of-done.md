@@ -11,11 +11,10 @@ it does not need re-reading between commits.
 # 1. Typecheck (repo root — covers server, client, and qa)
 npm run typecheck
 
-# 2. Lint (all workspaces) — ESLint only, no formatting check. Run Prettier on the
-#    files you touched too, or the pre-commit hook rejects a commit that just
-#    passed this whole gate.
+# 2. Lint — ESLint across the repo, then Prettier --check. Formatting is part of
+#    this gate, not just of the pre-commit hook: `npm run format` fixes what it
+#    reports.
 npm run lint
-npx prettier --check <files you changed>
 
 # 3. Audit — unconditional. Advisories land against versions already in the lockfile,
 #    so "no dependencies changed" is not a reason to skip it; that is precisely when
