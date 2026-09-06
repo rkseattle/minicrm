@@ -24,6 +24,7 @@ import {
   relinkLinksToMergedContact,
 } from './emailMatchingService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
+import { getDealAutoLink } from './settingsService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -576,7 +577,11 @@ export async function updateContact(
     // Rule 3 derived the account link from account_id at sync time, so a contact who
     // changed employer would otherwise keep filing mail against the old one.
     if (contact && before && contact.account_id !== before.account_id) {
-      await reconcileDerivedLinks(client, await messagesLinkedToContacts(client, [contact.id]));
+      await reconcileDerivedLinks(
+        client,
+        await messagesLinkedToContacts(client, [contact.id]),
+        await getDealAutoLink(),
+      );
     }
 
     if (contact && before) {
@@ -787,7 +792,7 @@ export async function deleteContact(
     // account and deal links this contact justified outlive it otherwise.
     const affectedMessages = await messagesLinkedToContacts(client, [id]);
     await deleteLinksForDeletedEntity(client, 'contact', id);
-    await reconcileDerivedLinks(client, affectedMessages);
+    await reconcileDerivedLinks(client, affectedMessages, await getDealAutoLink());
 
     const result = await client.query<ContactRow>(
       'DELETE FROM contacts WHERE id = $1 RETURNING *',
@@ -1008,7 +1013,11 @@ export async function mergeContacts(
     // they arrive carrying links derived from the loser's account and deals. Runs
     // unconditionally — the message's contact set changed even when the winner's own
     // account_id did not.
-    await reconcileDerivedLinks(client, await messagesLinkedToContacts(client, [winnerId]));
+    await reconcileDerivedLinks(
+      client,
+      await messagesLinkedToContacts(client, [winnerId]),
+      await getDealAutoLink(),
+    );
     // The winner's own value wins where both records filled the same field; the
     // loser's losing row is dropped rather than left orphaned.
     await client.query(

@@ -11,6 +11,10 @@
  * engine rather than a user put the row there.
  */
 
+'use strict';
+
+exports.shorthands = undefined;
+
 exports.up = (pgm) => {
   pgm.sql(`
     ALTER TABLE public.email_message_links

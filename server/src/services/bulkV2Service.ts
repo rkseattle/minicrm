@@ -33,6 +33,7 @@ import logger from '../logger.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 import type { UserStatus } from '@minicrm/shared/schemas/userSchema.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
+import { getDealAutoLink } from './settingsService.js';
 
 // ── Result shape ──────────────────────────────────────────────────────────────
 
@@ -445,7 +446,7 @@ export async function bulkDeleteContacts(
         const affectedMessages = await messagesLinkedToContacts(client, [id]);
         await deleteLinksForDeletedEntity(client, 'contact', id);
         await client.query(`DELETE FROM contacts WHERE id = $1`, [id]);
-        await reconcileDerivedLinks(client, affectedMessages);
+        await reconcileDerivedLinks(client, affectedMessages, await getDealAutoLink());
 
         await writeAuditEntry(client, {
           recordType: 'contact',

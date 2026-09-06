@@ -33,11 +33,13 @@ import {
   setDefaultTimezoneSchema,
   updateCurrenciesSchema,
   SUPPORTED_CURRENCY_LIST,
+  dealAutoLinkSchema,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import { getAllVisibilityPolicies, updateVisibilityConfig } from '../services/visibilityService.js';
 import { updateVisibilityConfigSchema } from '@minicrm/shared/schemas/visibilitySchema.js';
 import logger from '../logger.js';
+import { errorBody } from '../utils/errorBody.js';
 
 /**
  * GET /api/v1/settings/default-language
@@ -215,16 +217,17 @@ export async function getDealAutoLinkHandler(_req: Request, res: Response): Prom
  * @param res - Express response.
  */
 export async function setDealAutoLinkHandler(req: Request, res: Response): Promise<void> {
-  if (typeof req.body.enabled !== 'boolean') {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'enabled must be a boolean' },
-    });
+  const parsed = dealAutoLinkSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res
+      .status(400)
+      .json(errorBody('VALIDATION_ERROR', parsed.error.errors[0]?.message ?? 'Invalid request'));
     return;
   }
 
   const actor = { id: req.user!.id, name: req.user!.name };
   const previousEnabled = await getDealAutoLink();
-  const enabled = await setDealAutoLink(req.body.enabled as boolean, actor);
+  const enabled = await setDealAutoLink(parsed.data.enabled, actor);
   res.status(200).json({ enabled });
 
   // Audit: system settings updated

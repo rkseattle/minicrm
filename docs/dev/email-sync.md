@@ -378,10 +378,16 @@ correspondence against the old account forever, and a contact dropped from a dea
 leave the deal holding mail nothing justifies. So every write to those relationships
 reconciles the links it invalidates. `reconcileDerivedLinks` recomputes both rules over a
 set of messages from current state, so every path calls the same thing: `updateContact` and
-`setAccountContacts` when `account_id` moves, `unlinkContactFromDeal` when a participant
-leaves, `mergeContacts` after the loser's links land on the winner, `convertLead` once the
-new contact has its account and deal, and all three contact-delete paths — single, bulk,
-and bulk v2 — which destroy the basis for a link without touching the link itself.
+`setAccountContacts` when `account_id` moves, `linkContactToDeal` and
+`unlinkContactFromDeal` when a participant joins or leaves, `mergeContacts` after the
+loser's links land on the winner, `convertLead` once the new contact has its account and
+deal, and all three contact-delete paths — single, bulk, and bulk v2 — which destroy the
+basis for a link without touching the link itself.
+
+Joining matters as much as leaving: nothing re-matches a stored message, so a deal a
+contact joins after the mail arrived would never see it. The deal half takes the
+`deal_auto_link` setting here exactly as it does on the sync path — otherwise an admin who
+switched auto-linking off would watch deals reappear whenever a relationship changed.
 
 Each caller reads the affected message ids _before_ the write that invalidates them, since
 the lookup joins through the contact links a delete is about to remove.

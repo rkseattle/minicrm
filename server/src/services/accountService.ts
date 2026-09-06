@@ -23,6 +23,7 @@ import {
   messagesLinkedToContacts,
   reconcileDerivedLinks,
 } from './emailMatchingService.js';
+import { getDealAutoLink } from './settingsService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -211,7 +212,7 @@ export async function setAccountContacts(
 
   // One statement per record type over every affected message, rather than three queries
   // per contact: setting a hundred contacts on an account is a routine call.
-  await reconcileDerivedLinks(client, affectedMessages);
+  await reconcileDerivedLinks(client, affectedMessages, await getDealAutoLink());
 }
 
 /**
