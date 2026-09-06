@@ -13,9 +13,13 @@ import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.j
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { getDefaultCurrency } from './settingsService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
-import { findPipelineStageByNameAndPipeline } from './pipelineStageService.js';
+import {
+  findPipelineStageByNameAndPipeline,
+  NON_TERMINAL_STAGE_PREDICATE,
+} from './pipelineStageService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
+import { deleteLinksForDeletedEntity } from './emailMatchingService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 
@@ -295,10 +299,7 @@ export async function listDeals(
   }
 
   if (options.excludeClosedStages) {
-    // Exclude terminal stages using the FK — avoids the stale text-column join.
-    conditions.push(
-      `d.pipeline_stage_id NOT IN (SELECT id FROM pipeline_stages WHERE pipeline_id = d.pipeline_id AND is_terminal = true)`,
-    );
+    conditions.push(NON_TERMINAL_STAGE_PREDICATE);
   }
 
   // Tag filter — any-match: deal must have at least one of the given tag IDs
@@ -710,6 +711,8 @@ export async function deleteDeal(
     await softDeleteNotesByEntity(client, 'deal', id);
     // Hygiene calls deals 'opportunity' — the schema's own term for the entity type.
     await deleteFindingsForDeletedEntity(client, 'opportunity', id);
+    // 'deal', not hygiene's 'opportunity': the links CHECK names the entity this way.
+    await deleteLinksForDeletedEntity(client, 'deal', id);
 
     // Use a CTE so we can JOIN pipeline_stages on the deleted row, keeping the returned
     // DealRow consistent with every other query path.

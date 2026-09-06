@@ -157,6 +157,9 @@ async function storedBodies(accountId: string): Promise<
 }
 
 async function deleteFixtureUsers(): Promise<void> {
+  // Contacts first: owner_id is ON DELETE RESTRICT, so a leftover match fixture would
+  // block the user delete and strand every later run of this file.
+  await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
   await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
 }
 
@@ -174,12 +177,22 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query('DELETE FROM connected_accounts WHERE user_id = $1', [ACTOR.id]);
+  // The matching test creates one; clearing it here rather than only in afterAll keeps a
+  // later test's isolation from depending on which addresses that fixture happened to use.
+  await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
   await clearAuditLogFor(ACTOR.id);
   // feature_flags is one global row with no per-file isolation, and other suites toggle
   // this same key. Asserting on the ambient value makes these tests pass or fail on which
   // file ran alongside them, so every run states what it needs.
   await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'email_sync'`);
   invalidateFeatureFlagCache();
+  // Same reasoning as the flag above: settingsService's suite deletes this row to exercise
+  // its default, so the matching tests here state the value they need rather than assuming
+  // whichever file ran last left it alone.
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at) VALUES ('deal_auto_link', 'true', now())
+     ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = now()`,
+  );
 });
 
 afterAll(async () => {
@@ -203,6 +216,65 @@ describe('syncOneAccount', () => {
     );
     expect(row.rows[0].sync_cursor).toBe(page().cursor);
     expect(row.rows[0].last_sync_at).not.toBeNull();
+  });
+
+  it('links a stored message to the contact it names, in the same tick', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    const contact = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Sync', 'Match', $1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-match@example.com`, ACTOR.id],
+    );
+    const provider = fakeProvider([
+      page({ messages: [message({ toAddresses: [`${FILE_PREFIX}-match@example.com`] })] }),
+    ]);
+
+    await syncOneAccount(await claimedFor(account.id), provider);
+
+    // Read back through the message, so this fails if matching moved out of the write
+    // transaction and left the two visible at different times.
+    const links = await pool.query<{ record_type: string; record_id: string }>(
+      `SELECT l.record_type, l.record_id
+         FROM email_message_links l
+         JOIN email_messages m ON m.id = l.email_message_id
+        WHERE m.connected_account_id = $1`,
+      [account.id],
+    );
+    expect(links.rows).toEqual([{ record_type: 'contact', record_id: contact.rows[0]!.id }]);
+  });
+
+  it('does not restore a link a user removed when the same page is re-synced', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Sync', 'Unlinked', $1, $2)`,
+      [`${FILE_PREFIX}-unlinked@example.com`, ACTOR.id],
+    );
+    const named = page({
+      messages: [message({ toAddresses: [`${FILE_PREFIX}-unlinked@example.com`] })],
+    });
+
+    await syncOneAccount(await claimedFor(account.id), fakeProvider([named]));
+    // Scoped to this account: the matching suite runs in the parallel project and reads
+    // the same table, so an unqualified delete would empty its rows mid-assertion.
+    await pool.query(
+      `DELETE FROM email_message_links l
+        USING email_messages m
+        WHERE m.id = l.email_message_id AND m.connected_account_id = $1`,
+      [account.id],
+    );
+
+    // The second sync stores the same provider id, so the upsert takes the UPDATE branch;
+    // storeMessages returns only inserted rows, so matching never sees this message again.
+    await syncOneAccount(await claimedFor(account.id), fakeProvider([named]));
+
+    const links = await pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM email_message_links l
+         JOIN email_messages m ON m.id = l.email_message_id
+        WHERE m.connected_account_id = $1`,
+      [account.id],
+    );
+    expect(links.rows[0]!.count).toBe('0');
   });
 
   it('stores the parsed body, html, and snippet', async () => {

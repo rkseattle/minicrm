@@ -18,6 +18,7 @@ import { dispatchWebhookEvent } from './webhookService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
+import { deleteLinksForDeletedEntity } from './emailMatchingService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -678,6 +679,7 @@ export async function deleteAccount(
     // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'account', id);
     await deleteFindingsForDeletedEntity(client, 'account', id);
+    await deleteLinksForDeletedEntity(client, 'account', id);
 
     // Unlink contacts first (though the FK is SET NULL on delete, being explicit is clearer)
     await client.query('UPDATE contacts SET account_id = NULL WHERE account_id = $1', [id]);

@@ -22,6 +22,7 @@ import { getStageNames } from './pipelineStageService.js';
 import { writeDealStageHistoryEntry } from './dealService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
+import { deleteLinksForDeletedEntity } from './emailMatchingService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import { fireAutomationTrigger } from './automationService.js';
 import logger from '../logger.js';
@@ -435,6 +436,7 @@ export async function bulkDeleteContacts(
 
         await softDeleteNotesByEntity(client, 'contact', id);
         await deleteFindingsForDeletedEntity(client, 'contact', id);
+        await deleteLinksForDeletedEntity(client, 'contact', id);
         await client.query(`DELETE FROM contacts WHERE id = $1`, [id]);
 
         await writeAuditEntry(client, {
@@ -675,6 +677,7 @@ export async function bulkDeleteDeals(
 
         await softDeleteNotesByEntity(client, 'deal', id);
         await deleteFindingsForDeletedEntity(client, 'opportunity', id);
+        await deleteLinksForDeletedEntity(client, 'deal', id);
         await client.query(`DELETE FROM deals WHERE id = $1`, [id]);
 
         await writeAuditEntry(client, {
@@ -1035,6 +1038,7 @@ export async function bulkDeleteLeads(
         await client.query(`SAVEPOINT ${sp}`);
 
         await softDeleteNotesByEntity(client, 'lead', id);
+        await deleteLinksForDeletedEntity(client, 'lead', id);
         await client.query(`DELETE FROM leads WHERE id = $1`, [id]);
 
         const recordName = row.last_name ? `${row.first_name} ${row.last_name}` : row.first_name;

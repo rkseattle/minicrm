@@ -38,6 +38,21 @@ const STAGE_SELECT =
   'id, pipeline_id, name, sort_order, probability, is_terminal, is_fixed, stage_exit_requirements, created_at, updated_at';
 
 /**
+ * Restricts a `deals d` join to deals that are still open.
+ *
+ * Terminal stages are per pipeline, so the correlation on `d.pipeline_id` is load-bearing.
+ * Resolved through the stage FK rather than the denormalized `deals.stage` text, which goes
+ * stale. Every caller asking "is this deal open" must agree, so the predicate lives here
+ * rather than in each of them.
+ *
+ * Interpolated into SQL, not bound: it names columns, and carries no caller input. The
+ * caller must alias `deals` as `d`.
+ */
+export const NON_TERMINAL_STAGE_PREDICATE = `d.pipeline_stage_id NOT IN (
+  SELECT id FROM pipeline_stages WHERE pipeline_id = d.pipeline_id AND is_terminal = true
+)`;
+
+/**
  * Resolves a pipeline_id, falling back to the default pipeline when not supplied.
  */
 async function resolvePipelineId(pipelineId?: string): Promise<string> {

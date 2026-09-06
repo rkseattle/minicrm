@@ -1735,6 +1735,10 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
   ]);
 
   // lead_status_history cascades automatically when leads are deleted
+  await client.query(
+    `DELETE FROM email_message_links
+     WHERE record_type = 'lead' AND record_id IN (SELECT id FROM leads WHERE is_demo = true)`,
+  );
   await client.query(`DELETE FROM leads WHERE is_demo = true`);
 
   await client.query(
@@ -1773,6 +1777,10 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
      WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)
         OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
   );
+  await client.query(
+    `DELETE FROM email_message_links
+     WHERE record_type = 'deal' AND record_id IN (SELECT id FROM deals WHERE is_demo = true)`,
+  );
   await client.query(`DELETE FROM deals WHERE is_demo = true`);
 
   // Delete the demo pipeline — pipeline_stages cascade automatically via ON DELETE CASCADE.
@@ -1781,7 +1789,15 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
     DEMO_PIPELINE_NAME,
   ]);
 
+  await client.query(
+    `DELETE FROM email_message_links
+     WHERE record_type = 'contact' AND record_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
+  );
   await client.query(`DELETE FROM contacts WHERE is_demo = true`);
+  await client.query(
+    `DELETE FROM email_message_links
+     WHERE record_type = 'account' AND record_id IN (SELECT id FROM accounts WHERE is_demo = true)`,
+  );
   await client.query(`DELETE FROM accounts WHERE is_demo = true`);
 
   // Remove the demo rep user — all their owned records are already deleted above via is_demo

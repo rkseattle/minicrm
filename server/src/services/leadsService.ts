@@ -16,6 +16,7 @@ import type { AuditActor } from './auditService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
+import { deleteLinksForDeletedEntity, relinkLinksToConvertedLead } from './emailMatchingService.js';
 import { computeLeadRoutingSuggestion, persistRoutingDecision } from './leadRoutingService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -463,6 +464,7 @@ export async function deleteLead(
 
     // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'lead', id);
+    await deleteLinksForDeletedEntity(client, 'lead', id);
 
     const result = await client.query<LeadRow>('DELETE FROM leads WHERE id = $1 RETURNING *', [id]);
     const deleted = result.rows[0] ?? null;
@@ -631,6 +633,10 @@ export async function convertLead(
        WHERE id = $4`,
       [contactId, accountId, dealId, leadId],
     );
+
+    // Every read hides a converted lead, so its synced mail moves to the contact rather
+    // than staying on a record nothing joins from.
+    await relinkLinksToConvertedLead(client, leadId, contactId);
 
     // Write status history entry if status changed
     if (prevStatus !== 'Qualified') {

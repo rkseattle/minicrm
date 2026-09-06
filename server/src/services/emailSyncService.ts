@@ -44,6 +44,9 @@ import {
   updateEmailSyncJobProgress,
 } from './emailSyncJobService.js';
 import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js';
+import { matchMessagesToRecords } from './emailMatchingService.js';
+import type { MatchableMessage } from './emailMatchingService.js';
+import { getDealAutoLink } from './settingsService.js';
 import { refreshAccessToken } from './oauthProviderService.js';
 import type { RefreshedTokens } from './oauthProviderService.js';
 import { createGmailProvider } from './mail/gmailProvider.js';
@@ -141,17 +144,18 @@ function collapseDuplicateIds(messages: readonly NormalizedMessage[]): Normalize
  * fetch, a document that would not parse — and a bare assignment would erase a body that
  * had already landed.
  *
- * @returns the number of rows this call CREATED. Updates are excluded so a job's
- *   progress counts messages rather than write operations — a re-read of the same page
- *   would otherwise inflate it without a single new message arriving.
+ * @returns the rows this call CREATED, with the addresses matching reads. Updates are
+ *   excluded so a job's progress counts messages rather than write operations — a re-read
+ *   of the same page would otherwise inflate it without a single new message arriving —
+ *   and so matching runs only on genuinely new mail, leaving a link a user removed removed.
  */
 async function storeMessages(
   client: PoolClient,
   accountId: string,
   messages: readonly NormalizedMessage[],
-): Promise<number> {
+): Promise<MatchableMessage[]> {
   const collapsed = collapseDuplicateIds(messages);
-  let stored = 0;
+  const created: MatchableMessage[] = [];
 
   for (let offset = 0; offset < collapsed.length; offset += MAX_MESSAGES_PER_INSERT) {
     const chunk = collapsed.slice(offset, offset + MAX_MESSAGES_PER_INSERT);
@@ -181,7 +185,13 @@ async function storeMessages(
       return `(${placeholders.join(', ')})`;
     });
 
-    const result = await client.query<{ inserted: boolean }>(
+    const result = await client.query<{
+      id: string;
+      from_address: string;
+      to_addresses: string[];
+      cc_addresses: string[];
+      inserted: boolean;
+    }>(
       `INSERT INTO email_messages
          (connected_account_id, provider_message_id, thread_id, direction, from_address,
           to_addresses, cc_addresses, subject, has_attachments, sent_at,
@@ -202,15 +212,23 @@ async function storeMessages(
                COALESCE(EXCLUDED.message_body_html, email_messages.message_body_html),
              message_snippet =
                COALESCE(EXCLUDED.message_snippet, email_messages.message_snippet)
-       RETURNING (xmax = 0) AS inserted`,
+       RETURNING id, from_address, to_addresses, cc_addresses, (xmax = 0) AS inserted`,
       values,
     );
     // rowCount counts updated rows too, so it reports a re-sync of unchanged mail as
     // newly stored. xmax is zero only on a row this statement inserted.
-    stored += result.rows.filter((row) => row.inserted).length;
+    for (const row of result.rows) {
+      if (!row.inserted) continue;
+      created.push({
+        id: row.id,
+        fromAddress: row.from_address,
+        toAddresses: row.to_addresses,
+        ccAddresses: row.cc_addresses,
+      });
+    }
   }
 
-  return stored;
+  return created;
 }
 
 /**
@@ -259,14 +277,27 @@ export function backoffDelayMs(failureCount: number): number {
   return Math.max(BACKOFF_BASE_MS, Math.round(capped + jitter));
 }
 
-/** Persists one page's messages and the cursor it produced, atomically. */
-async function commitPage(accountId: string, page: ProviderPage): Promise<number> {
+/**
+ * Persists one page's messages and the cursor it produced, atomically.
+ *
+ * @param dealAutoLink - Whether matching may link open deals. Passed in rather than read
+ *   here: a backfill calls this once per page, and the setting changes almost never.
+ */
+async function commitPage(
+  accountId: string,
+  page: ProviderPage,
+  dealAutoLink: boolean,
+): Promise<number> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const stored =
-      page.messages.length > 0 ? await storeMessages(client, accountId, page.messages) : 0;
+    const created =
+      page.messages.length > 0 ? await storeMessages(client, accountId, page.messages) : [];
+
+    // Same transaction as the insert: a message and the records it names become visible
+    // together, and nothing re-reads a message once its provider id is stored.
+    await matchMessagesToRecords(client, created, dealAutoLink);
 
     // The lease is extended, not cleared. claimAccountsDueForSync pushes
     // sync_next_attempt_at forward to reserve the mailbox, and commitPage runs once per
@@ -286,7 +317,7 @@ async function commitPage(accountId: string, page: ProviderPage): Promise<number
     );
 
     await client.query('COMMIT');
-    return stored;
+    return created.length;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -312,6 +343,7 @@ async function backfillAccount(
   auth: Parameters<MailProvider['fetchSince']>[0],
   provider: MailProvider,
   since: Date,
+  dealAutoLink: boolean,
 ): Promise<SyncOutcome> {
   const job = await createEmailSyncJob(account.id);
   let stored = job.messages_synced;
@@ -325,7 +357,7 @@ async function backfillAccount(
   try {
     for (let read = 0; read < MAX_BACKFILL_PAGES_PER_TICK; read += 1) {
       const page = await provider.fetchSince(auth, cursor, since);
-      stored += await commitPage(account.id, page);
+      stored += await commitPage(account.id, page, dealAutoLink);
       cursor = page.cursor;
       hasMore = page.hasMore;
       cursorInvalid = page.cursorInvalid;
@@ -370,6 +402,7 @@ export async function syncOneAccount(
   account: ClaimedSyncAccount,
   provider?: MailProvider,
   refresh: TokenRefresh = refreshAccessToken,
+  dealAutoLink?: boolean,
 ): Promise<SyncOutcome> {
   // Built before the credentials are fetched: a driver that refuses the account outright
   // — no implementation, or scopes that cannot read mail — should not first spend a token
@@ -387,17 +420,21 @@ export async function syncOneAccount(
 
   const since = new Date(Date.now() - BACKFILL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
+  // One global row, so a tick reads it once and hands it down. Resolved here only when a
+  // caller synced a single account directly, which is a test and the recovery path.
+  const linkDeals = dealAutoLink ?? (await getDealAutoLink());
+
   // An unfinished job is what says a backfill is in progress — not the cursor, which
   // every committed page advances. Routing on the cursor alone sent tick 2 down the
   // incremental path, so a mailbox bigger than one tick's page budget was truncated and
   // its job left running forever; migration 173's partial unique index then blocks any
   // new job for that account, so even a later cursor invalidation could not recover.
   if (account.syncCursor === null || (await getActiveEmailSyncJob(account.id)) !== null) {
-    return backfillAccount(account, auth, resolved, since);
+    return backfillAccount(account, auth, resolved, since, linkDeals);
   }
 
   const page = await resolved.fetchSince(auth, account.syncCursor, since);
-  const stored = await commitPage(account.id, page);
+  const stored = await commitPage(account.id, page, linkDeals);
 
   return {
     accountId: account.id,
@@ -517,6 +554,9 @@ export async function syncDueAccounts(
 
   const claimed = await claimAccountsDueForSync(MAX_ACCOUNTS_PER_TICK);
   const outcomes: SyncOutcome[] = [];
+  // Once for the tick rather than once per account: it is a single global row, and a
+  // change landing mid-tick may as well take effect on the next one.
+  const dealAutoLink = await getDealAutoLink();
 
   for (const account of claimed) {
     // Checked per account rather than once, because the flag can be rolled out to a
@@ -526,7 +566,7 @@ export async function syncDueAccounts(
     }
 
     try {
-      outcomes.push(await syncOneAccount(account, provider, refresh));
+      outcomes.push(await syncOneAccount(account, provider, refresh, dealAutoLink));
     } catch (err) {
       // Per account, so one dead server cannot end the tick for every other mailbox.
       logger.warn({ err, accountId: account.id }, 'emailSyncService: account sync failed');
