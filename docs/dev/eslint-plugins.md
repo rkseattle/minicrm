@@ -64,7 +64,7 @@ corrective migration instead; see CLAUDE.md.
 
 ## Working on a rule
 
-`npm run lint` caches by file content, so editing a rule does not re-lint unchanged
+`npm run lint:js` caches by file content, so editing a rule does not re-lint unchanged
 sources — the edited rule never runs against them. Bypass the cache after any rule change:
 
 ```bash
