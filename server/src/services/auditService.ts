@@ -128,7 +128,17 @@ export type AuditEventType =
   /** Mailbox linked to or unlinked from a user account */
   | 'connected_account_connected'
   | 'connected_account_disconnected'
-  | 'connected_account_sync_suspended';
+  | 'connected_account_sync_suspended'
+  /**
+   * A synced message linked to or unlinked from a CRM record by hand.
+   *
+   * Filed against the mailbox rather than the linked record: getRecordAuditLog filters
+   * nothing, so an entry on a contact would reach ChangeHistory's switch, match no case,
+   * and render a raw identifier. Automatic links are not audited at all — match_type
+   * already records how a link was made.
+   */
+  | 'email_linked'
+  | 'email_unlinked';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

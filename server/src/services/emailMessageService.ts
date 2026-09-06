@@ -27,6 +27,18 @@ import type {
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 import pool from '../db.js';
+import { writeAuditEntry } from './auditService.js';
+import type { AuditActor } from './auditService.js';
+
+/** A link row as the write endpoints return it. */
+export interface EmailMessageLinkRow {
+  id: string;
+  email_message_id: string;
+  record_type: EmailLinkRecordType;
+  record_id: string;
+  match_type: 'auto' | 'manual';
+  created_at: Date;
+}
 
 /** A row from email_messages, as the list projection selects it. */
 interface EmailMessageRow {
@@ -251,4 +263,159 @@ export async function findLinkedRecordOwner(
     [recordId],
   );
   return result.rows[0]?.owner_id ?? null;
+}
+
+/**
+ * Reads one link, but only through a message in the caller's own mailboxes.
+ *
+ * The delete path needs the linked record before removing the row, so the caller can be
+ * checked against the same rule that governs creating one.
+ */
+export async function findLinkForUser(
+  messageId: string,
+  linkId: string,
+  userId: string,
+): Promise<{ record_type: EmailLinkRecordType; record_id: string } | null> {
+  const result = await pool.query<{ record_type: EmailLinkRecordType; record_id: string }>(
+    `SELECT l.record_type, l.record_id
+       FROM email_message_links l
+       JOIN email_messages m ON m.id = l.email_message_id
+       JOIN connected_accounts ca ON ca.id = m.connected_account_id
+      WHERE l.id = $1 AND l.email_message_id = $2 AND ca.user_id = $3`,
+    [linkId, messageId, userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Links a message to a record by hand.
+ *
+ * The message must be in one of the caller's own mailboxes; the controller has already
+ * established that the record exists and that the caller may write to it. A record deleted
+ * between those two moments leaves a link the ordinary cleanup would have caught, which is
+ * the same window every polymorphic writer here has.
+ *
+ * The audit entry is filed against the mailbox, not the linked record — an entry on a
+ * contact would reach the client's Change History, which renders only the event types its
+ * own schema admits. The linked record is named in the entry instead.
+ *
+ * @param actor - The caller, for the audit entry.
+ * @throws when the message is not in the caller's mailboxes. A duplicate link surfaces as
+ *   PG 23505, which the controller maps to 409.
+ */
+export async function createManualLink(
+  messageId: string,
+  recordType: EmailLinkRecordType,
+  recordId: string,
+  userId: string,
+  actor: AuditActor,
+): Promise<EmailMessageLinkRow> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const mailbox = await client.query<{ id: string; email_address: string }>(
+      `SELECT ca.id, ca.email_address
+         FROM email_messages m
+         JOIN connected_accounts ca ON ca.id = m.connected_account_id
+        WHERE m.id = $1 AND ca.user_id = $2`,
+      [messageId, userId],
+    );
+    if (!mailbox.rows[0]) {
+      // Thrown, not rolled back here: the catch below owns the single ROLLBACK, and a
+      // second one against a closed transaction logs a PG warning per rejected request.
+      throw Object.assign(new Error('No such message in your mailboxes'), {
+        code: 'EMAIL_MESSAGE_NOT_FOUND',
+      });
+    }
+
+    const inserted = await client.query<EmailMessageLinkRow>(
+      `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
+       VALUES ($1, $2, $3, 'manual')
+       RETURNING id, email_message_id, record_type, record_id, match_type, created_at`,
+      [messageId, recordType, recordId],
+    );
+
+    await writeAuditEntry(client, {
+      recordType: 'connected_account',
+      recordId: mailbox.rows[0].id,
+      recordName: mailbox.rows[0].email_address,
+      eventType: 'email_linked',
+      fieldName: 'email_message_link',
+      newValue: `${recordType}:${recordId}`,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return inserted.rows[0]!;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Removes a link by hand — automatic or manual.
+ *
+ * An auto link removed this way does not come back: only newly synced messages are ever
+ * matched, so this is the user's decision and it stands.
+ *
+ * Scoped the same way as the create: the link must hang off a message in one of the
+ * caller's own mailboxes, so a link id alone reaches nothing.
+ *
+ * @returns true when a link was removed, false when none matched.
+ */
+export async function deleteMessageLink(
+  messageId: string,
+  linkId: string,
+  userId: string,
+  actor: AuditActor,
+): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const deleted = await client.query<{
+      record_type: string;
+      record_id: string;
+      account_id: string;
+      email_address: string;
+    }>(
+      `DELETE FROM email_message_links l
+        USING email_messages m, connected_accounts ca
+        WHERE l.id = $1
+          AND l.email_message_id = $2
+          AND m.id = l.email_message_id
+          AND ca.id = m.connected_account_id
+          AND ca.user_id = $3
+        RETURNING l.record_type, l.record_id, ca.id AS account_id, ca.email_address`,
+      [linkId, messageId, userId],
+    );
+    if (!deleted.rows[0]) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+
+    await writeAuditEntry(client, {
+      recordType: 'connected_account',
+      recordId: deleted.rows[0].account_id,
+      recordName: deleted.rows[0].email_address,
+      eventType: 'email_unlinked',
+      fieldName: 'email_message_link',
+      oldValue: `${deleted.rows[0].record_type}:${deleted.rows[0].record_id}`,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return true;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }

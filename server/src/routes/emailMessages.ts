@@ -8,6 +8,8 @@ import { Router } from 'express';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
 import {
+  createLinkHandler,
+  deleteLinkHandler,
   listRecordMessagesHandler,
   listUnmatchedMessagesHandler,
 } from '../controllers/emailMessageController.js';
@@ -104,5 +106,84 @@ router.get('/unmatched', asyncHandler(listUnmatchedMessagesHandler));
  *         $ref: '#/components/responses/NotFound'
  */
 router.get('/', asyncHandler(listRecordMessagesHandler));
+
+/**
+ * @openapi
+ * /api/v1/email-messages/{id}/links:
+ *   post:
+ *     tags: [Email Messages]
+ *     operationId: createEmailMessageLink
+ *     summary: File one of your messages against a record
+ *     description: >
+ *       Links a message in one of the caller's own mailboxes to a contact, lead, account or
+ *       deal. Requires the record's own edit capability where one exists, on top of mailbox
+ *       management — filing mail against a record is a CRM write. The link is recorded as
+ *       manual and audited against the mailbox.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [record_type, record_id]
+ *             properties:
+ *               record_type: { type: string, enum: [contact, lead, account, deal] }
+ *               record_id: { type: string, format: uuid }
+ *     responses:
+ *       201:
+ *         description: The link that was created
+ *       400:
+ *         description: Invalid message id, record type, or record id
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: The caller may not file mail against that record
+ *       404:
+ *         description: No such message in the caller's mailboxes, or no such record
+ *       409:
+ *         description: That record is already linked to the message
+ */
+router.post('/:id/links', asyncHandler(createLinkHandler));
+
+/**
+ * @openapi
+ * /api/v1/email-messages/{id}/links/{linkId}:
+ *   delete:
+ *     tags: [Email Messages]
+ *     operationId: deleteEmailMessageLink
+ *     summary: Remove a link from one of your messages
+ *     description: >
+ *       Removes a link, automatic or manual, from a message in one of the caller's own
+ *       mailboxes. A removed automatic link does not come back: only newly synced messages
+ *       are matched.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: linkId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       204:
+ *         description: The link was removed
+ *       400:
+ *         description: Invalid message id or link id
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.delete('/:id/links/:linkId', asyncHandler(deleteLinkHandler));
 
 export default router;

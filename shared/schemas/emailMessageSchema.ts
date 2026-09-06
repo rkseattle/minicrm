@@ -21,15 +21,28 @@ export const EMAIL_LINK_RECORD_TYPES = ['contact', 'lead', 'account', 'deal'] as
 
 export type EmailLinkRecordType = (typeof EMAIL_LINK_RECORD_TYPES)[number];
 
-/** Query params for the messages linked to one record. */
-export const recordMessagesParamsSchema = paginationParamsSchema.extend({
+/**
+ * The record a message is filed against.
+ *
+ * One definition, because the query params and the link body name the same pair and a
+ * second copy would drift its validation independently.
+ */
+export const emailLinkTargetSchema = z.object({
   record_type: z.enum(EMAIL_LINK_RECORD_TYPES, {
     errorMap: () => ({ message: 'record_type must be contact, lead, account, or deal' }),
   }),
   record_id: z.string().uuid('record_id must be a UUID'),
 });
 
+/** Query params for the messages linked to one record. */
+export const recordMessagesParamsSchema = paginationParamsSchema.merge(emailLinkTargetSchema);
+
 export type RecordMessagesParams = z.infer<typeof recordMessagesParamsSchema>;
+
+/** Body for linking a message to a record by hand. */
+export const createEmailMessageLinkSchema = emailLinkTargetSchema;
+
+export type CreateEmailMessageLinkInput = z.infer<typeof createEmailMessageLinkSchema>;
 
 /**
  * One message as the API returns it.
