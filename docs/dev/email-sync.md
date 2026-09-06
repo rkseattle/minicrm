@@ -416,6 +416,14 @@ producing an invalid cron expression.
 Most IMAP specs drive a hand-written fake `ImapFlow` injected as a client factory, because
 a fake is the only way to reach an error path a real server will not produce on demand.
 
+**A mailbox a test creates but does not park belongs to every suite.** `createImapAccount`
+leaves `sync_next_attempt_at` NULL, and `claimAccountsDueForSync` is global rather than
+per-user — so between that insert and whatever parks it, any file running in parallel can
+claim the row, and the failure surfaces in the file that was counting its own batch, not
+the one that leaked the mailbox. Use `insertParkedMailbox` from `testUtils.ts`, which
+parks at insert time; reach for `createImapAccount` only when the spec needs a real
+encrypted credential, and park it immediately.
+
 **That fake is the load-bearing risk in this area.** Several defects here were invisible
 because the fake disagreed with the real library rather than because the provider was
 wrong: it accepted any fetch query rather than the sequence set the body pass sends, turning a
