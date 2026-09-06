@@ -11,7 +11,7 @@ import { fireAutomationTrigger } from './automationService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditActor, AuditEntryInput } from './auditService.js';
-import { getDefaultCurrency } from './settingsService.js';
+import { getDealAutoLink, getDefaultCurrency } from './settingsService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
 import {
   findPipelineStageByNameAndPipeline,
@@ -806,10 +806,25 @@ export async function listDealContacts(dealId: string): Promise<DealContactRow[]
  * @param contactId - Contact UUID
  */
 export async function linkContactToDeal(dealId: string, contactId: string): Promise<void> {
-  await pool.query(
-    'INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-    [dealId, contactId],
-  );
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      'INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [dealId, contactId],
+    );
+    // Rule 4 links a message to a deal because a matched contact participates in it, and
+    // nothing re-matches a stored message — so mail this contact already exchanged would
+    // never reach a deal they join afterwards.
+    const affectedMessages = await messagesLinkedToContacts(client, [contactId]);
+    await reconcileDerivedLinks(client, affectedMessages, await getDealAutoLink());
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -830,7 +845,7 @@ export async function unlinkContactFromDeal(dealId: string, contactId: string): 
     ]);
     // Rule 4 linked the deal because this contact participated in it; without the
     // participation the link has no basis left.
-    await reconcileDerivedLinks(client, affectedMessages);
+    await reconcileDerivedLinks(client, affectedMessages, await getDealAutoLink());
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');

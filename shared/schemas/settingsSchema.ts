@@ -162,6 +162,11 @@ export const navLayoutEnum = z.enum(NAV_LAYOUTS, {
 /**
  * Schema for the PATCH /api/v1/settings/nav-layout request body.
  */
+/** Body of PATCH /api/v1/settings/deal-auto-link. */
+export const dealAutoLinkSchema = z.object({
+  enabled: z.boolean({ required_error: 'enabled must be a boolean' }),
+});
+
 export const setNavLayoutSchema = z.object({
   layout: navLayoutEnum,
 });

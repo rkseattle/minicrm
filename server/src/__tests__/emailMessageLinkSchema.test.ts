@@ -108,6 +108,28 @@ describe('the email_message_links schema', () => {
     });
   });
 
+  it('rejects a source outside the CHECK constraint', async () => {
+    // NULL means a person and 'system' means the engine; nothing else is a valid author.
+    await expect(
+      pool.query(
+        `INSERT INTO email_message_links
+           (email_message_id, record_type, record_id, match_type, source)
+         VALUES ($1, 'contact', $2, 'auto', 'robot')`,
+        [messageId, contactId],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('accepts a null source, which is how a hand-filed link records itself', async () => {
+    await insertLink(messageId, 'contact', contactId, 'manual');
+
+    const stored = await pool.query<{ source: string | null }>(
+      `SELECT source FROM email_message_links WHERE email_message_id = $1`,
+      [messageId],
+    );
+    expect(stored.rows[0]!.source).toBeNull();
+  });
+
   it('rejects the same record linked to one message twice', async () => {
     await insertLink(messageId, 'contact', contactId);
 

@@ -23,6 +23,7 @@ import {
   relinkLinksToConvertedLead,
 } from './emailMatchingService.js';
 import { computeLeadRoutingSuggestion, persistRoutingDecision } from './leadRoutingService.js';
+import { getDealAutoLink } from './settingsService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -646,7 +647,11 @@ export async function convertLead(
     // The contact now has an account and a deal, so rules 3 and 4 apply to the mail that
     // just moved onto it — otherwise a message synced a minute later reaches both and
     // this one never does.
-    await reconcileDerivedLinks(client, await messagesLinkedToContacts(client, [contactId]));
+    await reconcileDerivedLinks(
+      client,
+      await messagesLinkedToContacts(client, [contactId]),
+      await getDealAutoLink(),
+    );
 
     // Write status history entry if status changed
     if (prevStatus !== 'Qualified') {

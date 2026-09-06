@@ -128,6 +128,7 @@ describe('the real spec tree', () => {
         `${base}/coverage-pipeline/coverage-pipeline.spec.ts`,
         `${base}/data-integrity/cascade-delete.spec.ts`,
         `${base}/deals/multi-currency.spec.ts`,
+        `${base}/email-messages/email-messages.spec.ts`,
         `${base}/grpc/audit-grpc.spec.ts`,
         `${base}/iam/iam-service-account.spec.ts`,
         `${base}/iam/iam-viewer.spec.ts`,

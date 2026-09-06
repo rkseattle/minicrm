@@ -275,16 +275,6 @@ export async function relinkLinksToConvertedLead(
 }
 
 /**
- * Moves a merged-away contact's links to the surviving contact.
- *
- * A merge consolidates two records, so the loser's conversation history must follow rather
- * than be dropped — the same reason mergeContacts re-points notes and attachments. The
- * guard is not optional: UNIQUE (email_message_id, record_type, record_id) means a message
- * naming both contacts already has a winner row, and a bare UPDATE would raise 23505 and
- * roll the whole merge back. What the guard skips is deleted, exactly as
- * custom_field_values is handled two statements above the call site.
- */
-/**
  * Recomputes the `account` and `deal` auto-links on a set of messages from current state.
  *
  * Rules 3 and 4 derive a link from a relationship — `contacts.account_id`, `deal_contacts`
@@ -303,10 +293,14 @@ export async function relinkLinksToConvertedLead(
  *
  * @param client - The transaction that changed the contacts or their relationships.
  * @param messageIds - The messages to recompute. Empty is a no-op.
+ * @param dealAutoLink - Whether rule 4 may write deal links, read from the system setting.
+ *   The reconcile path takes the same gate as the sync path, or an admin who switched
+ *   auto-linking off would see deals reappear whenever a relationship changed.
  */
 export async function reconcileDerivedLinks(
   client: PoolClient,
   messageIds: readonly string[],
+  dealAutoLink: boolean,
 ): Promise<void> {
   if (messageIds.length === 0) {
     return;
@@ -355,6 +349,10 @@ export async function reconcileDerivedLinks(
      ON CONFLICT DO NOTHING`,
     [messageIds, AUTO_MATCH, SYSTEM_SOURCE],
   );
+
+  if (dealAutoLink) {
+    await linkContactDeals(client, messageIds);
+  }
 }
 
 /**

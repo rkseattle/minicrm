@@ -21,6 +21,7 @@ import { getStageNames } from './pipelineStageService.js';
 import type { AuditActor } from './auditService.js';
 import { setRlsUserId } from './rlsContextService.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
+import { getDealAutoLink } from './settingsService.js';
 
 /** Valid bulk actions for contacts and accounts */
 const CONTACT_ACCOUNT_ACTIONS: ReadonlySet<string> = new Set(['reassign', 'delete']);
@@ -149,7 +150,7 @@ export async function bulkContacts(
       const affectedMessages = await messagesLinkedToContacts(client, actualIds);
       await deleteLinksForDeletedEntities(client, 'contact', actualIds);
       await client.query('DELETE FROM contacts WHERE id = ANY($1)', [actualIds]);
-      await reconcileDerivedLinks(client, affectedMessages);
+      await reconcileDerivedLinks(client, affectedMessages, await getDealAutoLink());
 
       for (const id of actualIds) {
         await writeAuditEntry(client, {

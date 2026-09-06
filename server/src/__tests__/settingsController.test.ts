@@ -235,6 +235,92 @@ describe('PATCH /api/v1/settings/email-notifications', () => {
   });
 });
 
+// ── GET /api/v1/settings/deal-auto-link ─────────────────────────────────────────
+
+describe('GET /api/v1/settings/deal-auto-link', () => {
+  it('returns 200 with an enabled boolean', async () => {
+    const res = await request(app)
+      .get('/api/v1/settings/deal-auto-link')
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.enabled).toBe('boolean');
+  });
+
+  it('is accessible to authenticated reps', async () => {
+    const res = await request(app).get('/api/v1/settings/deal-auto-link').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.enabled).toBe('boolean');
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).get('/api/v1/settings/deal-auto-link');
+
+    expect(res.status).toBe(401);
+  });
+});
+
+// ── PATCH /api/v1/settings/deal-auto-link ───────────────────────────────────────
+
+describe('PATCH /api/v1/settings/deal-auto-link', () => {
+  afterAll(async () => {
+    // Seeded on, and the matcher reads it every tick — leaving it off would silently
+    // stop deal linking for every suite that runs after this one.
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ('deal_auto_link', 'true', now())
+       ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = now()`,
+    );
+  });
+
+  it('disables deal auto-linking and returns 200', async () => {
+    const res = await request(app)
+      .patch('/api/v1/settings/deal-auto-link')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.enabled).toBe(false);
+  });
+
+  it('enables deal auto-linking and returns 200', async () => {
+    const res = await request(app)
+      .patch('/api/v1/settings/deal-auto-link')
+      .set('Cookie', adminCookie)
+      .send({ enabled: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.enabled).toBe(true);
+  });
+
+  it('returns 400 when enabled is not a boolean', async () => {
+    const res = await request(app)
+      .patch('/api/v1/settings/deal-auto-link')
+      .set('Cookie', adminCookie)
+      .send({ enabled: 'yes' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 403 when a rep attempts to update', async () => {
+    // Every rep can read the setting; only an admin may switch org-wide filing off.
+    const res = await request(app)
+      .patch('/api/v1/settings/deal-auto-link')
+      .set('Cookie', repCookie)
+      .send({ enabled: false });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).patch('/api/v1/settings/deal-auto-link').send({ enabled: true });
+
+    expect(res.status).toBe(401);
+  });
+});
+
 // ── GET /api/v1/settings/onboarding ────────────────────
 
 describe('GET /api/v1/settings/onboarding', () => {

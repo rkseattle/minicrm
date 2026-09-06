@@ -594,7 +594,7 @@ describe('reconciling account links when a contact changes employer', () => {
       await client.query('BEGIN');
       const affected = await messagesLinkedToContacts(client, contactIds);
       await change();
-      await reconcileDerivedLinks(client, affected);
+      await reconcileDerivedLinks(client, affected, true);
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -691,7 +691,7 @@ describe('reconciling deal links when a participant is removed', () => {
         dealId,
         contactId,
       ]);
-      await reconcileDerivedLinks(client, affected);
+      await reconcileDerivedLinks(client, affected, true);
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -772,7 +772,7 @@ describe('reconciling when a contact is deleted', () => {
       const affected = await messagesLinkedToContacts(client, [contactId]);
       await deleteLinksForDeletedEntity(client, 'contact', contactId);
       await client.query('DELETE FROM contacts WHERE id = $1', [contactId]);
-      await reconcileDerivedLinks(client, affected);
+      await reconcileDerivedLinks(client, affected, true);
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -809,7 +809,7 @@ describe('reconciling when a contact is deleted', () => {
       const affected = await messagesLinkedToContacts(client, [doomedId]);
       await deleteLinksForDeletedEntity(client, 'contact', doomedId);
       await client.query('DELETE FROM contacts WHERE id = $1', [doomedId]);
-      await reconcileDerivedLinks(client, affected);
+      await reconcileDerivedLinks(client, affected, true);
       await client.query('COMMIT');
     } finally {
       client.release();
@@ -828,7 +828,7 @@ describe('reconciling a merge that changes which account a message names', () =>
     try {
       await client.query('BEGIN');
       await relinkLinksToMergedContact(client, winnerId, loserId);
-      await reconcileDerivedLinks(client, await messagesLinkedToContacts(client, [winnerId]));
+      await reconcileDerivedLinks(client, await messagesLinkedToContacts(client, [winnerId]), true);
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -922,5 +922,88 @@ describe('recording who created a link', () => {
     );
 
     expect(await sourcesFor(messageId)).toEqual({ contact: null });
+  });
+});
+
+describe('reconciling when a participant joins a deal', () => {
+  /** Adds a participant the way linkContactToDeal does, then reconciles. */
+  async function addParticipant(dealId: string, contactId: string): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        'INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [dealId, contactId],
+      );
+      await reconcileDerivedLinks(
+        client,
+        await messagesLinkedToContacts(client, [contactId]),
+        true,
+      );
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  it('files the contact’s existing mail against the deal they just joined', async () => {
+    // Nothing re-matches a stored message, so a deal the contact joins after the mail
+    // arrived would never see it.
+    const contactId = await createContact('joiner');
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-joiner@example.com`] })]);
+    const dealId = await createDeal('Joined Deal', openStageId, contactId);
+    // createDeal already links the participant, so start from a message that predates it.
+    await pool.query(`DELETE FROM email_message_links WHERE record_type = 'deal'`);
+
+    await addParticipant(dealId, contactId);
+
+    expect(await linksFor(messageId)).toContain(`deal:${dealId}`);
+  });
+
+  it('leaves a closed deal alone when a participant joins it', async () => {
+    const contactId = await createContact('closed-joiner');
+    const messageId = await insertMessage('1');
+    await match([
+      message(messageId, { toAddresses: [`${FILE_PREFIX}-closed-joiner@example.com`] }),
+    ]);
+    const dealId = await createDeal('Closed Joined Deal', terminalStageId, contactId);
+    await pool.query(`DELETE FROM email_message_links WHERE record_type = 'deal'`);
+
+    await addParticipant(dealId, contactId);
+
+    // Rule 4 is open deals only, on the reconcile path as much as on the sync path.
+    expect(await linksFor(messageId)).not.toContain(`deal:${dealId}`);
+  });
+
+  it('honours deal_auto_link being off on the reconcile path', async () => {
+    const contactId = await createContact('gated-joiner');
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-gated-joiner@example.com`] })]);
+    const dealId = await createDeal('Gated Joined Deal', openStageId, contactId);
+    await pool.query(`DELETE FROM email_message_links WHERE record_type = 'deal'`);
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        'INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [dealId, contactId],
+      );
+      // An admin who switched auto-linking off must not have it reappear by the back door.
+      await reconcileDerivedLinks(
+        client,
+        await messagesLinkedToContacts(client, [contactId]),
+        false,
+      );
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    expect(await linksFor(messageId)).not.toContain(`deal:${dealId}`);
   });
 });

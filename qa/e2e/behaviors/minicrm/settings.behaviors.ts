@@ -422,6 +422,9 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
     restClient
       .patch('/api/v1/settings/tags-restrict-creation', { restricted: false })
       .catch(() => undefined),
+    // Seeded on, and reset-e2e-data.ts already restores it — the two reset paths must not
+    // disagree about the same key.
+    restClient.patch('/api/v1/settings/deal-auto-link', { enabled: true }).catch(() => undefined),
     restClient
       .put('/api/v1/settings/currencies', { home_currency: 'USD', currencies: [] })
       .catch(() => undefined),
