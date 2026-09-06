@@ -15,6 +15,7 @@
  *   - nav_layout → top
  *   - email_notifications_enabled → true
  *   - tags_restrict_creation → false
+ *   - deal_auto_link → true
  *
  * The surviving admin's own preferences (nav_layout, preferred_language) are cleared
  * too: that row outlives the user DELETE, so a preference a spec left on it would
@@ -131,6 +132,7 @@ async function main(adminEmail: string): Promise<void> {
     await client.query(`DELETE FROM webhook_subscriptions`);
 
     // Connected mailboxes and the mail synced from them.
+    await client.query(`DELETE FROM email_message_links`);
     await client.query(`DELETE FROM email_sync_jobs`);
     await client.query(`DELETE FROM email_messages`);
     // States are swept only when a new OAuth flow starts, which no E2E run does, so a row
@@ -249,6 +251,7 @@ async function main(adminEmail: string): Promise<void> {
       ['nav_layout', 'top'],
       ['email_notifications_enabled', 'true'],
       ['tags_restrict_creation', 'false'],
+      ['deal_auto_link', 'true'],
     ];
     for (const [key, value] of settingResets) {
       await client.query(`UPDATE system_settings SET value = $2 WHERE key = $1`, [key, value]);

@@ -8,7 +8,7 @@ Messages synced from a connected mailbox. Headers, metadata, and body text. All 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false |  |  |  |
+| id | uuid | gen_random_uuid() | false | [public.email_message_links](public.email_message_links.md) |  |  |
 | connected_account_id | uuid |  | false |  | [public.connected_accounts](public.connected_accounts.md) |  |
 | provider_message_id | text |  | false |  |  | The provider's own message identifier, opaque here. Unique per connected account, which is what makes a repeated sync idempotent. |
 | thread_id | text |  | false |  |  | Normalized across providers: native thread id where one exists, otherwise derived from RFC 5322 References/In-Reply-To/Message-ID. |
@@ -49,6 +49,7 @@ Messages synced from a connected mailbox. Headers, metadata, and body text. All 
 ```mermaid
 erDiagram
 
+"public.email_message_links" }o--|| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
 "public.email_messages" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 
 "public.email_messages" {
@@ -68,6 +69,14 @@ erDiagram
   text message_body_text "Plain-text body. Taken from the text part where one exists, otherwise converted from the HTML part so a message reads the same either way. Null when neither part exists or the document could not be parsed."
   text message_body_html "HTML body exactly as the sender wrote it, stored UNSANITIZED. Nothing renders it today; whatever first does must sanitize at render, since sanitizing here would discard markup a renderer needs."
   text message_snippet "First 200 characters of the plain-text body with whitespace collapsed, for list views that must not load a whole body. Derived from message_body_text, so it is null whenever that is."
+}
+"public.email_message_links" {
+  uuid id ""
+  uuid email_message_id FK ""
+  varchar_16_ record_type ""
+  uuid record_id ""
+  varchar_16_ match_type "How the link was made: 'auto' by the sync engine's address matching, 'manual' by a user. A manual link is audited and an automatic one is not, so this also says whether to expect an audit entry."
+  timestamp_with_time_zone created_at ""
 }
 "public.connected_accounts" {
   uuid id ""
