@@ -26,6 +26,15 @@ export type PipelineStage =
 /**
  * Page Object for the MiniCRM pipeline board.
  */
+/**
+ * How long the board container may take to appear after its data has landed.
+ *
+ * Covers React's commit after React Query flips isLoading, which networkidle does not
+ * wait for. Matched to the mobile board, which mounts its cards asynchronously and is
+ * where the shortfall surfaces first.
+ */
+const BOARD_RENDER_TIMEOUT_MS = 15_000;
+
 export class PipelineBoardPage {
   private readonly page: PageFacade;
 
@@ -56,7 +65,11 @@ export class PipelineBoardPage {
         ],
         { intent: 'pipeline kanban board container after navigation' },
       )
-      .resolve();
+      // Networkidle is not render-complete: the container is gated on React Query's
+      // isLoading, which flips a tick AFTER the responses land. The default 2 s probe
+      // budget expires inside that gap on a loaded runner and reports selector drift for
+      // an element that is merely slow.
+      .resolve(BOARD_RENDER_TIMEOUT_MS);
   }
 
   /**
