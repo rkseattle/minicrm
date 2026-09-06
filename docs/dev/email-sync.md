@@ -367,6 +367,23 @@ moves them to the contact. Both guard against the composite UNIQUE, because a me
 named both records already has a row for the survivor and a bare UPDATE would raise `23505`
 and roll the whole operation back.
 
+**Rules 3 and 4 are derived, so they are reconciled rather than left to rot.** Both compute
+a link from a _relationship_ — `contacts.account_id`, `deal_contacts` — and a relationship
+changes after the mail arrives. A contact who moves employer would otherwise keep filing
+correspondence against the old account forever, and a contact dropped from a deal would
+leave the deal holding mail nothing justifies. So every write to those relationships
+reconciles the links it invalidates: `updateContact`, `setAccountContacts`, a contact merge
+that moves the winner's account, and a lead conversion for the account side;
+`unlinkContactFromDeal` for the deal side.
+
+Two guards apply to every one of those. Only `match_type = 'auto'` links move — a manual
+link is somebody's deliberate filing decision and the engine does not overrule it. And a
+link another contact on the same message still justifies stays, because two colleagues at
+one account produce one account link between them.
+
+Rules 1 and 2 need none of this: an address-derived link stays true as long as the address
+does, and an address edit is not a re-filing.
+
 ## Reading synced mail
 
 `GET /api/v1/email-messages?record_type=&record_id=` returns the caller's own mail linked to

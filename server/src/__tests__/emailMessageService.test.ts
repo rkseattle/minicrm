@@ -13,6 +13,7 @@ import { readFile } from 'node:fs/promises';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { listMessagesForRecord, listUnmatchedMessages } from '../services/emailMessageService.js';
+import { insertParkedMailbox } from './testUtils.js';
 
 const FILE_PREFIX = 'emailmsgsvc';
 
@@ -21,18 +22,6 @@ let repBId: string;
 let accountAId: string;
 let accountBId: string;
 let contactId: string;
-
-/** A mailbox row written directly, already parked from the global sync claim. */
-async function insertParkedAccount(userId: string, suffix: string): Promise<string> {
-  const result = await pool.query<{ id: string }>(
-    `INSERT INTO connected_accounts
-       (user_id, provider, email_address, auth_encrypted, sync_next_attempt_at)
-     VALUES ($1, 'imap', $2, 'not-a-real-credential', NOW() + interval '1 hour')
-     RETURNING id`,
-    [userId, `${FILE_PREFIX}-${suffix}@example.com`],
-  );
-  return result.rows[0]!.id;
-}
 
 async function insertMessage(
   accountId: string,
@@ -89,8 +78,8 @@ beforeAll(async () => {
   });
   repBId = repB.id;
 
-  accountAId = await insertParkedAccount(repAId, 'mailbox-a');
-  accountBId = await insertParkedAccount(repBId, 'mailbox-b');
+  accountAId = await insertParkedMailbox(repAId, `${FILE_PREFIX}-mailbox-a@example.com`);
+  accountBId = await insertParkedMailbox(repBId, `${FILE_PREFIX}-mailbox-b@example.com`);
 
   const contact = await pool.query<{ id: string }>(
     `INSERT INTO contacts (first_name, last_name, email, owner_id)
@@ -213,7 +202,9 @@ describe('listMessagesForRecord', () => {
     );
     const sql = source.slice(source.indexOf('async function listThreadPage'));
 
-    expect(sql).not.toMatch(/WHERE[^`]*is_private/);
+    // Every SQL string here is a template literal, so a bound that stops at a backtick
+    // would leave most of the function unchecked. The identifier must not appear at all.
+    expect(sql).not.toMatch(/is_private/);
   });
 
   it('sorts a null sent_at last rather than dropping the message', async () => {

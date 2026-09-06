@@ -19,6 +19,8 @@
 
 import 'dotenv/config';
 
+import { readFile } from 'node:fs/promises';
+
 import pool from '../db.js';
 
 /** Columns a migration dropped, which a regeneration must not bring back. */
@@ -80,16 +82,23 @@ describe('baseline schema parity', () => {
     expect(result.rows[0]!.count).toBe('1');
   });
 
-  it('resolves sso_jit_default_role_id to a real role', async () => {
+  it('seeds sso_jit_default_role_id as a role reference, not a literal uuid', async () => {
     // The value is a role id, so a baseline that seeds a literal UUID rather than a
     // subquery names nothing on a fresh install and SSO provisioning assigns no role.
-    const result = await pool.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count
-         FROM system_settings s
-         JOIN custom_roles r ON r.id::text = s.value
-        WHERE s.key = 'sso_jit_default_role_id'`,
+    //
+    // Asserted against the baseline's own source rather than the live row: ssoSettingsService's
+    // suite deletes this key in beforeEach to exercise the unconfigured state, and it runs in
+    // parallel against the same database. Every other case here reads schema or a cluster
+    // role, which nothing mutates; this one alone reads a seeded row.
+    const baseline = await readFile(
+      new URL('../../../db/migrations/000_baseline.js', import.meta.url),
+      'utf8',
     );
-    expect(result.rows[0]!.count).toBe('1');
+    const seed = baseline.slice(baseline.indexOf("'sso_jit_default_role_id'"));
+    const statement = seed.slice(0, seed.indexOf('`)'));
+
+    expect(statement).toMatch(/FROM public\.custom_roles/);
+    expect(statement).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
   });
 
   it('seeds the rows the application cannot start without', async () => {

@@ -18,10 +18,13 @@ import {
   deleteLinksForDeletedEntities,
   deleteLinksForDeletedEntity,
   matchMessagesToRecords,
+  deleteDealLinksForRemovedParticipant,
+  relinkAccountLinksForContact,
   relinkLinksToConvertedLead,
   relinkLinksToMergedContact,
   type MatchableMessage,
 } from '../services/emailMatchingService.js';
+import { insertParkedMailbox } from './testUtils.js';
 
 const FILE_PREFIX = 'emailmatch';
 
@@ -143,17 +146,7 @@ beforeAll(async () => {
   });
   ownerId = rep.id;
 
-  // Written directly and already parked: createImapAccount leaves the row claimable until
-  // a later park, and claimAccountsDueForSync is global, so a parallel suite would count
-  // this file's mailbox against its own batch limit.
-  const account = await pool.query<{ id: string }>(
-    `INSERT INTO connected_accounts
-       (user_id, provider, email_address, auth_encrypted, sync_next_attempt_at)
-     VALUES ($1, 'imap', $2, 'not-a-real-credential', NOW() + interval '1 hour')
-     RETURNING id`,
-    [ownerId, `${FILE_PREFIX}-owner@example.com`],
-  );
-  accountId = account.rows[0]!.id;
+  accountId = await insertParkedMailbox(ownerId, `${FILE_PREFIX}-owner@example.com`);
 
   // Its own pipeline and stages rather than the default ones: pipelineStageService's
   // suite deletes and re-seeds the default pipeline's stages, which is why dealService
@@ -581,5 +574,166 @@ describe('re-pointing on lead conversion', () => {
     await convert(leadId, contactId);
 
     expect(await linksFor(messageId)).toEqual([`contact:${contactId}`]);
+  });
+});
+
+describe('reconciling account links when a contact changes employer', () => {
+  async function relink(contactId: string, accountFk: string | null): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await relinkAccountLinksForContact(client, contactId, accountFk);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  it('moves the link to the new account', async () => {
+    const oldAccountId = await createAccountRecord('Old Employer');
+    const newAccountId = await createAccountRecord('New Employer');
+    const contactId = await createContact('mover', oldAccountId);
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-mover@example.com`] })]);
+    expect(await linksFor(messageId)).toContain(`account:${oldAccountId}`);
+
+    await pool.query('UPDATE contacts SET account_id = $1 WHERE id = $2', [
+      newAccountId,
+      contactId,
+    ]);
+    await relink(contactId, newAccountId);
+
+    const links = await linksFor(messageId);
+    expect(links).toContain(`account:${newAccountId}`);
+    expect(links).not.toContain(`account:${oldAccountId}`);
+  });
+
+  it('drops the link when the contact now belongs to no account', async () => {
+    const oldAccountId = await createAccountRecord('Former Employer');
+    const contactId = await createContact('leaver', oldAccountId);
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-leaver@example.com`] })]);
+
+    await pool.query('UPDATE contacts SET account_id = NULL WHERE id = $1', [contactId]);
+    await relink(contactId, null);
+
+    expect(await linksFor(messageId)).toEqual([`contact:${contactId}`]);
+  });
+
+  it('keeps an account another contact on the same message still justifies', async () => {
+    const sharedAccountId = await createAccountRecord('Shared Employer');
+    const moverId = await createContact('shared-mover', sharedAccountId);
+    const stayerId = await createContact('shared-stayer', sharedAccountId);
+    const messageId = await insertMessage('1');
+    await match([
+      message(messageId, {
+        toAddresses: [
+          `${FILE_PREFIX}-shared-mover@example.com`,
+          `${FILE_PREFIX}-shared-stayer@example.com`,
+        ],
+      }),
+    ]);
+
+    await pool.query('UPDATE contacts SET account_id = NULL WHERE id = $1', [moverId]);
+    await relink(moverId, null);
+
+    // The stayer still works there, so the message still belongs on that timeline.
+    const links = await linksFor(messageId);
+    expect(links).toContain(`account:${sharedAccountId}`);
+    expect(links).toContain(`contact:${stayerId}`);
+  });
+
+  it('leaves a manual link alone', async () => {
+    const oldAccountId = await createAccountRecord('Manual Employer');
+    const contactId = await createContact('manual-mover', oldAccountId);
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-manual-mover@example.com`] })]);
+    await pool.query(
+      `UPDATE email_message_links SET match_type = 'manual'
+        WHERE email_message_id = $1 AND record_type = 'account'`,
+      [messageId],
+    );
+
+    await pool.query('UPDATE contacts SET account_id = NULL WHERE id = $1', [contactId]);
+    await relink(contactId, null);
+
+    // Somebody filed this deliberately; the engine does not overrule them.
+    expect(await linksFor(messageId)).toContain(`account:${oldAccountId}`);
+  });
+});
+
+describe('reconciling deal links when a participant is removed', () => {
+  async function removeParticipant(dealId: string, contactId: string): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM deal_contacts WHERE deal_id = $1 AND contact_id = $2', [
+        dealId,
+        contactId,
+      ]);
+      await deleteDealLinksForRemovedParticipant(client, dealId, contactId);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  it('drops the deal link the departing contact justified', async () => {
+    const contactId = await createContact('participant');
+    const dealId = await createDeal('Participant Deal', openStageId, contactId);
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-participant@example.com`] })]);
+    expect(await linksFor(messageId)).toContain(`deal:${dealId}`);
+
+    await removeParticipant(dealId, contactId);
+
+    expect(await linksFor(messageId)).not.toContain(`deal:${dealId}`);
+  });
+
+  it('keeps the deal link another participant on the same message still justifies', async () => {
+    const leavingId = await createContact('deal-leaver');
+    const stayingId = await createContact('deal-stayer');
+    const dealId = await createDeal('Two Participant Deal', openStageId, leavingId);
+    await pool.query('INSERT INTO deal_contacts (deal_id, contact_id) VALUES ($1, $2)', [
+      dealId,
+      stayingId,
+    ]);
+    const messageId = await insertMessage('1');
+    await match([
+      message(messageId, {
+        toAddresses: [
+          `${FILE_PREFIX}-deal-leaver@example.com`,
+          `${FILE_PREFIX}-deal-stayer@example.com`,
+        ],
+      }),
+    ]);
+
+    await removeParticipant(dealId, leavingId);
+
+    expect(await linksFor(messageId)).toContain(`deal:${dealId}`);
+  });
+
+  it('leaves a manual deal link alone', async () => {
+    const contactId = await createContact('manual-participant');
+    const dealId = await createDeal('Manual Deal', openStageId, contactId);
+    const messageId = await insertMessage('1');
+    await match([
+      message(messageId, { toAddresses: [`${FILE_PREFIX}-manual-participant@example.com`] }),
+    ]);
+    await pool.query(
+      `UPDATE email_message_links SET match_type = 'manual'
+        WHERE email_message_id = $1 AND record_type = 'deal'`,
+      [messageId],
+    );
+
+    await removeParticipant(dealId, contactId);
+
+    expect(await linksFor(messageId)).toContain(`deal:${dealId}`);
   });
 });

@@ -13,6 +13,7 @@ import 'dotenv/config';
 
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
+import { insertParkedMailbox } from './testUtils.js';
 
 const FILE_PREFIX = 'emliknkschema';
 
@@ -22,26 +23,6 @@ let contactId: string;
 
 async function deleteFixtureUsers(): Promise<void> {
   await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
-}
-
-/**
- * Inserts a mailbox row already parked from the scheduler.
- *
- * `createImapAccount` leaves `sync_next_attempt_at` NULL, so the account is claimable
- * between that call and a `parkFromScheduler` after it — and `claimAccountsDueForSync` is
- * global, so a parallel suite asserting on its own batch limit counts this file's account
- * against it. Nothing here exercises the credential path, so the row is written directly
- * with the park already applied and no window to lose.
- */
-async function insertParkedAccount(userId: string, suffix: string): Promise<string> {
-  const result = await pool.query<{ id: string }>(
-    `INSERT INTO connected_accounts
-       (user_id, provider, email_address, auth_encrypted, sync_next_attempt_at)
-     VALUES ($1, 'imap', $2, 'not-a-real-credential', NOW() + interval '1 hour')
-     RETURNING id`,
-    [userId, `${FILE_PREFIX}-${suffix}@example.com`],
-  );
-  return result.rows[0]!.id;
 }
 
 /** Inserts a message directly: no service writes this table outside the sync engine. */
@@ -79,7 +60,7 @@ beforeAll(async () => {
     status: 'active',
   });
 
-  accountId = await insertParkedAccount(rep.id, 'owner');
+  accountId = await insertParkedMailbox(rep.id, `${FILE_PREFIX}-owner@example.com`);
 
   const contact = await pool.query<{ id: string }>(
     `INSERT INTO contacts (first_name, last_name, email, owner_id)
@@ -174,7 +155,7 @@ describe('the email_message_links schema', () => {
       passwordHash: '$2b$12$placeholder',
       status: 'active',
     });
-    const doomedId = await insertParkedAccount(rep.id, 'cascade');
+    const doomedId = await insertParkedMailbox(rep.id, `${FILE_PREFIX}-cascade@example.com`);
 
     const doomedMessage = await pool.query<{ id: string }>(
       `INSERT INTO email_messages

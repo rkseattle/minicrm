@@ -200,6 +200,28 @@ export async function getDealAutoLink(): Promise<boolean> {
   return getBooleanSetting(DEAL_AUTO_LINK_KEY, true);
 }
 
+/**
+ * Sets whether synced email auto-links to a matched contact's open deals. Admin only.
+ *
+ * Turning this off stops future links; it does not remove links already written, which
+ * remain a record of what the engine matched at the time.
+ *
+ * @param enabled - Whether the sync engine may link messages to open deals.
+ * @returns The persisted value.
+ */
+export async function setDealAutoLink(
+  enabled: boolean,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<boolean> {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [DEAL_AUTO_LINK_KEY, String(enabled), actorIdOrNull(actor)],
+  );
+  return enabled;
+}
+
 // ── Default currency ─────────────────────────────────────────────
 
 /**

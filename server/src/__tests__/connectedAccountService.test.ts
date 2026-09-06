@@ -759,13 +759,17 @@ describe('scheduler-facing account claim', () => {
   });
 
   it('honors the batch limit', async () => {
-    await withholdOtherSuites();
     await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
     await createImapAccount(
       REP_A_ACTOR.id,
       { ...IMAP_INPUT, email_address: `${FILE_PREFIX}-second@example.com` },
       REP_A_ACTOR,
     );
+
+    // Withheld after creating, as every other test here does: withholding first defers
+    // only what exists at that moment, leaving anything a parallel file creates in the
+    // gap due when the claim runs.
+    await withholdOtherSuites();
 
     expect(await claimAccountsDueForSync(1)).toHaveLength(1);
   });

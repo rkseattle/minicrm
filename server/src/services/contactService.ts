@@ -17,7 +17,11 @@ import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
-import { deleteLinksForDeletedEntity, relinkLinksToMergedContact } from './emailMatchingService.js';
+import {
+  deleteLinksForDeletedEntity,
+  relinkAccountLinksForContact,
+  relinkLinksToMergedContact,
+} from './emailMatchingService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -568,6 +572,12 @@ export async function updateContact(
       );
     }
 
+    // Rule 3 derived the account link from account_id at sync time, so a contact who
+    // changed employer would otherwise keep filing mail against the old one.
+    if (contact && before && contact.account_id !== before.account_id) {
+      await relinkAccountLinksForContact(client, contact.id, contact.account_id);
+    }
+
     if (contact && before) {
       // Audit: per-field diff
       const auditBase = {
@@ -929,6 +939,16 @@ export async function mergeContacts(
         winnerId,
         ...setFields.map((f) => updates[f]),
       ]);
+
+      // A merge that moved the winner's account has to move its account links with it,
+      // the same reconciliation an ordinary account_id edit does.
+      if ('account_id' in updates && updates['account_id'] !== winner.account_id) {
+        await relinkAccountLinksForContact(
+          client,
+          winnerId,
+          updates['account_id'] as string | null,
+        );
+      }
     }
 
     // Re-link loser's activities to the winner (step 2)

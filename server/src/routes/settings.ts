@@ -16,6 +16,8 @@ import {
   setNavLayoutHandler,
   getEmailNotificationsEnabledHandler,
   setEmailNotificationsEnabledHandler,
+  getDealAutoLinkHandler,
+  setDealAutoLinkHandler,
   getDefaultCurrencyHandler,
   setDefaultCurrencyHandler,
   getCurrenciesHandler,
@@ -281,6 +283,63 @@ router.patch(
   authenticate,
   requireRole('admin'),
   asyncHandler(setEmailNotificationsEnabledHandler),
+);
+
+// ── Deal auto-link ───────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/v1/settings/deal-auto-link:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getDealAutoLink
+ *     summary: Get the deal auto-link toggle
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Whether synced email auto-links to a matched contact's open deals
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 enabled: { type: boolean }
+ */
+router.get('/deal-auto-link', authenticate, asyncHandler(getDealAutoLinkHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/deal-auto-link:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setDealAutoLink
+ *     summary: Set the deal auto-link toggle (admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               enabled: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Toggle state updated
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/deal-auto-link',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setDealAutoLinkHandler),
 );
 
 // ── Tag creation restriction ────────────────────────────────────

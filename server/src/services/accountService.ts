@@ -18,7 +18,10 @@ import { dispatchWebhookEvent } from './webhookService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
-import { deleteLinksForDeletedEntity } from './emailMatchingService.js';
+import {
+  deleteLinksForDeletedEntity,
+  relinkAccountLinksForContact,
+} from './emailMatchingService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -142,13 +145,20 @@ export async function setAccountContacts(
   client: PoolClient,
 ): Promise<void> {
   // Unlink any contacts currently linked to this account that are not in contactIds
-  await client.query(
+  const unlinkedRows = await client.query<{ id: string }>(
     `UPDATE contacts
      SET account_id = NULL, updated_at = now()
      WHERE account_id = $1
-       AND id != ALL($2::uuid[])`,
+       AND id != ALL($2::uuid[])
+     RETURNING id`,
     [accountId, contactIds],
   );
+
+  // Rule 3 derives the account link from account_id, so a contact leaving this account
+  // must stop filing mail against it — the same reconciliation updateContact does.
+  for (const row of unlinkedRows.rows) {
+    await relinkAccountLinksForContact(client, row.id, null);
+  }
 
   if (contactIds.length > 0) {
     // The guard stays on the write so a concurrent link cannot be stolen between a
@@ -166,6 +176,9 @@ export async function setAccountContacts(
     // is the defect this replaced. A duplicate id is not refused: ANY matches its row
     // once, so the id is in linkedIds even though the array was longer.
     const linkedIds = new Set(linked.rows.map((row) => row.id));
+    for (const id of linkedIds) {
+      await relinkAccountLinksForContact(client, id, accountId);
+    }
     const unlinked = contactIds.filter((id) => !linkedIds.has(id));
     if (unlinked.length > 0) {
       // Which ones are visibly held elsewhere, versus gone or hidden by RLS from this

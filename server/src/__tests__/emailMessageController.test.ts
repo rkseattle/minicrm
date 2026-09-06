@@ -13,7 +13,7 @@ import app from '../app.js';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
-import { clearAuditLogFor, makeAuthCookie } from './testUtils.js';
+import { clearAuditLogFor, insertParkedMailbox, makeAuthCookie } from './testUtils.js';
 
 const FILE_PREFIX = 'emailmsgctl';
 
@@ -26,17 +26,6 @@ let accountAId: string;
 let accountBId: string;
 let contactAId: string;
 let contactBId: string;
-
-async function insertParkedAccount(userId: string, suffix: string): Promise<string> {
-  const result = await pool.query<{ id: string }>(
-    `INSERT INTO connected_accounts
-       (user_id, provider, email_address, auth_encrypted, sync_next_attempt_at)
-     VALUES ($1, 'imap', $2, 'not-a-real-credential', NOW() + interval '1 hour')
-     RETURNING id`,
-    [userId, `${FILE_PREFIX}-${suffix}@example.com`],
-  );
-  return result.rows[0]!.id;
-}
 
 async function createContact(local: string, ownerId: string): Promise<string> {
   const result = await pool.query<{ id: string }>(
@@ -92,8 +81,8 @@ beforeAll(async () => {
     role: admin.role,
   });
 
-  accountAId = await insertParkedAccount(repAId, 'mailbox-a');
-  accountBId = await insertParkedAccount(repBId, 'mailbox-b');
+  accountAId = await insertParkedMailbox(repAId, `${FILE_PREFIX}-mailbox-a@example.com`);
+  accountBId = await insertParkedMailbox(repBId, `${FILE_PREFIX}-mailbox-b@example.com`);
   contactAId = await createContact('owned-by-a', repAId);
   contactBId = await createContact('owned-by-b', repBId);
 });
@@ -638,17 +627,35 @@ describe('DELETE /api/v1/email-messages/:id/links/:linkId', () => {
       name: viewer.name,
       role: viewer.role,
     });
-    const { messageId, linkId } = await linkedMessage();
+    // The viewer owns the mailbox and the message, so the mailbox gate passes and the
+    // capability gate is the only thing left that can reject. Reusing repA's message
+    // here would 404 first and the assertion would hold with the capability check
+    // deleted entirely.
+    const viewerMailboxId = await insertParkedMailbox(
+      viewer.id,
+      `${FILE_PREFIX}-viewer-mailbox@example.com`,
+    );
+    const viewerMessage = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'INBOX:viewer-unlink', 'thread-viewer-unlink', 'inbound', 'someone@example.net')
+       RETURNING id`,
+      [viewerMailboxId],
+    );
+    const messageId = viewerMessage.rows[0]!.id;
+    const viewerLink = await pool.query<{ id: string }>(
+      `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
+       VALUES ($1, 'contact', $2, 'auto') RETURNING id`,
+      [messageId, contactAId],
+    );
+    const linkId = viewerLink.rows[0]!.id;
 
     try {
       const res = await request(app)
         .delete(`/api/v1/email-messages/${messageId}/links/${linkId}`)
         .set('Cookie', viewerCookie);
 
-      // 404, not 403: the message is not in the viewer's mailboxes either, and that is
-      // the first gate. The capability check is what stops a caller who DOES own the
-      // mailbox but cannot edit the record.
-      expect([403, 404]).toContain(res.status);
+      expect(res.status).toBe(403);
       const remaining = await pool.query('SELECT 1 FROM email_message_links WHERE id = $1', [
         linkId,
       ]);
