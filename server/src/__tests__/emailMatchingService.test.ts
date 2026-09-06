@@ -18,8 +18,8 @@ import {
   deleteLinksForDeletedEntities,
   deleteLinksForDeletedEntity,
   matchMessagesToRecords,
-  deleteDealLinksForRemovedParticipant,
-  relinkAccountLinksForContact,
+  messagesLinkedToContacts,
+  reconcileDerivedLinks,
   relinkLinksToConvertedLead,
   relinkLinksToMergedContact,
   type MatchableMessage,
@@ -578,11 +578,14 @@ describe('re-pointing on lead conversion', () => {
 });
 
 describe('reconciling account links when a contact changes employer', () => {
-  async function relink(contactId: string, accountFk: string | null): Promise<void> {
+  /** Applies a change to the contacts, then reconciles what their messages now justify. */
+  async function relink(contactIds: string[], change: () => Promise<void>): Promise<void> {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await relinkAccountLinksForContact(client, contactId, accountFk);
+      const affected = await messagesLinkedToContacts(client, contactIds);
+      await change();
+      await reconcileDerivedLinks(client, affected);
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -600,11 +603,12 @@ describe('reconciling account links when a contact changes employer', () => {
     await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-mover@example.com`] })]);
     expect(await linksFor(messageId)).toContain(`account:${oldAccountId}`);
 
-    await pool.query('UPDATE contacts SET account_id = $1 WHERE id = $2', [
-      newAccountId,
-      contactId,
-    ]);
-    await relink(contactId, newAccountId);
+    await relink([contactId], async () => {
+      await pool.query('UPDATE contacts SET account_id = $1 WHERE id = $2', [
+        newAccountId,
+        contactId,
+      ]);
+    });
 
     const links = await linksFor(messageId);
     expect(links).toContain(`account:${newAccountId}`);
@@ -617,8 +621,9 @@ describe('reconciling account links when a contact changes employer', () => {
     const messageId = await insertMessage('1');
     await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-leaver@example.com`] })]);
 
-    await pool.query('UPDATE contacts SET account_id = NULL WHERE id = $1', [contactId]);
-    await relink(contactId, null);
+    await relink([contactId], async () => {
+      await pool.query('UPDATE contacts SET account_id = NULL WHERE id = $1', [contactId]);
+    });
 
     expect(await linksFor(messageId)).toEqual([`contact:${contactId}`]);
   });
@@ -637,8 +642,9 @@ describe('reconciling account links when a contact changes employer', () => {
       }),
     ]);
 
-    await pool.query('UPDATE contacts SET account_id = NULL WHERE id = $1', [moverId]);
-    await relink(moverId, null);
+    await relink([moverId], async () => {
+      await pool.query('UPDATE contacts SET account_id = NULL WHERE id = $1', [moverId]);
+    });
 
     // The stayer still works there, so the message still belongs on that timeline.
     const links = await linksFor(messageId);
@@ -657,8 +663,9 @@ describe('reconciling account links when a contact changes employer', () => {
       [messageId],
     );
 
-    await pool.query('UPDATE contacts SET account_id = NULL WHERE id = $1', [contactId]);
-    await relink(contactId, null);
+    await relink([contactId], async () => {
+      await pool.query('UPDATE contacts SET account_id = NULL WHERE id = $1', [contactId]);
+    });
 
     // Somebody filed this deliberately; the engine does not overrule them.
     expect(await linksFor(messageId)).toContain(`account:${oldAccountId}`);
@@ -670,11 +677,12 @@ describe('reconciling deal links when a participant is removed', () => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      const affected = await messagesLinkedToContacts(client, [contactId]);
       await client.query('DELETE FROM deal_contacts WHERE deal_id = $1 AND contact_id = $2', [
         dealId,
         contactId,
       ]);
-      await deleteDealLinksForRemovedParticipant(client, dealId, contactId);
+      await reconcileDerivedLinks(client, affected);
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -735,5 +743,134 @@ describe('reconciling deal links when a participant is removed', () => {
     await removeParticipant(dealId, contactId);
 
     expect(await linksFor(messageId)).toContain(`deal:${dealId}`);
+  });
+});
+
+describe('reconciling when a contact is deleted', () => {
+  it('drops the account and deal links the deleted contact justified', async () => {
+    const accountRecordId = await createAccountRecord('Doomed Employer');
+    const contactId = await createContact('doomed', accountRecordId);
+    const dealId = await createDeal('Doomed Deal', openStageId, contactId);
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-doomed@example.com`] })]);
+    expect(await linksFor(messageId)).toHaveLength(3);
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Read before the delete, as deleteContact does: the lookup joins through the very
+      // links the delete removes.
+      const affected = await messagesLinkedToContacts(client, [contactId]);
+      await deleteLinksForDeletedEntity(client, 'contact', contactId);
+      await client.query('DELETE FROM contacts WHERE id = $1', [contactId]);
+      await reconcileDerivedLinks(client, affected);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    // Nothing on this message relates to that account or deal any more.
+    expect(await linksFor(messageId)).toEqual([]);
+    expect(await pool.query('SELECT 1 FROM deals WHERE id = $1', [dealId])).toHaveProperty(
+      'rowCount',
+      1,
+    );
+  });
+
+  it('keeps an account a surviving contact on the same message still justifies', async () => {
+    const accountRecordId = await createAccountRecord('Shared Surviving Employer');
+    const doomedId = await createContact('doomed-shared', accountRecordId);
+    const survivorId = await createContact('survivor-shared', accountRecordId);
+    const messageId = await insertMessage('1');
+    await match([
+      message(messageId, {
+        toAddresses: [
+          `${FILE_PREFIX}-doomed-shared@example.com`,
+          `${FILE_PREFIX}-survivor-shared@example.com`,
+        ],
+      }),
+    ]);
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const affected = await messagesLinkedToContacts(client, [doomedId]);
+      await deleteLinksForDeletedEntity(client, 'contact', doomedId);
+      await client.query('DELETE FROM contacts WHERE id = $1', [doomedId]);
+      await reconcileDerivedLinks(client, affected);
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    const links = await linksFor(messageId);
+    expect(links).toContain(`account:${accountRecordId}`);
+    expect(links).toContain(`contact:${survivorId}`);
+  });
+});
+
+describe('reconciling a merge that changes which account a message names', () => {
+  /** Merges the way mergeContacts does: move the links first, then reconcile. */
+  async function mergeAndReconcile(winnerId: string, loserId: string): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await relinkLinksToMergedContact(client, winnerId, loserId);
+      await reconcileDerivedLinks(client, await messagesLinkedToContacts(client, [winnerId]));
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  it('re-derives the account for a message that only named the loser', async () => {
+    // The loser's messages reach the winner only during the merge, so a reconciliation
+    // that ran before it would find no messages at all and return early.
+    const winnerAccountId = await createAccountRecord('Winner Employer');
+    const loserAccountId = await createAccountRecord('Loser Employer');
+    const winnerId = await createContact('merge-winner', winnerAccountId);
+    const loserId = await createContact('merge-loser', loserAccountId);
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-merge-loser@example.com`] })]);
+    expect(await linksFor(messageId)).toContain(`account:${loserAccountId}`);
+
+    await mergeAndReconcile(winnerId, loserId);
+
+    const links = await linksFor(messageId);
+    expect(links).toContain(`contact:${winnerId}`);
+    expect(links).toContain(`account:${winnerAccountId}`);
+    expect(links).not.toContain(`account:${loserAccountId}`);
+  });
+
+  it("drops the loser's account even when the winner's own account never changed", async () => {
+    // The guard that only reconciled on an account_id change missed this: the winner
+    // keeps its account, so nothing about the winner changed — but the message's contact
+    // set did.
+    const winnerAccountId = await createAccountRecord('Unchanged Employer');
+    const loserAccountId = await createAccountRecord('Departing Employer');
+    const winnerId = await createContact('keep-winner', winnerAccountId);
+    const loserId = await createContact('keep-loser', loserAccountId);
+    const messageId = await insertMessage('1');
+    await match([
+      message(messageId, {
+        toAddresses: [
+          `${FILE_PREFIX}-keep-winner@example.com`,
+          `${FILE_PREFIX}-keep-loser@example.com`,
+        ],
+      }),
+    ]);
+    expect(await linksFor(messageId)).toContain(`account:${loserAccountId}`);
+
+    await mergeAndReconcile(winnerId, loserId);
+
+    const links = await linksFor(messageId);
+    expect(links).toContain(`account:${winnerAccountId}`);
+    expect(links).not.toContain(`account:${loserAccountId}`);
   });
 });

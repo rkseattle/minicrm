@@ -20,7 +20,8 @@ import { softDeleteNotesByEntity } from './noteService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
 import {
   deleteLinksForDeletedEntity,
-  relinkAccountLinksForContact,
+  messagesLinkedToContacts,
+  reconcileDerivedLinks,
 } from './emailMatchingService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -144,21 +145,27 @@ export async function setAccountContacts(
   contactIds: string[],
   client: PoolClient,
 ): Promise<void> {
+  // Every contact this call touches, read before the writes: rule 3 derives the account
+  // link from account_id, so both the ones leaving and the ones arriving need their
+  // messages recomputed. The leavers are named by their current account_id, not by
+  // contactIds, so they are collected here rather than from the argument.
+  const leaving = await client.query<{ id: string }>(
+    `SELECT id FROM contacts WHERE account_id = $1 AND id != ALL($2::uuid[])`,
+    [accountId, contactIds],
+  );
+  const affectedMessages = await messagesLinkedToContacts(client, [
+    ...contactIds,
+    ...leaving.rows.map((row) => row.id),
+  ]);
+
   // Unlink any contacts currently linked to this account that are not in contactIds
-  const unlinkedRows = await client.query<{ id: string }>(
+  await client.query(
     `UPDATE contacts
      SET account_id = NULL, updated_at = now()
      WHERE account_id = $1
-       AND id != ALL($2::uuid[])
-     RETURNING id`,
+       AND id != ALL($2::uuid[])`,
     [accountId, contactIds],
   );
-
-  // Rule 3 derives the account link from account_id, so a contact leaving this account
-  // must stop filing mail against it — the same reconciliation updateContact does.
-  for (const row of unlinkedRows.rows) {
-    await relinkAccountLinksForContact(client, row.id, null);
-  }
 
   if (contactIds.length > 0) {
     // The guard stays on the write so a concurrent link cannot be stolen between a
@@ -176,9 +183,6 @@ export async function setAccountContacts(
     // is the defect this replaced. A duplicate id is not refused: ANY matches its row
     // once, so the id is in linkedIds even though the array was longer.
     const linkedIds = new Set(linked.rows.map((row) => row.id));
-    for (const id of linkedIds) {
-      await relinkAccountLinksForContact(client, id, accountId);
-    }
     const unlinked = contactIds.filter((id) => !linkedIds.has(id));
     if (unlinked.length > 0) {
       // Which ones are visibly held elsewhere, versus gone or hidden by RLS from this
@@ -204,6 +208,10 @@ export async function setAccountContacts(
       );
     }
   }
+
+  // One statement per record type over every affected message, rather than three queries
+  // per contact: setting a hundred contacts on an account is a routine call.
+  await reconcileDerivedLinks(client, affectedMessages);
 }
 
 /**

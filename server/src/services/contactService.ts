@@ -19,7 +19,8 @@ import { softDeleteNotesByEntity } from './noteService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
 import {
   deleteLinksForDeletedEntity,
-  relinkAccountLinksForContact,
+  messagesLinkedToContacts,
+  reconcileDerivedLinks,
   relinkLinksToMergedContact,
 } from './emailMatchingService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
@@ -575,7 +576,7 @@ export async function updateContact(
     // Rule 3 derived the account link from account_id at sync time, so a contact who
     // changed employer would otherwise keep filing mail against the old one.
     if (contact && before && contact.account_id !== before.account_id) {
-      await relinkAccountLinksForContact(client, contact.id, contact.account_id);
+      await reconcileDerivedLinks(client, await messagesLinkedToContacts(client, [contact.id]));
     }
 
     if (contact && before) {
@@ -781,7 +782,12 @@ export async function deleteContact(
     // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'contact', id);
     await deleteFindingsForDeletedEntity(client, 'contact', id);
+
+    // Read before the delete: the lookup joins through the very links it removes, and the
+    // account and deal links this contact justified outlive it otherwise.
+    const affectedMessages = await messagesLinkedToContacts(client, [id]);
     await deleteLinksForDeletedEntity(client, 'contact', id);
+    await reconcileDerivedLinks(client, affectedMessages);
 
     const result = await client.query<ContactRow>(
       'DELETE FROM contacts WHERE id = $1 RETURNING *',
@@ -939,16 +945,6 @@ export async function mergeContacts(
         winnerId,
         ...setFields.map((f) => updates[f]),
       ]);
-
-      // A merge that moved the winner's account has to move its account links with it,
-      // the same reconciliation an ordinary account_id edit does.
-      if ('account_id' in updates && updates['account_id'] !== winner.account_id) {
-        await relinkAccountLinksForContact(
-          client,
-          winnerId,
-          updates['account_id'] as string | null,
-        );
-      }
     }
 
     // Re-link loser's activities to the winner (step 2)
@@ -1007,6 +1003,12 @@ export async function mergeContacts(
       [winnerId, loserId],
     );
     await relinkLinksToMergedContact(client, winnerId, loserId);
+
+    // After the move, not before: the loser's messages only reach the winner here, and
+    // they arrive carrying links derived from the loser's account and deals. Runs
+    // unconditionally — the message's contact set changed even when the winner's own
+    // account_id did not.
+    await reconcileDerivedLinks(client, await messagesLinkedToContacts(client, [winnerId]));
     // The winner's own value wins where both records filled the same field; the
     // loser's losing row is dropped rather than left orphaned.
     await client.query(
