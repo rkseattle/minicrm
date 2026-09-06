@@ -16,6 +16,7 @@ import { recordTokenUsage } from './aiTokenBudgetService.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
 import { findContactById } from './contactService.js';
 import { withRlsQuery } from './rlsContextService.js';
+import { NON_TERMINAL_STAGE_PREDICATE } from './pipelineStageService.js';
 import type {
   EmailDraftResponse,
   EmailDraftTone,
@@ -115,10 +116,7 @@ async function gatherEmailDraftContext(contactId: string): Promise<EmailDraftCon
          FROM deals d
          INNER JOIN deal_contacts dc ON dc.deal_id = d.id
          WHERE dc.contact_id = $1
-           AND d.pipeline_stage_id NOT IN (
-             SELECT id FROM pipeline_stages
-             WHERE pipeline_id = d.pipeline_id AND is_terminal = true
-           )
+           AND ${NON_TERMINAL_STAGE_PREDICATE}
          ORDER BY d.created_at ASC`,
         [contactId],
       ),

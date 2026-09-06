@@ -15,6 +15,7 @@ import {
   setNavLayout,
   getEmailNotificationsEnabled,
   setEmailNotificationsEnabled,
+  getDealAutoLink,
   getDefaultCurrency,
   setDefaultCurrency,
   getOnboardingStatus,
@@ -30,7 +31,8 @@ beforeEach(async () => {
     `INSERT INTO system_settings (key, value, updated_at)
      VALUES ('default_language', 'en', now()),
             ('nav_layout', 'top', now()),
-            ('email_notifications_enabled', 'true', now())
+            ('email_notifications_enabled', 'true', now()),
+            ('deal_auto_link', 'true', now())
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
   );
 });
@@ -157,6 +159,26 @@ describe('getEmailNotificationsEnabled', () => {
     await pool.query(`DELETE FROM system_settings WHERE key = 'email_notifications_enabled'`);
     const enabled = await getEmailNotificationsEnabled();
     expect(enabled).toBe(true);
+  });
+});
+
+// ── getDealAutoLink ──────────────────────────────────────────────
+
+describe('getDealAutoLink', () => {
+  it('returns true when the setting is "true"', async () => {
+    expect(await getDealAutoLink()).toBe(true);
+  });
+
+  it('returns false when the setting is "false"', async () => {
+    await pool.query(`UPDATE system_settings SET value = 'false' WHERE key = 'deal_auto_link'`);
+    expect(await getDealAutoLink()).toBe(false);
+  });
+
+  it('defaults to true when the row is missing', async () => {
+    // Seeded on by migration, so an absent row means seeding did not run — matching should
+    // still link deals rather than silently stop.
+    await pool.query(`DELETE FROM system_settings WHERE key = 'deal_auto_link'`);
+    expect(await getDealAutoLink()).toBe(true);
   });
 });
 

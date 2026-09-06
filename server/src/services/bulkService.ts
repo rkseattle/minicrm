@@ -7,6 +7,7 @@ import pool from '../db.js';
 import type { PoolClient } from 'pg';
 import { writeAuditEntry } from './auditService.js';
 import { deleteFindingsForDeletedEntities } from './dataHygieneService.js';
+import { deleteLinksForDeletedEntities } from './emailMatchingService.js';
 import { queueAssignmentNotification } from './notificationService.js';
 import { findUserById } from './userService.js';
 import { fireAutomationTrigger } from './automationService.js';
@@ -139,6 +140,7 @@ export async function bulkContacts(
 
     if (action === 'delete') {
       await deleteFindingsForDeletedEntities(client, 'contact', actualIds);
+      await deleteLinksForDeletedEntities(client, 'contact', actualIds);
       await client.query('DELETE FROM contacts WHERE id = ANY($1)', [actualIds]);
 
       for (const id of actualIds) {
@@ -242,6 +244,7 @@ export async function bulkAccounts(
 
     if (action === 'delete') {
       await deleteFindingsForDeletedEntities(client, 'account', actualIds);
+      await deleteLinksForDeletedEntities(client, 'account', actualIds);
       await client.query('DELETE FROM accounts WHERE id = ANY($1)', [actualIds]);
 
       for (const id of actualIds) {
@@ -359,6 +362,7 @@ export async function bulkDeals(
 
     if (action === 'delete') {
       await deleteFindingsForDeletedEntities(client, 'opportunity', actualIds);
+      await deleteLinksForDeletedEntities(client, 'deal', actualIds);
       await client.query('DELETE FROM deals WHERE id = ANY($1)', [actualIds]);
 
       for (const id of actualIds) {

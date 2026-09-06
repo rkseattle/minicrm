@@ -17,6 +17,7 @@ import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
+import { deleteLinksForDeletedEntity, relinkLinksToMergedContact } from './emailMatchingService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -770,6 +771,7 @@ export async function deleteContact(
     // Soft-delete notes before removing the parent row to prevent orphaned active notes
     await softDeleteNotesByEntity(client, 'contact', id);
     await deleteFindingsForDeletedEntity(client, 'contact', id);
+    await deleteLinksForDeletedEntity(client, 'contact', id);
 
     const result = await client.query<ContactRow>(
       'DELETE FROM contacts WHERE id = $1 RETURNING *',
@@ -984,6 +986,7 @@ export async function mergeContacts(
       `UPDATE attachments SET record_id = $1 WHERE record_type = 'contact' AND record_id = $2`,
       [winnerId, loserId],
     );
+    await relinkLinksToMergedContact(client, winnerId, loserId);
     // The winner's own value wins where both records filled the same field; the
     // loser's losing row is dropped rather than left orphaned.
     await client.query(

@@ -44,6 +44,9 @@ const TAGS_RESTRICT_CREATION_KEY = 'tags_restrict_creation';
 /** The key used to track that the admin reviewed/saved pipeline stages */
 const PIPELINE_STAGES_REVIEWED_KEY = 'pipeline_stages_reviewed';
 
+/** The key used to store whether synced email auto-links to a contact's open deals */
+const DEAL_AUTO_LINK_KEY = 'deal_auto_link';
+
 /**
  * Retrieves the current system-wide default language.
  * Falls back to 'en' if the row is somehow missing.
@@ -128,6 +131,32 @@ export async function setNavLayout(
   return layout;
 }
 
+/**
+ * Reads a boolean system setting, falling back when its row is missing.
+ *
+ * Every boolean setting is stored as the text 'true' or 'false', and every reader wants
+ * the same three things: the row, a default when seeding has not run, and a warning when
+ * a default that should exist does not. `warnWhenMissing` is off for settings whose
+ * absence is ordinary.
+ */
+async function getBooleanSetting(
+  key: string,
+  fallback: boolean,
+  warnWhenMissing = true,
+): Promise<boolean> {
+  const result = await pool.query<SystemSettingRow>(
+    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+    [key],
+  );
+  if (!result.rows[0]) {
+    if (warnWhenMissing) {
+      logger.warn(`system_settings row for ${key} is missing — defaulting to ${fallback}`);
+    }
+    return fallback;
+  }
+  return result.rows[0].value === 'true';
+}
+
 // ── Email notifications global toggle ───────────────────────────
 
 /**
@@ -137,17 +166,7 @@ export async function setNavLayout(
  * @returns True when notifications are globally enabled.
  */
 export async function getEmailNotificationsEnabled(): Promise<boolean> {
-  const result = await pool.query<SystemSettingRow>(
-    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
-    [EMAIL_NOTIFICATIONS_ENABLED_KEY],
-  );
-  if (!result.rows[0]) {
-    logger.warn(
-      'system_settings row for email_notifications_enabled is missing — defaulting to true',
-    );
-    return true;
-  }
-  return result.rows[0].value === 'true';
+  return getBooleanSetting(EMAIL_NOTIFICATIONS_ENABLED_KEY, true);
 }
 
 /**
@@ -167,6 +186,18 @@ export async function setEmailNotificationsEnabled(
     [EMAIL_NOTIFICATIONS_ENABLED_KEY, String(enabled), actorIdOrNull(actor)],
   );
   return enabled;
+}
+
+// ── Deal auto-link ───────────────────────────────────────────────
+
+/**
+ * Returns whether synced email auto-links to a matched contact's open deals.
+ * Defaults to true if the setting row is missing.
+ *
+ * @returns True when the sync engine may link messages to open deals.
+ */
+export async function getDealAutoLink(): Promise<boolean> {
+  return getBooleanSetting(DEAL_AUTO_LINK_KEY, true);
 }
 
 // ── Default currency ─────────────────────────────────────────────
@@ -221,14 +252,8 @@ export async function setDefaultCurrency(
  * @returns True when tag creation is restricted to admins only.
  */
 export async function getTagsRestrictCreation(): Promise<boolean> {
-  const result = await pool.query<SystemSettingRow>(
-    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
-    [TAGS_RESTRICT_CREATION_KEY],
-  );
-  if (!result.rows[0]) {
-    return false;
-  }
-  return result.rows[0].value === 'true';
+  // Absence is ordinary here: the row is seeded false and nothing depends on it existing.
+  return getBooleanSetting(TAGS_RESTRICT_CREATION_KEY, false, false);
 }
 
 /**
@@ -506,11 +531,7 @@ const REQUIRE_MFA_KEY = 'require_mfa';
  * Returns whether MFA is required for all users org-wide.
  */
 export async function getMfaRequired(): Promise<boolean> {
-  const result = await pool.query<SystemSettingRow>(
-    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
-    [REQUIRE_MFA_KEY],
-  );
-  return result.rows[0]?.value === 'true';
+  return getBooleanSetting(REQUIRE_MFA_KEY, false, false);
 }
 
 /**
