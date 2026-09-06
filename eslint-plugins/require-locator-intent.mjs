@@ -93,9 +93,7 @@ const requireLocatorIntent = {
         // intent must be a non-empty string literal or a non-empty template literal
         const v = intentProp.value;
         const isNonEmptyStringLiteral =
-          v.type === 'Literal' &&
-          typeof v.value === 'string' &&
-          v.value.trim() !== '';
+          v.type === 'Literal' && typeof v.value === 'string' && v.value.trim() !== '';
         // A TemplateLiteral is always considered non-empty — static analysis
         // cannot evaluate runtime values, and a template literal always produces
         // a string (even if the interpolated value is empty at runtime, the

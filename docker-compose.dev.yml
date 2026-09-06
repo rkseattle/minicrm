@@ -54,7 +54,7 @@ services:
     # !reset discards the base service's 80:80 rather than appending to it — sequences
     # merge by appending, and the dev container has nothing listening on 80.
     ports: !override
-      - "5173:5173"
+      - '5173:5173'
     volumes:
       - ./client:/app/client
       - ./shared:/app/shared
@@ -73,7 +73,7 @@ services:
       - sso
     image: ghcr.io/dexidp/dex:v2.41.1
     ports:
-      - "5556:5556"
+      - '5556:5556'
     volumes:
       - ./dex/config.yaml:/etc/dex/config.yaml:ro
     command: dex serve /etc/dex/config.yaml

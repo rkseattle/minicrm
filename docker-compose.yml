@@ -1,8 +1,8 @@
 x-logging: &default-logging
   driver: json-file
   options:
-    max-size: "10m"
-    max-file: "3"
+    max-size: '10m'
+    max-file: '3'
 
 services:
   db:
@@ -26,9 +26,9 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - '5432:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -90,12 +90,12 @@ services:
       MICROSOFT_OAUTH_CLIENT_SECRET: ${MICROSOFT_OAUTH_CLIENT_SECRET:-}
       MICROSOFT_OAUTH_TENANT: ${MICROSOFT_OAUTH_TENANT:-common}
     ports:
-      - "3001:3001"
+      - '3001:3001'
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3001/api/health']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -119,7 +119,7 @@ services:
       dockerfile: client/Dockerfile
     restart: unless-stopped
     ports:
-      - "80:80"
+      - '80:80'
     depends_on:
       - server
 
@@ -141,8 +141,8 @@ services:
       POSTGRES_EXTRA_OPTS: --format=custom
       SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
       BACKUP_KEEP_DAYS: ${BACKUP_RETENTION_DAYS:-7}
-      BACKUP_KEEP_WEEKS: "0"
-      BACKUP_KEEP_MONTHS: "0"
+      BACKUP_KEEP_WEEKS: '0'
+      BACKUP_KEEP_MONTHS: '0'
     volumes:
       - db_backups:/backups
     depends_on:
