@@ -126,7 +126,7 @@ export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promis
  * silently for the first migration added after the baseline shipped baseline
  * coverage through migration 136.
  */
-export const BASELINE_COVERED_MIGRATION_COUNT = 152;
+export const BASELINE_COVERED_MIGRATION_COUNT = 180;
 
 /** Matches the leading numeric prefix of a migration filename, e.g. "007" in "007_add_x.js". */
 const MIGRATION_FILENAME_PREFIX = /^(\d+)_/;

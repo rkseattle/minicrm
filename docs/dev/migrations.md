@@ -42,7 +42,7 @@ DATABASE_URL=postgres://... npm run migrate:fresh --workspace=minicrm-server
 
 ## Existing Deployments
 
-`000_baseline` is safe on existing databases — every `CREATE TABLE/INDEX/EXTENSION` uses `IF NOT EXISTS`. All `CREATE TRIGGER`, `CREATE POLICY`, and `ALTER TABLE ADD CONSTRAINT` statements are wrapped in `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$` blocks, so the baseline is fully idempotent.
+`000_baseline` is safe on existing databases — every `CREATE TABLE/INDEX/EXTENSION` uses `IF NOT EXISTS`, every seed is `ON CONFLICT DO NOTHING`, and every `CREATE TRIGGER`, `CREATE POLICY`, `CREATE FUNCTION` and `ALTER TABLE` statement is wrapped in a `DO $$ BEGIN ... EXCEPTION ... END $$` block that swallows the already-exists codes that statement can raise (see the regeneration recipe below for which). Re-running the whole file against a migrated database changes nothing.
 
 When `npm run migrate` runs on a DB that does not yet have `000_baseline` in `pgmigrations`, it executes the baseline once as a no-op for all objects that already exist.
 
@@ -65,7 +65,16 @@ docker exec minicrm-db pg_dump \
 # 3. Rewrite db/migrations/000_baseline.js from the dump
 #    - Wrap every CREATE in IF NOT EXISTS
 #    - Wrap triggers/policies/constraints in DO $$ ... EXCEPTION WHEN duplicate_object blocks
+#      (a PRIMARY KEY re-add raises invalid_table_definition and an already-attached
+#       partition raises wrong_object_type, so those statements need those codes too)
 #    - Maintain dependency order (no forward FK references)
+#    - CARRY FORWARD the two things --schema-only cannot see, or a fresh install comes up
+#      unusable and the object-count check in step 4 still passes:
+#        * seed rows — the migrations that inserted them are fake-marked at bootstrap, so
+#          they never run either. Take them from a database built BY the migrations, not
+#          from a dev database, which has drifted with local data.
+#        * the minicrm_app role and its grants — pg_dump emits no cluster-level roles, and
+#          rlsEnforcement.test.ts connects as it.
 #    - Update the migration list in the JSDoc header comment
 #    - Update exports.baselineCoveredMigrationCount in 000_baseline.js AND
 #      BASELINE_COVERED_MIGRATION_COUNT in server/src/migrate.ts to the same
@@ -73,7 +82,11 @@ docker exec minicrm-db pg_dump \
 #      at runtime (MINCRM-658) and throws if they don't, so both must be
 #      updated together, in the same commit as the regenerated baseline.
 
-# 4. Verify against a clean Docker environment.
+# 4. Verify against a clean Docker environment. Check THREE things, not just the schema:
+#    counts of tables/indexes/constraints, the seeded row counts (feature_flags,
+#    pipeline_stages, currencies, role_capabilities) and that minicrm_app exists — an
+#    empty feature_flags table passes a table count. Then re-run the baseline against the
+#    same database: every statement must be a no-op.
 #    Use the TEST stack (port 5433) — never create scratch databases on the dev
 #    instance, which is what the dev/test split exists to prevent (MINCRM-684).
 docker exec minicrm-test-db psql -U minicrm -d postgres \
