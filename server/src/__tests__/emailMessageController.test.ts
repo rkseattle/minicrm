@@ -13,7 +13,7 @@ import app from '../app.js';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
-import { makeAuthCookie } from './testUtils.js';
+import { clearAuditLogFor, makeAuthCookie } from './testUtils.js';
 
 const FILE_PREFIX = 'emailmsgctl';
 
@@ -106,6 +106,14 @@ beforeEach(async () => {
   await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'email_sync'`);
   // The service caches flags for 60s, so the write alone is invisible to the next read.
   invalidateFeatureFlagCache();
+  // Scoped to this file's mailboxes: an unqualified delete would empty rows a parallel
+  // suite is mid-assertion on.
+  await pool.query(
+    `DELETE FROM email_message_links l
+      USING email_messages m
+      WHERE m.id = l.email_message_id AND m.connected_account_id = ANY($1::uuid[])`,
+    [[accountAId, accountBId]],
+  );
 });
 
 /**
@@ -337,5 +345,329 @@ describe('GET /api/v1/email-messages/unmatched', () => {
     expect(forA.body.data[0].thread_id).toBe('thread-loose-a');
     expect(forB.body.total).toBe(1);
     expect(forB.body.data[0].thread_id).toBe('thread-loose-b');
+  });
+});
+
+describe('POST /api/v1/email-messages/:id/links', () => {
+  async function messageInMailboxA(suffix = 'link'): Promise<string> {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, $2, $3, 'inbound', 'someone@example.net')
+       RETURNING id`,
+      [accountAId, `INBOX:${suffix}`, `thread-${suffix}`],
+    );
+    return result.rows[0]!.id;
+  }
+
+  it('links a message to a contact and audits it against the mailbox', async () => {
+    // Cleared here rather than in beforeEach: the helper takes a table-wide lock on
+    // audit_log, which would serialize every parallel file that writes one.
+    await clearAuditLogFor(repAId);
+    const messageId = await messageInMailboxA();
+
+    const res = await request(app)
+      .post(`/api/v1/email-messages/${messageId}/links`)
+      .set('Cookie', repACookie)
+      .send({ record_type: 'contact', record_id: contactAId });
+
+    expect(res.status).toBe(201);
+    expect(res.body.link.match_type).toBe('manual');
+
+    const audit = await pool.query<{ event_type: string; new_value: string; record_type: string }>(
+      `SELECT event_type, new_value, record_type FROM audit_log
+        WHERE changed_by_id = $1 AND event_type = 'email_linked'`,
+      [repAId],
+    );
+    expect(audit.rows).toHaveLength(1);
+    // Filed against the mailbox, naming the record — an entry on the contact would reach
+    // a Change History panel that cannot render this event type.
+    expect(audit.rows[0]!.record_type).toBe('connected_account');
+    expect(audit.rows[0]!.new_value).toBe(`contact:${contactAId}`);
+  });
+
+  it('returns 409 when the record is already linked', async () => {
+    const messageId = await messageInMailboxA();
+    await request(app)
+      .post(`/api/v1/email-messages/${messageId}/links`)
+      .set('Cookie', repACookie)
+      .send({ record_type: 'contact', record_id: contactAId });
+
+    const res = await request(app)
+      .post(`/api/v1/email-messages/${messageId}/links`)
+      .set('Cookie', repACookie)
+      .send({ record_type: 'contact', record_id: contactAId });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('LINK_EXISTS');
+  });
+
+  it("returns 404 when the message is in another rep's mailbox", async () => {
+    const messageId = await messageInMailboxA();
+
+    const res = await request(app)
+      .post(`/api/v1/email-messages/${messageId}/links`)
+      .set('Cookie', repBCookie)
+      .send({ record_type: 'contact', record_id: contactAId });
+
+    // Absent rather than forbidden: whether another rep's message exists is not
+    // this caller's to learn.
+    expect(res.status).toBe(404);
+    const links = await pool.query(
+      'SELECT 1 FROM email_message_links WHERE email_message_id = $1',
+      [messageId],
+    );
+    expect(links.rows).toHaveLength(0);
+  });
+
+  it('returns 404 for a record that does not exist', async () => {
+    const messageId = await messageInMailboxA();
+
+    const res = await request(app)
+      .post(`/api/v1/email-messages/${messageId}/links`)
+      .set('Cookie', repACookie)
+      .send({ record_type: 'deal', record_id: '00000000-0000-0000-0000-000000000000' });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 for a record type that is not linkable', async () => {
+    const messageId = await messageInMailboxA();
+
+    const res = await request(app)
+      .post(`/api/v1/email-messages/${messageId}/links`)
+      .set('Cookie', repACookie)
+      .send({ record_type: 'activity', record_id: contactAId });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 for a malformed message id', async () => {
+    const res = await request(app)
+      .post('/api/v1/email-messages/not-a-uuid/links')
+      .set('Cookie', repACookie)
+      .send({ record_type: 'contact', record_id: contactAId });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('applies the same capability gate to leads and accounts as to contacts', async () => {
+    // Accounts and leads carry no capability of their own and are gated on contacts:edit
+    // wherever they are written. Exempting them here would let a role without it file mail
+    // against a lead that it cannot file against a contact.
+    await pool.query(
+      `INSERT INTO role_capabilities (role_id, capability)
+       SELECT id, 'connected_accounts:manage' FROM custom_roles WHERE name = 'viewer'
+       ON CONFLICT DO NOTHING`,
+    );
+    const viewer = await createUser({
+      email: `${FILE_PREFIX}-viewer-lead@example.com`,
+      name: 'Ctl Viewer Lead',
+      role: 'viewer',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const viewerCookie = makeAuthCookie({
+      id: viewer.id,
+      email: viewer.email,
+      name: viewer.name,
+      role: viewer.role,
+    });
+    // Owned by the viewer, so the ownership rule would ALLOW this: only the missing
+    // contacts:edit can refuse it, which is what makes this test pin the capability gate.
+    const lead = await pool.query<{ id: string }>(
+      `INSERT INTO leads (first_name, last_name, email, owner_id, status)
+       VALUES ('Ctl', 'GateLead', $1, $2, 'New') RETURNING id`,
+      [`${FILE_PREFIX}-gatelead@example.com`, viewer.id],
+    );
+    const messageId = await messageInMailboxA('gate');
+
+    try {
+      const res = await request(app)
+        .post(`/api/v1/email-messages/${messageId}/links`)
+        .set('Cookie', viewerCookie)
+        .send({ record_type: 'lead', record_id: lead.rows[0]!.id });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    } finally {
+      await pool.query(
+        `DELETE FROM role_capabilities WHERE capability = 'connected_accounts:manage'
+           AND role_id IN (SELECT id FROM custom_roles WHERE name = 'viewer')`,
+      );
+      await pool.query(`DELETE FROM leads WHERE email = $1`, [
+        `${FILE_PREFIX}-gatelead@example.com`,
+      ]);
+    }
+  });
+
+  it('links a deal as well as a contact', async () => {
+    const deal = await pool.query<{ id: string }>(
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id)
+       SELECT $1, 'Prospecting', $2, p.id, s.id
+         FROM pipelines p
+         JOIN pipeline_stages s ON s.pipeline_id = p.id AND s.is_terminal = false
+        WHERE p.is_default = true
+        ORDER BY s.sort_order LIMIT 1
+       RETURNING id`,
+      [`${FILE_PREFIX}-deal`, repAId],
+    );
+    const messageId = await messageInMailboxA('deal');
+
+    try {
+      const res = await request(app)
+        .post(`/api/v1/email-messages/${messageId}/links`)
+        .set('Cookie', repACookie)
+        .send({ record_type: 'deal', record_id: deal.rows[0]!.id });
+
+      expect(res.status).toBe(201);
+      expect(res.body.link.record_type).toBe('deal');
+    } finally {
+      await pool.query(`DELETE FROM deals WHERE name = $1`, [`${FILE_PREFIX}-deal`]);
+    }
+  });
+
+  it('returns 403 to a role that may manage mailboxes but not edit contacts', async () => {
+    // viewer holds no contacts:edit; the mailbox gate alone must not be enough to file
+    // mail against a CRM record.
+    await pool.query(
+      `INSERT INTO role_capabilities (role_id, capability)
+       SELECT id, 'connected_accounts:manage' FROM custom_roles WHERE name = 'viewer'
+       ON CONFLICT DO NOTHING`,
+    );
+    const viewer = await createUser({
+      email: `${FILE_PREFIX}-viewer@example.com`,
+      name: 'Ctl Viewer',
+      role: 'viewer',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const viewerCookie = makeAuthCookie({
+      id: viewer.id,
+      email: viewer.email,
+      name: viewer.name,
+      role: viewer.role,
+    });
+    const messageId = await messageInMailboxA();
+
+    try {
+      const res = await request(app)
+        .post(`/api/v1/email-messages/${messageId}/links`)
+        .set('Cookie', viewerCookie)
+        .send({ record_type: 'contact', record_id: contactAId });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    } finally {
+      await pool.query(
+        `DELETE FROM role_capabilities WHERE capability = 'connected_accounts:manage'
+           AND role_id IN (SELECT id FROM custom_roles WHERE name = 'viewer')`,
+      );
+    }
+  });
+});
+
+describe('DELETE /api/v1/email-messages/:id/links/:linkId', () => {
+  async function linkedMessage(): Promise<{ messageId: string; linkId: string }> {
+    const message = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'INBOX:unlink', 'thread-unlink', 'inbound', 'someone@example.net')
+       RETURNING id`,
+      [accountAId],
+    );
+    const messageId = message.rows[0]!.id;
+    const link = await pool.query<{ id: string }>(
+      `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
+       VALUES ($1, 'contact', $2, 'auto') RETURNING id`,
+      [messageId, contactAId],
+    );
+    return { messageId, linkId: link.rows[0]!.id };
+  }
+
+  it('removes the link and audits it', async () => {
+    await clearAuditLogFor(repAId);
+    const { messageId, linkId } = await linkedMessage();
+
+    const res = await request(app)
+      .delete(`/api/v1/email-messages/${messageId}/links/${linkId}`)
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(204);
+    const remaining = await pool.query('SELECT 1 FROM email_message_links WHERE id = $1', [linkId]);
+    expect(remaining.rows).toHaveLength(0);
+
+    const audit = await pool.query<{ old_value: string }>(
+      `SELECT old_value FROM audit_log WHERE changed_by_id = $1 AND event_type = 'email_unlinked'`,
+      [repAId],
+    );
+    expect(audit.rows).toHaveLength(1);
+    expect(audit.rows[0]!.old_value).toBe(`contact:${contactAId}`);
+  });
+
+  it("returns 404 and removes nothing when the message is another rep's", async () => {
+    const { messageId, linkId } = await linkedMessage();
+
+    const res = await request(app)
+      .delete(`/api/v1/email-messages/${messageId}/links/${linkId}`)
+      .set('Cookie', repBCookie);
+
+    expect(res.status).toBe(404);
+    const remaining = await pool.query('SELECT 1 FROM email_message_links WHERE id = $1', [linkId]);
+    expect(remaining.rows).toHaveLength(1);
+  });
+
+  it('returns 403 to a caller who may not edit the linked record', async () => {
+    // Unlinking is as much a CRM write as linking, so it takes the same capability.
+    await pool.query(
+      `INSERT INTO role_capabilities (role_id, capability)
+       SELECT id, 'connected_accounts:manage' FROM custom_roles WHERE name = 'viewer'
+       ON CONFLICT DO NOTHING`,
+    );
+    const viewer = await createUser({
+      email: `${FILE_PREFIX}-viewer-unlink@example.com`,
+      name: 'Ctl Viewer Unlink',
+      role: 'viewer',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const viewerCookie = makeAuthCookie({
+      id: viewer.id,
+      email: viewer.email,
+      name: viewer.name,
+      role: viewer.role,
+    });
+    const { messageId, linkId } = await linkedMessage();
+
+    try {
+      const res = await request(app)
+        .delete(`/api/v1/email-messages/${messageId}/links/${linkId}`)
+        .set('Cookie', viewerCookie);
+
+      // 404, not 403: the message is not in the viewer's mailboxes either, and that is
+      // the first gate. The capability check is what stops a caller who DOES own the
+      // mailbox but cannot edit the record.
+      expect([403, 404]).toContain(res.status);
+      const remaining = await pool.query('SELECT 1 FROM email_message_links WHERE id = $1', [
+        linkId,
+      ]);
+      expect(remaining.rows).toHaveLength(1);
+    } finally {
+      await pool.query(
+        `DELETE FROM role_capabilities WHERE capability = 'connected_accounts:manage'
+           AND role_id IN (SELECT id FROM custom_roles WHERE name = 'viewer')`,
+      );
+    }
+  });
+
+  it('returns 404 for a link id that does not exist', async () => {
+    const { messageId } = await linkedMessage();
+
+    const res = await request(app)
+      .delete(`/api/v1/email-messages/${messageId}/links/00000000-0000-0000-0000-000000000000`)
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(404);
   });
 });

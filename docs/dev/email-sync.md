@@ -385,7 +385,20 @@ boundary and `total` counts the same unit `limit` bounds. Threads are keyed by
 `email_messages`' own UNIQUE is per account, so one user with two mailboxes can hold the
 same thread id twice.
 
-Neither endpoint returns a body. `message_body_html` is stored exactly as the sender wrote
+`POST /api/v1/email-messages/:id/links` files a message against a record by hand and
+`DELETE /api/v1/email-messages/:id/links/:linkId` removes one. Both are scoped to the
+caller's own mailboxes, and a message outside them answers 404 rather than 403 — whether
+another rep's mail exists is not the caller's to learn. Filing is a CRM write, so it also
+takes the record's own edit capability where one exists; accounts and leads have none in
+the capability enum, so for those the visibility check is the whole authorization.
+
+A manual link is audited, against the **mailbox** rather than the linked record: an entry
+filed on a contact would reach the client's Change History, which renders only the event
+types its own schema admits, and `email_linked` is not one of them. Automatic links are not
+audited at all — `match_type` already records how a link was made. Removing an automatic
+link is permanent, because only newly synced messages are ever matched.
+
+Neither list endpoint returns a body. `message_body_html` is stored exactly as the sender wrote
 it and is never sanitized, so the projection stops at the snippet until something exists
 that can render one safely.
 
@@ -490,8 +503,6 @@ the ambient value.
 - **Any UI over synced mail** — the read API exists, but nothing renders it yet.
   `is_private` still ships defaulted to `false` with no writer, so the filter that honors it
   is exercised only by tests that set the column directly.
-- **Linking a message to a record by hand** — the table records `match_type = 'manual'` for
-  it, and nothing writes that value yet.
 - **GDPR erasure for synced mail, and the backfill window as an admin setting** — the
   window is a module constant until that lands.
 - **Validation against a real IMAP server** — three behaviors here are reasoned from RFC
