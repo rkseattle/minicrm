@@ -440,6 +440,31 @@ export async function parkFromScheduler(accountId: string): Promise<void> {
 }
 
 /**
+ * Creates a mailbox row that is never claimable, for a file that does not test claiming.
+ *
+ * `createImapAccount` leaves `sync_next_attempt_at` NULL, so an account is claimable from
+ * the moment it commits until `parkFromScheduler` lands — and `claimAccountsDueForSync` is
+ * global, so a suite asserting on its own batch limit can claim it inside that window.
+ * Parking at insert time closes the window rather than narrowing it.
+ *
+ * Nothing here exercises the credential path, so the row is written directly; a file that
+ * needs a real encrypted credential should use `createImapAccount` and park after it.
+ *
+ * @param userId - The mailbox owner.
+ * @param emailAddress - Must carry the calling file's own prefix, as fixtures do.
+ */
+export async function insertParkedMailbox(userId: string, emailAddress: string): Promise<string> {
+  const result = await pool.query<{ id: string }>(
+    `INSERT INTO connected_accounts
+       (user_id, provider, email_address, auth_encrypted, sync_next_attempt_at)
+     VALUES ($1, 'imap', $2, 'not-a-real-credential', NOW() + interval '1 hour')
+     RETURNING id`,
+    [userId, emailAddress],
+  );
+  return result.rows[0]!.id;
+}
+
+/**
  * Defers every mailbox this test file does not own, for the length of one tick.
  *
  * `claimAccountsDueForSync` is global, so a file that runs a real tick claims every other

@@ -202,6 +202,15 @@ email_sync_jobs
     ← at most one unfinished job per mailbox. Two ticks can race to open a backfill;
     without it the loser's row is unreachable and can never reach a terminal status,
     which is the only status the retention purge deletes.
+
+email_message_links
+  record_type(contact|lead|account|deal)  match_type(auto|manual)
+  UNIQUE(email_message_id, record_type, record_id)
+    ← one row per message-record pair. Four matching rules run over each synced page
+    and several can name the same pair, so each inserts ON CONFLICT DO NOTHING.
+    It also constrains consolidation — see Polymorphic FK Pattern below.
+  match_type ← 'auto' by the sync engine's address matching, 'manual' by a user.
+    Only manual links are audited; this column is what records the difference.
 ```
 
 ---

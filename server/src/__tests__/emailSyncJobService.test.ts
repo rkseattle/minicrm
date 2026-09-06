@@ -10,9 +10,8 @@
 import 'dotenv/config';
 
 import pool from '../db.js';
-import { parkFromScheduler } from './testUtils.js';
+import { insertParkedMailbox } from './testUtils.js';
 import { createUser } from '../services/userService.js';
-import { createImapAccount } from '../services/connectedAccountService.js';
 import {
   completeEmailSyncJob,
   createEmailSyncJob,
@@ -43,20 +42,10 @@ beforeAll(async () => {
   });
   ACTOR.id = rep.id;
 
-  const account = await createImapAccount(
-    rep.id,
-    {
-      email_address: `${FILE_PREFIX}-a@example.com`,
-      host: 'imap.example.com',
-      port: 993,
-      username: `${FILE_PREFIX}-a@example.com`,
-      password: 'imap-password-value',
-      secure: true,
-    },
-    ACTOR,
-  );
-  await parkFromScheduler(account.id);
-  accountId = account.id;
+  // Parked at insert rather than after createImapAccount: that helper leaves the row
+  // claimable until the park lands, and this file runs in the parallel project alongside
+  // the serial suite that asserts on claimAccountsDueForSync's batch limit.
+  accountId = await insertParkedMailbox(rep.id, `${FILE_PREFIX}-a@example.com`);
 });
 
 beforeEach(async () => {
@@ -275,22 +264,10 @@ describe('the email_sync_jobs schema', () => {
       passwordHash: '$2b$12$placeholder',
       status: 'active',
     });
-    const doomed = await createImapAccount(
-      rep.id,
-      {
-        email_address: `${FILE_PREFIX}-cascade@example.com`,
-        host: 'imap.example.com',
-        port: 993,
-        username: `${FILE_PREFIX}-cascade@example.com`,
-        password: 'imap-password-value',
-        secure: true,
-      },
-      { id: rep.id, name: 'Cascade Rep' },
-    );
-    await parkFromScheduler(doomed.id);
-    const doomedJob = await createEmailSyncJob(doomed.id);
+    const doomedId = await insertParkedMailbox(rep.id, `${FILE_PREFIX}-cascade@example.com`);
+    const doomedJob = await createEmailSyncJob(doomedId);
 
-    await pool.query('DELETE FROM connected_accounts WHERE id = $1', [doomed.id]);
+    await pool.query('DELETE FROM connected_accounts WHERE id = $1', [doomedId]);
 
     await expect(getEmailSyncJob(doomedJob.id)).resolves.toBeNull();
     // The surviving account's job is untouched, so the cascade is scoped to its own row.

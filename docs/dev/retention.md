@@ -24,6 +24,13 @@ personal data can appear anywhere in free text rather than only in an indexed ad
 and address redaction alone would not erase it. Note that `docs/gdpr.md`'s `body_text` scrub
 covers **notes**, a different column on a different table, and does not reach these.
 
+`email_message_links` is not time-purged either. A row carries no free text — a message id, a
+record type, a record id — so there is nothing in it to scrub; what it asserts about a data
+subject lives at its two ends, and both are already covered. It rides the `email_messages`
+cascade when a mailbox is disconnected, and never outlives the record at its other end
+either: [Matching](email-sync.md#matching) says what each delete and each consolidating path
+does.
+
 `email_sync_jobs` holds no personal data — a status, a count, and an error string — and rides the
 same cascade when its mailbox is disconnected. Age alone never purges an unfinished job, because
 a backfill legitimately spans many scheduler ticks. Staleness does: the same nightly run first
