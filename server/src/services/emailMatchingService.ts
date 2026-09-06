@@ -31,6 +31,15 @@ import { NON_TERMINAL_STAGE_PREDICATE } from './pipelineStageService.js';
  */
 const AUTO_MATCH = 'auto';
 
+/**
+ * What `source` records on a link the engine wrote.
+ *
+ * Auto-links are deliberately not audited, so the column is the only trace that the
+ * matcher rather than a person filed the mail. NULL means a person, as it does on
+ * `audit_log.source`.
+ */
+const SYSTEM_SOURCE = 'system';
+
 /** A message this page created, with the addresses matching reads. */
 export interface MatchableMessage {
   id: string;
@@ -77,12 +86,12 @@ async function linkContacts(
   addresses: readonly string[],
 ): Promise<void> {
   await client.query(
-    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
-     SELECT DISTINCT named.message_id, 'contact', c.id, $3
+    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type, source)
+     SELECT DISTINCT named.message_id, 'contact', c.id, $3, $4
        FROM unnest($1::uuid[], $2::text[]) AS named(message_id, address)
        JOIN contacts c ON LOWER(c.email) = named.address
      ON CONFLICT DO NOTHING`,
-    [messageIds, addresses, AUTO_MATCH],
+    [messageIds, addresses, AUTO_MATCH, SYSTEM_SOURCE],
   );
 }
 
@@ -104,8 +113,8 @@ async function linkLeads(
   addresses: readonly string[],
 ): Promise<void> {
   await client.query(
-    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
-     SELECT DISTINCT named.message_id, 'lead', l.id, $3
+    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type, source)
+     SELECT DISTINCT named.message_id, 'lead', l.id, $3, $4
        FROM unnest($1::uuid[], $2::text[]) AS named(message_id, address)
        JOIN leads l ON LOWER(l.email) = named.address
       WHERE l.converted_at IS NULL
@@ -113,7 +122,7 @@ async function linkLeads(
           SELECT 1 FROM contacts c WHERE LOWER(c.email) = named.address
         )
      ON CONFLICT DO NOTHING`,
-    [messageIds, addresses, AUTO_MATCH],
+    [messageIds, addresses, AUTO_MATCH, SYSTEM_SOURCE],
   );
 }
 
@@ -128,15 +137,15 @@ async function linkContactAccounts(
   messageIds: readonly string[],
 ): Promise<void> {
   await client.query(
-    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
-     SELECT DISTINCT link.email_message_id, 'account', c.account_id, $2
+    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type, source)
+     SELECT DISTINCT link.email_message_id, 'account', c.account_id, $2, $3
        FROM email_message_links link
        JOIN contacts c ON c.id = link.record_id
       WHERE link.email_message_id = ANY($1::uuid[])
         AND link.record_type = 'contact'
         AND c.account_id IS NOT NULL
      ON CONFLICT DO NOTHING`,
-    [messageIds, AUTO_MATCH],
+    [messageIds, AUTO_MATCH, SYSTEM_SOURCE],
   );
 }
 
@@ -150,8 +159,8 @@ async function linkContactAccounts(
  */
 async function linkContactDeals(client: PoolClient, messageIds: readonly string[]): Promise<void> {
   await client.query(
-    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
-     SELECT DISTINCT link.email_message_id, 'deal', d.id, $2
+    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type, source)
+     SELECT DISTINCT link.email_message_id, 'deal', d.id, $2, $3
        FROM email_message_links link
        JOIN deal_contacts dc ON dc.contact_id = link.record_id
        JOIN deals d ON d.id = dc.deal_id
@@ -159,7 +168,7 @@ async function linkContactDeals(client: PoolClient, messageIds: readonly string[
         AND link.record_type = 'contact'
         AND ${NON_TERMINAL_STAGE_PREDICATE}
      ON CONFLICT DO NOTHING`,
-    [messageIds, AUTO_MATCH],
+    [messageIds, AUTO_MATCH, SYSTEM_SOURCE],
   );
 }
 
@@ -336,15 +345,15 @@ export async function reconcileDerivedLinks(
   );
 
   await client.query(
-    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
-     SELECT DISTINCT link.email_message_id, 'account', c.account_id, $2
+    `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type, source)
+     SELECT DISTINCT link.email_message_id, 'account', c.account_id, $2, $3
        FROM email_message_links link
        JOIN contacts c ON c.id = link.record_id
       WHERE link.email_message_id = ANY($1::uuid[])
         AND link.record_type = 'contact'
         AND c.account_id IS NOT NULL
      ON CONFLICT DO NOTHING`,
-    [messageIds, AUTO_MATCH],
+    [messageIds, AUTO_MATCH, SYSTEM_SOURCE],
   );
 }
 
