@@ -823,6 +823,12 @@ export {
 export type { TestSequence, TestSequenceStep, TestEnrollment } from './sequences.behaviors.js';
 
 export { listFeatureFlags, updateFeatureFlag } from './feature-flags.behaviors.js';
+export {
+  listMailForRecord,
+  listUnmatchedMail,
+  statusOfUnmatchedMailRequest,
+} from './email-messages.behaviors.js';
+export type { TestEmailThread, TestEmailThreadPage } from './email-messages.behaviors.js';
 export type { TestFeatureFlag } from './feature-flags.behaviors.js';
 
 export {

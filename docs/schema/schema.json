@@ -10833,6 +10833,12 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "source",
+          "type": "varchar(16)",
+          "nullable": true,
+          "comment": "system when the matching engine created the link; NULL when a person did"
         }
       ],
       "indexes": [
@@ -10883,6 +10889,16 @@
           "referenced_table": "",
           "columns": [
             "record_type"
+          ]
+        },
+        {
+          "name": "email_message_links_source_check",
+          "type": "CHECK",
+          "def": "CHECK (((source IS NULL) OR ((source)::text = 'system'::text)))",
+          "table": "public.email_message_links",
+          "referenced_table": "",
+          "columns": [
+            "source"
           ]
         },
         {

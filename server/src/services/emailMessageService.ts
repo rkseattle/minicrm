@@ -334,6 +334,8 @@ export async function createManualLink(
     }
 
     const inserted = await client.query<EmailMessageLinkRow>(
+      // source stays NULL: a person filed this, which is what NULL means here and on
+      // audit_log.
       `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
        VALUES ($1, $2, $3, 'manual')
        RETURNING id, email_message_id, record_type, record_id, match_type, created_at`,

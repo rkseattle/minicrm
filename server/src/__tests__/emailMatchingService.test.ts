@@ -34,6 +34,15 @@ let pipelineId: string;
 let openStageId: string;
 let terminalStageId: string;
 
+/** Reads the source of every link on a message, keyed by record type. */
+async function sourcesFor(messageId: string): Promise<Record<string, string | null>> {
+  const result = await pool.query<{ record_type: string; source: string | null }>(
+    `SELECT record_type, source FROM email_message_links WHERE email_message_id = $1`,
+    [messageId],
+  );
+  return Object.fromEntries(result.rows.map((row) => [row.record_type, row.source]));
+}
+
 /** Reads the links a message ended up with, as `type:id` pairs for readable assertions. */
 async function linksFor(messageId: string): Promise<string[]> {
   const result = await pool.query<{ record_type: string; record_id: string }>(
@@ -872,5 +881,46 @@ describe('reconciling a merge that changes which account a message names', () =>
     const links = await linksFor(messageId);
     expect(links).toContain(`account:${winnerAccountId}`);
     expect(links).not.toContain(`account:${loserAccountId}`);
+  });
+});
+
+describe('recording who created a link', () => {
+  it("stamps every auto-linked rule with source 'system'", async () => {
+    // Auto-links are deliberately never audited, so this column is the only record that
+    // the engine rather than a person filed the mail.
+    const accountRecordId = await createAccountRecord('Source Employer');
+    const contactId = await createContact('sourced', accountRecordId);
+    await createDeal('Source Deal', openStageId, contactId);
+    const leadId = await createLead('sourced-lead');
+    const messageId = await insertMessage('1');
+
+    await match([
+      message(messageId, {
+        toAddresses: [
+          `${FILE_PREFIX}-sourced@example.com`,
+          `${FILE_PREFIX}-sourced-lead@example.com`,
+        ],
+      }),
+    ]);
+
+    expect(await sourcesFor(messageId)).toEqual({
+      contact: 'system',
+      account: 'system',
+      deal: 'system',
+      lead: 'system',
+    });
+    expect(leadId).toBeTruthy();
+  });
+
+  it('leaves source null on a link a person filed', async () => {
+    const contactId = await createContact('hand-filed');
+    const messageId = await insertMessage('1');
+    await pool.query(
+      `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
+       VALUES ($1, 'contact', $2, 'manual')`,
+      [messageId, contactId],
+    );
+
+    expect(await sourcesFor(messageId)).toEqual({ contact: null });
   });
 });

@@ -78,6 +78,7 @@ erDiagram
   uuid record_id ""
   varchar_16_ match_type "How the link was made: 'auto' by the sync engine's address matching, 'manual' by a user. A manual link is audited and an automatic one is not, so this also says whether to expect an audit entry."
   timestamp_with_time_zone created_at ""
+  varchar_16_ source "system when the matching engine created the link; NULL when a person did"
 }
 "public.connected_accounts" {
   uuid id ""

@@ -99,6 +99,7 @@ export type ResourceKey =
   | 'feature_flags.mobile_access'
   | 'feature_flags.demo_data'
   | 'feature_flags.groups'
+  | 'feature_flags.email_sync'
   | 'custom_roles'
   // The AI chat transcript tables. A GDPR erasure cascades into ai_messages,
   // ai_sessions, and user_ai_context with no ownership predicate — it matches
@@ -142,6 +143,13 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // pipeline_stages_reviewed, so every test here writes that row.
     reads: ['settings.branding', 'settings.ensure_system_defaults'],
     writes: ['settings.branding', 'settings.ensure_system_defaults'],
+  },
+  {
+    file: 'qa/e2e/tests/apps/minicrm/functional/email-messages/email-messages.spec.ts',
+    // The email-message router sits behind requireFeatureEnabled('email_sync'), and the
+    // server reads that row per request — so testing the gate means writing the real row.
+    reads: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+    writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/visibility/visibility.spec.ts',

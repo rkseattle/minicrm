@@ -14,6 +14,7 @@ Links a synced message to the CRM records its addresses name. record_type + reco
 | record_id | uuid |  | false |  |  |  |
 | match_type | varchar(16) |  | false |  |  | How the link was made: 'auto' by the sync engine's address matching, 'manual' by a user. A manual link is audited and an automatic one is not, so this also says whether to expect an audit entry. |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| source | varchar(16) |  | true |  |  | system when the matching engine created the link; NULL when a person did |
 
 ## Constraints
 
@@ -21,6 +22,7 @@ Links a synced message to the CRM records its addresses name. record_type + reco
 | ---- | ---- | ---------- |
 | email_message_links_match_type_check | CHECK | CHECK (((match_type)::text = ANY ((ARRAY['auto'::character varying, 'manual'::character varying])::text[]))) |
 | email_message_links_record_type_check | CHECK | CHECK (((record_type)::text = ANY ((ARRAY['contact'::character varying, 'lead'::character varying, 'account'::character varying, 'deal'::character varying])::text[]))) |
+| email_message_links_source_check | CHECK | CHECK (((source IS NULL) OR ((source)::text = 'system'::text))) |
 | email_message_links_email_message_id_fkey | FOREIGN KEY | FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE |
 | email_message_links_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | email_message_links_message_record_unique | UNIQUE | UNIQUE (email_message_id, record_type, record_id) |
@@ -47,6 +49,7 @@ erDiagram
   uuid record_id ""
   varchar_16_ match_type "How the link was made: 'auto' by the sync engine's address matching, 'manual' by a user. A manual link is audited and an automatic one is not, so this also says whether to expect an audit entry."
   timestamp_with_time_zone created_at ""
+  varchar_16_ source "system when the matching engine created the link; NULL when a person did"
 }
 "public.email_messages" {
   uuid id ""
