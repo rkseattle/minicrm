@@ -30,8 +30,7 @@ const requireDataTestid = {
     return {
       JSXOpeningElement(node) {
         // Only native HTML elements (lowercase names)
-        const elementName =
-          node.name.type === 'JSXIdentifier' ? node.name.name : null;
+        const elementName = node.name.type === 'JSXIdentifier' ? node.name.name : null;
 
         if (!elementName || !INTERACTABLE_ELEMENTS.has(elementName)) {
           return;

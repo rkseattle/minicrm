@@ -250,7 +250,7 @@ tests:
       # acknowledges the ambiguity at all isn't the regression this test guards
       # against — dropped that check and kept only the deterministic, unambiguous one.
       - type: contains
-        value: "Alice Smith"
+        value: 'Alice Smith'
 
   - description: Context proposal marker is stripped from the user-facing response body (MINCRM-430)
     vars:

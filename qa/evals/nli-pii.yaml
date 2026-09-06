@@ -36,7 +36,7 @@ providers:
       temperature: 0
 
 prompts:
-  - "{{prompt}}"
+  - '{{prompt}}'
 
 tests:
   # ── Post-filter payload: PII fields absent from what the model sees ──────────
@@ -57,9 +57,9 @@ tests:
         {"id":"c1000000-0000-0000-0000-000000000003","first_name":"Carol","last_name":"Singh","email":"carol.singh@example.com","company":"Gamma Inc"}
     assert:
       - type: not-contains
-        value: "123-45-6789"
+        value: '123-45-6789'
       - type: not-contains
-        value: "123456789"
+        value: '123456789'
 
   - description: Model response does not echo bank account number when field was stripped
     vars:
@@ -72,7 +72,7 @@ tests:
         {"id":"c1000000-0000-0000-0000-000000000003","first_name":"Carol","last_name":"Singh","email":"carol.singh@example.com","company":"Gamma Inc"}
     assert:
       - type: not-contains
-        value: "9876543210"
+        value: '9876543210'
 
   # ── Custom-field pii_excluded: model communicates field is unavailable ────────
   #
@@ -91,9 +91,9 @@ tests:
         {"id":"c1000000-0000-0000-0000-000000000003","first_name":"Carol","last_name":"Singh","custom_fields":[{"definition":{"id":"cf-ssn-001","name":"SSN","field_type":"text","pii_excluded":true},"value":null},{"definition":{"id":"cf-bank-001","name":"Bank Account Number","field_type":"text","pii_excluded":true},"value":null}]}
     assert:
       - type: not-contains
-        value: "123-45-6789"
+        value: '123-45-6789'
       - type: not-contains
-        value: "9876543210"
+        value: '9876543210'
 
   # ── MINCRM-466: champion/blocker classification does not leak stripped PII ────
   #
@@ -116,9 +116,9 @@ tests:
         {"contact_id":"c1000000-0000-0000-0000-000000000003","status":"likely_champion","is_overridden":false,"recent_signals":[{"description":"Mentioned sharing proposal with VP Finance","detected_at":"2026-06-28T00:00:00.000Z"}],"dismissed":false,"updated_at":"2026-06-28T00:00:00.000Z"}
     assert:
       - type: not-contains
-        value: "123-45-6789"
+        value: '123-45-6789'
       - type: not-contains
-        value: "9876543210"
+        value: '9876543210'
 
   # ── Synced mailbox bodies are stripped before the model sees a message ───────
   #
@@ -138,6 +138,6 @@ tests:
         {"id":"e1000000-0000-0000-0000-000000000001","from_address":"carol.singh@example.com","to_addresses":["rep@example.com"],"subject":"Q3 pricing","sent_at":"2026-06-28T00:00:00.000Z","has_attachments":false}
     assert:
       - type: not-contains
-        value: "Our floor is"
+        value: 'Our floor is'
       - type: not-contains
-        value: "123-45-6789"
+        value: '123-45-6789'

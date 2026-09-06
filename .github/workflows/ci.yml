@@ -57,48 +57,48 @@ jobs:
     name: Detect changed paths
     runs-on: ubuntu-latest
     outputs:
-      docs:              ${{ steps.filter.outputs.docs }}
-      client:            ${{ steps.filter.outputs.client }}
-      server:            ${{ steps.filter.outputs.server }}
-      qa:                ${{ steps.filter.outputs.qa }}
-      config:            ${{ steps.filter.outputs.config }}
-      visual:            ${{ steps.filter.outputs.visual }}
-      migrations:        ${{ steps.filter.outputs.migrations }}
-      ai:                ${{ steps.filter.outputs.ai }}
+      docs: ${{ steps.filter.outputs.docs }}
+      client: ${{ steps.filter.outputs.client }}
+      server: ${{ steps.filter.outputs.server }}
+      qa: ${{ steps.filter.outputs.qa }}
+      config: ${{ steps.filter.outputs.config }}
+      visual: ${{ steps.filter.outputs.visual }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+      ai: ${{ steps.filter.outputs.ai }}
       coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
-      attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
-      user-guide-docs:   ${{ steps.filter.outputs.user-guide-docs }}
+      attestation-docs: ${{ steps.filter.outputs.attestation-docs }}
+      user-guide-docs: ${{ steps.filter.outputs.user-guide-docs }}
       redirect-status-docs: ${{ steps.filter.outputs.redirect-status-docs }}
       scheduled-jobs-docs: ${{ steps.filter.outputs.scheduled-jobs-docs }}
       env-example-parity: ${{ steps.filter.outputs.env-example-parity }}
       playwright-version: ${{ steps.filter.outputs.playwright-version }}
       shared-testing: ${{ steps.filter.outputs.shared-testing }}
-      qa-e2e-scripts:    ${{ steps.filter.outputs.qa-e2e-scripts }}
+      qa-e2e-scripts: ${{ steps.filter.outputs.qa-e2e-scripts }}
       auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
       coverage-migrations: ${{ steps.filter.outputs.coverage-migrations }}
       coverage-map-exit-code: ${{ steps.filter.outputs.coverage-map-exit-code }}
       audit-gate: ${{ steps.filter.outputs.audit-gate }}
       grep-invert-parity: ${{ steps.filter.outputs.grep-invert-parity }}
-      dockerfiles:       ${{ steps.filter.outputs.dockerfiles }}
-      eslint-config:     ${{ steps.filter.outputs.eslint-config }}
-      comment-ids:       ${{ steps.filter.outputs.comment-ids }}
-      ci-filter-globs:   ${{ steps.filter.outputs.ci-filter-globs }}
+      dockerfiles: ${{ steps.filter.outputs.dockerfiles }}
+      eslint-config: ${{ steps.filter.outputs.eslint-config }}
+      comment-ids: ${{ steps.filter.outputs.comment-ids }}
+      ci-filter-globs: ${{ steps.filter.outputs.ci-filter-globs }}
       api-path-versioning: ${{ steps.filter.outputs.api-path-versioning }}
-      claude-hooks:      ${{ steps.filter.outputs.claude-hooks }}
-      doc-links:         ${{ steps.filter.outputs.doc-links }}
+      claude-hooks: ${{ steps.filter.outputs.claude-hooks }}
+      doc-links: ${{ steps.filter.outputs.doc-links }}
       gate-pointer-parity: ${{ steps.filter.outputs.gate-pointer-parity }}
       feature-flag-docs: ${{ steps.filter.outputs.feature-flag-docs }}
       user-guide-routes: ${{ steps.filter.outputs.user-guide-routes }}
-      record-paths:      ${{ steps.filter.outputs.record-paths }}
-      locale-paths:      ${{ steps.filter.outputs.locale-paths }}
-      tia-impact:        ${{ steps.filter.outputs.tia-impact }}
-      tia-tree:          ${{ steps.filter.outputs.tia-tree }}
+      record-paths: ${{ steps.filter.outputs.record-paths }}
+      locale-paths: ${{ steps.filter.outputs.locale-paths }}
+      tia-impact: ${{ steps.filter.outputs.tia-impact }}
+      tia-tree: ${{ steps.filter.outputs.tia-tree }}
       guard-invocation: ${{ steps.filter.outputs.guard-invocation }}
-      testid-audit:     ${{ steps.filter.outputs.testid-audit }}
+      testid-audit: ${{ steps.filter.outputs.testid-audit }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # required: dorny/paths-filter needs full history to diff
+          fetch-depth: 0 # required: dorny/paths-filter needs full history to diff
       - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590
         id: filter
         with:
@@ -966,7 +966,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # select-tests.ts shells `git diff base..head`, which needs full history
+          fetch-depth: 0 # select-tests.ts shells `git diff base..head`, which needs full history
 
       - uses: actions/setup-node@v6
         with:
@@ -1226,15 +1226,15 @@ jobs:
           # registered only when these are 'true' at process boot
           # (MINCRM-663) — needed so coverageController.test.ts/
           # coverageSessionController.test.ts can reach those routes.
-          COVERAGE_INSTRUMENTATION: "true"
-          COVERAGE_SESSION_MANAGEMENT: "true"
+          COVERAGE_INSTRUMENTATION: 'true'
+          COVERAGE_SESSION_MANAGEMENT: 'true'
           # Same, for the query/ingestion routers (MINCRM-685) — needed so
           # coverageMappingController.test.ts/coverageReportingController.test.ts/
           # coveragePipelineController.test.ts reach their handlers instead of a
           # 404, now that those routers gate on these vars at boot.
-          COVERAGE_MAPPING_QUERY: "true"
-          COVERAGE_REPORTING_QUERY: "true"
-          COVERAGE_PIPELINE_INGESTION: "true"
+          COVERAGE_MAPPING_QUERY: 'true'
+          COVERAGE_REPORTING_QUERY: 'true'
+          COVERAGE_PIPELINE_INGESTION: 'true'
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
@@ -1908,8 +1908,8 @@ jobs:
           # coverage-sessions.spec.ts are NOT @serial (they no longer mutate
           # any shared feature-flag row), so they run in THIS sharded
           # functional job, not e2e-serial.
-          COVERAGE_INSTRUMENTATION: "true"
-          COVERAGE_SESSION_MANAGEMENT: "true"
+          COVERAGE_INSTRUMENTATION: 'true'
+          COVERAGE_SESSION_MANAGEMENT: 'true'
           # Same, for the query/ingestion routers (MINCRM-685). Load-bearing in this
           # job specifically, in two ways: coverage-health.spec.ts's COVH-01 asserts
           # the health report's routers block equals
@@ -1918,9 +1918,9 @@ jobs:
           # into this job when MINCRM-685 dropped their @serial tags, so their calls to
           # /admin/coverage/mapping/* and /admin/coverage/pipeline/ingest now depend on
           # these too. Dropping any of them fails those specs, not just the routes.
-          COVERAGE_MAPPING_QUERY: "true"
-          COVERAGE_REPORTING_QUERY: "true"
-          COVERAGE_PIPELINE_INGESTION: "true"
+          COVERAGE_MAPPING_QUERY: 'true'
+          COVERAGE_REPORTING_QUERY: 'true'
+          COVERAGE_PIPELINE_INGESTION: 'true'
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
@@ -2297,11 +2297,11 @@ jobs:
           # that may not need them is zero; the cost of being wrong is a red
           # build whose cause is a 404 three layers from the change. Remove them
           # only alongside a fresh audit, not on the strength of this comment.
-          COVERAGE_INSTRUMENTATION: "true"
-          COVERAGE_SESSION_MANAGEMENT: "true"
-          COVERAGE_MAPPING_QUERY: "true"
-          COVERAGE_REPORTING_QUERY: "true"
-          COVERAGE_PIPELINE_INGESTION: "true"
+          COVERAGE_INSTRUMENTATION: 'true'
+          COVERAGE_SESSION_MANAGEMENT: 'true'
+          COVERAGE_MAPPING_QUERY: 'true'
+          COVERAGE_REPORTING_QUERY: 'true'
+          COVERAGE_PIPELINE_INGESTION: 'true'
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
@@ -3025,7 +3025,6 @@ jobs:
         with:
           header: playwright-results-functional
           path: /tmp/e2e-comment-body.md
-
 
   unit-test-report:
     name: Phase 2 - Unit Tests — Coverage Report

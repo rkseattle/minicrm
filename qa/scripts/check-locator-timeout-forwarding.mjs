@@ -45,8 +45,7 @@ import { fileURLToPath } from 'node:url';
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 
 /** Control keywords that look like a call but are not a method signature. */
-const NOT_A_SIGNATURE =
-  /^(if|for|while|switch|catch|return|await|const|let|var|new|typeof|void)\b/;
+const NOT_A_SIGNATURE = /^(if|for|while|switch|catch|return|await|const|let|var|new|typeof|void)\b/;
 
 /** A real `timeout` PARAMETER — not merely a name containing "timeout". */
 const TIMEOUT_PARAM = /(?:\(|,)\s*timeout\s*[?:=,)]/;
@@ -225,7 +224,6 @@ if (process.argv[2] === '--self-test') {
     rmSync(tmp, { recursive: true, force: true });
   }
 }
-
 
 // ---------------------------------------------------------------------------
 // Behavior-layer scan — a different shape, and the one the page-object scan is

@@ -564,8 +564,7 @@ export class GrpcClient {
 
     const parts = serviceName.split('.');
     let node: grpc.GrpcObject | grpc.ServiceClientConstructor = grpcObject as
-      | grpc.GrpcObject
-      | grpc.ServiceClientConstructor;
+      grpc.GrpcObject | grpc.ServiceClientConstructor;
 
     for (const part of parts) {
       node = (node as grpc.GrpcObject)[part] as grpc.GrpcObject | grpc.ServiceClientConstructor;

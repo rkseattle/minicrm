@@ -62,7 +62,7 @@ defaultTest:
 threshold: 0.75
 
 prompts:
-  - "{{prompt}}"
+  - '{{prompt}}'
 
 tests:
   # ── Deterministic: admin tool name does not appear in rep-session response ────

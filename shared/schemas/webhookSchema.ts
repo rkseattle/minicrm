@@ -34,15 +34,16 @@ export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
 export const createWebhookSubscriptionSchema = z.object({
   url: z.string().url('URL must be a valid URL'),
-  events: z
-    .array(z.enum(WEBHOOK_EVENT_TYPES))
-    .min(1, 'At least one event type is required'),
+  events: z.array(z.enum(WEBHOOK_EVENT_TYPES)).min(1, 'At least one event type is required'),
 });
 
 export const updateWebhookSubscriptionSchema = z
   .object({
     url: z.string().url('URL must be a valid URL').optional(),
-    events: z.array(z.enum(WEBHOOK_EVENT_TYPES)).min(1, 'At least one event type is required').optional(),
+    events: z
+      .array(z.enum(WEBHOOK_EVENT_TYPES))
+      .min(1, 'At least one event type is required')
+      .optional(),
     status: z.enum(['active', 'disabled']).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
