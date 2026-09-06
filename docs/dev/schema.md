@@ -237,7 +237,7 @@ Do not add new values to these ENUMs — use `varchar + CHECK` for all new const
 
 ## Polymorphic FK Pattern
 
-Six tables use `(type, id)` discriminator pairs instead of typed FK columns. Reference integrity is enforced at the application layer.
+Seven tables use `(type, id)` discriminator pairs instead of typed FK columns. Reference integrity is enforced at the application layer.
 
 | Table                 | Type column                        | Valid type values                    | Orphan cleanup?         |
 | --------------------- | ---------------------------------- | ------------------------------------ | ----------------------- |
@@ -247,12 +247,20 @@ Six tables use `(type, id)` discriminator pairs instead of typed FK columns. Ref
 | `gdpr_deletion_log`   | `record_type`                      | any erasable entity type             | No — retained by design |
 | `audit_log`           | `record_type`                      | see migration 076                    | No — retained by design |
 | `ai_gdpr_cascade_log` | `record_type`                      | `contact`, `lead`                    | No — retained by design |
+| `email_message_links` | `record_type`                      | `contact`, `lead`, `account`, `deal` | Yes — required          |
 
 When hard-deleting a parent entity, clean up polymorphic dependents in the same transaction:
 
 - `attachments`: delete the object-storage file (by `storage_key`) first, then delete the row
 - `custom_field_values`: delete rows before the parent DELETE
 - `notes`: soft-delete via `softDeleteNotesByEntity(client, entityType, entityId)` from `noteService.ts` — do NOT hard-delete notes (preserves audit history)
+- `email_message_links`: delete rows before the parent DELETE. A contact **merge** is the
+  exception and moves them to the winner instead — dropping them would discard the
+  conversation history the merge exists to consolidate. Move them the way
+  `custom_field_values` is moved, not the way `notes` is: `UNIQUE (email_message_id,
+record_type, record_id)` means one message naming both contacts already has a winner row,
+  so a bare `UPDATE ... SET record_id = winner` raises `23505` and rolls back the merge.
+  Update with a `NOT EXISTS` guard, then delete whatever the guard skipped
 
 `audit_log` and `gdpr_deletion_log` rows are retained intentionally for compliance traceability.
 

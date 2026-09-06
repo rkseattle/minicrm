@@ -50,6 +50,7 @@
 | leads_is_demo_index | CREATE INDEX leads_is_demo_index ON public.leads USING btree (is_demo) |
 | leads_created_at_index | CREATE INDEX leads_created_at_index ON public.leads USING btree (created_at) |
 | leads_converted_at_idx | CREATE INDEX leads_converted_at_idx ON public.leads USING btree (converted_at) WHERE (converted_at IS NOT NULL) |
+| leads_lower_email_idx | CREATE INDEX leads_lower_email_idx ON public.leads USING btree (lower(email)) |
 
 ## Triggers
 

@@ -50,6 +50,7 @@
 | contacts_first_name_trgm_idx | CREATE INDEX contacts_first_name_trgm_idx ON public.contacts USING gin (first_name gin_trgm_ops) |
 | contacts_last_name_trgm_idx | CREATE INDEX contacts_last_name_trgm_idx ON public.contacts USING gin (last_name gin_trgm_ops) |
 | contacts_email_trgm_idx | CREATE INDEX contacts_email_trgm_idx ON public.contacts USING gin (email gin_trgm_ops) |
+| contacts_lower_email_idx | CREATE INDEX contacts_lower_email_idx ON public.contacts USING btree (lower((email)::text)) |
 
 ## Triggers
 

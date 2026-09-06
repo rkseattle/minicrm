@@ -957,6 +957,14 @@
           "columns": [
             "converted_at"
           ]
+        },
+        {
+          "name": "leads_lower_email_idx",
+          "def": "CREATE INDEX leads_lower_email_idx ON public.leads USING btree (lower(email))",
+          "table": "public.leads",
+          "columns": [
+            "lower"
+          ]
         }
       ],
       "constraints": [
@@ -1408,6 +1416,14 @@
           "table": "public.contacts",
           "columns": [
             "email"
+          ]
+        },
+        {
+          "name": "contacts_lower_email_idx",
+          "def": "CREATE INDEX contacts_lower_email_idx ON public.contacts USING btree (lower((email)::text))",
+          "table": "public.contacts",
+          "columns": [
+            "lower"
           ]
         }
       ],
@@ -10770,6 +10786,132 @@
           "def": "CREATE TRIGGER email_sync_jobs_set_updated_at BEFORE UPDATE ON public.email_sync_jobs FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
+    },
+    {
+      "name": "public.email_message_links",
+      "type": "BASE TABLE",
+      "comment": "Links a synced message to the CRM records its addresses name. record_type + record_id form a polymorphic reference with no FK constraint, because a PostgreSQL FK cannot span several parent tables. Valid record_type values: 'contact', 'lead', 'account', 'deal'. Orphan cleanup is the application's responsibility: a hard-delete of one of those records must clear its links in the same transaction, and a contact merge must move them to the winner rather than drop them. See docs/dev/schema.md — Polymorphic FK Pattern.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "email_message_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "record_type",
+          "type": "varchar(16)",
+          "nullable": false
+        },
+        {
+          "name": "record_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "match_type",
+          "type": "varchar(16)",
+          "nullable": false,
+          "comment": "How the link was made: 'auto' by the sync engine's address matching, 'manual' by a user. A manual link is audited and an automatic one is not, so this also says whether to expect an audit entry."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "email_message_links_pkey",
+          "def": "CREATE UNIQUE INDEX email_message_links_pkey ON public.email_message_links USING btree (id)",
+          "table": "public.email_message_links",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_message_links_message_record_unique",
+          "def": "CREATE UNIQUE INDEX email_message_links_message_record_unique ON public.email_message_links USING btree (email_message_id, record_type, record_id)",
+          "table": "public.email_message_links",
+          "columns": [
+            "email_message_id",
+            "record_type",
+            "record_id"
+          ]
+        },
+        {
+          "name": "email_message_links_record_idx",
+          "def": "CREATE INDEX email_message_links_record_idx ON public.email_message_links USING btree (record_type, record_id)",
+          "table": "public.email_message_links",
+          "columns": [
+            "record_type",
+            "record_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "email_message_links_match_type_check",
+          "type": "CHECK",
+          "def": "CHECK (((match_type)::text = ANY ((ARRAY['auto'::character varying, 'manual'::character varying])::text[])))",
+          "table": "public.email_message_links",
+          "referenced_table": "",
+          "columns": [
+            "match_type"
+          ]
+        },
+        {
+          "name": "email_message_links_record_type_check",
+          "type": "CHECK",
+          "def": "CHECK (((record_type)::text = ANY ((ARRAY['contact'::character varying, 'lead'::character varying, 'account'::character varying, 'deal'::character varying])::text[])))",
+          "table": "public.email_message_links",
+          "referenced_table": "",
+          "columns": [
+            "record_type"
+          ]
+        },
+        {
+          "name": "email_message_links_email_message_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE",
+          "table": "public.email_message_links",
+          "referenced_table": "public.email_messages",
+          "columns": [
+            "email_message_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_message_links_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.email_message_links",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_message_links_message_record_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (email_message_id, record_type, record_id)",
+          "table": "public.email_message_links",
+          "referenced_table": "",
+          "columns": [
+            "email_message_id",
+            "record_type",
+            "record_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -12345,6 +12487,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.email_message_links",
+      "columns": [
+        "email_message_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.email_messages",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
