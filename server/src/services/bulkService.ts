@@ -10,6 +10,7 @@ import { deleteFindingsForDeletedEntities } from './dataHygieneService.js';
 import {
   deleteLinksForDeletedEntities,
   messagesLinkedToContacts,
+  messagesLinkedToDeals,
   reconcileDerivedLinks,
 } from './emailMatchingService.js';
 import { queueAssignmentNotification } from './notificationService.js';
@@ -403,11 +404,20 @@ export async function bulkDeals(
         });
       }
     } else {
-      // change_stage
-      await client.query('UPDATE deals SET stage = $1, updated_at = now() WHERE id = ANY($2)', [
-        stage,
-        actualIds,
-      ]);
+      // change_stage — pipeline_stage_id moves with the name. Every openness test resolves
+      // through the FK, so writing the text alone leaves a closed deal reading as open.
+      await client.query(
+        `UPDATE deals d
+            SET stage = $1::text,
+                pipeline_stage_id = COALESCE(
+                  (SELECT ps.id FROM pipeline_stages ps
+                    WHERE ps.pipeline_id = d.pipeline_id AND ps.name = $1::text),
+                  d.pipeline_stage_id
+                ),
+                updated_at = now()
+          WHERE d.id = ANY($2)`,
+        [stage, actualIds],
+      );
 
       for (const row of beforeResult.rows) {
         await writeAuditEntry(client, {
@@ -433,6 +443,13 @@ export async function bulkDeals(
           await writeDealStageHistoryEntry(client, row.id, row.pipeline_id, stage!);
         }
       }
+
+      // Derived links are earned by open deals only, so a bulk close has to withdraw them.
+      await reconcileDerivedLinks(
+        client,
+        await messagesLinkedToDeals(client, actualIds),
+        await getDealAutoLink(),
+      );
     }
 
     await client.query('COMMIT');

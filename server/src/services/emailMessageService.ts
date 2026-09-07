@@ -29,6 +29,8 @@ import type {
 import pool from '../db.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { clearDerivedLinkSuppression, suppressDerivedLink } from './emailMatchingService.js';
+import { buildVisibilityFilter } from './visibilityService.js';
 
 /** A link row as the write endpoints return it. */
 export interface EmailMessageLinkRow {
@@ -218,20 +220,97 @@ export async function listMessagesForRecord(
  * Scoped to the caller's own mailboxes, which is the whole of "own accounts only": a
  * message another rep synced is not this rep's to triage.
  */
+/**
+ * A link the caller can actually follow, as a SQL predicate over `m`.
+ *
+ * Matching runs in a system context and sees every record, so a message can end up linked
+ * only to records the mailbox owner cannot read. Treating those as "matched" would drop
+ * the message out of the unmatched inbox while the record endpoint answers 403 — the
+ * owner's own mail, reachable through nothing. So the inbox asks whether a link is
+ * VISIBLE to them, not whether one exists.
+ *
+ * `$2` is true when the caller reads org-wide (admin and viewer always; a rep or manager
+ * never, since neither an org policy nor a team can be settled per row here — they fall
+ * back to records they own, which is the conservative half of the rule).
+ */
+/**
+ * Builds "the caller can follow at least one of this message's links", as SQL.
+ *
+ * Matching runs in a system context and sees every record, so a message can end up linked
+ * only to records the mailbox owner cannot read. Treating those as "matched" would drop
+ * the message out of the unmatched inbox while the record endpoint answers 403 — the
+ * owner's own mail, reachable through nothing. So the inbox asks whether a link is
+ * VISIBLE, not whether one exists.
+ *
+ * The per-type clauses come from `buildVisibilityFilter`, the same source the record
+ * endpoint's `canAccessOwnedRecord` reads, so the two cannot disagree about a policy or a
+ * team. Leads have no policy anywhere in the product and use their own owner-or-admin
+ * rule, matching `canReadLinkedRecord`.
+ */
+async function buildVisibleLinkExists(
+  userId: string,
+  userRole: string,
+  paramOffset: number,
+): Promise<{ sql: string; params: unknown[] }> {
+  const params: unknown[] = [];
+  const arms: string[] = [];
+
+  for (const [recordType, objectType, table, alias] of [
+    ['contact', 'contact', 'contacts', 'c'],
+    ['account', 'account', 'accounts', 'a'],
+    ['deal', 'deal', 'deals', 'd'],
+  ] as const) {
+    const filter = await buildVisibilityFilter(
+      objectType,
+      userId,
+      userRole,
+      `${alias}.owner_id`,
+      paramOffset + params.length,
+    );
+    params.push(...filter.params);
+    arms.push(
+      `EXISTS (SELECT 1 FROM ${table} ${alias}
+         WHERE l.record_type = '${recordType}' AND ${alias}.id = l.record_id
+           ${filter.clause ? `AND ${filter.clause}` : ''})`,
+    );
+  }
+
+  // Leads: reads are open to any authenticated user product-wide, but correspondence is
+  // more sensitive than the lead it concerns, so the read endpoint applies leads' WRITE
+  // rule. Mirrored here rather than widened.
+  if (userRole === 'admin') {
+    arms.push(`EXISTS (SELECT 1 FROM leads le
+       WHERE l.record_type = 'lead' AND le.id = l.record_id)`);
+  } else {
+    arms.push(`EXISTS (SELECT 1 FROM leads le
+       WHERE l.record_type = 'lead' AND le.id = l.record_id
+         AND le.owner_id = $${paramOffset + params.length})`);
+    params.push(userId);
+  }
+
+  return {
+    sql: `EXISTS (
+      SELECT 1 FROM email_message_links l
+       WHERE l.email_message_id = m.id AND (${arms.join(' OR ')})
+    )`,
+    params,
+  };
+}
+
 export async function listUnmatchedMessages(
   userId: string,
+  userRole: string,
   page: number,
   limit: number,
 ): Promise<PaginatedResponse<EmailThread>> {
+  const visible = await buildVisibleLinkExists(userId, userRole, 2);
   return listThreadPage(
     `FROM email_messages m
        JOIN connected_accounts ca ON ca.id = m.connected_account_id
       WHERE ca.user_id = $1
-        AND NOT EXISTS (
-          SELECT 1 FROM email_message_links l WHERE l.email_message_id = m.id
-        )`,
-    `NOT EXISTS (SELECT 1 FROM email_message_links l WHERE l.email_message_id = m.id)`,
-    [userId],
+        AND NOT ${visible.sql}`,
+    `NOT ${visible.sql}`,
+    [userId, ...visible.params],
     page,
     limit,
   );
@@ -342,6 +421,9 @@ export async function createManualLink(
       [messageId, recordType, recordId],
     );
 
+    // Filing it by hand reverses an earlier removal, so the tombstone must go with it.
+    await clearDerivedLinkSuppression(client, messageId, recordType, recordId);
+
     await writeAuditEntry(client, {
       recordType: 'connected_account',
       recordId: mailbox.rows[0].id,
@@ -366,8 +448,8 @@ export async function createManualLink(
 /**
  * Removes a link by hand — automatic or manual.
  *
- * An auto link removed this way does not come back: only newly synced messages are ever
- * matched, so this is the user's decision and it stands.
+ * A link removed this way does not come back. Nothing re-matches a stored message, and the
+ * removal is recorded so re-derivation cannot restore it either.
  *
  * Scoped the same way as the create: the link must hang off a message in one of the
  * caller's own mailboxes, so a link id alone reaches nothing.
@@ -404,6 +486,16 @@ export async function deleteMessageLink(
       await client.query('ROLLBACK');
       return false;
     }
+
+    // Every removal, not just an automatic one: filing a derived pair by hand makes it
+    // 'manual', and gating on match_type would let that pair be re-derived after the user
+    // removed it. A tombstone on a pair nothing derives is inert.
+    await suppressDerivedLink(
+      client,
+      messageId,
+      deleted.rows[0].record_type,
+      deleted.rows[0].record_id,
+    );
 
     await writeAuditEntry(client, {
       recordType: 'connected_account',

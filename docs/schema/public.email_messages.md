@@ -8,7 +8,7 @@ Messages synced from a connected mailbox. Headers, metadata, and body text. All 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.email_message_links](public.email_message_links.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.email_message_links](public.email_message_links.md) [public.email_message_link_suppressions](public.email_message_link_suppressions.md) |  |  |
 | connected_account_id | uuid |  | false |  | [public.connected_accounts](public.connected_accounts.md) |  |
 | provider_message_id | text |  | false |  |  | The provider's own message identifier, opaque here. Unique per connected account, which is what makes a repeated sync idempotent. |
 | thread_id | text |  | false |  |  | Normalized across providers: native thread id where one exists, otherwise derived from RFC 5322 References/In-Reply-To/Message-ID. |
@@ -51,6 +51,7 @@ Messages synced from a connected mailbox. Headers, metadata, and body text. All 
 erDiagram
 
 "public.email_message_links" }o--|| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
+"public.email_message_link_suppressions" }o--|| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
 "public.email_messages" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 
 "public.email_messages" {
@@ -79,6 +80,13 @@ erDiagram
   varchar_16_ match_type "How the link was made: 'auto' by the sync engine's address matching, 'manual' by a user. A manual link is audited and an automatic one is not, so this also says whether to expect an audit entry."
   timestamp_with_time_zone created_at ""
   varchar_16_ source "system when the matching engine created the link; NULL when a person did"
+}
+"public.email_message_link_suppressions" {
+  uuid id ""
+  uuid email_message_id FK ""
+  varchar_16_ record_type ""
+  uuid record_id ""
+  timestamp_with_time_zone created_at ""
 }
 "public.connected_accounts" {
   uuid id ""

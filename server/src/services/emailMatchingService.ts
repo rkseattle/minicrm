@@ -29,7 +29,7 @@ import { NON_TERMINAL_STAGE_PREDICATE } from './pipelineStageService.js';
  * How a link records the way it was made. Mirrors the table's match_type CHECK; a manual
  * link is the API's to write.
  */
-const AUTO_MATCH = 'auto';
+export const AUTO_MATCH = 'auto';
 
 /**
  * What `source` records on a link the engine wrote.
@@ -144,6 +144,12 @@ async function linkContactAccounts(
       WHERE link.email_message_id = ANY($1::uuid[])
         AND link.record_type = 'contact'
         AND c.account_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM email_message_link_suppressions s
+           WHERE s.email_message_id = link.email_message_id
+             AND s.record_type = 'account'
+             AND s.record_id = c.account_id
+        )
      ON CONFLICT DO NOTHING`,
     [messageIds, AUTO_MATCH, SYSTEM_SOURCE],
   );
@@ -167,6 +173,12 @@ async function linkContactDeals(client: PoolClient, messageIds: readonly string[
       WHERE link.email_message_id = ANY($1::uuid[])
         AND link.record_type = 'contact'
         AND ${NON_TERMINAL_STAGE_PREDICATE}
+        AND NOT EXISTS (
+          SELECT 1 FROM email_message_link_suppressions s
+           WHERE s.email_message_id = link.email_message_id
+             AND s.record_type = 'deal'
+             AND s.record_id = d.id
+        )
      ON CONFLICT DO NOTHING`,
     [messageIds, AUTO_MATCH, SYSTEM_SOURCE],
   );
@@ -223,6 +235,12 @@ export async function deleteLinksForDeletedEntity(
     recordType,
     recordId,
   ]);
+  // The tombstone outlives the record otherwise: record_id carries no FK, so nothing
+  // cascades it away.
+  await client.query(
+    'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = $2',
+    [recordType, recordId],
+  );
 }
 
 /** Set-based counterpart for bulk deletes, which remove many rows in one statement. */
@@ -234,6 +252,10 @@ export async function deleteLinksForDeletedEntities(
   if (recordIds.length === 0) return;
   await client.query(
     'DELETE FROM email_message_links WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
+    [recordType, recordIds],
+  );
+  await client.query(
+    'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
     [recordType, recordIds],
   );
 }
@@ -323,6 +345,8 @@ export async function reconcileDerivedLinks(
     [messageIds, AUTO_MATCH],
   );
 
+  // Both halves of the insert's predicate, or the two drift: a deal that reached a
+  // terminal stage after it was linked would keep mail no re-derivation would grant it.
   await client.query(
     `DELETE FROM email_message_links stale
       WHERE stale.email_message_id = ANY($1::uuid[])
@@ -331,9 +355,11 @@ export async function reconcileDerivedLinks(
         AND NOT EXISTS (
           SELECT 1 FROM email_message_links contact_link
             JOIN deal_contacts dc ON dc.contact_id = contact_link.record_id
+            JOIN deals d ON d.id = dc.deal_id
            WHERE contact_link.email_message_id = stale.email_message_id
              AND contact_link.record_type = 'contact'
              AND dc.deal_id = stale.record_id
+             AND ${NON_TERMINAL_STAGE_PREDICATE}
         )`,
     [messageIds, AUTO_MATCH],
   );
@@ -346,6 +372,12 @@ export async function reconcileDerivedLinks(
       WHERE link.email_message_id = ANY($1::uuid[])
         AND link.record_type = 'contact'
         AND c.account_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM email_message_link_suppressions s
+           WHERE s.email_message_id = link.email_message_id
+             AND s.record_type = 'account'
+             AND s.record_id = c.account_id
+        )
      ON CONFLICT DO NOTHING`,
     [messageIds, AUTO_MATCH, SYSTEM_SOURCE],
   );
@@ -375,6 +407,70 @@ export async function messagesLinkedToContacts(
     `SELECT DISTINCT email_message_id FROM email_message_links
       WHERE record_type = 'contact' AND record_id = ANY($1::uuid[])`,
     [contactIds],
+  );
+  return result.rows.map((row) => row.email_message_id);
+}
+
+/**
+ * Records that a user removed a derived link, so re-derivation will not write it again.
+ *
+ * Idempotent: unlinking, re-linking by hand and unlinking again must not raise on the
+ * UNIQUE.
+ */
+export async function suppressDerivedLink(
+  client: PoolClient,
+  messageId: string,
+  recordType: string,
+  recordId: string,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO email_message_link_suppressions (email_message_id, record_type, record_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING`,
+    [messageId, recordType, recordId],
+  );
+}
+
+/**
+ * Clears a suppression, so the pair can be derived again.
+ *
+ * Filing the link by hand is the user reversing their own earlier removal — leaving the
+ * tombstone would let the next reconcile delete what they just asked for.
+ */
+export async function clearDerivedLinkSuppression(
+  client: PoolClient,
+  messageId: string,
+  recordType: string,
+  recordId: string,
+): Promise<void> {
+  await client.query(
+    `DELETE FROM email_message_link_suppressions
+      WHERE email_message_id = $1 AND record_type = $2 AND record_id = $3`,
+    [messageId, recordType, recordId],
+  );
+}
+
+/**
+ * The messages linked to any of these deals.
+ *
+ * A stage change does not touch a contact, so the contact-keyed lookup above finds
+ * nothing for it — but closing a deal is exactly when its derived links stop being
+ * earned.
+ *
+ * @param client - The transaction that changed these deals.
+ * @param dealIds - The deals whose messages are affected.
+ */
+export async function messagesLinkedToDeals(
+  client: PoolClient,
+  dealIds: readonly string[],
+): Promise<string[]> {
+  if (dealIds.length === 0) {
+    return [];
+  }
+  const result = await client.query<{ email_message_id: string }>(
+    `SELECT DISTINCT email_message_id FROM email_message_links
+      WHERE record_type = 'deal' AND record_id = ANY($1::uuid[])`,
+    [dealIds],
   );
   return result.rows.map((row) => row.email_message_id);
 }

@@ -25,6 +25,7 @@ import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
 import {
   deleteLinksForDeletedEntity,
   messagesLinkedToContacts,
+  messagesLinkedToDeals,
   reconcileDerivedLinks,
 } from './emailMatchingService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
@@ -560,10 +561,20 @@ export async function bulkPatchDeals(
         }
 
         if (patch.stage !== undefined) {
-          await client.query(`UPDATE deals SET stage = $1, updated_at = now() WHERE id = $2`, [
-            patch.stage,
-            id,
-          ]);
+          // pipeline_stage_id moves with the name: every openness test resolves through the
+          // FK, so writing the text alone leaves a closed deal reading as open.
+          await client.query(
+            `UPDATE deals d
+                SET stage = $1::text,
+                    pipeline_stage_id = COALESCE(
+                      (SELECT ps.id FROM pipeline_stages ps
+                        WHERE ps.pipeline_id = d.pipeline_id AND ps.name = $1::text),
+                      d.pipeline_stage_id
+                    ),
+                    updated_at = now()
+              WHERE d.id = $2`,
+            [patch.stage, id],
+          );
           await writeAuditEntry(client, {
             recordType: 'deal',
             recordId: id,
@@ -578,6 +589,13 @@ export async function bulkPatchDeals(
           // Stage history row on a real transition only
           if (row.stage !== patch.stage) {
             await writeDealStageHistoryEntry(client, id, row.pipeline_id, patch.stage);
+            // Inside the savepoint, beside the other per-record effects: a closing deal
+            // stops earning its derived links.
+            await reconcileDerivedLinks(
+              client,
+              await messagesLinkedToDeals(client, [id]),
+              await getDealAutoLink(),
+            );
           }
         }
 

@@ -101,7 +101,7 @@ export async function listUnmatchedMessagesHandler(req: Request, res: Response):
   }
 
   const { page, limit } = parsed.data;
-  res.status(200).json(await listUnmatchedMessages(req.user!.id, page, limit));
+  res.status(200).json(await listUnmatchedMessages(req.user!.id, req.user!.role, page, limit));
 }
 
 /**

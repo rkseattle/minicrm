@@ -161,8 +161,9 @@ router.post('/:id/links', asyncHandler(createLinkHandler));
  *     summary: Remove a link from one of your messages
  *     description: >
  *       Removes a link, automatic or manual, from a message in one of the caller's own
- *       mailboxes. A removed automatic link does not come back: only newly synced messages
- *       are matched.
+ *       mailboxes. A removed automatic link does not come back: the removal is recorded, so
+ *       neither a later change to the record's relationships nor a re-sync re-files it.
+ *       Filing it again by hand clears that and restores normal automatic behavior.
  *     security:
  *       - cookieAuth: []
  *     parameters:
