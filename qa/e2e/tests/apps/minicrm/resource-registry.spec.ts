@@ -229,6 +229,7 @@ test.describe('resource-registry — pipeline_stages_reviewed (MINCRM-705)', () 
       sso: 'settings.sso',
       'mfa-required': 'settings.mfa_required',
       visibility: 'settings.visibility_policy',
+      'deal-auto-link': 'settings.deal_auto_link',
     };
 
     const unmapped = [...new Set(endpoints)].filter((e) => !KEY_FOR_ENDPOINT[e as string]);
