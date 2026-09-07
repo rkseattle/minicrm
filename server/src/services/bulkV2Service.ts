@@ -582,6 +582,12 @@ export async function bulkPatchDeals(
             await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
             await client.query(`RELEASE SAVEPOINT ${sp}`);
             failed.push({ id, reason: 'invalid_stage_for_pipeline' });
+            // The owner UPDATE above is inside the savepoint this just rolled back, so the
+            // id must not stay queued for an assignment notification about a change the
+            // database no longer holds. Guarded: indexOf is -1 when owner_id was not
+            // patched, and splice(-1, 1) would drop somebody else's id.
+            const queued = reassignedIds.indexOf(id);
+            if (queued !== -1) reassignedIds.splice(queued, 1);
             continue;
           }
           await writeAuditEntry(client, {

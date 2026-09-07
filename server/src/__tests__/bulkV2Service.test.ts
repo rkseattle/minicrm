@@ -23,6 +23,16 @@ import {
 } from '../services/bulkV2Service.js';
 import pool from '../db.js';
 import { uid } from './testUtils.js';
+import { queueAssignmentNotification } from '../services/notificationService.js';
+import type * as NotificationService from '../services/notificationService.js';
+
+// The one mock in this file: an assignment notification batches in memory behind a timer,
+// so a reassignment that was rolled back leaves no database trace to assert on. Spying is
+// the only way to see the notification that must NOT be sent.
+vi.mock('../services/notificationService.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof NotificationService>()),
+  queueAssignmentNotification: vi.fn(),
+}));
 
 const FILE_PREFIX = 'bulk-v2-svc';
 
@@ -282,6 +292,59 @@ describe('bulkPatchDeals', () => {
 
     expect(result.succeeded).toContain(deal.id);
     expect(result.failed).toHaveLength(0);
+  });
+
+  it('rolls the owner change back too when the stage is absent from the deal’s pipeline', async () => {
+    // owner_id is applied before the stage inside one savepoint, so a stage that does not
+    // exist in THIS deal's pipeline must undo both — otherwise the record reports failed
+    // while the reassignment stands, and its new owner is notified about it.
+    const pipeline = await pool.query<{ id: string }>(
+      `INSERT INTO pipelines (name, is_default) VALUES ($1, false) RETURNING id`,
+      [`BulkV2-OtherPipeline-${uid()}`],
+    );
+    const otherPipelineId = pipeline.rows[0]!.id;
+    await pool.query(
+      `INSERT INTO pipeline_stages (name, sort_order, probability, is_terminal, pipeline_id)
+       VALUES ('Only Stage', 10, 25, false, $1)`,
+      [otherPipelineId],
+    );
+    const deal = await createDeal({
+      name: `BulkV2-SvcDealCrossPipeline-${uid()}`,
+      stage: VALID_STAGE,
+      currency: 'USD',
+      owner_id: secondUserId,
+    });
+    await pool.query(
+      `UPDATE deals SET pipeline_id = $1,
+              pipeline_stage_id = (SELECT id FROM pipeline_stages WHERE pipeline_id = $1)
+        WHERE id = $2`,
+      [otherPipelineId, deal.id],
+    );
+
+    // Earlier tests in this file reassign successfully and legitimately notify.
+    vi.mocked(queueAssignmentNotification).mockClear();
+
+    const actorWithRole = { ...actor(), role: 'admin' };
+    const result = await bulkPatchDeals(
+      { ids: [deal.id], patch: { owner_id: actorId, stage: TARGET_STAGE } },
+      actorWithRole,
+    );
+
+    expect(result.succeeded).toHaveLength(0);
+    expect(result.failed).toEqual([{ id: deal.id, reason: 'invalid_stage_for_pipeline' }]);
+
+    const after = await pool.query<{ owner_id: string }>(
+      'SELECT owner_id FROM deals WHERE id = $1',
+      [deal.id],
+    );
+    expect(after.rows[0]!.owner_id).toBe(secondUserId);
+
+    // The rollback is only half the fix: the id must also leave the notification queue,
+    // or the new owner is told about a reassignment the database no longer holds.
+    expect(queueAssignmentNotification).not.toHaveBeenCalled();
+
+    await pool.query('DELETE FROM deals WHERE id = $1', [deal.id]);
+    await pool.query('DELETE FROM pipelines WHERE id = $1', [otherPipelineId]);
   });
 
   it('invalid stage throws a VALIDATION_ERROR coded error before the transaction', async () => {
