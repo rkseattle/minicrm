@@ -406,13 +406,31 @@ export async function bulkDeals(
     } else {
       // change_stage — pipeline_stage_id moves with the name. Every openness test resolves
       // through the FK, so writing the text alone leaves a closed deal reading as open.
+      //
+      // The name was validated against the DEFAULT pipeline, but a selection can span
+      // pipelines. Retaining the old id where the name does not resolve is what produces
+      // that split, so the whole operation is refused instead — it is one transaction, and
+      // half-applying a stage change is worse than rejecting it.
+      const unresolved = await client.query<{ id: string }>(
+        `SELECT d.id FROM deals d
+          WHERE d.id = ANY($2)
+            AND NOT EXISTS (
+              SELECT 1 FROM pipeline_stages ps
+               WHERE ps.pipeline_id = d.pipeline_id AND ps.name = $1::text
+            )`,
+        [stage, actualIds],
+      );
+      if (unresolved.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return { invalidStage: true };
+      }
+
       await client.query(
         `UPDATE deals d
             SET stage = $1::text,
-                pipeline_stage_id = COALESCE(
-                  (SELECT ps.id FROM pipeline_stages ps
-                    WHERE ps.pipeline_id = d.pipeline_id AND ps.name = $1::text),
-                  d.pipeline_stage_id
+                pipeline_stage_id = (
+                  SELECT ps.id FROM pipeline_stages ps
+                   WHERE ps.pipeline_id = d.pipeline_id AND ps.name = $1::text
                 ),
                 updated_at = now()
           WHERE d.id = ANY($2)`,

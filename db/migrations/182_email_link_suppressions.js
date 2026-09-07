@@ -7,8 +7,9 @@
  * opposite. A tombstone is the smallest thing that survives: the link row is gone, and
  * this says not to write it again.
  *
- * Only automatic links need one. A manual link is never re-derived, so deleting its row
- * is already permanent.
+ * Written on every removal, not only an automatic one: filing a derived pair by hand makes
+ * it manual, so gating on match_type would let that pair return after the user removed it.
+ * A tombstone on a pair nothing derives is inert.
  */
 
 'use strict';

@@ -355,6 +355,60 @@ describe('bulkDeals — change_stage', () => {
 
     expect(result).toEqual({ invalidStage: true });
   });
+
+  it('moves pipeline_stage_id with the name, so openness is not read from stale text', async () => {
+    const d1 = await seedDeal(ownerId, 'Stage Deal FK');
+
+    await bulkDeals({ action: 'change_stage', ids: [d1.id], stage: 'Qualification' }, ownerActor());
+
+    const row = await pool.query<{ name: string }>(
+      `SELECT ps.name FROM deals d JOIN pipeline_stages ps ON ps.id = d.pipeline_stage_id
+        WHERE d.id = $1`,
+      [d1.id],
+    );
+    expect(row.rows[0]!.name).toBe('Qualification');
+  });
+
+  it('refuses the batch when a deal’s own pipeline has no such stage', async () => {
+    // The name is validated against the DEFAULT pipeline, but a selection can span
+    // pipelines. Applying it anyway would set closed-stage TEXT while the FK still
+    // pointed at the old open stage — the exact split every openness check reads through.
+    // Named per run: a failed assertion skips the cleanup below, and the unique name
+    // would then collide on every later run rather than failing on its own merits.
+    const pipelineName = `${FILE_PREFIX}-other-${uid()}`;
+    const pipeline = await pool.query<{ id: string }>(
+      `INSERT INTO pipelines (name, is_default) VALUES ($1, false) RETURNING id`,
+      [pipelineName],
+    );
+    const otherPipelineId = pipeline.rows[0]!.id;
+    await pool.query(
+      `INSERT INTO pipeline_stages (name, sort_order, probability, is_terminal, pipeline_id)
+       VALUES ('Only Stage', 10, 25, false, $1)`,
+      [otherPipelineId],
+    );
+    const stray = await seedDeal(ownerId, 'Stage Deal Other Pipeline');
+    await pool.query(
+      `UPDATE deals SET pipeline_id = $1,
+              pipeline_stage_id = (SELECT id FROM pipeline_stages WHERE pipeline_id = $1)
+        WHERE id = $2`,
+      [otherPipelineId, stray.id],
+    );
+
+    const result = await bulkDeals(
+      { action: 'change_stage', ids: [stray.id], stage: 'Qualification' },
+      ownerActor(),
+    );
+
+    expect(result).toEqual({ invalidStage: true });
+
+    const after = await pool.query<{ stage: string }>('SELECT stage FROM deals WHERE id = $1', [
+      stray.id,
+    ]);
+    expect(after.rows[0]!.stage).toBe('Prospecting');
+
+    await pool.query('DELETE FROM deals WHERE id = $1', [stray.id]);
+    await pool.query('DELETE FROM pipelines WHERE id = $1', [otherPipelineId]);
+  });
 });
 
 describe('bulkDeals — ownership enforcement', () => {
