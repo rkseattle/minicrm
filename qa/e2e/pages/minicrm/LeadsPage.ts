@@ -83,6 +83,8 @@ export class LeadsPage {
    * specific lead row when the DB has accumulated rows from prior runs.
    */
   async setPageSizeToMax(): Promise<void> {
+    // Also a first action after navigate(), so it needs the same guard clickNew does.
+    await this.page.waitForPresent('[data-testid="pagination-limit-select"]');
     await this.page
       .locate(
         [
@@ -101,8 +103,13 @@ export class LeadsPage {
 
   /**
    * Clicks the "New Lead" button to open the lead creation form.
+   *
+   * Guarded like filterByOwnerMe: the button renders only once the initial query
+   * resolves, and the locator's own budget is 2s — far short of a first paint on a
+   * loaded machine, where it reports selector drift instead of waiting.
    */
   async clickNew(): Promise<void> {
+    await this.page.waitForPresent('[data-testid="new-lead-button"]');
     await this.page.click(
       [
         { type: 'testId', value: 'new-lead-button' },
