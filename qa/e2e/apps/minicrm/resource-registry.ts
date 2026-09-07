@@ -52,14 +52,17 @@ export type ResourceKey =
   // Written directly by resetPipelineStagesReviewed() and indirectly by
   // ensureSystemDefaults().
   | 'settings.pipeline_stages_reviewed'
-  // Every row ensureSystemDefaults() resets, as ONE key. That helper writes TEN
-  // shared settings — default_language, nav_layout, email_notifications,
+  // The system_settings row gating automatic deal linking on synced mail.
+  | 'settings.deal_auto_link'
+  // Every row ensureSystemDefaults() resets, as ONE key. That helper writes
+  // ELEVEN shared settings — default_language, nav_layout, email_notifications,
   // tags_restrict_creation, currencies, branding, pipeline_stages_reviewed, sso,
-  // mfa_required and visibility — so any two files that call it conflict on all
-  // ten, and a file that calls it conflicts with anyone touching any of them.
+  // mfa_required, visibility and deal_auto_link — so any two files that call it
+  // conflict on all eleven, and a file that calls it conflicts with anyone
+  // touching any of them.
   //
-  // A composite key rather than ten entries per caller, deliberately. Listing
-  // them individually means nine hand-maintained ten-item lists that drift the
+  // A composite key rather than eleven entries per caller, deliberately. Listing
+  // them individually means nine hand-maintained lists that drift the
   // moment ensureSystemDefaults gains or loses a write — which is exactly how
   // this was first modeled (pipeline_stages_reviewed only), and it put
   // data-hygiene beside deal-health-check and notifications beside mfa at
@@ -523,6 +526,7 @@ export const ENSURE_SYSTEM_DEFAULTS_KEYS: readonly ResourceKey[] = [
   'settings.sso',
   'settings.mfa_required',
   'settings.visibility_policy',
+  'settings.deal_auto_link',
 ];
 
 /**
