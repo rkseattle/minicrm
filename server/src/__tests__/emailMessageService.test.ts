@@ -243,7 +243,7 @@ describe('listUnmatchedMessages', () => {
     const matched = await insertMessage(accountAId, '2', { threadId: 'filed' });
     await link(matched);
 
-    const result = await listUnmatchedMessages(repAId, 1, 25);
+    const result = await listUnmatchedMessages(repAId, 'rep', 1, 25);
 
     expect(result.total).toBe(1);
     expect(result.data.flatMap((t) => t.messages.map((m) => m.id))).toEqual([unmatched]);
@@ -252,7 +252,7 @@ describe('listUnmatchedMessages', () => {
   it("never returns another rep's unmatched mail", async () => {
     await insertMessage(accountBId, '1');
 
-    const result = await listUnmatchedMessages(repAId, 1, 25);
+    const result = await listUnmatchedMessages(repAId, 'rep', 1, 25);
 
     expect(result).toEqual({ data: [], total: 0, page: 1, limit: 25 });
   });
@@ -261,15 +261,66 @@ describe('listUnmatchedMessages', () => {
     const first = await insertMessage(accountAId, '1', { threadId: 'shared' });
     await insertMessage(accountAId, '2', { threadId: 'shared' });
 
-    const before = await listUnmatchedMessages(repAId, 1, 25);
+    const before = await listUnmatchedMessages(repAId, 'rep', 1, 25);
     expect(before.data[0]!.messages).toHaveLength(2);
 
     await link(first);
-    const after = await listUnmatchedMessages(repAId, 1, 25);
+    const after = await listUnmatchedMessages(repAId, 'rep', 1, 25);
 
     // The thread stays, minus the message that now belongs to a record.
     expect(after.total).toBe(1);
     expect(after.data[0]!.messages).toHaveLength(1);
+  });
+
+  /** Files a message against a contact rep B owns, which rep A may or may not read. */
+  async function linkToForeignContact(local: string, threadId: string): Promise<string> {
+    const foreign = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Foreign', 'Contact', $1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-${local}@example.com`, repBId],
+    );
+    const message = await insertMessage(accountAId, '1', { threadId });
+    await link(message, foreign.rows[0]!.id);
+    return message;
+  }
+
+  it('still lists a message linked only to a record the owner cannot see', async () => {
+    // Matching runs in a system context, so it can file a rep's mail against another
+    // rep's contact. Under a private policy the record endpoint answers 403, so counting
+    // it as "matched" would leave the owner's own mail reachable through nothing.
+    await pool.query(
+      `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'contact'`,
+    );
+    try {
+      const message = await linkToForeignContact('foreign', 'hidden');
+
+      const result = await listUnmatchedMessages(repAId, 'rep', 1, 25);
+
+      expect(result.data.flatMap((t) => t.messages.map((m) => m.id))).toEqual([message]);
+    } finally {
+      await pool.query(
+        `UPDATE org_visibility_settings SET policy = 'org' WHERE object_type = 'contact'`,
+      );
+    }
+  });
+
+  it('hides that message under the org policy, where the rep can read the record', async () => {
+    // The mirror of the case above, and the default install: the inbox must agree with the
+    // record endpoint in BOTH directions, not merely err toward showing everything.
+    await linkToForeignContact('visible-foreign', 'shown');
+
+    const result = await listUnmatchedMessages(repAId, 'rep', 1, 25);
+
+    expect(result.total).toBe(0);
+  });
+
+  it('hides a message from an admin, who can see every record it names', async () => {
+    const message = await insertMessage(accountAId, '1', { threadId: 'filed' });
+    await link(message);
+
+    const result = await listUnmatchedMessages(repAId, 'admin', 1, 25);
+
+    expect(result.total).toBe(0);
   });
 
   it('pages by thread', async () => {
@@ -280,7 +331,7 @@ describe('listUnmatchedMessages', () => {
       });
     }
 
-    const result = await listUnmatchedMessages(repAId, 1, 2);
+    const result = await listUnmatchedMessages(repAId, 'rep', 1, 2);
 
     expect(result.total).toBe(3);
     expect(result.data).toHaveLength(2);

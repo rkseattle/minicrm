@@ -91,6 +91,7 @@
 | [public.email_messages](public.email_messages.md) | 16 | Messages synced from a connected mailbox. Headers, metadata, and body text. All three body columns are nullable: a message may store its headers with no body. | BASE TABLE |
 | [public.email_sync_jobs](public.email_sync_jobs.md) | 9 | Progress of a bounded mailbox backfill. One row per backfill run; incremental syncs create none. | BASE TABLE |
 | [public.email_message_links](public.email_message_links.md) | 7 | Links a synced message to the CRM records its addresses name. record_type + record_id form a polymorphic reference with no FK constraint, because a PostgreSQL FK cannot span several parent tables. Valid record_type values: 'contact', 'lead', 'account', 'deal'. Orphan cleanup is the application's responsibility: a hard-delete of one of those records must clear its links in the same transaction, and a consolidating path — a contact merge, a lead conversion — must move them to the surviving record rather than drop them. See docs/dev/schema.md — Polymorphic FK Pattern. | BASE TABLE |
+| [public.email_message_link_suppressions](public.email_message_link_suppressions.md) | 5 | Automatic email-to-record links a user removed. Re-derivation consults this table so an unlink is not undone by a later relationship change. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -281,6 +282,7 @@ erDiagram
 "public.email_messages" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 "public.email_sync_jobs" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 "public.email_message_links" }o--|| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
+"public.email_message_link_suppressions" }o--|| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -1186,6 +1188,13 @@ erDiagram
   varchar_16_ match_type "How the link was made: 'auto' by the sync engine's address matching, 'manual' by a user. A manual link is audited and an automatic one is not, so this also says whether to expect an audit entry."
   timestamp_with_time_zone created_at ""
   varchar_16_ source "system when the matching engine created the link; NULL when a person did"
+}
+"public.email_message_link_suppressions" {
+  uuid id ""
+  uuid email_message_id FK ""
+  varchar_16_ record_type ""
+  uuid record_id ""
+  timestamp_with_time_zone created_at ""
 }
 ```
 

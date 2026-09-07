@@ -400,6 +400,20 @@ one account produce one account link between them.
 Rules 1 and 2 need none of this: an address-derived link stays true as long as the address
 does, and an address edit is not a re-filing.
 
+**A derived link the user removed stays removed.** Reconciliation recomputes rules 3 and 4
+from current state, so on its own it would re-create an account or deal link the moment the
+relationship changed again — undoing an explicit unlink with no trace. Deleting an
+automatic link therefore writes a row to `email_message_link_suppressions`, and both
+derivation queries skip a pair that appears there. Filing the same pair by hand deletes the
+suppression, because that is the user reversing their own decision; leaving it would let the
+next reconcile delete what they just asked for. Only automatic links need this — a manual
+link is never derived, so deleting its row is already permanent.
+
+**A deal that closes loses its derived links.** Rule 4 grants links to open deals only, so
+the reconcile delete applies the same non-terminal predicate the insert does, and
+`updateDeal` reconciles on a real stage transition. Without both halves a deal linked while
+open would keep the mail forever, since no other path revisits it.
+
 ## Reading synced mail
 
 `GET /api/v1/email-messages?record_type=&record_id=` returns the caller's own mail linked to
@@ -411,6 +425,13 @@ would let one rep read another's correspondence with a shared contact. The recor
 additionally checks that the caller can see the record itself — through `visibilityService`
 for contacts, accounts and deals, and through leads' own owner-or-admin rule, since leads
 have no visibility policy anywhere in the product.
+
+The unmatched list asks whether a **visible** link exists, not whether any link does.
+Matching runs in a system context and sees every record, so it can file a rep's mail against
+a colleague's contact — and treating that as "matched" would drop the message out of its
+owner's inbox while the record endpoint answers 403, leaving their own mail reachable
+through nothing. Admins and viewers read org-wide; everyone else counts only links to
+records they own, which errs toward showing a message rather than hiding it.
 
 Both page by **thread**, not by message, so a conversation is never split across a page
 boundary and `total` counts the same unit `limit` bounds. Threads are keyed by

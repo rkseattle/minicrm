@@ -15,11 +15,14 @@ import pool from '../db.js';
 import type { PoolClient } from 'pg';
 import { createUser } from '../services/userService.js';
 import {
+  clearDerivedLinkSuppression,
   deleteLinksForDeletedEntities,
   deleteLinksForDeletedEntity,
   matchMessagesToRecords,
   messagesLinkedToContacts,
+  messagesLinkedToDeals,
   reconcileDerivedLinks,
+  suppressDerivedLink,
   relinkLinksToConvertedLead,
   relinkLinksToMergedContact,
   type MatchableMessage,
@@ -1005,5 +1008,106 @@ describe('reconciling when a participant joins a deal', () => {
     }
 
     expect(await linksFor(messageId)).not.toContain(`deal:${dealId}`);
+  });
+});
+
+describe('a deal that closes after its mail was filed', () => {
+  it('drops the derived link once the deal reaches a terminal stage', async () => {
+    // The insert only ever grants open deals a link, so the delete has to withdraw one
+    // the deal has stopped earning — otherwise mail stays filed against closed business.
+    const contactId = await createContact('closer');
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-closer@example.com`] })]);
+    const dealId = await createDeal('Closing Deal', openStageId, contactId);
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await reconcileDerivedLinks(
+        client,
+        await messagesLinkedToContacts(client, [contactId]),
+        true,
+      );
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+    expect(await linksFor(messageId)).toContain(`deal:${dealId}`);
+
+    await pool.query(`UPDATE deals SET pipeline_stage_id = $1 WHERE id = $2`, [
+      terminalStageId,
+      dealId,
+    ]);
+
+    const after = await pool.connect();
+    try {
+      await after.query('BEGIN');
+      await reconcileDerivedLinks(after, await messagesLinkedToDeals(after, [dealId]), true);
+      await after.query('COMMIT');
+    } finally {
+      after.release();
+    }
+
+    expect(await linksFor(messageId)).not.toContain(`deal:${dealId}`);
+  });
+});
+
+describe('a link the user removed', () => {
+  it('does not come back when the relationship is re-derived', async () => {
+    // The endpoint promises a removed automatic link stays removed; re-derivation would
+    // otherwise undo it on the next employer change, merge or stage move.
+    const accountFk = await createAccountRecord('unlinker-co');
+    const contactId = await createContact('unlinker', accountFk);
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-unlinker@example.com`] })]);
+    expect(await linksFor(messageId)).toContain(`account:${accountFk}`);
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `DELETE FROM email_message_links WHERE email_message_id = $1 AND record_type = 'account'`,
+        [messageId],
+      );
+      await suppressDerivedLink(client, messageId, 'account', accountFk);
+      await reconcileDerivedLinks(
+        client,
+        await messagesLinkedToContacts(client, [contactId]),
+        true,
+      );
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    expect(await linksFor(messageId)).not.toContain(`account:${accountFk}`);
+  });
+
+  it('is derived again once the user files it by hand', async () => {
+    const accountFk = await createAccountRecord('refiler-co');
+    const contactId = await createContact('refiler', accountFk);
+    const messageId = await insertMessage('1');
+    await match([message(messageId, { toAddresses: [`${FILE_PREFIX}-refiler@example.com`] })]);
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `DELETE FROM email_message_links WHERE email_message_id = $1 AND record_type = 'account'`,
+        [messageId],
+      );
+      await suppressDerivedLink(client, messageId, 'account', accountFk);
+      await clearDerivedLinkSuppression(client, messageId, 'account', accountFk);
+      await reconcileDerivedLinks(
+        client,
+        await messagesLinkedToContacts(client, [contactId]),
+        true,
+      );
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    expect(await linksFor(messageId)).toContain(`account:${accountFk}`);
   });
 });

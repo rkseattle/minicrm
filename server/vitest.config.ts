@@ -395,6 +395,7 @@ const SERIAL_FILES = [
   'src/__tests__/dealHealthController.test.ts',
   'src/__tests__/relationshipHealthController.test.ts',
   'src/__tests__/emailMessageController.test.ts',
+  'src/__tests__/emailMessageService.test.ts',
   // relationshipHealthService mutates the same global account_health_scoring_config
   // singleton row as relationshipHealthController above (min_logged_activities et al.),
   // and its computeAccountHealthScores() scans ALL accounts org-wide (no owner filter)

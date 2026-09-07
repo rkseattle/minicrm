@@ -22,6 +22,7 @@ import { softDeleteNotesByEntity } from './noteService.js';
 import {
   deleteLinksForDeletedEntity,
   messagesLinkedToContacts,
+  messagesLinkedToDeals,
   reconcileDerivedLinks,
 } from './emailMatchingService.js';
 import { deleteFindingsForDeletedEntity } from './dataHygieneService.js';
@@ -551,6 +552,14 @@ export async function updateDeal(
     // stage is present in the payload but unchanged (see the `else if` branch above).
     if (deal && params.stage !== undefined && deal.stage !== previousStage) {
       await writeDealStageHistoryEntry(client, deal.id, deal.pipeline_id, deal.stage);
+
+      // Derived deal links are only earned by open deals, so a move to a terminal stage
+      // has to drop them — nothing else revisits this deal's links.
+      await reconcileDerivedLinks(
+        client,
+        await messagesLinkedToDeals(client, [deal.id]),
+        await getDealAutoLink(),
+      );
     }
 
     await client.query('COMMIT');

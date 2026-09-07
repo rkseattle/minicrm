@@ -126,6 +126,25 @@ describe('baseline schema parity', () => {
     expect(Number(counts.roles)).toBeGreaterThan(0);
   });
 
+  it('seeds the values a folded-in migration set, not just the rows', async () => {
+    // Counting rows cannot see this: a folded migration's UPDATE has no counterpart in
+    // the squashed seed, so the row exists with the column at its DEFAULT and every
+    // count still matches. The terminal stages shipped with no close_date requirement
+    // exactly this way, letting a deal close with no close date.
+    const result = await pool.query<{ name: string; stage_exit_requirements: unknown }>(
+      `SELECT name, stage_exit_requirements FROM pipeline_stages
+        WHERE is_fixed = true ORDER BY sort_order`,
+    );
+
+    expect(result.rows.length).toBeGreaterThan(0);
+    for (const row of result.rows) {
+      expect(row.stage_exit_requirements).toEqual({
+        required_fields: ['close_date'],
+        warning_fields: [],
+      });
+    }
+  });
+
   it('creates the minicrm_app role the RLS suite connects as', async () => {
     // Cluster-level, so pg_dump --schema-only never emits it.
     const result = await pool.query<{ count: string }>(

@@ -3316,8 +3316,8 @@ END $do$`);
       ('Qualification', 20, 25, false, false, '{}'::jsonb),
       ('Proposal', 30, 50, false, false, '{}'::jsonb),
       ('Negotiation', 40, 75, false, false, '{}'::jsonb),
-      ('Closed Won', 50, 100, true, true, '{}'::jsonb),
-      ('Closed Lost', 60, 0, true, true, '{}'::jsonb)
+      ('Closed Won', 50, 100, true, true, '{"required_fields":["close_date"],"warning_fields":[]}'::jsonb),
+      ('Closed Lost', 60, 0, true, true, '{"required_fields":["close_date"],"warning_fields":[]}'::jsonb)
       ) AS seed(name, sort_order, probability, is_terminal, is_fixed, stage_exit_requirements),
       public.pipelines p
      WHERE p.is_default = true

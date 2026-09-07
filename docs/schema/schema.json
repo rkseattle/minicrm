@@ -10937,6 +10937,117 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.email_message_link_suppressions",
+      "type": "BASE TABLE",
+      "comment": "Automatic email-to-record links a user removed. Re-derivation consults this table so an unlink is not undone by a later relationship change.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "email_message_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "record_type",
+          "type": "varchar(16)",
+          "nullable": false
+        },
+        {
+          "name": "record_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "email_message_link_suppressions_pkey",
+          "def": "CREATE UNIQUE INDEX email_message_link_suppressions_pkey ON public.email_message_link_suppressions USING btree (id)",
+          "table": "public.email_message_link_suppressions",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_message_link_suppressions_unique",
+          "def": "CREATE UNIQUE INDEX email_message_link_suppressions_unique ON public.email_message_link_suppressions USING btree (email_message_id, record_type, record_id)",
+          "table": "public.email_message_link_suppressions",
+          "columns": [
+            "email_message_id",
+            "record_type",
+            "record_id"
+          ]
+        },
+        {
+          "name": "email_message_link_suppressions_lookup_idx",
+          "def": "CREATE INDEX email_message_link_suppressions_lookup_idx ON public.email_message_link_suppressions USING btree (email_message_id, record_type, record_id)",
+          "table": "public.email_message_link_suppressions",
+          "columns": [
+            "email_message_id",
+            "record_type",
+            "record_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "email_message_link_suppressions_record_type_check",
+          "type": "CHECK",
+          "def": "CHECK (((record_type)::text = ANY ((ARRAY['contact'::character varying, 'lead'::character varying, 'account'::character varying, 'deal'::character varying])::text[])))",
+          "table": "public.email_message_link_suppressions",
+          "referenced_table": "",
+          "columns": [
+            "record_type"
+          ]
+        },
+        {
+          "name": "email_message_link_suppressions_email_message_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE",
+          "table": "public.email_message_link_suppressions",
+          "referenced_table": "public.email_messages",
+          "columns": [
+            "email_message_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_message_link_suppressions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.email_message_link_suppressions",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_message_link_suppressions_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (email_message_id, record_type, record_id)",
+          "table": "public.email_message_link_suppressions",
+          "referenced_table": "",
+          "columns": [
+            "email_message_id",
+            "record_type",
+            "record_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -12515,6 +12626,19 @@
     },
     {
       "table": "public.email_message_links",
+      "columns": [
+        "email_message_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.email_messages",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.email_message_link_suppressions",
       "columns": [
         "email_message_id"
       ],

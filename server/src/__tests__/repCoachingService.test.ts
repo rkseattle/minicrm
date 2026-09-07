@@ -102,7 +102,13 @@ async function createClosedDeals(
       account_id: accountId ?? undefined,
     });
     const targetStage = i < wonCount ? 'Closed Won' : 'Closed Lost';
-    await updateDeal(deal.id, { stage: targetStage, version: deal.version }, ACTOR, deal);
+    // Both terminal stages require close_date, as they do for a real user closing a deal.
+    await updateDeal(
+      deal.id,
+      { stage: targetStage, close_date: '2026-06-01', version: deal.version },
+      ACTOR,
+      deal,
+    );
   }
 }
 
