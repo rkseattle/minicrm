@@ -563,18 +563,27 @@ export async function bulkPatchDeals(
         if (patch.stage !== undefined) {
           // pipeline_stage_id moves with the name: every openness test resolves through the
           // FK, so writing the text alone leaves a closed deal reading as open.
-          await client.query(
+          //
+          // The name was validated against the DEFAULT pipeline, and this deal may be on
+          // another. Failing the record beats retaining its old id, which would leave the
+          // deal showing a closed stage while every FK-based check still reads it as open.
+          const updated = await client.query(
             `UPDATE deals d
                 SET stage = $1::text,
-                    pipeline_stage_id = COALESCE(
-                      (SELECT ps.id FROM pipeline_stages ps
-                        WHERE ps.pipeline_id = d.pipeline_id AND ps.name = $1::text),
-                      d.pipeline_stage_id
-                    ),
+                    pipeline_stage_id = ps.id,
                     updated_at = now()
-              WHERE d.id = $2`,
+               FROM pipeline_stages ps
+              WHERE d.id = $2
+                AND ps.pipeline_id = d.pipeline_id
+                AND ps.name = $1::text`,
             [patch.stage, id],
           );
+          if (updated.rowCount === 0) {
+            await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
+            await client.query(`RELEASE SAVEPOINT ${sp}`);
+            failed.push({ id, reason: 'invalid_stage_for_pipeline' });
+            continue;
+          }
           await writeAuditEntry(client, {
             recordType: 'deal',
             recordId: id,

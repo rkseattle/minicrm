@@ -82,15 +82,20 @@ async function resetStages(): Promise<void> {
   ]);
   await pool.query(
     `
-    INSERT INTO pipeline_stages (pipeline_id, name, sort_order, probability, is_terminal, is_fixed) VALUES
-      ($1, 'Prospecting',  10, 10,  false, false),
-      ($1, 'Qualification',20, 25,  false, false),
-      ($1, 'Proposal',     30, 50,  false, false),
-      ($1, 'Negotiation',  40, 75,  false, false),
-      ($1, 'Closed Won',   50, 100, true,  true),
-      ($1, 'Closed Lost',  60, 0,   true,  true)
+    INSERT INTO pipeline_stages
+      (pipeline_id, name, sort_order, probability, is_terminal, is_fixed, stage_exit_requirements)
+    VALUES
+      ($1, 'Prospecting',  10, 10,  false, false, '{}'),
+      ($1, 'Qualification',20, 25,  false, false, '{}'),
+      ($1, 'Proposal',     30, 50,  false, false, '{}'),
+      ($1, 'Negotiation',  40, 75,  false, false, '{}'),
+      -- The close_date requirement is part of the seeded state, not decoration: omitting
+      -- it here restores the rows but not their values, and every later suite then sees
+      -- terminal stages that let a deal close with no close date.
+      ($1, 'Closed Won',   50, 100, true,  true, $2),
+      ($1, 'Closed Lost',  60, 0,   true,  true, $2)
   `,
-    [defaultPipelineId],
+    [defaultPipelineId, '{"required_fields":["close_date"],"warning_fields":[]}'],
   );
 }
 
