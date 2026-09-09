@@ -77,6 +77,7 @@ const FRAMEWORK_SPEC_DIR = 'tests/framework';
  * connect to a database it does not need.
  */
 export const FLAGS_TAKING_A_VALUE = new Set([
+  '--add-reporter',
   '--browser',
   '--config',
   '-c',
