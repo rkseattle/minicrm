@@ -62,19 +62,20 @@
       "actionlint"
     ]
   },
+  "//overrides": "adm-zip is pinned to 0.6.0 under onnxruntime-node as the exact floor that clears GHSA-xcpc-8h2w-3j85 (high, <0.6.0) while accepting GHSA-vwc7-r8mq-g2x9 (moderate, >=0.5.9 <=0.6.0). 0.6.0 is the newest published version, so the moderate has no fix and this is the best available. Do not drop the pin to \"resolve\" the moderate \u2014 npm then resolves lower and the high returns via onnxruntime-node -> @huggingface/transformers -> promptfoo. (MINCRM-746)",
   "overrides": {
     "undici": "7.29.0",
     "markdownlint-cli2": {
-      "js-yaml": "4.3.1",
+      "js-yaml": "4.3.2",
       "markdown-it": "14.2.0"
     },
     "onnxruntime-node": {
       "adm-zip": "0.6.0"
     },
-    "sharp": "0.35.3",
+    "sharp": "0.35.4",
     "@hono/node-server": "2.0.11",
     "promptfoo": {
-      "hono": "4.12.34"
+      "hono": "4.13.5"
     },
     "fast-uri": "3.1.7",
     "qs": "6.16.0",
