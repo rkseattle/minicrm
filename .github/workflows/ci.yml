@@ -665,7 +665,7 @@ jobs:
 
       - name: Clear stale functional test comment
         if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: playwright-results-functional
           message: |
@@ -675,7 +675,7 @@ jobs:
 
       - name: Clear stale unit test comment
         if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: unit-test-coverage
           message: |
@@ -1117,7 +1117,7 @@ jobs:
 
       - name: Post selection rationale comment
         if: always() && github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: tia-selection
           path: /tmp/tia-comment-body.md
@@ -2795,7 +2795,7 @@ jobs:
       # same slot. (MINCRM-695, MINCRM-696)
       - name: Post interim per-project functional results
         if: always() && github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: playwright-results-${{ matrix.project }}
           message: |
@@ -3045,7 +3045,7 @@ jobs:
       # (MINCRM-695, MINCRM-696)
       - name: Post combined summary comment (MINCRM-135)
         if: always()
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: playwright-results-functional
           path: /tmp/e2e-comment-body.md
@@ -3176,7 +3176,7 @@ jobs:
           cat /tmp/coverage-comment-body.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post coverage comment
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: unit-test-coverage
           path: /tmp/coverage-comment-body.md
