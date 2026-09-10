@@ -42,6 +42,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # Advisory, and deliberately BEFORE the audit gate so it still reports when the
+      # audit fails — a red gate is exactly when the operator wants to know which pins
+      # already have a newer patch. `|| true` because a stale pin is not a defect and
+      # must never be what turns this workflow red; the audit below is the gate.
+      #
+      # Covers what Dependabot cannot: an override pins a package nothing here declares,
+      # so no PR is ever raised for it and the pin goes stale silently. (see
+      # .github/dependabot.yml and docs/dev/dependencies.md)
+      - name: Report override pin drift (advisory)
+        run: node scripts/check-pin-drift.mjs >> "$GITHUB_STEP_SUMMARY" || true
+
       # The repo's single audit definition, shared with ci.yml's blocking gate. Extracted
       # rather than duplicated: these two had already drifted once, which is how the
       # fail-open hole survived here after MINCRM-703 closed it there. (MINCRM-704)
