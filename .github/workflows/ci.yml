@@ -72,6 +72,7 @@ jobs:
       scheduled-jobs-docs: ${{ steps.filter.outputs.scheduled-jobs-docs }}
       env-example-parity: ${{ steps.filter.outputs.env-example-parity }}
       playwright-version: ${{ steps.filter.outputs.playwright-version }}
+      root-deps: ${{ steps.filter.outputs.root-deps }}
       shared-testing: ${{ steps.filter.outputs.shared-testing }}
       qa-e2e-scripts: ${{ steps.filter.outputs.qa-e2e-scripts }}
       auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
@@ -575,6 +576,28 @@ jobs:
             playwright-version:
               - 'package-lock.json'
               - 'qa/package.json'
+
+            # Single-purpose output for the three unit-test jobs. A dependency bump
+            # lands in the ROOT lockfile, which matches only `config` — gating
+            # lint-and-typecheck alone — so server/client/coverage-dashboard ran no
+            # tests against the tree they would actually install. The five high
+            # advisories that opened this ticket were cleared by a lockfile-only
+            # commit, and all three suites skipped.
+            #
+            # This is the same reasoning `playwright-version` records for
+            # e2e-framework-specs, extended to the jobs it does not cover. Kept out of
+            # `server`/`client` so a lockfile bump does not also boot the E2E matrix,
+            # which `dockerfiles` and `playwright-version` already cover for their own
+            # concerns.
+            #
+            # Workspace manifests are listed because each can move its own installed
+            # tree without the root file changing at all.
+            root-deps:
+              - 'package.json'
+              - 'package-lock.json'
+              - 'server/package.json'
+              - 'client/package.json'
+              - 'coverage-dashboard/package.json'
 
             # Single-purpose filter, deliberately NOT folded into `server` or `qa`.
             #
@@ -1136,7 +1159,8 @@ jobs:
     if: |
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
-      (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true' ||
+      (needs.changes.outputs.server == 'true' || needs.changes.outputs.root-deps == 'true' ||
+        needs.changes.outputs.attestation-docs == 'true' ||
         needs.changes.outputs.user-guide-docs == 'true' ||
         needs.changes.outputs.redirect-status-docs == 'true' || needs.changes.outputs.scheduled-jobs-docs == 'true' ||
         needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true' ||
@@ -1292,7 +1316,7 @@ jobs:
     if: |
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
-      (needs.changes.outputs.client == 'true' || needs.changes.outputs.record-paths == 'true')
+      (needs.changes.outputs.client == 'true' || needs.changes.outputs.root-deps == 'true' || needs.changes.outputs.record-paths == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1382,7 +1406,7 @@ jobs:
     if: >-
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
-      (needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.eslint-config == 'true')
+      (needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.root-deps == 'true' || needs.changes.outputs.eslint-config == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
