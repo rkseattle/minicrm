@@ -188,18 +188,29 @@ triggers and assignment notifications fired after commit and never awaited; owne
 the WHERE clause on PATCH/DELETE; ORDER BY allowlist; explicit PG error mapping;
 varchar + CHECK over new enums; corrective migrations only, each with a real `down`.
 
-### Length: 40 lines per phase, 400 for the document
+### Size: at most 6 phases, 500 lines outside the AC table
 
-Hard caps, counted on the finished file. A phase over 40 lines is a phase doing too much
-— **split it or cut its scope; do not compress the prose to fit.** A document over 400
-means the branch is too large to review, which is a scope finding to raise with Rob, not
-a formatting problem. Plans for comparable work in `docs/plans/` land at 430–530 lines
-total including the shared sections; a phase needs well under 40 to say what it does.
+**The phase count is the real limit.** A branch needs at most six phases; more than that
+is a branch too large to review in one sitting, and the fix is splitting the work across
+PRs, not writing tighter. Raise it with Rob as a scope finding. Unlike a line count this
+cannot be satisfied by compressing prose, which is why it comes first.
 
-The four phase bullets are the phase. `Files touched` is a list of paths, not prose.
-`Change summary` is what changes and why, in a few sentences. If a claim needs three
-paragraphs of defense, that is a signal the approach is wrong or unverified — not that
-it needs more words.
+**500 lines for the document, counting everything except the acceptance-criteria table.**
+That table is one row per AC clause by design, and a plan covering several tickets can
+carry thirty rows before a single phase is written — counting it would penalize the
+splitting rule above it. Everything else counts.
+
+**5 lines for `Change summary`.** This is the field that actually overflows, so it is the
+field with the limit. What changes, and why, in five lines or fewer. If a claim needs
+three paragraphs of defense, the approach is wrong or unverified — that is a signal to
+re-examine it, not to write more words.
+
+`Files touched` has no line limit. A registry edit must enumerate its consumers, and that
+list is sometimes long; truncating it to hit a number would defeat the rule requiring it.
+
+A phase running past ~40 lines with a five-line `Change summary` and a legitimately long
+`Files touched` is fine. One running past 40 because its prose sprawls is a phase doing
+too much — **split it or cut its scope; do not compress the prose to fit.**
 
 ### Describe the end state, never the revision history
 
