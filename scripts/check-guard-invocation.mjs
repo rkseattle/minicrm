@@ -11,8 +11,9 @@
  * names the script, never whether that step is correct — check-ci-filter-globs.mjs covers
  * stale filter paths, and each guard's own assertions cover what it checks.
  *
- * Three bounds, each deliberate and each a hole if it stops holding: only ci.yml is read
- * (no other workflow invokes a guard today); a step must name the path, so converting one
+ * Three bounds, each deliberate and each a hole if it stops holding: only the workflows in
+ * INVOKING_WORKFLOWS are read for invocations, and only ci.yml for this guard's own filter
+ * wiring, which lives nowhere else; a step must name the path, so converting one
  * to `npm run lint:framework-purity` would read as uninvoked (qa/package.json wraps four
  * guards that way, all also invoked by path today); discovery keys on the check-* name and
  * the extensions below, so a guard named verify-* or written as .py is invisible; and a
@@ -29,6 +30,16 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKFLOW = '.github/workflows/ci.yml';
+
+/**
+ * Workflows whose `run:` steps count as invoking a guard.
+ *
+ * ci.yml remains the only one whose FILTER WIRING is checked below — the paths-filter
+ * block lives there and nowhere else. This set is strictly about "does some step run
+ * this script", which a scheduled workflow answers just as well as a PR one: a drift
+ * report belongs on a schedule, not on every PR that touches nothing related.
+ */
+const INVOKING_WORKFLOWS = [WORKFLOW, '.github/workflows/security-audit.yml'];
 
 /** Directories holding guards that a CI job is expected to run. */
 const GUARD_DIRS = ['scripts', 'qa/scripts'];
@@ -348,6 +359,9 @@ function main() {
   }
 
   const workflow = readFileSync(resolve(REPO_ROOT, WORKFLOW), 'utf8');
+  const invoking = INVOKING_WORKFLOWS.map((file) =>
+    readFileSync(resolve(REPO_ROOT, file), 'utf8'),
+  ).join('\n');
 
   const wiringProblems = findWiringProblems(workflow);
   if (wiringProblems.length > 0) {
@@ -356,18 +370,20 @@ function main() {
     process.exit(1);
   }
 
-  const uninvoked = findUninvokedGuards(scripts, workflow);
+  const uninvoked = findUninvokedGuards(scripts, invoking);
   if (uninvoked.length > 0) {
     console.error(`FAIL: ${uninvoked.length} guard script(s) are run by no CI job.\n`);
     for (const script of uninvoked) console.error(`  ${script}`);
     console.error(
-      `\nAdd a step invoking it to ${WORKFLOW}, or record it in NOT_RUN_IN_CI with the\n` +
+      `\nAdd a step invoking it to one of ${INVOKING_WORKFLOWS.join(', ')}, or record it in\n` +
+        'NOT_RUN_IN_CI with the ' +
         'reason its value is entirely local. A guard nobody runs still reads as coverage.',
     );
     process.exit(1);
   }
   console.log(
-    `OK: all ${scripts.length} guard scripts are invoked by ${WORKFLOW}, and this guard's ` +
+    `OK: all ${scripts.length} guard scripts are invoked by ${INVOKING_WORKFLOWS.length} ` +
+      "workflow(s), and this guard's " +
       'own filter output is declared and consulted.',
   );
 }
