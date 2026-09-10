@@ -1,0 +1,67 @@
+version: 2
+
+# Two ecosystems, deliberately scoped differently. See docs/dev/dependencies.md for
+# the reasoning and for what this file does NOT cover.
+updates:
+  # GitHub Actions: unconstrained version updates.
+  #
+  # Dependabot only ever proposes UPGRADES here, which matches this repo's rule that
+  # Action versions are never downgraded. There is no lockfile and no `overrides`
+  # interaction, so a bad bump can only ever break a workflow — visibly, in CI, on the
+  # PR that proposes it.
+  #
+  # The drift this closes is already live: actions/checkout is pinned at v4 in 27 places
+  # and v6 in two, and the v4 majority triggers a deprecated-Node-20 warning on every run.
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'ci'
+    labels:
+      - 'dependencies'
+      - 'github-actions'
+    groups:
+      # One PR for all official actions/* bumps. They move together and reviewing
+      # five near-identical version-line diffs separately buys nothing.
+      actions-official:
+        patterns:
+          - 'actions/*'
+
+  # npm: SECURITY UPDATES ONLY.
+  #
+  # `open-pull-requests-limit: 0` disables scheduled version updates without disabling
+  # the ecosystem — security PRs still open, because Dependabot raises those regardless
+  # of this limit. That is the whole point of the setting here, not a way of switching
+  # npm off.
+  #
+  # Routine version bumps are excluded on purpose. Dependabot regenerates the lockfile
+  # when it bumps a dependency and does not reliably reapply the root `overrides` block,
+  # which is what holds twelve transitive pins in this repo. A bump that quietly
+  # re-resolves one of them reintroduces the advisory the pin exists to suppress —
+  # verified the hard way when dropping the adm-zip pin brought back a high through
+  # onnxruntime-node -> @huggingface/transformers -> promptfoo. The blocking audit gate
+  # would catch it, but as a red PR needing a manual clean re-resolve.
+  #
+  # Security PRs do not have that problem in the same way: they target the advisory
+  # directly, and a version that clears it is the point of the PR rather than a side
+  # effect. They also address the actual recurring failure here — advisories published
+  # against a lockfile that is not moving, which is how five highs and then smol-toml
+  # each arrived as a red gate rather than a reviewable change.
+  #
+  # Drift in the overrides block itself is invisible to Dependabot either way: those pins
+  # are not declared dependencies of anything this repo owns. scripts/check-pin-drift.mjs
+  # covers that gap.
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: 'chore(deps)'
+    labels:
+      - 'dependencies'
+      - 'security'

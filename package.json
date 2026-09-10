@@ -62,19 +62,22 @@
       "actionlint"
     ]
   },
+  "//overrides": "adm-zip is pinned to 0.6.0 under onnxruntime-node as the exact floor that clears GHSA-xcpc-8h2w-3j85 (high, <0.6.0) while accepting GHSA-vwc7-r8mq-g2x9 (moderate, >=0.5.9 <=0.6.0). 0.6.0 is the newest published version, so the moderate has no fix and this is the best available. Do not drop the pin to \"resolve\" the moderate \u2014 npm then resolves lower and the high returns via onnxruntime-node -> @huggingface/transformers -> promptfoo. (MINCRM-746)",
+  "//overrides.undici": "Knowingly violates @connectrpc/connect-node's ^5.28.4; npm ls marks it invalid. Safe only because its sole undici use is a globalThis.Headers polyfill gated on node major < 18, dead at this repo's Node 24 floor \u2014 recheck if connect-node starts using undici for real. Held on 7.x because promptfoo declares >=7.28.0 <8, a range 8.x would break. See docs/dev/dependencies.md. (MINCRM-746)",
   "overrides": {
-    "undici": "7.29.0",
+    "undici": "7.29.1",
     "markdownlint-cli2": {
-      "js-yaml": "4.3.1",
-      "markdown-it": "14.2.0"
+      "js-yaml": "4.3.2",
+      "markdown-it": "14.2.0",
+      "smol-toml": "1.7.1"
     },
     "onnxruntime-node": {
       "adm-zip": "0.6.0"
     },
-    "sharp": "0.35.3",
+    "sharp": "0.35.4",
     "@hono/node-server": "2.0.11",
     "promptfoo": {
-      "hono": "4.12.34"
+      "hono": "4.13.5"
     },
     "fast-uri": "3.1.7",
     "qs": "6.16.0",
