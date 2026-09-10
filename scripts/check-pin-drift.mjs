@@ -103,16 +103,55 @@ export function newerSameMajor(pinned, published) {
 }
 
 /**
+ * The one-line verdict, kept separate from printing so it can be asserted.
+ *
+ * Exists because the first version of this script reported "all pins are at the newest
+ * version" when EVERY lookup had failed — empty `drifted` read as clean rather than as
+ * unchecked. That is the same fail-open the audit gate itself once carried, and a
+ * self-test could not reach it while the wording lived inline in main().
+ *
+ * @param {number} total - Pins in the overrides block.
+ * @param {number} unreachable - Pins whose registry lookup failed.
+ * @param {number} drifted - Pins found to have a newer same-major version.
+ * @returns {string} A verdict that never claims more coverage than was achieved.
+ */
+export function summarize(total, unreachable, drifted) {
+  const checked = total - unreachable;
+  if (checked === 0) return `INDETERMINATE: no override pin could be checked (${total} skipped).`;
+  if (drifted === 0) {
+    return `OK: ${checked} of ${total} override pins checked, all at the newest same-major version.`;
+  }
+  return `${drifted} of ${checked} checked override pins have a newer patch:`;
+}
+
+/**
  * @param {string} name - Package name.
  * @returns {string[]} Published versions, or [] when the registry cannot be reached.
  */
 function publishedVersions(name) {
   try {
-    const out = execFileSync('npm', ['view', name, 'versions', '--json'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-      maxBuffer: 8 * 1024 * 1024,
-    });
+    // Bounded retries and a per-call timeout: npm's defaults are two retries with a
+    // rising backoff, which against an unreachable registry stalls this step for minutes
+    // per package — 12 packages serially is long enough to look like a hung job rather
+    // than an outage. An advisory report must fail fast and say so.
+    const out = execFileSync(
+      'npm',
+      [
+        'view',
+        name,
+        'versions',
+        '--json',
+        '--fetch-retries=1',
+        '--fetch-retry-maxtimeout=5000',
+        '--fetch-timeout=10000',
+      ],
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        maxBuffer: 8 * 1024 * 1024,
+        timeout: 30_000,
+      },
+    );
     const parsed = JSON.parse(out);
     return Array.isArray(parsed) ? parsed : [parsed];
   } catch {
@@ -169,9 +208,31 @@ function selfTest() {
     process.exit(1);
   }
 
+  // The verdict must never claim more coverage than was achieved. The all-unreachable
+  // case is the one that shipped wrong: it reported every pin current when none was read.
+  const verdicts = [
+    [12, 12, 0, 'INDETERMINATE'],
+    [12, 0, 0, 'OK: 12 of 12'],
+    [12, 4, 0, 'OK: 8 of 12'],
+    [12, 0, 4, '4 of 12 checked'],
+    [12, 2, 3, '3 of 10 checked'],
+  ];
+  for (const [total, unreachable, drifted, want] of verdicts) {
+    const got = summarize(total, unreachable, drifted);
+    if (!got.startsWith(want)) {
+      console.error(`SELF-TEST FAIL: summarize(${total},${unreachable},${drifted}) = ${got}`);
+      process.exit(1);
+    }
+  }
+  if (summarize(12, 12, 0).startsWith('OK')) {
+    console.error('SELF-TEST FAIL: reported OK when no pin could be checked.');
+    process.exit(1);
+  }
+
   console.log(
     'SELF-TEST PASS: 3 pins flattened (1 scoped), 2 of 6 version cases flagged, ' +
-      '4 correctly ignored, ranges rejected.',
+      '4 correctly ignored, ranges rejected, 5 verdicts correct including ' +
+      'all-unreachable.',
   );
 }
 
@@ -202,10 +263,9 @@ function main() {
   }
 
   const label = (pin) => (pin.scope ? `${pin.scope} > ${pin.name}` : pin.name);
-  if (drifted.length === 0) {
-    console.log(`OK: all ${pins.length} override pins are at the newest same-major version.`);
-  } else {
-    console.log(`${drifted.length} of ${pins.length} override pins have a newer patch:\n`);
+  console.log(summarize(pins.length, unreachable.length, drifted.length));
+  if (drifted.length > 0) {
+    console.log();
     for (const pin of drifted) {
       console.log(`  ${label(pin).padEnd(34)} ${pin.version}  ->  ${pin.latest}`);
     }
@@ -216,7 +276,10 @@ function main() {
     );
   }
   if (unreachable.length > 0) {
-    console.log(`\nNot checked (registry unreachable): ${unreachable.join(', ')}`);
+    console.log(
+      `\n${unreachable.length} pin(s) NOT checked — registry unreachable, so their drift is\n` +
+        `unknown rather than clean: ${unreachable.join(', ')}`,
+    );
   }
 }
 
