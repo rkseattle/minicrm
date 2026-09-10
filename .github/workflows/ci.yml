@@ -29,9 +29,9 @@ jobs:
       workers: ${{ steps.plan.outputs.workers }}
       shard-matrix: ${{ steps.plan.outputs.shard-matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -97,7 +97,7 @@ jobs:
       guard-invocation: ${{ steps.filter.outputs.guard-invocation }}
       testid-audit: ${{ steps.filter.outputs.testid-audit }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # required: dorny/paths-filter needs full history to diff
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
@@ -693,9 +693,9 @@ jobs:
     if: needs.changes.outputs.tia-tree == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -721,9 +721,9 @@ jobs:
     if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.eslint-config == 'true' || needs.changes.outputs.comment-ids == 'true' || needs.changes.outputs.ci-filter-globs == 'true' || needs.changes.outputs.guard-invocation == 'true' || needs.changes.outputs.api-path-versioning == 'true' || needs.changes.outputs.claude-hooks == 'true' || needs.changes.outputs.tia-impact == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -832,9 +832,9 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -904,7 +904,7 @@ jobs:
           - name: client
             dockerfile: client/Dockerfile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build ${{ matrix.name }} image
         run: docker build -f ${{ matrix.dockerfile }} -t minicrm-${{ matrix.name }}:ci .
@@ -987,11 +987,11 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # select-tests.ts shells `git diff base..head`, which needs full history
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -1206,9 +1206,9 @@ jobs:
           - 3025:3025
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -1319,9 +1319,9 @@ jobs:
       (needs.changes.outputs.client == 'true' || needs.changes.outputs.root-deps == 'true' || needs.changes.outputs.record-paths == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -1330,7 +1330,7 @@ jobs:
         # MINCRM-331: cache client/node_modules separately from the root cache so
         # platform-specific optional binaries (@rollup/rollup-linux-x64-gnu) resolved
         # by the npm install --prefix client step below are persisted across runs.
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: client/node_modules
           key: client-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
@@ -1409,16 +1409,16 @@ jobs:
       (needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.root-deps == 'true' || needs.changes.outputs.eslint-config == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - name: Cache coverage-dashboard node_modules
         # Same platform-specific-optional-deps rationale as client-tests' own cache step.
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: coverage-dashboard/node_modules
           key: coverage-dashboard-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
@@ -1501,9 +1501,9 @@ jobs:
     if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true' || needs.changes.outputs.env-example-parity == 'true' || needs.changes.outputs.audit-gate == 'true' || needs.changes.outputs.grep-invert-parity == 'true' || needs.changes.outputs.gate-pointer-parity == 'true' || needs.changes.outputs.testid-audit == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -1636,9 +1636,9 @@ jobs:
       (needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.playwright-version == 'true' || needs.changes.outputs.shared-testing == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -1648,7 +1648,7 @@ jobs:
 
       - name: Cache Playwright browser binaries
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
@@ -1705,9 +1705,9 @@ jobs:
       baseline-exists: ${{ steps.check-baseline.outputs.exists }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -1814,9 +1814,9 @@ jobs:
           - 8025:8025
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -1834,7 +1834,7 @@ jobs:
 
       - name: Cache Playwright browser binaries
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
@@ -2209,16 +2209,16 @@ jobs:
           - 8025:8025
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - name: Cache Playwright browser binaries
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
@@ -2601,9 +2601,9 @@ jobs:
         project: [desktop, mobile-web]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -2613,7 +2613,7 @@ jobs:
 
       - name: Cache Playwright browser binaries
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
@@ -2869,7 +2869,7 @@ jobs:
        needs.e2e-serial.result == 'success' || needs.e2e-serial.result == 'failure') &&
       github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download desktop merged artifacts
         uses: actions/download-artifact@v8
@@ -3059,7 +3059,7 @@ jobs:
     # skipped (qa paths unchanged), before the if condition is even evaluated.
     if: always() && (contains(fromJson('["success","failure"]'), needs.server-tests.result) || contains(fromJson('["success","failure"]'), needs.client-tests.result) || contains(fromJson('["success","failure"]'), needs.coverage-dashboard-tests.result) || contains(fromJson('["success","failure"]'), needs.e2e-framework-specs.result)) && github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # MINCRM-293: Each download step uses continue-on-error because only the suites
       # that ran for this PR will have uploaded artifacts. Missing artifacts are handled
@@ -3187,8 +3187,8 @@ jobs:
     if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.doc-links == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
       - name: Install markdownlint-cli2
@@ -3242,19 +3242,19 @@ jobs:
         command: server /data --console-address :9001
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - name: Cache Playwright browser binaries
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
@@ -3472,9 +3472,9 @@ jobs:
       github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -3483,7 +3483,7 @@ jobs:
         run: npm ci
 
       - name: Restore Promptfoo cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/promptfoo
           key: promptfoo-${{ hashFiles('qa/evals/promptfooconfig.yaml', 'qa/evals/*.yaml') }}
