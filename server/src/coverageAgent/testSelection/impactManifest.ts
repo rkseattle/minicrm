@@ -114,6 +114,9 @@ export const DECLARED_UNCOVERED_PATHS: readonly string[] = [
   'dex/**',
   // Linter/reporter configuration for CI itself, not for the app under test.
   '.github/actionlint.yaml',
+  // Read by GitHub's Dependabot service to schedule update PRs. Nothing in the
+  // repo loads it, and the PRs it opens are gated by the same suite as any other.
+  '.github/dependabot.yml',
   'server/redocly.yaml',
   'server/vitest.config.ts',
   // The AI eval suite runs on its own promptfoo harness, never in Playwright.
