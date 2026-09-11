@@ -453,10 +453,13 @@ jobs:
               - 'shared/testing/specRunnability.ts'
               - 'qa/scripts/targeted-run-plan.ts'
               - 'qa/scripts/check-grep-invert-parity.sh'
+            # No '.github/workflows/ci.yml' entry: it fired paid evals on every
+            # unrelated workflow edit. The tradeoff is that an edit to the
+            # ai-evals job itself is not self-tested — push a qa/evals/ change
+            # alongside it to exercise the job.
             ai:
               - 'server/src/ai/**'
               - 'qa/evals/**'
-              - '.github/workflows/ci.yml'
             coverage-dashboard:
               - 'coverage-dashboard/src/**'
               - 'coverage-dashboard/package.json'
