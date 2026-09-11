@@ -5,17 +5,25 @@
 This file holds **facts** — architecture, security, domain rules, conventions. Anything
 that is a repeatable procedure lives in a gate file or a skill and loads on demand.
 
-| Need                                      | Where                                                  |
-| ----------------------------------------- | ------------------------------------------------------ |
-| Definition of Done, before every commit   | `.claude/gates/definition-of-done.md`                  |
-| Status report at every phase boundary     | `.claude/gates/status-report.md`                       |
-| Pre-push checklist and pre-PR self-review | `.claude/gates/pre-push.md`                            |
-| E2E run procedure and cadence policy      | `.claude/gates/e2e-run.md`                             |
-| New endpoint checklist                    | `docs/dev/new-endpoint.md`                             |
-| E2E authoring rules                       | `e2e-authoring` skill — auto-loads on `qa/**`          |
-| Full delivery workflow, plan → PR → green | `/deliver`, or the stage skills                        |
-| Jira transitions, PR feedback handling    | `plan-work`, `implement-phases`, `ship-pr`, `ci-green` |
-| Turn blocked with phases unfinished       | `.claude/hooks/block-false-stop.sh`                    |
+| Need                                       | Where                                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------------ |
+| Definition of Done, before every commit    | `.claude/gates/definition-of-done.md` → plugin + `dod-mechanics.md`      |
+| Status report at every phase boundary      | `.claude/gates/status-report.md` → plugin                                |
+| Pre-push checklist and pre-PR self-review  | `.claude/gates/pre-push.md` → plugin + `pre-push-mechanics.md`           |
+| E2E run procedure and cadence policy       | `.claude/gates/e2e-run.md`                                               |
+| New endpoint checklist                     | `docs/dev/new-endpoint.md`                                               |
+| E2E authoring rules                        | `e2e-authoring` skill — auto-loads on `qa/**`                            |
+| Full delivery workflow, plan → PR → green  | `/delivery-kit:deliver`, or the stage skills                             |
+| Jira transitions, PR feedback handling     | `delivery-kit:` `plan-work`, `implement-phases`, `ship-pr`, `ci-green`   |
+| Turn blocked with phases unfinished        | the plugin's Stop hook                                                   |
+| This project's commands, paths, registries | `.claude/project.json`, `.claude/registries.md`, `.claude/plan-rules.md` |
+
+**The workflow is a plugin.** `delivery-kit@rob-kit`
+([rkseattle/claude-delivery-kit](https://github.com/rkseattle/claude-delivery-kit))
+supplies the six stage skills, the four adversary agents, both hooks, and the universal
+half of the three gates above. This repo keeps only what is genuinely its own: the
+mechanics files, the registries, the agent rules under `.claude/agent-rules/`, and
+`project.json`, which is where every command and path the plugin needs is declared.
 
 ---
 
