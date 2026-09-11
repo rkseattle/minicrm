@@ -553,6 +553,36 @@ async function withholdOtherSuites(): Promise<void> {
   await deferMailboxesOfOtherSuites([REP_A_ACTOR.id, REP_B_ACTOR.id]);
 }
 
+/**
+ * Defers every mailbox in the table, this file's included.
+ *
+ * Paired with `makeDueForThisFile` for the one test that asserts the claim's raw count.
+ * `withholdOtherSuites` cannot serve that test: it defers what exists at that instant, so
+ * a parallel file inserting a due mailbox before the claim runs leaves a foreign row
+ * competing for the batch. Deferring everything first makes the candidate set empty, and
+ * the re-enable that follows decides its contents.
+ */
+async function deferAllMailboxes(): Promise<void> {
+  await pool.query(
+    `UPDATE connected_accounts SET sync_next_attempt_at = NOW() + interval '1 hour'`,
+  );
+}
+
+/**
+ * Re-enables exactly this file's mailboxes, immediately before a claim.
+ *
+ * The pair leaves a window of one statement rather than one `await` chain. A row another
+ * file creates after this runs is deferred by that file's own withhold before it claims,
+ * and one created before is already covered by the blanket defer.
+ */
+async function makeDueForThisFile(): Promise<void> {
+  await pool.query(
+    `UPDATE connected_accounts SET sync_next_attempt_at = NULL
+      WHERE user_id = ANY($1::uuid[])`,
+    [[REP_A_ACTOR.id, REP_B_ACTOR.id]],
+  );
+}
+
 describe('scheduler-facing account claim', () => {
   /** Puts an account into a state the claim query should or should not pick up. */
   async function setSyncState(
@@ -766,10 +796,23 @@ describe('scheduler-facing account claim', () => {
       REP_A_ACTOR,
     );
 
-    // Withheld after creating, as every other test here does: withholding first defers
-    // only what exists at that moment, leaving anything a parallel file creates in the
-    // gap due when the claim runs.
-    await withholdOtherSuites();
+    // This test asserts the raw count — a limit of 1 must yield exactly 1 row — so unlike
+    // every other test here it cannot filter to this file's owners afterwards. Filtering a
+    // single-slot claim that a foreign row won leaves zero of ours and an assertion that
+    // passes for the wrong reason.
+    //
+    // `withholdOtherSuites` alone is not enough for that. It defers what exists at that
+    // instant, and a parallel file inserting a due mailbox between the defer and the claim
+    // leaves a foreign row competing for the one slot. That window is scheduling-dependent,
+    // which is why this passed locally and on one CI run while failing on another against
+    // the identical commit.
+    //
+    // So make the claim's candidate set exactly this file's two rows, and close the window
+    // to a single statement: defer everything, then re-enable ours in the same breath. A
+    // row another file creates afterwards is already deferred by its own suite's withhold,
+    // and one created before is caught by the blanket defer here.
+    await deferAllMailboxes();
+    await makeDueForThisFile();
 
     expect(await claimAccountsDueForSync(1)).toHaveLength(1);
   });
