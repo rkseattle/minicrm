@@ -39,7 +39,7 @@ jobs:
     name: Validate workflow YAML (actionlint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install actionlint
         run: |
@@ -57,7 +57,7 @@ jobs:
     # errors in `run:` blocks. That matters since the npm audit gate's only definition now
     # lives in .github/actions/npm-audit/. (MINCRM-704)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
         with:

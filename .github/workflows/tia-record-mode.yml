@@ -126,7 +126,7 @@ jobs:
           - 8025:8025
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Deploy key, so the coverage-map push can reach protected main.
           # (MINCRM-703)
@@ -677,7 +677,7 @@ jobs:
       # any notification integration).
       - name: Post failure signal on the offending commit
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           # NOT context.sha — workflow_dispatch can be launched against ANY
           # ref in the GitHub UI, in which case context.sha is the
