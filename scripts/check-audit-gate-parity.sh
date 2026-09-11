@@ -50,8 +50,11 @@ CALLERS=(
 DOC_CALLERS=(
   "docs/dev/contributing.md"
   "docs/dev/troubleshooting.md"
-  ".claude/gates/definition-of-done.md"
-  ".claude/gates/pre-push.md"
+  # The two agent gates are pointers into the delivery-kit plugin; the commands this
+  # project actually runs live in the *-mechanics files beside them, in fenced blocks.
+  # Listing the pointers instead would pin a file that names no command at all.
+  ".claude/gates/dod-mechanics.md"
+  ".claude/gates/pre-push-mechanics.md"
 )
 
 # Name-checked only: these give the command in a table or inline span, which the fenced

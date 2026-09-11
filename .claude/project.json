@@ -1,0 +1,33 @@
+{
+  "ticket_prefix": "MINCRM",
+  "jira_project": "MINCRM",
+  "repo_slug": "rkseattle/minicrm",
+  "parent_branch_default": "main",
+
+  "source_roots": "client/src server/src shared qa db docs .github",
+  "build_command": "npm run typecheck",
+  "build_manifest": "none — npm workspaces build every file under each workspace's src/",
+  "user_docs_targets": "docs/user-guide/ (with an index.md entry), docs/admin-guide.md",
+
+  "unit_test_scope": "The changed workspaces only — `npm test --workspace=minicrm-server` if server files changed, `--workspace=minicrm-client` if client files changed. Not the whole suite: measured at 153s server and 133s client on an idle machine, far worse when oversubscribed, and the three workspaces must run in series. The full `npm run unit_test` is the Definition of Done's step, run per commit; this step is the pre-push delta.",
+
+  "post_fix_verification_scope": "The TIA-selected set for the fix, unioned with the specs that failed — not the full suite. `server/src/scripts/select-tests.ts` resolves the diff to affected specs against `coverage_test_links`, so re-running that set is a real verdict on the new tree rather than a shortcut. Bounds are not negotiable and are in `.claude/gates/pre-push-mechanics.md` under \"After the hook's own E2E run fails\": the sole delta from the failed run is the fix, HEAD is otherwise unchanged, the cheap gates still run, and there is no second bypass for the same failure.",
+
+  "push_command": "git push -u --force-with-lease origin <branch>",
+  "release_build_command": "none — there is no production-configuration build distinct from the test build",
+
+  "results_file": "<workspace>/test-results/junit.xml for unit tests; qa/e2e/test-results/results.xml for E2E",
+  "results_read_command": "Read the XML directly. Never the console, never the exit code.",
+  "ci_results_artifact": "The failing job's uploaded artifacts via `gh run view --log-failed` or `gh api`. For a healed-locator E2E failure pull that run's `healing-report.json` — the local `heal-trends.json` is from a different run and will mislead you.",
+
+  "verification_tiers": "unit (a named test) · e2e (a functional spec, tagged) — both automated. There is no out-of-band tier: everything this project ships can be verified by something that runs here.",
+  "verification_step_file": ".claude/gates/e2e-run.md",
+  "failure_policy_gate": ".claude/gates/e2e-run.md",
+
+  "mechanics_gate_dod": ".claude/gates/dod-mechanics.md",
+  "mechanics_gate_pre_push": ".claude/gates/pre-push-mechanics.md",
+  "registry_file": ".claude/registries.md",
+  "plan_rules_file": ".claude/plan-rules.md",
+
+  "extra_gates": [".claude/gates/e2e-run.md", ".claude/gates/new-endpoint.md"]
+}

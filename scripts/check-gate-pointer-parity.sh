@@ -28,6 +28,11 @@ GATE_COUNTERPARTS=(
   ".claude/gates/status-report.md|docs/dev/contributing.md"
   ".claude/gates/new-endpoint.md|docs/dev/new-endpoint.md"
   ".claude/gates/e2e-run.md|docs/operations.md"
+  # The *-mechanics gates hold this project's commands for the policy the delivery-kit
+  # plugin states. They are agent files like any other gate, so they name the same human
+  # counterpart — the split is policy-vs-commands, not agent-vs-human.
+  ".claude/gates/dod-mechanics.md|docs/dev/contributing.md"
+  ".claude/gates/pre-push-mechanics.md|docs/dev/contributing.md"
 )
 
 # Extracts every relative markdown link target from a file. Strips the optional title —
@@ -112,6 +117,10 @@ self_test() {
     > "$tmp/.claude/gates/e2e-run.md"
   printf '# gate\n\nSee [contributing](../../docs/dev/contributing.md).\n' \
     > "$tmp/.claude/gates/status-report.md"
+  printf '# gate\n\nSee [contributing](../../docs/dev/contributing.md).\n' \
+    > "$tmp/.claude/gates/dod-mechanics.md"
+  printf '# gate\n\nSee [contributing](../../docs/dev/contributing.md).\n' \
+    > "$tmp/.claude/gates/pre-push-mechanics.md"
   printf '# contributing\n' > "$tmp/docs/dev/contributing.md"
   printf '# checklist\n' > "$tmp/docs/dev/new-endpoint.md"
   printf '# operations\n' > "$tmp/docs/operations.md"
