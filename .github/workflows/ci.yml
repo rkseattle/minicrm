@@ -334,13 +334,17 @@ jobs:
               - 'scripts/pre-push-tia.ts'
               - '.github/actions/npm-audit/action.yml'
               - 'scripts/check-audit-gate-parity.sh'
-              # The three prose sites the guard pins. Without these a docs-only PR can
+              # The prose sites the guard pins. Without these a docs-only PR can
               # drift an instruction back to the fail-open bare command unchecked.
               - 'docs/dev/contributing.md'
               - 'docs/dev/ci.md'
               - 'docs/dev/troubleshooting.md'
-              - '.claude/gates/definition-of-done.md'
-              - '.claude/gates/pre-push.md'
+              # The agent-facing copies. These are the files DOC_CALLERS actually
+              # names — the gates beside them are pointers into the delivery-kit
+              # plugin and carry no command — so an edit here is exactly the edit
+              # the guard exists to catch, and it must trigger it.
+              - '.claude/gates/dod-mechanics.md'
+              - '.claude/gates/pre-push-mechanics.md'
             # Single-purpose output for check-gate-pointer-parity.sh, which asserts each
             # .claude/gates file still points at the docs/dev counterpart naming which
             # copy is canonical. Bidirectional: it breaks by renaming either side.
