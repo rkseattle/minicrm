@@ -1763,7 +1763,7 @@ jobs:
       # MINCRM-278: MinIO provides an S3-compatible storage backend so attachment
       # E2E tests run unconditionally instead of skipping.
       minio:
-        image: minio/minio:latest
+        image: quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z@sha256:ebd2af76d40ff25ccc630533615f7ccd55fbe83d629a4b7c7a1b6311c1af3d6c
         ports:
           - 9000:9000
         env:
@@ -1779,7 +1779,7 @@ jobs:
       # MINCRM-306: Mailhog captures transactional emails sent by the app server.
       # SMTP port 1025 receives messages; HTTP port 8025 exposes the assertion API.
       mailhog:
-        image: mailhog/mailhog:latest
+        image: mailhog/mailhog:latest@sha256:8d76a3d4ffa32a3661311944007a415332c4bb855657f4f6c57996405c009bea
         ports:
           - 1025:1025
           - 8025:8025
@@ -1844,11 +1844,18 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
-      # MINCRM-278: Create the test bucket using mc inside the running minio/minio
+      # MINCRM-278: Create the test bucket using mc inside the running MinIO
       # service container — no separate image pull, alias persists across commands.
+      # `ancestor=` takes the tag without the digest: it matches the reference the
+      # container was created from, which Docker records without the @sha256 suffix.
       - name: Create MinIO test bucket
         run: |
-          MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
+          MINIO_ID=$(docker ps --filter "ancestor=quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" --format "{{.ID}}")
+          if [ -z "$MINIO_ID" ]; then
+            echo "No running MinIO container matches quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" >&2
+            docker ps --format "{{.ID}} {{.Image}}" >&2
+            exit 1
+          fi
           docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin
           docker exec "$MINIO_ID" mc mb local/minicrm-test-bucket
 
@@ -2160,7 +2167,7 @@ jobs:
           --health-retries 5
 
       minio:
-        image: minio/minio:latest
+        image: quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z@sha256:ebd2af76d40ff25ccc630533615f7ccd55fbe83d629a4b7c7a1b6311c1af3d6c
         ports:
           - 9000:9000
         env:
@@ -2174,7 +2181,7 @@ jobs:
         command: server /data --console-address :9001
 
       mailhog:
-        image: mailhog/mailhog:latest
+        image: mailhog/mailhog:latest@sha256:8d76a3d4ffa32a3661311944007a415332c4bb855657f4f6c57996405c009bea
         ports:
           - 1025:1025
           - 8025:8025
@@ -2226,7 +2233,12 @@ jobs:
 
       - name: Create MinIO test bucket
         run: |
-          MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
+          MINIO_ID=$(docker ps --filter "ancestor=quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" --format "{{.ID}}")
+          if [ -z "$MINIO_ID" ]; then
+            echo "No running MinIO container matches quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" >&2
+            docker ps --format "{{.ID}} {{.Image}}" >&2
+            exit 1
+          fi
           docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin
           docker exec "$MINIO_ID" mc mb local/minicrm-test-bucket
 
@@ -3199,7 +3211,7 @@ jobs:
           --health-retries 5
 
       minio:
-        image: minio/minio:latest
+        image: quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z@sha256:ebd2af76d40ff25ccc630533615f7ccd55fbe83d629a4b7c7a1b6311c1af3d6c
         ports:
           - 9000:9000
         env:
@@ -3262,7 +3274,12 @@ jobs:
 
       - name: Create MinIO test bucket
         run: |
-          MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
+          MINIO_ID=$(docker ps --filter "ancestor=quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" --format "{{.ID}}")
+          if [ -z "$MINIO_ID" ]; then
+            echo "No running MinIO container matches quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" >&2
+            docker ps --format "{{.ID}} {{.Image}}" >&2
+            exit 1
+          fi
           docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin
           docker exec "$MINIO_ID" mc mb local/minicrm-test-bucket
 

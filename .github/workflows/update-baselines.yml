@@ -35,7 +35,7 @@ jobs:
           --health-retries 5
 
       minio:
-        image: minio/minio:latest
+        image: quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z@sha256:ebd2af76d40ff25ccc630533615f7ccd55fbe83d629a4b7c7a1b6311c1af3d6c
         ports:
           - 9000:9000
         env:
@@ -115,7 +115,12 @@ jobs:
 
       - name: Create MinIO test bucket
         run: |
-          MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
+          MINIO_ID=$(docker ps --filter "ancestor=quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" --format "{{.ID}}")
+          if [ -z "$MINIO_ID" ]; then
+            echo "No running MinIO container matches quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" >&2
+            docker ps --format "{{.ID}} {{.Image}}" >&2
+            exit 1
+          fi
           docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin
           docker exec "$MINIO_ID" mc mb local/minicrm-test-bucket
 

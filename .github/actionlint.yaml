@@ -16,7 +16,7 @@ paths:
       # actionlint's services: schema doesn't model `command:`, but GitHub
       # Actions does support it — verified against a real run's `docker create`
       # invocation (job 87939274359, e2e-serial): the generated command ends
-      # with `minio/minio:latest server /data --console-address :9001`,
+      # with `quay.io/minio/minio:<pinned> server /data --console-address :9001`,
       # exactly the configured value, and the container reports healthy.
       # Required here: MinIO's image CMD is bare `minio` with no arguments,
       # which just prints usage and exits — the `server` subcommand is what

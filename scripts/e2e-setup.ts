@@ -134,7 +134,9 @@ const E2E_DB_NAME = 'minicrm_e2e';
 // so it cannot collide with anything already bound to 9000. Container-side stays 9000 —
 // see MINIO_SERVER_ENDPOINT below.
 const MINIO_HEALTH_URL = 'http://localhost:9002/minio/health/live';
-const MINIO_IMAGE = 'minio/minio:latest';
+// Must track docker-compose.test.yml's minio image: this is an `ancestor=` filter,
+// which matches the tag without the digest the compose file pins.
+const MINIO_IMAGE = 'quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z';
 const MINIO_BUCKET = 'minicrm-test-bucket';
 const MINIO_ALIAS = 'local';
 // CONTAINER-side endpoint. `mc alias set` runs via `docker exec` inside the MinIO
