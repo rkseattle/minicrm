@@ -112,12 +112,19 @@ runs:
         E2E_ADMIN_EMAIL: ${{ inputs.e2e-admin-email }}
         E2E_ADMIN_PASSWORD: ${{ inputs.e2e-admin-password }}
 
-    # MINCRM-278: Create the test bucket using mc inside the running minio/minio
+    # MINCRM-278: Create the test bucket using mc inside the running MinIO
     # service container — no separate image pull, alias persists across commands.
+    # `ancestor=` takes the tag without the digest: it matches the reference the
+    # container was created from, which Docker records without the @sha256 suffix.
     - name: Create MinIO test bucket
       shell: bash
       run: |
-        MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
+        MINIO_ID=$(docker ps --filter "ancestor=quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" --format "{{.ID}}")
+        if [ -z "$MINIO_ID" ]; then
+          echo "No running MinIO container matches quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" >&2
+          docker ps --format "{{.ID}} {{.Image}}" >&2
+          exit 1
+        fi
         docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
         docker exec $MINIO_ID mc mb local/minicrm-test-bucket
 

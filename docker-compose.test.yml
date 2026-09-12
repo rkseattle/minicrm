@@ -222,7 +222,7 @@ services:
   minio:
     container_name: minicrm-test-minio
     logging: *default-logging
-    image: minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z@sha256:ebd2af76d40ff25ccc630533615f7ccd55fbe83d629a4b7c7a1b6311c1af3d6c
     restart: 'no'
     ports:
       - '9002:9000'
@@ -245,7 +245,7 @@ services:
   mailhog:
     container_name: minicrm-test-mailhog
     logging: *default-logging
-    image: mailhog/mailhog:latest
+    image: mailhog/mailhog:latest@sha256:8d76a3d4ffa32a3661311944007a415332c4bb855657f4f6c57996405c009bea
     restart: 'no'
     ports:
       - '1025:1025'
