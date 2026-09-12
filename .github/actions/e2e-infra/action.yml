@@ -15,8 +15,10 @@
 #
 # Callers are responsible for declaring the postgres and minio services at
 # the job level — service containers cannot be defined inside a composite
-# action. A caller whose specs assert on email delivery must also declare a
-# mailhog service on :1025/:8025, which the SMTP seeding step below assumes.
+# action — and for passing the minio one's id as `minio-container-id`, since
+# the `job` context that carries it does not reach inside this action. A
+# caller whose specs assert on email delivery must also declare a mailhog
+# service on :1025/:8025, which the SMTP seeding step below assumes.
 #
 # MINCRM-324, MINCRM-687
 
@@ -34,6 +36,14 @@ inputs:
     required: true
   node-encryption-key:
     description: 64-char hex NODE_ENCRYPTION_KEY for the app server
+    required: true
+  minio-container-id:
+    description: >
+      Container id of the job's `minio` service, which the caller reads from
+      ${{ job.services.minio.id }}. Passed in rather than resolved here: the
+      `job` context is not documented as available inside a composite action,
+      and looking the container up by image cannot work — the runner pulls
+      service images by digest, leaving no local tag for `ancestor=` to match.
     required: true
   coverage-instrumentation:
     description: >
@@ -114,19 +124,17 @@ runs:
 
     # MINCRM-278: Create the test bucket using mc inside the running MinIO
     # service container — no separate image pull, alias persists across commands.
-    # `ancestor=` takes the tag without the digest: it matches the reference the
-    # container was created from, which Docker records without the @sha256 suffix.
     - name: Create MinIO test bucket
       shell: bash
       run: |
-        MINIO_ID=$(docker ps --filter "ancestor=quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" --format "{{.ID}}")
+        MINIO_ID="${{ inputs.minio-container-id }}"
         if [ -z "$MINIO_ID" ]; then
-          echo "No running MinIO container matches quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" >&2
-          docker ps --format "{{.ID}} {{.Image}}" >&2
+          echo "minio-container-id input is empty" >&2
+          docker ps --format "{{.ID}} {{.Image}} {{.Names}}" >&2
           exit 1
         fi
-        docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
-        docker exec $MINIO_ID mc mb local/minicrm-test-bucket
+        docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin
+        docker exec "$MINIO_ID" mc mb local/minicrm-test-bucket
 
     # MINCRM-278: Write MinIO storage config into system_settings so the server
     # finds a configured backend at startup — no manual admin setup required.

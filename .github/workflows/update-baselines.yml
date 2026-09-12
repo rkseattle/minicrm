@@ -113,12 +113,15 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
+      # The runner hands us the container id directly. Never look it up by image:
+      # `ancestor=` resolves against the local image store, which holds no tag at all
+      # when the image was pulled by digest, so any tag filter silently matches nothing.
       - name: Create MinIO test bucket
         run: |
-          MINIO_ID=$(docker ps --filter "ancestor=quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" --format "{{.ID}}")
+          MINIO_ID="${{ job.services.minio.id }}"
           if [ -z "$MINIO_ID" ]; then
-            echo "No running MinIO container matches quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z" >&2
-            docker ps --format "{{.ID}} {{.Image}}" >&2
+            echo "The minio service container has no id in the job context" >&2
+            docker ps --format "{{.ID}} {{.Image}} {{.Names}}" >&2
             exit 1
           fi
           docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin

@@ -134,9 +134,8 @@ const E2E_DB_NAME = 'minicrm_e2e';
 // so it cannot collide with anything already bound to 9000. Container-side stays 9000 —
 // see MINIO_SERVER_ENDPOINT below.
 const MINIO_HEALTH_URL = 'http://localhost:9002/minio/health/live';
-// Must track docker-compose.test.yml's minio image: this is an `ancestor=` filter,
-// which matches the tag without the digest the compose file pins.
-const MINIO_IMAGE = 'quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z';
+// Must track docker-compose.test.yml's `container_name` for the minio service.
+const MINIO_CONTAINER_NAME = 'minicrm-test-minio';
 const MINIO_BUCKET = 'minicrm-test-bucket';
 const MINIO_ALIAS = 'local';
 // CONTAINER-side endpoint. `mc alias set` runs via `docker exec` inside the MinIO
@@ -148,8 +147,6 @@ const MINIO_CONTAINER_ENDPOINT = 'http://localhost:9000';
 // can reach MinIO via the Docker service name rather than localhost. Unaffected by the
 // host-side port change above — this is the in-network port.
 const MINIO_SERVER_ENDPOINT = 'http://minio:9000';
-/** Compose project owning the test stack — scopes container lookups below. */
-const TEST_COMPOSE_PROJECT = 'minicrm-test';
 const MINIO_ROOT_USER = 'minioadmin';
 const MINIO_ROOT_PASSWORD = 'minioadmin';
 
@@ -350,20 +347,19 @@ async function waitForMinio(): Promise<void> {
 function createMinioBucket(): void {
   console.log('[e2e:setup] Locating MinIO container...');
 
-  // Scoped to the test Compose project, not just the image: an `ancestor=` filter alone
-  // matches every running MinIO on the machine and returns them newline-joined, which
-  // would interpolate into a malformed `docker exec`.
+  // Matched on the Compose container name, never the image: `ancestor=` resolves against
+  // the local image store, which holds no tag when the image was pulled by digest.
+  // The name is also exact, so it cannot return several IDs newline-joined and
+  // interpolate into a malformed `docker exec`.
   const containerId = execSync(
-    `docker ps --filter "label=com.docker.compose.project=${TEST_COMPOSE_PROJECT}" ` +
-      `--filter "ancestor=${MINIO_IMAGE}" --format "{{.ID}}"`,
+    `docker ps --filter "name=^/${MINIO_CONTAINER_NAME}$" --format "{{.ID}}"`,
   )
     .toString()
     .trim();
 
   if (!containerId) {
     console.error(
-      `[e2e:setup] ERROR: No running MinIO container found in the "${TEST_COMPOSE_PROJECT}" ` +
-        'Compose project.\n' +
+      `[e2e:setup] ERROR: No running container named "${MINIO_CONTAINER_NAME}".\n` +
         '  Start the test stack first:\n' +
         '    docker compose -f docker-compose.test.yml up -d',
     );

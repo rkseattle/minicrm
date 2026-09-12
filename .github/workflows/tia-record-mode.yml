@@ -201,6 +201,7 @@ jobs:
           e2e-admin-email: ${{ secrets.E2E_ADMIN_EMAIL }}
           e2e-admin-password: ${{ secrets.E2E_ADMIN_PASSWORD }}
           node-encryption-key: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+          minio-container-id: ${{ job.services.minio.id }}
           # Record mode's whole purpose is producing coverage dumps to
           # ingest below — every other e2e-infra caller needs this OFF for
           # a clean, zero-overhead baseline run (see the action's own input
