@@ -93,6 +93,22 @@ export interface ProviderPage {
   hasMore: boolean;
 }
 
+/** What a provider reports about a message it accepted. */
+export interface SentMessage {
+  /**
+   * The provider's own identifier for the message it just accepted.
+   *
+   * Required because the outbound row must carry the same `provider_message_id` the sync
+   * engine will derive when it reads that message back out of Sent — otherwise the ingest
+   * stores it a second time instead of updating the row.
+   *
+   * SMTP submission returns no such id, which is why no IMAP `send` is defined here:
+   * recognizing its own sent mail needs a client-side APPEND and a per-account setting
+   * rather than a wider type.
+   */
+  providerMessageId: string;
+}
+
 export interface MailProvider {
   /**
    * Fetches the next page of history for one mailbox.
@@ -104,4 +120,18 @@ export interface MailProvider {
    *   than the backfill window still resumes where it left off rather than skipping mail.
    */
   fetchSince(auth: ConnectedAccountAuth, cursor: string | null, since: Date): Promise<ProviderPage>;
+
+  /**
+   * Submits one message through the mailbox.
+   *
+   * Optional because not every provider can: a driver without it is read-only, and the
+   * send path refuses that mailbox rather than failing at call time. A caller must check
+   * for the method rather than assume it.
+   *
+   * @param auth - Decrypted credentials for the sending account.
+   * @param mime - The complete RFC 5322 document. Build it with `outboundMessage.ts` so
+   *   every driver puts the same bytes on the wire; a driver composing its own would
+   *   thread differently from the others.
+   */
+  send?(auth: ConnectedAccountAuth, mime: Buffer): Promise<SentMessage>;
 }

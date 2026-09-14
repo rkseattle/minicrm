@@ -198,7 +198,17 @@ async function storeMessages(
           message_body_text, message_body_html, message_snippet)
        VALUES ${tuples.join(', ')}
        ON CONFLICT (connected_account_id, provider_message_id) DO UPDATE
-         SET thread_id = EXCLUDED.thread_id,
+         -- An outbound row keeps the thread the send path filed it under. That row was
+         -- stored with its PARENT's thread; re-reading the same message out of Sent
+         -- re-derives one from References[0] — the conversation's RFC root, which is a
+         -- different value whenever the parent itself threaded on In-Reply-To or its own
+         -- Message-ID. Overwriting moves a reply out of its own conversation on the first
+         -- sync tick after it is sent. Inbound rows still take the provider's value, so a
+         -- genuine correction is not lost.
+         SET thread_id = CASE
+               WHEN email_messages.direction = 'outbound' THEN email_messages.thread_id
+               ELSE EXCLUDED.thread_id
+             END,
              direction = EXCLUDED.direction,
              from_address = EXCLUDED.from_address,
              to_addresses = EXCLUDED.to_addresses,

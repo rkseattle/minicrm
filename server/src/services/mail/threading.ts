@@ -64,7 +64,7 @@ export interface ThreadingHeaders {
  * would thread unrelated messages together — the same failure extractHeaderField exists
  * to prevent one level up.
  */
-function extractMessageIds(headerValue: string): string[] {
+export function extractMessageIds(headerValue: string): string[] {
   return stripComments(headerValue).match(/<[^<>]+>/g) ?? [];
 }
 
@@ -115,7 +115,7 @@ function stripComments(value: string): string {
  * correctly. Case is preserved — the local part of a message id is case-sensitive, and two
  * spellings really are two conversations.
  */
-function normalizeMessageId(raw: string): string | null {
+export function normalizeMessageId(raw: string): string | null {
   const normalized = raw.trim().replace(/^<+/, '').replace(/>+$/, '').trim();
   return normalized === '' ? null : normalized;
 }

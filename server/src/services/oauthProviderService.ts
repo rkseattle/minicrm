@@ -65,6 +65,23 @@ export const GMAIL_READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
 export const GRAPH_MAIL_READ_SCOPE = 'https://graph.microsoft.com/Mail.Read';
 
 /**
+ * The scope a driver needs to send through Gmail.
+ *
+ * Exported for the reason the read scopes are: the driver requires exactly what the
+ * consent flow requests, and two copies drifting apart is a mailbox that consented to
+ * sending and is refused anyway, with nothing to explain it.
+ */
+export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
+
+/**
+ * The Graph permission a driver needs to send through a mailbox.
+ *
+ * Matched loosely like its read counterpart — Microsoft may echo a bare `Mail.Send`
+ * rather than the resource URI that was requested. See `graphProvider`'s scope check.
+ */
+export const GRAPH_MAIL_SEND_SCOPE = 'https://graph.microsoft.com/Mail.Send';
+
+/**
  * Provider metadata. Credentials are read through thunks rather than captured at module
  * load so a test can set the environment after import, and so a missing variable surfaces
  * as PROVIDER_NOT_CONFIGURED at use rather than a boot crash.
@@ -72,19 +89,13 @@ export const GRAPH_MAIL_READ_SCOPE = 'https://graph.microsoft.com/Mail.Read';
 const PROVIDERS: Record<OAuthProvider, ProviderDefinition> = {
   google: {
     issuer: 'https://accounts.google.com',
-    scopes: ['openid', 'email', GMAIL_READ_SCOPE, 'https://www.googleapis.com/auth/gmail.send'],
+    scopes: ['openid', 'email', GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE],
     clientId: () => process.env.GOOGLE_OAUTH_CLIENT_ID,
     clientSecret: () => process.env.GOOGLE_OAUTH_CLIENT_SECRET,
   },
   microsoft: {
     issuer: `https://login.microsoftonline.com/${process.env.MICROSOFT_OAUTH_TENANT ?? 'common'}/v2.0`,
-    scopes: [
-      'openid',
-      'email',
-      'offline_access',
-      GRAPH_MAIL_READ_SCOPE,
-      'https://graph.microsoft.com/Mail.Send',
-    ],
+    scopes: ['openid', 'email', 'offline_access', GRAPH_MAIL_READ_SCOPE, GRAPH_MAIL_SEND_SCOPE],
     clientId: () => process.env.MICROSOFT_OAUTH_CLIENT_ID,
     clientSecret: () => process.env.MICROSOFT_OAUTH_CLIENT_SECRET,
   },

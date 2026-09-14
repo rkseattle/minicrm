@@ -354,6 +354,53 @@ describe('syncOneAccount', () => {
     expect(row.message_snippet).toBe('the body');
   });
 
+  it('keeps an outbound message thread when its own Sent copy syncs back', async () => {
+    // A sent reply is stored under its PARENT's thread. Reading the same message out of
+    // Sent re-derives a thread from References[0] — the conversation's RFC root, which
+    // differs whenever the parent itself threaded on In-Reply-To or its own Message-ID.
+    // Overwriting would move the reply out of its own conversation on the first tick.
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([
+        page({
+          messages: [message({ direction: 'outbound', threadId: 'parent-thread' })],
+        }),
+      ]),
+    );
+
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([
+        page({
+          messages: [message({ direction: 'outbound', threadId: 'rfc-root-thread' })],
+        }),
+      ]),
+    );
+
+    const [row] = await storedMessages(account.id);
+    expect(row.thread_id).toBe('parent-thread');
+  });
+
+  it('takes a corrected thread on re-sync of an inbound message', async () => {
+    // The inbound counterpart: nothing but the provider knows an inbound message's thread,
+    // so a later derivation must still win. Without this, the outbound guard above would
+    // have frozen every thread id in the table.
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [message({ threadId: 'first-guess' })] })]),
+    );
+
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [message({ threadId: 'corrected' })] })]),
+    );
+
+    const [row] = await storedMessages(account.id);
+    expect(row.thread_id).toBe('corrected');
+  });
+
   it('re-syncing the same page stores no duplicate row', async () => {
     const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
     const provider = fakeProvider([page({ messages: [message()] })]);
