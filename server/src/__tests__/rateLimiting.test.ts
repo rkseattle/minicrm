@@ -158,3 +158,29 @@ describe('reset-password rate limiter', () => {
     expect(blocked.headers['ratelimit-reset']).toBeDefined();
   });
 });
+
+// ── Limiter configuration validity ───────────────────────────────────────────
+
+describe('rate limiter configuration', () => {
+  it('raises no express-rate-limit validation error when the limited routes load', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    let reloadedPool: { end: () => Promise<void> } | undefined;
+    try {
+      vi.resetModules();
+      await import('../routes/auth.js');
+      await import('../routes/connectedAccounts.js');
+      // The reload builds a second pool that nothing else closes.
+      reloadedPool = (await import('../db.js')).default;
+      const validationMessages = [...consoleErrorSpy.mock.calls, ...consoleWarnSpy.mock.calls]
+        .flat()
+        .filter((argument) => String(argument).includes('ERR_ERL_'));
+      expect(validationMessages).toEqual([]);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+      await reloadedPool?.end();
+      vi.resetModules();
+    }
+  });
+});

@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 import {
   createConnectedAccountHandler,
@@ -41,7 +41,8 @@ const shouldSkip = (): boolean => isE2E && process.env.TEST_RATE_LIMIT !== 'true
 const outboundDialLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  keyGenerator: (req) => req.user?.id ?? req.ip ?? 'anonymous',
+  // The IP fallback never runs behind authenticate; the library rejects a raw req.ip regardless.
+  keyGenerator: (req) => req.user?.id ?? ipKeyGenerator(req.ip ?? 'anonymous'),
   skip: shouldSkip,
   standardHeaders: true,
   legacyHeaders: false,
