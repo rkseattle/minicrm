@@ -35,14 +35,14 @@ jobs:
           --health-retries 5
 
       minio:
-        image: quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z@sha256:ebd2af76d40ff25ccc630533615f7ccd55fbe83d629a4b7c7a1b6311c1af3d6c
+        image: cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
         ports:
           - 9000:9000
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
         options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-cmd "MC_HOST_local=http://localhost:9000 mc ready local"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
