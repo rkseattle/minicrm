@@ -279,6 +279,48 @@ describe('CustomReportBuilderContent — save report', () => {
       expect(screen.getByText('My Test Report')).toBeInTheDocument();
     });
   });
+
+  it('shows a report saved while the initial list load is still in flight', async () => {
+    let reportCreated = false;
+    let releaseInitialList: () => void = () => undefined;
+    const initialListHeld = new Promise<void>((resolve) => {
+      releaseInitialList = resolve;
+    });
+    let listRequestCount = 0;
+    server.use(
+      http.post('/api/v1/reports/custom', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        reportCreated = true;
+        return HttpResponse.json(makeReport({ id: 'new-report-id', name: String(body['name']) }), {
+          status: 201,
+        });
+      }),
+      http.get('/api/v1/reports/custom', async () => {
+        listRequestCount += 1;
+        // The server reads the list when the request arrives, before the save commits.
+        const reports = reportCreated
+          ? [makeReport({ id: 'new-report-id', name: 'Raced Report' })]
+          : [];
+        if (listRequestCount === 1) await initialListHeld;
+        return HttpResponse.json({ reports });
+      }),
+    );
+
+    renderWithProviders(<CustomReportBuilderContent />);
+    await userEvent.click(await screen.findByTestId('save-report-button'));
+    expect(screen.getByTestId('saved-reports-loading')).toBeInTheDocument();
+    await userEvent.clear(screen.getByTestId('save-report-name-input'));
+    await userEvent.type(screen.getByTestId('save-report-name-input'), 'Raced Report');
+    await userEvent.click(screen.getByTestId('save-report-confirm'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('save-report-dialog')).not.toBeInTheDocument();
+    });
+
+    releaseInitialList();
+    await waitFor(() => {
+      expect(screen.getByText('Raced Report')).toBeInTheDocument();
+    });
+  });
 });
 
 // ── Saved reports list ────────────────────────────────────────────────────────

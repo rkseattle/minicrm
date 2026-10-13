@@ -425,6 +425,12 @@ export function CustomReportBuilderContent() {
     queryFn: listCustomReports,
   });
 
+  // Invalidating alone would join an initial load sent before the write, returning the stale list.
+  const refreshSavedReports = useCallback(async (): Promise<void> => {
+    await queryClient.cancelQueries({ queryKey: CUSTOM_REPORTS_QUERY_KEY });
+    await queryClient.invalidateQueries({ queryKey: CUSTOM_REPORTS_QUERY_KEY });
+  }, [queryClient]);
+
   // ── Builder state ───────────────────────────────────────────────────────────
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [activeReportVisibility, setActiveReportVisibility] = useState<ReportVisibility>('public');
@@ -466,7 +472,7 @@ export function CustomReportBuilderContent() {
     mutationFn: ({ name, visibility }: { name: string; visibility: ReportVisibility }) =>
       createCustomReport({ name, entity_type: entityType, config, visibility }),
     onSuccess: (report) => {
-      void queryClient.invalidateQueries({ queryKey: CUSTOM_REPORTS_QUERY_KEY });
+      void refreshSavedReports();
       setActiveReportId(report.id);
       setShowSaveDialog(false);
       setSaveError(null);
@@ -480,7 +486,7 @@ export function CustomReportBuilderContent() {
     mutationFn: ({ id, visibility }: { id: string; visibility: ReportVisibility }) =>
       updateCustomReport(id, { config, visibility }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: CUSTOM_REPORTS_QUERY_KEY });
+      void refreshSavedReports();
       setSaveError(null);
     },
     onError: () => {
@@ -491,7 +497,7 @@ export function CustomReportBuilderContent() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteCustomReport(id),
     onSuccess: (_, deletedId) => {
-      void queryClient.invalidateQueries({ queryKey: CUSTOM_REPORTS_QUERY_KEY });
+      void refreshSavedReports();
       if (activeReportId === deletedId) {
         setActiveReportId(null);
         setResult(null);
