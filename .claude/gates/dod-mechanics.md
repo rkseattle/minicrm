@@ -13,9 +13,9 @@ npm run typecheck
 npm run lint
 
 # 3. Audit — unconditional. Advisories land against versions already in the lockfile,
-#    so "no dependencies changed" is not a reason to skip it. Zero high/critical, no
-#    allowlist. Fixing one means changing "overrides" and re-resolving from scratch —
-#    the procedure is in pre-push-mechanics.md step 5.
+#    so "no dependencies changed" is not a reason to skip it. Zero high/critical outside
+#    the script's no-patch-exists allowlist. Fixing one means changing "overrides" and
+#    re-resolving from scratch — the procedure is in pre-push-mechanics.md step 5.
 bash scripts/npm-audit-gate.sh
 
 # 4. Unit tests — sequential; never run the three workspaces in parallel.

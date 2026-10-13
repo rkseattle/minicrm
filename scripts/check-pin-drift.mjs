@@ -9,8 +9,7 @@
  * advisories and then smol-toml each arrived.
  *
  * ADVISORY, never blocking. A newer patch existing is not a defect: several pins are
- * deliberately held (adm-zip 0.6.0 is the exact floor clearing a high, and nothing above
- * it exists). Failing on drift would make the honest answer "silence the check", so it
+ * deliberately held (undici stays on 7.x because promptfoo declares <8). Failing on drift would make the honest answer "silence the check", so it
  * reports and exits 0. The audit gate stays the thing that blocks.
  *
  * Same-major only. Crossing a major is a compatibility decision that needs a human
