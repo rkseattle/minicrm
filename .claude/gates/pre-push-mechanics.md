@@ -28,7 +28,8 @@ delta. Compare the executed count against the previous run before believing a gr
 verdict.
 
 **Step 5 — audit.** Always, never conditional on whether dependencies changed. The bar is
-zero; there is no allowlist.
+zero, less `ALLOWLISTED_ADVISORIES` in the script — admissible only after the clean
+re-resolve below has been run **and** no patched release exists upstream.
 
 ```bash
 bash scripts/npm-audit-gate.sh

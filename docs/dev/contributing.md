@@ -30,7 +30,8 @@ are not copied here, because a second copy of that list is a second thing to dri
 
 **The audit is unconditional.** Advisories land against versions already in the
 lockfile, so "I changed no dependencies" is exactly when drift goes unnoticed. The bar
-is zero high or critical, with no allowlist. Run
+is zero high or critical, less the short allowlist in the script itself, which admits only
+advisories with no patched release. Run
 `bash scripts/npm-audit-gate.sh` rather than bare `npm audit` — the script fails closed
 when the registry returns no verdict, where `npm audit` reports success.
 

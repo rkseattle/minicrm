@@ -47,24 +47,33 @@ Nested entries scope a pin to one dependent:
 
 ```jsonc
 "overrides": {
-  "sharp": "0.35.4",                    // every sharp in the tree
+  "sharp": "0.35.5",                    // every sharp in the tree
   "promptfoo": { "hono": "4.13.5" }     // only hono underneath promptfoo
 }
 ```
 
-A pin is not automatically a problem to be removed. Some are held deliberately, and the
-`adm-zip` entry is the worked example — see below.
+A pin is not automatically a problem to be removed. Some are held deliberately — the
+`adm-zip` and `undici` examples below show why.
 
 ---
 
 ## Three tools, three different halves
 
-| Tool                          | Covers                                          | Blocking? |
-| ----------------------------- | ----------------------------------------------- | --------- |
-| `npm audit` gate              | Any high/critical advisory in the resolved tree | **Yes**   |
-| Dependabot (`github-actions`) | Action version upgrades                         | No        |
-| Dependabot (`npm`, security)  | Advisories against **declared** dependencies    | No        |
-| `scripts/check-pin-drift.mjs` | Newer patches for **override** pins             | No        |
+| Tool                          | Covers                                       | Blocking? |
+| ----------------------------- | -------------------------------------------- | --------- |
+| `npm audit` gate              | High/critical advisories, less the allowlist | **Yes**   |
+| Dependabot (`github-actions`) | Action version upgrades                      | No        |
+| Dependabot (`npm`, security)  | Advisories against **declared** dependencies | No        |
+| `scripts/check-pin-drift.mjs` | Newer patches for **override** pins          | No        |
+
+The gate has one escape: `ALLOWLISTED_ADVISORIES` in `scripts/npm-audit-gate.sh`, for an
+advisory with **no patched release** that only dev tooling reaches. The gate enforces the
+second half: it also audits with `--omit=dev`, and an allowlisted advisory found there
+blocks. Each entry names the
+upstream fix it is waiting on, and the gate warns once an entry's advisory stops being
+reported so it gets deleted. It judges advisories, not the package counts in npm's
+summary — one `braces` advisory makes `micromatch`, `chokidar`, `tailwindcss` and
+`markdownlint-cli2` all count as high, and the allowlist must clear those too.
 
 ### Dependabot: npm is security-only, on purpose
 
@@ -109,7 +118,7 @@ lockfile all report "up to date" and silently leave the old version in place.
 
 ```bash
 rm -rf node_modules package-lock.json && npm install
-npm audit                       # expect 0 high, 0 critical
+bash scripts/npm-audit-gate.sh  # expect a pass; raw npm audit also counts the allowlist
 ```
 
 Then verify the consumer still works. A pin change is a dependency change for whatever
@@ -118,7 +127,7 @@ sits on top of it: after moving `smol-toml`, run `markdownlint-cli2`; after movi
 
 ---
 
-## Worked example: why `adm-zip` stays at 0.6.0
+## Worked example: why `adm-zip` was held at 0.6.0
 
 `adm-zip` carries **two** advisories:
 
@@ -135,6 +144,9 @@ Removing the pin was tried. npm resolved lower, the high returned through
 `onnxruntime-node` → `@huggingface/transformers` → `promptfoo`, and the audit went from
 0 to 4 highs. The pin is the best available position, and `check-pin-drift.mjs` stays
 correctly quiet about it because nothing newer exists.
+
+`adm-zip` 0.6.1 later fixed both advisories, and promptfoo 0.124 then dropped
+`onnxruntime-node` altogether, so the pin was deleted. The lesson outlived it.
 
 **The lesson generalizes:** read every advisory on a package before concluding a pin is
 pointless. A pin sitting inside one vulnerable range may be escaping a worse one.
@@ -168,6 +180,18 @@ silently. If that pin can ever be retired, it should be.
 Note the constraint on moving it: `promptfoo` declares `>=7.28.0 <8`, which 8.x would
 break — and unlike connect-node's, that range is currently **satisfied**. Staying on the
 7.x line is deliberate, not neglect.
+
+---
+
+## Worked example: the `basic-ftp` pin crosses a major
+
+`basic-ftp` is pinned to 6.x, past the `^5.3.1` that its only consumer, `get-uri`, declares
+(`promptfoo` → `proxy-agent` → `pac-proxy-agent` → `get-uri`). No 5.x release fixes
+`GHSA-c475-qrg2-pj4r`. `npm ls` marks it `invalid`.
+
+Safe for a verified reason: `get-uri` imports only `Client`, and 6.0.0's sole breaking change
+is refusing a separate FTP transfer host by default — a bounce-attack hardening, not an API
+change. Retire the pin once `get-uri` declares `^6`.
 
 ---
 

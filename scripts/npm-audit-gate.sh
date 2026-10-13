@@ -33,23 +33,43 @@
 # outage, a proxy error, or an npm crash yields empty output that scrapes to
 # zero advisories and reports a green security gate. (MINCRM-703)
 #
-# The bar is zero. There is no allowlist — MINCRM-703 deleted all 16 entries
-# because every one resolved once the tree was actually re-resolved rather than
-# reasoned about. If a future advisory genuinely has no fix, add an allowlist
-# back with a written justification and a re-resolve actually attempted first.
+# The bar is zero, less ALLOWLISTED_ADVISORIES below. An entry is admissible only
+# when a clean re-resolve was attempted AND no patched release exists upstream —
+# reasoning about why a fix "cannot work" is how a long allowlist once hid
+# advisories that were all fixable. An allowlisted advisory still blocks if it
+# reaches the production tree, and the gate warns once its advisory disappears.
 #
 # Callers are responsible for installing dependencies; this only audits an
 # already-installed tree.
 #
-# Usage: scripts/npm-audit-gate.sh [--github]
-#   --github  emit GitHub Actions ::error:: annotations (used by the action)
+# Usage: scripts/npm-audit-gate.sh [--github | --self-test]
+#   --github     emit GitHub Actions ::error:: annotations (used by the action)
+#   --self-test  run only the advisory evaluator's fixture cases
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EVALUATOR="${SCRIPT_DIR}/npm-audit-evaluate.mjs"
+
+# Advisories with no patched release, reached only through dev tooling. Each
+# entry names its package, why it is unreachable in production, and where the
+# fix is tracked upstream. Delete an entry the day its advisory goes away.
+ALLOWLISTED_ADVISORIES=(
+  # braces <=3.0.3 (stack-exhaustion DoS on nested patterns). Only dev/build
+  # tooling expands globs with it — markdownlint-cli2, tailwindcss 3, nodemon,
+  # promptfoo — over patterns this repo writes. Fix: micromatch/braces#87.
+  "GHSA-vfj7-8cjw-p6xm"
+  # node-forge <=1.4.0 (lenient RSA PKCS#1 v1.5 verification). Optional dep of
+  # promptfoo's jks-js, a qa/ eval tool; absent from `npm ls --omit=dev`.
+  # Fix: digitalbazaar/forge#1159.
+  "GHSA-86w9-cpqp-85rv"
+)
+
 GITHUB_ANNOTATIONS=0
-if [ "${1:-}" = "--github" ]; then
-  GITHUB_ANNOTATIONS=1
-fi
+case "${1:-}" in
+  --github) GITHUB_ANNOTATIONS=1 ;;
+  --self-test) exec node "${EVALUATOR}" --self-test ;;
+esac
 
 # Errors go to stderr locally, and to stdout as ::error:: annotations under
 # Actions — the runner only parses annotations from stdout.
@@ -65,11 +85,7 @@ emit_error() {
 # script is runnable from a developer's shell and from the hook.
 TEMP_DIR="${RUNNER_TEMP:-$(mktemp -d)}"
 AUDIT_JSON="${TEMP_DIR}/audit.json"
-
-set +e
-npm audit --audit-level=high --json > "${AUDIT_JSON}"
-AUDIT_STATUS=$?
-set -e
+PRODUCTION_AUDIT_JSON="${TEMP_DIR}/audit-production.json"
 
 # node, NOT jq, for every JSON read below. This script ran only on GitHub's
 # ubuntu runners (where jq is preinstalled) until the local pre-push hook began
@@ -79,33 +95,56 @@ set -e
 # Verified by reproducing with jq shadowed. node is guaranteed present: this is
 # an npm repo and the hook itself already runs under tsx. (MINCRM-668, found in
 # Greptile review on PR #384)
-if ! node -e '
-  const r = require(process.argv[1]);
-  process.exit(r?.metadata?.vulnerabilities && typeof r.metadata.vulnerabilities === "object" ? 0 : 1);
-' "${AUDIT_JSON}" > /dev/null 2>&1; then
-  emit_error "npm audit did not produce a usable report (exit ${AUDIT_STATUS})."
-  echo "Treating this as a failure: an unreadable audit is not a clean audit."
-  head -c 4000 "${AUDIT_JSON}" || true
+# Runs one audit and refuses to continue unless it produced a well-formed report.
+run_audit() {
+  local report_path="$1"
+  shift
+  local audit_status
+  set +e
+  npm audit --audit-level=high --json "$@" > "${report_path}"
+  audit_status=$?
+  set -e
+  if ! node -e '
+    const r = require(process.argv[1]);
+    process.exit(r?.metadata?.vulnerabilities && typeof r.metadata.vulnerabilities === "object" ? 0 : 1);
+  ' "${report_path}" > /dev/null 2>&1; then
+    emit_error "npm audit $* did not produce a usable report (exit ${audit_status})."
+    echo "Treating this as a failure: an unreadable audit is not a clean audit."
+    head -c 4000 "${report_path}" || true
+    exit 1
+  fi
+}
+
+run_audit "${AUDIT_JSON}"
+# The allowlist admits dev-only advisories; this report is how the gate checks that.
+run_audit "${PRODUCTION_AUDIT_JSON}" --omit=dev
+
+# The evaluator's own fixtures run on every gate invocation: a broken filter
+# fails silently open, and this costs well under a second.
+if ! node "${EVALUATOR}" --self-test > /dev/null; then
+  emit_error "npm-audit-evaluate.mjs failed its self-test; refusing to trust its verdict."
+  node "${EVALUATOR}" --self-test || true
   exit 1
 fi
 
-HIGH=$(node -p "require('${AUDIT_JSON}').metadata.vulnerabilities.high || 0")
-CRITICAL=$(node -p "require('${AUDIT_JSON}').metadata.vulnerabilities.critical || 0")
+VERDICT_JSON="${TEMP_DIR}/audit-verdict.json"
+node "${EVALUATOR}" "${AUDIT_JSON}" "${PRODUCTION_AUDIT_JSON}" ${ALLOWLISTED_ADVISORIES[@]+"${ALLOWLISTED_ADVISORIES[@]}"} > "${VERDICT_JSON}"
+verdict_lines() {
+  node -e 'for (const l of require(process.argv[1])[process.argv[2]]) console.log(l)' "${VERDICT_JSON}" "$1"
+}
+BLOCKING_COUNT=$(verdict_lines blocking | wc -l | tr -d ' ')
 
-if [ "$HIGH" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
-  emit_error "npm audit found ${CRITICAL} critical and ${HIGH} high advisories:"
-  node -e '
-    const r = require(process.argv[1]);
-    const lines = new Set();
-    for (const v of Object.values(r.vulnerabilities || {})) {
-      for (const via of v.via || []) {
-        if (typeof via === "object" && via !== null) {
-          lines.add(`${String(via.url || "").split("/").pop()}  ${via.severity}  ${via.name}`);
-        }
-      }
-    }
-    for (const l of [...lines].sort()) console.log(l);
-  ' "${AUDIT_JSON}"
+for stale_id in $(verdict_lines stale); do
+  if [ "$GITHUB_ANNOTATIONS" -eq 1 ]; then
+    echo "::warning::${stale_id} is allowlisted but no longer reported; delete it from scripts/npm-audit-gate.sh."
+  else
+    echo "WARNING: ${stale_id} is allowlisted but no longer reported; delete it from scripts/npm-audit-gate.sh." >&2
+  fi
+done
+
+if [ "$BLOCKING_COUNT" -gt 0 ]; then
+  emit_error "npm audit found ${BLOCKING_COUNT} high/critical advisories not on the allowlist:"
+  verdict_lines blocking
   node -e 'console.log(JSON.stringify(require(process.argv[1]).vulnerabilities, null, 2))' "${AUDIT_JSON}"
   echo ""
   echo "Before allowlisting anything, try a full re-resolve — an incremental"
@@ -115,4 +154,9 @@ if [ "$HIGH" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
   exit 1
 fi
 
-echo "No high/critical advisories (MINCRM-703)."
+SUPPRESSED=$(verdict_lines suppressed)
+if [ -n "$SUPPRESSED" ]; then
+  echo "Allowlisted (no patched release upstream):"
+  echo "$SUPPRESSED"
+fi
+echo "No high/critical advisories outside the allowlist (MINCRM-703)."
