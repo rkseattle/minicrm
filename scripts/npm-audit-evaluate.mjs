@@ -17,7 +17,7 @@
 //
 // Usage:
 //   node scripts/npm-audit-evaluate.mjs <audit.json> <production-audit.json> [GHSA-id ...]
-//     Prints JSON { blocking, suppressed, stale } to stdout; always exits 0.
+//     Prints JSON { blocking, suppressed, stale } to stdout; exits 1 on an incomplete report.
 //   node scripts/npm-audit-evaluate.mjs --self-test
 
 import { readFileSync } from 'node:fs';
@@ -30,13 +30,41 @@ function advisoryId(advisory) {
     .pop();
 }
 
+function isPlainObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function advisoriesIn(report) {
-  return Object.values(report.vulnerabilities || {}).flatMap((vulnerability) =>
-    (vulnerability.via || []).filter((via) => typeof via === 'object' && via !== null),
+  return Object.values(report.vulnerabilities).flatMap((vulnerability) =>
+    vulnerability.via.filter(isPlainObject),
   );
 }
 
+// A report missing the detail this file reads would otherwise evaluate as clean.
+export function assertCompleteReport(report, label) {
+  const counts = report?.metadata?.vulnerabilities;
+  if (!isPlainObject(counts) || !isPlainObject(report.vulnerabilities)) {
+    throw new Error(`${label}: missing metadata.vulnerabilities or vulnerabilities.`);
+  }
+  for (const [name, vulnerability] of Object.entries(report.vulnerabilities)) {
+    if (!isPlainObject(vulnerability) || !Array.isArray(vulnerability.via)) {
+      throw new Error(`${label}: vulnerabilities.${name} has no via array.`);
+    }
+  }
+  const countedBlocking = (counts.high || 0) + (counts.critical || 0);
+  const detailedBlocking = advisoriesIn(report).some((advisory) =>
+    BLOCKING_SEVERITIES.has(advisory.severity),
+  );
+  if (countedBlocking > 0 && !detailedBlocking) {
+    throw new Error(
+      `${label}: metadata counts ${countedBlocking} high/critical but no advisory carries that severity.`,
+    );
+  }
+}
+
 export function evaluateAuditReport(report, productionReport, allowlistedIds) {
+  assertCompleteReport(report, 'audit report');
+  assertCompleteReport(productionReport, 'production audit report');
   const allowlist = new Set(allowlistedIds);
   const productionIds = new Set(advisoriesIn(productionReport).map(advisoryId));
   const seenIds = new Set();
@@ -71,7 +99,13 @@ function selfTest() {
   const allowedHigh = advisory('GHSA-allowed-high', 'braces', 'high');
   const otherCritical = advisory('GHSA-other-critical', 'simple-git', 'critical');
   const otherModerate = advisory('GHSA-other-moderate', 'csv-parse', 'moderate');
+  const metadataFor = (advisories) => {
+    const vulnerabilities = { moderate: 0, high: 0, critical: 0 };
+    for (const { severity } of advisories) vulnerabilities[severity] += 1;
+    return { vulnerabilities };
+  };
   const reportWith = (...advisories) => ({
+    metadata: metadataFor(advisories),
     vulnerabilities: {
       leaf: { via: advisories },
       // A dependent inherits severity through a string `via`; it must never count itself.
@@ -79,7 +113,7 @@ function selfTest() {
     },
   });
 
-  const emptyReport = { vulnerabilities: {} };
+  const emptyReport = { metadata: metadataFor([]), vulnerabilities: {} };
   const cases = [
     ['clean report', emptyReport, emptyReport, [], [0, 0, 0]],
     [
@@ -120,7 +154,10 @@ function selfTest() {
     ],
     [
       'duplicate advisory across packages counts once',
-      { vulnerabilities: { a: { via: [otherCritical] }, b: { via: [otherCritical] } } },
+      {
+        metadata: metadataFor([otherCritical]),
+        vulnerabilities: { a: { via: [otherCritical] }, b: { via: [otherCritical] } },
+      },
       emptyReport,
       [],
       [1, 0, 0],
@@ -134,6 +171,19 @@ function selfTest() {
     ],
   ];
 
+  const incompleteReports = [
+    ['no vulnerabilities object', { metadata: metadataFor([otherCritical]) }],
+    ['no metadata', { vulnerabilities: {} }],
+    [
+      'package with no via array',
+      { metadata: metadataFor([]), vulnerabilities: { leaf: { severity: 'high' } } },
+    ],
+    [
+      'counted high with no advisory detail',
+      { metadata: metadataFor([allowedHigh]), vulnerabilities: { leaf: { via: ['other'] } } },
+    ],
+  ];
+
   let failures = 0;
   for (const [name, report, productionReport, allowlist, expected] of cases) {
     const result = evaluateAuditReport(report, productionReport, allowlist);
@@ -144,7 +194,23 @@ function selfTest() {
       `${passed ? 'ok  ' : 'FAIL'} ${name}: [blocking, suppressed, stale] = [${actual}] expected [${expected}]`,
     );
   }
-  console.log(`${cases.length - failures}/${cases.length} self-test cases passed.`);
+  for (const [name, report] of incompleteReports) {
+    for (const [side, args] of [
+      ['full', [report, emptyReport, []]],
+      ['production', [emptyReport, report, []]],
+    ]) {
+      let rejected = false;
+      try {
+        evaluateAuditReport(...args);
+      } catch {
+        rejected = true;
+      }
+      if (!rejected) failures += 1;
+      console.log(`${rejected ? 'ok  ' : 'FAIL'} rejects ${side} report: ${name}`);
+    }
+  }
+  const total = cases.length + incompleteReports.length * 2;
+  console.log(`${total - failures}/${total} self-test cases passed.`);
   return failures === 0;
 }
 
