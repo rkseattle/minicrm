@@ -128,7 +128,10 @@ if ! node "${EVALUATOR}" --self-test > /dev/null; then
 fi
 
 VERDICT_JSON="${TEMP_DIR}/audit-verdict.json"
-node "${EVALUATOR}" "${AUDIT_JSON}" "${PRODUCTION_AUDIT_JSON}" ${ALLOWLISTED_ADVISORIES[@]+"${ALLOWLISTED_ADVISORIES[@]}"} > "${VERDICT_JSON}"
+if ! node "${EVALUATOR}" "${AUDIT_JSON}" "${PRODUCTION_AUDIT_JSON}" ${ALLOWLISTED_ADVISORIES[@]+"${ALLOWLISTED_ADVISORIES[@]}"} > "${VERDICT_JSON}"; then
+  emit_error "npm-audit-evaluate.mjs rejected an audit report as incomplete; an unreadable audit is not a clean audit."
+  exit 1
+fi
 verdict_lines() {
   node -e 'for (const l of require(process.argv[1])[process.argv[2]]) console.log(l)' "${VERDICT_JSON}" "$1"
 }
