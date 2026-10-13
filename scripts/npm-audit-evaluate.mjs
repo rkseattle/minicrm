@@ -40,26 +40,46 @@ function advisoriesIn(report) {
   );
 }
 
-// A report missing the detail this file reads would otherwise evaluate as clean.
+const SEVERITIES = ['info', 'low', 'moderate', 'high', 'critical'];
+
+// A report missing the detail this file reads would otherwise evaluate as clean, so every
+// package npm counted must be present, and every via must resolve.
 export function assertCompleteReport(report, label) {
   const counts = report?.metadata?.vulnerabilities;
-  if (!isPlainObject(counts) || !isPlainObject(report.vulnerabilities)) {
+  const packages = report?.vulnerabilities;
+  if (!isPlainObject(counts) || !isPlainObject(packages)) {
     throw new Error(`${label}: missing metadata.vulnerabilities or vulnerabilities.`);
   }
-  for (const [name, vulnerability] of Object.entries(report.vulnerabilities)) {
+  const packageCounts = Object.fromEntries(SEVERITIES.map((severity) => [severity, 0]));
+  for (const [name, vulnerability] of Object.entries(packages)) {
     if (!isPlainObject(vulnerability) || !Array.isArray(vulnerability.via)) {
       throw new Error(`${label}: vulnerabilities.${name} has no via array.`);
     }
+    if (!SEVERITIES.includes(vulnerability.severity)) {
+      throw new Error(`${label}: vulnerabilities.${name} has no recognized severity.`);
+    }
+    packageCounts[vulnerability.severity] += 1;
+    for (const via of vulnerability.via) {
+      if (typeof via === 'string' ? !Object.hasOwn(packages, via) : !isCompleteAdvisory(via)) {
+        throw new Error(`${label}: vulnerabilities.${name} has an unresolvable via entry.`);
+      }
+    }
   }
-  const countedBlocking = (counts.high || 0) + (counts.critical || 0);
-  const detailedBlocking = advisoriesIn(report).some((advisory) =>
-    BLOCKING_SEVERITIES.has(advisory.severity),
+  const mismatched = SEVERITIES.filter(
+    (severity) => (counts[severity] ?? 0) !== packageCounts[severity],
   );
-  if (countedBlocking > 0 && !detailedBlocking) {
-    throw new Error(
-      `${label}: metadata counts ${countedBlocking} high/critical but no advisory carries that severity.`,
-    );
+  if (mismatched.length > 0 || (counts.total ?? 0) !== Object.keys(packages).length) {
+    throw new Error(`${label}: metadata counts do not match the vulnerabilities map.`);
   }
+}
+
+function isCompleteAdvisory(via) {
+  return (
+    isPlainObject(via) &&
+    SEVERITIES.includes(via.severity) &&
+    typeof via.url === 'string' &&
+    advisoryId(via) !== ''
+  );
 }
 
 export function evaluateAuditReport(report, productionReport, allowlistedIds) {
@@ -99,21 +119,29 @@ function selfTest() {
   const allowedHigh = advisory('GHSA-allowed-high', 'braces', 'high');
   const otherCritical = advisory('GHSA-other-critical', 'simple-git', 'critical');
   const otherModerate = advisory('GHSA-other-moderate', 'csv-parse', 'moderate');
-  const metadataFor = (advisories) => {
-    const vulnerabilities = { moderate: 0, high: 0, critical: 0 };
-    for (const { severity } of advisories) vulnerabilities[severity] += 1;
-    return { vulnerabilities };
+  const severityRank = (severity) => SEVERITIES.indexOf(severity);
+  // Builds metadata from the packages, as npm does, so fixtures reconcile unless a case breaks them.
+  const reportOf = (packages, metadataOverride = {}) => {
+    const vulnerabilities = Object.fromEntries(SEVERITIES.map((severity) => [severity, 0]));
+    for (const { severity } of Object.values(packages)) vulnerabilities[severity] += 1;
+    vulnerabilities.total = Object.keys(packages).length;
+    return {
+      metadata: { vulnerabilities: { ...vulnerabilities, ...metadataOverride } },
+      vulnerabilities: packages,
+    };
   };
-  const reportWith = (...advisories) => ({
-    metadata: metadataFor(advisories),
-    vulnerabilities: {
-      leaf: { via: advisories },
+  const reportWith = (...advisories) => {
+    const severity = advisories
+      .map((entry) => entry.severity)
+      .reduce((highest, next) => (severityRank(next) > severityRank(highest) ? next : highest));
+    return reportOf({
+      leaf: { severity, via: advisories },
       // A dependent inherits severity through a string `via`; it must never count itself.
-      dependent: { severity: 'high', via: ['leaf'] },
-    },
-  });
+      dependent: { severity, via: ['leaf'] },
+    });
+  };
 
-  const emptyReport = { metadata: metadataFor([]), vulnerabilities: {} };
+  const emptyReport = reportOf({});
   const cases = [
     ['clean report', emptyReport, emptyReport, [], [0, 0, 0]],
     [
@@ -154,10 +182,10 @@ function selfTest() {
     ],
     [
       'duplicate advisory across packages counts once',
-      {
-        metadata: metadataFor([otherCritical]),
-        vulnerabilities: { a: { via: [otherCritical] }, b: { via: [otherCritical] } },
-      },
+      reportOf({
+        a: { severity: 'critical', via: [otherCritical] },
+        b: { severity: 'critical', via: [otherCritical] },
+      }),
       emptyReport,
       [],
       [1, 0, 0],
@@ -171,16 +199,27 @@ function selfTest() {
     ],
   ];
 
+  // Each carries the allowlisted high, which is in every real report and must not mask the gap.
+  const withAllowedHigh = (packages, metadataOverride) =>
+    reportOf({ braces: { severity: 'high', via: [allowedHigh] }, ...packages }, metadataOverride);
   const incompleteReports = [
-    ['no vulnerabilities object', { metadata: metadataFor([otherCritical]) }],
+    ['no vulnerabilities object', { metadata: reportOf({}).metadata }],
     ['no metadata', { vulnerabilities: {} }],
+    ['package with no via array', withAllowedHigh({ leaf: { severity: 'critical' } })],
+    ['package with no severity', withAllowedHigh({ leaf: { via: [otherCritical] } })],
+    ['counted critical missing from the map', withAllowedHigh({}, { critical: 1, total: 2 })],
+    ['dangling via reference', withAllowedHigh({ leaf: { severity: 'critical', via: ['gone'] } })],
     [
-      'package with no via array',
-      { metadata: metadataFor([]), vulnerabilities: { leaf: { severity: 'high' } } },
+      'advisory with no severity',
+      withAllowedHigh({
+        leaf: { severity: 'critical', via: [{ name: 'x', url: otherCritical.url }] },
+      }),
     ],
     [
-      'counted high with no advisory detail',
-      { metadata: metadataFor([allowedHigh]), vulnerabilities: { leaf: { via: ['other'] } } },
+      'advisory with no url',
+      withAllowedHigh({
+        leaf: { severity: 'critical', via: [{ name: 'x', severity: 'critical' }] },
+      }),
     ],
   ];
 
