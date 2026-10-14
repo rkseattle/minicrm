@@ -40,9 +40,11 @@ inputs:
   minio-container-id:
     description: >
       Container id of the job's `minio` service, which the caller reads from
-      ${{ job.services.minio.id }}. Passed in rather than resolved here: the
-      `job` context is not documented as available inside a composite action,
-      and looking the container up by image cannot work — the runner pulls
+      the `job.services.minio.id` expression. Passed in rather than resolved
+      here: the `job` context is unavailable inside a composite action, and the
+      runner rejects the whole manifest if any expression names it — even one
+      in a description, so the reference above must stay plain text.
+      Looking the container up by image cannot work either: the runner pulls
       service images by digest, leaving no local tag for `ancestor=` to match.
     required: true
   coverage-instrumentation:
