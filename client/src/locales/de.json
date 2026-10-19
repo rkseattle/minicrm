@@ -339,7 +339,20 @@
       "sendButton": "Senden",
       "sending": "Wird gesendet…",
       "successDelivered": "E-Mail an {{name}} gesendet",
-      "successNotConfigured": "E-Mail protokolliert (SMTP nicht konfiguriert)"
+      "successNotConfigured": "E-Mail protokolliert (SMTP nicht konfiguriert)",
+      "sendAsLabel": "Senden als",
+      "sendAsOrg": "Firmen-E-Mail (Standard)",
+      "templateLabel": "Vorlage",
+      "templateNone": "Keine Vorlage",
+      "templatePreviewLabel": "Vorlagenvorschau – Seriendruckfelder werden beim Senden für diesen Kontakt ausgefüllt",
+      "sentFromMailbox": "E-Mail gesendet von {{mailbox}}",
+      "sentWithBlanks": "E-Mail gesendet von {{mailbox}}. Diese Seriendruckfelder hatten keinen Wert und blieben leer: {{tags}}",
+      "accountsLoadError": "Ihre Postfächer konnten nicht geladen werden, daher wird nur die Firmen-E-Mail angeboten.",
+      "templatesLoading": "Vorlagen werden geladen…",
+      "templatesLoadError": "Vorlagen konnten nicht geladen werden.",
+      "templatesTruncated": "Die ersten {{shown}} von {{total}} Vorlagen werden angezeigt.",
+      "composeFrozen": "Diese Nachricht ist möglicherweise schon unterwegs und kann daher nicht mehr bearbeitet werden. Senden wiederholt dieselbe Nachricht und erzeugt keine zweite Kopie; um sie zu ändern, schließen Sie dieses Fenster und prüfen Sie zuerst Ihren Ordner „Gesendet“.",
+      "accountsLoading": "Ihre Postfächer werden geladen…"
     }
   },
   "accounts": {
@@ -1418,7 +1431,21 @@
     "fieldMergeDiscard": "Meine Änderungen verwerfen",
     "fieldMergeNoChanges": "Keine Konflikte gefunden.",
     "CONTACT_LINKED_ELSEWHERE": "Dieser Kontakt ist bereits mit einem anderen Konto verknüpft. Ändern Sie ihn über den Kontakt.",
-    "CONTACT_NOT_LINKABLE": "Dieser Kontakt konnte nicht verknüpft werden – er existiert nicht mehr oder gehört Ihnen nicht."
+    "CONTACT_NOT_LINKABLE": "Dieser Kontakt konnte nicht verknüpft werden – er existiert nicht mehr oder gehört Ihnen nicht.",
+    "SEND_FAILED": "Die Nachricht wurde nicht gesendet. Versuchen Sie es gleich noch einmal.",
+    "RATE_LIMITED": "Zu viele Versuche. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+    "RECONNECT_REQUIRED": "Verbinden Sie dieses Postfach erneut, um daraus senden zu können.",
+    "PROVIDER_AUTH_EXPIRED": "Dieses Postfach muss erneut verbunden werden.",
+    "PROVIDER_SEND_UNSUPPORTED": "Dieses Postfach kann noch nicht senden.",
+    "SENT_NOT_RECORDED": "Die Nachricht wurde gesendet. Sie erscheint in diesem Datensatz nach der nächsten Synchronisierung des Postfachs.",
+    "SEND_IN_PROGRESS": "Diese Nachricht wird noch gesendet.",
+    "SEND_ALREADY_SENT": "Die Nachricht wurde gesendet. Sie erscheint in diesem Datensatz nach der nächsten Synchronisierung des Postfachs.",
+    "SEND_UNCONFIRMED": "Diese Nachricht wurde möglicherweise gesendet. Prüfen Sie Ihren Ordner „Gesendet“, bevor Sie sie erneut senden.",
+    "IDEMPOTENCY_KEY_REUSED": "Beim Senden dieser Nachricht ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
+    "EMAIL_ACCOUNT_NOT_FOUND": "Dieses Postfach ist nicht mehr verbunden.",
+    "TEMPLATE_NOT_FOUND": "Diese Vorlage ist nicht mehr verfügbar.",
+    "EMAIL_MESSAGE_NOT_FOUND": "Diese Nachricht ist nicht mehr verfügbar.",
+    "SEND_NOT_CONFIRMED": "Der E-Mail-Anbieter hat diese Nachricht nicht bestätigt. Sie wurde möglicherweise gesendet – prüfen Sie Ihren Ordner „Gesendet“, bevor Sie sie erneut senden."
   },
   "search": {
     "inputLabel": "Suche",

@@ -339,7 +339,20 @@
       "sendButton": "Send",
       "sending": "Sending…",
       "successDelivered": "Email sent to {{name}}",
-      "successNotConfigured": "Email logged (SMTP not configured)"
+      "successNotConfigured": "Email logged (SMTP not configured)",
+      "sendAsLabel": "Send as",
+      "sendAsOrg": "Company email (default)",
+      "templateLabel": "Template",
+      "templateNone": "No template",
+      "templatePreviewLabel": "Template preview — merge fields are filled in for this contact when sent",
+      "sentFromMailbox": "Email sent from {{mailbox}}",
+      "sentWithBlanks": "Email sent from {{mailbox}}. These merge fields had no value and were left blank: {{tags}}",
+      "accountsLoadError": "Your mailboxes couldn't be loaded, so only the company email is offered.",
+      "templatesLoading": "Loading templates…",
+      "templatesLoadError": "Templates couldn't be loaded.",
+      "templatesTruncated": "Showing the first {{shown}} of {{total}} templates.",
+      "composeFrozen": "This message may already be on its way, so it can no longer be edited. Send retries the same message and will not create a second copy; to change it, close this window and check your Sent folder first.",
+      "accountsLoading": "Loading your mailboxes…"
     }
   },
   "accounts": {
@@ -1383,7 +1396,21 @@
     "fieldMergeDiscard": "Discard my changes",
     "fieldMergeNoChanges": "No conflicting fields found.",
     "CONTACT_LINKED_ELSEWHERE": "That contact is already linked to a different account. Change it from the contact instead.",
-    "CONTACT_NOT_LINKABLE": "That contact could not be linked — it no longer exists, or it is not yours to link."
+    "CONTACT_NOT_LINKABLE": "That contact could not be linked — it no longer exists, or it is not yours to link.",
+    "SEND_FAILED": "The message was not sent. Try again in a moment.",
+    "RATE_LIMITED": "Too many attempts. Please wait a moment and try again.",
+    "RECONNECT_REQUIRED": "Reconnect this mailbox to allow sending from it.",
+    "PROVIDER_AUTH_EXPIRED": "This mailbox needs to be reconnected.",
+    "PROVIDER_SEND_UNSUPPORTED": "This mailbox cannot send yet.",
+    "SENT_NOT_RECORDED": "The message was sent. It will appear on this record after the mailbox next syncs.",
+    "SEND_IN_PROGRESS": "This message is still being sent.",
+    "SEND_ALREADY_SENT": "The message was sent. It will appear on this record after the mailbox next syncs.",
+    "SEND_UNCONFIRMED": "This message may have been sent. Check your Sent folder before sending it again.",
+    "IDEMPOTENCY_KEY_REUSED": "Something went wrong sending this message. Please try again.",
+    "EMAIL_ACCOUNT_NOT_FOUND": "That mailbox is no longer connected.",
+    "TEMPLATE_NOT_FOUND": "That template is no longer available.",
+    "EMAIL_MESSAGE_NOT_FOUND": "That message is no longer available.",
+    "SEND_NOT_CONFIRMED": "The mail provider did not confirm this message. It may have been sent — check your Sent folder before sending it again."
   },
   "search": {
     "inputLabel": "Search",

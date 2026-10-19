@@ -197,6 +197,27 @@ both delivers the message and logs it as an Email activity on the contact.
 > confirmation says which happened: _Email sent to_ the contact means it went out, while
 > _Email logged (SMTP not configured)_ means only the activity was recorded.
 
+#### Send from your own mailbox
+
+> **Feature flag:** `email_sync`.
+
+If you have [connected a Gmail or Microsoft mailbox](profile.md#connect-a-mailbox) that can
+send, the composer has a **Send as** choice. It defaults to the company email; pick your
+mailbox and the message goes out from your own address, lands in your Sent folder, and is
+filed on this contact with an Email activity. A mailbox appears only if it can send: an
+IMAP mailbox cannot yet, and a Microsoft mailbox connected before sending was added needs
+reconnecting first.
+
+Sending from your mailbox also offers a **Template**. Pick one to see its subject and text;
+its merge fields, such as the contact's first name, are filled in when it is sent. If a
+field has no value for this contact, the confirmation names it — it was left blank.
+
+If a send fails and the composer cannot tell whether the message went, it locks the message
+so it can no longer be edited. **Send** then retries that same message, which never delivers
+a second copy. To change the message instead, close the composer and check your Sent folder
+first. A failure that clearly sent nothing — a mailbox that needs reconnecting, say — leaves
+the message editable.
+
 ### AI Champion/Blocker badge
 
 > **Feature flag:** `ai_champion_blocker_detection`.

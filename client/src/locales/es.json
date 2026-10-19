@@ -339,7 +339,20 @@
       "sendButton": "Enviar",
       "sending": "Enviando…",
       "successDelivered": "Correo enviado a {{name}}",
-      "successNotConfigured": "Correo registrado (SMTP no configurado)"
+      "successNotConfigured": "Correo registrado (SMTP no configurado)",
+      "sendAsLabel": "Enviar como",
+      "sendAsOrg": "Correo de la empresa (predeterminado)",
+      "templateLabel": "Plantilla",
+      "templateNone": "Sin plantilla",
+      "templatePreviewLabel": "Vista previa de la plantilla: los campos combinados se completan para este contacto al enviar",
+      "sentFromMailbox": "Correo enviado desde {{mailbox}}",
+      "sentWithBlanks": "Correo enviado desde {{mailbox}}. Estos campos combinados no tenían valor y quedaron en blanco: {{tags}}",
+      "accountsLoadError": "No se pudieron cargar tus buzones, así que solo se ofrece el correo de la empresa.",
+      "templatesLoading": "Cargando plantillas…",
+      "templatesLoadError": "No se pudieron cargar las plantillas.",
+      "templatesTruncated": "Se muestran las primeras {{shown}} de {{total}} plantillas.",
+      "composeFrozen": "Es posible que este mensaje ya esté en camino, así que ya no se puede editar. Enviar reintenta el mismo mensaje y no creará una segunda copia; para cambiarlo, cierra esta ventana y revisa primero tu carpeta de enviados.",
+      "accountsLoading": "Cargando tus buzones…"
     }
   },
   "accounts": {
@@ -1418,7 +1431,21 @@
     "fieldMergeDiscard": "Descartar mis cambios",
     "fieldMergeNoChanges": "No se encontraron campos en conflicto.",
     "CONTACT_LINKED_ELSEWHERE": "Ese contacto ya está vinculado a otra cuenta. Cámbielo desde el contacto.",
-    "CONTACT_NOT_LINKABLE": "Ese contacto no se pudo vincular: ya no existe o no puede vincularlo."
+    "CONTACT_NOT_LINKABLE": "Ese contacto no se pudo vincular: ya no existe o no puede vincularlo.",
+    "SEND_FAILED": "El mensaje no se envió. Inténtalo de nuevo en un momento.",
+    "RATE_LIMITED": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
+    "RECONNECT_REQUIRED": "Vuelve a conectar este buzón para poder enviar desde él.",
+    "PROVIDER_AUTH_EXPIRED": "Este buzón debe volver a conectarse.",
+    "PROVIDER_SEND_UNSUPPORTED": "Este buzón todavía no puede enviar.",
+    "SENT_NOT_RECORDED": "El mensaje se envió. Aparecerá en este registro tras la próxima sincronización del buzón.",
+    "SEND_IN_PROGRESS": "Este mensaje todavía se está enviando.",
+    "SEND_ALREADY_SENT": "El mensaje se envió. Aparecerá en este registro tras la próxima sincronización del buzón.",
+    "SEND_UNCONFIRMED": "Es posible que este mensaje se haya enviado. Revisa tu carpeta de enviados antes de volver a enviarlo.",
+    "IDEMPOTENCY_KEY_REUSED": "Algo salió mal al enviar este mensaje. Inténtalo de nuevo.",
+    "EMAIL_ACCOUNT_NOT_FOUND": "Ese buzón ya no está conectado.",
+    "TEMPLATE_NOT_FOUND": "Esa plantilla ya no está disponible.",
+    "EMAIL_MESSAGE_NOT_FOUND": "Ese mensaje ya no está disponible.",
+    "SEND_NOT_CONFIRMED": "El proveedor de correo no confirmó este mensaje. Es posible que se haya enviado; revisa tu carpeta de enviados antes de volver a enviarlo."
   },
   "search": {
     "inputLabel": "Buscar",

@@ -13,11 +13,8 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { OAuthAuthPayload } from '../services/connectedAccountService.js';
-import {
-  GMAIL_READ_SCOPE,
-  GMAIL_SEND_SCOPE,
-  requestedScopes,
-} from '../services/oauthProviderService.js';
+import { GMAIL_READ_SCOPE, requestedScopes } from '../services/oauthProviderService.js';
+import { GMAIL_SEND_SCOPE } from '../services/mail/sendGrants.js';
 import {
   SEND_AUTH_EXPIRED,
   SEND_NOT_SENT,

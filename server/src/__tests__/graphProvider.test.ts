@@ -13,12 +13,8 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { OAuthAuthPayload } from '../services/connectedAccountService.js';
-import {
-  GRAPH_MAIL_READ_SCOPE,
-  GRAPH_MAIL_READWRITE_SCOPE,
-  GRAPH_MAIL_SEND_SCOPE,
-  requestedScopes,
-} from '../services/oauthProviderService.js';
+import { GRAPH_MAIL_READ_SCOPE, requestedScopes } from '../services/oauthProviderService.js';
+import { GRAPH_MAIL_READWRITE_SCOPE, GRAPH_MAIL_SEND_SCOPE } from '../services/mail/sendGrants.js';
 import {
   createGraphProvider,
   INSUFFICIENT_SCOPE,

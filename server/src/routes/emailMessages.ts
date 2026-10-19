@@ -221,7 +221,7 @@ router.get('/', asyncHandler(listRecordMessagesHandler));
  *       500:
  *         description: SENT_NOT_RECORDED — sent, but not stored; do not resend
  *       502:
- *         description: SEND_FAILED — the provider refused or did not confirm the send
+ *         description: SEND_FAILED — the provider refused the send; or SEND_NOT_CONFIRMED — it did not say whether the send went, so check Sent before sending again
  */
 router.post('/send', asyncHandler(sendEmailHandler));
 

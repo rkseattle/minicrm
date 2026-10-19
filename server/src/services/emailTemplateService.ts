@@ -9,11 +9,10 @@ import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 
-/** A single merge tag descriptor stored in the merge_tags jsonb array. */
-export interface MergeTag {
-  key: string;
-  label: string;
-}
+import type { MergeTag } from '@minicrm/shared/schemas/emailTemplateSchema.js';
+
+/** A merge tag descriptor, as stored in the merge_tags jsonb array. */
+export type { MergeTag };
 
 /** Shape of an email_templates row as stored in the database. */
 export interface EmailTemplateRow {

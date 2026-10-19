@@ -1648,6 +1648,10 @@ Endpoints require a valid session cookie obtained by calling \`POST /api/v1/auth
         description:
           "Synced mail, read through the CRM records it names. Scoped to the caller's own mailboxes and to the records they can see, so one user never reads another's correspondence with a shared contact.",
       },
+      {
+        name: 'Email Templates',
+        description: 'Read-only list of enabled templates a sender can pick when composing.',
+      },
     ],
     components: {
       // Reusable error bodies. Every one is the standard { error: { code, message } }

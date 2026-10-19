@@ -118,6 +118,8 @@ export const connectedAccountResponseSchema = z.object({
   provider: z.enum(CONNECTED_ACCOUNT_PROVIDERS),
   email_address: z.string(),
   granted_scopes: z.array(z.string()),
+  /** Whether this mailbox's grant can send. Decided on the server from the provider's rules. */
+  can_send: z.boolean(),
   status: z.enum(CONNECTED_ACCOUNT_STATUSES),
   status_detail: z.string().nullable(),
   last_sync_at: z.string().nullable(),

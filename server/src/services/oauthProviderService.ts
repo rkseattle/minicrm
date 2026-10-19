@@ -31,6 +31,12 @@ import {
 import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import logger from '../logger.js';
+import {
+  GMAIL_SEND_SCOPE,
+  GRAPH_MAIL_READWRITE_SCOPE,
+  GRAPH_MAIL_SEND_SCOPE,
+} from './mail/sendGrants.js';
+
 import { startBound } from './mail/transport.js';
 
 /** Where the provider sends the browser back. Must reach the API server, not the client. */
@@ -64,32 +70,6 @@ export const GMAIL_READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
  * bare `Mail.Read`, and `Mail.ReadWrite` supersedes it. See `graphProvider`'s scope check.
  */
 export const GRAPH_MAIL_READ_SCOPE = 'https://graph.microsoft.com/Mail.Read';
-
-/**
- * The scope a driver needs to send through Gmail.
- *
- * Exported for the reason the read scopes are: the driver requires exactly what the
- * consent flow requests, and two copies drifting apart is a mailbox that consented to
- * sending and is refused anyway, with nothing to explain it.
- */
-export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
-
-/**
- * The Graph permission a driver needs to send through a mailbox.
- *
- * Matched loosely like its read counterpart — Microsoft may echo a bare `Mail.Send`
- * rather than the resource URI that was requested. See `graphProvider`'s scope check.
- */
-export const GRAPH_MAIL_SEND_SCOPE = 'https://graph.microsoft.com/Mail.Send';
-
-/**
- * The Graph permission a send needs beside `Mail.Send`.
- *
- * `sendMail` returns no message id, so a send creates a draft and sends that instead —
- * Microsoft's documented way to know the Sent Items copy's immutable id. Creating the draft
- * is a write. Matched loosely, like the other Graph scopes.
- */
-export const GRAPH_MAIL_READWRITE_SCOPE = 'https://graph.microsoft.com/Mail.ReadWrite';
 
 /**
  * Provider metadata. Credentials are read through thunks rather than captured at module

@@ -1011,7 +1011,7 @@ describe('sendEmail — refusals and failure mapping', () => {
 
   it.each<[SendFailureCode, string]>([
     [SEND_NOT_SENT, 'SEND_FAILED'],
-    [SEND_OUTCOME_UNKNOWN, 'SEND_FAILED'],
+    [SEND_OUTCOME_UNKNOWN, 'SEND_NOT_CONFIRMED'],
     [SEND_RATE_LIMITED, 'RATE_LIMITED'],
     [SEND_SCOPE_MISSING, 'RECONNECT_REQUIRED'],
     [SEND_AUTH_EXPIRED, 'PROVIDER_AUTH_EXPIRED'],

@@ -339,7 +339,20 @@
       "sendButton": "发送",
       "sending": "发送中…",
       "successDelivered": "已发送邮件至 {{name}}",
-      "successNotConfigured": "邮件已记录（SMTP 未配置）"
+      "successNotConfigured": "邮件已记录（SMTP 未配置）",
+      "sendAsLabel": "发件身份",
+      "sendAsOrg": "公司邮箱（默认）",
+      "templateLabel": "模板",
+      "templateNone": "不使用模板",
+      "templatePreviewLabel": "模板预览 — 发送时会为该联系人填入合并字段",
+      "sentFromMailbox": "已从 {{mailbox}} 发送邮件",
+      "sentWithBlanks": "已从 {{mailbox}} 发送邮件。以下合并字段没有值，已留空：{{tags}}",
+      "accountsLoadError": "无法加载你的邮箱，因此仅提供公司邮箱。",
+      "templatesLoading": "正在加载模板…",
+      "templatesLoadError": "无法加载模板。",
+      "templatesTruncated": "显示前 {{shown}} 个模板，共 {{total}} 个。",
+      "composeFrozen": "此邮件可能已在发送中，因此无法再编辑。“发送”会重试同一封邮件，不会产生第二份副本；如需修改，请关闭此窗口，并先检查“已发送”文件夹。",
+      "accountsLoading": "正在加载你的邮箱…"
     }
   },
   "accounts": {
@@ -1418,7 +1431,21 @@
     "fieldMergeDiscard": "放弃我的更改",
     "fieldMergeNoChanges": "未找到冲突字段。",
     "CONTACT_LINKED_ELSEWHERE": "该联系人已关联到其他客户。请从联系人处更改。",
-    "CONTACT_NOT_LINKABLE": "无法关联该联系人：它已不存在，或不属于您。"
+    "CONTACT_NOT_LINKABLE": "无法关联该联系人：它已不存在，或不属于您。",
+    "SEND_FAILED": "邮件未发送。请稍后重试。",
+    "RATE_LIMITED": "尝试次数过多。请稍候再试。",
+    "RECONNECT_REQUIRED": "请重新连接此邮箱以便从中发送邮件。",
+    "PROVIDER_AUTH_EXPIRED": "此邮箱需要重新连接。",
+    "PROVIDER_SEND_UNSUPPORTED": "此邮箱暂时无法发送邮件。",
+    "SENT_NOT_RECORDED": "邮件已发送。邮箱下次同步后，它将显示在此记录中。",
+    "SEND_IN_PROGRESS": "此邮件仍在发送中。",
+    "SEND_ALREADY_SENT": "邮件已发送。邮箱下次同步后，它将显示在此记录中。",
+    "SEND_UNCONFIRMED": "此邮件可能已发送。再次发送前请检查“已发送”文件夹。",
+    "IDEMPOTENCY_KEY_REUSED": "发送此邮件时出错。请重试。",
+    "EMAIL_ACCOUNT_NOT_FOUND": "该邮箱已不再连接。",
+    "TEMPLATE_NOT_FOUND": "该模板已不可用。",
+    "EMAIL_MESSAGE_NOT_FOUND": "该邮件已不可用。",
+    "SEND_NOT_CONFIRMED": "邮件服务商未确认此邮件。它可能已发送 — 再次发送前请检查“已发送”文件夹。"
   },
   "search": {
     "inputLabel": "搜索",

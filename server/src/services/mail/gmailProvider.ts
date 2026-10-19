@@ -19,7 +19,7 @@ import {
 
 import logger from '../../logger.js';
 import type { ConnectedAccountAuth } from '../connectedAccountService.js';
-import { GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE } from '../oauthProviderService.js';
+import { GMAIL_READ_SCOPE } from '../oauthProviderService.js';
 
 import type {
   MailboxTestResult,
@@ -30,6 +30,7 @@ import type {
 } from './mailProvider.js';
 import { requireOAuthAccessToken } from './mailProvider.js';
 import { normalizeFromSource } from './messageBody.js';
+import { grantsGmailSend } from './sendGrants.js';
 import {
   isSendFailure,
   SEND_AUTH_EXPIRED,
@@ -511,7 +512,7 @@ export function createGmailProvider(
 
   // Decided here but refused at send, not thrown: Google's consent screen lets a user
   // untick send alone, and that mailbox must still sync.
-  const canSend = grantedScopes.includes(GMAIL_SEND_SCOPE);
+  const canSend = grantsGmailSend(grantedScopes);
 
   return {
     async fetchSince(
