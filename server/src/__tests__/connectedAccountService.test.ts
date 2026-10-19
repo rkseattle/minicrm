@@ -8,6 +8,9 @@
 
 import 'dotenv/config';
 
+import type { QueryConfig, QueryResult, QueryResultRow } from 'pg';
+import { vi } from 'vitest';
+
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import {
@@ -815,6 +818,48 @@ describe('scheduler-facing account claim', () => {
     await makeDueForThisFile();
 
     expect(await claimAccountsDueForSync(1)).toHaveLength(1);
+  });
+
+  it('honors the batch limit when the planner reruns the batch once per row', async () => {
+    await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await createImapAccount(
+      REP_A_ACTOR.id,
+      { ...IMAP_INPUT, email_address: `${FILE_PREFIX}-second@example.com` },
+      REP_A_ACTOR,
+    );
+    await deferAllMailboxes();
+    await makeDueForThisFile();
+
+    // Forces the plan a near-empty table's statistics produce: the target table outer in
+    // a nested loop, the batch inner and rescanned per row. Statistics are rewritten and
+    // the claim run inside one transaction that is rolled back, so no other session sees
+    // either. Rewriting pg_class needs a superuser, as the test database user is.
+    const client = await pool.connect();
+    const routeToClient = vi
+      .spyOn(pool, 'query')
+      .mockImplementation(
+        (config: string | QueryConfig, values?: unknown[]): Promise<QueryResult<QueryResultRow>> =>
+          client.query(config, values),
+      );
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `UPDATE pg_class
+            SET reltuples = 1,
+                relpages = GREATEST(pg_relation_size(oid) / current_setting('block_size')::int, 1)
+          WHERE oid = 'connected_accounts'::regclass`,
+      );
+      await client.query('SET LOCAL enable_hashjoin = off');
+      await client.query('SET LOCAL enable_mergejoin = off');
+
+      expect(await claimAccountsDueForSync(1)).toHaveLength(1);
+      // Outside this transaction the forced plan does not apply, and the claim passes anyway.
+      expect(routeToClient).toHaveBeenCalledTimes(1);
+    } finally {
+      routeToClient.mockRestore();
+      await client.query('ROLLBACK');
+      client.release();
+    }
   });
 });
 
