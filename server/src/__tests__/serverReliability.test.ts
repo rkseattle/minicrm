@@ -25,6 +25,8 @@ import { createDeal, updateDeal } from '../services/dealService.js';
 import { createUser } from '../services/userService.js';
 import { createAutomationRule } from '../services/automationService.js';
 import pool from '../db.js';
+import logger from '../logger.js';
+import coverageDb from '../coverageDb.js';
 import { uid } from './testUtils.js';
 
 const FILE_PREFIX = 'reliability';
@@ -280,6 +282,19 @@ describe('pool exhaustion returns 503', () => {
     const connectSpy = vi
       .spyOn(pool, 'connect')
       .mockRejectedValue(new Error('timeout exceeded when trying to connect'));
+    const warned = vi.spyOn(logger, 'warn');
+    // Distinct values, so a field mapped to the wrong getter or the wrong pool fails.
+    const counts: [typeof pool, 'totalCount' | 'idleCount' | 'waitingCount', number][] = [
+      [pool, 'totalCount', 10],
+      [pool, 'idleCount', 0],
+      [pool, 'waitingCount', 3],
+      [coverageDb, 'totalCount', 2],
+      [coverageDb, 'idleCount', 1],
+      [coverageDb, 'waitingCount', 4],
+    ];
+    const getters = counts.map(([target, name, value]) =>
+      vi.spyOn(target, name, 'get').mockReturnValue(value),
+    );
 
     try {
       const res = await request(app)
@@ -289,9 +304,24 @@ describe('pool exhaustion returns 503', () => {
 
       expect(res.status).toBe(503);
       expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
+      expect(warned).toHaveBeenCalledWith(
+        {
+          poolTotal: 10,
+          poolIdle: 0,
+          poolWaiting: 3,
+          poolMax: pool.options.max,
+          coveragePoolTotal: 2,
+          coveragePoolIdle: 1,
+          coveragePoolWaiting: 4,
+          coveragePoolMax: coverageDb.options.max,
+        },
+        'pool checkout timed out; answering 503',
+      );
     } finally {
       querySpy.mockRestore();
       connectSpy.mockRestore();
+      warned.mockRestore();
+      for (const getter of getters) getter.mockRestore();
     }
   });
 });

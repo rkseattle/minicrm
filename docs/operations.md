@@ -314,6 +314,13 @@ restart-looping.
 Because the port is not open until startup finishes, a connection refused means the
 server is still migrating or has exited; a `503` means it is up but its database is not.
 
+Any REST request whose pool checkout times out also answers `503` (`SERVICE_UNAVAILABLE`),
+and the server logs `pool checkout timed out; answering 503` at `warn` with `poolTotal`,
+`poolIdle`, `poolWaiting` and `poolMax` for the product pool, and the same prefixed `coverage`
+for the coverage pool, since either can raise it. A full pool (total at its maximum, none
+idle) means connections are being held too long; when neither is full, new connections were
+slow or the process's event loop stalled.
+
 ### `NODE_ENV`
 
 **Set `NODE_ENV=production` in every real deployment.** It is not merely a label: it is
