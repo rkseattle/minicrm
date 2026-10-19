@@ -207,6 +207,11 @@ router.use(requireCapability(Capability.ConnectedAccountsManage));
  *                       provider: { type: string, enum: [google, microsoft, imap] }
  *                       email_address: { type: string }
  *                       granted_scopes: { type: array, items: { type: string } }
+ *                       can_send:
+ *                         type: boolean
+ *                         description: >-
+ *                           Whether this mailbox's grant can send. IMAP mailboxes cannot, nor
+ *                           Microsoft mailboxes connected before send needed Mail.ReadWrite.
  *                       status: { type: string, enum: [active, error, disconnected] }
  *                       status_detail:
  *                         type: string

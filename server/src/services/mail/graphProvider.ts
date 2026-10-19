@@ -20,11 +20,7 @@ import {
 
 import logger from '../../logger.js';
 import type { ConnectedAccountAuth } from '../connectedAccountService.js';
-import {
-  GRAPH_MAIL_READ_SCOPE,
-  GRAPH_MAIL_READWRITE_SCOPE,
-  GRAPH_MAIL_SEND_SCOPE,
-} from '../oauthProviderService.js';
+import { GRAPH_MAIL_READ_SCOPE } from '../oauthProviderService.js';
 
 import type {
   MailProvider,
@@ -34,6 +30,7 @@ import type {
   SentMessage,
 } from './mailProvider.js';
 import { requireOAuthAccessToken } from './mailProvider.js';
+import { GRAPH_MAIL_READWRITE_SCOPE, grantsGraphScope, grantsGraphSend } from './sendGrants.js';
 import { normalizeFromSource } from './messageBody.js';
 import {
   isSendFailure,
@@ -525,14 +522,6 @@ async function graphWrite(
   }
 }
 
-/** True when a granted scope list carries `wanted`, compared the way Microsoft echoes it. */
-function grantsScope(grantedScopes: readonly string[], wanted: string): boolean {
-  const bare = wanted.slice(wanted.lastIndexOf('/') + 1).toLowerCase();
-  return grantedScopes.some(
-    (scope) => scope.replace(/^https:\/\/graph\.microsoft\.com\//i, '').toLowerCase() === bare,
-  );
-}
-
 /**
  * True when a granted scope authorizes reading a message body.
  *
@@ -546,19 +535,8 @@ function grantsScope(grantedScopes: readonly string[], wanted: string): boolean 
  */
 function grantsMailRead(grantedScopes: readonly string[]): boolean {
   return (
-    grantsScope(grantedScopes, GRAPH_MAIL_READ_SCOPE) ||
-    grantsScope(grantedScopes, GRAPH_MAIL_READWRITE_SCOPE)
-  );
-}
-
-/**
- * True when a grant can send: `Mail.Send` to submit, and `Mail.ReadWrite` to create the
- * draft whose immutable id the stored row carries.
- */
-function grantsMailSend(grantedScopes: readonly string[]): boolean {
-  return (
-    grantsScope(grantedScopes, GRAPH_MAIL_SEND_SCOPE) &&
-    grantsScope(grantedScopes, GRAPH_MAIL_READWRITE_SCOPE)
+    grantsGraphScope(grantedScopes, GRAPH_MAIL_READ_SCOPE) ||
+    grantsGraphScope(grantedScopes, GRAPH_MAIL_READWRITE_SCOPE)
   );
 }
 
@@ -998,7 +976,7 @@ export function createGraphProvider(
 
   // Decided here but refused at send, not thrown: a mailbox connected before send needed
   // Mail.ReadWrite must keep syncing until it is reconnected.
-  const canSend = grantsMailSend(grantedScopes);
+  const canSend = grantsGraphSend(grantedScopes);
 
   return {
     async send(

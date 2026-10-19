@@ -88,6 +88,11 @@ export const RATE_LIMITED = 'RATE_LIMITED';
 export const RECONNECT_REQUIRED = 'RECONNECT_REQUIRED';
 /** Sent, but not stored. Never to be retried: the recipient already has the message. */
 export const SENT_NOT_RECORDED = 'SENT_NOT_RECORDED';
+/**
+ * The provider did not say whether the message went. Its own code, never SEND_FAILED: a
+ * client told "not sent" would offer the resend that mails the recipient twice.
+ */
+export const SEND_NOT_CONFIRMED = 'SEND_NOT_CONFIRMED';
 /** A repeat of a send still in flight under the same key. */
 export const SEND_IN_PROGRESS = 'SEND_IN_PROGRESS';
 /** A repeat of a send that went out and is not yet filed. */
@@ -359,7 +364,7 @@ async function apiFailureFor(err: unknown, account: ConnectedAccountInternal): P
       return sendError(RATE_LIMITED, 'The mail provider is limiting sends. Try again later.');
     case SEND_OUTCOME_UNKNOWN:
       return sendError(
-        SEND_FAILED,
+        SEND_NOT_CONFIRMED,
         'The mail provider did not confirm the send. Check Sent before sending again.',
       );
     case SEND_NOT_SENT:

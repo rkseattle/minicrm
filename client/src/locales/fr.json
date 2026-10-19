@@ -339,7 +339,20 @@
       "sendButton": "Envoyer",
       "sending": "Envoi en cours…",
       "successDelivered": "E-mail envoyé à {{name}}",
-      "successNotConfigured": "E-mail enregistré (SMTP non configuré)"
+      "successNotConfigured": "E-mail enregistré (SMTP non configuré)",
+      "sendAsLabel": "Envoyer en tant que",
+      "sendAsOrg": "E-mail de l'entreprise (par défaut)",
+      "templateLabel": "Modèle",
+      "templateNone": "Aucun modèle",
+      "templatePreviewLabel": "Aperçu du modèle : les champs de fusion sont remplis pour ce contact à l'envoi",
+      "sentFromMailbox": "E-mail envoyé depuis {{mailbox}}",
+      "sentWithBlanks": "E-mail envoyé depuis {{mailbox}}. Ces champs de fusion n'avaient pas de valeur et sont restés vides : {{tags}}",
+      "accountsLoadError": "Vos boîtes aux lettres n'ont pas pu être chargées ; seul l'e-mail de l'entreprise est proposé.",
+      "templatesLoading": "Chargement des modèles…",
+      "templatesLoadError": "Les modèles n'ont pas pu être chargés.",
+      "templatesTruncated": "Affichage des {{shown}} premiers modèles sur {{total}}.",
+      "composeFrozen": "Ce message est peut-être déjà en route : il ne peut plus être modifié. Envoyer réessaie le même message et n'en créera pas de deuxième copie ; pour le modifier, fermez cette fenêtre et vérifiez d'abord votre dossier Envoyés.",
+      "accountsLoading": "Chargement de vos boîtes aux lettres…"
     }
   },
   "accounts": {
@@ -1418,7 +1431,21 @@
     "fieldMergeDiscard": "Ignorer mes modifications",
     "fieldMergeNoChanges": "Aucun champ en conflit trouvé.",
     "CONTACT_LINKED_ELSEWHERE": "Ce contact est déjà associé à un autre compte. Modifiez-le depuis le contact.",
-    "CONTACT_NOT_LINKABLE": "Ce contact n'a pas pu être associé : il n'existe plus ou ne vous appartient pas."
+    "CONTACT_NOT_LINKABLE": "Ce contact n'a pas pu être associé : il n'existe plus ou ne vous appartient pas.",
+    "SEND_FAILED": "Le message n'a pas été envoyé. Réessayez dans un instant.",
+    "RATE_LIMITED": "Trop de tentatives. Veuillez patienter un instant et réessayer.",
+    "RECONNECT_REQUIRED": "Reconnectez cette boîte aux lettres pour pouvoir envoyer depuis celle-ci.",
+    "PROVIDER_AUTH_EXPIRED": "Cette boîte aux lettres doit être reconnectée.",
+    "PROVIDER_SEND_UNSUPPORTED": "Cette boîte aux lettres ne peut pas encore envoyer.",
+    "SENT_NOT_RECORDED": "Le message a été envoyé. Il apparaîtra sur cette fiche après la prochaine synchronisation de la boîte aux lettres.",
+    "SEND_IN_PROGRESS": "Ce message est toujours en cours d'envoi.",
+    "SEND_ALREADY_SENT": "Le message a été envoyé. Il apparaîtra sur cette fiche après la prochaine synchronisation de la boîte aux lettres.",
+    "SEND_UNCONFIRMED": "Ce message a peut-être été envoyé. Vérifiez votre dossier Envoyés avant de le renvoyer.",
+    "IDEMPOTENCY_KEY_REUSED": "Un problème est survenu lors de l'envoi de ce message. Veuillez réessayer.",
+    "EMAIL_ACCOUNT_NOT_FOUND": "Cette boîte aux lettres n'est plus connectée.",
+    "TEMPLATE_NOT_FOUND": "Ce modèle n'est plus disponible.",
+    "EMAIL_MESSAGE_NOT_FOUND": "Ce message n'est plus disponible.",
+    "SEND_NOT_CONFIRMED": "Le fournisseur de messagerie n'a pas confirmé ce message. Il a peut-être été envoyé : vérifiez votre dossier Envoyés avant de le renvoyer."
   },
   "search": {
     "inputLabel": "Rechercher",

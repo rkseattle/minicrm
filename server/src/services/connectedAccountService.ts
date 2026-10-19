@@ -27,6 +27,7 @@ import type {
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import pool from '../db.js';
+import { canSendFrom } from './mail/sendGrants.js';
 import logger from '../logger.js';
 
 import type { AuditActor } from './auditService.js';
@@ -195,6 +196,7 @@ function toConnectedAccountResponse(
     provider: row.provider,
     email_address: row.email_address,
     granted_scopes: row.granted_scopes,
+    can_send: canSendFrom(row.provider, row.granted_scopes),
     status: row.status,
     status_detail: row.status_detail,
     last_sync_at: row.last_sync_at ? row.last_sync_at.toISOString() : null,

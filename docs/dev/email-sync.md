@@ -556,6 +556,12 @@ reader opts in, so a sanitizer miss still loads and runs nothing.
 
 ## Sending mail
 
+Whether a mailbox can send is decided once, in `mail/sendGrants.ts`, from its provider and
+granted scopes: the drivers refuse with it, and the account response carries it as
+`can_send`, which the compose modal's **Send as** list filters on. `GET
+/api/v1/email-templates` lists the enabled templates a sender can pick, gated as sending
+is; a picked template is sent by id and rendered on the server against the record.
+
 `POST /api/v1/email-messages/send` sends through one of the caller's own Gmail or Microsoft
 mailboxes. The body is either a composed `subject` and `body_html`, or a `template_id`
 rendered by `mergeTagRenderer.ts` against the named record. An `in_reply_to_message_id` or
@@ -614,20 +620,21 @@ upsert gated on `xmax = 0`: only a new row is matched, since matching a stored o
 restore links its owner removed, but the send is audited either way, and the send path's
 thread wins over the one the engine derived.
 
-| API code                    | Status | From                                                                                              |
-| --------------------------- | ------ | ------------------------------------------------------------------------------------------------- |
-| `SEND_FAILED`               | 502    | `SEND_NOT_SENT`, `SEND_OUTCOME_UNKNOWN` ("check Sent"), or a token refresh that failed in transit |
-| `RATE_LIMITED`              | 429    | `SEND_RATE_LIMITED`, or the caller's hourly limit (with `Retry-After`)                            |
-| `RECONNECT_REQUIRED`        | 409    | `SEND_SCOPE_MISSING`, or a grant the driver refuses                                               |
-| `PROVIDER_AUTH_EXPIRED`     | 409    | The credential was refused; also written to `status_detail`                                       |
-| `PROVIDER_SEND_UNSUPPORTED` | 409    | An IMAP mailbox, which has no send driver yet                                                     |
-| `SENT_NOT_RECORDED`         | 500    | Sent, but storage failed. Never resend; sync files it from its intent when the Sent copy arrives  |
-| `IDEMPOTENCY_KEY_REQUIRED`  | 400    | No `Idempotency-Key` header                                                                       |
-| `IDEMPOTENCY_KEY_INVALID`   | 400    | The key is not a UUID                                                                             |
-| `SEND_IN_PROGRESS`          | 409    | A repeat while the first send under the key is still in flight                                    |
-| `SEND_ALREADY_SENT`         | 409    | A repeat of a send that went out and is not yet filed                                             |
-| `SEND_UNCONFIRMED`          | 409    | A repeat of a send whose outcome is unknown. Never resent under its key                           |
-| `IDEMPOTENCY_KEY_REUSED`    | 422    | The key was first used with a different request body                                              |
+| API code                    | Status | From                                                                                             |
+| --------------------------- | ------ | ------------------------------------------------------------------------------------------------ |
+| `SEND_FAILED`               | 502    | `SEND_NOT_SENT`, or a token refresh that failed in transit                                       |
+| `SEND_NOT_CONFIRMED`        | 502    | `SEND_OUTCOME_UNKNOWN`: it may have gone, so check Sent; never reported as `SEND_FAILED`         |
+| `RATE_LIMITED`              | 429    | `SEND_RATE_LIMITED`, or the caller's hourly limit (with `Retry-After`)                           |
+| `RECONNECT_REQUIRED`        | 409    | `SEND_SCOPE_MISSING`, or a grant the driver refuses                                              |
+| `PROVIDER_AUTH_EXPIRED`     | 409    | The credential was refused; also written to `status_detail`                                      |
+| `PROVIDER_SEND_UNSUPPORTED` | 409    | An IMAP mailbox, which has no send driver yet                                                    |
+| `SENT_NOT_RECORDED`         | 500    | Sent, but storage failed. Never resend; sync files it from its intent when the Sent copy arrives |
+| `IDEMPOTENCY_KEY_REQUIRED`  | 400    | No `Idempotency-Key` header                                                                      |
+| `IDEMPOTENCY_KEY_INVALID`   | 400    | The key is not a UUID                                                                            |
+| `SEND_IN_PROGRESS`          | 409    | A repeat while the first send under the key is still in flight                                   |
+| `SEND_ALREADY_SENT`         | 409    | A repeat of a send that went out and is not yet filed                                            |
+| `SEND_UNCONFIRMED`          | 409    | A repeat of a send whose outcome is unknown. Never resent under its key                          |
+| `IDEMPOTENCY_KEY_REUSED`    | 422    | The key was first used with a different request body                                             |
 
 Credential problems answer 409, never 401: the client treats 401 as the user's own session
 ending.

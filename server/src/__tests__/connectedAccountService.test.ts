@@ -279,6 +279,8 @@ describe('OAuth upsert', () => {
     );
 
     expect(account.granted_scopes).toEqual(['gmail.readonly']);
+    // A read-only grant: the compose modal must not offer this mailbox to send from.
+    expect(account.can_send).toBe(false);
   });
 });
 

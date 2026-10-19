@@ -24,6 +24,7 @@ import {
   sendFailure,
   SEND_AUTH_EXPIRED,
   SEND_NOT_SENT,
+  SEND_OUTCOME_UNKNOWN,
   SEND_RATE_LIMITED,
   SEND_SCOPE_MISSING,
   type SendFailureCode,
@@ -395,6 +396,19 @@ describe('POST /api/v1/email-messages/send — outcomes', () => {
 
     expect(res.status).toBe(502);
     expect(res.body.error.code).toBe('SEND_FAILED');
+  });
+
+  it('returns 502 SEND_NOT_CONFIRMED, never SEND_FAILED, when the provider did not confirm', async () => {
+    sendMock.mockRejectedValue(sendFailure(SEND_OUTCOME_UNKNOWN, 'Gmail'));
+
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body());
+
+    expect(res.status).toBe(502);
+    expect(res.body.error.code).toBe('SEND_NOT_CONFIRMED');
   });
 
   it('returns 409 PROVIDER_AUTH_EXPIRED, never 401, when the mailbox credential is refused', async () => {

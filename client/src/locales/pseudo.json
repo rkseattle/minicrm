@@ -339,7 +339,20 @@
       "sendButton": "[Ŝëñd~~]",
       "sending": "[Ŝëñdïñg…~~~]",
       "successDelivered": "[Ëmäïl ŝëñt tö {{name}}~~~~~~~]",
-      "successNotConfigured": "[Ëmäïl löggëd (ŜMTP ñöt ĉöñfïgürëd)~~~~~~~~~~~]"
+      "successNotConfigured": "[Ëmäïl löggëd (ŜMTP ñöt ĉöñfïgürëd)~~~~~~~~~~~]",
+      "sendAsLabel": "[Ŝëñd äŝ~~~]",
+      "sendAsOrg": "[Ĉömpäñy ëmäïl (dëfäült)~~~~~~~]",
+      "templateLabel": "[Tëmplätë~~~]",
+      "templateNone": "[Ñö tëmplätë~~~~]",
+      "templatePreviewLabel": "[Tëmplätë prëvïëw — mërgë fïëldŝ ärë fïllëd ïñ för thïŝ ĉöñtäĉt whëñ ŝëñt~~~~~~~~~~~~~~~~~~~~~~]",
+      "sentFromMailbox": "[Ëmäïl ŝëñt fröm {{mailbox}}~~~~~~~~~]",
+      "sentWithBlanks": "[Ëmäïl ŝëñt fröm {{mailbox}}. Thëŝë mërgë fïëldŝ häd ñö välüë äñd wërë lëft bläñk: {{tags}}~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "accountsLoadError": "[Yöür mäïlböxëŝ ĉöüldñ't bë löädëd, ŝö öñly thë ĉömpäñy ëmäïl ïŝ öffërëd.~~~~~~~~~~~~~~~~~~~~~~]",
+      "templatesLoading": "[Löädïñg tëmplätëŝ…~~~~~~]",
+      "templatesLoadError": "[Tëmplätëŝ ĉöüldñ't bë löädëd.~~~~~~~~~]",
+      "templatesTruncated": "[Ŝhöwïñg thë fïrŝt {{shown}} öf {{total}} tëmplätëŝ.~~~~~~~~~~~~~~~~]",
+      "composeFrozen": "[Thïŝ mëŝŝägë mäy älrëädy bë öñ ïtŝ wäy, ŝö ït ĉäñ ñö löñgër bë ëdïtëd. Ŝëñd rëtrïëŝ thë ŝämë mëŝŝägë äñd wïll ñöt ĉrëätë ä ŝëĉöñd ĉöpy; tö ĉhäñgë ït, ĉlöŝë thïŝ wïñdöw äñd ĉhëĉk yöür Ŝëñt földër fïrŝt.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "accountsLoading": "[Löädïñg yöür mäïlböxëŝ…~~~~~~~]"
     }
   },
   "accounts": {
@@ -1383,7 +1396,21 @@
     "fieldMergeDiscard": "[Dïŝĉärd my ĉhäñgëŝ~~~~~~]",
     "fieldMergeNoChanges": "[Ñö ĉöñflïĉtïñg fïëldŝ föüñd.~~~~~~~~~]",
     "CONTACT_LINKED_ELSEWHERE": "[Thät ĉöñtäĉt ïŝ älrëädy lïñkëd tö ä dïffërëñt äĉĉöüñt. Ĉhäñgë ït fröm thë ĉöñtäĉt ïñŝtëäd.~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
-    "CONTACT_NOT_LINKABLE": "[Thät ĉöñtäĉt ĉöüld ñöt bë lïñkëd — ït ñö löñgër ëxïŝtŝ, ör ït ïŝ ñöt yöürŝ tö lïñk.~~~~~~~~~~~~~~~~~~~~~~~~~]"
+    "CONTACT_NOT_LINKABLE": "[Thät ĉöñtäĉt ĉöüld ñöt bë lïñkëd — ït ñö löñgër ëxïŝtŝ, ör ït ïŝ ñöt yöürŝ tö lïñk.~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "SEND_FAILED": "[Thë mëŝŝägë wäŝ ñöt ŝëñt. Try ägäïñ ïñ ä mömëñt.~~~~~~~~~~~~~~~]",
+    "RATE_LIMITED": "[Töö mäñy ättëmptŝ. Plëäŝë wäït ä mömëñt äñd try ägäïñ.~~~~~~~~~~~~~~~~~]",
+    "RECONNECT_REQUIRED": "[Rëĉöññëĉt thïŝ mäïlböx tö ällöw ŝëñdïñg fröm ït.~~~~~~~~~~~~~~~]",
+    "PROVIDER_AUTH_EXPIRED": "[Thïŝ mäïlböx ñëëdŝ tö bë rëĉöññëĉtëd.~~~~~~~~~~~~]",
+    "PROVIDER_SEND_UNSUPPORTED": "[Thïŝ mäïlböx ĉäññöt ŝëñd yët.~~~~~~~~~]",
+    "SENT_NOT_RECORDED": "[Thë mëŝŝägë wäŝ ŝëñt. Ït wïll äppëär öñ thïŝ rëĉörd äftër thë mäïlböx ñëxt ŝyñĉŝ.~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "SEND_IN_PROGRESS": "[Thïŝ mëŝŝägë ïŝ ŝtïll bëïñg ŝëñt.~~~~~~~~~~]",
+    "SEND_ALREADY_SENT": "[Thë mëŝŝägë wäŝ ŝëñt. Ït wïll äppëär öñ thïŝ rëĉörd äftër thë mäïlböx ñëxt ŝyñĉŝ.~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "SEND_UNCONFIRMED": "[Thïŝ mëŝŝägë mäy hävë bëëñ ŝëñt. Ĉhëĉk yöür Ŝëñt földër bëförë ŝëñdïñg ït ägäïñ.~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "IDEMPOTENCY_KEY_REUSED": "[Ŝömëthïñg wëñt wröñg ŝëñdïñg thïŝ mëŝŝägë. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~~]",
+    "EMAIL_ACCOUNT_NOT_FOUND": "[Thät mäïlböx ïŝ ñö löñgër ĉöññëĉtëd.~~~~~~~~~~~]",
+    "TEMPLATE_NOT_FOUND": "[Thät tëmplätë ïŝ ñö löñgër äväïläblë.~~~~~~~~~~~~]",
+    "EMAIL_MESSAGE_NOT_FOUND": "[Thät mëŝŝägë ïŝ ñö löñgër äväïläblë.~~~~~~~~~~~]",
+    "SEND_NOT_CONFIRMED": "[Thë mäïl prövïdër dïd ñöt ĉöñfïrm thïŝ mëŝŝägë. Ït mäy hävë bëëñ ŝëñt — ĉhëĉk yöür Ŝëñt földër bëförë ŝëñdïñg ït ägäïñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]"
   },
   "search": {
     "inputLabel": "[Ŝëärĉh~~]",

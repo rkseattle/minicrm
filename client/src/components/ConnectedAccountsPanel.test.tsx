@@ -25,6 +25,7 @@ const ACCOUNT: ConnectedAccountResponse = {
   provider: 'imap',
   email_address: 'rep@example.com',
   granted_scopes: [],
+  can_send: false,
   status: 'active',
   status_detail: null,
   last_sync_at: null,
