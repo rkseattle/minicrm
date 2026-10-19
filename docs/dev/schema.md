@@ -218,6 +218,11 @@ email_send_intents
     from this row instead of sending again. request_hash refuses a key reused for
     different mail.
 
+email_send_ledger
+  One row per send that may have gone, counted by the hourly send ceiling. Keyed by
+  user_id alone (intent_id is SET NULL), so it outlives the intent and the mailbox:
+  counting intents instead let a disconnected mailbox reset the count.
+
 email_message_links
   record_type(contact|lead|account|deal)  match_type(auto|manual)
   UNIQUE(email_message_id, record_type, record_id)

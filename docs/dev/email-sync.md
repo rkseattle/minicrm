@@ -580,7 +580,7 @@ thread wins over the one the engine derived.
 | API code                    | Status | From                                                                                              |
 | --------------------------- | ------ | ------------------------------------------------------------------------------------------------- |
 | `SEND_FAILED`               | 502    | `SEND_NOT_SENT`, `SEND_OUTCOME_UNKNOWN` ("check Sent"), or a token refresh that failed in transit |
-| `RATE_LIMITED`              | 429    | `SEND_RATE_LIMITED`, or this instance's hourly limit                                              |
+| `RATE_LIMITED`              | 429    | `SEND_RATE_LIMITED`, or the caller's hourly limit (with `Retry-After`)                            |
 | `RECONNECT_REQUIRED`        | 409    | `SEND_SCOPE_MISSING`, or a grant the driver refuses                                               |
 | `PROVIDER_AUTH_EXPIRED`     | 409    | The credential was refused; also written to `status_detail`                                       |
 | `PROVIDER_SEND_UNSUPPORTED` | 409    | An IMAP mailbox, which has no send driver yet                                                     |
@@ -593,13 +593,22 @@ thread wins over the one the engine derived.
 | `IDEMPOTENCY_KEY_REUSED`    | 422    | The key was first used with a different request body                                              |
 
 Credential problems answer 409, never 401: the client treats 401 as the user's own session
-ending. The hourly limit counts mail that went out — a success, or `SENT_NOT_RECORDED` — so
-a provider outage or a malformed request does not spend a rep's budget. It is per user and per process — its store is in
-memory, so behind several replicas the effective ceiling multiplies by their count. It
-bounds abuse of a rep's mailbox through this instance; it is not a quota. A replay is not
-counted, with two exceptions until the limit moves into the database: the limiter runs
-before the key is looked up, so a rep at the ceiling who repeats a filed send gets 429 rather
-than the replayed 201, and a concurrent duplicate that answers from a filed send is counted.
+ending.
+
+The hourly limit counts the user's entries in `email_send_ledger` from the last hour. Every
+claimed send writes one, and a refusal that sent nothing (`not_sent`) removes its own in the
+same statement, so a provider outage or a malformed request does not spend a rep's budget,
+but a send that went out and could not be stored does. The ledger is keyed by user alone
+and outlives both the intent and the mailbox, so disconnecting and reconnecting a mailbox
+cannot reset the count, and being in the database it holds across processes and restarts. The count and the claim of the new
+intent run in one transaction under a per-user advisory lock, so two requests at the edge
+cannot both pass; going over rolls the claim back and answers 429 with `Retry-After` set to
+when enough counted sends have left the window, timed by the database's clock. An advisory
+check before any rendering or token refresh refuses a rep already at the ceiling early;
+the locked count at the claim is the one that holds. A retry of a refused send under its key is
+counted like a new one. A repeat creates no intent, so it is neither counted nor refused.
+The check is skipped wherever every other limiter is (`shouldSkipRateLimit`). It bounds
+abuse of a rep's mailbox; it is not a quota.
 
 Neither Gmail nor Graph deduplicates a submission, so every send carries an
 `Idempotency-Key` header, a UUID the client generates once per compose and reuses on every
@@ -616,10 +625,10 @@ attempt, after which the retention purge deletes it and the same key would send 
 
 ## Configuration
 
-| Variable                      | Default | Meaning                                           |
-| ----------------------------- | ------- | ------------------------------------------------- |
-| `EMAIL_SYNC_INTERVAL_MINUTES` | 15      | Minutes between ticks, 1-59.                      |
-| `EMAIL_SEND_MAX_PER_HOUR`     | 100     | Messages one user may send per hour, per process. |
+| Variable                      | Default | Meaning                              |
+| ----------------------------- | ------- | ------------------------------------ |
+| `EMAIL_SYNC_INTERVAL_MINUTES` | 15      | Minutes between ticks, 1-59.         |
+| `EMAIL_SEND_MAX_PER_HOUR`     | 100     | Messages one user may send per hour. |
 
 The interval is resolved once at boot, and a value outside its range falls back to the
 default rather than producing an invalid cron expression. For the send limit, anything but

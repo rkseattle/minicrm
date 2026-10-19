@@ -11339,6 +11339,100 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.email_send_ledger",
+      "type": "BASE TABLE",
+      "comment": "One row per send that may have gone out, counted against the user's hourly ceiling. Outlives the mailbox and the send intent, so disconnecting a mailbox cannot reset the count.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "intent_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "email_send_ledger_pkey",
+          "def": "CREATE UNIQUE INDEX email_send_ledger_pkey ON public.email_send_ledger USING btree (id)",
+          "table": "public.email_send_ledger",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_send_ledger_user_time_idx",
+          "def": "CREATE INDEX email_send_ledger_user_time_idx ON public.email_send_ledger USING btree (user_id, created_at)",
+          "table": "public.email_send_ledger",
+          "columns": [
+            "user_id",
+            "created_at"
+          ]
+        },
+        {
+          "name": "email_send_ledger_intent_idx",
+          "def": "CREATE INDEX email_send_ledger_intent_idx ON public.email_send_ledger USING btree (intent_id) WHERE (intent_id IS NOT NULL)",
+          "table": "public.email_send_ledger",
+          "columns": [
+            "intent_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "email_send_ledger_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.email_send_ledger",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_send_ledger_intent_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (intent_id) REFERENCES email_send_intents(id) ON DELETE SET NULL",
+          "table": "public.email_send_ledger",
+          "referenced_table": "public.email_send_intents",
+          "columns": [
+            "intent_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_send_ledger_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.email_send_ledger",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -12979,6 +13073,32 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.email_send_ledger",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.email_send_ledger",
+      "columns": [
+        "intent_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.email_send_intents",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (intent_id) REFERENCES email_send_intents(id) ON DELETE SET NULL"
     }
   ],
   "functions": [

@@ -4,7 +4,6 @@
  */
 
 import { Router } from 'express';
-import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
@@ -19,53 +18,8 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireCapability } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
-import { RATE_LIMITED } from '../services/emailSendService.js';
-import { shouldSkipRateLimit } from '../utils/nodeEnv.js';
 
 const router = Router();
-
-/** Sends one user may make per hour unless `EMAIL_SEND_MAX_PER_HOUR` says otherwise. */
-export const DEFAULT_EMAIL_SEND_MAX_PER_HOUR = 100;
-
-const ONE_HOUR_MS = 60 * 60 * 1000;
-
-/**
- * The hourly send ceiling. Anything but a positive integer falls back to the default: a
- * typo must not lift or zero the limit.
- */
-export function emailSendMaxPerHour(): number {
-  const override = Number(process.env.EMAIL_SEND_MAX_PER_HOUR);
-  return Number.isInteger(override) && override > 0 ? override : DEFAULT_EMAIL_SEND_MAX_PER_HOUR;
-}
-
-/**
- * Per-user hourly send limit, counting successful sends.
- *
- * Bounds abuse of a rep's own mailbox through this instance; it is not a quota. The store
- * is in-memory, so behind several replicas the effective ceiling multiplies by their count.
- * Keyed by user, as every caller is authenticated and a shared office IP would throttle a team.
- */
-const emailSendLimiter = rateLimit({
-  windowMs: ONE_HOUR_MS,
-  limit: () => emailSendMaxPerHour(),
-  // The IP fallback never runs behind authenticate; the library rejects a raw req.ip regardless.
-  keyGenerator: (req) => req.user?.id ?? ipKeyGenerator(req.ip ?? 'anonymous'),
-  skip: shouldSkipRateLimit,
-  // Only mail that went spends the budget: a typo or a provider outage must not lock a
-  // rep out for the hour, but a send whose storage then failed still went out.
-  skipFailedRequests: true,
-  // A replay sends nothing, so it spends nothing.
-  requestWasSuccessful: (_req, res) =>
-    res.locals.replayed !== true && (res.statusCode < 400 || res.locals.mailSent === true),
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: {
-      code: RATE_LIMITED,
-      message: 'Too many messages sent this hour, please try again later.',
-    },
-  },
-});
 
 router.use(authenticate);
 router.use(requireFeatureEnabled('email_sync'));
@@ -219,13 +173,17 @@ router.get('/', asyncHandler(listRecordMessagesHandler));
  *       422:
  *         description: IDEMPOTENCY_KEY_REUSED — the key was already used for a different message
  *       429:
- *         description: RATE_LIMITED — this instance's hourly limit, or the provider's
+ *         description: RATE_LIMITED — the caller's hourly limit, or the provider's
+ *         headers:
+ *           Retry-After:
+ *             description: Seconds until the caller's hourly limit admits another send. Absent when the provider throttled.
+ *             schema: { type: integer, minimum: 1 }
  *       500:
  *         description: SENT_NOT_RECORDED — sent, but not stored; do not resend
  *       502:
  *         description: SEND_FAILED — the provider refused or did not confirm the send
  */
-router.post('/send', emailSendLimiter, asyncHandler(sendEmailHandler));
+router.post('/send', asyncHandler(sendEmailHandler));
 
 /**
  * @openapi

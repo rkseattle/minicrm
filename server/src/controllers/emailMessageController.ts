@@ -300,8 +300,9 @@ function respondToSendError(err: unknown, res: Response): void {
   const code = (err as { code?: unknown } | null)?.code;
   const status = typeof code === 'string' ? SEND_ERROR_STATUS[code] : undefined;
   if (typeof code !== 'string' || status === undefined) throw err;
-  // Read by the send limiter: this mail went out, so it spends the hourly budget.
-  if (code === SENT_NOT_RECORDED) res.locals.mailSent = true;
+  // Safe: a thrown value of any shape, narrowed by the typeof below.
+  const retryAfter = (err as { retryAfterSeconds?: unknown }).retryAfterSeconds;
+  if (typeof retryAfter === 'number') res.set('Retry-After', String(retryAfter));
   // Safe: every code in SEND_ERROR_STATUS is thrown by sendError, which builds an Error.
   res.status(status).json(errorBody(code, (err as Error).message));
 }
@@ -340,7 +341,6 @@ export async function sendEmailHandler(req: Request, res: Response): Promise<voi
     // Safe: authenticate runs first on this router and always sets req.user.
     const replayed = await replaySend(req.user!.id, idempotency);
     if (replayed) {
-      res.locals.replayed = true;
       res.status(201).json(replayed);
       return;
     }

@@ -47,6 +47,7 @@ import {
   markIntentNotSent,
   markIntentSent,
   markIntentUnconfirmed,
+  precheckSendLimit,
   recordPreparedMessageId,
   type IntentUnderKey,
 } from './emailSendIntentService.js';
@@ -75,6 +76,7 @@ import { renderTemplate, type MergeContext } from './mergeTagRenderer.js';
 import { refreshAccessToken, type RefreshedTokens } from './oauthProviderService.js';
 import { withRlsQuery } from './rlsContextService.js';
 import { getDealAutoLink } from './settingsService.js';
+import { shouldSkipRateLimit } from '../utils/nodeEnv.js';
 
 /** The API's codes for a send that did not complete. The controller maps each to a status. */
 export const EMAIL_ACCOUNT_NOT_FOUND = 'EMAIL_ACCOUNT_NOT_FOUND';
@@ -125,6 +127,16 @@ export function requestHashOf(input: SendEmailInput): string {
 /** A send refusal carrying the API code the controller maps. */
 function sendError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
+}
+
+/** The hourly ceiling's refusal, saying when enough counted sends leave the window. */
+function limitError(
+  retryAfterSeconds: number,
+): Error & { code: string; retryAfterSeconds: number } {
+  return Object.assign(
+    sendError(RATE_LIMITED, 'Too many messages sent this hour, please try again later.'),
+    { retryAfterSeconds },
+  );
 }
 
 type TokenRefresh = (provider: OAuthProvider, refreshToken: string) => Promise<RefreshedTokens>;
@@ -435,6 +447,12 @@ export async function sendEmail(
   const account = await getConnectedAccountInternal(input.connected_account_id, userId);
   if (!account) throw sendError(EMAIL_ACCOUNT_NOT_FOUND, 'No such mailbox');
 
+  const enforceLimit = !shouldSkipRateLimit();
+  if (enforceLimit) {
+    const retryAfterSeconds = await precheckSendLimit(userId, idempotency.key);
+    if (retryAfterSeconds !== null) throw limitError(retryAfterSeconds);
+  }
+
   const provider = dependencies.provider ?? constructSender(account);
   if (!provider?.send) {
     throw sendError(PROVIDER_SEND_UNSUPPORTED, 'This mailbox cannot send yet.');
@@ -477,28 +495,33 @@ export async function sendEmail(
   const parsed = await parseMessage(document.mime);
   // The stored form, from the same function sync stores with, so the two always match.
   const threading = storedThreadingHeaders(parsed.threading);
-  const intentId = await claimSendIntent({
-    userId: actor.id,
-    actorName: actor.name,
-    connectedAccountId: account.id,
-    // Safe: buildOutboundDocument always writes one; a null would fail the insert, unsent.
-    rfcMessageId: threading.rfcMessageId!,
-    recordType: input.record_type ?? null,
-    recordId: input.record_id ?? null,
-    // Only an override: a filing otherwise takes the stored body, so no second copy waits here.
-    activityNotes,
-    toAddresses: parsed.toAddresses,
-    ccAddresses: parsed.ccAddresses,
-    idempotencyKey: idempotency.key,
-    requestHash: idempotency.requestHash,
-    unresolvedMergeTags: content.unresolved,
-  });
-  if (intentId === null) {
+  const claim = await claimSendIntent(
+    {
+      userId: actor.id,
+      actorName: actor.name,
+      connectedAccountId: account.id,
+      // Safe: buildOutboundDocument always writes one; a null would fail the insert, unsent.
+      rfcMessageId: threading.rfcMessageId!,
+      recordType: input.record_type ?? null,
+      recordId: input.record_id ?? null,
+      // Only an override: a filing otherwise takes the stored body, so no second copy waits here.
+      activityNotes,
+      toAddresses: parsed.toAddresses,
+      ccAddresses: parsed.ccAddresses,
+      idempotencyKey: idempotency.key,
+      requestHash: idempotency.requestHash,
+      unresolvedMergeTags: content.unresolved,
+    },
+    enforceLimit,
+  );
+  if (claim.kind === 'limited') throw limitError(claim.retryAfterSeconds);
+  if (claim.kind === 'taken') {
     // A concurrent request with this key got there first; answer as it will.
     const existing = await findIntentByKey(userId, idempotency.key);
     if (!existing) throw new Error('emailSendService: a claimed key has no intent');
     return answerFromIntent(existing, idempotency.requestHash);
   }
+  const { intentId } = claim;
 
   let sent: SentMessage;
   try {
