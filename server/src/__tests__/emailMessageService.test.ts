@@ -12,7 +12,11 @@ import { readFile } from 'node:fs/promises';
 
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
-import { listMessagesForRecord, listUnmatchedMessages } from '../services/emailMessageService.js';
+import {
+  findMessageForUser,
+  listMessagesForRecord,
+  listUnmatchedMessages,
+} from '../services/emailMessageService.js';
 import { insertParkedMailbox } from './testUtils.js';
 
 const FILE_PREFIX = 'emailmsgsvc';
@@ -336,5 +340,47 @@ describe('listUnmatchedMessages', () => {
     expect(result.total).toBe(3);
     expect(result.data).toHaveLength(2);
     expect(result.data.map((t) => t.thread_id)).toEqual(['u-3', 'u-2']);
+  });
+});
+
+describe('findMessageForUser', () => {
+  async function withBodies(messageId: string): Promise<void> {
+    await pool.query(
+      `UPDATE email_messages
+          SET message_body_text = 'Plain body', message_body_html = '<p>Html <b>body</b></p>'
+        WHERE id = $1`,
+      [messageId],
+    );
+  }
+
+  it("returns the caller's own message with both bodies, unsanitized", async () => {
+    const messageId = await insertMessage(accountAId, 'detail-own');
+    await withBodies(messageId);
+
+    const message = await findMessageForUser(messageId, repAId);
+
+    expect(message).toMatchObject({
+      id: messageId,
+      body_text: 'Plain body',
+      body_html: '<p>Html <b>body</b></p>',
+    });
+  });
+
+  it("returns nothing for another rep's message, even one filed on a record both can see", async () => {
+    const messageId = await insertMessage(accountBId, 'detail-theirs');
+    await withBodies(messageId);
+    await link(messageId);
+
+    expect(await findMessageForUser(messageId, repAId)).toBeNull();
+  });
+
+  it('returns the caller their own private message', async () => {
+    const messageId = await insertMessage(accountAId, 'detail-private', { isPrivate: true });
+
+    expect((await findMessageForUser(messageId, repAId))?.is_private).toBe(true);
+  });
+
+  it('returns nothing for an id that names no message', async () => {
+    expect(await findMessageForUser('00000000-0000-4000-8000-0000000000d1', repAId)).toBeNull();
   });
 });

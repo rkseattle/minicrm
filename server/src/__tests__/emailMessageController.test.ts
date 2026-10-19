@@ -337,6 +337,58 @@ describe('GET /api/v1/email-messages/unmatched', () => {
   });
 });
 
+describe('GET /api/v1/email-messages/:id', () => {
+  async function messageIn(accountId: string, suffix: string): Promise<string> {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address,
+          message_body_text, message_body_html)
+       VALUES ($1, $2, $3, 'inbound', 'someone@example.net', 'Plain', '<p>Html</p>')
+       RETURNING id`,
+      [accountId, `INBOX:${suffix}`, `thread-${suffix}`],
+    );
+    return result.rows[0]!.id; // Safe: an INSERT … RETURNING returns its one row.
+  }
+
+  it("returns the caller's own message with its bodies", async () => {
+    const messageId = await messageIn(accountAId, 'body-own');
+
+    const res = await request(app)
+      .get(`/api/v1/email-messages/${messageId}`)
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toMatchObject({
+      id: messageId,
+      body_text: 'Plain',
+      body_html: '<p>Html</p>',
+    });
+  });
+
+  it("answers 404 for another rep's message, and for an admin too", async () => {
+    const messageId = await messageIn(accountBId, 'body-theirs');
+
+    const asRep = await request(app)
+      .get(`/api/v1/email-messages/${messageId}`)
+      .set('Cookie', repACookie);
+    const asAdmin = await request(app)
+      .get(`/api/v1/email-messages/${messageId}`)
+      .set('Cookie', adminCookie);
+
+    expect(asRep.status).toBe(404);
+    expect(asAdmin.status).toBe(404);
+    expect(asRep.body.message).toBeUndefined();
+  });
+
+  it('answers 400 for an id that is not a UUID', async () => {
+    const res = await request(app)
+      .get(`/api/v1/email-messages/not-a-uuid`)
+      .set('Cookie', repACookie);
+
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('POST /api/v1/email-messages/:id/links', () => {
   async function messageInMailboxA(suffix = 'link'): Promise<string> {
     const result = await pool.query<{ id: string }>(

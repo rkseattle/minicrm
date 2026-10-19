@@ -57,12 +57,26 @@ const componentSchemas = {
         type: 'string',
         nullable: true,
         description:
-          'First 200 characters of the plain-text body. Bodies themselves are never returned: the stored HTML is unsanitized.',
+          'First 200 characters of the plain-text body. Lists stop here; the bodies come only from GET /api/v1/email-messages/{id}.',
       },
       has_attachments: { type: 'boolean' },
       sent_at: { type: 'string', format: 'date-time', nullable: true },
       is_private: { type: 'boolean' },
     },
+  },
+  EmailMessageDetail: {
+    description:
+      'One message with its bodies. body_html is unsanitized: sanitize before rendering.',
+    allOf: [
+      { $ref: '#/components/schemas/EmailMessage' },
+      {
+        type: 'object',
+        properties: {
+          body_text: { type: 'string', nullable: true },
+          body_html: { type: 'string', nullable: true },
+        },
+      },
+    ],
   },
   EmailThread: {
     type: 'object',
