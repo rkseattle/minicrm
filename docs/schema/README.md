@@ -92,6 +92,7 @@
 | [public.email_sync_jobs](public.email_sync_jobs.md) | 9 | Progress of a bounded mailbox backfill. One row per backfill run; incremental syncs create none. | BASE TABLE |
 | [public.email_message_links](public.email_message_links.md) | 7 | Links a synced message to the CRM records its addresses name. record_type + record_id form a polymorphic reference with no FK constraint, because a PostgreSQL FK cannot span several parent tables. Valid record_type values: 'contact', 'lead', 'account', 'deal'. Orphan cleanup is the application's responsibility: a hard-delete of one of those records must clear its links in the same transaction, and a consolidating path — a contact merge, a lead conversion — must move them to the surviving record rather than drop them. See docs/dev/schema.md — Polymorphic FK Pattern. | BASE TABLE |
 | [public.email_message_link_suppressions](public.email_message_link_suppressions.md) | 5 | Automatic email-to-record links a user removed. Re-derivation consults this table so an unlink is not undone by a later relationship change. | BASE TABLE |
+| [public.email_send_intents](public.email_send_intents.md) | 16 | A send recorded before it reaches the provider. Holds what only this application knows about the send so the message can be filed to its record even when storing it after the send failed. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -283,6 +284,9 @@ erDiagram
 "public.email_sync_jobs" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 "public.email_message_links" }o--|| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
 "public.email_message_link_suppressions" }o--|| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
+"public.email_send_intents" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.email_send_intents" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
+"public.email_send_intents" }o--o| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
 
 "public.users" {
   uuid id ""
@@ -1197,6 +1201,24 @@ erDiagram
   varchar_16_ record_type ""
   uuid record_id ""
   timestamp_with_time_zone created_at ""
+}
+"public.email_send_intents" {
+  uuid id ""
+  uuid user_id FK ""
+  uuid connected_account_id FK ""
+  text rfc_message_id "The Message-ID this application generated, without angle brackets. Matches the Sent copy when the provider id is unknown."
+  text provider_message_id ""
+  varchar_16_ record_type ""
+  uuid record_id ""
+  text activity_notes ""
+  text actor_name ""
+  text__ to_addresses ""
+  text__ cc_addresses ""
+  varchar_16_ status "pending: not yet answered. not_sent: the provider refused and nothing went. sent: accepted, not yet filed. unconfirmed: the outcome is unknown. filed: stored, linked and given its activity."
+  uuid email_message_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  timestamp_with_time_zone filed_at ""
 }
 ```
 

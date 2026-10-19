@@ -140,7 +140,9 @@ export type AuditEventType =
   | 'email_linked'
   | 'email_unlinked'
   /** A message sent through a connected mailbox. Filed against the mailbox, as above. */
-  | 'email_sent';
+  | 'email_sent'
+  /** A send that may have gone out but was not filed, recorded so it is never unaudited. */
+  | 'email_send_unconfirmed';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

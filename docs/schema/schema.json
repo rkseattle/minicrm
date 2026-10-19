@@ -11060,6 +11060,246 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.email_send_intents",
+      "type": "BASE TABLE",
+      "comment": "A send recorded before it reaches the provider. Holds what only this application knows about the send so the message can be filed to its record even when storing it after the send failed.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "connected_account_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "rfc_message_id",
+          "type": "text",
+          "nullable": false,
+          "comment": "The Message-ID this application generated, without angle brackets. Matches the Sent copy when the provider id is unknown."
+        },
+        {
+          "name": "provider_message_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "record_type",
+          "type": "varchar(16)",
+          "nullable": true
+        },
+        {
+          "name": "record_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "activity_notes",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "actor_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "to_addresses",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]"
+        },
+        {
+          "name": "cc_addresses",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]"
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "nullable": false,
+          "default": "'pending'::character varying",
+          "comment": "pending: not yet answered. not_sent: the provider refused and nothing went. sent: accepted, not yet filed. unconfirmed: the outcome is unknown. filed: stored, linked and given its activity."
+        },
+        {
+          "name": "email_message_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "filed_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "email_send_intents_pkey",
+          "def": "CREATE UNIQUE INDEX email_send_intents_pkey ON public.email_send_intents USING btree (id)",
+          "table": "public.email_send_intents",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_send_intents_rfc_unique",
+          "def": "CREATE UNIQUE INDEX email_send_intents_rfc_unique ON public.email_send_intents USING btree (connected_account_id, rfc_message_id)",
+          "table": "public.email_send_intents",
+          "columns": [
+            "connected_account_id",
+            "rfc_message_id"
+          ]
+        },
+        {
+          "name": "email_send_intents_provider_unique",
+          "def": "CREATE UNIQUE INDEX email_send_intents_provider_unique ON public.email_send_intents USING btree (connected_account_id, provider_message_id) WHERE (provider_message_id IS NOT NULL)",
+          "table": "public.email_send_intents",
+          "columns": [
+            "connected_account_id",
+            "provider_message_id"
+          ]
+        },
+        {
+          "name": "email_send_intents_user_idx",
+          "def": "CREATE INDEX email_send_intents_user_idx ON public.email_send_intents USING btree (user_id)",
+          "table": "public.email_send_intents",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "email_send_intents_message_idx",
+          "def": "CREATE INDEX email_send_intents_message_idx ON public.email_send_intents USING btree (email_message_id) WHERE (email_message_id IS NOT NULL)",
+          "table": "public.email_send_intents",
+          "columns": [
+            "email_message_id"
+          ]
+        },
+        {
+          "name": "email_send_intents_unsettled_idx",
+          "def": "CREATE INDEX email_send_intents_unsettled_idx ON public.email_send_intents USING btree (updated_at) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'sent'::character varying])::text[]))",
+          "table": "public.email_send_intents",
+          "columns": [
+            "updated_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "email_send_intents_record_pair_check",
+          "type": "CHECK",
+          "def": "CHECK (((record_type IS NULL) = (record_id IS NULL)))",
+          "table": "public.email_send_intents",
+          "referenced_table": "",
+          "columns": [
+            "record_type",
+            "record_id"
+          ]
+        },
+        {
+          "name": "email_send_intents_record_type_check",
+          "type": "CHECK",
+          "def": "CHECK (((record_type)::text = ANY ((ARRAY['contact'::character varying, 'lead'::character varying, 'account'::character varying, 'deal'::character varying])::text[])))",
+          "table": "public.email_send_intents",
+          "referenced_table": "",
+          "columns": [
+            "record_type"
+          ]
+        },
+        {
+          "name": "email_send_intents_status_check",
+          "type": "CHECK",
+          "def": "CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'not_sent'::character varying, 'sent'::character varying, 'unconfirmed'::character varying, 'filed'::character varying])::text[])))",
+          "table": "public.email_send_intents",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "email_send_intents_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.email_send_intents",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_send_intents_connected_account_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE",
+          "table": "public.email_send_intents",
+          "referenced_table": "public.connected_accounts",
+          "columns": [
+            "connected_account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_send_intents_email_message_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL",
+          "table": "public.email_send_intents",
+          "referenced_table": "public.email_messages",
+          "columns": [
+            "email_message_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_send_intents_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.email_send_intents",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_send_intents_rfc_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (connected_account_id, rfc_message_id)",
+          "table": "public.email_send_intents",
+          "referenced_table": "",
+          "columns": [
+            "connected_account_id",
+            "rfc_message_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -12661,6 +12901,45 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.email_send_intents",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.email_send_intents",
+      "columns": [
+        "connected_account_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.connected_accounts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.email_send_intents",
+      "columns": [
+        "email_message_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.email_messages",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
     }
   ],
   "functions": [

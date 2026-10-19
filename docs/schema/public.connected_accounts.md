@@ -8,7 +8,7 @@ Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth token
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.email_messages](public.email_messages.md) [public.email_sync_jobs](public.email_sync_jobs.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.email_messages](public.email_messages.md) [public.email_sync_jobs](public.email_sync_jobs.md) [public.email_send_intents](public.email_send_intents.md) |  |  |
 | user_id | uuid |  | false |  | [public.users](public.users.md) |  |
 | provider | varchar(16) |  | false |  |  |  |
 | email_address | text |  | false |  |  |  |
@@ -56,6 +56,7 @@ erDiagram
 
 "public.email_messages" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 "public.email_sync_jobs" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
+"public.email_send_intents" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 "public.connected_accounts" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.connected_accounts" {
@@ -105,6 +106,24 @@ erDiagram
   timestamp_with_time_zone completed_at ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.email_send_intents" {
+  uuid id ""
+  uuid user_id FK ""
+  uuid connected_account_id FK ""
+  text rfc_message_id "The Message-ID this application generated, without angle brackets. Matches the Sent copy when the provider id is unknown."
+  text provider_message_id ""
+  varchar_16_ record_type ""
+  uuid record_id ""
+  text activity_notes ""
+  text actor_name ""
+  text__ to_addresses ""
+  text__ cc_addresses ""
+  varchar_16_ status "pending: not yet answered. not_sent: the provider refused and nothing went. sent: accepted, not yet filed. unconfirmed: the outcome is unknown. filed: stored, linked and given its activity."
+  uuid email_message_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  timestamp_with_time_zone filed_at ""
 }
 "public.users" {
   uuid id ""

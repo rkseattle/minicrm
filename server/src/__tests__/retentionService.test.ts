@@ -203,4 +203,74 @@ describe('runRetentionPurge', () => {
     expect(survivingIds).not.toContain(idFor(1));
     expect(survivingIds).not.toContain(idFor(2));
   });
+
+  it('purges send intents past their window, whatever their status, and keeps recent ones', async () => {
+    const account = await createImapAccount(
+      userId,
+      {
+        email_address: `${FILE_PREFIX}-sender@example.com`,
+        host: 'imap.example.com',
+        port: 993,
+        username: `${FILE_PREFIX}-sender@example.com`,
+        password: 'imap-password-value',
+        secure: true,
+      },
+      { id: userId, name: 'Retention Svc User' },
+    );
+    await parkFromScheduler(account.id);
+    await pool.query(
+      `INSERT INTO email_send_intents
+         (user_id, actor_name, connected_account_id, rfc_message_id, status, created_at)
+       VALUES ($1, 'Retention Svc User', $2, 'old-unconfirmed@x', 'unconfirmed',
+               now() - interval '31 days'),
+              ($1, 'Retention Svc User', $2, 'old-filed@x', 'filed', now() - interval '31 days'),
+              ($1, 'Retention Svc User', $2, 'recent@x', 'unconfirmed', now() - interval '29 days')`,
+      [userId, account.id],
+    );
+
+    await expect(runRetentionPurge()).resolves.toBeUndefined();
+
+    const surviving = await pool.query<{ rfc_message_id: string }>(
+      'SELECT rfc_message_id FROM email_send_intents WHERE connected_account_id = $1',
+      [account.id],
+    );
+    expect(surviving.rows.map((row) => row.rfc_message_id)).toEqual(['recent@x']);
+  });
+
+  it('reports an unsettled intent unconfirmed before purging it, so it is never unaudited', async () => {
+    const account = await createImapAccount(
+      userId,
+      {
+        email_address: `${FILE_PREFIX}-unsettled@example.com`,
+        host: 'imap.example.com',
+        port: 993,
+        username: `${FILE_PREFIX}-unsettled@example.com`,
+        password: 'imap-password-value',
+        secure: true,
+      },
+      { id: userId, name: 'Retention Svc User' },
+    );
+    await parkFromScheduler(account.id);
+    await pool.query(
+      `INSERT INTO email_send_intents
+         (user_id, actor_name, connected_account_id, rfc_message_id, status, created_at,
+          updated_at)
+       VALUES ($1, 'Retention Svc User', $2, 'never-swept@x', 'sent',
+               now() - interval '31 days', now() - interval '31 days')`,
+      [userId, account.id],
+    );
+
+    await expect(runRetentionPurge()).resolves.toBeUndefined();
+
+    const audited = await pool.query(
+      `SELECT 1 FROM audit_log WHERE event_type = 'email_send_unconfirmed' AND record_id = $1`,
+      [account.id],
+    );
+    const remaining = await pool.query(
+      'SELECT 1 FROM email_send_intents WHERE connected_account_id = $1',
+      [account.id],
+    );
+    expect(audited.rowCount).toBe(1);
+    expect(remaining.rowCount).toBe(0);
+  });
 });

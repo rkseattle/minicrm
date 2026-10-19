@@ -1,0 +1,478 @@
+/**
+ * The durable half of a send: what only this application knows about it, recorded before
+ * the provider is called, and the one routine that files a sent message from it.
+ *
+ * A send writes to the provider and to this database, and nothing makes the pair atomic.
+ * The intent is what survives the second write failing: the send path files from it when
+ * it can, and the sync engine files from it when the Sent copy arrives.
+ *
+ * Status moves only along these edges, each guarded in its UPDATE's WHERE clause:
+ *
+ *   pending → not_sent      the provider refused and nothing went
+ *   pending → sent          the provider accepted; its id is recorded
+ *   pending → unconfirmed   the outcome is unknown, or the send never answered
+ *   sent    → unconfirmed   accepted but still unfiled after an hour
+ *   pending | sent | unconfirmed → filed   exactly once, by whichever path locks it first
+ *
+ * Lock order is the intent, then the message. Both filing paths take it that way, which
+ * is what keeps them from deadlocking each other on one message.
+ */
+
+import type { EmailLinkRecordType } from '@minicrm/shared/schemas/emailMessageSchema.js';
+
+import type { PoolClient } from 'pg';
+
+import pool from '../db.js';
+import logger from '../logger.js';
+import { insertActivity } from './activityService.js';
+import { writeAuditEntry, type AuditActor } from './auditService.js';
+import { clearDerivedLinkSuppression } from './emailMatchingService.js';
+import { findLinkedRecordOwner } from './emailMessageService.js';
+import type { NormalizedMessage } from './mail/mailProvider.js';
+import { truncate } from './mail/messageBody.js';
+import { setRlsUserIdTo } from './rlsContextService.js';
+
+type SendIntentStatus = 'pending' | 'not_sent' | 'sent' | 'unconfirmed' | 'filed';
+
+/** How long a send may stay unanswered or unfiled before it is reported unconfirmed. */
+const INTENT_UNSETTLED_AFTER_MS = 60 * 60 * 1000;
+
+/** `activities.subject` is varchar(255); a template subject can render far longer. */
+const ACTIVITY_SUBJECT_MAX = 255;
+
+/** What an activity names a message whose subject is empty; the column needs one. */
+const UNTITLED_SUBJECT = '(no subject)';
+
+/** Record types an activity can be filed against; `activities` has no lead column. */
+const ACTIVITY_RECORD_FIELDS = {
+  contact: 'contact_id',
+  account: 'account_id',
+  deal: 'deal_id',
+} as const satisfies Partial<Record<EmailLinkRecordType, string>>;
+
+/** Statuses a Sent copy can still be filed from. */
+const RECONCILABLE: readonly SendIntentStatus[] = ['pending', 'sent', 'unconfirmed'];
+
+export interface SendIntent {
+  id: string;
+  userId: string;
+  connectedAccountId: string;
+  rfcMessageId: string;
+  providerMessageId: string | null;
+  recordType: EmailLinkRecordType | null;
+  recordId: string | null;
+  activityNotes: string | null;
+  actorName: string;
+  status: SendIntentStatus;
+}
+
+export interface NewSendIntent {
+  userId: string;
+  actorName: string;
+  connectedAccountId: string;
+  /** Bare, as `normalizeMessageId` returns it and as sync stores it. */
+  rfcMessageId: string;
+  recordType: EmailLinkRecordType | null;
+  recordId: string | null;
+  activityNotes: string | null;
+  toAddresses: readonly string[];
+  ccAddresses: readonly string[];
+}
+
+/** The stored message a filing attaches to. */
+export interface FilableMessage {
+  id: string;
+  providerMessageId: string;
+  subject: string | null;
+  bodyText: string | null;
+  toAddresses: readonly string[];
+  ccAddresses: readonly string[];
+}
+
+interface SendIntentRow {
+  id: string;
+  user_id: string;
+  connected_account_id: string;
+  rfc_message_id: string;
+  provider_message_id: string | null;
+  record_type: EmailLinkRecordType | null;
+  record_id: string | null;
+  activity_notes: string | null;
+  actor_name: string;
+  status: SendIntentStatus;
+}
+
+const INTENT_COLUMNS = `id, user_id, connected_account_id, rfc_message_id, provider_message_id,
+  record_type, record_id, activity_notes, actor_name, status`;
+
+function toSendIntent(row: SendIntentRow): SendIntent {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    connectedAccountId: row.connected_account_id,
+    rfcMessageId: row.rfc_message_id,
+    providerMessageId: row.provider_message_id,
+    recordType: row.record_type,
+    recordId: row.record_id,
+    activityNotes: row.activity_notes,
+    actorName: row.actor_name,
+    status: row.status,
+  };
+}
+
+/** Records a send about to be handed to the provider. @returns the intent's id. */
+export async function createSendIntent(input: NewSendIntent): Promise<string> {
+  const result = await pool.query<{ id: string }>(
+    `INSERT INTO email_send_intents
+       (user_id, actor_name, connected_account_id, rfc_message_id, record_type, record_id,
+        activity_notes, to_addresses, cc_addresses)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING id`,
+    [
+      input.userId,
+      input.actorName,
+      input.connectedAccountId,
+      input.rfcMessageId,
+      input.recordType,
+      input.recordId,
+      input.activityNotes,
+      input.toAddresses,
+      input.ccAddresses,
+    ],
+  );
+  return result.rows[0]!.id; // Safe: an INSERT … RETURNING returns its one row.
+}
+
+/** Records the provider's id for a message not yet submitted, so even an unanswered send has it. */
+export async function recordPreparedMessageId(
+  intentId: string,
+  providerMessageId: string,
+): Promise<void> {
+  await pool.query(
+    `UPDATE email_send_intents SET provider_message_id = $2, updated_at = now()
+      WHERE id = $1 AND status = 'pending'`,
+    [intentId, providerMessageId],
+  );
+}
+
+/** The provider accepted the message. */
+export async function markIntentSent(intentId: string, providerMessageId: string): Promise<void> {
+  await pool.query(
+    `UPDATE email_send_intents
+        SET status = 'sent', provider_message_id = $2, updated_at = now()
+      WHERE id = $1 AND status = 'pending'`,
+    [intentId, providerMessageId],
+  );
+}
+
+/** The provider refused and nothing went. Drops the copy of the message it no longer needs. */
+export async function markIntentNotSent(intentId: string): Promise<void> {
+  await pool.query(
+    `UPDATE email_send_intents
+        SET status = 'not_sent', activity_notes = NULL, to_addresses = '{}',
+            cc_addresses = '{}', updated_at = now()
+      WHERE id = $1 AND status = 'pending'`,
+    [intentId],
+  );
+}
+
+/** Which intents to report unconfirmed: one by id, or every one left unsettled too long. */
+type UnconfirmTarget = { intentId: string } | { unsettledForMs: number };
+
+/** Selections, fixed rather than composed, so no caller's value ever reaches the SQL text. */
+const UNCONFIRM_ONE = `id = $1 AND status = 'pending'`;
+const UNCONFIRM_STALE = `status IN ('pending', 'sent')
+  AND updated_at < now() - ($1 || ' milliseconds')::interval`;
+
+/**
+ * Moves intents to `unconfirmed` and audits each, so a send that may have gone out is
+ * recorded even if it is never filed. The recipients move into the audit entry.
+ */
+async function unconfirm(target: UnconfirmTarget): Promise<number> {
+  const [condition, value] =
+    'intentId' in target
+      ? [UNCONFIRM_ONE, target.intentId]
+      : [UNCONFIRM_STALE, target.unsettledForMs];
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const moved = await client.query<{
+      id: string;
+      user_id: string;
+      actor_name: string;
+      connected_account_id: string;
+      email_address: string;
+      provider_confirmed: boolean;
+      to_addresses: string[];
+      cc_addresses: string[];
+      record_type: string | null;
+      record_id: string | null;
+    }>(
+      `WITH moved AS (
+         SELECT id, status AS previous_status, to_addresses, cc_addresses
+           FROM email_send_intents
+          WHERE ${condition}
+          ORDER BY id
+            FOR UPDATE
+       )
+       UPDATE email_send_intents i
+          SET status = 'unconfirmed', to_addresses = '{}', cc_addresses = '{}',
+              updated_at = now()
+         FROM moved, connected_accounts ca
+        WHERE i.id = moved.id AND ca.id = i.connected_account_id
+       RETURNING i.id, i.user_id, i.actor_name, i.connected_account_id, ca.email_address,
+                 moved.previous_status = 'sent' AS provider_confirmed,
+                 moved.to_addresses, moved.cc_addresses, i.record_type, i.record_id`,
+      [value],
+    );
+    for (const row of moved.rows) {
+      await writeAuditEntry(client, {
+        recordType: 'connected_account',
+        recordId: row.connected_account_id,
+        recordName: row.email_address,
+        eventType: 'email_send_unconfirmed',
+        fieldName: 'email_send_intent',
+        newValue: JSON.stringify({
+          intent_id: row.id,
+          provider_confirmed: row.provider_confirmed,
+          to: row.to_addresses,
+          cc: row.cc_addresses,
+          sent_from_record: row.record_type ? `${row.record_type}:${row.record_id}` : null,
+        }),
+        changedById: row.user_id,
+        changedByName: row.actor_name,
+      });
+    }
+    await client.query('COMMIT');
+    return moved.rows.length;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** The provider did not say whether the message went. */
+export async function markIntentUnconfirmed(intentId: string): Promise<void> {
+  await unconfirm({ intentId });
+}
+
+/**
+ * Reports every send left unanswered or unfiled for an hour as unconfirmed.
+ * Runs on every sync scheduler tick, before the feature flag is consulted, and again
+ * before the retention purge, so no intent is deleted without its audit entry.
+ *
+ * @returns how many intents moved.
+ */
+export async function sweepUnsettledIntents(): Promise<number> {
+  return unconfirm({ unsettledForMs: INTENT_UNSETTLED_AFTER_MS });
+}
+
+/** Locks one intent for filing. @returns it, whatever its status. */
+export async function lockIntent(client: PoolClient, intentId: string): Promise<SendIntent | null> {
+  const result = await client.query<SendIntentRow>(
+    `SELECT ${INTENT_COLUMNS} FROM email_send_intents WHERE id = $1 FOR UPDATE`,
+    [intentId],
+  );
+  return result.rows[0] ? toSendIntent(result.rows[0]) : null;
+}
+
+/**
+ * Locks every intent on a mailbox that a page of Sent copies could file, in id order so two
+ * concurrent pages cannot deadlock each other.
+ */
+export async function lockReconcilableIntents(
+  client: PoolClient,
+  accountId: string,
+  providerMessageIds: readonly string[],
+  rfcMessageIds: readonly string[],
+): Promise<SendIntent[]> {
+  if (providerMessageIds.length === 0 && rfcMessageIds.length === 0) return [];
+  const result = await client.query<SendIntentRow>(
+    `SELECT ${INTENT_COLUMNS} FROM email_send_intents
+      WHERE connected_account_id = $1
+        AND status = ANY($2)
+        AND (provider_message_id = ANY($3) OR rfc_message_id = ANY($4))
+      ORDER BY id
+        FOR UPDATE`,
+    [accountId, RECONCILABLE, providerMessageIds, rfcMessageIds],
+  );
+  return result.rows.map(toSendIntent);
+}
+
+/**
+ * Files a stored message from its intent: the record it was sent from, its Email activity,
+ * and its `email_sent` audit entry. The caller holds the intent's lock, and must make this
+ * the last work in its transaction: it leaves the row-security user set to the sender.
+ *
+ * A record deleted since the send is skipped rather than failing the filing: the message
+ * is still the user's, and the address matches still apply.
+ *
+ * @returns the activity's id, for the caller to announce after its commit; null when none.
+ */
+export async function fileSentMessage(
+  client: PoolClient,
+  intent: SendIntent,
+  message: FilableMessage,
+  accountEmailAddress: string,
+): Promise<string | null> {
+  const actor: AuditActor = { id: intent.userId, name: intent.actorName };
+  const record =
+    intent.recordType !== null &&
+    intent.recordId !== null &&
+    (await findLinkedRecordOwner(intent.recordType, intent.recordId, client)) !== null
+      ? { type: intent.recordType, id: intent.recordId }
+      : null;
+
+  if (record) {
+    // Sent from a record, so filed there whatever its addresses match: a deal has none,
+    // and a contact may have been written to at an address it does not hold.
+    await client.query(
+      `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
+       VALUES ($1, $2, $3, 'manual')
+       ON CONFLICT (email_message_id, record_type, record_id) DO NOTHING`,
+      [message.id, record.type, record.id],
+    );
+    await clearDerivedLinkSuppression(client, message.id, record.type, record.id);
+  }
+
+  const links = await client.query<{ record_type: string; record_id: string }>(
+    `SELECT record_type, record_id FROM email_message_links
+      WHERE email_message_id = $1 ORDER BY record_type, record_id`,
+    [message.id],
+  );
+
+  const activityField =
+    record && record.type !== 'lead' ? ACTIVITY_RECORD_FIELDS[record.type] : null;
+  let activityId: string | null = null;
+  if (record && activityField) {
+    // The activity is the sender's own write and goes through their row policies; a sync
+    // has no request to take the user from. Left set: a caller files last in its transaction.
+    await setRlsUserIdTo(client, intent.userId);
+    activityId = await insertActivity(
+      client,
+      {
+        type: 'Email',
+        direction: 'Outbound',
+        subject: truncate(message.subject?.trim() || UNTITLED_SUBJECT, ACTIVITY_SUBJECT_MAX),
+        notes: (intent.activityNotes ?? message.bodyText) || undefined,
+        [activityField]: record.id,
+        owner_id: intent.userId,
+      },
+      actor,
+    );
+  }
+
+  await writeAuditEntry(client, {
+    recordType: 'connected_account',
+    recordId: intent.connectedAccountId,
+    recordName: accountEmailAddress,
+    eventType: 'email_sent',
+    fieldName: 'email_message',
+    newValue: JSON.stringify({
+      message_id: message.id,
+      recipient_count: message.toAddresses.length + message.ccAddresses.length,
+      to: message.toAddresses,
+      cc: message.ccAddresses,
+      linked_records: links.rows.map((link) => `${link.record_type}:${link.record_id}`),
+    }),
+    changedById: actor.id,
+    changedByName: actor.name,
+  });
+
+  await client.query(
+    `UPDATE email_send_intents
+        SET status = 'filed', filed_at = now(), updated_at = now(), email_message_id = $2,
+            provider_message_id = COALESCE(provider_message_id, $3),
+            activity_notes = NULL, to_addresses = '{}', cc_addresses = '{}'
+      WHERE id = $1`,
+    [intent.id, message.id, message.providerMessageId],
+  );
+
+  return activityId;
+}
+
+/**
+ * Files each locked intent from the Sent copy in the page just stored.
+ *
+ * The copy is found in the page itself, not by a table search: the page is what matched
+ * the intent, and a search by Message-ID alone could pick another copy of the same mail.
+ * The provider id wins over the Message-ID, which a provider may have rewritten.
+ *
+ * Each intent is filed under its own savepoint, so one that cannot be filed is logged and
+ * left for the sweep rather than failing the page.
+ *
+ * @returns the activities created, for the caller to announce after its commit.
+ */
+export async function fileReconciledIntents(
+  client: PoolClient,
+  accountId: string,
+  intents: readonly SendIntent[],
+  page: readonly NormalizedMessage[],
+): Promise<string[]> {
+  if (intents.length === 0) return [];
+
+  const copies = new Map<string, NormalizedMessage>();
+  for (const intent of intents) {
+    const copy =
+      page.find((message) => message.providerMessageId === intent.providerMessageId) ??
+      page.find((message) => message.rfcMessageId === intent.rfcMessageId);
+    if (copy) copies.set(intent.id, copy);
+  }
+
+  const stored = await client.query<{
+    id: string;
+    provider_message_id: string;
+    subject: string | null;
+    message_body_text: string | null;
+    to_addresses: string[];
+    cc_addresses: string[];
+    email_address: string;
+  }>(
+    `SELECT m.id, m.provider_message_id, m.subject, m.message_body_text, m.to_addresses,
+            m.cc_addresses, ca.email_address
+       FROM email_messages m
+       JOIN connected_accounts ca ON ca.id = m.connected_account_id
+      WHERE m.connected_account_id = $1 AND m.provider_message_id = ANY($2)`,
+    [accountId, [...copies.values()].map((copy) => copy.providerMessageId)],
+  );
+  const rowsByProviderId = new Map(stored.rows.map((row) => [row.provider_message_id, row]));
+
+  const activityIds: string[] = [];
+  for (const intent of intents) {
+    const copy = copies.get(intent.id);
+    const row = copy ? rowsByProviderId.get(copy.providerMessageId) : undefined;
+    if (!row) {
+      // The page that locked this intent was stored in this transaction, so its copy is
+      // here; reaching this means the two lookups disagree, which must not pass silently.
+      logger.error({ intentId: intent.id }, 'emailSendIntentService: matched copy not stored');
+      continue;
+    }
+    // One send's bookkeeping must not roll back the page it rides on: a failure here would
+    // otherwise discard every message and the cursor, and stall the mailbox on every retry.
+    await client.query('SAVEPOINT intent_filing');
+    try {
+      const activityId = await fileSentMessage(
+        client,
+        intent,
+        {
+          id: row.id,
+          providerMessageId: row.provider_message_id,
+          subject: row.subject,
+          bodyText: row.message_body_text,
+          toAddresses: row.to_addresses,
+          ccAddresses: row.cc_addresses,
+        },
+        row.email_address,
+      );
+      await client.query('RELEASE SAVEPOINT intent_filing');
+      if (activityId) activityIds.push(activityId);
+    } catch (err) {
+      await client.query('ROLLBACK TO SAVEPOINT intent_filing');
+      // Left unfiled: the sweep reports it unconfirmed, and its audit records the send.
+      logger.error({ err, intentId: intent.id }, 'emailSendIntentService: could not file');
+    }
+  }
+  return activityIds;
+}

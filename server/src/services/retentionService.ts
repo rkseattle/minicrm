@@ -9,6 +9,8 @@
  *   webhook_delivery_logs — 30 days  (keyed on delivered_at)
  *   import_jobs           — 180 days (keyed on created_at; completed jobs only)
  *   email_sync_jobs       — 180 days (keyed on created_at; finished jobs only)
+ *   email_send_intents    — 30 days  (keyed on created_at; a Sent copy arriving later
+ *                           than this is stored but no longer filed to its record)
  *   ai_sessions           — configurable (default 90 days, min 30); reads
  *                           ai_configuration.ai_session_retention_days each run.
  *                           Cascade delete removes ai_messages automatically.
@@ -21,6 +23,7 @@
 import pool from '../db.js';
 import logger from '../logger.js';
 import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
+import { sweepUnsettledIntents } from './emailSendIntentService.js';
 
 /** Fallback AI session retention window when ai_configuration has no row. */
 const AI_SESSION_RETENTION_DAYS_DEFAULT = 90;
@@ -41,6 +44,7 @@ const RETENTION_DAYS = {
   webhook_delivery_logs: 30,
   import_jobs: 180,
   email_sync_jobs: 180,
+  email_send_intents: 30,
 } as const;
 
 /**
@@ -97,6 +101,22 @@ async function purgeEmailSyncJobs(): Promise<number> {
       WHERE created_at < now() - ($1 || ' days')::interval
         AND status IN ('complete', 'failed')`,
     [RETENTION_DAYS.email_sync_jobs],
+  );
+  return result.rowCount ?? 0;
+}
+
+/**
+ * Deletes send intents older than the retention window, whatever their status.
+ *
+ * Swept first, so an unsettled intent is reported unconfirmed — the audit record that
+ * outlives the row — even when the scheduler that normally sweeps has not been running.
+ */
+async function purgeEmailSendIntents(): Promise<number> {
+  await sweepUnsettledIntents();
+  const result = await pool.query(
+    `DELETE FROM email_send_intents
+      WHERE created_at < now() - ($1 || ' days')::interval`,
+    [RETENTION_DAYS.email_send_intents],
   );
   return result.rowCount ?? 0;
 }
@@ -248,6 +268,13 @@ export async function runRetentionPurge(): Promise<void> {
     logger.info({ deleted: emailSyncJobsDeleted }, 'retention: email_sync_jobs purged');
   } catch (err) {
     logger.error({ err }, 'retention: failed to purge email_sync_jobs');
+  }
+
+  try {
+    const sendIntentsDeleted = await purgeEmailSendIntents();
+    logger.info({ deleted: sendIntentsDeleted }, 'retention: email_send_intents purged');
+  } catch (err) {
+    logger.error({ err }, 'retention: failed to purge email_send_intents');
   }
 
   try {

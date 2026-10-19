@@ -8,6 +8,9 @@ import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import { ResponseBodyError } from 'openid-client';
 
+import type { PoolClient } from 'pg';
+import { vi } from 'vitest';
+
 import pool from '../db.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
@@ -495,4 +498,46 @@ export function deadGrantError(): Error {
     message: 'invalid_grant',
     error: 'invalid_grant',
   });
+}
+
+/** The send path's own message upsert, which nothing else issues. */
+const SEND_PATH_MESSAGE_INSERT = 'INSERT INTO email_messages AS m';
+
+/**
+ * Makes every statement containing `fragment`, issued on a client checked out with
+ * `await pool.connect()`, fail as a storage outage would. Undo with `vi.restoreAllMocks()`.
+ *
+ * Those clients are proxied rather than patched, so a pooled client returns to the pool
+ * unchanged. `pool.query` checks out through the callback form, which passes straight
+ * through.
+ */
+export function failClientQueriesContaining(fragment: string): void {
+  const realConnect = pool.connect.bind(pool);
+  // Safe: pg's connect has a callback overload, which this calls with one.
+  const connectWithCallback = realConnect as unknown as (callback: unknown) => void;
+  const failing = async (): Promise<PoolClient> => {
+    const client = await realConnect();
+    return new Proxy(client, {
+      get(target, property, receiver): unknown {
+        if (property === 'query') {
+          return (text: unknown, ...rest: unknown[]): unknown =>
+            typeof text === 'string' && text.includes(fragment)
+              ? Promise.reject(new Error('storage down'))
+              : // Safe: forwards the caller's arguments to the real query unchanged.
+                (target.query as (...args: unknown[]) => unknown)(text, ...rest);
+        }
+        const value: unknown = Reflect.get(target, property, receiver);
+        // Safe: the typeof check above narrows this to a function.
+        return typeof value === 'function' ? (value as () => unknown).bind(target) : value;
+      },
+    });
+  };
+  // Safe: both overloads of connect are honored; the cast only satisfies the spy's type.
+  vi.spyOn(pool, 'connect').mockImplementation(((callback?: unknown) =>
+    callback ? connectWithCallback(callback) : failing()) as typeof pool.connect);
+}
+
+/** Makes the send path's message upsert fail, as a storage outage after the send would. */
+export function failMessageInsert(): void {
+  failClientQueriesContaining(SEND_PATH_MESSAGE_INSERT);
 }

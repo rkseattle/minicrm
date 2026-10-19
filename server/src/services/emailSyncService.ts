@@ -43,6 +43,12 @@ import {
   getActiveEmailSyncJob,
   updateEmailSyncJobProgress,
 } from './emailSyncJobService.js';
+import { announceActivityCreated } from './activityService.js';
+import {
+  fileReconciledIntents,
+  lockReconcilableIntents,
+  sweepUnsettledIntents,
+} from './emailSendIntentService.js';
 import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js';
 import { matchMessagesToRecords } from './emailMatchingService.js';
 import type { MatchableMessage } from './emailMatchingService.js';
@@ -283,8 +289,19 @@ async function commitPage(
   dealAutoLink: boolean,
 ): Promise<number> {
   const client = await pool.connect();
+  let activityIds: string[] = [];
+  let createdCount = 0;
   try {
     await client.query('BEGIN');
+
+    // Locked before the insert, in the order the send path takes them: intent, then message.
+    const outbound = page.messages.filter((message) => message.direction === 'outbound');
+    const intents = await lockReconcilableIntents(
+      client,
+      accountId,
+      outbound.map((message) => message.providerMessageId),
+      outbound.flatMap((message) => (message.rfcMessageId ? [message.rfcMessageId] : [])),
+    );
 
     const created =
       page.messages.length > 0 ? await storeMessages(client, accountId, page.messages) : [];
@@ -292,6 +309,8 @@ async function commitPage(
     // Same transaction as the insert: a message and the records it names become visible
     // together, and nothing re-reads a message once its provider id is stored.
     await matchMessagesToRecords(client, created, dealAutoLink);
+
+    createdCount = created.length;
 
     // The lease is extended, not cleared. claimAccountsDueForSync pushes
     // sync_next_attempt_at forward to reserve the mailbox, and commitPage runs once per
@@ -310,14 +329,24 @@ async function commitPage(
       [accountId, page.cursor, SYNC_CLAIM_LEASE_MS],
     );
 
+    // A send whose own filing failed is filed here, from what its intent kept. Last, because
+    // filing leaves the row-security user set to the sender.
+    activityIds = await fileReconciledIntents(client, accountId, intents, outbound);
+
     await client.query('COMMIT');
-    return created.length;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
   }
+
+  for (const activityId of activityIds) {
+    void announceActivityCreated(activityId).catch((err: unknown) => {
+      logger.warn({ err, activityId }, 'emailSyncService: activity side effects failed');
+    });
+  }
+  return createdCount;
 }
 
 /**
@@ -544,6 +573,14 @@ export async function syncDueAccounts(
   provider?: MailProvider,
   refresh: TokenRefresh = refreshAccessToken,
 ): Promise<SyncOutcome[]> {
+  // Before the flag: sends made while it was on must still be audited after it goes off.
+  try {
+    await sweepUnsettledIntents();
+  } catch (err) {
+    // A failed sweep only delays an unconfirmed report; it must not stop mail syncing.
+    logger.warn({ err }, 'emailSyncService: send-intent sweep failed');
+  }
+
   if (!(await isFeatureEnabled(EMAIL_SYNC_FLAG))) return [];
 
   const claimed = await claimAccountsDueForSync(MAX_ACCOUNTS_PER_TICK);
