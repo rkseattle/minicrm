@@ -16,9 +16,15 @@ import {
   type ClaimedSyncAccount,
 } from '../services/connectedAccountService.js';
 import {
+  claimSendIntent,
+  DEFAULT_EMAIL_SEND_MAX_PER_HOUR,
+  emailSendMaxPerHour,
   fileReconciledIntents,
   lockReconcilableIntents,
+  markIntentNotSent,
+  SEND_LIMIT_LOCK_NAMESPACE,
   sweepUnsettledIntents,
+  type NewSendIntent,
 } from '../services/emailSendIntentService.js';
 import { setRlsUserIdTo } from '../services/rlsContextService.js';
 import {
@@ -52,7 +58,13 @@ import {
 import { createUser } from '../services/userService.js';
 import type { SendEmailInput } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
-import { clearAuditLogFor, failClientQueriesContaining, failMessageInsert } from './testUtils.js';
+import {
+  clearAuditLogFor,
+  failClientQueriesContaining,
+  failMessageInsert,
+  insertParkedMailbox,
+  stubClientQueries,
+} from './testUtils.js';
 
 // The email feature is off for the whole file: a sweep must run without it, and with it off
 // syncDueAccounts claims no other suite's mailbox.
@@ -244,6 +256,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await pool.query('DELETE FROM email_send_ledger WHERE user_id = $1', [userId]);
   await pool.query('DELETE FROM email_send_intents WHERE connected_account_id = $1', [accountId]);
   await pool.query('DELETE FROM email_messages WHERE connected_account_id = $1', [accountId]);
   await pool.query('DELETE FROM activities WHERE owner_id = $1', [userId]);
@@ -739,6 +752,21 @@ async function waitForLockWaiter(): Promise<void> {
   throw new Error('no session ever waited on the intent lock');
 }
 
+/** Waits until another session is blocked on a user's send-limit lock, and no other lock. */
+async function waitForSendLimitLockWaiter(): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const waiting = await pool.query(
+      `SELECT 1 FROM pg_locks
+        WHERE locktype = 'advisory' AND NOT granted AND classid = $1`,
+      [SEND_LIMIT_LOCK_NAMESPACE],
+    );
+    if ((waiting.rowCount ?? 0) > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error('no session ever waited on the send-limit lock');
+}
+
 /** Fails every `pool.query` whose text contains `fragment`; undo with `vi.restoreAllMocks()`. */
 function failQueriesContaining(fragment: string): void {
   // Safe: called below with exactly the arguments the caller passed.
@@ -1049,7 +1077,7 @@ describe('idempotent send', () => {
   it('says not sent, not in progress, when a concurrent retry was refused first', async () => {
     const key = keyed();
     await intentUnderKey(key, 'not_sent');
-    noRowsFor("SET status = 'pending', actor_name");
+    stubClientQueries(["SET status = 'pending', actor_name"], 'empty');
     const { provider, sent } = sender(async () => ({
       providerMessageId: 'gm-never',
       threadId: null,
@@ -1062,11 +1090,11 @@ describe('idempotent send', () => {
   });
 
   it('fails loudly when a key it could not claim has no intent', async () => {
-    noRowsFor(
-      'ON CONFLICT (user_id, idempotency_key)',
-      "SET status = 'pending', actor_name",
-      'FROM email_send_intents i',
+    stubClientQueries(
+      ['ON CONFLICT (user_id, idempotency_key)', "SET status = 'pending', actor_name"],
+      'empty',
     );
+    noRowsFor('FROM email_send_intents i');
     const { provider, sent } = sender(async () => ({
       providerMessageId: 'gm-orphan',
       threadId: null,
@@ -1097,5 +1125,276 @@ describe('idempotent send', () => {
 
       expect(await replaySend(userId, key)).toEqual(first);
     });
+  });
+});
+
+describe('the hourly send limit', () => {
+  afterEach(() => {
+    delete process.env.EMAIL_SEND_MAX_PER_HOUR;
+    delete process.env.TEST_RATE_LIMIT;
+  });
+
+  function newIntent(idempotencyKey: string = randomUUID()): NewSendIntent {
+    return {
+      userId,
+      actorName: 'Intent Rep',
+      connectedAccountId: accountId,
+      rfcMessageId: `${randomUUID()}@example.com`,
+      recordType: null,
+      recordId: null,
+      activityNotes: null,
+      toAddresses: ['someone@example.net'],
+      ccAddresses: [],
+      idempotencyKey,
+      requestHash: 'limit-request',
+      unresolvedMergeTags: [],
+    };
+  }
+
+  /** An earlier send, with the ledger entry its claim would have written unless refused. */
+  async function existingIntent(
+    status: string,
+    ageMinutes = 0,
+    mailbox: string = accountId,
+  ): Promise<void> {
+    const intent = await pool.query<{ id: string }>(
+      `INSERT INTO email_send_intents
+         (idempotency_key, request_hash, user_id, actor_name, connected_account_id,
+          rfc_message_id, status, created_at)
+       VALUES (gen_random_uuid(), '', $1, 'Intent Rep', $2, $3, $4,
+               now() - ($5 || ' minutes')::interval)
+       RETURNING id`,
+      [userId, mailbox, `${randomUUID()}@example.com`, status, ageMinutes],
+    );
+    if (status === 'not_sent') return;
+    await pool.query(
+      `INSERT INTO email_send_ledger (user_id, intent_id, created_at)
+       VALUES ($1, $2, now() - ($3 || ' minutes')::interval)`,
+      // Safe: an INSERT … RETURNING returns its one row.
+      [userId, intent.rows[0]!.id, ageMinutes],
+    );
+  }
+
+  async function intentCount(): Promise<number> {
+    return countRows('SELECT 1 FROM email_send_intents WHERE user_id = $1', [userId]);
+  }
+
+  it('refuses the claim past the ceiling, keeps nothing, and says when to retry', async () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '2';
+    await claimSendIntent(newIntent(), true);
+    await claimSendIntent(newIntent(), true);
+
+    const third = await claimSendIntent(newIntent(), true);
+
+    expect(third.kind).toBe('limited');
+    // Safe: narrowed by the assertion above.
+    const { retryAfterSeconds } = third as { retryAfterSeconds: number };
+    expect(retryAfterSeconds).toBeGreaterThan(60 * 59);
+    expect(retryAfterSeconds).toBeLessThanOrEqual(60 * 60);
+    expect(await intentCount()).toBe(2);
+  });
+
+  it('counts ledger entries, not intents, whatever their status', async () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '3';
+    for (const status of ['not_sent', 'not_sent', 'not_sent']) await existingIntent(status);
+    expect((await claimSendIntent(newIntent(), true)).kind).toBe('claimed');
+
+    for (const status of ['sent', 'unconfirmed']) await existingIntent(status);
+    expect((await claimSendIntent(newIntent(), true)).kind).toBe('limited');
+  });
+
+  it('ignores sends older than the hour', async () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    await existingIntent('filed', 61);
+
+    expect((await claimSendIntent(newIntent(), true)).kind).toBe('claimed');
+  });
+
+  it('counts a refused send retried under its key, and leaves it refused when over', async () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    const key = randomUUID();
+    const first = await claimSendIntent(newIntent(key), true);
+    // Safe: the first claim of a fresh key under the ceiling is always claimed.
+    await markIntentNotSent((first as { intentId: string }).intentId);
+    await existingIntent('filed');
+
+    expect((await claimSendIntent(newIntent(key), true)).kind).toBe('limited');
+    const status = await pool.query<{ status: string }>(
+      'SELECT status FROM email_send_intents WHERE idempotency_key = $1',
+      [key],
+    );
+    expect(status.rows[0]?.status).toBe('not_sent');
+  });
+
+  it('waits for a concurrent claim by the same user, then counts it', async () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    const holder = await pool.connect();
+    try {
+      // Another claim for this user, mid-transaction: holding the lock, its send not committed.
+      await holder.query('BEGIN');
+      await holder.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [
+        SEND_LIMIT_LOCK_NAMESPACE,
+        userId,
+      ]);
+      await holder.query(
+        `WITH claimed AS (
+           INSERT INTO email_send_intents
+             (idempotency_key, request_hash, user_id, actor_name, connected_account_id,
+              rfc_message_id)
+           VALUES (gen_random_uuid(), '', $1, 'Intent Rep', $2, $3)
+           RETURNING id
+         )
+         INSERT INTO email_send_ledger (user_id, intent_id) SELECT $1, id FROM claimed`,
+        [userId, accountId, `${randomUUID()}@example.com`],
+      );
+      const claiming = claimSendIntent(newIntent(), true);
+      // Without the lock this claim would finish now, counting only itself.
+      await waitForSendLimitLockWaiter();
+      await holder.query('COMMIT');
+
+      expect((await claiming).kind).toBe('limited');
+    } finally {
+      holder.release();
+    }
+  });
+
+  it('never limits a key already taken, which sends nothing', async () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    const key = randomUUID();
+    await claimSendIntent(newIntent(key), true);
+    // Over the ceiling now, so a count taken before the key check would refuse the repeat.
+    await existingIntent('filed');
+
+    expect((await claimSendIntent(newIntent(key), true)).kind).toBe('taken');
+  });
+
+  it('says to retry when every send over the ceiling has left the window', async () => {
+    // A ceiling lowered since: two sends are over it, so the newer must leave, not the oldest.
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    await existingIntent('filed', 50);
+    await existingIntent('filed', 10);
+
+    const claim = await claimSendIntent(newIntent(), true);
+
+    expect(claim.kind).toBe('limited');
+    // Safe: narrowed by the assertion above.
+    const { retryAfterSeconds } = claim as { retryAfterSeconds: number };
+    expect(retryAfterSeconds).toBeGreaterThan(50 * 60 - 10);
+    expect(retryAfterSeconds).toBeLessThanOrEqual(50 * 60);
+  });
+
+  it('refuses before any other work when the user is already at the ceiling', async () => {
+    process.env.TEST_RATE_LIMIT = 'true';
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    await existingIntent('filed');
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-over',
+      threadId: null,
+    }));
+
+    // A parent that does not exist: without the early refusal this would answer 404.
+    await expect(
+      sendEmail(
+        typed({ in_reply_to_message_id: '00000000-0000-4000-8000-0000000000c1' }),
+        userId,
+        actor,
+        { key: randomUUID(), requestHash: 'over' },
+        { provider },
+      ),
+    ).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+    expect(sent).toHaveLength(0);
+  });
+
+  it('answers a duplicate at the ceiling from its first send, never refusing it', async () => {
+    const key: SendIdempotency = { key: randomUUID(), requestHash: 'duplicate' };
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-dup',
+      threadId: null,
+    }));
+    const first = await sendEmail(typed(), userId, actor, key, { provider });
+    process.env.TEST_RATE_LIMIT = 'true';
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+
+    const duplicate = await sendEmail(typed(), userId, actor, key, { provider });
+
+    expect(duplicate.message.id).toBe(first.message.id);
+    expect(sent).toHaveLength(1);
+  });
+
+  it('keeps counting after the mailbox the sends went through is disconnected', async () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    const other = await insertParkedMailbox(userId, `${FILE_PREFIX}-reconnected@example.com`);
+    await existingIntent('filed', 0, other);
+    await pool.query('DELETE FROM connected_accounts WHERE id = $1', [other]);
+
+    expect((await claimSendIntent(newIntent(), true)).kind).toBe('limited');
+  });
+
+  it('uncounts a refusal that sent nothing', async () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    const first = await claimSendIntent(newIntent(), true);
+    // Safe: the first claim of a fresh key under the ceiling is always claimed.
+    await markIntentNotSent((first as { intentId: string }).intentId);
+
+    expect(await countRows('SELECT 1 FROM email_send_ledger WHERE user_id = $1', [userId])).toBe(0);
+    expect((await claimSendIntent(newIntent(), true)).kind).toBe('claimed');
+  });
+
+  it('refuses a retry of a refused send early too, since it would send', async () => {
+    process.env.TEST_RATE_LIMIT = 'true';
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    const key: SendIdempotency = { key: randomUUID(), requestHash: 'retry-over' };
+    const { provider: refusing } = sender(async () => {
+      throw sendFailure(SEND_NOT_SENT, 'test');
+    });
+    await expect(
+      sendEmail(typed(), userId, actor, key, { provider: refusing }),
+    ).rejects.toBeDefined();
+    await existingIntent('filed');
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-retry',
+      threadId: null,
+    }));
+
+    // A parent that does not exist: without the early refusal this would answer 404.
+    await expect(
+      sendEmail(
+        typed({ in_reply_to_message_id: '00000000-0000-4000-8000-0000000000c2' }),
+        userId,
+        actor,
+        key,
+        { provider },
+      ),
+    ).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+    expect(sent).toHaveLength(0);
+  });
+
+  it('is not enforced where every limiter is bypassed', async () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    await existingIntent('filed');
+
+    expect((await claimSendIntent(newIntent(), false)).kind).toBe('claimed');
+  });
+});
+
+describe('emailSendMaxPerHour', () => {
+  afterEach(() => {
+    delete process.env.EMAIL_SEND_MAX_PER_HOUR;
+  });
+
+  it('reads a positive integer override', () => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '25';
+
+    expect(emailSendMaxPerHour()).toBe(25);
+  });
+
+  it.each(['', '0', '-5', '2.5', 'many'])('falls back to the default for %j', (value) => {
+    process.env.EMAIL_SEND_MAX_PER_HOUR = value;
+
+    expect(emailSendMaxPerHour()).toBe(DEFAULT_EMAIL_SEND_MAX_PER_HOUR);
+  });
+
+  it('uses the default when unset', () => {
+    expect(emailSendMaxPerHour()).toBe(DEFAULT_EMAIL_SEND_MAX_PER_HOUR);
   });
 });

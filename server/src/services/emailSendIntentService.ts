@@ -174,17 +174,109 @@ export async function findIntentByKey(
   };
 }
 
+/** Sends one user may make per hour unless `EMAIL_SEND_MAX_PER_HOUR` says otherwise. */
+export const DEFAULT_EMAIL_SEND_MAX_PER_HOUR = 100;
+
+const SEND_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+/** First key of the advisory lock that serializes one user's claims; the second is theirs. */
+export const SEND_LIMIT_LOCK_NAMESPACE = 5791;
+
 /**
- * Records a send about to be handed to the provider, under the client's key.
+ * The hourly send ceiling. Anything but a positive integer falls back to the default: a
+ * typo must not lift or zero the limit.
+ */
+export function emailSendMaxPerHour(): number {
+  const override = Number(process.env.EMAIL_SEND_MAX_PER_HOUR);
+  return Number.isInteger(override) && override > 0 ? override : DEFAULT_EMAIL_SEND_MAX_PER_HOUR;
+}
+
+/**
+ * Sends counted against the ceiling: the user's ledger entries in the window. The ledger,
+ * not the intents, because intents go with their mailbox and the count must not.
+ */
+const COUNTED_SENDS = `FROM email_send_ledger
+  WHERE user_id = $1 AND created_at > now() - ($2 || ' milliseconds')::interval`;
+
+/**
+ * How long until the user may send `headroom` more than they have, or null if they may now.
+ *
+ * Every send past the ceiling must leave the window, not only the oldest: a ceiling lowered
+ * since, or a bypass lifted, can leave several over. Timed by the database's clock alone,
+ * so skew with the app server cannot reach the answer.
+ */
+async function secondsUntilUnderLimit(
+  executor: Pick<PoolClient, 'query'>,
+  userId: string,
+  headroom: number,
+): Promise<number | null> {
+  const counted = await executor.query<{ sends: number }>(
+    `SELECT count(*)::int AS sends ${COUNTED_SENDS}`,
+    [userId, SEND_LIMIT_WINDOW_MS],
+  );
+  // Safe: an aggregate always returns its one row.
+  const over = counted.rows[0]!.sends + headroom - emailSendMaxPerHour();
+  if (over <= 0) return null;
+  const frees = await executor.query<{ seconds: number }>(
+    `SELECT ceil(extract(epoch FROM created_at + ($2 || ' milliseconds')::interval - now()))::int
+              AS seconds
+       ${COUNTED_SENDS}
+      ORDER BY created_at
+      OFFSET $3 LIMIT 1`,
+    [userId, SEND_LIMIT_WINDOW_MS, over - 1],
+  );
+  // Safe: `over` never exceeds the counted rows, so the offset always lands on one.
+  return Math.max(1, frees.rows[0]!.seconds);
+}
+
+/**
+ * Refuses early, before any rendering or token refresh, a send that the ceiling would
+ * refuse at its claim. Advisory only: the claim's locked count is the one that holds. A key
+ * already in use is never refused here, since a repeat sends nothing.
+ *
+ * @returns seconds until the user may send, or null when they may now.
+ */
+export async function precheckSendLimit(
+  userId: string,
+  idempotencyKey: string,
+): Promise<number | null> {
+  // A refused send retried under its key does send, so only that key is checked here.
+  const used = await pool.query(
+    `SELECT 1 FROM email_send_intents
+      WHERE user_id = $1 AND idempotency_key = $2 AND status <> 'not_sent'`,
+    [userId, idempotencyKey],
+  );
+  if ((used.rowCount ?? 0) > 0) return null;
+  return secondsUntilUnderLimit(pool, userId, 1);
+}
+
+/** What claiming a key came to. */
+export type SendClaim =
+  | { kind: 'claimed'; intentId: string }
+  | { kind: 'taken' }
+  | { kind: 'limited'; retryAfterSeconds: number };
+
+/**
+ * Records a send about to be handed to the provider, under the client's key, and counts it
+ * against the user's hourly ceiling.
  *
  * The insert settles two concurrent requests with one key by itself: the loser inserts
  * nothing. A key whose earlier send was refused is reclaimed by a conditional update, so two
- * retries cannot both take it.
+ * retries cannot both take it. Each claim writes a ledger entry, and the ceiling counts the
+ * user's entries from the last hour; a refusal that sent nothing removes its own. Being in
+ * the database, it holds across processes, restarts and reconnected mailboxes. A per-user
+ * advisory lock makes the claim and the count one step, so two requests at the edge cannot
+ * both pass. A key that is already taken claims nothing and is never limited: a repeat
+ * sends nothing.
  *
- * @returns the intent to send under, or null when the key belongs to another attempt — the
- *   caller answers from `findIntentByKey`.
+ * @param enforceLimit - False where every limiter is bypassed (`shouldSkipRateLimit`).
+ * @returns `taken` when the key belongs to another attempt — the caller answers from
+ *   `findIntentByKey`.
  */
-export async function claimSendIntent(input: NewSendIntent): Promise<string | null> {
+export async function claimSendIntent(
+  input: NewSendIntent,
+  enforceLimit: boolean,
+): Promise<SendClaim> {
   const values = [
     input.userId,
     input.actorName,
@@ -199,30 +291,67 @@ export async function claimSendIntent(input: NewSendIntent): Promise<string | nu
     input.requestHash,
     input.unresolvedMergeTags,
   ];
-  const inserted = await pool.query<{ id: string }>(
-    `INSERT INTO email_send_intents
-       (user_id, actor_name, connected_account_id, rfc_message_id, record_type, record_id,
-        activity_notes, to_addresses, cc_addresses, idempotency_key, request_hash,
-        unresolved_merge_tags)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-     ON CONFLICT (user_id, idempotency_key) DO NOTHING
-     RETURNING id`,
-    values,
-  );
-  if (inserted.rows[0]) return inserted.rows[0].id;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    if (enforceLimit) {
+      await client.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [
+        SEND_LIMIT_LOCK_NAMESPACE,
+        input.userId,
+      ]);
+    }
 
-  const reclaimed = await pool.query<{ id: string }>(
-    `UPDATE email_send_intents
-        SET status = 'pending', actor_name = $2, connected_account_id = $3,
-            rfc_message_id = $4, provider_message_id = NULL, record_type = $5,
-            record_id = $6, activity_notes = $7, to_addresses = $8, cc_addresses = $9,
-            unresolved_merge_tags = $12, created_at = now(), updated_at = now()
-      WHERE user_id = $1 AND idempotency_key = $10 AND request_hash = $11
-        AND status = 'not_sent'
-      RETURNING id`,
-    values,
-  );
-  return reclaimed.rows[0]?.id ?? null;
+    const inserted = await client.query<{ id: string }>(
+      `INSERT INTO email_send_intents
+         (user_id, actor_name, connected_account_id, rfc_message_id, record_type, record_id,
+          activity_notes, to_addresses, cc_addresses, idempotency_key, request_hash,
+          unresolved_merge_tags)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       ON CONFLICT (user_id, idempotency_key) DO NOTHING
+       RETURNING id`,
+      values,
+    );
+    const claimed =
+      inserted.rows[0] ??
+      (
+        await client.query<{ id: string }>(
+          `UPDATE email_send_intents
+              SET status = 'pending', actor_name = $2, connected_account_id = $3,
+                  rfc_message_id = $4, provider_message_id = NULL, record_type = $5,
+                  record_id = $6, activity_notes = $7, to_addresses = $8, cc_addresses = $9,
+                  unresolved_merge_tags = $12, created_at = now(), updated_at = now()
+            WHERE user_id = $1 AND idempotency_key = $10 AND request_hash = $11
+              AND status = 'not_sent'
+            RETURNING id`,
+          values,
+        )
+      ).rows[0];
+    if (!claimed) {
+      await client.query('COMMIT');
+      return { kind: 'taken' };
+    }
+    // Written whether or not the ceiling is enforced, so lifting a bypass sees true counts.
+    await client.query('INSERT INTO email_send_ledger (user_id, intent_id) VALUES ($1, $2)', [
+      input.userId,
+      claimed.id,
+    ]);
+
+    if (enforceLimit) {
+      const retryAfterSeconds = await secondsUntilUnderLimit(client, input.userId, 0);
+      if (retryAfterSeconds !== null) {
+        await client.query('ROLLBACK');
+        return { kind: 'limited', retryAfterSeconds };
+      }
+    }
+
+    await client.query('COMMIT');
+    return { kind: 'claimed', intentId: claimed.id };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /** Records the provider's id for a message not yet submitted, so even an unanswered send has it. */
@@ -249,11 +378,16 @@ export async function markIntentSent(intentId: string, providerMessageId: string
 
 /** The provider refused and nothing went. Drops the copy of the message it no longer needs. */
 export async function markIntentNotSent(intentId: string): Promise<void> {
+  // One statement, so the refusal and the uncounting cannot come apart.
   await pool.query(
-    `UPDATE email_send_intents
-        SET status = 'not_sent', activity_notes = NULL, to_addresses = '{}',
-            cc_addresses = '{}', updated_at = now()
-      WHERE id = $1 AND status = 'pending'`,
+    `WITH refused AS (
+       UPDATE email_send_intents
+          SET status = 'not_sent', activity_notes = NULL, to_addresses = '{}',
+              cc_addresses = '{}', updated_at = now()
+        WHERE id = $1 AND status = 'pending'
+        RETURNING id
+     )
+     DELETE FROM email_send_ledger WHERE intent_id IN (SELECT id FROM refused)`,
     [intentId],
   );
 }

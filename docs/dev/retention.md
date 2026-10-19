@@ -9,6 +9,7 @@ Purged by `runRetentionPurge()` in `retentionService.ts`, on the schedule in [Sc
 | `import_jobs`           | 180 days                          | `created_at`     | `status IN ('complete', 'failed')` only |
 | `email_sync_jobs`       | 180 days                          | `created_at`     | `status IN ('complete', 'failed')` only |
 | `email_send_intents`    | 30 days                           | `created_at`     | all rows                                |
+| `email_send_ledger`     | 1 day                             | `created_at`     | all rows                                |
 | `ai_sessions`           | configurable (default 90, min 30) | `created_at`     | all rows; `ai_messages` cascade-deleted |
 
 In-progress import jobs are never purged. `sequence_enrollment_logs` is retained indefinitely.
@@ -46,6 +47,9 @@ filed; the 30-day purge bounds that, and sweeps first so no intent is deleted un
 row also keeps `request_hash`, a SHA-256 of the request (recipients and body included), for
 its full 30 days, so a retry can be told from a reused key; a digest, not the content. Rows
 also ride the cascade when their mailbox or user is deleted.
+
+`email_send_ledger` holds no personal data — a user, an intent id, a timestamp — and is kept a
+day, though the send ceiling reads only the last hour.
 
 `user_ai_context` is **not** subject to the `ai_sessions` retention policy — it stores persistent
 personalisation data (user-defined term definitions), not conversation transcripts.

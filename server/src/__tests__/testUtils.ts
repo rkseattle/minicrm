@@ -504,27 +504,32 @@ export function deadGrantError(): Error {
 const SEND_PATH_MESSAGE_INSERT = 'INSERT INTO email_messages AS m';
 
 /**
- * Makes every statement containing `fragment`, issued on a client checked out with
- * `await pool.connect()`, fail as a storage outage would. Undo with `vi.restoreAllMocks()`.
+ * Overrides every statement containing one of `fragments`, issued on a client checked out
+ * with `await pool.connect()`: `fail` rejects it as a storage outage would, `empty` answers
+ * it with no rows as losing a race would. Undo with `vi.restoreAllMocks()`.
  *
  * Those clients are proxied rather than patched, so a pooled client returns to the pool
  * unchanged. `pool.query` checks out through the callback form, which passes straight
  * through.
  */
-export function failClientQueriesContaining(fragment: string): void {
+export function stubClientQueries(fragments: readonly string[], outcome: 'fail' | 'empty'): void {
   const realConnect = pool.connect.bind(pool);
   // Safe: pg's connect has a callback overload, which this calls with one.
   const connectWithCallback = realConnect as unknown as (callback: unknown) => void;
-  const failing = async (): Promise<PoolClient> => {
+  const stubbed = async (): Promise<PoolClient> => {
     const client = await realConnect();
     return new Proxy(client, {
       get(target, property, receiver): unknown {
         if (property === 'query') {
-          return (text: unknown, ...rest: unknown[]): unknown =>
-            typeof text === 'string' && text.includes(fragment)
-              ? Promise.reject(new Error('storage down'))
-              : // Safe: forwards the caller's arguments to the real query unchanged.
-                (target.query as (...args: unknown[]) => unknown)(text, ...rest);
+          return (text: unknown, ...rest: unknown[]): unknown => {
+            if (typeof text === 'string' && fragments.some((fragment) => text.includes(fragment))) {
+              return outcome === 'fail'
+                ? Promise.reject(new Error('storage down'))
+                : Promise.resolve({ rows: [], rowCount: 0 });
+            }
+            // Safe: forwards the caller's arguments to the real query unchanged.
+            return (target.query as (...args: unknown[]) => unknown)(text, ...rest);
+          };
         }
         const value: unknown = Reflect.get(target, property, receiver);
         // Safe: the typeof check above narrows this to a function.
@@ -534,7 +539,12 @@ export function failClientQueriesContaining(fragment: string): void {
   };
   // Safe: both overloads of connect are honored; the cast only satisfies the spy's type.
   vi.spyOn(pool, 'connect').mockImplementation(((callback?: unknown) =>
-    callback ? connectWithCallback(callback) : failing()) as typeof pool.connect);
+    callback ? connectWithCallback(callback) : stubbed()) as typeof pool.connect);
+}
+
+/** Makes every client statement containing `fragment` fail, as a storage outage would. */
+export function failClientQueriesContaining(fragment: string): void {
+  stubClientQueries([fragment], 'fail');
 }
 
 /** Makes the send path's message upsert fail, as a storage outage after the send would. */

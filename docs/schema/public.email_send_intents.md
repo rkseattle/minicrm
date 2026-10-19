@@ -8,7 +8,7 @@ A send recorded before it reaches the provider. Holds what only this application
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false |  |  |  |
+| id | uuid | gen_random_uuid() | false | [public.email_send_ledger](public.email_send_ledger.md) |  |  |
 | user_id | uuid |  | false |  | [public.users](public.users.md) |  |
 | connected_account_id | uuid |  | false |  | [public.connected_accounts](public.connected_accounts.md) |  |
 | rfc_message_id | text |  | false |  |  | The Message-ID this application generated, without angle brackets. Matches the Sent copy when the provider id is unknown. |
@@ -59,6 +59,7 @@ A send recorded before it reaches the provider. Holds what only this application
 ```mermaid
 erDiagram
 
+"public.email_send_ledger" }o--o| "public.email_send_intents" : "FOREIGN KEY (intent_id) REFERENCES email_send_intents(id) ON DELETE SET NULL"
 "public.email_send_intents" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.email_send_intents" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 "public.email_send_intents" }o--o| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
@@ -83,6 +84,12 @@ erDiagram
   uuid idempotency_key "The client's Idempotency-Key, one per compose. A repeat answers from this row instead of sending again."
   text request_hash "SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed."
   text__ unresolved_merge_tags "Template tags the first send could not resolve, so a replay answers exactly as it did."
+}
+"public.email_send_ledger" {
+  uuid id ""
+  uuid user_id FK ""
+  uuid intent_id FK ""
+  timestamp_with_time_zone created_at ""
 }
 "public.users" {
   uuid id ""

@@ -1,8 +1,9 @@
 /**
- * The per-user hourly send limiter on POST /api/v1/email-messages/send.
+ * The per-user hourly send limit on POST /api/v1/email-messages/send, counted from the send
+ * ledger in the database.
  *
  * The Gmail driver is replaced at its constructor, so a send succeeds without leaving the
- * machine: the limiter counts only successful sends, so only those can reach its ceiling.
+ * machine. Only an attempt that may have sent is counted, so only those reach the ceiling.
  */
 
 import 'dotenv/config';
@@ -14,7 +15,6 @@ import { vi } from 'vitest';
 
 import app from '../app.js';
 import pool from '../db.js';
-import { DEFAULT_EMAIL_SEND_MAX_PER_HOUR, emailSendMaxPerHour } from '../routes/emailMessages.js';
 import { upsertOAuthAccount } from '../services/connectedAccountService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 import type * as EmailMatchingModule from '../services/emailMatchingService.js';
@@ -161,6 +161,9 @@ describe('email send limiter', () => {
     expect(statuses).toEqual(Array(CEILING).fill(201));
     expect(blocked.status).toBe(429);
     expect(blocked.body.error.code).toBe('RATE_LIMITED');
+    const retryAfter = Number(blocked.headers['retry-after']);
+    expect(retryAfter).toBeGreaterThan(0);
+    expect(retryAfter).toBeLessThanOrEqual(60 * 60);
   });
 
   it('does not spend the budget on requests that fail', async () => {
@@ -212,6 +215,31 @@ describe('email send limiter', () => {
     expect(statuses).toEqual([201, 201, 201]);
   });
 
+  it('answers a repeat at the ceiling with the first response, not 429', async () => {
+    process.env.TEST_RATE_LIMIT = 'true';
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '1';
+    const from = await sender('replay-ceiling');
+    const key = randomUUID();
+    const send = () =>
+      request(app)
+        .post(SEND_URL)
+        .set('Cookie', from.cookie)
+        .set('Idempotency-Key', key)
+        .send({
+          connected_account_id: from.accountId,
+          to: ['someone@example.net'],
+          subject: 'Only one',
+          body_html: '<p>Hi</p>',
+        });
+
+    const first = await send();
+    const repeat = await send();
+
+    expect(first.status).toBe(201);
+    expect(repeat.status).toBe(201);
+    expect(repeat.body.message.id).toBe(first.body.message.id);
+  });
+
   it('counts each user separately', async () => {
     process.env.TEST_RATE_LIMIT = 'true';
     process.env.EMAIL_SEND_MAX_PER_HOUR = String(CEILING);
@@ -228,23 +256,5 @@ describe('email send limiter', () => {
     const statuses = await sendStatuses(await sender('bypass'), 3);
 
     expect(statuses).toEqual([201, 201, 201]);
-  });
-});
-
-describe('emailSendMaxPerHour', () => {
-  it('reads a positive integer override', () => {
-    process.env.EMAIL_SEND_MAX_PER_HOUR = '25';
-
-    expect(emailSendMaxPerHour()).toBe(25);
-  });
-
-  it.each(['', '0', '-5', '2.5', 'many'])('falls back to the default for %j', (value) => {
-    process.env.EMAIL_SEND_MAX_PER_HOUR = value;
-
-    expect(emailSendMaxPerHour()).toBe(DEFAULT_EMAIL_SEND_MAX_PER_HOUR);
-  });
-
-  it('uses the default when unset', () => {
-    expect(emailSendMaxPerHour()).toBe(DEFAULT_EMAIL_SEND_MAX_PER_HOUR);
   });
 });

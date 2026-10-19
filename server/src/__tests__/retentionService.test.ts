@@ -273,4 +273,22 @@ describe('runRetentionPurge', () => {
     expect(audited.rowCount).toBe(1);
     expect(remaining.rowCount).toBe(0);
   });
+
+  it('purges send-ledger entries older than a day and keeps the recent ones', async () => {
+    await pool.query(
+      `INSERT INTO email_send_ledger (user_id, created_at)
+       VALUES ($1, now() - interval '25 hours'), ($1, now() - interval '30 minutes')`,
+      [userId],
+    );
+
+    await expect(runRetentionPurge()).resolves.toBeUndefined();
+
+    const remaining = await pool.query<{ recent: boolean }>(
+      `SELECT created_at > now() - interval '1 hour' AS recent
+         FROM email_send_ledger WHERE user_id = $1`,
+      [userId],
+    );
+    expect(remaining.rows).toEqual([{ recent: true }]);
+    await pool.query('DELETE FROM email_send_ledger WHERE user_id = $1', [userId]);
+  });
 });

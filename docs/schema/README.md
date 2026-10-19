@@ -93,6 +93,7 @@
 | [public.email_message_links](public.email_message_links.md) | 7 | Links a synced message to the CRM records its addresses name. record_type + record_id form a polymorphic reference with no FK constraint, because a PostgreSQL FK cannot span several parent tables. Valid record_type values: 'contact', 'lead', 'account', 'deal'. Orphan cleanup is the application's responsibility: a hard-delete of one of those records must clear its links in the same transaction, and a consolidating path — a contact merge, a lead conversion — must move them to the surviving record rather than drop them. See docs/dev/schema.md — Polymorphic FK Pattern. | BASE TABLE |
 | [public.email_message_link_suppressions](public.email_message_link_suppressions.md) | 5 | Automatic email-to-record links a user removed. Re-derivation consults this table so an unlink is not undone by a later relationship change. | BASE TABLE |
 | [public.email_send_intents](public.email_send_intents.md) | 19 | A send recorded before it reaches the provider. Holds what only this application knows about the send so the message can be filed to its record even when storing it after the send failed. | BASE TABLE |
+| [public.email_send_ledger](public.email_send_ledger.md) | 4 | One row per send that may have gone out, counted against the user's hourly ceiling. Outlives the mailbox and the send intent, so disconnecting a mailbox cannot reset the count. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -287,6 +288,8 @@ erDiagram
 "public.email_send_intents" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.email_send_intents" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 "public.email_send_intents" }o--o| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
+"public.email_send_ledger" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.email_send_ledger" }o--o| "public.email_send_intents" : "FOREIGN KEY (intent_id) REFERENCES email_send_intents(id) ON DELETE SET NULL"
 
 "public.users" {
   uuid id ""
@@ -1222,6 +1225,12 @@ erDiagram
   uuid idempotency_key "The client's Idempotency-Key, one per compose. A repeat answers from this row instead of sending again."
   text request_hash "SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed."
   text__ unresolved_merge_tags "Template tags the first send could not resolve, so a replay answers exactly as it did."
+}
+"public.email_send_ledger" {
+  uuid id ""
+  uuid user_id FK ""
+  uuid intent_id FK ""
+  timestamp_with_time_zone created_at ""
 }
 ```
 
