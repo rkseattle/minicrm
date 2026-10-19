@@ -23,6 +23,8 @@ import {
   type OAuthProvider,
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
+import { createHash } from 'node:crypto';
+
 import { htmlToText } from 'html-to-text';
 
 import pool from '../db.js';
@@ -38,13 +40,15 @@ import {
 import { matchMessagesToRecords } from './emailMatchingService.js';
 import { MESSAGE_SELECT, toEmailMessage, type EmailMessageRow } from './emailMessageService.js';
 import {
-  createSendIntent,
+  claimSendIntent,
   fileSentMessage,
+  findIntentByKey,
   lockIntent,
   markIntentNotSent,
   markIntentSent,
   markIntentUnconfirmed,
   recordPreparedMessageId,
+  type IntentUnderKey,
 } from './emailSendIntentService.js';
 import { escapeHtml } from './emailService.js';
 import { findEmailTemplateById } from './emailTemplateService.js';
@@ -82,6 +86,41 @@ export const RATE_LIMITED = 'RATE_LIMITED';
 export const RECONNECT_REQUIRED = 'RECONNECT_REQUIRED';
 /** Sent, but not stored. Never to be retried: the recipient already has the message. */
 export const SENT_NOT_RECORDED = 'SENT_NOT_RECORDED';
+/** A repeat of a send still in flight under the same key. */
+export const SEND_IN_PROGRESS = 'SEND_IN_PROGRESS';
+/** A repeat of a send that went out and is not yet filed. */
+export const SEND_ALREADY_SENT = 'SEND_ALREADY_SENT';
+/** A repeat of a send whose outcome is unknown. Never resent under its key. */
+export const SEND_UNCONFIRMED = 'SEND_UNCONFIRMED';
+/** A key already used for a different message. */
+export const IDEMPOTENCY_KEY_REUSED = 'IDEMPOTENCY_KEY_REUSED';
+
+/** The client's key for one compose, and a hash of the request it was first used with. */
+export interface SendIdempotency {
+  key: string;
+  requestHash: string;
+}
+
+/** JSON with every object's keys sorted, so equal values serialize identically. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value)
+      .filter(([, field]) => field !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([key, field]) => `${JSON.stringify(key)}:${canonicalJson(field)}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * A hash of a validated request, so a reused key can be told from a retry. Taken after
+ * parsing, so a retry the schema normalizes to the same request — trimmed text, a default
+ * filled in — hashes the same.
+ */
+export function requestHashOf(input: SendEmailInput): string {
+  return createHash('sha256').update(canonicalJson(input)).digest('hex');
+}
 
 /** A send refusal carrying the API code the controller maps. */
 function sendError(code: string, message: string): Error & { code: string } {
@@ -318,6 +357,66 @@ async function apiFailureFor(err: unknown, account: ConnectedAccountInternal): P
 }
 
 /**
+ * Answers a repeat of a send from what its key recorded, never sending again.
+ *
+ * @returns the first send's response, when it was filed.
+ * @throws a send error naming why no response can be replayed.
+ */
+async function answerFromIntent(
+  existing: IntentUnderKey,
+  requestHash: string,
+): Promise<SendEmailResponse> {
+  if (existing.requestHash !== requestHash) {
+    throw sendError(IDEMPOTENCY_KEY_REUSED, 'This key was already used for a different message.');
+  }
+  switch (existing.status) {
+    case 'filed':
+      if (existing.message) {
+        return { message: existing.message, unresolved_merge_tags: existing.unresolvedMergeTags };
+      }
+      // Filed under a message since deleted: it went, and sync will not fetch it again.
+      throw sendError(SEND_ALREADY_SENT, 'This message was sent.');
+    case 'pending':
+      throw sendError(SEND_IN_PROGRESS, 'This message is still being sent.');
+    case 'unconfirmed':
+      throw sendError(
+        SEND_UNCONFIRMED,
+        'This message may have been sent. Check Sent before sending it again.',
+      );
+    case 'not_sent':
+      // A concurrent retry reclaimed the key and was refused again before this read.
+      throw sendError(SEND_FAILED, 'The message was not sent. Try again.');
+    case 'sent':
+      break;
+  }
+  throw sendError(
+    SEND_ALREADY_SENT,
+    'This message was sent. It appears on its record after the mailbox next syncs.',
+  );
+}
+
+/**
+ * Answers a request whose key was used before, before any other work is done — so a replay
+ * renders nothing, refreshes no token, and reads no record that may since have gone. A
+ * duplicate sent at the same moment as the first instead loses at the intent insert,
+ * after that work.
+ *
+ * @returns the first send's response, or null for a new key or a refused send to retry.
+ * @throws a send error for a repeat that cannot be answered with a response.
+ */
+export async function replaySend(
+  userId: string,
+  idempotency: SendIdempotency,
+): Promise<SendEmailResponse | null> {
+  const existing = await findIntentByKey(userId, idempotency.key);
+  if (!existing) return null;
+  if (existing.status === 'not_sent' && existing.requestHash === idempotency.requestHash) {
+    return null;
+  }
+  return answerFromIntent(existing, idempotency.requestHash);
+}
+
+/**
  * Sends one message and records it, its links, its activity, and its audit entry.
  *
  * The caller has already established that a named record exists and that the user may file
@@ -330,6 +429,7 @@ export async function sendEmail(
   input: SendEmailInput,
   userId: string,
   actor: AuditActor,
+  idempotency: SendIdempotency,
   dependencies: SendDependencies = {},
 ): Promise<SendEmailResponse> {
   const account = await getConnectedAccountInternal(input.connected_account_id, userId);
@@ -377,7 +477,7 @@ export async function sendEmail(
   const parsed = await parseMessage(document.mime);
   // The stored form, from the same function sync stores with, so the two always match.
   const threading = storedThreadingHeaders(parsed.threading);
-  const intentId = await createSendIntent({
+  const intentId = await claimSendIntent({
     userId: actor.id,
     actorName: actor.name,
     connectedAccountId: account.id,
@@ -389,7 +489,16 @@ export async function sendEmail(
     activityNotes,
     toAddresses: parsed.toAddresses,
     ccAddresses: parsed.ccAddresses,
+    idempotencyKey: idempotency.key,
+    requestHash: idempotency.requestHash,
+    unresolvedMergeTags: content.unresolved,
   });
+  if (intentId === null) {
+    // A concurrent request with this key got there first; answer as it will.
+    const existing = await findIntentByKey(userId, idempotency.key);
+    if (!existing) throw new Error('emailSendService: a claimed key has no intent');
+    return answerFromIntent(existing, idempotency.requestHash);
+  }
 
   let sent: SentMessage;
   try {

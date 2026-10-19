@@ -5,6 +5,8 @@
 
 import 'dotenv/config';
 
+import { randomUUID } from 'node:crypto';
+
 import { vi } from 'vitest';
 
 import pool from '../db.js';
@@ -19,7 +21,16 @@ import {
   sweepUnsettledIntents,
 } from '../services/emailSendIntentService.js';
 import { setRlsUserIdTo } from '../services/rlsContextService.js';
-import { sendEmail, SENT_NOT_RECORDED } from '../services/emailSendService.js';
+import {
+  IDEMPOTENCY_KEY_REUSED,
+  replaySend,
+  SEND_ALREADY_SENT,
+  SEND_IN_PROGRESS,
+  SEND_UNCONFIRMED,
+  sendEmail,
+  SENT_NOT_RECORDED,
+  type SendIdempotency,
+} from '../services/emailSendService.js';
 import { syncDueAccounts, syncOneAccount } from '../services/emailSyncService.js';
 import type * as FeatureFlagModule from '../services/featureFlagService.js';
 import type {
@@ -128,6 +139,11 @@ async function syncPage(messages: NormalizedMessage[]): Promise<void> {
     grantedScopes: [],
   };
   await syncOneAccount(account, provider);
+}
+
+/** A key for one send, as the client generates per compose. */
+function freshKey(): SendIdempotency {
+  return { key: randomUUID(), requestHash: 'test-request' };
 }
 
 function typed(overrides: Partial<SendEmailInput> = {}): SendEmailInput {
@@ -254,7 +270,7 @@ describe('the intent each outcome leaves', () => {
       return { providerMessageId: 'gm-before', threadId: null };
     });
 
-    await sendEmail(typed(), userId, actor, { provider });
+    await sendEmail(typed(), userId, actor, freshKey(), { provider });
 
     expect(statusDuringSend).toBe('pending');
   });
@@ -262,7 +278,7 @@ describe('the intent each outcome leaves', () => {
   it('is filed by a send that stored, and keeps no copy of the text', async () => {
     const { provider } = sender(async () => ({ providerMessageId: 'gm-filed', threadId: null }));
 
-    const response = await sendEmail(typed(), userId, actor, { provider });
+    const response = await sendEmail(typed(), userId, actor, freshKey(), { provider });
 
     expect(await intent()).toMatchObject({
       status: 'filed',
@@ -282,7 +298,7 @@ describe('the intent each outcome leaves', () => {
       throw sendFailure(code, 'test');
     });
 
-    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toBeDefined();
+    await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toBeDefined();
 
     expect(await intent()).toMatchObject({
       status: 'not_sent',
@@ -297,7 +313,7 @@ describe('the intent each outcome leaves', () => {
       throw sendFailure(SEND_OUTCOME_UNKNOWN, 'test');
     });
 
-    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toBeDefined();
+    await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toBeDefined();
 
     expect(await intent()).toMatchObject({ status: 'unconfirmed', to_addresses: [] });
     const audit = await pool.query<{ new_value: string }>(
@@ -320,7 +336,7 @@ describe('the intent each outcome leaves', () => {
       return { providerMessageId: 'gm-notes', threadId: null };
     });
 
-    await sendEmail(typed(), userId, actor, { provider });
+    await sendEmail(typed(), userId, actor, freshKey(), { provider });
 
     expect(notesDuringSend).toBeNull();
   });
@@ -329,7 +345,7 @@ describe('the intent each outcome leaves', () => {
     failQueriesContaining("SET status = 'sent'");
     const { provider } = sender(async () => ({ providerMessageId: 'gm-unmarked', threadId: null }));
 
-    await sendEmail(typed(), userId, actor, { provider });
+    await sendEmail(typed(), userId, actor, freshKey(), { provider });
 
     expect(await intent()).toMatchObject({ status: 'filed', provider_message_id: 'gm-unmarked' });
   });
@@ -340,9 +356,11 @@ describe('the intent each outcome leaves', () => {
       throw sendFailure(SEND_NOT_SENT, 'test');
     });
 
-    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toMatchObject({
-      code: 'SEND_FAILED',
-    });
+    await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toMatchObject(
+      {
+        code: 'SEND_FAILED',
+      },
+    );
     // Left for the sweep, which reports it unconfirmed rather than guessing.
     expect((await intent()).status).toBe('pending');
   });
@@ -355,18 +373,22 @@ describe('the intent each outcome leaves', () => {
       return { providerMessageId: 'gm-vanished', threadId: null };
     });
 
-    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toMatchObject({
-      code: SENT_NOT_RECORDED,
-    });
+    await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toMatchObject(
+      {
+        code: SENT_NOT_RECORDED,
+      },
+    );
   });
 
   it('stays sent, with the provider id, when storing fails after the provider accepted', async () => {
     const { provider } = sender(async () => ({ providerMessageId: 'gm-stored', threadId: null }));
     failMessageInsert();
 
-    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toMatchObject({
-      code: SENT_NOT_RECORDED,
-    });
+    await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toMatchObject(
+      {
+        code: SENT_NOT_RECORDED,
+      },
+    );
 
     expect(await intent()).toMatchObject({ status: 'sent', provider_message_id: 'gm-stored' });
   });
@@ -381,9 +403,15 @@ describe('the sync engine filing a send', () => {
     }));
     failMessageInsert();
     await expect(
-      sendEmail(typed({ record_type: 'contact', record_id: contactId }), userId, actor, {
-        provider,
-      }),
+      sendEmail(
+        typed({ record_type: 'contact', record_id: contactId }),
+        userId,
+        actor,
+        freshKey(),
+        {
+          provider,
+        },
+      ),
     ).rejects.toMatchObject({ code: SENT_NOT_RECORDED });
     vi.restoreAllMocks();
 
@@ -402,9 +430,15 @@ describe('the sync engine filing a send', () => {
       throw sendFailure(SEND_OUTCOME_UNKNOWN, 'test');
     });
     await expect(
-      sendEmail(typed({ record_type: 'contact', record_id: contactId }), userId, actor, {
-        provider,
-      }),
+      sendEmail(
+        typed({ record_type: 'contact', record_id: contactId }),
+        userId,
+        actor,
+        freshKey(),
+        {
+          provider,
+        },
+      ),
     ).rejects.toBeDefined();
 
     // A Message-ID the provider rewrote matches nothing; the draft id still does.
@@ -422,9 +456,15 @@ describe('the sync engine filing a send', () => {
       throw sendFailure(SEND_OUTCOME_UNKNOWN, 'test');
     });
     await expect(
-      sendEmail(typed({ record_type: 'contact', record_id: contactId }), userId, actor, {
-        provider,
-      }),
+      sendEmail(
+        typed({ record_type: 'contact', record_id: contactId }),
+        userId,
+        actor,
+        freshKey(),
+        {
+          provider,
+        },
+      ),
     ).rejects.toBeDefined();
 
     await syncPage([await sentCopy(onlyDocument(sent), 'gm-unknown')]);
@@ -440,9 +480,15 @@ describe('the sync engine filing a send', () => {
       return { providerMessageId: 'gm-race', threadId: null };
     });
 
-    await sendEmail(typed({ record_type: 'contact', record_id: contactId }), userId, actor, {
-      provider,
-    });
+    await sendEmail(
+      typed({ record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     expect((await intent()).status).toBe('filed');
     expect(await activitiesFor(contactId)).toBe(1);
@@ -455,9 +501,15 @@ describe('the sync engine filing a send', () => {
       providerMessageId: 'gm-done',
       threadId: null,
     }));
-    await sendEmail(typed({ record_type: 'contact', record_id: contactId }), userId, actor, {
-      provider,
-    });
+    await sendEmail(
+      typed({ record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     await syncPage([await sentCopy(onlyDocument(sent), 'gm-done')]);
 
@@ -474,7 +526,9 @@ describe('the sync engine filing a send, by what it was sent from', () => {
   ): Promise<Buffer> {
     const { provider, sent } = sender(async () => ({ providerMessageId, threadId: null }));
     failMessageInsert();
-    await expect(sendEmail(typed(overrides), userId, actor, { provider })).rejects.toMatchObject({
+    await expect(
+      sendEmail(typed(overrides), userId, actor, freshKey(), { provider }),
+    ).rejects.toMatchObject({
       code: SENT_NOT_RECORDED,
     });
     vi.restoreAllMocks();
@@ -618,7 +672,7 @@ describe('the sync engine filing a send, by what it was sent from', () => {
       threadId: null,
     }));
 
-    const sending = sendEmail(typed(), userId, actor, { provider });
+    const sending = sendEmail(typed(), userId, actor, freshKey(), { provider });
     try {
       await waitForLockWaiter();
       // Had recordSent written the message before waiting, this would block on its row while
@@ -706,8 +760,8 @@ describe('syncDueAccounts', () => {
   it('sweeps unsettled sends even with the email feature turned off', async () => {
     await pool.query(
       `INSERT INTO email_send_intents
-         (user_id, actor_name, connected_account_id, rfc_message_id, status, updated_at)
-       VALUES ($1, 'Intent Rep', $2, 'flag-off@example.com', 'sent', now() - interval '2 hours')`,
+         (idempotency_key, request_hash, user_id, actor_name, connected_account_id, rfc_message_id, status, updated_at)
+       VALUES (gen_random_uuid(), '', $1, 'Intent Rep', $2, 'flag-off@example.com', 'sent', now() - interval '2 hours')`,
       [userId, accountId],
     );
 
@@ -722,9 +776,9 @@ describe('sweepUnsettledIntents', () => {
   async function insertIntent(status: string, ageMinutes: number): Promise<void> {
     await pool.query(
       `INSERT INTO email_send_intents
-         (user_id, actor_name, connected_account_id, rfc_message_id, status, to_addresses,
+         (idempotency_key, request_hash, user_id, actor_name, connected_account_id, rfc_message_id, status, to_addresses,
           updated_at)
-       VALUES ($1, 'Intent Rep', $2, $3, $4, '{someone@example.net}',
+       VALUES (gen_random_uuid(), '', $1, 'Intent Rep', $2, $3, $4, '{someone@example.net}',
                now() - ($5 || ' minutes')::interval)`,
       [userId, accountId, `${status}-${ageMinutes}@example.com`, status, ageMinutes],
     );
@@ -789,5 +843,259 @@ describe('setRlsUserIdTo', () => {
 
   it('sets the unauthenticated value for null', async () => {
     expect(await inTransaction(null)).toBe('');
+  });
+});
+
+describe('idempotent send', () => {
+  const keyed = (key: string = randomUUID(), requestHash = 'same-request'): SendIdempotency => ({
+    key,
+    requestHash,
+  });
+
+  /** A provider that answers after the test releases it, counting submissions. */
+  function heldSender(): { provider: MailProvider; release: () => void; calls: () => number } {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { provider, sent } = sender(async () => {
+      await gate;
+      return { providerMessageId: `gm-held-${sent.length}`, threadId: null };
+    });
+    return { provider, release: () => release(), calls: () => sent.length };
+  }
+
+  /**
+   * Runs two sends with one key at once. Either may win, so the loser is awaited first —
+   * the winner cannot finish until the provider is released.
+   */
+  async function twoAtOnce(key: SendIdempotency, held: ReturnType<typeof heldSender>) {
+    const sends = [0, 1].map(() =>
+      sendEmail(typed(), userId, actor, key, { provider: held.provider }),
+    );
+    await Promise.race(sends.map((send) => send.catch(() => undefined)));
+    held.release();
+    return Promise.allSettled(sends);
+  }
+
+  it('sends once when the same key is submitted twice', async () => {
+    const key = keyed();
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-once',
+      threadId: null,
+    }));
+
+    const first = await sendEmail(typed(), userId, actor, key, { provider });
+    const second = await sendEmail(typed(), userId, actor, key, { provider });
+
+    expect(sent).toHaveLength(1);
+    expect(second.message.id).toBe(first.message.id);
+  });
+
+  it('sends once when the same key is submitted twice at the same moment', async () => {
+    const key = keyed();
+    const held = heldSender();
+
+    const settled = await twoAtOnce(key, held);
+
+    expect(settled.map((result) => result.status).sort()).toEqual(['fulfilled', 'rejected']);
+    expect(settled.find((result) => result.status === 'rejected')).toMatchObject({
+      reason: { code: SEND_IN_PROGRESS },
+    });
+    expect(held.calls()).toBe(1);
+  });
+
+  it('never resends a send whose outcome is unknown', async () => {
+    const key = keyed();
+    const { provider, sent } = sender(async () => {
+      throw sendFailure(SEND_OUTCOME_UNKNOWN, 'test');
+    });
+    await expect(sendEmail(typed(), userId, actor, key, { provider })).rejects.toBeDefined();
+
+    await expect(sendEmail(typed(), userId, actor, key, { provider })).rejects.toMatchObject({
+      code: SEND_UNCONFIRMED,
+    });
+    expect(sent).toHaveLength(1);
+  });
+
+  it('answers a repeat of a send that went out but was not filed without sending again', async () => {
+    const key = keyed();
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-unfiled',
+      threadId: null,
+    }));
+    failMessageInsert();
+    await expect(sendEmail(typed(), userId, actor, key, { provider })).rejects.toMatchObject({
+      code: SENT_NOT_RECORDED,
+    });
+    vi.restoreAllMocks();
+
+    await expect(sendEmail(typed(), userId, actor, key, { provider })).rejects.toMatchObject({
+      code: SEND_ALREADY_SENT,
+    });
+    expect(sent).toHaveLength(1);
+  });
+
+  it('sends again under the same key after a refusal that sent nothing', async () => {
+    const key = keyed();
+    let refuse = true;
+    const { provider, sent } = sender(async () => {
+      if (refuse) throw sendFailure(SEND_NOT_SENT, 'test');
+      return { providerMessageId: 'gm-retried', threadId: null };
+    });
+    await expect(sendEmail(typed(), userId, actor, key, { provider })).rejects.toBeDefined();
+    refuse = false;
+
+    await sendEmail(typed(), userId, actor, key, { provider });
+
+    expect(sent).toHaveLength(2);
+    expect((await intent()).status).toBe('filed');
+  });
+
+  it('lets only one of two simultaneous retries of a refused send through', async () => {
+    const key = keyed();
+    const { provider: refusing } = sender(async () => {
+      throw sendFailure(SEND_NOT_SENT, 'test');
+    });
+    await expect(
+      sendEmail(typed(), userId, actor, key, { provider: refusing }),
+    ).rejects.toBeDefined();
+    const held = heldSender();
+
+    const settled = await twoAtOnce(key, held);
+
+    expect(settled.map((result) => result.status).sort()).toEqual(['fulfilled', 'rejected']);
+    expect(settled.find((result) => result.status === 'rejected')).toMatchObject({
+      reason: { code: SEND_IN_PROGRESS },
+    });
+    expect(held.calls()).toBe(1);
+  });
+
+  it('refuses a key reused for a different message', async () => {
+    const key = randomUUID();
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-reused',
+      threadId: null,
+    }));
+    await sendEmail(typed(), userId, actor, keyed(key, 'first-request'), { provider });
+
+    await expect(
+      sendEmail(typed({ subject: 'Different' }), userId, actor, keyed(key, 'other-request'), {
+        provider,
+      }),
+    ).rejects.toMatchObject({ code: IDEMPOTENCY_KEY_REUSED });
+    expect(sent).toHaveLength(1);
+  });
+
+  /** Writes an intent under a key directly, in a state no send path can be paused in. */
+  async function intentUnderKey(
+    key: SendIdempotency,
+    status: string,
+    emailMessageId: string | null = null,
+  ): Promise<void> {
+    await pool.query(
+      `INSERT INTO email_send_intents
+         (idempotency_key, request_hash, user_id, actor_name, connected_account_id,
+          rfc_message_id, status, email_message_id)
+       VALUES ($1, $2, $3, 'Intent Rep', $4, $5, $6, $7)`,
+      [
+        key.key,
+        key.requestHash,
+        userId,
+        accountId,
+        `${key.key}@example.com`,
+        status,
+        emailMessageId,
+      ],
+    );
+  }
+
+  /** Answers the given statements with no rows, as losing a race to another request would. */
+  function noRowsFor(...fragments: string[]): void {
+    // Safe: called below with exactly the arguments the caller passed.
+    const realQuery = pool.query.bind(pool) as (...args: unknown[]) => unknown;
+    // Safe: delegates every overload unchanged; the cast only satisfies the spy's type.
+    vi.spyOn(pool, 'query').mockImplementation(((text: unknown, ...rest: unknown[]) =>
+      typeof text === 'string' && fragments.some((fragment) => text.includes(fragment))
+        ? Promise.resolve({ rows: [], rowCount: 0 })
+        : realQuery(text, ...rest)) as typeof pool.query);
+  }
+
+  it('answers a repeat of a filed send whose message was since deleted as already sent', async () => {
+    const key = keyed();
+    const { provider } = sender(async () => ({ providerMessageId: 'gm-gone', threadId: null }));
+    await sendEmail(typed(), userId, actor, key, { provider });
+    await pool.query('DELETE FROM email_messages WHERE connected_account_id = $1', [accountId]);
+
+    await expect(replaySend(userId, key)).rejects.toMatchObject({ code: SEND_ALREADY_SENT });
+  });
+
+  it('answers a repeat while the first send is in flight as in progress', async () => {
+    const key = keyed();
+    await intentUnderKey(key, 'pending');
+
+    await expect(replaySend(userId, key)).rejects.toMatchObject({ code: SEND_IN_PROGRESS });
+  });
+
+  it('refuses a refused send retried under its key with a different message', async () => {
+    const key = keyed();
+    await intentUnderKey(key, 'not_sent');
+
+    await expect(replaySend(userId, keyed(key.key, 'other-request'))).rejects.toMatchObject({
+      code: IDEMPOTENCY_KEY_REUSED,
+    });
+  });
+
+  it('says not sent, not in progress, when a concurrent retry was refused first', async () => {
+    const key = keyed();
+    await intentUnderKey(key, 'not_sent');
+    noRowsFor("SET status = 'pending', actor_name");
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-never',
+      threadId: null,
+    }));
+
+    await expect(sendEmail(typed(), userId, actor, key, { provider })).rejects.toMatchObject({
+      code: 'SEND_FAILED',
+    });
+    expect(sent).toHaveLength(0);
+  });
+
+  it('fails loudly when a key it could not claim has no intent', async () => {
+    noRowsFor(
+      'ON CONFLICT (user_id, idempotency_key)',
+      "SET status = 'pending', actor_name",
+      'FROM email_send_intents i',
+    );
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-orphan',
+      threadId: null,
+    }));
+
+    await expect(sendEmail(typed(), userId, actor, keyed(), { provider })).rejects.toThrow(
+      'a claimed key has no intent',
+    );
+    expect(sent).toHaveLength(0);
+  });
+
+  describe('replaySend', () => {
+    it('has nothing to replay for a new key, or for a refused send to retry', async () => {
+      expect(await replaySend(userId, keyed())).toBeNull();
+
+      const key = keyed();
+      const { provider } = sender(async () => {
+        throw sendFailure(SEND_NOT_SENT, 'test');
+      });
+      await expect(sendEmail(typed(), userId, actor, key, { provider })).rejects.toBeDefined();
+      expect(await replaySend(userId, key)).toBeNull();
+    });
+
+    it('replays a filed send as its first response', async () => {
+      const key = keyed();
+      const { provider } = sender(async () => ({ providerMessageId: 'gm-replay', threadId: null }));
+      const first = await sendEmail(typed(), userId, actor, key, { provider });
+
+      expect(await replaySend(userId, key)).toEqual(first);
+    });
   });
 });

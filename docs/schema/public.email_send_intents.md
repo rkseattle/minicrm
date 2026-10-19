@@ -24,6 +24,9 @@ A send recorded before it reaches the provider. Holds what only this application
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 | filed_at | timestamp with time zone |  | true |  |  |  |
+| idempotency_key | uuid |  | false |  |  | The client's Idempotency-Key, one per compose. A repeat answers from this row instead of sending again. |
+| request_hash | text |  | false |  |  | SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed. |
+| unresolved_merge_tags | text[] | '{}'::text[] | false |  |  | Template tags the first send could not resolve, so a replay answers exactly as it did. |
 
 ## Constraints
 
@@ -37,6 +40,7 @@ A send recorded before it reaches the provider. Holds what only this application
 | email_send_intents_email_message_id_fkey | FOREIGN KEY | FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL |
 | email_send_intents_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | email_send_intents_rfc_unique | UNIQUE | UNIQUE (connected_account_id, rfc_message_id) |
+| email_send_intents_idempotency_unique | UNIQUE | UNIQUE (user_id, idempotency_key) |
 
 ## Indexes
 
@@ -48,6 +52,7 @@ A send recorded before it reaches the provider. Holds what only this application
 | email_send_intents_user_idx | CREATE INDEX email_send_intents_user_idx ON public.email_send_intents USING btree (user_id) |
 | email_send_intents_message_idx | CREATE INDEX email_send_intents_message_idx ON public.email_send_intents USING btree (email_message_id) WHERE (email_message_id IS NOT NULL) |
 | email_send_intents_unsettled_idx | CREATE INDEX email_send_intents_unsettled_idx ON public.email_send_intents USING btree (updated_at) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'sent'::character varying])::text[])) |
+| email_send_intents_idempotency_unique | CREATE UNIQUE INDEX email_send_intents_idempotency_unique ON public.email_send_intents USING btree (user_id, idempotency_key) |
 
 ## Relations
 
@@ -75,6 +80,9 @@ erDiagram
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
   timestamp_with_time_zone filed_at ""
+  uuid idempotency_key "The client's Idempotency-Key, one per compose. A repeat answers from this row instead of sending again."
+  text request_hash "SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed."
+  text__ unresolved_merge_tags "Template tags the first send could not resolve, so a replay answers exactly as it did."
 }
 "public.users" {
   uuid id ""

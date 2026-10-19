@@ -42,7 +42,9 @@ restart cannot block its mailbox forever — only one unfinished job may exist p
 for a forward only, the sender's own text (any other send's activity takes the stored body).
 Filing clears both, a refusal clears both, and moving to `unconfirmed` moves the recipients
 into the audit entry. An unconfirmed forward keeps its text so a late Sent copy can still be
-filed; the 30-day purge bounds that, and sweeps first so no intent is deleted unaudited. Rows
+filed; the 30-day purge bounds that, and sweeps first so no intent is deleted unaudited. Every
+row also keeps `request_hash`, a SHA-256 of the request (recipients and body included), for
+its full 30 days, so a retry can be told from a reused key; a digest, not the content. Rows
 also ride the cascade when their mailbox or user is deleted.
 
 `user_ai_context` is **not** subject to the `ai_sessions` retention policy — it stores persistent

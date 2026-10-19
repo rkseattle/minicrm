@@ -7,6 +7,8 @@
 
 import 'dotenv/config';
 
+import { randomUUID } from 'node:crypto';
+
 import request from 'supertest';
 import { vi } from 'vitest';
 
@@ -102,6 +104,7 @@ async function sendStatuses(
   for (let attempt = 0; attempt < count; attempt += 1) {
     const res = await request(app)
       .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
       .set('Cookie', from.cookie)
       .send(
         payload ?? {
@@ -146,6 +149,7 @@ describe('email send limiter', () => {
     const statuses = await sendStatuses(from, CEILING);
     const blocked = await request(app)
       .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
       .set('Cookie', from.cookie)
       .send({
         connected_account_id: from.accountId,
@@ -180,6 +184,32 @@ describe('email send limiter', () => {
     const statuses = await sendStatuses(from, 2);
 
     expect(statuses).toEqual([500, 429]);
+  });
+
+  it('does not spend the budget on a repeat, which sends nothing', async () => {
+    process.env.TEST_RATE_LIMIT = 'true';
+    process.env.EMAIL_SEND_MAX_PER_HOUR = '2';
+    const from = await sender('replay');
+    const key = randomUUID();
+    const send = (subject: string, idempotencyKey: string) =>
+      request(app)
+        .post(SEND_URL)
+        .set('Cookie', from.cookie)
+        .set('Idempotency-Key', idempotencyKey)
+        .send({
+          connected_account_id: from.accountId,
+          to: ['someone@example.net'],
+          subject,
+          body_html: '<p>Hi</p>',
+        });
+
+    const statuses = [
+      (await send('First', key)).status,
+      (await send('First', key)).status,
+      (await send('Second', randomUUID())).status,
+    ];
+
+    expect(statuses).toEqual([201, 201, 201]);
   });
 
   it('counts each user separately', async () => {

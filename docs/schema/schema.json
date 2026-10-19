@@ -11153,6 +11153,25 @@
           "name": "filed_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "idempotency_key",
+          "type": "uuid",
+          "nullable": false,
+          "comment": "The client's Idempotency-Key, one per compose. A repeat answers from this row instead of sending again."
+        },
+        {
+          "name": "request_hash",
+          "type": "text",
+          "nullable": false,
+          "comment": "SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed."
+        },
+        {
+          "name": "unresolved_merge_tags",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]",
+          "comment": "Template tags the first send could not resolve, so a replay answers exactly as it did."
         }
       ],
       "indexes": [
@@ -11204,6 +11223,15 @@
           "table": "public.email_send_intents",
           "columns": [
             "updated_at"
+          ]
+        },
+        {
+          "name": "email_send_intents_idempotency_unique",
+          "def": "CREATE UNIQUE INDEX email_send_intents_idempotency_unique ON public.email_send_intents USING btree (user_id, idempotency_key)",
+          "table": "public.email_send_intents",
+          "columns": [
+            "user_id",
+            "idempotency_key"
           ]
         }
       ],
@@ -11297,6 +11325,17 @@
           "columns": [
             "connected_account_id",
             "rfc_message_id"
+          ]
+        },
+        {
+          "name": "email_send_intents_idempotency_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (user_id, idempotency_key)",
+          "table": "public.email_send_intents",
+          "referenced_table": "",
+          "columns": [
+            "user_id",
+            "idempotency_key"
           ]
         }
       ]

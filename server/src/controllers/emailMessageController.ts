@@ -8,6 +8,8 @@ import { z } from 'zod';
 
 import {
   createEmailMessageLinkSchema,
+  IDEMPOTENCY_KEY_HEADER,
+  idempotencyKeySchema,
   recordMessagesParamsSchema,
   sendEmailSchema,
   type EmailLinkRecordType,
@@ -27,10 +29,16 @@ import {
 import {
   EMAIL_ACCOUNT_NOT_FOUND,
   EMAIL_MESSAGE_NOT_FOUND,
+  IDEMPOTENCY_KEY_REUSED,
   PROVIDER_SEND_UNSUPPORTED,
   RATE_LIMITED,
   RECONNECT_REQUIRED,
+  replaySend,
+  requestHashOf,
+  SEND_ALREADY_SENT,
   SEND_FAILED,
+  SEND_IN_PROGRESS,
+  SEND_UNCONFIRMED,
   sendEmail,
   SENT_NOT_RECORDED,
   TEMPLATE_NOT_FOUND,
@@ -259,6 +267,10 @@ export async function deleteLinkHandler(req: Request, res: Response): Promise<vo
   res.status(204).send();
 }
 
+// The two refusals of a send's key, answered before the body is read.
+const IDEMPOTENCY_KEY_REQUIRED = 'IDEMPOTENCY_KEY_REQUIRED';
+const IDEMPOTENCY_KEY_INVALID = 'IDEMPOTENCY_KEY_INVALID';
+
 /**
  * The status each send refusal answers with.
  *
@@ -276,13 +288,43 @@ const SEND_ERROR_STATUS: Readonly<Record<string, number>> = {
   [RATE_LIMITED]: 429,
   [SEND_FAILED]: 502,
   [SENT_NOT_RECORDED]: 500,
+  [SEND_IN_PROGRESS]: 409,
+  [SEND_ALREADY_SENT]: 409,
+  [SEND_UNCONFIRMED]: 409,
+  [IDEMPOTENCY_KEY_REUSED]: 422,
 };
+
+/** Maps a send error to its response, or rethrows anything that is not one. */
+function respondToSendError(err: unknown, res: Response): void {
+  // Safe: a thrown value of any shape, narrowed by the typeof below.
+  const code = (err as { code?: unknown } | null)?.code;
+  const status = typeof code === 'string' ? SEND_ERROR_STATUS[code] : undefined;
+  if (typeof code !== 'string' || status === undefined) throw err;
+  // Read by the send limiter: this mail went out, so it spends the hourly budget.
+  if (code === SENT_NOT_RECORDED) res.locals.mailSent = true;
+  // Safe: every code in SEND_ERROR_STATUS is thrown by sendError, which builds an Error.
+  res.status(status).json(errorBody(code, (err as Error).message));
+}
 
 /**
  * POST /api/v1/email-messages/send
  * Sends through one of the caller's own mailboxes and records the message.
  */
 export async function sendEmailHandler(req: Request, res: Response): Promise<void> {
+  const rawKey = req.get(IDEMPOTENCY_KEY_HEADER);
+  if (rawKey === undefined) {
+    res
+      .status(400)
+      .json(errorBody(IDEMPOTENCY_KEY_REQUIRED, `Send needs an ${IDEMPOTENCY_KEY_HEADER} header.`));
+    return;
+  }
+  const key = idempotencyKeySchema.safeParse(rawKey);
+  if (!key.success) {
+    res
+      .status(400)
+      .json(errorBody(IDEMPOTENCY_KEY_INVALID, `${IDEMPOTENCY_KEY_HEADER} must be a UUID.`));
+    return;
+  }
   const parsed = sendEmailSchema.safeParse(req.body);
   if (!parsed.success) {
     res
@@ -291,6 +333,21 @@ export async function sendEmailHandler(req: Request, res: Response): Promise<voi
     return;
   }
   const input = parsed.data;
+  const idempotency = { key: key.data, requestHash: requestHashOf(input) };
+
+  // First: a repeat answers as the first send did, even after its record is gone.
+  try {
+    // Safe: authenticate runs first on this router and always sets req.user.
+    const replayed = await replaySend(req.user!.id, idempotency);
+    if (replayed) {
+      res.locals.replayed = true;
+      res.status(201).json(replayed);
+      return;
+    }
+  } catch (err) {
+    respondToSendError(err, res);
+    return;
+  }
 
   // Sending from a record files the message against it, so the caller needs the same
   // write access that filing mail by hand does.
@@ -327,16 +384,14 @@ export async function sendEmailHandler(req: Request, res: Response): Promise<voi
   }
 
   try {
-    const sent = await sendEmail(input, req.user!.id, { id: req.user!.id, name: req.user!.name });
+    const sent = await sendEmail(
+      input,
+      req.user!.id,
+      { id: req.user!.id, name: req.user!.name },
+      idempotency,
+    );
     res.status(201).json(sent);
   } catch (err) {
-    // Safe: a thrown value of any shape, narrowed by the typeof below.
-    const code = (err as { code?: unknown } | null)?.code;
-    const status = typeof code === 'string' ? SEND_ERROR_STATUS[code] : undefined;
-    if (typeof code !== 'string' || status === undefined) throw err;
-    // Read by the send limiter: this mail went out, so it spends the hourly budget.
-    if (code === SENT_NOT_RECORDED) res.locals.mailSent = true;
-    // Safe: every code in SEND_ERROR_STATUS is thrown by sendError, which builds an Error.
-    res.status(status).json(errorBody(code, (err as Error).message));
+    respondToSendError(err, res);
   }
 }

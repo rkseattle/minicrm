@@ -220,11 +220,11 @@ describe('runRetentionPurge', () => {
     await parkFromScheduler(account.id);
     await pool.query(
       `INSERT INTO email_send_intents
-         (user_id, actor_name, connected_account_id, rfc_message_id, status, created_at)
-       VALUES ($1, 'Retention Svc User', $2, 'old-unconfirmed@x', 'unconfirmed',
+         (idempotency_key, request_hash, user_id, actor_name, connected_account_id, rfc_message_id, status, created_at)
+       VALUES (gen_random_uuid(), '', $1, 'Retention Svc User', $2, 'old-unconfirmed@x', 'unconfirmed',
                now() - interval '31 days'),
-              ($1, 'Retention Svc User', $2, 'old-filed@x', 'filed', now() - interval '31 days'),
-              ($1, 'Retention Svc User', $2, 'recent@x', 'unconfirmed', now() - interval '29 days')`,
+              (gen_random_uuid(), '', $1, 'Retention Svc User', $2, 'old-filed@x', 'filed', now() - interval '31 days'),
+              (gen_random_uuid(), '', $1, 'Retention Svc User', $2, 'recent@x', 'unconfirmed', now() - interval '29 days')`,
       [userId, account.id],
     );
 
@@ -253,9 +253,9 @@ describe('runRetentionPurge', () => {
     await parkFromScheduler(account.id);
     await pool.query(
       `INSERT INTO email_send_intents
-         (user_id, actor_name, connected_account_id, rfc_message_id, status, created_at,
+         (idempotency_key, request_hash, user_id, actor_name, connected_account_id, rfc_message_id, status, created_at,
           updated_at)
-       VALUES ($1, 'Retention Svc User', $2, 'never-swept@x', 'sent',
+       VALUES (gen_random_uuid(), '', $1, 'Retention Svc User', $2, 'never-swept@x', 'sent',
                now() - interval '31 days', now() - interval '31 days')`,
       [userId, account.id],
     );

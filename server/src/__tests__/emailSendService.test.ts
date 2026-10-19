@@ -7,13 +7,20 @@
 
 import 'dotenv/config';
 
+import { randomUUID } from 'node:crypto';
+
 import { simpleParser } from 'mailparser';
 import { vi } from 'vitest';
 
 import pool from '../db.js';
 import { createImapAccount, upsertOAuthAccount } from '../services/connectedAccountService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
-import { sendEmail, SENT_NOT_RECORDED } from '../services/emailSendService.js';
+import {
+  sendEmail,
+  SENT_NOT_RECORDED,
+  type SendIdempotency,
+  requestHashOf,
+} from '../services/emailSendService.js';
 import type { MailProvider, SentMessage } from '../services/mail/mailProvider.js';
 import { directionOf } from '../services/mail/messageBody.js';
 import {
@@ -26,7 +33,10 @@ import {
   type SendFailureCode,
 } from '../services/mail/sendOutcome.js';
 import { createUser } from '../services/userService.js';
-import type { SendEmailInput } from '@minicrm/shared/schemas/emailMessageSchema.js';
+import {
+  sendEmailSchema,
+  type SendEmailInput,
+} from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 import { clearAuditLogFor, failMessageInsert, insertParkedMailbox } from './testUtils.js';
 
@@ -61,6 +71,11 @@ function fakeSender(
       },
     },
   };
+}
+
+/** A key for one send, as the client generates per compose. */
+function freshKey(): SendIdempotency {
+  return { key: randomUUID(), requestHash: 'test-request' };
 }
 
 function typed(overrides: Partial<SendEmailInput> = {}): SendEmailInput {
@@ -212,7 +227,7 @@ describe('sendEmail — storage', () => {
   it('stores the sent message as outbound under the id the provider returned', async () => {
     const { provider } = fakeSender();
 
-    const sent = await sendEmail(typed(), userId, actor, { provider });
+    const sent = await sendEmail(typed(), userId, actor, freshKey(), { provider });
 
     const [row] = await storedRows();
     expect(row).toMatchObject({ id: sent.message.id, provider_message_id: 'sent-1' });
@@ -223,7 +238,7 @@ describe('sendEmail — storage', () => {
   it('stores a from_address that a re-sync of the Sent copy still reads as outbound', async () => {
     const { provider } = fakeSender();
 
-    await sendEmail(typed(), userId, actor, { provider });
+    await sendEmail(typed(), userId, actor, freshKey(), { provider });
 
     const [row] = await storedRows();
     expect(directionOf(row!.from_address, MAILBOX)).toBe('outbound');
@@ -232,7 +247,7 @@ describe('sendEmail — storage', () => {
   it('stores the Message-ID the sent document carries', async () => {
     const { provider, calls } = fakeSender();
 
-    await sendEmail(typed(), userId, actor, { provider });
+    await sendEmail(typed(), userId, actor, freshKey(), { provider });
 
     const parsed = await simpleParser(calls[0]!.mime);
     const [row] = await storedRows();
@@ -242,7 +257,9 @@ describe('sendEmail — storage', () => {
   it('sends the HTML body the caller composed', async () => {
     const { provider, calls } = fakeSender();
 
-    await sendEmail(typed({ body_html: '<p><b>bold</b></p>' }), userId, actor, { provider });
+    await sendEmail(typed({ body_html: '<p><b>bold</b></p>' }), userId, actor, freshKey(), {
+      provider,
+    });
 
     const parsed = await simpleParser(calls[0]!.mime);
     expect(parsed.html).toContain('<p><b>bold</b></p>');
@@ -258,9 +275,15 @@ describe('sendEmail — storage', () => {
     const parent = await storeParent({ threadId: 'parent-thread', rfcMessageId: 'p@x.test' });
     const { provider } = fakeSender();
 
-    const sent = await sendEmail(typed({ in_reply_to_message_id: parent }), userId, actor, {
-      provider,
-    });
+    const sent = await sendEmail(
+      typed({ in_reply_to_message_id: parent }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     expect(sent.message.thread_id).toBe('parent-thread');
     expect((await storedRows()).filter((row) => row.provider_message_id === 'sent-1')).toHaveLength(
@@ -309,7 +332,9 @@ describe('sendEmail — replies', () => {
     });
     const { provider, calls } = fakeSender();
 
-    await sendEmail(typed({ in_reply_to_message_id: parent }), userId, actor, { provider });
+    await sendEmail(typed({ in_reply_to_message_id: parent }), userId, actor, freshKey(), {
+      provider,
+    });
 
     const parsed = await simpleParser(calls[0]!.mime);
     expect(parsed.inReplyTo).toBe('<p2@x.test>');
@@ -320,9 +345,15 @@ describe('sendEmail — replies', () => {
     const parent = await storeParent({ threadId: 'gmail-thread-1', rfcMessageId: 'p@x.test' });
     const { provider, calls } = fakeSender();
 
-    const sent = await sendEmail(typed({ in_reply_to_message_id: parent }), userId, actor, {
-      provider,
-    });
+    const sent = await sendEmail(
+      typed({ in_reply_to_message_id: parent }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     expect(sent.message.thread_id).toBe('gmail-thread-1');
     expect(calls[0]!.threadHint).toBe('gmail-thread-1');
@@ -331,7 +362,7 @@ describe('sendEmail — replies', () => {
   it('stores a new conversation under the provider thread id the sync engine will use', async () => {
     const { provider } = fakeSender([{ providerMessageId: 'sent-1', threadId: 'native-t1' }]);
 
-    const sent = await sendEmail(typed(), userId, actor, { provider });
+    const sent = await sendEmail(typed(), userId, actor, freshKey(), { provider });
 
     expect(sent.message.thread_id).toBe('native-t1');
   });
@@ -340,9 +371,15 @@ describe('sendEmail — replies', () => {
     const parent = await storeParent({ threadId: 'parent-t', rfcMessageId: 'p@x.test' });
     const { provider } = fakeSender([{ providerMessageId: 'sent-1', threadId: 'other-t' }]);
 
-    const sent = await sendEmail(typed({ in_reply_to_message_id: parent }), userId, actor, {
-      provider,
-    });
+    const sent = await sendEmail(
+      typed({ in_reply_to_message_id: parent }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     expect(sent.message.thread_id).toBe('other-t');
   });
@@ -351,9 +388,15 @@ describe('sendEmail — replies', () => {
     const parent = await storeParent({ threadId: 'parent-t2', rfcMessageId: 'p2@x.test' });
     const { provider } = fakeSender();
 
-    const sent = await sendEmail(typed({ in_reply_to_message_id: parent }), userId, actor, {
-      provider,
-    });
+    const sent = await sendEmail(
+      typed({ in_reply_to_message_id: parent }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     expect(sent.message.thread_id).toBe('parent-t2');
   });
@@ -361,7 +404,7 @@ describe('sendEmail — replies', () => {
   it('starts a new thread when nothing is being answered', async () => {
     const { provider, calls } = fakeSender();
 
-    await sendEmail(typed(), userId, actor, { provider });
+    await sendEmail(typed(), userId, actor, freshKey(), { provider });
 
     expect(calls[0]!.threadHint).toBeNull();
   });
@@ -375,7 +418,7 @@ describe('sendEmail — replies', () => {
     const { provider, calls } = fakeSender();
 
     await expect(
-      sendEmail(typed({ in_reply_to_message_id: theirs }), userId, actor, { provider }),
+      sendEmail(typed({ in_reply_to_message_id: theirs }), userId, actor, freshKey(), { provider }),
     ).rejects.toMatchObject({ code: 'EMAIL_MESSAGE_NOT_FOUND' });
     expect(calls).toHaveLength(0);
   });
@@ -391,7 +434,9 @@ describe('sendEmail — forwards', () => {
     });
     const { provider, calls } = fakeSender();
 
-    await sendEmail(typed({ forward_of_message_id: original }), userId, actor, { provider });
+    await sendEmail(typed({ forward_of_message_id: original }), userId, actor, freshKey(), {
+      provider,
+    });
 
     const parsed = await simpleParser(calls[0]!.mime);
     expect(parsed.inReplyTo).toBeUndefined();
@@ -410,6 +455,7 @@ describe('sendEmail — forwards', () => {
       typed({ body_html: '<p>FYI</p>', forward_of_message_id: original }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -428,7 +474,9 @@ describe('sendEmail — forwards', () => {
     });
     const { provider, calls } = fakeSender();
 
-    await sendEmail(typed({ forward_of_message_id: original }), userId, actor, { provider });
+    await sendEmail(typed({ forward_of_message_id: original }), userId, actor, freshKey(), {
+      provider,
+    });
 
     expect(String((await simpleParser(calls[0]!.mime)).html)).toContain('a &lt; b<br>next line');
   });
@@ -437,9 +485,15 @@ describe('sendEmail — forwards', () => {
     const original = await storeParent({ threadId: 'gmail-thread-5', rfcMessageId: 'o5@x.test' });
     const { provider, calls } = fakeSender();
 
-    const sent = await sendEmail(typed({ forward_of_message_id: original }), userId, actor, {
-      provider,
-    });
+    const sent = await sendEmail(
+      typed({ forward_of_message_id: original }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     expect(sent.message.thread_id).toBe('gmail-thread-5');
     expect(calls[0]!.threadHint).toBe('gmail-thread-5');
@@ -463,6 +517,7 @@ describe('sendEmail — forwards', () => {
       }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -482,7 +537,7 @@ describe('sendEmail — forwards', () => {
     const { provider, calls } = fakeSender();
 
     await expect(
-      sendEmail(typed({ forward_of_message_id: theirs }), userId, actor, { provider }),
+      sendEmail(typed({ forward_of_message_id: theirs }), userId, actor, freshKey(), { provider }),
     ).rejects.toMatchObject({ code: 'EMAIL_MESSAGE_NOT_FOUND' });
     expect(calls).toHaveLength(0);
   });
@@ -497,6 +552,7 @@ describe('sendEmail — matching and audit', () => {
       typed({ to: [`${FILE_PREFIX}-matched@example.com`] }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -515,6 +571,7 @@ describe('sendEmail — matching and audit', () => {
       typed({ to: ['unrelated@example.net'], record_type: 'contact', record_id: contactId }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -544,6 +601,7 @@ describe('sendEmail — matching and audit', () => {
       typed({ record_type: 'contact', record_id: contactId }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -562,6 +620,7 @@ describe('sendEmail — matching and audit', () => {
       typed({ to: [`${FILE_PREFIX}-audited@example.com`], cc: ['cc@example.net'] }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -594,6 +653,7 @@ describe('sendEmail — matching and audit', () => {
       typed({ to: [`${FILE_PREFIX}-prestored@example.com`] }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -627,9 +687,15 @@ describe('sendEmail — activities', () => {
     const contactId = await createContact('activity');
     const { provider } = fakeSender();
 
-    await sendEmail(typed({ record_type: 'contact', record_id: contactId }), userId, actor, {
-      provider,
-    });
+    await sendEmail(
+      typed({ record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     expect(await activitiesFor('contact_id', contactId)).toEqual([{ type: 'Email' }]);
   });
@@ -638,9 +704,15 @@ describe('sendEmail — activities', () => {
     const contactId = await createContact('activity-audit');
     const { provider } = fakeSender();
 
-    await sendEmail(typed({ record_type: 'contact', record_id: contactId }), userId, actor, {
-      provider,
-    });
+    await sendEmail(
+      typed({ record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     const activity = await pool.query<{ id: string }>(
       'SELECT id FROM activities WHERE contact_id = $1',
@@ -665,6 +737,7 @@ describe('sendEmail — activities', () => {
       typed({ record_type: 'account', record_id: result.rows[0]!.id }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -680,9 +753,15 @@ describe('sendEmail — activities', () => {
     );
     const { provider } = fakeSender();
 
-    await sendEmail(typed({ record_type: 'deal', record_id: result.rows[0]!.id }), userId, actor, {
-      provider,
-    });
+    await sendEmail(
+      typed({ record_type: 'deal', record_id: result.rows[0]!.id }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     expect(await activitiesFor('deal_id', result.rows[0]!.id)).toHaveLength(1);
   });
@@ -695,9 +774,15 @@ describe('sendEmail — activities', () => {
     );
     const { provider } = fakeSender();
 
-    await sendEmail(typed({ record_type: 'lead', record_id: result.rows[0]!.id }), userId, actor, {
-      provider,
-    });
+    await sendEmail(
+      typed({ record_type: 'lead', record_id: result.rows[0]!.id }),
+      userId,
+      actor,
+      freshKey(),
+      {
+        provider,
+      },
+    );
 
     const count = await pool.query('SELECT 1 FROM activities WHERE owner_id = $1', [userId]);
     expect(count.rowCount).toBe(0);
@@ -712,6 +797,7 @@ describe('sendEmail — activities', () => {
       typed({ record_type: 'contact', record_id: missing }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -731,9 +817,11 @@ describe('sendEmail — activities', () => {
     const { provider, calls } = fakeSender();
     failMessageInsert();
 
-    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toMatchObject({
-      code: SENT_NOT_RECORDED,
-    });
+    await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toMatchObject(
+      {
+        code: SENT_NOT_RECORDED,
+      },
+    );
     expect(calls).toHaveLength(1);
     expect(await storedRows()).toHaveLength(0);
     expect(await auditEntries()).toHaveLength(0);
@@ -771,7 +859,7 @@ describe('sendEmail — templates', () => {
     const templateId = await createTemplate(true, `${'x'.repeat(300)} {{contact.first_name}}`);
     const { provider } = fakeSender();
 
-    await sendEmail(fromTemplate(templateId, contactId), userId, actor, { provider });
+    await sendEmail(fromTemplate(templateId, contactId), userId, actor, freshKey(), { provider });
 
     const activity = await pool.query<{ subject: string }>(
       'SELECT subject FROM activities WHERE contact_id = $1',
@@ -786,7 +874,7 @@ describe('sendEmail — templates', () => {
     const templateId = await createTemplate(true, '{{contact.title}}');
     const { provider } = fakeSender();
 
-    await sendEmail(fromTemplate(templateId, contactId), userId, actor, { provider });
+    await sendEmail(fromTemplate(templateId, contactId), userId, actor, freshKey(), { provider });
 
     const activity = await pool.query<{ subject: string }>(
       'SELECT subject FROM activities WHERE contact_id = $1',
@@ -800,9 +888,15 @@ describe('sendEmail — templates', () => {
     const { provider, calls } = fakeSender();
 
     await expect(
-      sendEmail(fromTemplate('00000000-0000-4000-8000-000000000009', contactId), userId, actor, {
-        provider,
-      }),
+      sendEmail(
+        fromTemplate('00000000-0000-4000-8000-000000000009', contactId),
+        userId,
+        actor,
+        freshKey(),
+        {
+          provider,
+        },
+      ),
     ).rejects.toMatchObject({ code: 'TEMPLATE_NOT_FOUND' });
     expect(calls).toHaveLength(0);
   });
@@ -822,6 +916,7 @@ describe('sendEmail — templates', () => {
       }),
       userId,
       actor,
+      freshKey(),
       { provider },
     );
 
@@ -847,6 +942,7 @@ describe('sendEmail — templates', () => {
         }),
         userId,
         actor,
+        freshKey(),
         { provider },
       ),
     ).rejects.toMatchObject({ code: 'TEMPLATE_NOT_FOUND' });
@@ -885,7 +981,9 @@ describe('sendEmail — refusals and failure mapping', () => {
     const { provider } = fakeSender();
 
     await expect(
-      sendEmail(typed({ connected_account_id: otherAccountId }), userId, actor, { provider }),
+      sendEmail(typed({ connected_account_id: otherAccountId }), userId, actor, freshKey(), {
+        provider,
+      }),
     ).rejects.toMatchObject({ code: 'EMAIL_ACCOUNT_NOT_FOUND' });
   });
 
@@ -904,7 +1002,7 @@ describe('sendEmail — refusals and failure mapping', () => {
     );
     try {
       await expect(
-        sendEmail(typed({ connected_account_id: imap.id }), userId, actor),
+        sendEmail(typed({ connected_account_id: imap.id }), userId, actor, freshKey()),
       ).rejects.toMatchObject({ code: 'PROVIDER_SEND_UNSUPPORTED' });
     } finally {
       await pool.query('DELETE FROM connected_accounts WHERE id = $1', [imap.id]);
@@ -920,15 +1018,17 @@ describe('sendEmail — refusals and failure mapping', () => {
   ])('maps the driver code %s to %s and stores nothing', async (driverCode, apiCode) => {
     const { provider } = fakeSender([sendFailure(driverCode, 'Gmail')]);
 
-    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toMatchObject({
-      code: apiCode,
-    });
+    await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toMatchObject(
+      {
+        code: apiCode,
+      },
+    );
     expect(await storedRows()).toHaveLength(0);
   });
 
   it('asks for a reconnect when the grant cannot even read the mailbox', async () => {
     // No injected provider: the real Gmail driver refuses the empty grant at construction.
-    await expect(sendEmail(typed(), userId, actor)).rejects.toMatchObject({
+    await expect(sendEmail(typed(), userId, actor, freshKey())).rejects.toMatchObject({
       code: 'RECONNECT_REQUIRED',
     });
   });
@@ -941,7 +1041,7 @@ describe('sendEmail — refusals and failure mapping', () => {
     const { provider, calls } = fakeSender();
     try {
       await expect(
-        sendEmail(typed(), userId, actor, {
+        sendEmail(typed(), userId, actor, freshKey(), {
           provider,
           refresh: () => Promise.reject(new Error('socket hang up')),
         }),
@@ -959,7 +1059,9 @@ describe('sendEmail — refusals and failure mapping', () => {
     ]);
     const { provider, calls } = fakeSender();
     try {
-      await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toMatchObject({
+      await expect(
+        sendEmail(typed(), userId, actor, freshKey(), { provider }),
+      ).rejects.toMatchObject({
         code: 'PROVIDER_AUTH_EXPIRED',
       });
       expect(calls).toHaveLength(0);
@@ -971,7 +1073,7 @@ describe('sendEmail — refusals and failure mapping', () => {
   it('warns that an unconfirmed send may have gone out', async () => {
     const { provider } = fakeSender([sendFailure(SEND_OUTCOME_UNKNOWN, 'Gmail')]);
 
-    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toThrow(
+    await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toThrow(
       /did not confirm/,
     );
   });
@@ -979,7 +1081,7 @@ describe('sendEmail — refusals and failure mapping', () => {
   it('records an expired credential on the mailbox', async () => {
     const { provider } = fakeSender([sendFailure(SEND_AUTH_EXPIRED, 'Gmail')]);
 
-    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toBeDefined();
+    await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toBeDefined();
 
     const status = await pool.query(
       'SELECT status, status_detail FROM connected_accounts WHERE id = $1',
@@ -993,7 +1095,9 @@ describe('sendEmail — refusals and failure mapping', () => {
     async (driverCode) => {
       const { provider } = fakeSender([sendFailure(driverCode, 'Gmail')]);
 
-      await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toBeDefined();
+      await expect(
+        sendEmail(typed(), userId, actor, freshKey(), { provider }),
+      ).rejects.toBeDefined();
 
       const status = await pool.query(
         'SELECT status, status_detail FROM connected_accounts WHERE id = $1',
@@ -1002,4 +1106,55 @@ describe('sendEmail — refusals and failure mapping', () => {
       expect(status.rows[0]).toEqual({ status: 'active', status_detail: null });
     },
   );
+});
+
+describe('requestHashOf', () => {
+  const base = {
+    connected_account_id: '00000000-0000-4000-8000-0000000000a1',
+    to: ['someone@example.net'],
+    subject: 'Hello',
+    body_html: '<p>Hi</p>',
+  };
+  const hashOf = (raw: Record<string, unknown>): string =>
+    requestHashOf(sendEmailSchema.parse(raw));
+
+  it('hashes the same request the same', () => {
+    expect(hashOf(base)).toBe(hashOf({ ...base }));
+  });
+
+  it('hashes requests the schema normalizes alike as one', () => {
+    expect(hashOf({ ...base, cc: [] })).toBe(hashOf(base));
+    expect(hashOf({ ...base, subject: '  Hello  ' })).toBe(hashOf(base));
+  });
+
+  it('does not depend on the order of the fields', () => {
+    const reordered = Object.fromEntries(Object.entries(sendEmailSchema.parse(base)).reverse());
+    // Safe: the same parsed fields in another order, which is what is under test.
+    expect(requestHashOf(reordered as SendEmailInput)).toBe(hashOf(base));
+  });
+
+  it.each<[string, Record<string, unknown>]>([
+    ['mailbox', { connected_account_id: '00000000-0000-4000-8000-0000000000a2' }],
+    ['recipient', { to: ['other@example.net'] }],
+    ['cc', { cc: ['copy@example.net'] }],
+    ['subject', { subject: 'Goodbye' }],
+    ['body', { body_html: '<p>Bye</p>' }],
+    ['record', { record_type: 'contact', record_id: '00000000-0000-4000-8000-0000000000a3' }],
+    ['parent', { in_reply_to_message_id: '00000000-0000-4000-8000-0000000000a4' }],
+    ['forwarded original', { forward_of_message_id: '00000000-0000-4000-8000-0000000000a5' }],
+  ])('changes with the %s', (_field, change) => {
+    expect(hashOf({ ...base, ...change })).not.toBe(hashOf(base));
+  });
+
+  it('changes with the template', () => {
+    const fromTemplate = {
+      connected_account_id: base.connected_account_id,
+      to: base.to,
+      record_type: 'contact',
+      record_id: '00000000-0000-4000-8000-0000000000a3',
+    };
+    expect(
+      hashOf({ ...fromTemplate, template_id: '00000000-0000-4000-8000-0000000000b1' }),
+    ).not.toBe(hashOf({ ...fromTemplate, template_id: '00000000-0000-4000-8000-0000000000b2' }));
+  });
 });

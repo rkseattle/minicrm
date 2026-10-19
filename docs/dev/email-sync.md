@@ -585,14 +585,34 @@ thread wins over the one the engine derived.
 | `PROVIDER_AUTH_EXPIRED`     | 409    | The credential was refused; also written to `status_detail`                                       |
 | `PROVIDER_SEND_UNSUPPORTED` | 409    | An IMAP mailbox, which has no send driver yet                                                     |
 | `SENT_NOT_RECORDED`         | 500    | Sent, but storage failed. Never resend; sync files it from its intent when the Sent copy arrives  |
+| `IDEMPOTENCY_KEY_REQUIRED`  | 400    | No `Idempotency-Key` header                                                                       |
+| `IDEMPOTENCY_KEY_INVALID`   | 400    | The key is not a UUID                                                                             |
+| `SEND_IN_PROGRESS`          | 409    | A repeat while the first send under the key is still in flight                                    |
+| `SEND_ALREADY_SENT`         | 409    | A repeat of a send that went out and is not yet filed                                             |
+| `SEND_UNCONFIRMED`          | 409    | A repeat of a send whose outcome is unknown. Never resent under its key                           |
+| `IDEMPOTENCY_KEY_REUSED`    | 422    | The key was first used with a different request body                                              |
 
 Credential problems answer 409, never 401: the client treats 401 as the user's own session
 ending. The hourly limit counts mail that went out — a success, or `SENT_NOT_RECORDED` — so
 a provider outage or a malformed request does not spend a rep's budget. It is per user and per process — its store is in
 memory, so behind several replicas the effective ceiling multiplies by their count. It
-bounds abuse of a rep's mailbox through this instance; it is not a quota. Nothing makes a
-send idempotent, and neither Gmail nor Graph deduplicates, so a client must not resubmit
-while a send is in flight.
+bounds abuse of a rep's mailbox through this instance; it is not a quota. A replay is not
+counted, with two exceptions until the limit moves into the database: the limiter runs
+before the key is looked up, so a rep at the ceiling who repeats a filed send gets 429 rather
+than the replayed 201, and a concurrent duplicate that answers from a filed send is counted.
+
+Neither Gmail nor Graph deduplicates a submission, so every send carries an
+`Idempotency-Key` header, a UUID the client generates once per compose and reuses on every
+retry of it, as Stripe's API does. The key is stored on the send intent, unique per user,
+with a SHA-256 of the request body. The controller looks it up before any other work, so a
+sequential repeat renders nothing, refreshes no token, and reads no record that may since have
+gone; a duplicate sent at the same moment loses at the intent insert instead. A
+filed send replays its first response; one still in flight, sent but unfiled, or of unknown
+outcome answers with the 409s above; a refused send (`not_sent`) sends again under the same
+key. Two requests with one key at once are settled by the intent insert itself
+(`ON CONFLICT DO NOTHING`), and two retries of a refused send by a conditional update, so
+neither can mail twice. A key lives as long as its intent: 30 days from its last send
+attempt, after which the retention purge deletes it and the same key would send again.
 
 ## Configuration
 

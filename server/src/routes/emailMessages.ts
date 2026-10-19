@@ -54,7 +54,9 @@ const emailSendLimiter = rateLimit({
   // Only mail that went spends the budget: a typo or a provider outage must not lock a
   // rep out for the hour, but a send whose storage then failed still went out.
   skipFailedRequests: true,
-  requestWasSuccessful: (_req, res) => res.statusCode < 400 || res.locals.mailSent === true,
+  // A replay sends nothing, so it spends nothing.
+  requestWasSuccessful: (_req, res) =>
+    res.locals.replayed !== true && (res.statusCode < 400 || res.locals.mailSent === true),
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -165,9 +167,17 @@ router.get('/', asyncHandler(listRecordMessagesHandler));
  *       its addresses name, and audits it. Naming a record also files an Email activity
  *       there (not for leads), which requires activities:create. A reply or forward names a
  *       stored message in the same mailbox and joins its conversation; a forward quotes the
- *       original. Successful sends are limited per user per hour.
+ *       original. Successful sends are limited per user per hour. Every request carries an
+ *       Idempotency-Key, one per compose: a repeat under the same key never sends again, and
+ *       answers as the first request did.
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Idempotency-Key
+ *         required: true
+ *         description: A UUID the client generates once per compose and reuses on every retry of it.
+ *         schema: { type: string, format: uuid }
  *     requestBody:
  *       required: true
  *       content:
@@ -188,7 +198,7 @@ router.get('/', asyncHandler(listRecordMessagesHandler));
  *               forward_of_message_id: { type: string, format: uuid }
  *     responses:
  *       201:
- *         description: Sent and stored
+ *         description: Sent and stored, or a repeat of a send that was
  *         content:
  *           application/json:
  *             schema:
@@ -197,7 +207,7 @@ router.get('/', asyncHandler(listRecordMessagesHandler));
  *                 message: { $ref: '#/components/schemas/EmailMessage' }
  *                 unresolved_merge_tags: { type: array, items: { type: string } }
  *       400:
- *         description: Invalid body
+ *         description: Invalid body, or a missing or malformed Idempotency-Key (IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:
@@ -205,7 +215,9 @@ router.get('/', asyncHandler(listRecordMessagesHandler));
  *       404:
  *         description: No such mailbox, record, template, or message in this mailbox
  *       409:
- *         description: The mailbox cannot send, or must be reconnected (PROVIDER_SEND_UNSUPPORTED, PROVIDER_AUTH_EXPIRED, RECONNECT_REQUIRED)
+ *         description: The mailbox cannot send, or must be reconnected (PROVIDER_SEND_UNSUPPORTED, PROVIDER_AUTH_EXPIRED, RECONNECT_REQUIRED); or a repeat of a send still in flight (SEND_IN_PROGRESS), sent but not yet filed (SEND_ALREADY_SENT), or of unknown outcome (SEND_UNCONFIRMED)
+ *       422:
+ *         description: IDEMPOTENCY_KEY_REUSED — the key was already used for a different message
  *       429:
  *         description: RATE_LIMITED — this instance's hourly limit, or the provider's
  *       500:
