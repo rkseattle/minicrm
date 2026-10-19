@@ -138,19 +138,18 @@ export function resolveThreadId(headers: ThreadingHeaders): string | null {
     if (normalized) return normalized;
   }
 
-  if (headers.inReplyTo) {
-    // ENVELOPE carries the raw header value, brackets included, so the bracketed token is
-    // the normal case; the raw fallback covers a client that omitted them.
-    const [bracketed] = extractMessageIds(headers.inReplyTo);
-    const normalized = normalizeMessageId(bracketed ?? headers.inReplyTo);
-    if (normalized) return normalized;
-  }
+  return singleMessageId(headers.inReplyTo) ?? singleMessageId(headers.messageId);
+}
 
-  if (headers.messageId) {
-    const [bracketed] = extractMessageIds(headers.messageId);
-    const normalized = normalizeMessageId(bracketed ?? headers.messageId);
-    if (normalized) return normalized;
-  }
-
-  return null;
+/**
+ * The one id a `Message-ID` or `In-Reply-To` value names, bare, or null when it names none.
+ *
+ * ENVELOPE carries the raw header value, brackets included, so the bracketed token is the
+ * normal case; the raw fallback covers a client that omitted them. Shared by thread
+ * resolution and by what a reply will cite, so both read a header by one rule.
+ */
+export function singleMessageId(headerValue: string | null | undefined): string | null {
+  if (!headerValue) return null;
+  const [bracketed] = extractMessageIds(headerValue);
+  return normalizeMessageId(bracketed ?? headerValue);
 }

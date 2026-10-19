@@ -60,6 +60,8 @@ function message(overrides: Partial<NormalizedMessage> = {}): NormalizedMessage 
     bodyText: null,
     bodyHtml: null,
     snippet: null,
+    rfcMessageId: null,
+    references: null,
     ...overrides,
   };
 }
@@ -150,6 +152,20 @@ async function storedBodies(accountId: string): Promise<
   }>(
     `SELECT provider_message_id, message_body_text, message_body_html, message_snippet
        FROM email_messages
+      WHERE connected_account_id = $1 ORDER BY provider_message_id`,
+    [accountId],
+  );
+  return result.rows;
+}
+
+async function storedThreadingHeaders(
+  accountId: string,
+): Promise<{ rfc_message_id: string | null; references_header: string | null }[]> {
+  const result = await pool.query<{
+    rfc_message_id: string | null;
+    references_header: string | null;
+  }>(
+    `SELECT rfc_message_id, references_header FROM email_messages
       WHERE connected_account_id = $1 ORDER BY provider_message_id`,
     [accountId],
   );
@@ -352,6 +368,43 @@ describe('syncOneAccount', () => {
     const [row] = await storedBodies(account.id);
     expect(row.message_body_text).toBe('the body');
     expect(row.message_snippet).toBe('the body');
+  });
+
+  it("stores a message's own Message-ID and References", async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([
+        page({
+          messages: [message({ rfcMessageId: 'm2@x.test', references: '<m0@x.test> <m1@x.test>' })],
+        }),
+      ]),
+    );
+
+    const [row] = await storedThreadingHeaders(account.id);
+    expect(row).toEqual({
+      rfc_message_id: 'm2@x.test',
+      references_header: '<m0@x.test> <m1@x.test>',
+    });
+  });
+
+  it('keeps stored threading headers when a later sync of the same message has none', async () => {
+    // A re-read can lose them, as a body can; a bare assignment would erase what landed.
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([
+        page({ messages: [message({ rfcMessageId: 'm2@x.test', references: '<m1@x.test>' })] }),
+      ]),
+    );
+
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [message()] })]),
+    );
+
+    const [row] = await storedThreadingHeaders(account.id);
+    expect(row).toEqual({ rfc_message_id: 'm2@x.test', references_header: '<m1@x.test>' });
   });
 
   it('keeps an outbound message thread when its own Sent copy syncs back', async () => {

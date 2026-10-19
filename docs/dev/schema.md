@@ -195,6 +195,9 @@ email_messages
     column the note tools deliberately surface. message_body_html is stored exactly as
     the sender wrote it, unsanitized: whatever first renders it must sanitize there,
     since doing it at write time would discard markup a renderer needs.
+  rfc_message_id  references_header  ← what a reply names in In-Reply-To and extends in
+    References. Not derivable from thread_id, which may be a native id or a digest.
+    The sync upsert keeps a stored value when a re-read has none.
 
 email_sync_jobs
   status(pending|running|complete|failed)

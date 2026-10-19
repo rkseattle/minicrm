@@ -94,7 +94,7 @@ const BACKOFF_MAX_MS = 24 * 60 * 60 * 1000;
 const BACKOFF_JITTER = 0.2;
 
 /** Columns in the message insert, for the bind-parameter arithmetic below. */
-const MESSAGE_INSERT_COLUMN_COUNT = 13;
+const MESSAGE_INSERT_COLUMN_COUNT = 15;
 
 /**
  * Rows per INSERT.
@@ -176,6 +176,8 @@ async function storeMessages(
         message.bodyText,
         message.bodyHtml,
         message.snippet,
+        message.rfcMessageId,
+        message.references,
       );
       // Generated rather than written out, so the count and the placeholders cannot drift.
       const placeholders = Array.from(
@@ -195,7 +197,8 @@ async function storeMessages(
       `INSERT INTO email_messages
          (connected_account_id, provider_message_id, thread_id, direction, from_address,
           to_addresses, cc_addresses, subject, has_attachments, sent_at,
-          message_body_text, message_body_html, message_snippet)
+          message_body_text, message_body_html, message_snippet,
+          rfc_message_id, references_header)
        VALUES ${tuples.join(', ')}
        ON CONFLICT (connected_account_id, provider_message_id) DO UPDATE
          -- An outbound row keeps the thread the send path filed it under. That row was
@@ -221,7 +224,10 @@ async function storeMessages(
              message_body_html =
                COALESCE(EXCLUDED.message_body_html, email_messages.message_body_html),
              message_snippet =
-               COALESCE(EXCLUDED.message_snippet, email_messages.message_snippet)
+               COALESCE(EXCLUDED.message_snippet, email_messages.message_snippet),
+             rfc_message_id = COALESCE(EXCLUDED.rfc_message_id, email_messages.rfc_message_id),
+             references_header =
+               COALESCE(EXCLUDED.references_header, email_messages.references_header)
        RETURNING id, from_address, to_addresses, cc_addresses, (xmax = 0) AS inserted`,
       values,
     );

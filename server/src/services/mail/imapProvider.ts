@@ -42,6 +42,7 @@ import {
   EMPTY_MESSAGE_BODY,
   MAX_MESSAGE_SOURCE_BYTES,
   parseMessageBody,
+  storedThreadingHeaders,
   stripNul,
   subjectOf,
   type ParsedMessageBody,
@@ -219,12 +220,13 @@ function normalize(
   const headerBlock = message.headers?.toString('utf8') ?? null;
   const referencesHeader = headerBlock ? extractHeaderField(headerBlock, 'references') : null;
   const qualifiedId = qualifiedMessageId(mailboxPath, message.uid);
+  const threading = {
+    messageId: envelope?.messageId ?? null,
+    inReplyTo: envelope?.inReplyTo ?? null,
+    references: referencesHeader,
+  };
   const rawThreadId =
-    resolveThreadId({
-      messageId: envelope?.messageId ?? null,
-      inReplyTo: envelope?.inReplyTo ?? null,
-      references: referencesHeader,
-    }) ??
+    resolveThreadId(threading) ??
     // A message with no threading headers at all is its own conversation. The id is NOT
     // qualified by mailbox: the same message filed in both INBOX and Sent must land in one
     // thread, and the UID is the only handle it has.
@@ -247,6 +249,7 @@ function normalize(
     bodyText: body.bodyText,
     bodyHtml: body.bodyHtml,
     snippet: body.snippet,
+    ...storedThreadingHeaders(threading),
   };
 }
 

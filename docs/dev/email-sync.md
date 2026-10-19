@@ -334,6 +334,14 @@ Two parsing details matter and both were bugs first:
 A message carrying none of the three headers threads on its own UID, unqualified by
 mailbox so a message filed in both INBOX and Sent lands in one thread.
 
+Every driver also stores the message's own `Message-ID` and its `References` chain, which a
+reply needs for `In-Reply-To` and `References`. A message with no `References` but a single
+`In-Reply-To` id stores that id as its chain, as RFC 5322 §3.6.4 builds a reply's. The chain
+is trimmed to its root plus the newest ids (`MAX_STORED_REFERENCES`), the trim RFC 5537
+§3.4.4 describes, and an id too long for a reply to cite on one 998-character line is
+dropped. Ids are read by the same bracket and raw-value rule thread resolution uses, so
+which ids are stored does not depend on the driver.
+
 ## The engine
 
 `emailSyncService.ts` runs one tick over every mailbox that is due.

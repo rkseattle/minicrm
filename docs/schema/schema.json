@@ -10569,6 +10569,18 @@
           "type": "text",
           "nullable": true,
           "comment": "First 200 characters of the plain-text body with whitespace collapsed, for list views that must not load a whole body. Derived from message_body_text, so it is null whenever that is."
+        },
+        {
+          "name": "rfc_message_id",
+          "type": "text",
+          "nullable": true,
+          "comment": "The message's own RFC 5322 Message-ID, without angle brackets. A reply names it in In-Reply-To."
+        },
+        {
+          "name": "references_header",
+          "type": "text",
+          "nullable": true,
+          "comment": "Ancestor Message-IDs, bracketed and space-separated, oldest first; bounded to the root plus the newest. A reply extends it."
         }
       ],
       "indexes": [

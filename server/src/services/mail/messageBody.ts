@@ -20,7 +20,12 @@ import { htmlToText } from 'html-to-text';
 
 import logger from '../../logger.js';
 import type { NormalizedMessage } from './mailProvider.js';
-import { resolveThreadId, type ThreadingHeaders } from './threading.js';
+import {
+  extractMessageIds,
+  resolveThreadId,
+  singleMessageId,
+  type ThreadingHeaders,
+} from './threading.js';
 
 /** Characters of body text kept for a list view that must not load a whole body. */
 const SNIPPET_LENGTH = 200;
@@ -155,6 +160,64 @@ export function directionOf(fromAddress: string, accountAddress: string): 'inbou
   return fromAddress === accountAddress.trim().toLowerCase() ? 'outbound' : 'inbound';
 }
 
+/**
+ * Longest bare message id stored. RFC 5322 forbids folding inside a msg-id, so a reply's
+ * `In-Reply-To: <id>` must fit on one 998-character line (§2.1.1) with its brackets.
+ */
+export const MAX_MESSAGE_ID_LENGTH = 998 - 'In-Reply-To: <>'.length;
+
+/**
+ * Most `References` ids stored: the root plus the newest, the trim RFC 5537 §3.4.4 describes.
+ * The root is what `resolveThreadId` threads on, and the newest are what a client matches.
+ */
+export const MAX_STORED_REFERENCES = 20;
+
+/** A message's own threading headers, in the form `email_messages` stores them. */
+export interface StoredThreadingHeaders {
+  /** `Message-ID` without its angle brackets, or null when absent or unusable. */
+  rfcMessageId: string | null;
+  /** Ancestor ids, bracketed and space-separated, oldest first; null when there are none. */
+  references: string | null;
+}
+
+/** A bare id a reply can cite, or null when it is absent or no header line could carry it. */
+function citableId(headerValue: string | null | undefined): string | null {
+  const id = singleMessageId(headerValue ? stripNul(headerValue) : null);
+  return id !== null && id.length <= MAX_MESSAGE_ID_LENGTH ? id : null;
+}
+
+/** The ancestry a reply to this message extends: `References`, else a lone `In-Reply-To`. */
+function ancestryOf(headers: ThreadingHeaders): string[] {
+  const referenced = extractMessageIds(stripNul(headers.references ?? ''))
+    .map(citableId)
+    .filter((id): id is string => id !== null);
+  // RFC 5322 §3.6.4 falls back to In-Reply-To only when References is absent, and only
+  // when it names one id.
+  if (headers.references?.trim()) return referenced;
+  if (extractMessageIds(headers.inReplyTo ?? '').length > 1) return [];
+  const parent = citableId(headers.inReplyTo);
+  return parent ? [parent] : [];
+}
+
+/**
+ * The threading headers a reply to this message will need.
+ *
+ * Ids are read by `singleMessageId`, the bracket and raw-value rule `resolveThreadId` uses,
+ * then dropped when too long to cite — so a driver cannot change which ids are stored.
+ */
+export function storedThreadingHeaders(headers: ThreadingHeaders): StoredThreadingHeaders {
+  const ancestry = ancestryOf(headers);
+  const bounded =
+    ancestry.length > MAX_STORED_REFERENCES
+      ? [ancestry[0], ...ancestry.slice(-(MAX_STORED_REFERENCES - 1))]
+      : ancestry;
+
+  return {
+    rfcMessageId: citableId(headers.messageId),
+    references: bounded.length > 0 ? bounded.map((id) => `<${id}>`).join(' ') : null,
+  };
+}
+
 /** The body fields parsed out of one message. */
 export interface ParsedMessageBody {
   bodyText: string | null;
@@ -279,6 +342,7 @@ export async function normalizeFromSource(
     bodyText: parsed.bodyText,
     bodyHtml: parsed.bodyHtml,
     snippet: parsed.snippet,
+    ...storedThreadingHeaders(parsed.threading),
   };
 }
 
