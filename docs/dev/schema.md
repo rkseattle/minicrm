@@ -206,6 +206,15 @@ email_sync_jobs
     without it the loser's row is unreachable and can never reach a terminal status,
     which is the only status the retention purge deletes.
 
+email_send_intents
+  status(pending|not_sent|sent|unconfirmed|filed)
+  UNIQUE(connected_account_id, rfc_message_id)  partial UNIQUE(connected_account_id,
+    provider_message_id) WHERE set  ← the two keys a Sent copy is matched back by. The
+    provider id is known after the send (Gmail) or before it (Graph's draft); the
+    Message-ID is the one this application generated, for a send that never answered.
+  A send is recorded here before the provider is called, so a failure after the provider
+  accepts cannot lose the record it was sent from. See email-sync.md, "Sending mail".
+
 email_message_links
   record_type(contact|lead|account|deal)  match_type(auto|manual)
   UNIQUE(email_message_id, record_type, record_id)

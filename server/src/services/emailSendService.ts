@@ -1,10 +1,10 @@
 /**
  * Sends a message through one of the caller's own connected mailboxes, then records it.
  *
- * The provider call comes first and the storage after it, in one transaction: the row's
- * `provider_message_id` does not exist until the provider answers. A crash between the two
- * loses the row, not the mail — the message is in the mailbox's Sent folder, and the sync
- * engine ingests it on its next tick.
+ * A send intent is committed immediately before the provider is called, and the message is
+ * stored after it answers. The row's `provider_message_id` does not exist until then, so
+ * the two cannot share a transaction; the intent is what makes a failure between them
+ * recoverable. The sync engine files the Sent copy from it (`emailSendIntentService.ts`).
  *
  * The stored row must read exactly as the sync engine will later derive it from the Sent
  * copy, because that re-read upserts onto it. So `from_address` is the bare mailbox address
@@ -27,16 +27,25 @@ import { htmlToText } from 'html-to-text';
 
 import pool from '../db.js';
 import logger from '../logger.js';
-import { announceActivityCreated, insertActivity } from './activityService.js';
-import { writeAuditEntry, type AuditActor } from './auditService.js';
+import { announceActivityCreated } from './activityService.js';
+import type { AuditActor } from './auditService.js';
 import {
   getConnectedAccountInternal,
   getUsableAccessToken,
   updateAccountStatus,
   type ConnectedAccountInternal,
 } from './connectedAccountService.js';
-import { clearDerivedLinkSuppression, matchMessagesToRecords } from './emailMatchingService.js';
+import { matchMessagesToRecords } from './emailMatchingService.js';
 import { MESSAGE_SELECT, toEmailMessage, type EmailMessageRow } from './emailMessageService.js';
+import {
+  createSendIntent,
+  fileSentMessage,
+  lockIntent,
+  markIntentNotSent,
+  markIntentSent,
+  markIntentUnconfirmed,
+  recordPreparedMessageId,
+} from './emailSendIntentService.js';
 import { escapeHtml } from './emailService.js';
 import { findEmailTemplateById } from './emailTemplateService.js';
 import { createGmailProvider } from './mail/gmailProvider.js';
@@ -46,13 +55,9 @@ import {
   boundIndexedId,
   parseMessage,
   storedThreadingHeaders,
-  truncate,
+  type ParsedMessage,
 } from './mail/messageBody.js';
-import {
-  buildOutboundDocument,
-  type OutboundDocument,
-  type ParentMessage,
-} from './mail/outboundMessage.js';
+import { buildOutboundDocument, type ParentMessage } from './mail/outboundMessage.js';
 import { driverFetch } from './mail/transport.js';
 import {
   isSendFailure,
@@ -64,7 +69,7 @@ import {
 } from './mail/sendOutcome.js';
 import { renderTemplate, type MergeContext } from './mergeTagRenderer.js';
 import { refreshAccessToken, type RefreshedTokens } from './oauthProviderService.js';
-import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
+import { withRlsQuery } from './rlsContextService.js';
 import { getDealAutoLink } from './settingsService.js';
 
 /** The API's codes for a send that did not complete. The controller maps each to a status. */
@@ -77,27 +82,6 @@ export const RATE_LIMITED = 'RATE_LIMITED';
 export const RECONNECT_REQUIRED = 'RECONNECT_REQUIRED';
 /** Sent, but not stored. Never to be retried: the recipient already has the message. */
 export const SENT_NOT_RECORDED = 'SENT_NOT_RECORDED';
-
-/** `activities.subject` is varchar(255); a template subject can render far longer. */
-const ACTIVITY_SUBJECT_MAX = 255;
-
-/** What an activity names a message whose subject rendered empty; the column needs one. */
-const UNTITLED_SUBJECT = '(no subject)';
-
-/** Record types an activity can be filed against; `activities` has no lead column. */
-const ACTIVITY_RECORD_FIELDS = {
-  contact: 'contact_id',
-  account: 'account_id',
-  deal: 'deal_id',
-} as const satisfies Partial<Record<EmailLinkRecordType, string>>;
-
-/** The activity field for a record type, or null for a type no activity can name. */
-function activityFieldFor(
-  recordType: EmailLinkRecordType | undefined,
-): (typeof ACTIVITY_RECORD_FIELDS)[keyof typeof ACTIVITY_RECORD_FIELDS] | null {
-  if (recordType === undefined || recordType === 'lead') return null;
-  return ACTIVITY_RECORD_FIELDS[recordType];
-}
 
 /** A send refusal carrying the API code the controller maps. */
 function sendError(code: string, message: string): Error & { code: string } {
@@ -388,10 +372,32 @@ export async function sendEmail(
     dependencies.refresh ?? refreshAccessToken,
   );
 
+  // Parsed from the bytes that will be sent, so the stored columns match what a re-sync
+  // derives, and the activity text is fixed before anything can fail.
+  const parsed = await parseMessage(document.mime);
+  // The stored form, from the same function sync stores with, so the two always match.
+  const threading = storedThreadingHeaders(parsed.threading);
+  const intentId = await createSendIntent({
+    userId: actor.id,
+    actorName: actor.name,
+    connectedAccountId: account.id,
+    // Safe: buildOutboundDocument always writes one; a null would fail the insert, unsent.
+    rfcMessageId: threading.rfcMessageId!,
+    recordType: input.record_type ?? null,
+    recordId: input.record_id ?? null,
+    // Only an override: a filing otherwise takes the stored body, so no second copy waits here.
+    activityNotes,
+    toAddresses: parsed.toAddresses,
+    ccAddresses: parsed.ccAddresses,
+  });
+
   let sent: SentMessage;
   try {
-    sent = await provider.send(auth, document.mime, parent?.threadId ?? null);
+    sent = await provider.send(auth, document.mime, parent?.threadId ?? null, (preparedId) =>
+      recordPreparedMessageId(intentId, preparedId),
+    );
   } catch (err) {
+    await settleRefusedIntent(intentId, err);
     throw await apiFailureFor(err, account);
   }
   const { providerMessageId } = sent;
@@ -401,47 +407,85 @@ export async function sendEmail(
   const threadId = sent.threadId !== null ? boundIndexedId(sent.threadId) : document.threadId;
 
   try {
+    // Its own commit, before the filing: if that fails, sync needs this id to find the copy.
+    await markIntentSent(intentId, providerMessageId);
+  } catch (err) {
+    // Filing can still succeed; failing that, the sweep and the Message-ID cover it.
+    logger.error({ err, intentId }, 'emailSendService: could not mark intent sent');
+  }
+
+  try {
     const message = await recordSent(
       account,
+      intentId,
       { providerMessageId, threadId },
-      document,
+      parsed,
+      threading,
       fromAddress,
-      input,
-      actor,
-      activityNotes,
     );
     return { message, unresolved_merge_tags: content.unresolved };
   } catch (err) {
     logger.error(
-      { err, accountId: account.id, providerMessageId },
+      { err, accountId: account.id, providerMessageId, intentId },
       'emailSendService: sent a message but could not record it',
     );
     throw sendError(
       SENT_NOT_RECORDED,
-      'The message was sent but could not be saved here. It will appear after the next sync, but not on the record you sent it from.',
+      'The message was sent but could not be saved here. It will be filed on its record when this mailbox next syncs.',
     );
   }
 }
 
-/** Stores a sent message with its links, activity, and audit entry, in one transaction. */
+/** Driver codes that mean the provider refused and nothing went. */
+const NOT_SENT_CODES: ReadonlySet<string> = new Set([
+  SEND_NOT_SENT,
+  SEND_AUTH_EXPIRED,
+  SEND_SCOPE_MISSING,
+  SEND_RATE_LIMITED,
+]);
+
+/**
+ * Settles an intent whose send threw. Only a refusal that is known not to have sent is
+ * `not_sent`; anything else may have gone, and must never be retried as though it had not.
+ */
+async function settleRefusedIntent(intentId: string, err: unknown): Promise<void> {
+  try {
+    if (isSendFailure(err) && NOT_SENT_CODES.has(err.code)) {
+      await markIntentNotSent(intentId);
+    } else {
+      await markIntentUnconfirmed(intentId);
+    }
+  } catch (settleErr) {
+    // The scheduler's sweep reports it unconfirmed within the hour; the user's answer is the
+    // provider's, which is what they need now.
+    logger.error({ err: settleErr, intentId }, 'emailSendService: could not settle intent');
+  }
+}
+
+/**
+ * Stores a sent message and files it from its intent, in one transaction.
+ *
+ * The intent is locked before the message is written: the sync engine takes the same two
+ * locks in the same order, and whichever path gets the intent first files it.
+ */
 async function recordSent(
   account: ConnectedAccountInternal,
+  intentId: string,
   stored: { providerMessageId: string; threadId: string },
-  document: OutboundDocument,
+  parsed: ParsedMessage,
+  threading: ReturnType<typeof storedThreadingHeaders>,
   fromAddress: string,
-  input: SendEmailInput,
-  actor: AuditActor,
-  /** The activity's notes when they must differ from the sent body; null to use the body. */
-  activityNotes: string | null,
 ): Promise<SendEmailResponse['message']> {
-  // Parsed from the bytes that were sent, so the columns match what a re-sync derives.
-  const parsed = await parseMessage(document.mime);
-  const threading = storedThreadingHeaders(parsed.threading);
   const dealAutoLink = await getDealAutoLink();
 
   const client = await pool.connect();
+  let activityId: string | null = null;
+  let storedRow: EmailMessageRow;
   try {
     await client.query('BEGIN');
+
+    const intent = await lockIntent(client, intentId);
+    if (!intent) throw new Error(`emailSendService: intent ${intentId} vanished`);
 
     const upserted = await client.query<EmailMessageRow & { inserted: boolean }>(
       `INSERT INTO email_messages AS m
@@ -474,6 +518,7 @@ async function recordSent(
       ],
     );
     const row = upserted.rows[0]!; // Safe: an upsert returns its row on either branch.
+    storedRow = row;
 
     // Only a new row is matched: one the sync engine stored first was matched then, and
     // matching it again would restore links its owner removed.
@@ -492,73 +537,36 @@ async function recordSent(
       );
     }
 
-    if (input.record_type !== undefined && input.record_id !== undefined) {
-      // Sent from a record, so filed there whatever its addresses match: a deal has none,
-      // and a contact may have been written to at an address it does not hold.
-      await client.query(
-        `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
-         VALUES ($1, $2, $3, 'manual')
-         ON CONFLICT (email_message_id, record_type, record_id) DO NOTHING`,
-        [row.id, input.record_type, input.record_id],
+    // Already filed means the sync engine stored the Sent copy and filed it first.
+    if (intent.status !== 'filed') {
+      activityId = await fileSentMessage(
+        client,
+        intent,
+        {
+          id: row.id,
+          providerMessageId: stored.providerMessageId,
+          subject: row.subject,
+          bodyText: parsed.bodyText,
+          toAddresses: row.to_addresses,
+          ccAddresses: row.cc_addresses,
+        },
+        account.emailAddress,
       );
-      await clearDerivedLinkSuppression(client, row.id, input.record_type, input.record_id);
     }
-
-    const links = await client.query<{ record_type: string; record_id: string }>(
-      `SELECT record_type, record_id FROM email_message_links
-        WHERE email_message_id = $1 ORDER BY record_type, record_id`,
-      [row.id],
-    );
-
-    // Set only now: matching must see every record, as it does for sync, while the activity
-    // write is the caller's own and goes through their row policies.
-    await setRlsUserId(client);
-    const activityField = activityFieldFor(input.record_type);
-    // Inside the transaction: a stored message with no activity is the timeline gap
-    // this write exists to close.
-    const activityId = activityField
-      ? await insertActivity(
-          client,
-          {
-            type: 'Email',
-            direction: 'Outbound',
-            subject: truncate(row.subject?.trim() || UNTITLED_SUBJECT, ACTIVITY_SUBJECT_MAX),
-            notes: (activityNotes ?? parsed.bodyText) || undefined,
-            [activityField]: input.record_id,
-            owner_id: actor.id,
-          },
-          actor,
-        )
-      : null;
-
-    await writeAuditEntry(client, {
-      recordType: 'connected_account',
-      recordId: account.id,
-      recordName: account.emailAddress,
-      eventType: 'email_sent',
-      fieldName: 'email_message',
-      newValue: JSON.stringify({
-        message_id: row.id,
-        recipient_count: row.to_addresses.length + row.cc_addresses.length,
-        to: row.to_addresses,
-        cc: row.cc_addresses,
-        linked_records: links.rows.map((link) => `${link.record_type}:${link.record_id}`),
-      }),
-      changedById: actor.id,
-      changedByName: actor.name,
-    });
 
     await client.query('COMMIT');
-    if (activityId) {
-      void announceActivityCreated(activityId).catch((err: unknown) => {
-        logger.warn({ err, activityId }, 'emailSendService: activity side effects failed');
-      });
-    }
-    return toEmailMessage(row);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
   }
+
+  if (activityId) {
+    const announced = activityId;
+    void announceActivityCreated(announced).catch((err: unknown) => {
+      logger.warn({ err, activityId: announced }, 'emailSendService: activity side effects failed');
+    });
+  }
+  return toEmailMessage(storedRow);
 }

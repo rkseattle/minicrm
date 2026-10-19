@@ -26,6 +26,8 @@ import type {
   EmailThread,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
+import type { PoolClient } from 'pg';
+
 import pool from '../db.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
@@ -335,13 +337,16 @@ const OWNER_TABLES: Readonly<Record<EmailLinkRecordType, string>> = {
  * The detail finders would answer this too, but each builds a whole page's worth of row —
  * joined addresses, computed stage probability — inside its own RLS transaction, to
  * resolve one boolean.
+ *
+ * @param executor - A transaction's client, when the answer must hold within it.
  */
 export async function findLinkedRecordOwner(
   recordType: EmailLinkRecordType,
   recordId: string,
+  executor: Pick<PoolClient, 'query'> = pool,
 ): Promise<string | null> {
   // Outside RLS, unlike the detail finders: the caller gates on the owner returned.
-  const result = await pool.query<{ owner_id: string }>(
+  const result = await executor.query<{ owner_id: string }>(
     `SELECT owner_id FROM ${OWNER_TABLES[recordType]} WHERE id = $1 LIMIT 1`,
     [recordId],
   );

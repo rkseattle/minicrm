@@ -8,6 +8,7 @@
 import 'dotenv/config';
 
 import { simpleParser } from 'mailparser';
+import { vi } from 'vitest';
 
 import pool from '../db.js';
 import { createImapAccount, upsertOAuthAccount } from '../services/connectedAccountService.js';
@@ -27,7 +28,7 @@ import {
 import { createUser } from '../services/userService.js';
 import type { SendEmailInput } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
-import { clearAuditLogFor, insertParkedMailbox } from './testUtils.js';
+import { clearAuditLogFor, failMessageInsert, insertParkedMailbox } from './testUtils.js';
 
 const FILE_PREFIX = 'emailsend';
 const MAILBOX = `${FILE_PREFIX}-Mailbox@Example.com`;
@@ -170,6 +171,9 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await pool.query('DELETE FROM email_send_intents WHERE connected_account_id = ANY($1::uuid[])', [
+    [accountId, otherAccountId],
+  ]);
   await pool.query('DELETE FROM email_messages WHERE connected_account_id = ANY($1::uuid[])', [
     [accountId, otherAccountId],
   ]);
@@ -190,6 +194,10 @@ async function deleteFixturesKeepingUsers(): Promise<void> {
   await pool.query(`DELETE FROM accounts WHERE name LIKE '${FILE_PREFIX}-%'`);
   await pool.query(`DELETE FROM email_templates WHERE name LIKE '${FILE_PREFIX}-%'`);
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 afterAll(async () => {
   await clearAuditLogFor(userId);
@@ -696,18 +704,36 @@ describe('sendEmail — activities', () => {
     expect(await storedRows()).toHaveLength(1);
   });
 
-  it('rolls back the stored message when a later write fails, and says it was sent', async () => {
-    // A record id that names nothing fails the activity's foreign key after the send.
-    const { provider, calls } = fakeSender();
+  it('files a message whose record no longer exists without its link or activity', async () => {
+    const { provider } = fakeSender();
+    const missing = '00000000-0000-4000-8000-000000000001';
 
-    await expect(
-      sendEmail(
-        typed({ record_type: 'contact', record_id: '00000000-0000-4000-8000-000000000001' }),
-        userId,
-        actor,
-        { provider },
-      ),
-    ).rejects.toMatchObject({ code: SENT_NOT_RECORDED });
+    const response = await sendEmail(
+      typed({ record_type: 'contact', record_id: missing }),
+      userId,
+      actor,
+      { provider },
+    );
+
+    const links = await pool.query('SELECT 1 FROM email_message_links WHERE record_id = $1', [
+      missing,
+    ]);
+    const activities = await pool.query('SELECT 1 FROM activities WHERE contact_id = $1', [
+      missing,
+    ]);
+    expect(response.message.id).toBeDefined();
+    expect(links.rowCount).toBe(0);
+    expect(activities.rowCount).toBe(0);
+    expect(await auditEntries()).toHaveLength(1);
+  });
+
+  it('rolls back the stored message when storing fails after the send, and says it was sent', async () => {
+    const { provider, calls } = fakeSender();
+    failMessageInsert();
+
+    await expect(sendEmail(typed(), userId, actor, { provider })).rejects.toMatchObject({
+      code: SENT_NOT_RECORDED,
+    });
     expect(calls).toHaveLength(1);
     expect(await storedRows()).toHaveLength(0);
     expect(await auditEntries()).toHaveLength(0);

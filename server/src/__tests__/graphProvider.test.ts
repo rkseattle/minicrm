@@ -1418,6 +1418,32 @@ describe('createGraphProvider — send', () => {
     expect(fetcher.headers[1]).toMatchObject({ Prefer: 'IdType="ImmutableId"' });
   });
 
+  it('reports the draft id before submitting, so an unanswered send can still be found', async () => {
+    const fetcher = fakeFetch([{ match: DRAFT_SEND, status: 202 }, CREATED]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+    const prepared: string[] = [];
+
+    await provider.send?.(AUTH, MIME, null, async (id) => {
+      prepared.push(id);
+      expect(fetcher.urls).toEqual([DRAFTS]);
+    });
+
+    expect(prepared).toEqual(['draft-1']);
+  });
+
+  it('never submits, and deletes the draft, when the id cannot be recorded first', async () => {
+    const fetcher = fakeFetch([{ match: DRAFT, status: 204 }, CREATED]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+    await expect(
+      provider.send?.(AUTH, MIME, null, async () => {
+        throw new Error('storage down');
+      }),
+    ).rejects.toMatchObject({ code: SEND_NOT_SENT });
+    expect(fetcher.urls).toEqual([DRAFTS, DRAFT]);
+    expect(fetcher.inits[1]?.method).toBe('DELETE');
+  });
+
   it('still syncs a mailbox connected before send needed Mail.ReadWrite, and refuses only the send', async () => {
     const fetcher = fakeFetch([]);
     const provider = createGraphProvider(

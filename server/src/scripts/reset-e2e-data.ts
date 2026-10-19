@@ -135,6 +135,7 @@ async function main(adminEmail: string): Promise<void> {
     await client.query(`DELETE FROM email_message_links`);
     await client.query(`DELETE FROM email_message_link_suppressions`);
     await client.query(`DELETE FROM email_sync_jobs`);
+    await client.query(`DELETE FROM email_send_intents`);
     await client.query(`DELETE FROM email_messages`);
     // States are swept only when a new OAuth flow starts, which no E2E run does, so a row
     // from a manual flow would outlive every reset.

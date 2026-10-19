@@ -8,6 +8,7 @@ Purged by `runRetentionPurge()` in `retentionService.ts`, on the schedule in [Sc
 | `webhook_delivery_logs` | 30 days                           | `delivered_at`   | all rows                                |
 | `import_jobs`           | 180 days                          | `created_at`     | `status IN ('complete', 'failed')` only |
 | `email_sync_jobs`       | 180 days                          | `created_at`     | `status IN ('complete', 'failed')` only |
+| `email_send_intents`    | 30 days                           | `created_at`     | all rows                                |
 | `ai_sessions`           | configurable (default 90, min 30) | `created_at`     | all rows; `ai_messages` cascade-deleted |
 
 In-progress import jobs are never purged. `sequence_enrollment_logs` is retained indefinitely.
@@ -36,6 +37,13 @@ same cascade when its mailbox is disconnected. Age alone never purges an unfinis
 a backfill legitimately spans many scheduler ticks. Staleness does: the same nightly run first
 fails any job whose `updated_at` has not advanced in 24 hours, so a backfill orphaned by a
 restart cannot block its mailbox forever — only one unfinished job may exist per account.
+
+`email_send_intents` holds personal data only while a send is unsettled: the recipients and,
+for a forward only, the sender's own text (any other send's activity takes the stored body).
+Filing clears both, a refusal clears both, and moving to `unconfirmed` moves the recipients
+into the audit entry. An unconfirmed forward keeps its text so a late Sent copy can still be
+filed; the 30-day purge bounds that, and sweeps first so no intent is deleted unaudited. Rows
+also ride the cascade when their mailbox or user is deleted.
 
 `user_ai_context` is **not** subject to the `ai_sessions` retention policy — it stores persistent
 personalisation data (user-defined term definitions), not conversation transcripts.

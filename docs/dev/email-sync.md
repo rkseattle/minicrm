@@ -33,7 +33,7 @@ An optional second method submits one RFC 5322 document built by `outboundMessag
 
 ```ts
 interface MailProvider {
-  send?(auth, mime, threadHint): Promise<SentMessage>;
+  send?(auth, mime, threadHint, onPrepared?): Promise<SentMessage>;
 }
 ```
 
@@ -53,7 +53,9 @@ engine will store the rest of the conversation under.
   Sent Items copy. Creating a draft needs `Mail.ReadWrite` in addition to `Mail.Send`.
   Mailboxes connected before send was added lack it and must be reconnected before they
   can send; they keep syncing until then. Graph takes no conversation id on a send and
-  ignores the thread hint.
+  ignores the thread hint. It hands the draft's id to `onPrepared` before submitting, so
+  a send that never answers can still be matched to its Sent copy. If `onPrepared`
+  rejects, the draft is deleted unsent and the send fails `SEND_NOT_SENT`.
 
 Failures carry a code from `sendOutcome.ts`, and the line that matters is whether mail may
 have gone:
@@ -527,11 +529,36 @@ A forward follows Gmail: it quotes the original under a "Forwarded message" head
 in `References` but not `In-Reply-To` (it answers nothing), and is filed in the original's
 conversation. Attachments are not carried.
 
-The provider call comes first, because the row's `provider_message_id` does not exist until
-the provider answers. One transaction then stores the row, matches it, files an `Email`
+A send writes to the provider and to this database, and nothing makes that pair atomic. So
+a **send intent** (`email_send_intents`) is committed immediately before the provider is
+called, after everything that can refuse without it. It holds what only this application
+knows: the record the message was sent from, the sender, a forward's own text for its
+activity, and the `Message-ID` it generated. Its status moves only along these edges:
+
+| From                             | To            | When                                                                  |
+| -------------------------------- | ------------- | --------------------------------------------------------------------- |
+| (new)                            | `pending`     | Just before `provider.send`                                           |
+| `pending`                        | `not_sent`    | A refusal that sent nothing: not sent, auth expired, scope, throttled |
+| `pending`                        | `sent`        | The provider accepted; its id is written in its own commit            |
+| `pending`                        | `unconfirmed` | `SEND_OUTCOME_UNKNOWN`, or no answer within an hour                   |
+| `sent`                           | `unconfirmed` | Accepted but still unfiled after an hour                              |
+| `pending`, `sent`, `unconfirmed` | `filed`       | Stored and filed, exactly once, by the send path or by sync           |
+
+After the provider answers, one transaction stores the row, matches it, files an `Email`
 activity against the named record (none for a lead, which `activities` cannot name), and
 writes an `email_sent` audit entry against the mailbox carrying the recipients, their count,
-and the linked records. A message sent from a record is linked to it whatever its addresses
+and the linked records. That filing is `fileSentMessage` in `emailSendIntentService.ts`,
+and it is the only one: when this transaction fails, the sync engine runs the same routine
+when it stores the Sent copy, matched to the intent by provider id or by `Message-ID`.
+Both paths lock the intent before writing the message, and whichever locks it first files
+it. A record deleted since the send is skipped, not an error.
+
+A send that may have gone but is never filed is still audited: moving to `unconfirmed`
+writes `email_send_unconfirmed` with the recipients, the record it was sent from, and
+whether the provider confirmed it. Every sync scheduler tick runs that sweep, before it
+checks the feature flag, and the retention purge runs it again first.
+Intents are deleted after 30 days whatever their status, so a Sent copy arriving later is
+stored but no longer filed. A message sent from a record is linked to it whatever its addresses
 match, as a manual link — a deal has no address, and a contact may be written to at one it
 does not hold. Naming a record needs the record's own edit capability and, for a contact,
 account or deal, `activities:create`. The activity's own audit entry is written in the same
@@ -550,14 +577,14 @@ upsert gated on `xmax = 0`: only a new row is matched, since matching a stored o
 restore links its owner removed, but the send is audited either way, and the send path's
 thread wins over the one the engine derived.
 
-| API code                    | Status | From                                                                                               |
-| --------------------------- | ------ | -------------------------------------------------------------------------------------------------- |
-| `SEND_FAILED`               | 502    | `SEND_NOT_SENT`, `SEND_OUTCOME_UNKNOWN` ("check Sent"), or a token refresh that failed in transit  |
-| `RATE_LIMITED`              | 429    | `SEND_RATE_LIMITED`, or this instance's hourly limit                                               |
-| `RECONNECT_REQUIRED`        | 409    | `SEND_SCOPE_MISSING`, or a grant the driver refuses                                                |
-| `PROVIDER_AUTH_EXPIRED`     | 409    | The credential was refused; also written to `status_detail`                                        |
-| `PROVIDER_SEND_UNSUPPORTED` | 409    | An IMAP mailbox, which has no send driver yet                                                      |
-| `SENT_NOT_RECORDED`         | 500    | Sent, but storage failed. Never resend; sync stores it, unfiled to the record and with no activity |
+| API code                    | Status | From                                                                                              |
+| --------------------------- | ------ | ------------------------------------------------------------------------------------------------- |
+| `SEND_FAILED`               | 502    | `SEND_NOT_SENT`, `SEND_OUTCOME_UNKNOWN` ("check Sent"), or a token refresh that failed in transit |
+| `RATE_LIMITED`              | 429    | `SEND_RATE_LIMITED`, or this instance's hourly limit                                              |
+| `RECONNECT_REQUIRED`        | 409    | `SEND_SCOPE_MISSING`, or a grant the driver refuses                                               |
+| `PROVIDER_AUTH_EXPIRED`     | 409    | The credential was refused; also written to `status_detail`                                       |
+| `PROVIDER_SEND_UNSUPPORTED` | 409    | An IMAP mailbox, which has no send driver yet                                                     |
+| `SENT_NOT_RECORDED`         | 500    | Sent, but storage failed. Never resend; sync files it from its intent when the Sent copy arrives  |
 
 Credential problems answer 409, never 401: the client treats 401 as the user's own session
 ending. The hourly limit counts mail that went out — a success, or `SENT_NOT_RECORDED` — so

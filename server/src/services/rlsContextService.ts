@@ -59,7 +59,15 @@ import { getRequestContext } from '../utils/requestContext.js';
  * admin list endpoints) rely on the admin policy, not the owner policy.
  */
 export async function setRlsUserId(client: PoolClient): Promise<void> {
-  const { userId } = getRequestContext();
+  await setRlsUserIdTo(client, getRequestContext().userId);
+}
+
+/**
+ * Sets `app.current_user_id` for the current transaction to a named user, for a write made
+ * on their behalf where no request carries them — the sync engine filing a message they
+ * sent. Null sets the unauthenticated value, as `setRlsUserId` does with no request.
+ */
+export async function setRlsUserIdTo(client: PoolClient, userId: string | null): Promise<void> {
   // set_config(key, value, is_local) is the parameterized equivalent of SET LOCAL.
   // is_local=true scopes the value to the current transaction (reset on COMMIT/ROLLBACK).
   await client.query('SELECT set_config($1, $2, true)', ['app.current_user_id', userId ?? '']);

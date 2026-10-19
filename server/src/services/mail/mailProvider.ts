@@ -148,9 +148,17 @@ export interface MailProvider {
    *   It must come from a message synced by this same account: Gmail files the sent copy
    *   into that conversation by id, and an id from another mailbox names nothing there.
    *   Graph takes no conversation id on a send and ignores the hint.
+   * @param onPrepared - Called with the message's id when a driver knows it before
+   *   submitting (Graph's draft), so an unanswered send can still be found later. If it
+   *   rejects, the driver must not submit, and throws `SEND_NOT_SENT`.
    * @throws an error whose `code` is one of `sendOutcome.ts`'s `SEND_FAILURE_CODES`.
    */
-  send?(auth: ConnectedAccountAuth, mime: Buffer, threadHint: string | null): Promise<SentMessage>;
+  send?(
+    auth: ConnectedAccountAuth,
+    mime: Buffer,
+    threadHint: string | null,
+    onPrepared?: (providerMessageId: string) => Promise<void>,
+  ): Promise<SentMessage>;
 }
 
 /**

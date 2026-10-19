@@ -577,9 +577,21 @@ async function sendDocument(
   fetchImpl: FetchLike,
   accessToken: string,
   mime: Buffer,
+  onPrepared?: (providerMessageId: string) => Promise<void>,
 ): Promise<SentMessage> {
   const { draftId, conversationId } = await createDraft(fetchImpl, accessToken, mime);
   const draftUrl = `${GRAPH_API_BASE}/messages/${encodeURIComponent(draftId)}`;
+
+  if (onPrepared) {
+    try {
+      await onPrepared(draftId);
+    } catch (err) {
+      // Unsubmitted, so the draft is safe to delete: a send nobody can trace must not go.
+      logger.error({ err }, 'graphProvider: could not record the draft before sending');
+      await deleteDraft(fetchImpl, accessToken, draftUrl);
+      throw sendFailure(SEND_NOT_SENT, PROVIDER_NAME);
+    }
+  }
 
   let code: SendFailureCode;
   try {
@@ -989,9 +1001,19 @@ export function createGraphProvider(
   const canSend = grantsMailSend(grantedScopes);
 
   return {
-    async send(auth: ConnectedAccountAuth, mime: Buffer): Promise<SentMessage> {
+    async send(
+      auth: ConnectedAccountAuth,
+      mime: Buffer,
+      _threadHint: string | null,
+      onPrepared?: (providerMessageId: string) => Promise<void>,
+    ): Promise<SentMessage> {
       if (!canSend) throw sendFailure(SEND_SCOPE_MISSING, PROVIDER_NAME);
-      return sendDocument(fetchImpl, requireOAuthAccessToken(auth, PROVIDER_NAME), mime);
+      return sendDocument(
+        fetchImpl,
+        requireOAuthAccessToken(auth, PROVIDER_NAME),
+        mime,
+        onPrepared,
+      );
     },
 
     async fetchSince(

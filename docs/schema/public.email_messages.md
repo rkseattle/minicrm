@@ -8,7 +8,7 @@ Messages synced from a connected mailbox. Headers, metadata, and body text. All 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.email_message_links](public.email_message_links.md) [public.email_message_link_suppressions](public.email_message_link_suppressions.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.email_message_links](public.email_message_links.md) [public.email_message_link_suppressions](public.email_message_link_suppressions.md) [public.email_send_intents](public.email_send_intents.md) |  |  |
 | connected_account_id | uuid |  | false |  | [public.connected_accounts](public.connected_accounts.md) |  |
 | provider_message_id | text |  | false |  |  | The provider's own message identifier, opaque here. Unique per connected account, which is what makes a repeated sync idempotent. |
 | thread_id | text |  | false |  |  | Normalized across providers: native thread id where one exists, otherwise derived from RFC 5322 References/In-Reply-To/Message-ID. |
@@ -54,6 +54,7 @@ erDiagram
 
 "public.email_message_links" }o--|| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
 "public.email_message_link_suppressions" }o--|| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE CASCADE"
+"public.email_send_intents" }o--o| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
 "public.email_messages" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 
 "public.email_messages" {
@@ -91,6 +92,24 @@ erDiagram
   varchar_16_ record_type ""
   uuid record_id ""
   timestamp_with_time_zone created_at ""
+}
+"public.email_send_intents" {
+  uuid id ""
+  uuid user_id FK ""
+  uuid connected_account_id FK ""
+  text rfc_message_id "The Message-ID this application generated, without angle brackets. Matches the Sent copy when the provider id is unknown."
+  text provider_message_id ""
+  varchar_16_ record_type ""
+  uuid record_id ""
+  text activity_notes ""
+  text actor_name ""
+  text__ to_addresses ""
+  text__ cc_addresses ""
+  varchar_16_ status "pending: not yet answered. not_sent: the provider refused and nothing went. sent: accepted, not yet filed. unconfirmed: the outcome is unknown. filed: stored, linked and given its activity."
+  uuid email_message_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  timestamp_with_time_zone filed_at ""
 }
 "public.connected_accounts" {
   uuid id ""
