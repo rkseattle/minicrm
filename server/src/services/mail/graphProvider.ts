@@ -20,15 +20,33 @@ import {
 
 import logger from '../../logger.js';
 import type { ConnectedAccountAuth } from '../connectedAccountService.js';
-import { GRAPH_MAIL_READ_SCOPE } from '../oauthProviderService.js';
+import {
+  GRAPH_MAIL_READ_SCOPE,
+  GRAPH_MAIL_READWRITE_SCOPE,
+  GRAPH_MAIL_SEND_SCOPE,
+} from '../oauthProviderService.js';
 
 import type {
   MailProvider,
   MailboxTestResult,
   NormalizedMessage,
   ProviderPage,
+  SentMessage,
 } from './mailProvider.js';
+import { requireOAuthAccessToken } from './mailProvider.js';
 import { normalizeFromSource } from './messageBody.js';
+import {
+  isSendFailure,
+  SEND_NOT_SENT,
+  SEND_OUTCOME_UNKNOWN,
+  SEND_SCOPE_MISSING,
+  SEND_TIMEOUT_MS,
+  sendFailure,
+  statusFailureCode,
+  transportFailureCode,
+  type SendFailureCode,
+} from './sendOutcome.js';
+import { isTransportFailure, readBodyOrNull, startBound } from './transport.js';
 
 const GRAPH_API_BASE = 'https://graph.microsoft.com/v1.0/me';
 
@@ -48,6 +66,9 @@ export const REJECTED_CREDENTIAL_MESSAGE = 'Microsoft rejected the stored creden
 
 /** Message for a mailbox that could not be reached at all. */
 export const UNREACHABLE_MESSAGE = 'Could not reach Outlook.';
+
+/** How this driver names its provider in messages. */
+const PROVIDER_NAME = 'Outlook';
 
 /**
  * The folders this driver syncs, by Microsoft's locale-independent well-known names.
@@ -75,7 +96,7 @@ type SyncedFolder = (typeof SYNCED_FOLDERS)[number];
 const MAX_MESSAGES_PER_PAGE = 25;
 
 /** Bound on each Graph request, so a hung endpoint cannot stall the whole tick. */
-const REQUEST_TIMEOUT_MS = 15_000;
+export const REQUEST_TIMEOUT_MS = 15_000;
 
 /**
  * Where one folder's sync stopped.
@@ -195,6 +216,11 @@ function errorCodeOf(body: unknown): string {
   return typeof code === 'string' ? code.toLowerCase() : '';
 }
 
+/** True when a Graph error body blames throttling rather than the request. */
+function isThrottled(body: unknown): boolean {
+  return THROTTLE_CODES.includes(errorCodeOf(body));
+}
+
 /** Error codes that mean the credential, not the cursor, whatever status carries them. */
 const AUTH_CODES = [
   'invalidauthenticationtoken',
@@ -202,6 +228,21 @@ const AUTH_CODES = [
   'erroraccessdenied',
   'unauthenticated',
 ];
+
+/**
+ * Classifies a refused write on the send path.
+ *
+ * Narrower than the sync path's mapping: a 403 there means the credential, but on a send
+ * it is as often a refusal no reconnect can fix — sending as an address the user may not
+ * use, or a tenant policy — and filing that as an expired credential would park a mailbox
+ * that still syncs. Only a credential error code earns that.
+ */
+function refusalCode(status: number, body: unknown, submits: boolean): SendFailureCode {
+  if (status === 403 && !isThrottled(body) && !AUTH_CODES.includes(errorCodeOf(body))) {
+    return SEND_NOT_SENT;
+  }
+  return statusFailureCode(status, isThrottled(body), submits);
+}
 
 /** True when a response says the stored delta link has aged out. */
 function isResyncRequired(status: number, body: unknown): boolean {
@@ -231,7 +272,7 @@ interface GraphRequestResult {
  * honored for that reason: the engine owns when the next attempt happens.
  */
 function errorForStatus(status: number, body: unknown, retryAfter: string | null): Error {
-  if (status === 429 || THROTTLE_CODES.includes(errorCodeOf(body))) {
+  if (status === 429 || isThrottled(body)) {
     logger.warn({ status, retryAfter }, 'graphProvider: throttled by Microsoft');
     return providerError('Outlook is rate limiting this mailbox.', CONNECTION_FAILED);
   }
@@ -267,41 +308,91 @@ function graphHeaders(
 }
 
 /**
- * Issues one bounded Graph request against an absolute URL.
- *
- * Absolute rather than a path fragment because a delta link is returned whole and replayed
- * whole; callers building a fresh URL join it to GRAPH_API_BASE themselves.
+ * A request that failed before Graph answered it — at the transport, or while its body was
+ * still arriving. Carries what each caller needs to classify it, which differs: a read is
+ * simply unreachable, a send may have gone.
  */
-async function graphSend(
-  fetchImpl: FetchLike,
-  accessToken: string,
-  url: string,
-  accept: string,
-  preference?: string,
-): Promise<GraphResponse> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetchImpl(url, {
-      method: 'GET',
-      headers: graphHeaders(accessToken, { Accept: accept }, preference),
-      signal: controller.signal,
-      // A redirect would carry the bearer token to wherever it points.
-      redirect: 'manual',
-    });
-  } catch {
-    // Only the fetch itself is inside this try — every classified failure is raised by a
-    // caller, after it has read the response. undici reports every transport failure as
-    // the same TypeError, so there is nothing here to tell apart: the mailbox is
-    // unreachable rather than unauthorized.
-    throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
-  } finally {
-    clearTimeout(timer);
+class GraphTransportError extends Error {
+  constructor(
+    readonly reason: unknown,
+    readonly aborted: boolean,
+  ) {
+    super('Graph request failed at the transport');
   }
 }
 
 /**
- * Issues one bounded Graph request expecting JSON, against an absolute URL.
+ * Runs one request and its body read under a single timer.
+ *
+ * The body is read inside the bound, not after it: a response whose headers arrive and
+ * whose body then stalls would otherwise wait on undici's own body timeout, minutes past
+ * this driver's bound. An error the reader throws is its own classification and passes
+ * through — unless the timer fired or the connection dropped, which are the transport's.
+ */
+async function graphExchange<T>(
+  fetchImpl: FetchLike,
+  url: string,
+  init: Omit<RequestInit, 'signal' | 'redirect'>,
+  timeoutMs: number,
+  read: (response: GraphResponse) => Promise<T>,
+): Promise<T> {
+  const bound = startBound(timeoutMs);
+  try {
+    let response: GraphResponse;
+    try {
+      // A redirect would carry the bearer token to wherever it points.
+      response = await fetchImpl(url, { ...init, signal: bound.signal, redirect: 'manual' });
+    } catch (err) {
+      throw new GraphTransportError(err, bound.timedOut());
+    }
+    try {
+      return await read(response);
+    } catch (err) {
+      // A body cut off mid-stream is the connection's failure, not the reader's.
+      if (bound.timedOut() || isTransportFailure(err)) {
+        throw new GraphTransportError(err, bound.timedOut());
+      }
+      throw err;
+    }
+  } finally {
+    bound.release();
+  }
+}
+
+/**
+ * Issues one bounded GET against an absolute URL and reads it with `read`.
+ *
+ * Absolute rather than a path fragment because a delta link is returned whole and replayed
+ * whole; callers building a fresh URL join it to GRAPH_API_BASE themselves.
+ */
+async function graphGet<T>(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  url: string,
+  accept: string,
+  read: (response: GraphResponse) => Promise<T>,
+  preference?: string,
+): Promise<T> {
+  try {
+    return await graphExchange(
+      fetchImpl,
+      url,
+      { method: 'GET', headers: graphHeaders(accessToken, { Accept: accept }, preference) },
+      REQUEST_TIMEOUT_MS,
+      read,
+    );
+  } catch (err) {
+    // undici reports every transport failure as the same TypeError, so there is nothing
+    // here to tell apart: the mailbox is unreachable rather than unauthorized.
+    if (err instanceof GraphTransportError) {
+      throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Issues one bounded GET expecting JSON, against an absolute URL.
  *
  * Absolute rather than a path fragment because a delta link is returned whole and replayed
  * whole; callers building a fresh URL join it to GRAPH_API_BASE themselves.
@@ -312,31 +403,40 @@ async function graphRequest(
   url: string,
   preference?: string,
 ): Promise<GraphRequestResult> {
-  const response = await graphSend(fetchImpl, accessToken, url, 'application/json', preference);
+  return graphGet(
+    fetchImpl,
+    accessToken,
+    url,
+    'application/json',
+    async (response) => {
+      // A 404 is a routine answer on several paths — a folder the mailbox does not have, a
+      // message deleted between listing and fetching — so the caller decides.
+      if (response.status === 404) return { status: 404, body: null };
 
-  // A 404 is a routine answer on several paths — a folder the mailbox does not have, a
-  // message deleted between listing and fetching — so the caller decides, not this helper.
-  if (response.status === 404) return { status: 404, body: null };
+      // Read before branching: the body is the only thing separating a spent quota and an
+      // expired delta link from a refused credential, and the three need different
+      // handling. A body that will not decode is a truncated or non-JSON response, which
+      // means the mailbox is unreachable rather than unauthorized. Only a genuine decode
+      // failure is rewritten that way: anything else thrown here is a fault in the
+      // caller's stack, and burying it as CONNECTION_FAILED would hide it behind a retry.
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch (err) {
+        if (err instanceof SyntaxError) {
+          throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
+        }
+        throw err;
+      }
 
-  // Read before branching: the body is the only thing separating a spent quota and an
-  // expired delta link from a refused credential, and the three need different handling.
-  // A body that will not decode is a truncated or non-JSON response, which means the
-  // mailbox is unreachable rather than unauthorized. Only a genuine decode failure is
-  // rewritten that way: anything else thrown here is a fault in the caller's stack, and
-  // burying it as CONNECTION_FAILED would hide the defect behind a retry.
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch (err) {
-    if (err instanceof SyntaxError) throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
-    throw err;
-  }
-
-  if (!response.ok) {
-    if (isResyncRequired(response.status, body)) return { status: response.status, body };
-    throw errorForStatus(response.status, body, response.headers.get('retry-after'));
-  }
-  return { status: response.status, body };
+      if (!response.ok) {
+        if (isResyncRequired(response.status, body)) return { status: response.status, body };
+        throw errorForStatus(response.status, body, response.headers.get('retry-after'));
+      }
+      return { status: response.status, body };
+    },
+    preference,
+  );
 }
 
 /**
@@ -349,36 +449,89 @@ async function graphFetchSource(
   accessToken: string,
   url: string,
 ): Promise<Buffer | null> {
-  const response = await graphSend(fetchImpl, accessToken, url, 'text/plain');
-  if (response.status === 404) return null;
-  if (!response.ok) {
-    // The error body decides a throttled 403 from a refused credential, exactly as on the
-    // JSON path — this response is MIME on success, but a failure still carries Graph's
-    // JSON error envelope, and reading it is what keeps a rate limit from telling the rep
-    // to reconnect.
-    let body: unknown = null;
-    try {
-      body = await response.json();
-    } catch {
+  return graphGet(fetchImpl, accessToken, url, 'text/plain', async (response) => {
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      // The error body decides a throttled 403 from a refused credential, exactly as on the
+      // JSON path — this response is MIME on success, but a failure still carries Graph's
+      // JSON error envelope, and reading it keeps a rate limit from asking for a reconnect.
       // A failure whose body will not decode leaves the status to classify it.
+      const body = await readBodyOrNull(response, PROVIDER_NAME);
+      throw errorForStatus(response.status, body, response.headers.get('retry-after'));
     }
-    throw errorForStatus(response.status, body, response.headers.get('retry-after'));
-  }
-  // Bytes, never text: the document's parts carry their own charsets, and decoding the
-  // whole thing as UTF-8 would corrupt every one that is not.
-  return Buffer.from(await response.arrayBuffer());
+    // Bytes, never text: the document's parts carry their own charsets, and decoding the
+    // whole thing as UTF-8 would corrupt every one that is not.
+    return Buffer.from(await response.arrayBuffer());
+  });
+}
+
+/** What a write learned: the status, and the JSON body when one could be read. */
+interface GraphWriteResult {
+  ok: boolean;
+  status: number;
+  /** Null when the body was empty, would not decode, or stopped arriving. */
+  body: unknown;
+}
+
+/** A request that writes, and how its failure reads. */
+interface GraphWrite {
+  method: 'POST' | 'DELETE';
+  /** The request body and its media type; absent for a DELETE. */
+  payload?: { body: string; contentType: string };
+  timeoutMs: number;
+  /**
+   * True for the request that hands mail to Microsoft, whose transport failure may follow
+   * an accepted message. Any other write that fails sent nothing.
+   */
+  submits: boolean;
 }
 
 /**
- * The permissions that authorize reading a message body, bare of their resource prefix.
+ * Issues one bounded write and reports its status, whatever its body does.
  *
- * `Mail.ReadBasic` is deliberately absent: it excludes bodies and attachments, so a mailbox
- * holding only it would sync headers and store nothing readable.
+ * Never throws for a body: once a status has arrived it is the verdict — a 202 means sent
+ * even if the connection then drops, and a 400 means refused even if its error envelope is
+ * cut off. Only a request that got no status at all throws, as a send failure.
  */
-const MAIL_READ_SCOPES = [
-  GRAPH_MAIL_READ_SCOPE.slice(GRAPH_MAIL_READ_SCOPE.lastIndexOf('/') + 1).toLowerCase(),
-  'mail.readwrite',
-];
+async function graphWrite(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  url: string,
+  write: GraphWrite,
+): Promise<GraphWriteResult> {
+  const extra: Record<string, string> = { Accept: 'application/json' };
+  if (write.payload) extra['Content-Type'] = write.payload.contentType;
+  try {
+    return await graphExchange(
+      fetchImpl,
+      url,
+      {
+        method: write.method,
+        headers: graphHeaders(accessToken, extra),
+        ...(write.payload ? { body: write.payload.body } : {}),
+      },
+      write.timeoutMs,
+      // Empty, undecodable, or stalled past the bound: the status still stands.
+      async (response) => ({
+        ok: response.ok,
+        status: response.status,
+        body: await readBodyOrNull(response, PROVIDER_NAME),
+      }),
+    );
+  } catch (err) {
+    if (!(err instanceof GraphTransportError)) throw err;
+    const code = write.submits ? transportFailureCode(err.reason, err.aborted) : SEND_NOT_SENT;
+    throw sendFailure(code, PROVIDER_NAME);
+  }
+}
+
+/** True when a granted scope list carries `wanted`, compared the way Microsoft echoes it. */
+function grantsScope(grantedScopes: readonly string[], wanted: string): boolean {
+  const bare = wanted.slice(wanted.lastIndexOf('/') + 1).toLowerCase();
+  return grantedScopes.some(
+    (scope) => scope.replace(/^https:\/\/graph\.microsoft\.com\//i, '').toLowerCase() === bare,
+  );
+}
 
 /**
  * True when a granted scope authorizes reading a message body.
@@ -388,12 +541,133 @@ const MAIL_READ_SCOPES = [
  * requested, and `Mail.ReadWrite` supersedes it. An equality check would refuse a
  * correctly-granted mailbox and park it with a badge reconnecting cannot clear.
  *
+ * `Mail.ReadBasic` is deliberately not accepted: it excludes bodies and attachments, so a
+ * mailbox holding only it would sync headers and store nothing readable.
  */
 function grantsMailRead(grantedScopes: readonly string[]): boolean {
-  return grantedScopes.some((scope) => {
-    const withoutHost = scope.replace(/^https:\/\/graph\.microsoft\.com\//i, '');
-    return MAIL_READ_SCOPES.includes(withoutHost.toLowerCase());
-  });
+  return (
+    grantsScope(grantedScopes, GRAPH_MAIL_READ_SCOPE) ||
+    grantsScope(grantedScopes, GRAPH_MAIL_READWRITE_SCOPE)
+  );
+}
+
+/**
+ * True when a grant can send: `Mail.Send` to submit, and `Mail.ReadWrite` to create the
+ * draft whose immutable id the stored row carries.
+ */
+function grantsMailSend(grantedScopes: readonly string[]): boolean {
+  return (
+    grantsScope(grantedScopes, GRAPH_MAIL_SEND_SCOPE) &&
+    grantsScope(grantedScopes, GRAPH_MAIL_READWRITE_SCOPE)
+  );
+}
+
+/**
+ * Submits one document: create it as a draft, then send the draft.
+ *
+ * `/me/sendMail` answers 202 with no body, so it cannot say what the message is called.
+ * Microsoft's documented route to the Sent Items copy's id is a draft created under the
+ * immutable-id preference, and that is the id the sync driver reads the copy back under.
+ *
+ * A draft is deleted only when its send was refused outright. A send that failed any other
+ * way may have gone, and that draft may already be the Sent Items copy under the same id —
+ * deleting it would delete the user's sent mail.
+ */
+async function sendDocument(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  mime: Buffer,
+): Promise<SentMessage> {
+  const draftId = await createDraft(fetchImpl, accessToken, mime);
+  const draftUrl = `${GRAPH_API_BASE}/messages/${encodeURIComponent(draftId)}`;
+
+  let code: SendFailureCode;
+  try {
+    const sent = await graphWrite(fetchImpl, accessToken, `${draftUrl}/send`, {
+      method: 'POST',
+      payload: { body: '', contentType: 'application/json' },
+      timeoutMs: SEND_TIMEOUT_MS,
+      submits: true,
+    });
+    if (sent.ok) return { providerMessageId: draftId };
+    code = refusalCode(sent.status, sent.body, true);
+  } catch (err) {
+    if (!isSendFailure(err)) throw err;
+    code = err.code;
+  }
+
+  if (code !== SEND_OUTCOME_UNKNOWN) await deleteDraft(fetchImpl, accessToken, draftUrl);
+  throw sendFailure(code, PROVIDER_NAME);
+}
+
+/**
+ * Creates the document as a draft and returns its immutable id.
+ *
+ * Nothing is sent by this request, so every failure is a definite non-send. One that got
+ * no usable answer may still have left a draft with no id to delete it by, which is logged.
+ */
+async function createDraft(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  mime: Buffer,
+): Promise<string> {
+  let created: GraphWriteResult;
+  try {
+    created = await graphWrite(fetchImpl, accessToken, `${GRAPH_API_BASE}/messages`, {
+      method: 'POST',
+      // Microsoft documents base64 of the whole document, under text/plain.
+      payload: { body: mime.toString('base64'), contentType: 'text/plain' },
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      submits: false,
+    });
+  } catch (err) {
+    if (isSendFailure(err)) {
+      logger.warn({ err }, 'graphProvider: draft creation got no answer; a stray draft may remain');
+    }
+    throw err;
+  }
+
+  if (!created.ok) {
+    if (created.status >= 500) {
+      logger.warn(
+        { status: created.status },
+        'graphProvider: draft creation failed; a stray draft may remain',
+      );
+    }
+    throw sendFailure(refusalCode(created.status, created.body, false), PROVIDER_NAME);
+  }
+  // Safe: an unknown JSON body, narrowed by the typeof check below.
+  const draftId = (created.body as { id?: unknown } | null)?.id;
+  if (typeof draftId !== 'string' || draftId === '') {
+    logger.warn('graphProvider: created draft carried no readable id; a stray draft remains');
+    throw sendFailure(SEND_NOT_SENT, PROVIDER_NAME);
+  }
+  return draftId;
+}
+
+/**
+ * Removes a draft whose send was refused, so a failed send leaves nothing behind.
+ *
+ * Best effort: the send already failed and that is what the caller must hear, so a cleanup
+ * failure is logged rather than replacing it.
+ */
+async function deleteDraft(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  draftUrl: string,
+): Promise<void> {
+  try {
+    const deleted = await graphWrite(fetchImpl, accessToken, draftUrl, {
+      method: 'DELETE',
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      submits: false,
+    });
+    if (!deleted.ok && deleted.status !== 404) {
+      logger.warn({ status: deleted.status }, 'graphProvider: could not delete a refused draft');
+    }
+  } catch {
+    logger.warn('graphProvider: could not reach Outlook to delete a refused draft');
+  }
 }
 
 /**
@@ -703,16 +977,22 @@ export function createGraphProvider(
     throw providerError(INSUFFICIENT_SCOPE_MESSAGE, INSUFFICIENT_SCOPE);
   }
 
+  // Decided here but refused at send, not thrown: a mailbox connected before send needed
+  // Mail.ReadWrite must keep syncing until it is reconnected.
+  const canSend = grantsMailSend(grantedScopes);
+
   return {
+    async send(auth: ConnectedAccountAuth, mime: Buffer): Promise<SentMessage> {
+      if (!canSend) throw sendFailure(SEND_SCOPE_MISSING, PROVIDER_NAME);
+      return sendDocument(fetchImpl, requireOAuthAccessToken(auth, PROVIDER_NAME), mime);
+    },
+
     async fetchSince(
       auth: ConnectedAccountAuth,
       cursor: string | null,
       since: Date,
     ): Promise<ProviderPage> {
-      if (auth.kind !== 'oauth') {
-        throw providerError('Outlook requires an OAuth account.', PROVIDER_AUTH_EXPIRED);
-      }
-
+      const accessToken = requireOAuthAccessToken(auth, PROVIDER_NAME);
       const stored = parseCursor(cursor);
       const pending: GraphMessageRef[][] = [];
       const nextCursor: CursorByFolder = new Map();
@@ -731,13 +1011,7 @@ export function createGraphProvider(
       // to the user. Losing the sibling folder's page to that is cheap: its stored
       // position is untouched, so the next tick re-reads exactly what this one discarded.
       for (const folder of SYNCED_FOLDERS) {
-        const result = await readFolder(
-          fetchImpl,
-          auth.access_token,
-          folder,
-          stored.get(folder),
-          since,
-        );
+        const result = await readFolder(fetchImpl, accessToken, folder, stored.get(folder), since);
         pending.push(result.refs);
         if (result.position !== null) nextCursor.set(folder, result.position);
         if (result.present) readableFolders += 1;
@@ -775,7 +1049,7 @@ export function createGraphProvider(
         }
       }
 
-      const messages = await readMessages(fetchImpl, auth.access_token, unique, accountAddress);
+      const messages = await readMessages(fetchImpl, accessToken, unique, accountAddress);
 
       return {
         messages,

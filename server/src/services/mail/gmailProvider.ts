@@ -19,17 +19,35 @@ import {
 
 import logger from '../../logger.js';
 import type { ConnectedAccountAuth } from '../connectedAccountService.js';
-import { GMAIL_READ_SCOPE } from '../oauthProviderService.js';
+import { GMAIL_READ_SCOPE, GMAIL_SEND_SCOPE } from '../oauthProviderService.js';
 
 import type {
   MailboxTestResult,
   MailProvider,
   NormalizedMessage,
   ProviderPage,
+  SentMessage,
 } from './mailProvider.js';
+import { requireOAuthAccessToken } from './mailProvider.js';
 import { normalizeFromSource } from './messageBody.js';
+import {
+  isSendFailure,
+  SEND_AUTH_EXPIRED,
+  SEND_NOT_SENT,
+  SEND_OUTCOME_UNKNOWN,
+  SEND_SCOPE_MISSING,
+  SEND_TIMEOUT_MS,
+  sendFailure,
+  statusFailureCode,
+  transportFailureCode,
+  type SendFailureCode,
+} from './sendOutcome.js';
+import { readBodyOrNull, startBound } from './transport.js';
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
+
+/** How this driver names its provider in messages. */
+const PROVIDER_NAME = 'Gmail';
 
 // Re-exported from the shared list rather than restated: this value reaches status_detail,
 // which the client renders by translating, so a copy that drifts degrades the mailbox to
@@ -80,7 +98,10 @@ const MAX_BACKFILL_MESSAGES_PER_PAGE = 50;
 export const UNANCHORED = 'unanchored';
 
 /** Bound on each Gmail request, so a hung endpoint cannot stall the whole tick. */
-const REQUEST_TIMEOUT_MS = 15_000;
+export const REQUEST_TIMEOUT_MS = 15_000;
+
+/** Gmail's thread ids are hex; a fallback id, a Message-ID, or a digest never is. */
+const GMAIL_THREAD_ID_PATTERN = /^[0-9a-f]+$/i;
 
 /**
  * What Gmail is asked to exclude.
@@ -212,12 +233,7 @@ const RATE_LIMIT_REASONS = ['rateLimitExceeded', 'userRateLimitExceeded', 'quota
 
 /** True when a 403 body blames quota rather than the credential. */
 function isRateLimited(body: unknown): boolean {
-  const errors = (body as { error?: { errors?: unknown } } | null)?.error?.errors;
-  if (!Array.isArray(errors)) return false;
-  return errors.some((entry) => {
-    const reason = (entry as { reason?: unknown } | null)?.reason;
-    return typeof reason === 'string' && RATE_LIMIT_REASONS.includes(reason);
-  });
+  return hasReason(body, RATE_LIMIT_REASONS);
 }
 
 /**
@@ -255,14 +271,13 @@ async function gmailRequest(
 ): Promise<GmailRequestResult> {
   const query = new URLSearchParams(params).toString();
   const url = `${GMAIL_API_BASE}${path}${query ? `?${query}` : ''}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const bound = startBound(REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetchImpl(url, {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
-      signal: controller.signal,
+      signal: bound.signal,
       // A redirect would carry the bearer token to wherever it points.
       redirect: 'manual',
     });
@@ -278,12 +293,15 @@ async function gmailRequest(
 
     return { status: response.status, body };
   } catch (err) {
-    if (err instanceof Error && 'code' in err) throw err;
+    // A string code marks an error this module classified. An abort's DOMException also
+    // carries `code`, but a numeric one, and must be rewritten like any transport failure.
+    // Safe: an arbitrary thrown value, narrowed by the typeof.
+    if (typeof (err as { code?: unknown } | null)?.code === 'string') throw err;
     // undici reports every transport failure as the same TypeError, so the cause matters
     // more than the name; either way the mailbox is unreachable rather than unauthorized.
     throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
   } finally {
-    clearTimeout(timer);
+    bound.release();
   }
 }
 
@@ -491,22 +509,118 @@ export function createGmailProvider(
     throw providerError(INSUFFICIENT_SCOPE_MESSAGE, INSUFFICIENT_SCOPE);
   }
 
+  // Decided here but refused at send, not thrown: Google's consent screen lets a user
+  // untick send alone, and that mailbox must still sync.
+  const canSend = grantedScopes.includes(GMAIL_SEND_SCOPE);
+
   return {
     async fetchSince(
       auth: ConnectedAccountAuth,
       cursor: string | null,
       since: Date,
     ): Promise<ProviderPage> {
-      if (auth.kind !== 'oauth') {
-        throw providerError('Gmail requires an OAuth account.', PROVIDER_AUTH_EXPIRED);
-      }
-
+      const accessToken = requireOAuthAccessToken(auth, PROVIDER_NAME);
       const stored = parseCursor(cursor);
       return stored?.phase === 'incremental'
-        ? readIncremental(fetchImpl, auth.access_token, stored, accountAddress)
-        : readBackfill(fetchImpl, auth.access_token, stored, since, accountAddress);
+        ? readIncremental(fetchImpl, accessToken, stored, accountAddress)
+        : readBackfill(fetchImpl, accessToken, stored, since, accountAddress);
+    },
+
+    async send(
+      auth: ConnectedAccountAuth,
+      mime: Buffer,
+      threadHint: string | null,
+    ): Promise<SentMessage> {
+      if (!canSend) throw sendFailure(SEND_SCOPE_MISSING, PROVIDER_NAME);
+      return sendMessage(fetchImpl, requireOAuthAccessToken(auth, PROVIDER_NAME), mime, threadHint);
     },
   };
+}
+
+/**
+ * Submits one document through `messages/send`.
+ *
+ * `threadId` is what files the sent copy into the conversation in the sender's own Gmail;
+ * the headers alone thread it only for the recipient. A hint that is not a Gmail id — a
+ * fallback this driver minted, or a digest — is withheld rather than sent.
+ *
+ * Its own request path rather than `gmailRequest`'s, because a send classifies failure by
+ * whether mail may have gone, which a read has no reason to ask.
+ */
+async function sendMessage(
+  fetchImpl: FetchLike,
+  accessToken: string,
+  mime: Buffer,
+  threadHint: string | null,
+): Promise<SentMessage> {
+  const threadId =
+    threadHint !== null && GMAIL_THREAD_ID_PATTERN.test(threadHint) ? threadHint : null;
+  const bound = startBound(SEND_TIMEOUT_MS);
+
+  try {
+    const response = await fetchImpl(`${GMAIL_API_BASE}/messages/send`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ raw: mime.toString('base64url'), ...(threadId ? { threadId } : {}) }),
+      signal: bound.signal,
+      // A redirect would carry the bearer token to wherever it points.
+      redirect: 'manual',
+    });
+
+    if (!response.ok) {
+      // The status is the verdict from here; a cut-off error body only loses the detail.
+      const body = await readBodyOrNull(response, PROVIDER_NAME);
+      throw sendFailure(refusalCode(response.status, body, threadId !== null), PROVIDER_NAME);
+    }
+
+    // Accepted from here on: a body that will not decode or names no id is mail that went,
+    // which the sync engine still ingests from Sent.
+    // Safe: an unknown JSON body, narrowed by the typeof check below.
+    const id = ((await response.json()) as { id?: unknown } | null)?.id;
+    if (typeof id !== 'string' || id === '') throw sendFailure(SEND_OUTCOME_UNKNOWN, PROVIDER_NAME);
+    return { providerMessageId: id };
+  } catch (err) {
+    if (isSendFailure(err)) throw err;
+    throw sendFailure(transportFailureCode(err, bound.timedOut()), PROVIDER_NAME);
+  } finally {
+    bound.release();
+  }
+}
+
+/** The 403 reasons that mean this grant cannot send, not that the credential is dead. */
+const SEND_PERMISSION_REASONS = ['insufficientPermissions'];
+
+/** The 403 reasons that mean a policy refused this message, which reconnecting cannot fix. */
+const SEND_POLICY_REASONS = ['domainPolicy', 'failedPrecondition'];
+
+/** True when a Gmail error body carries one of `reasons`. */
+function hasReason(body: unknown, reasons: readonly string[]): boolean {
+  // Safe: an unknown JSON body, every level narrowed before it is read.
+  const errors = (body as { error?: { errors?: unknown } } | null)?.error?.errors;
+  if (!Array.isArray(errors)) return false;
+  return errors.some((entry) => {
+    const reason = (entry as { reason?: unknown } | null)?.reason; // Safe: narrowed below.
+    return typeof reason === 'string' && reasons.includes(reason);
+  });
+}
+
+/**
+ * Classifies a refused send.
+ *
+ * Narrower than the sync path's mapping, because a send-only refusal must not park a
+ * mailbox that still syncs: missing permission asks for a reconnect, and a policy block is
+ * simply not sent. Without a thread a 404 means the mailbox is gone, as on the profile; with
+ * one it more likely names the thread.
+ */
+function refusalCode(status: number, body: unknown, sentThread: boolean): SendFailureCode {
+  if (status === 404) return sentThread ? SEND_NOT_SENT : SEND_AUTH_EXPIRED;
+  if (status === 403 && hasReason(body, SEND_PERMISSION_REASONS)) return SEND_SCOPE_MISSING;
+  if (status === 403 && hasReason(body, SEND_POLICY_REASONS)) return SEND_NOT_SENT;
+  return statusFailureCode(status, isRateLimited(body), true);
 }
 
 /**

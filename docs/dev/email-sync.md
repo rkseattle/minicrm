@@ -27,6 +27,56 @@ A `ProviderPage` carries four things:
 | `cursorInvalid` | The stored cursor no longer means anything to the provider.              |
 | `hasMore`       | More history is waiting; the engine decides whether to keep going.       |
 
+### Sending
+
+An optional second method submits one RFC 5322 document built by `outboundMessage.ts`:
+
+```ts
+interface MailProvider {
+  send?(auth, mime, threadHint): Promise<SentMessage>;
+}
+```
+
+It returns the provider's own id for the message, which must equal the id the sync
+driver later reads the Sent copy back under, so the existing upsert updates the sent row
+instead of storing it twice. A driver that cannot promise that defines no `send`. IMAP is
+one: SMTP submission returns no id.
+
+- **Gmail** posts the document to `messages/send` and stores the returned `id`. The thread
+  hint goes along as `threadId` only when it is a native Gmail thread id, and it must come
+  from the sending account. Without it, a reply opens a new conversation in the sender's
+  own Gmail.
+- **Microsoft Graph** creates the document as a draft under `Prefer: IdType="ImmutableId"`,
+  then sends that draft. `/me/sendMail` answers `202` with no body, so it cannot provide
+  an id. Microsoft's immutable-id guide documents this draft route as the way to find the
+  Sent Items copy. Creating a draft needs `Mail.ReadWrite` in addition to `Mail.Send`.
+  Mailboxes connected before send was added lack it and must be reconnected before they
+  can send; they keep syncing until then. Graph takes no conversation id on a send and
+  ignores the thread hint.
+
+Failures carry a code from `sendOutcome.ts`, and the line that matters is whether mail may
+have gone:
+
+| Code                    | Meaning                                                           |
+| ----------------------- | ----------------------------------------------------------------- |
+| `SEND_NOT_SENT`         | A 4xx, or a connection that never opened. Safe to send again.     |
+| `SEND_RATE_LIMITED`     | Throttled. Not sent.                                              |
+| `SEND_SCOPE_MISSING`    | The grant cannot send. Reconnect; sync is unaffected.             |
+| `PROVIDER_AUTH_EXPIRED` | The credential was refused. The only code shared with sync.       |
+| `SEND_OUTCOME_UNKNOWN`  | A timeout, a 5xx, or a lost connection on the submitting request. |
+
+An unknown outcome is never retried and never reported as a failure: the recipient may
+already have the message. For the same reason Graph deletes a draft only when its send
+was refused outright. A draft whose send may have gone may already be the Sent Items copy,
+under the same id. A missing send scope refuses the send, never the provider, because
+either consent screen can grant read without send and that mailbox must still sync.
+
+**Unverified: the Graph id after send.** Microsoft's mail API overview says immutable ids
+hold "with the exception of sending a draft message". Its immutable-id guide says the
+draft's id fetches the Sent Items copy. If the overview is right, the Sent copy syncs under
+a new id and is stored a second time. Only a live mailbox can settle this; see "Not covered
+here".
+
 ### Writing a second provider
 
 1. Implement `MailProvider`. Return `NormalizedMessage` values — the engine does no
@@ -567,6 +617,8 @@ the ambient value.
   is exercised only by tests that set the column directly.
 - **GDPR erasure for synced mail, and the backfill window as an admin setting** — the
   window is a module constant until that lands.
+- **Validation of Graph send against a real mailbox** — whether the Sent Items copy keeps
+  the draft's immutable id, which Microsoft's own pages state both ways.
 - **Validation against a real IMAP server** — three behaviors here are reasoned from RFC
   3501 and imapflow's own source rather than observed: `UIDNEXT` as a lower bound,
   `bodyStructure`-derived `has_attachments`, and the body pass's `source` fetch over a
