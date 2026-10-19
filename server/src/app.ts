@@ -11,6 +11,7 @@ import morgan from 'morgan';
 import 'dotenv/config';
 import logger from './logger.js';
 import pool from './db.js';
+import coverageDb from './coverageDb.js';
 import { isAuthBypassEnv, isNonProductionEnv } from './utils/nodeEnv.js';
 import { probeDatabase } from './services/dbHealthProbe.js';
 import authRoutes from './routes/auth.js';
@@ -319,8 +320,21 @@ app.use((_req: Request, res: Response) => {
 // ── Global error handler ───────────────────────────────────────────────────────
 // Must have four parameters so Express recognizes it as an error handler.
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  // Pool exhaustion: all connections were held for > connectionTimeoutMillis.
   if (err.message?.includes('timeout exceeded when trying to connect')) {
+    // Both pools raise this text, so both are logged; the counts show which was full.
+    logger.warn(
+      {
+        poolTotal: pool.totalCount,
+        poolIdle: pool.idleCount,
+        poolWaiting: pool.waitingCount,
+        poolMax: pool.options.max,
+        coveragePoolTotal: coverageDb.totalCount,
+        coveragePoolIdle: coverageDb.idleCount,
+        coveragePoolWaiting: coverageDb.waitingCount,
+        coveragePoolMax: coverageDb.options.max,
+      },
+      'pool checkout timed out; answering 503',
+    );
     res.status(503).json({
       error: {
         code: 'SERVICE_UNAVAILABLE',

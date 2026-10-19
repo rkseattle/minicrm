@@ -22,7 +22,8 @@
  * coverageHealthService (a SELECT 1 reachability check — no
  * coverage-domain table reads/writes of its own). Everything else in
  * server/src/services/ continues to use db.ts's product-database pool, which
- * is unchanged by the coverage split.
+ * is unchanged by the coverage split. app.ts's error handler reads this pool's
+ * counts, never queries it, to log which pool a checkout timeout came from.
  *
  * Nothing in the product database gates these endpoints any more:
  * the coverage_pipeline_ingestion/coverage_mapping_query/
