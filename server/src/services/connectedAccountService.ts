@@ -731,6 +731,12 @@ export async function updateAccountStatus(
  * `FOR UPDATE SKIP LOCKED` on the inner select still matters: it is what keeps two
  * instances racing on the same batch from serializing behind each other.
  *
+ * The batch is a MATERIALIZED CTE, never a subquery in the FROM list. Given a low row
+ * estimate the planner may put that subquery on the inner side of a nested loop and run
+ * it once per outer row; each rerun skips the rows this statement already claimed and
+ * locks the next ones, so the statement claims past its LIMIT. A materialized CTE is
+ * evaluated exactly once whatever the plan.
+ *
  * The lease is deliberately short. A process that dies mid-sync leaves the mailbox
  * claimed until the lease expires, and then it is simply retried — the ingestion is
  * idempotent, so a duplicated tick costs work, not correctness.
@@ -750,21 +756,22 @@ export async function updateAccountStatus(
  */
 export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyncAccount[]> {
   const result = await pool.query<ConnectedAccountRow & { user_role: string }>(
-    `UPDATE connected_accounts ca
+    `WITH due AS MATERIALIZED (
+       SELECT ca2.id, u.role AS user_role
+         FROM connected_accounts ca2
+         JOIN users u ON u.id = ca2.user_id
+        WHERE ca2.status IN ('active', 'error')
+          AND ca2.provider = ANY($1)
+          AND u.status = 'active'
+          AND (ca2.sync_next_attempt_at IS NULL OR ca2.sync_next_attempt_at <= NOW())
+          AND ca2.sync_failure_count < $4
+        ORDER BY ca2.sync_next_attempt_at ASC NULLS FIRST
+        LIMIT $2
+          FOR UPDATE OF ca2 SKIP LOCKED
+     )
+     UPDATE connected_accounts ca
         SET sync_next_attempt_at = NOW() + ($3 || ' milliseconds')::interval
-       FROM (
-         SELECT ca2.id, u.role AS user_role
-           FROM connected_accounts ca2
-           JOIN users u ON u.id = ca2.user_id
-          WHERE ca2.status IN ('active', 'error')
-            AND ca2.provider = ANY($1)
-            AND u.status = 'active'
-            AND (ca2.sync_next_attempt_at IS NULL OR ca2.sync_next_attempt_at <= NOW())
-            AND ca2.sync_failure_count < $4
-          ORDER BY ca2.sync_next_attempt_at ASC NULLS FIRST
-          LIMIT $2
-            FOR UPDATE OF ca2 SKIP LOCKED
-       ) due
+       FROM due
       WHERE ca.id = due.id
   RETURNING ca.id, ca.user_id, ca.provider, ca.email_address, ca.sync_cursor,
             ca.sync_failure_count, ca.granted_scopes, due.user_role`,
