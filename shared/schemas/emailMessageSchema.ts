@@ -83,3 +83,105 @@ export const emailThreadSchema = z.object({
 });
 
 export type EmailThread = z.infer<typeof emailThreadSchema>;
+
+/** Longest subject a send accepts, matching the org-SMTP compose path. */
+export const EMAIL_SEND_SUBJECT_MAX = 255;
+
+/** Longest HTML body a send accepts, in characters. Bounds what a caller can make us submit. */
+export const EMAIL_SEND_BODY_MAX = 100_000;
+
+/** Most addresses across To and Cc. Gmail's own per-message ceiling is far higher. */
+export const EMAIL_SEND_MAX_RECIPIENTS = 50;
+
+const recipientListSchema = z.array(
+  z.string().trim().email('Each recipient must be an email address'),
+);
+
+/**
+ * Body for sending through one of the caller's own mailboxes.
+ *
+ * Either a typed `subject` and `body_html`, or a `template_id` rendered against the named
+ * record — never both, since a template silently overriding typed text loses it.
+ * `in_reply_to_message_id` and `forward_of_message_id` name a stored message in the same
+ * mailbox; a message answers or forwards one message, not both.
+ */
+export const sendEmailSchema = z
+  .object({
+    connected_account_id: z.string().uuid('connected_account_id must be a UUID'),
+    to: recipientListSchema,
+    cc: recipientListSchema.default([]),
+    subject: z
+      .string()
+      .trim()
+      .min(1, 'Subject is required')
+      .max(EMAIL_SEND_SUBJECT_MAX, `Subject must be ${EMAIL_SEND_SUBJECT_MAX} characters or fewer`)
+      .optional(),
+    body_html: z
+      .string()
+      .trim()
+      .min(1, 'Body is required')
+      .max(EMAIL_SEND_BODY_MAX, `Body must be ${EMAIL_SEND_BODY_MAX} characters or fewer`)
+      .optional(),
+    template_id: z.string().uuid('template_id must be a UUID').optional(),
+    record_type: emailLinkTargetSchema.shape.record_type.optional(),
+    record_id: emailLinkTargetSchema.shape.record_id.optional(),
+    in_reply_to_message_id: z.string().uuid('in_reply_to_message_id must be a UUID').optional(),
+    forward_of_message_id: z.string().uuid('forward_of_message_id must be a UUID').optional(),
+  })
+  .superRefine((value, ctx) => {
+    const recipients = value.to.length + value.cc.length;
+    if (recipients === 0) {
+      ctx.addIssue({ code: 'custom', path: ['to'], message: 'At least one recipient is required' });
+    } else if (recipients > EMAIL_SEND_MAX_RECIPIENTS) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['to'],
+        message: `A message may have at most ${EMAIL_SEND_MAX_RECIPIENTS} recipients`,
+      });
+    }
+    if ((value.record_type === undefined) !== (value.record_id === undefined)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['record_id'],
+        message: 'record_type and record_id must be given together',
+      });
+    }
+    if (value.in_reply_to_message_id !== undefined && value.forward_of_message_id !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['forward_of_message_id'],
+        message: 'A message replies to or forwards one message, not both',
+      });
+    }
+    if (value.template_id !== undefined) {
+      if (value.subject !== undefined || value.body_html !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['template_id'],
+          message: 'Send a template or a typed subject and body, not both',
+        });
+      }
+      if (value.record_id === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['record_id'],
+          message: 'A template is rendered against a record; name one',
+        });
+      }
+    } else if (value.subject === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['subject'], message: 'Subject is required' });
+    } else if (value.body_html === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['body_html'], message: 'Body is required' });
+    }
+  });
+
+export type SendEmailInput = z.infer<typeof sendEmailSchema>;
+
+/** What a successful send returns. */
+export const sendEmailResponseSchema = z.object({
+  message: emailMessageSchema,
+  /** Merge tags that rendered empty. Reported after the fact; the send already happened. */
+  unresolved_merge_tags: z.array(z.string()),
+});
+
+export type SendEmailResponse = z.infer<typeof sendEmailResponseSchema>;

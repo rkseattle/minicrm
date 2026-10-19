@@ -579,10 +579,15 @@ async function sendMessage(
 
     // Accepted from here on: a body that will not decode or names no id is mail that went,
     // which the sync engine still ingests from Sent.
-    // Safe: an unknown JSON body, narrowed by the typeof check below.
-    const id = ((await response.json()) as { id?: unknown } | null)?.id;
+    // Safe: an unknown JSON body, narrowed by the typeof checks below.
+    const sent = (await response.json()) as { id?: unknown; threadId?: unknown } | null;
+    const id = sent?.id;
     if (typeof id !== 'string' || id === '') throw sendFailure(SEND_OUTCOME_UNKNOWN, PROVIDER_NAME);
-    return { providerMessageId: id };
+    const sentThreadId = sent?.threadId;
+    return {
+      providerMessageId: id,
+      threadId: typeof sentThreadId === 'string' && sentThreadId !== '' ? sentThreadId : null,
+    };
   } catch (err) {
     if (isSendFailure(err)) throw err;
     throw sendFailure(transportFailureCode(err, bound.timedOut()), PROVIDER_NAME);

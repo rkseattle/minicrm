@@ -40,6 +40,12 @@ export interface OutboundMessage {
  * database, so it can be tested directly and reused by a driver that never sees a row.
  */
 export interface ParentMessage {
+  /**
+   * How the new message relates to this one. A forward carries the chain in `References`
+   * but no `In-Reply-To`: it does not answer the original, and a recipient who never saw
+   * that message has nothing to thread it against.
+   */
+  relation: 'reply' | 'forward';
   /** The conversation the parent belongs to, as `email_messages.thread_id` holds it. */
   threadId: string;
   /**
@@ -57,10 +63,8 @@ export interface ParentMessage {
    *
    * Carried rather than reconstructed because the reply must extend the chain, not restart
    * it. `resolveThreadId` takes `References[0]` as a conversation's root, so a reply
-   * emitting only its immediate parent's id re-roots the conversation on that parent — and
-   * because the sync engine's upsert sets `thread_id = EXCLUDED.thread_id`, the correct
-   * value written at send time is overwritten when the Sent copy is read back. Every chain
-   * deeper than two messages splits.
+   * emitting only its immediate parent's id re-roots the conversation on that parent in
+   * every recipient's client. Every chain deeper than two messages splits.
    */
   references: string | null;
 }
@@ -191,7 +195,9 @@ export async function buildOutboundDocument(
     // In-Reply-To names the message being answered; References carries the whole ancestry.
     // A parent with no stored Message-ID still contributes its inherited chain, which is
     // what threads the reply on the recipient's side.
-    ...(parent?.rfcMessageId ? { inReplyTo: bracketed(parent.rfcMessageId) } : {}),
+    ...(parent?.relation === 'reply' && parent.rfcMessageId
+      ? { inReplyTo: bracketed(parent.rfcMessageId) }
+      : {}),
     ...(references.length > 0 ? { references } : {}),
   });
 

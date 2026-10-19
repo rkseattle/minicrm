@@ -578,7 +578,7 @@ async function sendDocument(
   accessToken: string,
   mime: Buffer,
 ): Promise<SentMessage> {
-  const draftId = await createDraft(fetchImpl, accessToken, mime);
+  const { draftId, conversationId } = await createDraft(fetchImpl, accessToken, mime);
   const draftUrl = `${GRAPH_API_BASE}/messages/${encodeURIComponent(draftId)}`;
 
   let code: SendFailureCode;
@@ -589,7 +589,7 @@ async function sendDocument(
       timeoutMs: SEND_TIMEOUT_MS,
       submits: true,
     });
-    if (sent.ok) return { providerMessageId: draftId };
+    if (sent.ok) return { providerMessageId: draftId, threadId: conversationId };
     code = refusalCode(sent.status, sent.body, true);
   } catch (err) {
     if (!isSendFailure(err)) throw err;
@@ -601,7 +601,7 @@ async function sendDocument(
 }
 
 /**
- * Creates the document as a draft and returns its immutable id.
+ * Creates the document as a draft and returns its immutable id and conversation.
  *
  * Nothing is sent by this request, so every failure is a definite non-send. One that got
  * no usable answer may still have left a draft with no id to delete it by, which is logged.
@@ -610,7 +610,7 @@ async function createDraft(
   fetchImpl: FetchLike,
   accessToken: string,
   mime: Buffer,
-): Promise<string> {
+): Promise<{ draftId: string; conversationId: string | null }> {
   let created: GraphWriteResult;
   try {
     created = await graphWrite(fetchImpl, accessToken, `${GRAPH_API_BASE}/messages`, {
@@ -636,13 +636,20 @@ async function createDraft(
     }
     throw sendFailure(refusalCode(created.status, created.body, false), PROVIDER_NAME);
   }
-  // Safe: an unknown JSON body, narrowed by the typeof check below.
-  const draftId = (created.body as { id?: unknown } | null)?.id;
+  // Safe: an unknown JSON body, narrowed by the typeof checks below.
+  const draft = created.body as { id?: unknown; conversationId?: unknown } | null;
+  const draftId = draft?.id;
   if (typeof draftId !== 'string' || draftId === '') {
     logger.warn('graphProvider: created draft carried no readable id; a stray draft remains');
     throw sendFailure(SEND_NOT_SENT, PROVIDER_NAME);
   }
-  return draftId;
+  // Assumed to survive the send as the id does; see "Unverified" in docs/dev/email-sync.md.
+  const conversationId = draft?.conversationId;
+  return {
+    draftId,
+    conversationId:
+      typeof conversationId === 'string' && conversationId !== '' ? conversationId : null,
+  };
 }
 
 /**

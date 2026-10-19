@@ -1382,7 +1382,11 @@ describe('createGraphProvider — send', () => {
   const DRAFTS = `${GRAPH}/messages`;
   const DRAFT = `${GRAPH}/messages/draft-1`;
   const DRAFT_SEND = `${DRAFT}/send`;
-  const CREATED: Route = { match: DRAFTS, status: 201, body: { id: 'draft-1' } };
+  const CREATED: Route = {
+    match: DRAFTS,
+    status: 201,
+    body: { id: 'draft-1', conversationId: 'conv-1' },
+  };
 
   /** Sends through a provider whose draft is created and whose send answers with `route`. */
   async function sendWith(sendRoute: Omit<Route, 'match'>, deleteRoute?: Omit<Route, 'match'>) {
@@ -1403,7 +1407,7 @@ describe('createGraphProvider — send', () => {
   it('creates a draft from the document, sends it, and returns the draft’s immutable id', async () => {
     const { fetcher, outcome } = await sendWith({ status: 202 });
 
-    expect(await outcome).toEqual({ providerMessageId: 'draft-1' });
+    expect(await outcome).toEqual({ providerMessageId: 'draft-1', threadId: 'conv-1' });
     expect(fetcher.urls).toEqual([DRAFTS, DRAFT_SEND]);
     expect(fetcher.inits.map((init) => init.method)).toEqual(['POST', 'POST']);
     expect(Buffer.from(String(fetcher.inits[0].body), 'base64').equals(MIME)).toBe(true);
@@ -1442,12 +1446,26 @@ describe('createGraphProvider — send', () => {
     expect(fetcher.urls).toHaveLength(0);
   });
 
+  it('reports no thread when the created draft names no conversation', async () => {
+    const fetcher = fakeFetch([
+      { match: DRAFT_SEND, status: 202 },
+      { match: DRAFTS, status: 201, body: { id: 'draft-1' } },
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+    await expect(provider.send?.(AUTH, MIME, null)).resolves.toEqual({
+      providerMessageId: 'draft-1',
+      threadId: null,
+    });
+  });
+
   it('is granted everything it needs by the consent Microsoft is asked for', async () => {
     const fetcher = fakeFetch([{ match: DRAFT_SEND, status: 202 }, CREATED]);
     const provider = createGraphProvider(ACCOUNT_ADDRESS, requestedScopes('microsoft'), fetcher.fn);
 
     await expect(provider.send?.(AUTH, MIME, null)).resolves.toEqual({
       providerMessageId: 'draft-1',
+      threadId: 'conv-1',
     });
   });
 
@@ -1461,6 +1479,7 @@ describe('createGraphProvider — send', () => {
 
     await expect(provider.send?.(AUTH, MIME, null)).resolves.toEqual({
       providerMessageId: 'draft-1',
+      threadId: 'conv-1',
     });
   });
 
@@ -1575,7 +1594,7 @@ describe('createGraphProvider — send', () => {
     it('reports a send as sent once Microsoft accepted it, whatever its body does', async () => {
       const { outcome } = await sendWith({ status: 202, bodyTerminated: true });
 
-      await expect(outcome).resolves.toEqual({ providerMessageId: 'draft-1' });
+      await expect(outcome).resolves.toEqual({ providerMessageId: 'draft-1', threadId: 'conv-1' });
     });
 
     it('reports the refused send, not the cleanup, when the delete is refused', async () => {

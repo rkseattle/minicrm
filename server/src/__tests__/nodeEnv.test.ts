@@ -13,6 +13,7 @@ import {
   isAuthBypassEnv,
   isNonProductionEnv,
   isProductionEnv,
+  shouldSkipRateLimit,
   unrecognizedEnvMessage,
 } from '../utils/nodeEnv.js';
 import { RECOGNIZED_ENVS, UNRECOGNIZED_ENVS } from './nodeEnvCorpus.js';
@@ -21,6 +22,8 @@ const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 
 afterEach(() => {
   process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+  delete process.env.E2E;
+  delete process.env.TEST_RATE_LIMIT;
 });
 
 function withNodeEnv(value: string | undefined): void {
@@ -76,5 +79,40 @@ describe('the gates still fail closed on an unrecognized value', () => {
     expect(isNonProductionEnv()).toBe(true);
     expect(isAuthBypassEnv()).toBe(false);
     expect(isProductionEnv()).toBe(true);
+  });
+});
+
+describe('shouldSkipRateLimit', () => {
+  it('stands the limiters aside under test', () => {
+    withNodeEnv('test');
+
+    expect(shouldSkipRateLimit()).toBe(true);
+  });
+
+  it('stands them aside for an E2E run against a development server', () => {
+    withNodeEnv('development');
+    process.env.E2E = 'true';
+
+    expect(shouldSkipRateLimit()).toBe(true);
+  });
+
+  it('keeps them on in development without E2E', () => {
+    withNodeEnv('development');
+
+    expect(shouldSkipRateLimit()).toBe(false);
+  });
+
+  it('keeps them on under test when a limiter test asks for them', () => {
+    withNodeEnv('test');
+    process.env.TEST_RATE_LIMIT = 'true';
+
+    expect(shouldSkipRateLimit()).toBe(false);
+  });
+
+  it.each(['production', 'staging', undefined])('ignores E2E=true under a %s NODE_ENV', (value) => {
+    withNodeEnv(value);
+    process.env.E2E = 'true';
+
+    expect(shouldSkipRateLimit()).toBe(false);
   });
 });

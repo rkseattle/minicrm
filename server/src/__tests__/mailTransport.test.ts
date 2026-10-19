@@ -1,6 +1,12 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 
-import { isTransportFailure, readBodyOrNull, startBound } from '../services/mail/transport.js';
+import {
+  driverFetch,
+  isTransportFailure,
+  readBodyOrNull,
+  refuseLiveFetch,
+  startBound,
+} from '../services/mail/transport.js';
 
 describe('startBound', () => {
   afterEach(() => {
@@ -58,5 +64,26 @@ describe('isTransportFailure', () => {
     ['null', null],
   ])('does not mistake %s for a transport failure', (_label, err) => {
     expect(isTransportFailure(err)).toBe(false);
+  });
+});
+
+describe('driverFetch', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('hands a driver built under test a transport that refuses, naming the host', () => {
+    const fetchImpl = driverFetch();
+
+    expect(fetchImpl).toBe(refuseLiveFetch);
+    expect(() => refuseLiveFetch('https://gmail.googleapis.com/x')).toThrow(
+      /gmail\.googleapis\.com/,
+    );
+  });
+
+  it('leaves the real transport in place outside test', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    expect(driverFetch()).toBeUndefined();
   });
 });

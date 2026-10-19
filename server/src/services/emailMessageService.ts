@@ -43,7 +43,7 @@ export interface EmailMessageLinkRow {
 }
 
 /** A row from email_messages, as the list projection selects it. */
-interface EmailMessageRow {
+export interface EmailMessageRow {
   id: string;
   connected_account_id: string;
   thread_id: string;
@@ -64,12 +64,12 @@ interface EmailMessageRow {
  * `message_body_html` and `message_body_text` are deliberately absent: nothing renders a
  * body yet, the HTML is stored unsanitized, and a list has no business carrying one.
  */
-const MESSAGE_SELECT = `m.id, m.connected_account_id, m.thread_id, m.direction, m.from_address,
+export const MESSAGE_SELECT = `m.id, m.connected_account_id, m.thread_id, m.direction, m.from_address,
        m.to_addresses, m.cc_addresses, m.subject, m.message_snippet, m.has_attachments,
        m.sent_at, m.is_private`;
 
 /** Maps a row to the API shape, rendering timestamps as ISO strings. */
-function toEmailMessage(row: EmailMessageRow): EmailMessage {
+export function toEmailMessage(row: EmailMessageRow): EmailMessage {
   return {
     id: row.id,
     connected_account_id: row.connected_account_id,

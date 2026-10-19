@@ -53,7 +53,7 @@ const MAX_BODY_LENGTH = 65_536;
  * reaches the column as a replacement character — silent corruption of the last
  * character rather than a failure.
  */
-function truncate(value: string, limit: number): string {
+export function truncate(value: string, limit: number): string {
   if (value.length <= limit) return value;
   const cut = value.slice(0, limit);
   const lastCode = cut.charCodeAt(cut.length - 1);

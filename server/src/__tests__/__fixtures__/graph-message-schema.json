@@ -1,7 +1,7 @@
 {
   "apiVersion": "v1.0",
   "source": "https://learn.microsoft.com/en-us/graph/api/resources/message",
-  "note": "Exactly the properties graphProvider reads off Graph JSON (CreatedDraft is the 201 body of POST /me/messages, whose id a send stores) — $select requests these four and no more; subject, hasAttachments and the body come from the MIME document instead. Anything wider would let the fake return a field no driver behavior depends on, weakening the drift check. Microsoft publishes CSDL and OpenAPI rather than a normalizable JSON document, so unlike gmail-discovery.json this is written directly — see docs/dev/email-sync.md for what that does and does not catch.",
+  "note": "Exactly the properties graphProvider reads off Graph JSON (CreatedDraft is the 201 body of POST /me/messages, whose id and conversationId a send stores) — $select requests these four and no more; subject, hasAttachments and the body come from the MIME document instead. Anything wider would let the fake return a field no driver behavior depends on, weakening the drift check. Microsoft publishes CSDL and OpenAPI rather than a normalizable JSON document, so unlike gmail-discovery.json this is written directly — see docs/dev/email-sync.md for what that does and does not catch.",
   "definitions": {
     "Message": {
       "type": "object",
@@ -49,7 +49,8 @@
       "additionalProperties": false,
       "required": ["id"],
       "properties": {
-        "id": { "type": "string" }
+        "id": { "type": "string" },
+        "conversationId": { "type": "string" }
       }
     }
   }
