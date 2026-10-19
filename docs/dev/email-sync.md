@@ -513,9 +513,46 @@ types its own schema admits, and `email_linked` is not one of them. Automatic li
 audited at all — `match_type` already records how a link was made. Removing an automatic
 link is permanent, because only newly synced messages are ever matched.
 
-Neither list endpoint returns a body. `message_body_html` is stored exactly as the sender wrote
-it and is never sanitized, so the projection stops at the snippet until something exists
-that can render one safely.
+`GET /api/v1/email-messages/:id` returns one message with `body_text` and `body_html`, read
+only through the caller's own mailboxes — the predicate `ca.user_id = $2` is written out in
+the query rather than inherited, since a body is the most sensitive thing this table holds.
+A message outside them answers 404, as the link endpoints do. The lists still stop at the
+snippet.
+
+### Rendering a body
+
+`body_html` is returned exactly as the sender wrote it. The client renders it only through
+`sanitizeEmailHtml` (`client/src/utils/sanitizeEmailHtml.ts`), a DOMPurify wrapper with an
+explicit allowlist rather than DOMPurify's `html` profile, which admits forms and images:
+
+- **Elements** — text formatting, lists, tables, headings, links, and images. Script, style,
+  iframe, object, embed, form and its controls, link, meta, base, SVG and MathML are removed;
+  script, style, iframe, SVG, MathML, form, object, embed and the controls take their
+  contents with them, so a phishing form's labels and an object's fallback leave no prose.
+- **Attributes** — presentation only (`align`, `width`, `color`, `style`, …). Every `on*`
+  handler and `data-*` attribute is dropped.
+- **Links** — `http:`, `https:` and `mailto:`, as every mail client allows; anything else
+  loses its `href` and keeps its text. Followed links open in a new tab with
+  `rel="noopener noreferrer nofollow"`.
+- **Styles** — parsed by the browser's own CSS parser and rebuilt from an allowlist of
+  layout, type and colour properties, never filtered as text: a text filter misses what the
+  parser resolves, as CSS escapes (`u\72l(`) and `image-set('…')` both show. A kept value
+  may call only `rgb`, `rgba`, `hsl`, `hsla` and `calc`, so nothing in a style can fetch; a
+  style holding an escape or a comment, where parsers disagree, is dropped whole.
+- **Images** — removed by default, as Gmail, Outlook and Thunderbird do: a remote image tells
+  the sender the message was opened, and from where. "Show images" re-sanitizes the same
+  body with `allowImages`, which admits `https:` sources only — never `data:`, `cid:` or
+  plain `http:`. It is a second call, not a second rendering path.
+
+Each call builds its own DOMPurify instance, because hooks are per-instance state and a
+shared one would carry one thread's image choice into the next.
+
+Sanitizing is one of two required layers, as in Open-Xchange App Suite and other webmail.
+Whatever renders a body must put the sanitized HTML inside a sandboxed iframe, with no
+`allow-scripts` and no `allow-same-origin` but with `allow-popups` and
+`allow-popups-to-escape-sandbox` (the sanitizer opens every link in a new tab, which a
+sandbox otherwise blocks or traps), whose Content-Security-Policy forbids images until the
+reader opts in, so a sanitizer miss still loads and runs nothing.
 
 ## Sending mail
 

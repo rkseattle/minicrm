@@ -1,5 +1,6 @@
 /**
- * Reads synced messages through the records they are linked to.
+ * Reads synced messages: lists through the records they are linked to, and one message with
+ * its bodies by id.
  *
  * Two rules govern every query here, and both are in the WHERE clause rather than in a
  * caller:
@@ -23,6 +24,7 @@ import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema
 import type {
   EmailLinkRecordType,
   EmailMessage,
+  EmailMessageDetail,
   EmailThread,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
@@ -61,10 +63,10 @@ export interface EmailMessageRow {
 }
 
 /**
- * Columns every read returns.
+ * The columns a message's list shape is read from.
  *
- * `message_body_html` and `message_body_text` are deliberately absent: nothing renders a
- * body yet, the HTML is stored unsanitized, and a list has no business carrying one.
+ * The bodies are deliberately absent: a list has no business carrying one, and the HTML is
+ * stored unsanitized. Only `findMessageForUser` adds them, for one message at a time.
  */
 export const MESSAGE_SELECT = `m.id, m.connected_account_id, m.thread_id, m.direction, m.from_address,
        m.to_addresses, m.cc_addresses, m.subject, m.message_snippet, m.has_attachments,
@@ -330,6 +332,36 @@ const OWNER_TABLES: Readonly<Record<EmailLinkRecordType, string>> = {
   account: 'accounts',
   deal: 'deals',
 };
+
+/**
+ * Reads one message with its bodies, only through the caller's own mailboxes.
+ *
+ * The mailbox predicate is written out here rather than inherited: it is the whole of the
+ * privacy rule, and a body is the most sensitive thing this table holds.
+ *
+ * @returns null when no such message is in the caller's mailboxes.
+ */
+export async function findMessageForUser(
+  messageId: string,
+  userId: string,
+): Promise<EmailMessageDetail | null> {
+  const result = await pool.query<
+    EmailMessageRow & { message_body_text: string | null; message_body_html: string | null }
+  >(
+    `SELECT ${MESSAGE_SELECT}, m.message_body_text, m.message_body_html
+       FROM email_messages m
+       JOIN connected_accounts ca ON ca.id = m.connected_account_id
+      WHERE m.id = $1 AND ca.user_id = $2`,
+    [messageId, userId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    ...toEmailMessage(row),
+    body_text: row.message_body_text,
+    body_html: row.message_body_html,
+  };
+}
 
 /**
  * Reads just the owner of a linkable record, or null when no such record exists.

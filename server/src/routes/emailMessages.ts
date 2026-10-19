@@ -10,6 +10,7 @@ import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import {
   createLinkHandler,
   deleteLinkHandler,
+  getMessageHandler,
   listRecordMessagesHandler,
   listUnmatchedMessagesHandler,
   sendEmailHandler,
@@ -60,6 +61,45 @@ router.use(requireCapability(Capability.ConnectedAccountsManage));
  *         description: Email sync is disabled, or the caller cannot manage mailboxes
  */
 router.get('/unmatched', asyncHandler(listUnmatchedMessagesHandler));
+
+/**
+ * @openapi
+ * /api/v1/email-messages/{id}:
+ *   get:
+ *     tags: [Email Messages]
+ *     operationId: getEmailMessage
+ *     summary: Read one of your synced messages with its bodies
+ *     description: >
+ *       Returns one message from the caller's own mailboxes with its plain-text and HTML
+ *       bodies. The HTML is stored exactly as the sender wrote it and is returned
+ *       unsanitized; a client must sanitize it before rendering. A message in any other
+ *       mailbox answers 404, whatever records the caller can see.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: The message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { $ref: '#/components/schemas/EmailMessageDetail' }
+ *       400:
+ *         description: The id is not a UUID
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Email sync is disabled, or the caller cannot manage mailboxes
+ *       404:
+ *         description: No such message in the caller's mailboxes
+ */
+router.get('/:id', asyncHandler(getMessageHandler));
 
 /**
  * @openapi

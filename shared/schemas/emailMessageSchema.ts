@@ -68,6 +68,14 @@ export const emailMessageSchema = z.object({
 
 export type EmailMessage = z.infer<typeof emailMessageSchema>;
 
+/** One message with its bodies, as the body endpoint returns it. The HTML is unsanitized. */
+export const emailMessageDetailSchema = emailMessageSchema.extend({
+  body_text: z.string().nullable(),
+  body_html: z.string().nullable(),
+});
+
+export type EmailMessageDetail = z.infer<typeof emailMessageDetailSchema>;
+
 /**
  * A conversation, which is the unit both list endpoints page by.
  *

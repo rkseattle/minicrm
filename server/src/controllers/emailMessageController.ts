@@ -4,7 +4,6 @@
  */
 
 import type { Request, Response } from 'express';
-import { z } from 'zod';
 
 import {
   createEmailMessageLinkSchema,
@@ -22,6 +21,7 @@ import {
   createManualLink,
   deleteMessageLink,
   findLinkedRecordOwner,
+  findMessageForUser,
   findLinkForUser,
   listMessagesForRecord,
   listUnmatchedMessages,
@@ -46,6 +46,7 @@ import {
 import { userCapabilities } from '../services/roleService.js';
 import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import { errorBody } from '../utils/errorBody.js';
+import { uuidParams } from '../utils/uuidParams.js';
 
 /**
  * Whether the caller may see the record a message is filed against.
@@ -126,6 +127,24 @@ export async function listUnmatchedMessagesHandler(req: Request, res: Response):
 }
 
 /**
+ * GET /api/v1/email-messages/:id
+ * Returns one of the caller's own messages with its bodies. The HTML is unsanitized; the
+ * client renders it only through sanitizeEmailHtml.
+ */
+export async function getMessageHandler(req: Request, res: Response): Promise<void> {
+  const [messageId] = uuidParams(req, res, ['id'], 'Message id must be a UUID') ?? [];
+  if (!messageId) return;
+
+  // Safe: authenticate runs first on this router and always sets req.user.
+  const message = await findMessageForUser(messageId, req.user!.id);
+  if (!message) {
+    res.status(404).json(errorBody('NOT_FOUND', 'No such message'));
+    return;
+  }
+  res.status(200).json({ message });
+}
+
+/**
  * The capability that governs editing each record type.
  *
  * Filing mail against a record is a CRM write, so it takes the record's own edit
@@ -164,11 +183,8 @@ async function canWriteLinkToRecord(
  * Files one of the caller's own messages against a record.
  */
 export async function createLinkHandler(req: Request, res: Response): Promise<void> {
-  const messageId = z.string().uuid().safeParse(req.params['id']);
-  if (!messageId.success) {
-    res.status(400).json(errorBody('VALIDATION_ERROR', 'Message id must be a UUID'));
-    return;
-  }
+  const [messageId] = uuidParams(req, res, ['id'], 'Message id must be a UUID') ?? [];
+  if (!messageId) return;
 
   const parsed = createEmailMessageLinkSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -197,15 +213,10 @@ export async function createLinkHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
+  // Safe: authenticate runs first on this router and always sets req.user.
   const actor = { id: req.user!.id, name: req.user!.name };
   try {
-    const link = await createManualLink(
-      messageId.data,
-      record_type,
-      record_id,
-      req.user!.id,
-      actor,
-    );
+    const link = await createManualLink(messageId, record_type, record_id, req.user!.id, actor);
     res.status(201).json({ link });
   } catch (err) {
     const code = (err as { code?: string }).code;
@@ -228,14 +239,12 @@ export async function createLinkHandler(req: Request, res: Response): Promise<vo
  * Removes a link from one of the caller's own messages.
  */
 export async function deleteLinkHandler(req: Request, res: Response): Promise<void> {
-  const messageId = z.string().uuid().safeParse(req.params['id']);
-  const linkId = z.string().uuid().safeParse(req.params['linkId']);
-  if (!messageId.success || !linkId.success) {
-    res.status(400).json(errorBody('VALIDATION_ERROR', 'Message id and link id must be UUIDs'));
-    return;
-  }
+  const [messageId, linkId] =
+    uuidParams(req, res, ['id', 'linkId'], 'Message id and link id must be UUIDs') ?? [];
+  if (!messageId || !linkId) return;
 
-  const existing = await findLinkForUser(messageId.data, linkId.data, req.user!.id);
+  // Safe: authenticate runs first on this router and always sets req.user.
+  const existing = await findLinkForUser(messageId, linkId, req.user!.id);
   if (!existing) {
     res.status(404).json(errorBody('NOT_FOUND', 'No such link'));
     return;
@@ -258,7 +267,7 @@ export async function deleteLinkHandler(req: Request, res: Response): Promise<vo
   }
 
   const actor = { id: req.user!.id, name: req.user!.name };
-  const removed = await deleteMessageLink(messageId.data, linkId.data, req.user!.id, actor);
+  const removed = await deleteMessageLink(messageId, linkId, req.user!.id, actor);
   if (!removed) {
     res.status(404).json(errorBody('NOT_FOUND', 'No such link'));
     return;
