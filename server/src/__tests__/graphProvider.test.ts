@@ -1050,6 +1050,7 @@ describe('createGraphProvider — threading', () => {
     const page = await provider.fetchSince(AUTH, null, SINCE);
 
     expect(page.messages[0].threadId).toBe('root@example.com');
+    expect(page.messages[0].references).toBe('<root@example.com> <second@example.com>');
   });
 
   it('falls back to the message id when it carries neither', async () => {

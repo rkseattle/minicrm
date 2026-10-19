@@ -114,9 +114,15 @@ function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[]; inits: Req
 }
 
 /** A minimal RFC 2822 document, base64url-encoded the way Gmail returns one. */
-function rawMessage(options: { from: string; subject?: string; body?: string }): string {
+function rawMessage(options: {
+  from: string;
+  subject?: string;
+  body?: string;
+  headers?: string[];
+}): string {
   const document = [
     `From: ${options.from}`,
+    ...(options.headers ?? []),
     'To: rep@example.com',
     `Subject: ${options.subject ?? 'A subject'}`,
     'Content-Type: text/plain; charset=utf-8',
@@ -614,6 +620,25 @@ describe('createGmailProvider — messages that cannot be fully stored', () => {
     expect(page.messages[0].subject).toBe('A subject');
     expect(page.messages[0].bodyText).toBeNull();
     expect(page.messages[0].snippet).toBeNull();
+  });
+
+  it('stores the Message-ID and References a reply will cite, even with no body kept', async () => {
+    const raw = rawMessage({
+      from: 'a@b.c',
+      body: 'x'.repeat(2_200_000),
+      headers: ['Message-ID: <reply@b.c>', 'References: <root@b.c> <mid@b.c>'],
+    });
+    const fetcher = fakeFetch([
+      { match: '/profile', body: { emailAddress: ACCOUNT_ADDRESS, historyId: '1' } },
+      { match: '/messages?', body: { messages: [{ id: 'm1', threadId: 't1' }] } },
+      { match: '/messages/m1', body: { id: 'm1', threadId: 't1', raw } },
+    ]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.rfcMessageId).toBe('reply@b.c');
+    expect(message.references).toBe('<root@b.c> <mid@b.c>');
   });
 
   it('keeps a listed page when the mailbox reports no history position', async () => {

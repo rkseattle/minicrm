@@ -24,6 +24,8 @@ Messages synced from a connected mailbox. Headers, metadata, and body text. All 
 | message_body_text | text |  | true |  |  | Plain-text body. Taken from the text part where one exists, otherwise converted from the HTML part so a message reads the same either way. Null when neither part exists or the document could not be parsed. |
 | message_body_html | text |  | true |  |  | HTML body exactly as the sender wrote it, stored UNSANITIZED. Nothing renders it today; whatever first does must sanitize at render, since sanitizing here would discard markup a renderer needs. |
 | message_snippet | text |  | true |  |  | First 200 characters of the plain-text body with whitespace collapsed, for list views that must not load a whole body. Derived from message_body_text, so it is null whenever that is. |
+| rfc_message_id | text |  | true |  |  | The message's own RFC 5322 Message-ID, without angle brackets. A reply names it in In-Reply-To. |
+| references_header | text |  | true |  |  | Ancestor Message-IDs, bracketed and space-separated, oldest first; bounded to the root plus the newest. A reply extends it. |
 
 ## Constraints
 
@@ -71,6 +73,8 @@ erDiagram
   text message_body_text "Plain-text body. Taken from the text part where one exists, otherwise converted from the HTML part so a message reads the same either way. Null when neither part exists or the document could not be parsed."
   text message_body_html "HTML body exactly as the sender wrote it, stored UNSANITIZED. Nothing renders it today; whatever first does must sanitize at render, since sanitizing here would discard markup a renderer needs."
   text message_snippet "First 200 characters of the plain-text body with whitespace collapsed, for list views that must not load a whole body. Derived from message_body_text, so it is null whenever that is."
+  text rfc_message_id "The message's own RFC 5322 Message-ID, without angle brackets. A reply names it in In-Reply-To."
+  text references_header "Ancestor Message-IDs, bracketed and space-separated, oldest first; bounded to the root plus the newest. A reply extends it."
 }
 "public.email_message_links" {
   uuid id ""

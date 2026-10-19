@@ -46,13 +46,14 @@ export interface ParentMessage {
    * The parent's RFC 5322 `Message-ID`, angle brackets included or not.
    *
    * Null for a parent whose own `Message-ID` was never stored — a message synced before
-   * the header was parsed, or one that arrived without one. A reply to such a parent still
-   * joins its thread here, but carries no `In-Reply-To`, so the recipient's client threads
-   * it on subject alone.
+   * the header was parsed, one that arrived without one, or one too long to cite. A reply
+   * to such a parent still joins its thread here, but carries no `In-Reply-To`, so the
+   * recipient's client threads it on subject alone.
    */
   rfcMessageId: string | null;
   /**
-   * The parent's own `References` header, verbatim: whitespace-separated message ids.
+   * The parent's stored `References` chain: whitespace-separated message ids, trimmed to
+   * the root plus the newest and stripped of ids too long to cite (`storedThreadingHeaders`).
    *
    * Carried rather than reconstructed because the reply must extend the chain, not restart
    * it. `resolveThreadId` takes `References[0]` as a conversation's root, so a reply

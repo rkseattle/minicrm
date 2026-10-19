@@ -15,9 +15,13 @@ import { describe, it, expect } from 'vitest';
 import {
   boundIndexedId,
   EMPTY_MESSAGE_BODY,
+  MAX_MESSAGE_ID_LENGTH,
+  MAX_STORED_REFERENCES,
+  normalizeFromSource,
   parseMessage,
   parseMessageBody,
   snippetOf,
+  storedThreadingHeaders,
   subjectOf,
 } from '../services/mail/messageBody.js';
 
@@ -625,5 +629,121 @@ describe('parseMessage', () => {
     expect(parsed.fromAddress).toBe('');
     expect(parsed.bodyText).toBeNull();
     expect(parsed.hasAttachments).toBe(false);
+  });
+});
+
+describe('storedThreadingHeaders', () => {
+  const LONGEST_CITABLE_ID = MAX_MESSAGE_ID_LENGTH;
+  const idOfLength = (length: number): string => `${'a'.repeat(length - '@x.test'.length)}@x.test`;
+  const chain = (length: number): string[] =>
+    Array.from({ length }, (_, n) => `<m${String(n)}@x.test>`);
+
+  it('stores the Message-ID bare and the References chain bracketed, oldest first', () => {
+    expect(
+      storedThreadingHeaders({
+        messageId: '<m2@x.test>',
+        inReplyTo: '<m1@x.test>',
+        references: '<m0@x.test>\r\n <m1@x.test>',
+      }),
+    ).toEqual({ rfcMessageId: 'm2@x.test', references: '<m0@x.test> <m1@x.test>' });
+  });
+
+  it('reads an unbracketed Message-ID the way thread resolution does', () => {
+    expect(storedThreadingHeaders({ messageId: 'abc@x.test' }).rfcMessageId).toBe('abc@x.test');
+  });
+
+  it('takes a lone In-Reply-To as the chain when References is absent, as RFC 5322 does', () => {
+    expect(storedThreadingHeaders({ messageId: '<m1@x.test>', inReplyTo: '<m0@x.test>' })).toEqual({
+      rfcMessageId: 'm1@x.test',
+      references: '<m0@x.test>',
+    });
+  });
+
+  it('brackets a lone unbracketed In-Reply-To, which thread resolution also accepts', () => {
+    expect(storedThreadingHeaders({ inReplyTo: 'm0@x.test' }).references).toBe('<m0@x.test>');
+  });
+
+  it.each(['', '   '])('stores no chain for an In-Reply-To of %j', (inReplyTo) => {
+    expect(storedThreadingHeaders({ inReplyTo }).references).toBeNull();
+  });
+
+  it('ignores an In-Reply-To naming several ids, which says nothing about order', () => {
+    expect(storedThreadingHeaders({ inReplyTo: '<a@x.test> <b@x.test>' }).references).toBeNull();
+  });
+
+  it('stores no chain when References names nothing citable, rather than using In-Reply-To', () => {
+    expect(
+      storedThreadingHeaders({ inReplyTo: '<p@x.test>', references: '(only a comment)' })
+        .references,
+    ).toBeNull();
+  });
+
+  it('prefers References over In-Reply-To when both are present', () => {
+    expect(
+      storedThreadingHeaders({ inReplyTo: '<other@x.test>', references: '<m0@x.test>' }).references,
+    ).toBe('<m0@x.test>');
+  });
+
+  it('keeps a chain of exactly the bound whole', () => {
+    const ids = chain(MAX_STORED_REFERENCES);
+
+    expect(storedThreadingHeaders({ references: ids.join(' ') }).references).toBe(ids.join(' '));
+  });
+
+  it.each([1, 5])('keeps the root and the newest ids of a chain %i over the bound', (over) => {
+    const ids = chain(MAX_STORED_REFERENCES + over);
+
+    const stored = storedThreadingHeaders({ references: ids.join(' ') }).references?.split(' ');
+
+    expect(stored).toHaveLength(MAX_STORED_REFERENCES);
+    expect(stored?.[0]).toBe(ids[0]);
+    expect(stored?.slice(1)).toEqual(ids.slice(-(MAX_STORED_REFERENCES - 1)));
+  });
+
+  it('keeps an id of exactly the citable length and drops one a character longer', () => {
+    const longest = idOfLength(LONGEST_CITABLE_ID);
+    const tooLong = idOfLength(LONGEST_CITABLE_ID + 1);
+
+    expect(storedThreadingHeaders({ messageId: `<${longest}>` }).rfcMessageId).toBe(longest);
+    expect(storedThreadingHeaders({ messageId: `<${tooLong}>` }).rfcMessageId).toBeNull();
+    expect(storedThreadingHeaders({ references: `<${longest}> <${tooLong}>` }).references).toBe(
+      `<${longest}>`,
+    );
+  });
+
+  it('drops comments and NUL from the chain', () => {
+    expect(
+      storedThreadingHeaders({ references: '(see <c@x.test>) <m\u00000@x.test>' }).references,
+    ).toBe('<m0@x.test>');
+  });
+
+  it('stores nulls for a message with no threading headers', () => {
+    expect(storedThreadingHeaders({})).toEqual({ rfcMessageId: null, references: null });
+  });
+});
+
+describe('normalizeFromSource — threading headers', () => {
+  it("carries the document's Message-ID and References onto the stored message", async () => {
+    const normalized = await normalizeFromSource(
+      mime(
+        'From: a@b.c',
+        'Message-ID: <reply@example.net>',
+        'References: <root@example.net> <parent@example.net>',
+        'Content-Type: text/plain',
+        '',
+        'Reply body.',
+        '',
+      ),
+      {
+        providerMessageId: 'p1',
+        nativeThreadId: 't1',
+        fallbackThreadId: 'f1',
+        accountAddress: 'a@b.c',
+        driver: 'test',
+      },
+    );
+
+    expect(normalized?.rfcMessageId).toBe('reply@example.net');
+    expect(normalized?.references).toBe('<root@example.net> <parent@example.net>');
   });
 });

@@ -854,6 +854,38 @@ describe('message normalization', () => {
     expect(message.threadId).toBe('root@example.net');
   });
 
+  it('stores the Message-ID and References a reply to the message will need', async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        {
+          uid: 1,
+          from: 'someone@example.net',
+          messageId: '<reply@example.net>',
+          referencesHeader:
+            'Return-Path: <bounce@mailer.example.net>\r\nReferences: <root@example.net>\r\n',
+        },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.rfcMessageId).toBe('reply@example.net');
+    expect(message.references).toBe('<root@example.net>');
+  });
+
+  it('stores an unbracketed Message-ID, which it also threads on', async () => {
+    const { client } = makeFakeClient([
+      inbox([{ uid: 1, from: 'someone@example.net', messageId: 'bare@example.net' }]),
+    ]);
+    const provider = providerWith(client);
+
+    const [message] = (await provider.fetchSince(AUTH, null, SINCE)).messages;
+
+    expect(message.threadId).toBe('bare@example.net');
+    expect(message.rfcMessageId).toBe('bare@example.net');
+  });
+
   it('threads on References, not on another field in the same header block', async () => {
     // The fetch asks for one field but the server returns a block, and some servers ignore
     // HEADER.FIELDS filtering entirely. Taking the first bracketed token would thread every

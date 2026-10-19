@@ -74,6 +74,10 @@ export interface NormalizedMessage {
   bodyHtml: string | null;
   /** Leading characters of bodyText, whitespace collapsed. Null whenever bodyText is. */
   snippet: string | null;
+  /** The message's own `Message-ID`, bare. What a reply to it names in `In-Reply-To`. */
+  rfcMessageId: string | null;
+  /** Its ancestry as bracketed ids, oldest first. What a reply to it extends. */
+  references: string | null;
 }
 
 /** One page of history, plus where to resume. */
