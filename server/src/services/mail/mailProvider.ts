@@ -11,15 +11,16 @@
  * historyId, Graph's a delta link — and is the only code that parses it. A shared shape
  * would be a schema three providers must agree on for no benefit.
  *
- * This module also carries the connection-test result, which is not part of the sync
- * contract but needs the same neutral home: the controller dispatches a test over every
- * provider, and no driver may import another.
+ * This module also carries the connection-test result and the OAuth guard every OAuth
+ * driver's entry points share. Neither is part of the sync contract, but both need the
+ * same neutral home: the controller dispatches over every provider, and no driver may
+ * import another.
  */
 
-import type {
-  CONNECTION_FAILED,
-  INSUFFICIENT_SCOPE,
+import {
   PROVIDER_AUTH_EXPIRED,
+  type CONNECTION_FAILED,
+  type INSUFFICIENT_SCOPE,
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import type { ConnectedAccountAuth } from '../connectedAccountService.js';
@@ -132,6 +133,27 @@ export interface MailProvider {
    * @param mime - The complete RFC 5322 document. Build it with `outboundMessage.ts` so
    *   every driver puts the same bytes on the wire; a driver composing its own would
    *   thread differently from the others.
+   * @param threadHint - The stored `thread_id` of the message being answered, or null.
+   *   It must come from a message synced by this same account: Gmail files the sent copy
+   *   into that conversation by id, and an id from another mailbox names nothing there.
+   *   Graph takes no conversation id on a send and ignores the hint.
+   * @throws an error whose `code` is one of `sendOutcome.ts`'s `SEND_FAILURE_CODES`.
    */
-  send?(auth: ConnectedAccountAuth, mime: Buffer): Promise<SentMessage>;
+  send?(auth: ConnectedAccountAuth, mime: Buffer, threadHint: string | null): Promise<SentMessage>;
+}
+
+/**
+ * The access token of an OAuth account, or a refusal for any other kind.
+ *
+ * Shared by every OAuth driver's entry points: an IMAP payload reaching one is a wiring
+ * fault, and refusing it as an expired credential asks for a reconnect rather than
+ * crashing the tick.
+ */
+export function requireOAuthAccessToken(auth: ConnectedAccountAuth, provider: string): string {
+  if (auth.kind !== 'oauth') {
+    throw Object.assign(new Error(`${provider} requires an OAuth account.`), {
+      code: PROVIDER_AUTH_EXPIRED,
+    });
+  }
+  return auth.access_token;
 }

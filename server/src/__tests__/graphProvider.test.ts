@@ -10,19 +10,34 @@
  * itself as cases are added.
  */
 
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { OAuthAuthPayload } from '../services/connectedAccountService.js';
-import { GRAPH_MAIL_READ_SCOPE } from '../services/oauthProviderService.js';
+import {
+  GRAPH_MAIL_READ_SCOPE,
+  GRAPH_MAIL_READWRITE_SCOPE,
+  GRAPH_MAIL_SEND_SCOPE,
+  requestedScopes,
+} from '../services/oauthProviderService.js';
 import {
   createGraphProvider,
   INSUFFICIENT_SCOPE,
   parseCursor,
+  REQUEST_TIMEOUT_MS,
   serializeCursor,
   testGraphAccess,
   type FetchLike,
 } from '../services/mail/graphProvider.js';
+import {
+  SEND_AUTH_EXPIRED,
+  SEND_NOT_SENT,
+  SEND_OUTCOME_UNKNOWN,
+  SEND_RATE_LIMITED,
+  SEND_SCOPE_MISSING,
+  SEND_TIMEOUT_MS,
+} from '../services/mail/sendOutcome.js';
 import { assertMatchesGraphSchema } from './graphSchema.js';
+import { rejectOnAbort } from './mailFakes.js';
 
 const ACCOUNT_ADDRESS = 'rep@example.com';
 const SINCE = new Date('2026-06-01T00:00:00Z');
@@ -46,6 +61,14 @@ interface Route {
   body?: unknown;
   /** Rejects the request at the transport, as undici does when the host is unreachable. */
   transportError?: true;
+  /** The `cause.code` undici attaches to a transport failure. */
+  transportCause?: string;
+  /** Never answers until the driver's own timer aborts it. */
+  hangs?: true;
+  /** Answers, then the body stops arriving until the driver's own timer aborts it. */
+  bodyHangs?: true;
+  /** Answers, then the connection drops mid-body, as undici reports it. */
+  bodyTerminated?: true;
   /** Rejects `json()` the way a truncated or non-JSON body does. */
   malformedJson?: true;
   retryAfter?: string;
@@ -67,17 +90,25 @@ interface Route {
 function schemaForUrl(url: string): string | null {
   const path = url.split('?')[0];
   if (path.endsWith('/$value')) return null;
+  if (path.endsWith('/me/messages')) return 'CreatedDraft';
   if (path.includes('/messages/delta')) return 'DeltaResponse';
   if (path.includes('/mailFolders/')) return 'MailFolder';
   return null;
 }
 
 /** Records every request the driver makes and answers from a route table. */
-function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[]; headers: HeadersInit[] } {
+function fakeFetch(routes: Route[]): {
+  fn: FetchLike;
+  urls: string[];
+  headers: HeadersInit[];
+  inits: RequestInit[];
+} {
   const urls: string[] = [];
   const headers: HeadersInit[] = [];
+  const inits: RequestInit[] = [];
   const fn: FetchLike = (url, init) => {
     urls.push(url);
+    inits.push(init);
     if (init.headers) headers.push(init.headers);
     // A boundary, not a bare substring: '/messages/m1' otherwise also answers for m15,
     // and the driver builds providerMessageId from the id it asked for rather than the
@@ -90,7 +121,11 @@ function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[]; headers: H
       return next === undefined || next === '?' || next === '&' || next === '/';
     });
     const status = route?.status ?? (route ? 200 : 500);
-    if (route?.transportError) return Promise.reject(new TypeError('fetch failed'));
+    if (route?.transportError) {
+      const cause = route.transportCause ? { cause: { code: route.transportCause } } : {};
+      return Promise.reject(Object.assign(new TypeError('fetch failed'), cause));
+    }
+    if (route?.hangs) return rejectOnAbort(init);
     return Promise.resolve({
       ok: status >= 200 && status < 300,
       status,
@@ -98,6 +133,12 @@ function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[]; headers: H
         get: (name: string) => (name === 'retry-after' ? (route?.retryAfter ?? null) : null),
       },
       json: () => {
+        if (route?.bodyHangs) return rejectOnAbort(init);
+        if (route?.bodyTerminated) {
+          return Promise.reject(
+            Object.assign(new TypeError('terminated'), { cause: { code: 'UND_ERR_SOCKET' } }),
+          );
+        }
         if (route?.malformedJson) return Promise.reject(new SyntaxError('Unexpected end of JSON'));
         const body = route?.body ?? {};
         const schema =
@@ -106,6 +147,7 @@ function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[]; headers: H
         return Promise.resolve(body);
       },
       arrayBuffer: () => {
+        if (route?.bodyHangs) return rejectOnAbort(init);
         const source = route?.source ?? Buffer.alloc(0);
         // A fresh ArrayBuffer, not a view onto Node's pooled one: Buffer.buffer is
         // ArrayBufferLike, which is wider than what a real Response returns.
@@ -115,7 +157,7 @@ function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[]; headers: H
       },
     });
   };
-  return { fn, urls, headers };
+  return { fn, urls, headers, inits };
 }
 
 /** A minimal RFC 2822 document, as `$value` returns one. */
@@ -1330,5 +1372,292 @@ describe('testGraphAccess', () => {
       ok: false,
       code: 'CONNECTION_FAILED',
     });
+  });
+});
+
+describe('createGraphProvider — send', () => {
+  const SEND_SCOPES = [GRAPH_MAIL_READ_SCOPE, GRAPH_MAIL_SEND_SCOPE, GRAPH_MAIL_READWRITE_SCOPE];
+  const MIME = Buffer.from('From: rep@example.com\r\nSubject: Hi ÿ\r\n\r\nHello\r\n', 'utf8');
+  const DRAFTS = `${GRAPH}/messages`;
+  const DRAFT = `${GRAPH}/messages/draft-1`;
+  const DRAFT_SEND = `${DRAFT}/send`;
+  const CREATED: Route = { match: DRAFTS, status: 201, body: { id: 'draft-1' } };
+
+  /** Sends through a provider whose draft is created and whose send answers with `route`. */
+  async function sendWith(sendRoute: Omit<Route, 'match'>, deleteRoute?: Omit<Route, 'match'>) {
+    const fetcher = fakeFetch([
+      { match: DRAFT_SEND, ...sendRoute },
+      { match: DRAFT, status: 204, ...deleteRoute },
+      CREATED,
+    ]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+    const outcome = provider.send?.(AUTH, MIME, null);
+    return { fetcher, outcome };
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('creates a draft from the document, sends it, and returns the draft’s immutable id', async () => {
+    const { fetcher, outcome } = await sendWith({ status: 202 });
+
+    expect(await outcome).toEqual({ providerMessageId: 'draft-1' });
+    expect(fetcher.urls).toEqual([DRAFTS, DRAFT_SEND]);
+    expect(fetcher.inits.map((init) => init.method)).toEqual(['POST', 'POST']);
+    expect(Buffer.from(String(fetcher.inits[0].body), 'base64').equals(MIME)).toBe(true);
+    expect(fetcher.headers[0]).toMatchObject({
+      'Content-Type': 'text/plain',
+      Prefer: 'IdType="ImmutableId"',
+    });
+    expect(fetcher.headers[1]).toMatchObject({ Prefer: 'IdType="ImmutableId"' });
+  });
+
+  it('still syncs a mailbox connected before send needed Mail.ReadWrite, and refuses only the send', async () => {
+    const fetcher = fakeFetch([]);
+    const provider = createGraphProvider(
+      ACCOUNT_ADDRESS,
+      [GRAPH_MAIL_READ_SCOPE, GRAPH_MAIL_SEND_SCOPE],
+      fetcher.fn,
+    );
+
+    await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+      code: SEND_SCOPE_MISSING,
+    });
+    expect(fetcher.urls).toHaveLength(0);
+  });
+
+  it('refuses a grant that can create drafts but not send them', async () => {
+    const fetcher = fakeFetch([]);
+    const provider = createGraphProvider(
+      ACCOUNT_ADDRESS,
+      [GRAPH_MAIL_READ_SCOPE, GRAPH_MAIL_READWRITE_SCOPE],
+      fetcher.fn,
+    );
+
+    await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+      code: SEND_SCOPE_MISSING,
+    });
+    expect(fetcher.urls).toHaveLength(0);
+  });
+
+  it('is granted everything it needs by the consent Microsoft is asked for', async () => {
+    const fetcher = fakeFetch([{ match: DRAFT_SEND, status: 202 }, CREATED]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, requestedScopes('microsoft'), fetcher.fn);
+
+    await expect(provider.send?.(AUTH, MIME, null)).resolves.toEqual({
+      providerMessageId: 'draft-1',
+    });
+  });
+
+  it('accepts the bare scope names Microsoft may echo back', async () => {
+    const fetcher = fakeFetch([{ match: DRAFT_SEND, status: 202 }, CREATED]);
+    const provider = createGraphProvider(
+      ACCOUNT_ADDRESS,
+      ['Mail.Read', 'Mail.Send', 'Mail.ReadWrite'],
+      fetcher.fn,
+    );
+
+    await expect(provider.send?.(AUTH, MIME, null)).resolves.toEqual({
+      providerMessageId: 'draft-1',
+    });
+  });
+
+  it('refuses an account whose credentials are not OAuth, before any request', async () => {
+    const fetcher = fakeFetch([]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+    await expect(
+      provider.send?.(
+        { kind: 'imap', host: 'h', port: 993, username: 'u', password: 'p', secure: true },
+        MIME,
+        null,
+      ),
+    ).rejects.toMatchObject({ code: SEND_AUTH_EXPIRED });
+    expect(fetcher.urls).toHaveLength(0);
+  });
+
+  describe('a draft that cannot be created sends nothing', () => {
+    it.each([
+      [401, {}, SEND_AUTH_EXPIRED],
+      [429, {}, SEND_RATE_LIMITED],
+      [400, { error: { code: 'ErrorMimeContentInvalidBase64String' } }, SEND_NOT_SENT],
+      [503, {}, SEND_NOT_SENT],
+    ])('maps a %i answer to %s', async (status, body, code) => {
+      const fetcher = fakeFetch([{ match: DRAFTS, status, body }]);
+      const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+      await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({ code });
+      expect(fetcher.urls).toEqual([DRAFTS]);
+    });
+
+    it('treats a creation that timed out as not sent', async () => {
+      vi.useFakeTimers();
+      const fetcher = fakeFetch([{ match: DRAFTS, hangs: true }]);
+      const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+      const outcome = expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+        code: SEND_NOT_SENT,
+      });
+      // Creating a draft sends nothing, so it takes a read's bound rather than a send's.
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+      await outcome;
+      expect(fetcher.urls).toEqual([DRAFTS]);
+    });
+
+    it('treats a created draft with no id as not sent', async () => {
+      const fetcher = fakeFetch([
+        { match: DRAFTS, status: 201, body: {}, contractViolation: true },
+      ]);
+      const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+      await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+        code: SEND_NOT_SENT,
+      });
+      expect(fetcher.urls).toEqual([DRAFTS]);
+    });
+
+    it('treats a created draft whose body was cut off as not sent', async () => {
+      const fetcher = fakeFetch([{ match: DRAFTS, status: 201, bodyTerminated: true }]);
+      const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+      await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+        code: SEND_NOT_SENT,
+      });
+      expect(fetcher.urls).toEqual([DRAFTS]);
+    });
+
+    it('treats a created draft whose body will not decode as not sent', async () => {
+      const fetcher = fakeFetch([{ match: DRAFTS, status: 201, malformedJson: true }]);
+      const provider = createGraphProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+      await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+        code: SEND_NOT_SENT,
+      });
+    });
+  });
+
+  describe('a send refused outright deletes its draft', () => {
+    it.each([
+      [400, {}, SEND_NOT_SENT],
+      [401, {}, SEND_AUTH_EXPIRED],
+      [429, {}, SEND_RATE_LIMITED],
+      [403, { error: { code: 'ApplicationThrottled' } }, SEND_RATE_LIMITED],
+      [403, { error: { code: 'InvalidAuthenticationToken' } }, SEND_AUTH_EXPIRED],
+      [403, { error: { code: 'ErrorSendAsDenied' } }, SEND_NOT_SENT],
+      [403, {}, SEND_NOT_SENT],
+    ])('a %i answer is %s, and the draft is deleted', async (status, body, code) => {
+      const { fetcher, outcome } = await sendWith({ status, body });
+
+      await expect(outcome).rejects.toMatchObject({ code });
+      expect(fetcher.urls[2]).toBe(DRAFT);
+      expect(fetcher.inits[2].method).toBe('DELETE');
+    });
+
+    it('a connection that never opened is not sent, and the draft is deleted', async () => {
+      const { fetcher, outcome } = await sendWith({
+        transportError: true,
+        transportCause: 'ECONNREFUSED',
+      });
+
+      await expect(outcome).rejects.toMatchObject({ code: SEND_NOT_SENT });
+      expect(fetcher.inits[2]?.method).toBe('DELETE');
+    });
+
+    it('classifies a refusal on its status even when its body is cut off', async () => {
+      const { fetcher, outcome } = await sendWith({ status: 400, bodyTerminated: true });
+
+      await expect(outcome).rejects.toMatchObject({ code: SEND_NOT_SENT });
+      expect(fetcher.inits[2]?.method).toBe('DELETE');
+    });
+
+    it('reports a send as sent once Microsoft accepted it, whatever its body does', async () => {
+      const { outcome } = await sendWith({ status: 202, bodyTerminated: true });
+
+      await expect(outcome).resolves.toEqual({ providerMessageId: 'draft-1' });
+    });
+
+    it('reports the refused send, not the cleanup, when the delete is refused', async () => {
+      const { outcome } = await sendWith({ status: 400 }, { status: 500 });
+
+      await expect(outcome).rejects.toMatchObject({ code: SEND_NOT_SENT });
+    });
+
+    it('reports the refused send, not the cleanup, when the delete gets no answer', async () => {
+      const { outcome } = await sendWith({ status: 400 }, { transportError: true });
+
+      await expect(outcome).rejects.toMatchObject({ code: SEND_NOT_SENT });
+    });
+  });
+
+  describe('a send that may have gone keeps its draft', () => {
+    it.each([500, 502, 503, 504])('a %i answer is possibly sent', async (status) => {
+      const { fetcher, outcome } = await sendWith({ status, body: {} });
+
+      await expect(outcome).rejects.toMatchObject({ code: SEND_OUTCOME_UNKNOWN });
+      expect(fetcher.urls).toEqual([DRAFTS, DRAFT_SEND]);
+    });
+
+    it('a connection lost mid-request is possibly sent', async () => {
+      const { fetcher, outcome } = await sendWith({
+        transportError: true,
+        transportCause: 'ECONNRESET',
+      });
+
+      await expect(outcome).rejects.toMatchObject({ code: SEND_OUTCOME_UNKNOWN });
+      expect(fetcher.urls).toEqual([DRAFTS, DRAFT_SEND]);
+    });
+
+    it('a timed-out send is possibly sent and never retried', async () => {
+      vi.useFakeTimers();
+      const { fetcher, outcome } = await sendWith({ hangs: true });
+      let done = false;
+      const tracked = outcome?.finally(() => {
+        done = true;
+      });
+      const settled = expect(tracked).rejects.toMatchObject({ code: SEND_OUTCOME_UNKNOWN });
+
+      // The send runs under its own, longer bound, not a read's.
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(SEND_TIMEOUT_MS - REQUEST_TIMEOUT_MS);
+      await settled;
+      expect(fetcher.urls).toEqual([DRAFTS, DRAFT_SEND]);
+    });
+  });
+
+  it('never puts the provider’s own words in the error', async () => {
+    const { outcome } = await sendWith({ status: 400, body: { error: { message: 'detail' } } });
+
+    await expect(outcome).rejects.toThrow(/^Outlook did not accept the message\.$/);
+  });
+});
+
+describe('createGraphProvider — a body that stops arriving', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('bounds the body read, not just the headers, and reports the mailbox unreachable', async () => {
+    vi.useFakeTimers();
+    const fetcher = fakeFetch([{ match: '/mailFolders/inbox', bodyHangs: true }]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    const outcome = expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+    await outcome;
+  });
+});
+
+describe('createGraphProvider — a body cut off mid-stream', () => {
+  it('reports the mailbox unreachable rather than leaking the transport error', async () => {
+    const fetcher = fakeFetch([{ match: '/mailFolders/inbox', bodyTerminated: true }]);
+    const provider = createGraphProvider(ACCOUNT_ADDRESS, [GRAPH_MAIL_READ_SCOPE], fetcher.fn);
+
+    await expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toThrow(
+      expect.objectContaining({ code: 'CONNECTION_FAILED' }),
+    );
   });
 });

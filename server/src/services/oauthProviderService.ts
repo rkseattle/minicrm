@@ -31,6 +31,7 @@ import {
 import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import logger from '../logger.js';
+import { startBound } from './mail/transport.js';
 
 /** Where the provider sends the browser back. Must reach the API server, not the client. */
 const CALLBACK_BASE_URL =
@@ -82,6 +83,15 @@ export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 export const GRAPH_MAIL_SEND_SCOPE = 'https://graph.microsoft.com/Mail.Send';
 
 /**
+ * The Graph permission a send needs beside `Mail.Send`.
+ *
+ * `sendMail` returns no message id, so a send creates a draft and sends that instead —
+ * Microsoft's documented way to know the Sent Items copy's immutable id. Creating the draft
+ * is a write. Matched loosely, like the other Graph scopes.
+ */
+export const GRAPH_MAIL_READWRITE_SCOPE = 'https://graph.microsoft.com/Mail.ReadWrite';
+
+/**
  * Provider metadata. Credentials are read through thunks rather than captured at module
  * load so a test can set the environment after import, and so a missing variable surfaces
  * as PROVIDER_NOT_CONFIGURED at use rather than a boot crash.
@@ -95,7 +105,14 @@ const PROVIDERS: Record<OAuthProvider, ProviderDefinition> = {
   },
   microsoft: {
     issuer: `https://login.microsoftonline.com/${process.env.MICROSOFT_OAUTH_TENANT ?? 'common'}/v2.0`,
-    scopes: ['openid', 'email', 'offline_access', GRAPH_MAIL_READ_SCOPE, GRAPH_MAIL_SEND_SCOPE],
+    scopes: [
+      'openid',
+      'email',
+      'offline_access',
+      GRAPH_MAIL_READ_SCOPE,
+      GRAPH_MAIL_SEND_SCOPE,
+      GRAPH_MAIL_READWRITE_SCOPE,
+    ],
     clientId: () => process.env.MICROSOFT_OAUTH_CLIENT_ID,
     clientSecret: () => process.env.MICROSOFT_OAUTH_CLIENT_SECRET,
   },
@@ -181,6 +198,16 @@ async function configurationFor(
 }
 
 /**
+ * The scopes a provider's consent screen asks for.
+ *
+ * Exported so a test can hold them to what the drivers require: a scope a driver checks for
+ * and consent never requests is a feature every newly connected mailbox is refused.
+ */
+export function requestedScopes(provider: OAuthProvider): readonly string[] {
+  return PROVIDERS[provider].scopes;
+}
+
+/**
  * Begins an authorization-code flow.
  *
  * @returns the provider URL to redirect to, plus the state and PKCE verifier the caller
@@ -196,7 +223,7 @@ export async function buildAuthorizationRequest(
 
   const authorizationUrl = buildAuthorizationUrl(config, {
     redirect_uri: getOAuthCallbackUrl(provider),
-    scope: PROVIDERS[provider].scopes.join(' '),
+    scope: requestedScopes(provider).join(' '),
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
@@ -326,19 +353,18 @@ export async function revokeProviderTokens(
 ): Promise<void> {
   if (provider !== 'google' || !refreshToken) return;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REVOKE_TIMEOUT_MS);
+  const bound = startBound(REVOKE_TIMEOUT_MS);
   try {
     await fetch(GOOGLE_REVOKE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ token: refreshToken }).toString(),
-      signal: controller.signal,
+      signal: bound.signal,
       redirect: 'manual',
     });
   } catch (err) {
     logger.warn({ err, provider }, 'oauthProviderService: token revocation failed');
   } finally {
-    clearTimeout(timer);
+    bound.release();
   }
 }

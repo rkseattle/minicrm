@@ -10,15 +10,29 @@
  * validated against Google's published Discovery Document, which is what closes that gap.
  */
 
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { OAuthAuthPayload } from '../services/connectedAccountService.js';
-import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
+import {
+  GMAIL_READ_SCOPE,
+  GMAIL_SEND_SCOPE,
+  requestedScopes,
+} from '../services/oauthProviderService.js';
+import {
+  SEND_AUTH_EXPIRED,
+  SEND_NOT_SENT,
+  SEND_OUTCOME_UNKNOWN,
+  SEND_RATE_LIMITED,
+  SEND_SCOPE_MISSING,
+  SEND_TIMEOUT_MS,
+} from '../services/mail/sendOutcome.js';
 import { assertMatchesGmailSchema } from './gmailSchema.js';
+import { rejectOnAbort } from './mailFakes.js';
 import {
   createGmailProvider,
   INSUFFICIENT_SCOPE,
   parseCursor,
+  REQUEST_TIMEOUT_MS,
   serializeCursor,
   testGmailAccess,
   UNANCHORED,
@@ -64,10 +78,12 @@ function schemaForUrl(url: string): string | null {
 }
 
 /** Records every request the driver makes and answers from a route table. */
-function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[] } {
+function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[]; inits: RequestInit[] } {
   const urls: string[] = [];
-  const fn: FetchLike = (url) => {
+  const inits: RequestInit[] = [];
+  const fn: FetchLike = (url, init) => {
     urls.push(url);
+    inits.push(init);
     // A boundary, not a bare substring: '/messages/m1' otherwise also answers for m15,
     // m123 and m199, and the driver builds providerMessageId from the id it asked for
     // rather than the body it got, so serving the wrong message goes unnoticed. A fragment
@@ -94,7 +110,7 @@ function fakeFetch(routes: Route[]): { fn: FetchLike; urls: string[] } {
       },
     });
   };
-  return { fn, urls };
+  return { fn, urls, inits };
 }
 
 /** A minimal RFC 2822 document, base64url-encoded the way Gmail returns one. */
@@ -937,6 +953,233 @@ describe('testGmailAccess', () => {
     expect(await testGmailAccess('token', [READ_SCOPE], fetcher.fn)).toMatchObject({
       ok: false,
       code: 'CONNECTION_FAILED',
+    });
+  });
+});
+
+/** A fetch that never answers until the driver's own timer aborts it, as undici behaves. */
+function hangingFetch(): { fn: FetchLike; calls: () => number } {
+  let count = 0;
+  const fn: FetchLike = (_url, init) => {
+    count += 1;
+    return rejectOnAbort(init);
+  };
+  return { fn, calls: () => count };
+}
+
+/** A fetch that fails at the transport the way undici does, with the cause it reports. */
+function failingFetch(causeCode: string): FetchLike {
+  return () =>
+    Promise.reject(Object.assign(new TypeError('fetch failed'), { cause: { code: causeCode } }));
+}
+
+describe('createGmailProvider — read timeouts', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('reports a timed-out read as unreachable rather than leaking the abort', async () => {
+    vi.useFakeTimers();
+    const fetcher = hangingFetch();
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    const outcome = expect(provider.fetchSince(AUTH, null, SINCE)).rejects.toMatchObject({
+      code: 'CONNECTION_FAILED',
+      message: 'Could not reach Gmail.',
+    });
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+    await outcome;
+  });
+});
+
+describe('createGmailProvider — send', () => {
+  const SEND_SCOPES = [READ_SCOPE, GMAIL_SEND_SCOPE];
+  const MIME = Buffer.from('From: rep@example.com\r\nSubject: Hi ÿ\r\n\r\nHello\r\n', 'utf8');
+
+  /** The JSON body the driver posted on its one send request. */
+  function postedBody(inits: RequestInit[]): { raw?: string; threadId?: string } {
+    return JSON.parse(String(inits[0].body)) as { raw?: string; threadId?: string };
+  }
+
+  /** Sends through a provider answering every request with one status and body. */
+  async function sendAgainst(status: number, body: unknown, threadHint: string | null = null) {
+    const fetcher = fakeFetch([{ match: '/messages/send', status, body }]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+    return provider.send?.(AUTH, MIME, threadHint);
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('posts the document base64url-encoded and returns the id Gmail assigned', async () => {
+    const fetcher = fakeFetch([
+      { match: '/messages/send', body: { id: 'sent1', threadId: 'abc123', labelIds: ['SENT'] } },
+    ]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+    const sent = await provider.send?.(AUTH, MIME, null);
+
+    expect(sent).toEqual({ providerMessageId: 'sent1' });
+    expect(fetcher.inits[0].method).toBe('POST');
+    expect(Buffer.from(postedBody(fetcher.inits).raw ?? '', 'base64url').equals(MIME)).toBe(true);
+    expect(postedBody(fetcher.inits).threadId).toBeUndefined();
+  });
+
+  it.each(['18c2f', '18C2F'])('files a reply into the Gmail conversation %s', async (hint) => {
+    const fetcher = fakeFetch([{ match: '/messages/send', body: { id: 'sent1' } }]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+    await provider.send?.(AUTH, MIME, hint);
+
+    expect(postedBody(fetcher.inits).threadId).toBe(hint);
+  });
+
+  it.each(['gmail-m1', 'sha256:abc', 'root@example.com'])(
+    'withholds the thread hint %s, which is not a Gmail thread id',
+    async (hint) => {
+      const fetcher = fakeFetch([{ match: '/messages/send', body: { id: 'sent1' } }]);
+      const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+      await provider.send?.(AUTH, MIME, hint);
+
+      expect(postedBody(fetcher.inits).threadId).toBeUndefined();
+    },
+  );
+
+  it('still syncs a mailbox that granted read but not send, and refuses only the send', async () => {
+    const fetcher = fakeFetch([]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, [READ_SCOPE], fetcher.fn);
+
+    await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+      code: SEND_SCOPE_MISSING,
+    });
+    expect(fetcher.urls).toHaveLength(0);
+  });
+
+  it('refuses an account whose credentials are not OAuth, before any request', async () => {
+    const fetcher = fakeFetch([]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+    await expect(
+      provider.send?.(
+        { kind: 'imap', host: 'h', port: 993, username: 'u', password: 'p', secure: true },
+        MIME,
+        null,
+      ),
+    ).rejects.toMatchObject({ code: SEND_AUTH_EXPIRED });
+    expect(fetcher.urls).toHaveLength(0);
+  });
+
+  it.each([
+    [401, {}, SEND_AUTH_EXPIRED],
+    [403, { error: { errors: [{ reason: 'forbidden' }] } }, SEND_AUTH_EXPIRED],
+    [403, { error: { errors: [{ reason: 'userRateLimitExceeded' }] } }, SEND_RATE_LIMITED],
+    [403, { error: { errors: [{ reason: 'insufficientPermissions' }] } }, SEND_SCOPE_MISSING],
+    [403, { error: { errors: [{ reason: 'domainPolicy' }] } }, SEND_NOT_SENT],
+    [429, {}, SEND_RATE_LIMITED],
+    [400, { error: { message: 'Invalid To header' } }, SEND_NOT_SENT],
+    [500, { error: { message: 'internal detail' } }, SEND_OUTCOME_UNKNOWN],
+    [503, {}, SEND_OUTCOME_UNKNOWN],
+  ])('maps a %i answer to %s', async (status, body, code) => {
+    await expect(sendAgainst(status, body)).rejects.toMatchObject({ code });
+  });
+
+  it('is granted everything it needs by the consent Google is asked for', async () => {
+    const fetcher = fakeFetch([{ match: '/messages/send', body: { id: 'sent1' } }]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, requestedScopes('google'), fetcher.fn);
+
+    await expect(provider.send?.(AUTH, MIME, null)).resolves.toEqual({
+      providerMessageId: 'sent1',
+    });
+  });
+
+  it('classifies a refusal on its status even when its body is cut off', async () => {
+    const fn: FetchLike = () =>
+      Promise.resolve({
+        ok: false,
+        status: 400,
+        json: () =>
+          Promise.reject(
+            Object.assign(new TypeError('terminated'), { cause: { code: 'UND_ERR_SOCKET' } }),
+          ),
+      });
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fn);
+
+    await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({ code: SEND_NOT_SENT });
+  });
+
+  it('treats a 404 with no thread as a mailbox that is gone', async () => {
+    await expect(sendAgainst(404, {})).rejects.toMatchObject({ code: SEND_AUTH_EXPIRED });
+  });
+
+  it('treats a 404 on a reply as a refused thread, not an expired credential', async () => {
+    await expect(sendAgainst(404, {}, '18c2f')).rejects.toMatchObject({ code: SEND_NOT_SENT });
+  });
+
+  it('never puts the provider’s own words in the error', async () => {
+    await expect(sendAgainst(500, { error: { message: 'internal detail' } })).rejects.toThrow(
+      /^Gmail did not confirm the send/,
+    );
+  });
+
+  it('reports a connection that never opened as not sent', async () => {
+    const provider = createGmailProvider(
+      ACCOUNT_ADDRESS,
+      SEND_SCOPES,
+      failingFetch('ECONNREFUSED'),
+    );
+
+    await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({ code: SEND_NOT_SENT });
+  });
+
+  it('reports a connection lost mid-request as possibly sent', async () => {
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, failingFetch('ECONNRESET'));
+
+    await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+      code: SEND_OUTCOME_UNKNOWN,
+    });
+  });
+
+  it('reports a timed-out send as possibly sent, and never retries it', async () => {
+    vi.useFakeTimers();
+    const fetcher = hangingFetch();
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+    let settled = false;
+    const sending = provider.send?.(AUTH, MIME, null).finally(() => {
+      settled = true;
+    });
+    const outcome = expect(sending).rejects.toMatchObject({ code: SEND_OUTCOME_UNKNOWN });
+
+    // The send runs under its own, longer bound, not a read's.
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(SEND_TIMEOUT_MS - REQUEST_TIMEOUT_MS);
+    await outcome;
+
+    expect(fetcher.calls()).toBe(1);
+  });
+
+  it('reports an accepted send with no id as possibly sent, not as a success', async () => {
+    const fetcher = fakeFetch([{ match: '/messages/send', body: {}, contractViolation: true }]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+    await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+      code: SEND_OUTCOME_UNKNOWN,
+    });
+  });
+
+  it('reports an accepted send whose body will not decode as possibly sent', async () => {
+    const fn: FetchLike = () =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+      });
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fn);
+
+    await expect(provider.send?.(AUTH, MIME, null)).rejects.toMatchObject({
+      code: SEND_OUTCOME_UNKNOWN,
     });
   });
 });
