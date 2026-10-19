@@ -112,6 +112,13 @@ export interface SentMessage {
    * rather than a wider type.
    */
   providerMessageId: string;
+  /**
+   * The provider's own conversation id for the message, or null when it reported none.
+   *
+   * The sync engine threads a mailbox's mail on this id, so a new conversation stored under
+   * anything else would split from the replies that later arrive in it.
+   */
+  threadId: string | null;
 }
 
 export interface MailProvider {

@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
@@ -12,13 +13,57 @@ import {
   deleteLinkHandler,
   listRecordMessagesHandler,
   listUnmatchedMessagesHandler,
+  sendEmailHandler,
 } from '../controllers/emailMessageController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireCapability } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { RATE_LIMITED } from '../services/emailSendService.js';
+import { shouldSkipRateLimit } from '../utils/nodeEnv.js';
 
 const router = Router();
+
+/** Sends one user may make per hour unless `EMAIL_SEND_MAX_PER_HOUR` says otherwise. */
+export const DEFAULT_EMAIL_SEND_MAX_PER_HOUR = 100;
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * The hourly send ceiling. Anything but a positive integer falls back to the default: a
+ * typo must not lift or zero the limit.
+ */
+export function emailSendMaxPerHour(): number {
+  const override = Number(process.env.EMAIL_SEND_MAX_PER_HOUR);
+  return Number.isInteger(override) && override > 0 ? override : DEFAULT_EMAIL_SEND_MAX_PER_HOUR;
+}
+
+/**
+ * Per-user hourly send limit, counting successful sends.
+ *
+ * Bounds abuse of a rep's own mailbox through this instance; it is not a quota. The store
+ * is in-memory, so behind several replicas the effective ceiling multiplies by their count.
+ * Keyed by user, as every caller is authenticated and a shared office IP would throttle a team.
+ */
+const emailSendLimiter = rateLimit({
+  windowMs: ONE_HOUR_MS,
+  limit: () => emailSendMaxPerHour(),
+  // The IP fallback never runs behind authenticate; the library rejects a raw req.ip regardless.
+  keyGenerator: (req) => req.user?.id ?? ipKeyGenerator(req.ip ?? 'anonymous'),
+  skip: shouldSkipRateLimit,
+  // Only mail that went spends the budget: a typo or a provider outage must not lock a
+  // rep out for the hour, but a send whose storage then failed still went out.
+  skipFailedRequests: true,
+  requestWasSuccessful: (_req, res) => res.statusCode < 400 || res.locals.mailSent === true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: {
+      code: RATE_LIMITED,
+      message: 'Too many messages sent this hour, please try again later.',
+    },
+  },
+});
 
 router.use(authenticate);
 router.use(requireFeatureEnabled('email_sync'));
@@ -106,6 +151,69 @@ router.get('/unmatched', asyncHandler(listUnmatchedMessagesHandler));
  *         $ref: '#/components/responses/NotFound'
  */
 router.get('/', asyncHandler(listRecordMessagesHandler));
+
+/**
+ * @openapi
+ * /api/v1/email-messages/send:
+ *   post:
+ *     tags: [Email Messages]
+ *     operationId: sendEmailMessage
+ *     summary: Send mail through one of your connected mailboxes
+ *     description: >
+ *       Sends a composed message, or a template rendered against a record, through a Gmail
+ *       or Microsoft mailbox the caller connected, then stores it, links it to the records
+ *       its addresses name, and audits it. Naming a record also files an Email activity
+ *       there (not for leads), which requires activities:create. A reply or forward names a
+ *       stored message in the same mailbox and joins its conversation; a forward quotes the
+ *       original. Successful sends are limited per user per hour.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [connected_account_id, to]
+ *             properties:
+ *               connected_account_id: { type: string, format: uuid }
+ *               to: { type: array, items: { type: string, format: email } }
+ *               cc: { type: array, items: { type: string, format: email } }
+ *               subject: { type: string, maxLength: 255 }
+ *               body_html: { type: string, maxLength: 100000, description: Required unless template_id is given }
+ *               template_id: { type: string, format: uuid }
+ *               record_type: { type: string, enum: [contact, lead, account, deal] }
+ *               record_id: { type: string, format: uuid }
+ *               in_reply_to_message_id: { type: string, format: uuid }
+ *               forward_of_message_id: { type: string, format: uuid }
+ *     responses:
+ *       201:
+ *         description: Sent and stored
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { $ref: '#/components/schemas/EmailMessage' }
+ *                 unresolved_merge_tags: { type: array, items: { type: string } }
+ *       400:
+ *         description: Invalid body
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         description: Email sync is disabled, the caller cannot manage mailboxes, or may not write to the record or log activities
+ *       404:
+ *         description: No such mailbox, record, template, or message in this mailbox
+ *       409:
+ *         description: The mailbox cannot send, or must be reconnected (PROVIDER_SEND_UNSUPPORTED, PROVIDER_AUTH_EXPIRED, RECONNECT_REQUIRED)
+ *       429:
+ *         description: RATE_LIMITED — this instance's hourly limit, or the provider's
+ *       500:
+ *         description: SENT_NOT_RECORDED — sent, but not stored; do not resend
+ *       502:
+ *         description: SEND_FAILED — the provider refused or did not confirm the send
+ */
+router.post('/send', emailSendLimiter, asyncHandler(sendEmailHandler));
 
 /**
  * @openapi

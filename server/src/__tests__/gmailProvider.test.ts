@@ -1045,7 +1045,7 @@ describe('createGmailProvider — send', () => {
 
     const sent = await provider.send?.(AUTH, MIME, null);
 
-    expect(sent).toEqual({ providerMessageId: 'sent1' });
+    expect(sent).toEqual({ providerMessageId: 'sent1', threadId: 'abc123' });
     expect(fetcher.inits[0].method).toBe('POST');
     expect(Buffer.from(postedBody(fetcher.inits).raw ?? '', 'base64url').equals(MIME)).toBe(true);
     expect(postedBody(fetcher.inits).threadId).toBeUndefined();
@@ -1110,12 +1110,23 @@ describe('createGmailProvider — send', () => {
     await expect(sendAgainst(status, body)).rejects.toMatchObject({ code });
   });
 
+  it('reports no thread for an empty threadId', async () => {
+    const fetcher = fakeFetch([{ match: '/messages/send', body: { id: 'sent1', threadId: '' } }]);
+    const provider = createGmailProvider(ACCOUNT_ADDRESS, SEND_SCOPES, fetcher.fn);
+
+    await expect(provider.send?.(AUTH, MIME, null)).resolves.toEqual({
+      providerMessageId: 'sent1',
+      threadId: null,
+    });
+  });
+
   it('is granted everything it needs by the consent Google is asked for', async () => {
     const fetcher = fakeFetch([{ match: '/messages/send', body: { id: 'sent1' } }]);
     const provider = createGmailProvider(ACCOUNT_ADDRESS, requestedScopes('google'), fetcher.fn);
 
     await expect(provider.send?.(AUTH, MIME, null)).resolves.toEqual({
       providerMessageId: 'sent1',
+      threadId: null,
     });
   });
 

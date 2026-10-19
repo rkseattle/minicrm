@@ -46,6 +46,18 @@ export function isAuthBypassEnv(): boolean {
 }
 
 /**
+ * True when a rate limiter should stand aside: under test, or an E2E run, in an
+ * environment that allows bypassing authentication at all.
+ *
+ * `TEST_RATE_LIMIT=true` turns the limiters back on so their own tests can see them fire.
+ * The allowlist is what keeps `E2E=true` in a copied .env from disabling one in production.
+ */
+export function shouldSkipRateLimit(): boolean {
+  const e2e = process.env.NODE_ENV === 'test' || process.env.E2E === 'true';
+  return isAuthBypassEnv() && e2e && process.env.TEST_RATE_LIMIT !== 'true';
+}
+
+/**
  * Every value the safeguards above recognize.
  *
  * AUTH_BYPASS_ENVS is a subset of NON_PRODUCTION_ENVS, so it contributes nothing.

@@ -65,6 +65,7 @@ describe('buildOutboundDocument', () => {
 
   it('sets In-Reply-To and References so a reply joins the recipient thread', async () => {
     const parent: ParentMessage = {
+      relation: 'reply',
       threadId: 'root-abc@example.net',
       rfcMessageId: 'parent-123@example.net',
       references: null,
@@ -77,8 +78,25 @@ describe('buildOutboundDocument', () => {
     expect(headers['references']).toContain('<parent-123@example.net>');
   });
 
+  it('cites a forwarded original in References without answering it in In-Reply-To', async () => {
+    const parent: ParentMessage = {
+      relation: 'forward',
+      threadId: 'root-abc@example.net',
+      rfcMessageId: 'original-1@example.net',
+      references: '<root-abc@example.net>',
+    };
+
+    const document = await buildOutboundDocument(BASE_MESSAGE, parent);
+    const headers = await headersOf(document.mime);
+
+    expect(headers['in-reply-to']).toBeUndefined();
+    expect(headers['references']).toBe('<root-abc@example.net> <original-1@example.net>');
+    expect(document.threadId).toBe('root-abc@example.net');
+  });
+
   it('stores a reply under its parent thread, not a newly derived one', async () => {
     const parent: ParentMessage = {
+      relation: 'reply',
       threadId: 'root-abc@example.net',
       rfcMessageId: 'parent-123@example.net',
       references: null,
@@ -96,6 +114,7 @@ describe('buildOutboundDocument', () => {
   it('extends the parent References chain rather than restarting it', async () => {
     // A three-deep chain: root R, then P1, then the parent P2 we are replying to.
     const parent: ParentMessage = {
+      relation: 'reply',
       threadId: 'root-R@example.net',
       rfcMessageId: 'parent-P2@example.net',
       references: '<root-R@example.net> <mid-P1@example.net>',
@@ -134,6 +153,7 @@ describe('buildOutboundDocument', () => {
     ],
   ])('emits only real message ids: %s', async (_case, references, threadId) => {
     const document = await buildOutboundDocument(BASE_MESSAGE, {
+      relation: 'reply',
       threadId,
       rfcMessageId: 'parent-P2@example.net',
       references,
@@ -152,6 +172,7 @@ describe('buildOutboundDocument', () => {
 
   it('carries the parent inherited chain ahead of the parent itself', async () => {
     const document = await buildOutboundDocument(BASE_MESSAGE, {
+      relation: 'reply',
       threadId: `${'a'.repeat(600)}@example.net`,
       rfcMessageId: 'parent-P2@example.net',
       references: '<realroot@example.net> <mid@example.net>',
@@ -166,6 +187,7 @@ describe('buildOutboundDocument', () => {
 
   it('keeps the inherited chain when the parent has no stored Message-ID', async () => {
     const document = await buildOutboundDocument(BASE_MESSAGE, {
+      relation: 'reply',
       threadId: 'root-abc@example.net',
       rfcMessageId: null,
       references: '<root-abc@example.net> <mid@example.net>',
@@ -182,6 +204,7 @@ describe('buildOutboundDocument', () => {
 
   it('does not take a bracketed address inside a comment as a message id', async () => {
     const document = await buildOutboundDocument(BASE_MESSAGE, {
+      relation: 'reply',
       threadId: 'root-R@example.net',
       rfcMessageId: 'parent-P2@example.net',
       references: '(see <evil@attacker.net>) <root-R@example.net>',
@@ -198,6 +221,7 @@ describe('buildOutboundDocument', () => {
 
   it('does not list the parent twice when its own chain already names it', async () => {
     const parent: ParentMessage = {
+      relation: 'reply',
       threadId: 'root-R@example.net',
       rfcMessageId: 'parent-P2@example.net',
       references: '<root-R@example.net> <parent-P2@example.net>',
@@ -259,6 +283,7 @@ describe('buildOutboundDocument', () => {
 
   it('normalizes a parent id that arrives already bracketed', async () => {
     const parent: ParentMessage = {
+      relation: 'reply',
       threadId: 'root-abc@example.net',
       rfcMessageId: '<parent-123@example.net>',
       references: null,
@@ -274,6 +299,7 @@ describe('buildOutboundDocument', () => {
 
   it('still joins the parent thread when the parent carries no stored Message-ID', async () => {
     const parent: ParentMessage = {
+      relation: 'reply',
       threadId: 'root-abc@example.net',
       rfcMessageId: null,
       references: null,
@@ -288,6 +314,7 @@ describe('buildOutboundDocument', () => {
 
   it('bounds a parent thread id that would overflow the btree index', async () => {
     const parent: ParentMessage = {
+      relation: 'reply',
       threadId: `${'a'.repeat(600)}@example.net`,
       rfcMessageId: 'parent-123@example.net',
       references: null,
@@ -300,11 +327,13 @@ describe('buildOutboundDocument', () => {
 
   it('keeps two long thread ids distinct once digested', async () => {
     const first = await buildOutboundDocument(BASE_MESSAGE, {
+      relation: 'reply',
       threadId: `${'a'.repeat(600)}-one@example.net`,
       rfcMessageId: 'p1@example.net',
       references: null,
     });
     const second = await buildOutboundDocument(BASE_MESSAGE, {
+      relation: 'reply',
       threadId: `${'a'.repeat(600)}-two@example.net`,
       rfcMessageId: 'p2@example.net',
       references: null,

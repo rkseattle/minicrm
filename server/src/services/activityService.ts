@@ -12,6 +12,7 @@ import type {
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import {
+  writeAuditEntry,
   writeAuditEntryBestEffort,
   writeAuditEntries,
   diffFields,
@@ -84,16 +85,18 @@ const SELECT_COLS_WITH_OWNER =
   'a.id, a.type, a.subject, a.notes, a.due_date::text AS due_date, a.status, a.direction, a.outcome, a.contact_id, a.account_id, a.deal_id, a.owner_id, u.name AS owner_name, a.created_at, a.updated_at, a.version';
 
 /**
- * Creates a new activity record.
+ * Inserts an activity and its audit entry on the caller's client, in the caller's transaction.
  *
- * @param params - Activity fields plus the owner's user ID
- * @param actor - User performing the action (for audit log)
- * @returns The inserted activity row
+ * For a write that must commit with something else; the caller sets the RLS context and
+ * calls `announceActivityCreated` after its COMMIT.
+ *
+ * @returns The new activity's id.
  */
-export async function createActivity(
+export async function insertActivity(
+  client: PoolClient,
   params: CreateActivityInput & { owner_id: string },
-  actor: AuditActor = SYSTEM_ACTOR,
-): Promise<ActivityRow> {
+  actor: AuditActor,
+): Promise<string> {
   const {
     type,
     subject,
@@ -107,27 +110,47 @@ export async function createActivity(
     owner_id,
   } = params;
 
-  const insertResult = await withRlsQuery((client) =>
-    client.query<{ id: string }>(
-      `INSERT INTO activities (type, subject, notes, due_date, direction, outcome, contact_id, account_id, deal_id, owner_id)
+  const insertResult = await client.query<{ id: string }>(
+    `INSERT INTO activities (type, subject, notes, due_date, direction, outcome, contact_id, account_id, deal_id, owner_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id`,
-      [
-        type,
-        subject,
-        notes ?? null,
-        due_date ?? null,
-        direction ?? null,
-        outcome ?? null,
-        contact_id ?? null,
-        account_id ?? null,
-        deal_id ?? null,
-        owner_id,
-      ],
-    ),
+    [
+      type,
+      subject,
+      notes ?? null,
+      due_date ?? null,
+      direction ?? null,
+      outcome ?? null,
+      contact_id ?? null,
+      account_id ?? null,
+      deal_id ?? null,
+      owner_id,
+    ],
   );
+  const activityId = insertResult.rows[0].id;
 
-  const activity = (await findActivityById(insertResult.rows[0].id))!;
+  await writeAuditEntry(client, {
+    recordType: 'activity',
+    recordId: activityId,
+    recordName: subject,
+    eventType: 'created',
+    changedById: actor.id,
+    changedByName: actor.name,
+    source: actor.source ?? null,
+  });
+
+  return activityId;
+}
+
+/**
+ * The side effects of a committed activity: webhook and signal analysis.
+ * Each is fire-and-forget, so a caller is never failed by them.
+ *
+ * @returns The activity as stored.
+ */
+export async function announceActivityCreated(activityId: string): Promise<ActivityRow> {
+  // Safe: called only after the transaction that inserted this id committed.
+  const activity = (await findActivityById(activityId))!;
 
   void dispatchWebhookEvent('activity.created', activity as unknown as Record<string, unknown>);
 
@@ -147,17 +170,34 @@ export async function createActivity(
     subject: activity.subject,
   });
 
-  void writeAuditEntryBestEffort({
-    recordType: 'activity',
-    recordId: activity.id,
-    recordName: activity.subject,
-    eventType: 'created',
-    changedById: actor.id,
-    changedByName: actor.name,
-    source: actor.source ?? null,
-  });
-
   return activity;
+}
+
+/**
+ * Creates a new activity record.
+ *
+ * @param params - Activity fields plus the owner's user ID
+ * @param actor - User performing the action (for audit log)
+ * @returns The inserted activity row
+ */
+export async function createActivity(
+  params: CreateActivityInput & { owner_id: string },
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<ActivityRow> {
+  const client = await pool.connect();
+  let activityId: string;
+  try {
+    await client.query('BEGIN');
+    await setRlsUserId(client);
+    activityId = await insertActivity(client, params, actor);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+  return announceActivityCreated(activityId);
 }
 
 /**

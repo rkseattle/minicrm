@@ -138,7 +138,9 @@ export type AuditEventType =
    * already records how a link was made.
    */
   | 'email_linked'
-  | 'email_unlinked';
+  | 'email_unlinked'
+  /** A message sent through a connected mailbox. Filed against the mailbox, as above. */
+  | 'email_sent';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

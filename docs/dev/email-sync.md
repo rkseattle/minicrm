@@ -37,10 +37,11 @@ interface MailProvider {
 }
 ```
 
-It returns the provider's own id for the message, which must equal the id the sync
-driver later reads the Sent copy back under, so the existing upsert updates the sent row
-instead of storing it twice. A driver that cannot promise that defines no `send`. IMAP is
-one: SMTP submission returns no id.
+It returns two ids. The message id must equal the one the sync driver later reads the Sent
+copy back under, so the existing upsert updates the sent row instead of storing it twice. A
+driver that cannot promise that defines no `send`; IMAP is one, since SMTP submission
+returns no id. The conversation id, where the provider reports one, is the thread the sync
+engine will store the rest of the conversation under.
 
 - **Gmail** posts the document to `messages/send` and stores the returned `id`. The thread
   hint goes along as `threadId` only when it is a native Gmail thread id, and it must come
@@ -514,14 +515,68 @@ Neither list endpoint returns a body. `message_body_html` is stored exactly as t
 it and is never sanitized, so the projection stops at the snippet until something exists
 that can render one safely.
 
+## Sending mail
+
+`POST /api/v1/email-messages/send` sends through one of the caller's own Gmail or Microsoft
+mailboxes. The body is either a composed `subject` and `body_html`, or a `template_id`
+rendered by `mergeTagRenderer.ts` against the named record. An `in_reply_to_message_id` or
+`forward_of_message_id` must name a message in the **same** mailbox: Gmail files a message
+into a conversation by id, and another mailbox's id names nothing there.
+
+A forward follows Gmail: it quotes the original under a "Forwarded message" header, cites it
+in `References` but not `In-Reply-To` (it answers nothing), and is filed in the original's
+conversation. Attachments are not carried.
+
+The provider call comes first, because the row's `provider_message_id` does not exist until
+the provider answers. One transaction then stores the row, matches it, files an `Email`
+activity against the named record (none for a lead, which `activities` cannot name), and
+writes an `email_sent` audit entry against the mailbox carrying the recipients, their count,
+and the linked records. A message sent from a record is linked to it whatever its addresses
+match, as a manual link — a deal has no address, and a contact may be written to at one it
+does not hold. Naming a record needs the record's own edit capability and, for a contact,
+account or deal, `activities:create`. The activity's own audit entry is written in the same
+transaction, and it carries only the sender's own text: a forward's quoted original is mail
+readable only through its mailbox, and an activity is visible to everyone on the record.
+
+The message is stored under the provider's own thread id (Gmail's `threadId`, Graph's
+`conversationId`) whenever it reports one, reply or not. That is where the sync engine files
+every later message in the conversation, and Gmail declines a requested thread when the
+subject changed. The stored body columns come from parsing the document that was sent, so they
+match what the sync engine derives from the Sent copy; `from_address` is the bare mailbox
+address for the same reason, or a re-sync would flip the row to `inbound`.
+
+The sync engine can store the Sent copy before this transaction runs. The insert is an
+upsert gated on `xmax = 0`: only a new row is matched, since matching a stored one would
+restore links its owner removed, but the send is audited either way, and the send path's
+thread wins over the one the engine derived.
+
+| API code                    | Status | From                                                                                               |
+| --------------------------- | ------ | -------------------------------------------------------------------------------------------------- |
+| `SEND_FAILED`               | 502    | `SEND_NOT_SENT`, `SEND_OUTCOME_UNKNOWN` ("check Sent"), or a token refresh that failed in transit  |
+| `RATE_LIMITED`              | 429    | `SEND_RATE_LIMITED`, or this instance's hourly limit                                               |
+| `RECONNECT_REQUIRED`        | 409    | `SEND_SCOPE_MISSING`, or a grant the driver refuses                                                |
+| `PROVIDER_AUTH_EXPIRED`     | 409    | The credential was refused; also written to `status_detail`                                        |
+| `PROVIDER_SEND_UNSUPPORTED` | 409    | An IMAP mailbox, which has no send driver yet                                                      |
+| `SENT_NOT_RECORDED`         | 500    | Sent, but storage failed. Never resend; sync stores it, unfiled to the record and with no activity |
+
+Credential problems answer 409, never 401: the client treats 401 as the user's own session
+ending. The hourly limit counts mail that went out — a success, or `SENT_NOT_RECORDED` — so
+a provider outage or a malformed request does not spend a rep's budget. It is per user and per process — its store is in
+memory, so behind several replicas the effective ceiling multiplies by their count. It
+bounds abuse of a rep's mailbox through this instance; it is not a quota. Nothing makes a
+send idempotent, and neither Gmail nor Graph deduplicates, so a client must not resubmit
+while a send is in flight.
+
 ## Configuration
 
-| Variable                      | Default | Meaning                      |
-| ----------------------------- | ------- | ---------------------------- |
-| `EMAIL_SYNC_INTERVAL_MINUTES` | 15      | Minutes between ticks, 1-59. |
+| Variable                      | Default | Meaning                                           |
+| ----------------------------- | ------- | ------------------------------------------------- |
+| `EMAIL_SYNC_INTERVAL_MINUTES` | 15      | Minutes between ticks, 1-59.                      |
+| `EMAIL_SEND_MAX_PER_HOUR`     | 100     | Messages one user may send per hour, per process. |
 
-Resolved once at boot. A value outside that range falls back to the default rather than
-producing an invalid cron expression.
+The interval is resolved once at boot, and a value outside its range falls back to the
+default rather than producing an invalid cron expression. For the send limit, anything but
+a positive integer falls back to the default.
 
 ## Testing
 

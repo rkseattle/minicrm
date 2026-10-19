@@ -63,3 +63,19 @@ export function isTransportFailure(err: unknown): boolean {
   const cause = (err as { cause?: { code?: unknown } } | null)?.cause?.code;
   return err instanceof TypeError && typeof cause === 'string';
 }
+
+/**
+ * A transport that refuses to leave the machine, for a driver built while under test.
+ *
+ * Drivers check scope at construction, so tests legitimately build real ones. What must
+ * never happen is a test that gets past that check reaching a provider, so the refusal
+ * sits on the wire rather than on the constructor.
+ */
+export function refuseLiveFetch(url: string): never {
+  throw new Error(`mail driver: a test tried to reach ${new URL(url).host}; inject a provider`);
+}
+
+/** The transport a driver should be built with: the real one, or the refusal under test. */
+export function driverFetch(): typeof refuseLiveFetch | undefined {
+  return process.env.NODE_ENV === 'test' ? refuseLiveFetch : undefined;
+}

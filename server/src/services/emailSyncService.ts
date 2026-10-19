@@ -51,6 +51,7 @@ import { refreshAccessToken } from './oauthProviderService.js';
 import type { RefreshedTokens } from './oauthProviderService.js';
 import { createGmailProvider } from './mail/gmailProvider.js';
 import { createGraphProvider } from './mail/graphProvider.js';
+import { driverFetch } from './mail/transport.js';
 import { createImapProvider } from './mail/imapProvider.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mail/mailProvider.js';
 import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
@@ -247,37 +248,14 @@ async function storeMessages(
   return created;
 }
 
-/**
- * A transport that refuses to leave the machine, used in place of `fetch` under test.
- *
- * The scope check runs at construction, so tests legitimately build the real Gmail driver
- * to assert an under-scoped mailbox is refused. What must never happen is a test that
- * gets *past* that check reaching gmail.googleapis.com — so the refusal belongs on the
- * wire rather than on the constructor, the same place resolveTransport puts it for SMTP.
- */
-function refuseLiveFetch(url: string): never {
-  throw new Error(
-    `emailSyncService: a test tried to reach ${new URL(url).host}; inject a provider`,
-  );
-}
-
 /** Builds the provider for one account. */
 function providerFor(account: ClaimedSyncAccount): MailProvider {
-  const underTest = process.env.NODE_ENV === 'test';
   if (account.provider === 'imap') return createImapProvider(account.emailAddress);
   if (account.provider === 'google') {
-    return createGmailProvider(
-      account.emailAddress,
-      account.grantedScopes,
-      underTest ? refuseLiveFetch : undefined,
-    );
+    return createGmailProvider(account.emailAddress, account.grantedScopes, driverFetch());
   }
   if (account.provider === 'microsoft') {
-    return createGraphProvider(
-      account.emailAddress,
-      account.grantedScopes,
-      underTest ? refuseLiveFetch : undefined,
-    );
+    return createGraphProvider(account.emailAddress, account.grantedScopes, driverFetch());
   }
   throw new Error(`emailSyncService: no provider implementation for ${account.provider}`);
 }

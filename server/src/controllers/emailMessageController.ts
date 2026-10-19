@@ -9,8 +9,10 @@ import { z } from 'zod';
 import {
   createEmailMessageLinkSchema,
   recordMessagesParamsSchema,
+  sendEmailSchema,
   type EmailLinkRecordType,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
+import { PROVIDER_AUTH_EXPIRED } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
@@ -22,6 +24,17 @@ import {
   listMessagesForRecord,
   listUnmatchedMessages,
 } from '../services/emailMessageService.js';
+import {
+  EMAIL_ACCOUNT_NOT_FOUND,
+  EMAIL_MESSAGE_NOT_FOUND,
+  PROVIDER_SEND_UNSUPPORTED,
+  RATE_LIMITED,
+  RECONNECT_REQUIRED,
+  SEND_FAILED,
+  sendEmail,
+  SENT_NOT_RECORDED,
+  TEMPLATE_NOT_FOUND,
+} from '../services/emailSendService.js';
 import { userCapabilities } from '../services/roleService.js';
 import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import { errorBody } from '../utils/errorBody.js';
@@ -244,4 +257,86 @@ export async function deleteLinkHandler(req: Request, res: Response): Promise<vo
   }
 
   res.status(204).send();
+}
+
+/**
+ * The status each send refusal answers with.
+ *
+ * A provider's own failure is 502: the request was valid and our server healthy, and a 5xx
+ * keeps a client from treating it as a fault in what the user typed. A mailbox that needs
+ * reconnecting is 409, never 401, which the client reads as the user's own session ending.
+ */
+const SEND_ERROR_STATUS: Readonly<Record<string, number>> = {
+  [EMAIL_ACCOUNT_NOT_FOUND]: 404,
+  [EMAIL_MESSAGE_NOT_FOUND]: 404,
+  [TEMPLATE_NOT_FOUND]: 404,
+  [PROVIDER_SEND_UNSUPPORTED]: 409,
+  [PROVIDER_AUTH_EXPIRED]: 409,
+  [RECONNECT_REQUIRED]: 409,
+  [RATE_LIMITED]: 429,
+  [SEND_FAILED]: 502,
+  [SENT_NOT_RECORDED]: 500,
+};
+
+/**
+ * POST /api/v1/email-messages/send
+ * Sends through one of the caller's own mailboxes and records the message.
+ */
+export async function sendEmailHandler(req: Request, res: Response): Promise<void> {
+  const parsed = sendEmailSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res
+      .status(400)
+      .json(errorBody('VALIDATION_ERROR', parsed.error.errors[0]?.message ?? 'Invalid request'));
+    return;
+  }
+  const input = parsed.data;
+
+  // Sending from a record files the message against it, so the caller needs the same
+  // write access that filing mail by hand does.
+  if (input.record_type !== undefined && input.record_id !== undefined) {
+    const ownerId = await findLinkedRecordOwner(input.record_type, input.record_id);
+    if (ownerId === null) {
+      res.status(404).json(errorBody('NOT_FOUND', 'No such record'));
+      return;
+    }
+    const allowed = await canWriteLinkToRecord(
+      input.record_type,
+      ownerId,
+      { id: req.user!.id, role: req.user!.role },
+      res.locals.capabilities,
+    );
+    if (!allowed) {
+      res.status(403).json(errorBody('FORBIDDEN', 'You may not send mail from this record.'));
+      return;
+    }
+    // Sending from a contact, account, or deal files an activity there, so it needs the
+    // capability POST /activities does. A lead takes no activity.
+    if (input.record_type !== 'lead') {
+      const held: ReadonlySet<Capability> =
+        res.locals.capabilities ?? (await userCapabilities(req.user!.id));
+      if (!held.has(Capability.ActivitiesCreate)) {
+        res
+          .status(403)
+          .json(
+            errorBody('FORBIDDEN', 'You may not log activities, which sending from a record does.'),
+          );
+        return;
+      }
+    }
+  }
+
+  try {
+    const sent = await sendEmail(input, req.user!.id, { id: req.user!.id, name: req.user!.name });
+    res.status(201).json(sent);
+  } catch (err) {
+    // Safe: a thrown value of any shape, narrowed by the typeof below.
+    const code = (err as { code?: unknown } | null)?.code;
+    const status = typeof code === 'string' ? SEND_ERROR_STATUS[code] : undefined;
+    if (typeof code !== 'string' || status === undefined) throw err;
+    // Read by the send limiter: this mail went out, so it spends the hourly budget.
+    if (code === SENT_NOT_RECORDED) res.locals.mailSent = true;
+    // Safe: every code in SEND_ERROR_STATUS is thrown by sendError, which builds an Error.
+    res.status(status).json(errorBody(code, (err as Error).message));
+  }
 }
