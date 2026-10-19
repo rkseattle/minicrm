@@ -214,6 +214,9 @@ email_send_intents
     Message-ID is the one this application generated, for a send that never answered.
   A send is recorded here before the provider is called, so a failure after the provider
   accepts cannot lose the record it was sent from. See email-sync.md, "Sending mail".
+  UNIQUE(user_id, idempotency_key)  ← the client's key for one compose; a repeat answers
+    from this row instead of sending again. request_hash refuses a key reused for
+    different mail.
 
 email_message_links
   record_type(contact|lead|account|deal)  match_type(auto|manual)

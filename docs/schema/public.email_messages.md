@@ -110,6 +110,9 @@ erDiagram
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
   timestamp_with_time_zone filed_at ""
+  uuid idempotency_key "The client's Idempotency-Key, one per compose. A repeat answers from this row instead of sending again."
+  text request_hash "SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed."
+  text__ unresolved_merge_tags "Template tags the first send could not resolve, so a replay answers exactly as it did."
 }
 "public.connected_accounts" {
   uuid id ""

@@ -9,6 +9,8 @@
  * Status moves only along these edges, each guarded in its UPDATE's WHERE clause:
  *
  *   pending → not_sent      the provider refused and nothing went
+ *   not_sent → pending      a retry under the same key reclaims it, as a new send:
+ *                           fresh Message-ID, no provider id, created_at restarted
  *   pending → sent          the provider accepted; its id is recorded
  *   pending → unconfirmed   the outcome is unknown, or the send never answered
  *   sent    → unconfirmed   accepted but still unfiled after an hour
@@ -18,7 +20,10 @@
  * is what keeps them from deadlocking each other on one message.
  */
 
-import type { EmailLinkRecordType } from '@minicrm/shared/schemas/emailMessageSchema.js';
+import type {
+  EmailLinkRecordType,
+  EmailMessage,
+} from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 import type { PoolClient } from 'pg';
 
@@ -27,12 +32,17 @@ import logger from '../logger.js';
 import { insertActivity } from './activityService.js';
 import { writeAuditEntry, type AuditActor } from './auditService.js';
 import { clearDerivedLinkSuppression } from './emailMatchingService.js';
-import { findLinkedRecordOwner } from './emailMessageService.js';
+import {
+  findLinkedRecordOwner,
+  MESSAGE_SELECT,
+  toEmailMessage,
+  type EmailMessageRow,
+} from './emailMessageService.js';
 import type { NormalizedMessage } from './mail/mailProvider.js';
 import { truncate } from './mail/messageBody.js';
 import { setRlsUserIdTo } from './rlsContextService.js';
 
-type SendIntentStatus = 'pending' | 'not_sent' | 'sent' | 'unconfirmed' | 'filed';
+export type SendIntentStatus = 'pending' | 'not_sent' | 'sent' | 'unconfirmed' | 'filed';
 
 /** How long a send may stay unanswered or unfiled before it is reported unconfirmed. */
 const INTENT_UNSETTLED_AFTER_MS = 60 * 60 * 1000;
@@ -77,6 +87,19 @@ export interface NewSendIntent {
   activityNotes: string | null;
   toAddresses: readonly string[];
   ccAddresses: readonly string[];
+  /** The client's key for this compose; a repeat under it never sends again. */
+  idempotencyKey: string;
+  requestHash: string;
+  unresolvedMergeTags: readonly string[];
+}
+
+/** What a key's intent records, enough to answer a repeat of its request. */
+export interface IntentUnderKey {
+  status: SendIntentStatus;
+  requestHash: string;
+  /** The filed message, or null when unfiled or since deleted. */
+  message: EmailMessage | null;
+  unresolvedMergeTags: string[];
 }
 
 /** The stored message a filing attaches to. */
@@ -120,27 +143,86 @@ function toSendIntent(row: SendIntentRow): SendIntent {
   };
 }
 
-/** Records a send about to be handed to the provider. @returns the intent's id. */
-export async function createSendIntent(input: NewSendIntent): Promise<string> {
-  const result = await pool.query<{ id: string }>(
+/** Reads what a user's key already recorded, or null for a key never used. */
+export async function findIntentByKey(
+  userId: string,
+  idempotencyKey: string,
+): Promise<IntentUnderKey | null> {
+  // Joined rather than read twice, so a message deleted between reads cannot be half-seen.
+  const result = await pool.query<
+    Partial<EmailMessageRow> & {
+      intent_status: SendIntentStatus;
+      request_hash: string;
+      unresolved_merge_tags: string[];
+    }
+  >(
+    `SELECT i.status AS intent_status, i.request_hash, i.unresolved_merge_tags,
+            ${MESSAGE_SELECT}
+       FROM email_send_intents i
+       LEFT JOIN email_messages m ON m.id = i.email_message_id
+      WHERE i.user_id = $1 AND i.idempotency_key = $2`,
+    [userId, idempotencyKey],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    status: row.intent_status,
+    requestHash: row.request_hash,
+    // Safe: every message column is present whenever the joined id is.
+    message: row.id ? toEmailMessage(row as EmailMessageRow) : null,
+    unresolvedMergeTags: row.unresolved_merge_tags,
+  };
+}
+
+/**
+ * Records a send about to be handed to the provider, under the client's key.
+ *
+ * The insert settles two concurrent requests with one key by itself: the loser inserts
+ * nothing. A key whose earlier send was refused is reclaimed by a conditional update, so two
+ * retries cannot both take it.
+ *
+ * @returns the intent to send under, or null when the key belongs to another attempt — the
+ *   caller answers from `findIntentByKey`.
+ */
+export async function claimSendIntent(input: NewSendIntent): Promise<string | null> {
+  const values = [
+    input.userId,
+    input.actorName,
+    input.connectedAccountId,
+    input.rfcMessageId,
+    input.recordType,
+    input.recordId,
+    input.activityNotes,
+    input.toAddresses,
+    input.ccAddresses,
+    input.idempotencyKey,
+    input.requestHash,
+    input.unresolvedMergeTags,
+  ];
+  const inserted = await pool.query<{ id: string }>(
     `INSERT INTO email_send_intents
        (user_id, actor_name, connected_account_id, rfc_message_id, record_type, record_id,
-        activity_notes, to_addresses, cc_addresses)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        activity_notes, to_addresses, cc_addresses, idempotency_key, request_hash,
+        unresolved_merge_tags)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     ON CONFLICT (user_id, idempotency_key) DO NOTHING
      RETURNING id`,
-    [
-      input.userId,
-      input.actorName,
-      input.connectedAccountId,
-      input.rfcMessageId,
-      input.recordType,
-      input.recordId,
-      input.activityNotes,
-      input.toAddresses,
-      input.ccAddresses,
-    ],
+    values,
   );
-  return result.rows[0]!.id; // Safe: an INSERT … RETURNING returns its one row.
+  if (inserted.rows[0]) return inserted.rows[0].id;
+
+  const reclaimed = await pool.query<{ id: string }>(
+    `UPDATE email_send_intents
+        SET status = 'pending', actor_name = $2, connected_account_id = $3,
+            rfc_message_id = $4, provider_message_id = NULL, record_type = $5,
+            record_id = $6, activity_notes = $7, to_addresses = $8, cc_addresses = $9,
+            unresolved_merge_tags = $12, created_at = now(), updated_at = now()
+      WHERE user_id = $1 AND idempotency_key = $10 AND request_hash = $11
+        AND status = 'not_sent'
+      RETURNING id`,
+    values,
+  );
+  return reclaimed.rows[0]?.id ?? null;
 }
 
 /** Records the provider's id for a message not yet submitted, so even an unanswered send has it. */

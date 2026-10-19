@@ -7,6 +7,12 @@
 
 import 'dotenv/config';
 
+import { sendEmailSchema } from '@minicrm/shared/schemas/emailMessageSchema.js';
+
+import { randomUUID } from 'node:crypto';
+
+import { requestHashOf } from '../services/emailSendService.js';
+
 import request from 'supertest';
 import { vi } from 'vitest';
 
@@ -253,7 +259,7 @@ afterAll(async () => {
 
 describe('POST /api/v1/email-messages/send — boundaries', () => {
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app).post(SEND_URL).send(body());
+    const res = await request(app).post(SEND_URL).set('Idempotency-Key', randomUUID()).send(body());
 
     expect(res.status).toBe(401);
   });
@@ -262,7 +268,11 @@ describe('POST /api/v1/email-messages/send — boundaries', () => {
     await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
     invalidateFeatureFlagCache();
 
-    const res = await request(app).post(SEND_URL).set('Cookie', repCookie).send(body());
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body());
 
     expect(res.status).toBe(403);
     expect(sendMock).not.toHaveBeenCalled();
@@ -275,7 +285,11 @@ describe('POST /api/v1/email-messages/send — boundaries', () => {
     ['a template alongside typed text', { template_id: '00000000-0000-4000-8000-000000000001' }],
     ['a record type with no id', { record_type: 'contact' }],
   ])('returns 400 VALIDATION_ERROR for %s', async (_label, overrides) => {
-    const res = await request(app).post(SEND_URL).set('Cookie', repCookie).send(body(overrides));
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body(overrides));
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -283,7 +297,11 @@ describe('POST /api/v1/email-messages/send — boundaries', () => {
   });
 
   it("answers another user's mailbox as absent", async () => {
-    const res = await request(app).post(SEND_URL).set('Cookie', otherCookie).send(body());
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', otherCookie)
+      .send(body());
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('EMAIL_ACCOUNT_NOT_FOUND');
@@ -292,6 +310,7 @@ describe('POST /api/v1/email-messages/send — boundaries', () => {
   it('returns 404 for a record that does not exist', async () => {
     const res = await request(app)
       .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
       .set('Cookie', repCookie)
       .send(body({ record_type: 'contact', record_id: '00000000-0000-4000-8000-000000000002' }));
 
@@ -302,6 +321,7 @@ describe('POST /api/v1/email-messages/send — boundaries', () => {
   it('returns 403 when sending from a record would log an activity the caller may not create', async () => {
     const res = await request(app)
       .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
       .set('Cookie', noActivityCookie)
       .send(
         body({
@@ -322,6 +342,7 @@ describe('POST /api/v1/email-messages/send — boundaries', () => {
     try {
       const res = await request(app)
         .post(SEND_URL)
+        .set('Idempotency-Key', randomUUID())
         .set('Cookie', repCookie)
         .send(body({ record_type: 'contact', record_id: contactId }));
 
@@ -337,7 +358,11 @@ describe('POST /api/v1/email-messages/send — boundaries', () => {
 
 describe('POST /api/v1/email-messages/send — outcomes', () => {
   it('returns 201 with the stored message', async () => {
-    const res = await request(app).post(SEND_URL).set('Cookie', repCookie).send(body());
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body());
 
     expect(res.status).toBe(201);
     expect(res.body.message).toMatchObject({
@@ -351,6 +376,7 @@ describe('POST /api/v1/email-messages/send — outcomes', () => {
   it('returns 409 PROVIDER_SEND_UNSUPPORTED for an IMAP mailbox', async () => {
     const res = await request(app)
       .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
       .set('Cookie', repCookie)
       .send(body({ connected_account_id: imapAccountId }));
 
@@ -361,7 +387,11 @@ describe('POST /api/v1/email-messages/send — outcomes', () => {
   it('returns 502 SEND_FAILED when the provider refuses', async () => {
     sendMock.mockRejectedValue(sendFailure(SEND_NOT_SENT, 'Gmail'));
 
-    const res = await request(app).post(SEND_URL).set('Cookie', repCookie).send(body());
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body());
 
     expect(res.status).toBe(502);
     expect(res.body.error.code).toBe('SEND_FAILED');
@@ -370,7 +400,11 @@ describe('POST /api/v1/email-messages/send — outcomes', () => {
   it('returns 409 PROVIDER_AUTH_EXPIRED, never 401, when the mailbox credential is refused', async () => {
     sendMock.mockRejectedValue(sendFailure(SEND_AUTH_EXPIRED, 'Gmail'));
 
-    const res = await request(app).post(SEND_URL).set('Cookie', repCookie).send(body());
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body());
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('PROVIDER_AUTH_EXPIRED');
@@ -382,7 +416,11 @@ describe('POST /api/v1/email-messages/send — outcomes', () => {
   ])('maps the driver code %s to %i %s', async (driverCode, status, code) => {
     sendMock.mockRejectedValue(sendFailure(driverCode, 'Gmail'));
 
-    const res = await request(app).post(SEND_URL).set('Cookie', repCookie).send(body());
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body());
 
     expect(res.status).toBe(status);
     expect(res.body.error.code).toBe(code);
@@ -391,6 +429,7 @@ describe('POST /api/v1/email-messages/send — outcomes', () => {
   it('returns 404 TEMPLATE_NOT_FOUND for a template that does not exist', async () => {
     const res = await request(app)
       .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
       .set('Cookie', repCookie)
       .send(
         body({
@@ -409,6 +448,7 @@ describe('POST /api/v1/email-messages/send — outcomes', () => {
   it('returns 404 EMAIL_MESSAGE_NOT_FOUND for a reply to an unknown message', async () => {
     const res = await request(app)
       .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
       .set('Cookie', repCookie)
       .send(body({ in_reply_to_message_id: '00000000-0000-4000-8000-000000000004' }));
 
@@ -419,7 +459,11 @@ describe('POST /api/v1/email-messages/send — outcomes', () => {
   it('returns 500 SENT_NOT_RECORDED when storage fails after the provider accepted', async () => {
     matchFailure.next = new Error('storage down');
 
-    const res = await request(app).post(SEND_URL).set('Cookie', repCookie).send(body());
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body());
 
     expect(res.status).toBe(500);
     expect(res.body.error.code).toBe('SENT_NOT_RECORDED');
@@ -429,8 +473,111 @@ describe('POST /api/v1/email-messages/send — outcomes', () => {
   it('lets an unclassified failure reach the error handler as a 500', async () => {
     sendMock.mockRejectedValue(new Error('driver bug'));
 
-    const res = await request(app).post(SEND_URL).set('Cookie', repCookie).send(body());
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body());
 
     expect(res.status).toBe(500);
+  });
+});
+
+describe('POST /api/v1/email-messages/send — idempotency', () => {
+  it('requires an Idempotency-Key', async () => {
+    const res = await request(app).post(SEND_URL).set('Cookie', repCookie).send(body());
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses a key that is not a UUID', async () => {
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Cookie', repCookie)
+      .set('Idempotency-Key', 'not-a-uuid')
+      .send(body());
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('IDEMPOTENCY_KEY_INVALID');
+  });
+
+  it('answers a repeat as the first send did, even after its record was deleted', async () => {
+    const created = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Re', 'Play', $1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-replay@example.com`, repId],
+    );
+    const recordId = created.rows[0]!.id; // Safe: an INSERT … RETURNING returns its one row.
+    const key = randomUUID();
+    const payload = body({ record_type: 'contact', record_id: recordId });
+    const send = () =>
+      request(app)
+        .post(SEND_URL)
+        .set('Cookie', repCookie)
+        .set('Idempotency-Key', key)
+        .send(payload);
+
+    const first = await send();
+    await pool.query('DELETE FROM activities WHERE contact_id = $1', [recordId]);
+    await pool.query('DELETE FROM contacts WHERE id = $1', [recordId]);
+    const repeat = await send();
+
+    expect(first.status).toBe(201);
+    expect(repeat.status).toBe(201);
+    expect(repeat.body.message.id).toBe(first.body.message.id);
+    expect(sendMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['pending', 'SEND_IN_PROGRESS'],
+    ['sent', 'SEND_ALREADY_SENT'],
+    ['unconfirmed', 'SEND_UNCONFIRMED'],
+  ])('answers a repeat of a %s send with 409 %s, sending nothing', async (status, code) => {
+    const key = randomUUID();
+    await pool.query(
+      `INSERT INTO email_send_intents
+         (idempotency_key, request_hash, user_id, actor_name, connected_account_id,
+          rfc_message_id, status)
+       VALUES ($1, $2, $3, 'Send Ctl Rep', $4, $5, $6)`,
+      [
+        key,
+        requestHashOf(sendEmailSchema.parse(body())),
+        repId,
+        gmailAccountId,
+        `${key}@x`,
+        status,
+      ],
+    );
+
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Cookie', repCookie)
+      .set('Idempotency-Key', key)
+      .send(body());
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe(code);
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses a key reused for a different message with 422', async () => {
+    const key = randomUUID();
+    await request(app)
+      .post(SEND_URL)
+      .set('Cookie', repCookie)
+      .set('Idempotency-Key', key)
+      .send(body());
+
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Cookie', repCookie)
+      .set('Idempotency-Key', key)
+      .send(body({ subject: 'Something else' }));
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('IDEMPOTENCY_KEY_REUSED');
+    expect(sendMock).toHaveBeenCalledTimes(1);
   });
 });

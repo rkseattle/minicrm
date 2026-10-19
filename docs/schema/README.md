@@ -92,7 +92,7 @@
 | [public.email_sync_jobs](public.email_sync_jobs.md) | 9 | Progress of a bounded mailbox backfill. One row per backfill run; incremental syncs create none. | BASE TABLE |
 | [public.email_message_links](public.email_message_links.md) | 7 | Links a synced message to the CRM records its addresses name. record_type + record_id form a polymorphic reference with no FK constraint, because a PostgreSQL FK cannot span several parent tables. Valid record_type values: 'contact', 'lead', 'account', 'deal'. Orphan cleanup is the application's responsibility: a hard-delete of one of those records must clear its links in the same transaction, and a consolidating path — a contact merge, a lead conversion — must move them to the surviving record rather than drop them. See docs/dev/schema.md — Polymorphic FK Pattern. | BASE TABLE |
 | [public.email_message_link_suppressions](public.email_message_link_suppressions.md) | 5 | Automatic email-to-record links a user removed. Re-derivation consults this table so an unlink is not undone by a later relationship change. | BASE TABLE |
-| [public.email_send_intents](public.email_send_intents.md) | 16 | A send recorded before it reaches the provider. Holds what only this application knows about the send so the message can be filed to its record even when storing it after the send failed. | BASE TABLE |
+| [public.email_send_intents](public.email_send_intents.md) | 19 | A send recorded before it reaches the provider. Holds what only this application knows about the send so the message can be filed to its record even when storing it after the send failed. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -1219,6 +1219,9 @@ erDiagram
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
   timestamp_with_time_zone filed_at ""
+  uuid idempotency_key "The client's Idempotency-Key, one per compose. A repeat answers from this row instead of sending again."
+  text request_hash "SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed."
+  text__ unresolved_merge_tags "Template tags the first send could not resolve, so a replay answers exactly as it did."
 }
 ```
 
