@@ -2917,5 +2917,39 @@
       "5": "freitags",
       "6": "samstags"
     }
+  },
+  "emails": {
+    "sectionTitle": "E-Mails",
+    "compose": "Verfassen",
+    "reply": "Antworten",
+    "empty": "Mit diesem Datensatz ist noch keine E-Mail verknüpft.",
+    "loadError": "E-Mails konnten nicht geladen werden.",
+    "noMailboxTooltip": "Verbinden Sie in den Profileinstellungen ein Postfach, das senden kann, um von hier aus E-Mails zu senden.",
+    "replyUnavailable": "Das Postfach dieser Unterhaltung kann nicht senden. Verbinden Sie es in den Profileinstellungen erneut, um zu antworten.",
+    "directionIn": "Eingang",
+    "directionOut": "Ausgang",
+    "showImages": "Bilder anzeigen",
+    "imagesShown": "Bilder angezeigt",
+    "bodyLoading": "Nachricht wird geladen…",
+    "bodyLoadError": "Diese Nachricht konnte nicht geladen werden.",
+    "noSubject": "(kein Betreff)",
+    "participantsMore": "+{{count}} weiterer",
+    "participantsMore_other": "+{{count}} weitere",
+    "bodyFrameTitle": "E-Mail: {{subject}}",
+    "composer": {
+      "newTitle": "Neue E-Mail",
+      "replyTitle": "Antworten",
+      "from": "Von",
+      "to": "An",
+      "cc": "Cc",
+      "recipientsHint": "Trennen Sie Adressen durch Kommas. „Name <Adresse>“ funktioniert auch.",
+      "subject": "Betreff",
+      "body": "Nachricht",
+      "send": "Senden",
+      "sending": "Wird gesendet…",
+      "sent": "E-Mail gesendet von {{mailbox}}",
+      "recipientsInvalid": "Diese Adressen können nicht gelesen werden. Trennen Sie sie durch Kommas."
+    },
+    "accountsLoadError": "Ihre Postfächer konnten nicht geladen werden, daher ist das Senden von hier aus vorerst nicht möglich."
   }
 }

@@ -2,7 +2,7 @@
  * Shared text input component with label and error state support.
  */
 
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import type { InputHTMLAttributes } from 'react';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -27,9 +27,22 @@ const BASE_INPUT_CLASSES =
  * @param error - Error message rendered below the input
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, warning, id, className = '', ...props },
+  {
+    label,
+    error,
+    warning,
+    id,
+    className = '',
+    'aria-describedby': describedBy,
+    'aria-invalid': ariaInvalid,
+    ...props
+  },
   ref,
 ) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  // The message is announced with the field, not found later by browsing past it.
+  const errorId = `${inputId}-error`;
   const inputClasses = [
     BASE_INPUT_CLASSES,
     error
@@ -43,12 +56,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   return (
     <div className="flex flex-col gap-1">
       {label !== undefined && (
-        <label htmlFor={id} className="text-sm font-medium text-gray-700">
+        <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
           {label}
         </label>
       )}
-      <input ref={ref} id={id} className={inputClasses} {...props} />
-      {error !== undefined && <p className="text-xs text-red-600">{error}</p>}
+      <input
+        ref={ref}
+        id={inputId}
+        className={inputClasses}
+        aria-invalid={error ? true : ariaInvalid}
+        aria-describedby={
+          [describedBy, error ? errorId : undefined].filter(Boolean).join(' ') || undefined
+        }
+        {...props}
+      />
+      {error && (
+        <p id={errorId} className="text-xs text-red-600">
+          {error}
+        </p>
+      )}
     </div>
   );
 });

@@ -75,4 +75,27 @@ describe('Input', () => {
     expect(screen.getByRole('textbox')).toHaveClass('min-h-[44px]');
     expect(screen.getByRole('textbox')).toHaveClass('sm:min-h-0');
   });
+
+  it('ties the error message to the field and marks the field invalid', () => {
+    render(<Input id="name" label="Name" error="Can't be read" aria-describedby="hint" />);
+    const field = screen.getByRole('textbox');
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field.getAttribute('aria-describedby')?.split(' ')).toEqual([
+      'hint',
+      `${field.id}-error`,
+    ]);
+    expect(field).toHaveAccessibleDescription("Can't be read");
+  });
+
+  it('describes the field only by the caller when there is no error', () => {
+    render(<Input id="name" label="Name" aria-describedby="hint" />);
+    const field = screen.getByRole('textbox');
+    expect(field).toHaveAttribute('aria-describedby', 'hint');
+    expect(field).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('links its label without a caller-supplied id', () => {
+    render(<Input label="Name" />);
+    expect(screen.getByLabelText('Name')).toBe(screen.getByRole('textbox'));
+  });
 });

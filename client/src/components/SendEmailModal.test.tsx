@@ -2,6 +2,7 @@
  * Tests for SendEmailModal.
  */
 
+import { useState } from 'react';
 import { act, screen, fireEvent, waitFor } from '@testing-library/react';
 import { focusManager, QueryClient } from '@tanstack/react-query';
 import { describe, it, expect, vi } from 'vitest';
@@ -10,6 +11,7 @@ import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 import { allFlagsEnabled, authMeBody, VIEWER_USER } from '@/test/msw/handlers.js';
 import type { ConnectedAccountResponse } from '@shared/schemas/connectedAccountSchema.js';
+import { CLOSE_AFTER_SENT_MS } from '@/hooks/useMailboxSend.js';
 import SendEmailModal from './SendEmailModal.js';
 
 const CONTACT_ID = '00000000-0000-0000-0000-000000000c01';
@@ -127,6 +129,69 @@ describe('SendEmailModal', () => {
     expect(onSent).toHaveBeenCalledOnce();
   });
 
+  it('locks the form once sent, so an edit and a second click cannot send again', async () => {
+    renderWithProviders(
+      <SendEmailModal
+        isOpen={true}
+        contactId={CONTACT_ID}
+        contactEmail={CONTACT_EMAIL}
+        contactName={CONTACT_NAME}
+        onClose={noop}
+        onSent={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByTestId('send-email-subject'), { target: { value: 'S' } });
+    fireEvent.change(screen.getByTestId('send-email-body'), { target: { value: 'B' } });
+    fireEvent.click(screen.getByTestId('send-email-submit'));
+
+    await screen.findByTestId('send-email-success');
+
+    expect(screen.getByTestId('send-email-body')).toBeDisabled();
+    expect(screen.getByTestId('send-email-submit')).toBeDisabled();
+  });
+
+  it('never lets a sent compose\u2019s close timer close the next one', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const closes = vi.fn();
+    function Harness() {
+      const [isOpen, setIsOpen] = useState(true);
+      return (
+        <>
+          <button type="button" data-testid="reopen" onClick={() => setIsOpen(true)} />
+          <SendEmailModal
+            isOpen={isOpen}
+            contactId={CONTACT_ID}
+            contactEmail={CONTACT_EMAIL}
+            contactName={CONTACT_NAME}
+            onClose={() => {
+              closes();
+              setIsOpen(false);
+            }}
+            onSent={noop}
+          />
+        </>
+      );
+    }
+    try {
+      renderWithProviders(<Harness />);
+      fireEvent.change(screen.getByTestId('send-email-subject'), { target: { value: 'S' } });
+      fireEvent.change(screen.getByTestId('send-email-body'), { target: { value: 'B' } });
+      fireEvent.click(screen.getByTestId('send-email-submit'));
+      await screen.findByTestId('send-email-success');
+
+      fireEvent.click(screen.getByTestId('send-email-cancel'));
+      fireEvent.click(screen.getByTestId('reopen'));
+      act(() => {
+        vi.advanceTimersByTime(CLOSE_AFTER_SENT_MS * 2);
+      });
+
+      expect(closes).toHaveBeenCalledOnce();
+      expect(screen.getByTestId('send-email-modal')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('shows "Email sent to [name]" success message when delivered is true', async () => {
     server.use(
       http.post('/api/v1/contacts/:id/send-email', () => {
@@ -215,6 +280,25 @@ describe('SendEmailModal', () => {
     );
     fireEvent.click(screen.getByTestId('send-email-cancel'));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(
+      <SendEmailModal
+        isOpen={true}
+        contactId={CONTACT_ID}
+        contactEmail={CONTACT_EMAIL}
+        contactName={CONTACT_NAME}
+        onClose={noop}
+        onSent={noop}
+      />,
+    );
+    const cancel = screen.getByTestId('send-email-cancel');
+    cancel.focus();
+
+    fireEvent.keyDown(cancel, { key: 'Tab' });
+
+    expect(screen.getByTestId('send-email-to')).toHaveFocus();
   });
 
   it('calls onClose when Escape is pressed', () => {

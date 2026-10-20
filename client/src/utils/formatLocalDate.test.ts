@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { formatLocalDate } from './formatLocalDate.js';
+import { formatLocalDate, formatLocalDateTime } from './formatLocalDate.js';
 
 describe('formatLocalDate', () => {
   it('formats a YYYY-MM-DD string in English', () => {
@@ -85,5 +85,29 @@ describe('formatLocalDate', () => {
 
   it('returns — for an invalid date string', () => {
     expect(formatLocalDate('not-a-date', 'en')).toBe('—');
+  });
+});
+
+describe('formatLocalDateTime', () => {
+  const INSTANT = '2026-12-31T15:45:00Z';
+
+  it('formats an ISO timestamp with its time, in the given locale', () => {
+    const expected = new Intl.DateTimeFormat('de', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(INSTANT));
+    expect(formatLocalDateTime(INSTANT, 'de')).toBe(expected);
+  });
+
+  it('formats a Date the same as its ISO string', () => {
+    expect(formatLocalDateTime(new Date(INSTANT), 'en')).toBe(formatLocalDateTime(INSTANT, 'en'));
+  });
+
+  it('includes the time, unlike formatLocalDate', () => {
+    expect(formatLocalDateTime(INSTANT, 'en')).not.toBe(formatLocalDate(INSTANT, 'en'));
+  });
+
+  it.each([null, undefined, '', 'not-a-date'])('returns an em dash for %s', (value) => {
+    expect(formatLocalDateTime(value, 'en')).toBe('—');
   });
 });

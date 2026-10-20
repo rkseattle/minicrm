@@ -2917,5 +2917,39 @@
       "5": "周五",
       "6": "周六"
     }
+  },
+  "emails": {
+    "sectionTitle": "邮件",
+    "compose": "写邮件",
+    "reply": "回复",
+    "empty": "此记录尚未关联任何邮件。",
+    "loadError": "无法加载邮件。",
+    "noMailboxTooltip": "请在个人资料设置中连接一个可发送邮件的邮箱，以便从此处发送邮件。",
+    "replyUnavailable": "此会话所在的邮箱无法发送邮件。请在个人资料设置中重新连接后再回复。",
+    "directionIn": "收",
+    "directionOut": "发",
+    "showImages": "显示图片",
+    "imagesShown": "已显示图片",
+    "bodyLoading": "正在加载邮件…",
+    "bodyLoadError": "无法加载此邮件。",
+    "noSubject": "（无主题）",
+    "participantsMore": "另 {{count}} 人",
+    "participantsMore_other": "另 {{count}} 人",
+    "bodyFrameTitle": "邮件：{{subject}}",
+    "composer": {
+      "newTitle": "新邮件",
+      "replyTitle": "回复",
+      "from": "发件人",
+      "to": "收件人",
+      "cc": "抄送",
+      "recipientsHint": "多个地址请用逗号分隔，也可使用“姓名 <地址>”格式。",
+      "subject": "主题",
+      "body": "正文",
+      "send": "发送",
+      "sending": "正在发送…",
+      "sent": "已从 {{mailbox}} 发送邮件",
+      "recipientsInvalid": "无法识别这些地址。请用逗号分隔。"
+    },
+    "accountsLoadError": "无法加载你的邮箱，因此暂时无法从此处发送邮件。"
   }
 }

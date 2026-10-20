@@ -2917,5 +2917,39 @@
       "5": "Fridays",
       "6": "Saturdays"
     }
+  },
+  "emails": {
+    "sectionTitle": "Emails",
+    "compose": "Compose",
+    "reply": "Reply",
+    "empty": "No email is linked to this record yet.",
+    "loadError": "Emails couldn't be loaded.",
+    "noMailboxTooltip": "Connect a mailbox that can send, in Profile Settings, to send email from here.",
+    "replyUnavailable": "This conversation's mailbox can't send. Reconnect it in Profile Settings to reply.",
+    "directionIn": "In",
+    "directionOut": "Out",
+    "showImages": "Show images",
+    "imagesShown": "Images shown",
+    "bodyLoading": "Loading message…",
+    "bodyLoadError": "This message couldn't be loaded.",
+    "noSubject": "(no subject)",
+    "participantsMore": "+{{count}} more",
+    "participantsMore_other": "+{{count}} more",
+    "bodyFrameTitle": "Email: {{subject}}",
+    "composer": {
+      "newTitle": "New email",
+      "replyTitle": "Reply",
+      "from": "From",
+      "to": "To",
+      "cc": "Cc",
+      "recipientsHint": "Separate addresses with commas. \"Name <address>\" works too.",
+      "subject": "Subject",
+      "body": "Message",
+      "send": "Send",
+      "sending": "Sending…",
+      "sent": "Email sent from {{mailbox}}",
+      "recipientsInvalid": "These addresses can't be read. Separate them with commas."
+    },
+    "accountsLoadError": "Your mailboxes couldn't be loaded, so sending from here is unavailable for now."
   }
 }

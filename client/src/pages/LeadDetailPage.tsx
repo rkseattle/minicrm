@@ -473,6 +473,7 @@ export default function LeadDetailPage() {
             entityId={id}
             entityQueryKey={LEADS_QUERY_KEY}
             isEditing={isEditing}
+            emailRecipient={lead?.email ?? undefined}
             showTags={false}
             showTimeline={false}
             showAttachments={false}

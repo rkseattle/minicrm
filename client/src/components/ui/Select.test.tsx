@@ -58,4 +58,27 @@ describe('Select', () => {
     expect(screen.getByRole('combobox')).toHaveClass('min-h-[44px]');
     expect(screen.getByRole('combobox')).toHaveClass('sm:min-h-0');
   });
+
+  it('ties the error message to the field and marks the field invalid', () => {
+    render(<Select id="stage" label="Stage" error="Can't be read" aria-describedby="hint" />);
+    const field = screen.getByRole('combobox');
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field.getAttribute('aria-describedby')?.split(' ')).toEqual([
+      'hint',
+      `${field.id}-error`,
+    ]);
+    expect(field).toHaveAccessibleDescription("Can't be read");
+  });
+
+  it('describes the field only by the caller when there is no error', () => {
+    render(<Select id="stage" label="Stage" aria-describedby="hint" />);
+    const field = screen.getByRole('combobox');
+    expect(field).toHaveAttribute('aria-describedby', 'hint');
+    expect(field).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('links its label without a caller-supplied id', () => {
+    render(<Select label="Stage" />);
+    expect(screen.getByLabelText('Stage')).toBe(screen.getByRole('combobox'));
+  });
 });

@@ -7,7 +7,7 @@
 
 import 'dotenv/config';
 
-import { sendEmailSchema } from '@minicrm/shared/schemas/emailMessageSchema.js';
+import { sendEmailSchema, sendErrorOutcome } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 import { randomUUID } from 'node:crypto';
 
@@ -17,6 +17,7 @@ import request from 'supertest';
 import { vi } from 'vitest';
 
 import app from '../app.js';
+import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import pool from '../db.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 import { createImapAccount, upsertOAuthAccount } from '../services/connectedAccountService.js';
@@ -265,6 +266,19 @@ describe('POST /api/v1/email-messages/send — boundaries', () => {
     expect(res.status).toBe(401);
   });
 
+  // A client freezes a compose on any code it cannot read as "not sent", so every refusal
+  // the route's middleware answers must be one it can.
+  it.each([
+    ['no session', undefined],
+    ['an unreadable session', `${AUTH_COOKIE_NAME}=not-a-jwt`],
+  ])('answers %s with a code the client reads as not sent', async (_label, cookie) => {
+    const pending = request(app).post(SEND_URL).set('Idempotency-Key', randomUUID());
+    const res = await (cookie ? pending.set('Cookie', cookie) : pending).send(body());
+
+    expect(res.status).toBe(401);
+    expect(sendErrorOutcome(res.body.error.code)).toBe('not_sent');
+  });
+
   it('returns 403 when email sync is disabled', async () => {
     await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
     invalidateFeatureFlagCache();
@@ -276,6 +290,19 @@ describe('POST /api/v1/email-messages/send — boundaries', () => {
       .send(body());
 
     expect(res.status).toBe(403);
+    expect(sendErrorOutcome(res.body.error.code)).toBe('not_sent');
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it('answers an oversized body with a code the client reads as not sent', async () => {
+    const res = await request(app)
+      .post(SEND_URL)
+      .set('Idempotency-Key', randomUUID())
+      .set('Cookie', repCookie)
+      .send(body({ body_html: 'x'.repeat(11 * 1024 * 1024) }));
+
+    expect(res.status).toBe(413);
+    expect(sendErrorOutcome(res.body.error.code)).toBe('not_sent');
     expect(sendMock).not.toHaveBeenCalled();
   });
 

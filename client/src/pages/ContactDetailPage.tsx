@@ -1396,6 +1396,7 @@ export default function ContactDetailPage() {
             entityId={id}
             entityQueryKey={CONTACTS_QUERY_KEY}
             isEditing={isEditing}
+            emailRecipient={contact?.email ?? undefined}
             showGdpr={user?.role === 'admin'}
             onGdprErased={() => {
               void queryClient.invalidateQueries({ queryKey: ['contacts', id] });

@@ -12,8 +12,9 @@ import {
   recordMessagesParamsSchema,
   sendEmailSchema,
   type EmailLinkRecordType,
+  type SendErrorCode,
+  type SendRequestErrorCode,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
-import { PROVIDER_AUTH_EXPIRED } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
@@ -44,6 +45,7 @@ import {
   SENT_NOT_RECORDED,
   TEMPLATE_NOT_FOUND,
 } from '../services/emailSendService.js';
+import { SEND_AUTH_EXPIRED } from '../services/mail/sendOutcome.js';
 import { userCapabilities } from '../services/roleService.js';
 import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import { errorBody } from '../utils/errorBody.js';
@@ -278,8 +280,8 @@ export async function deleteLinkHandler(req: Request, res: Response): Promise<vo
 }
 
 // The two refusals of a send's key, answered before the body is read.
-const IDEMPOTENCY_KEY_REQUIRED = 'IDEMPOTENCY_KEY_REQUIRED';
-const IDEMPOTENCY_KEY_INVALID = 'IDEMPOTENCY_KEY_INVALID';
+const IDEMPOTENCY_KEY_REQUIRED = 'IDEMPOTENCY_KEY_REQUIRED' satisfies SendRequestErrorCode;
+const IDEMPOTENCY_KEY_INVALID = 'IDEMPOTENCY_KEY_INVALID' satisfies SendRequestErrorCode;
 
 /**
  * The status each send refusal answers with.
@@ -287,13 +289,15 @@ const IDEMPOTENCY_KEY_INVALID = 'IDEMPOTENCY_KEY_INVALID';
  * A provider's own failure is 502: the request was valid and our server healthy, and a 5xx
  * keeps a client from treating it as a fault in what the user typed. A mailbox that needs
  * reconnecting is 409, never 401, which the client reads as the user's own session ending.
+ *
+ * Keyed by every service code, so a code added to the shared table needs a status here.
  */
-const SEND_ERROR_STATUS: Readonly<Record<string, number>> = {
+const SEND_ERROR_STATUS: Readonly<Record<Exclude<SendErrorCode, SendRequestErrorCode>, number>> = {
   [EMAIL_ACCOUNT_NOT_FOUND]: 404,
   [EMAIL_MESSAGE_NOT_FOUND]: 404,
   [TEMPLATE_NOT_FOUND]: 404,
   [PROVIDER_SEND_UNSUPPORTED]: 409,
-  [PROVIDER_AUTH_EXPIRED]: 409,
+  [SEND_AUTH_EXPIRED]: 409,
   [RECONNECT_REQUIRED]: 409,
   [RATE_LIMITED]: 429,
   [SEND_FAILED]: 502,
@@ -309,7 +313,11 @@ const SEND_ERROR_STATUS: Readonly<Record<string, number>> = {
 function respondToSendError(err: unknown, res: Response): void {
   // Safe: a thrown value of any shape, narrowed by the typeof below.
   const code = (err as { code?: unknown } | null)?.code;
-  const status = typeof code === 'string' ? SEND_ERROR_STATUS[code] : undefined;
+  const status =
+    typeof code === 'string' && Object.hasOwn(SEND_ERROR_STATUS, code)
+      ? // Safe: the hasOwn check proves code is one of the table's keys.
+        SEND_ERROR_STATUS[code as keyof typeof SEND_ERROR_STATUS]
+      : undefined;
   if (typeof code !== 'string' || status === undefined) throw err;
   // Safe: a thrown value of any shape, narrowed by the typeof below.
   const retryAfter = (err as { retryAfterSeconds?: unknown }).retryAfterSeconds;
