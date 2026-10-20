@@ -35,6 +35,8 @@ interface FakeMessage {
   subject?: string;
   messageId?: string;
   inReplyTo?: string;
+  /** The ENVELOPE's reply-to, which a server fills with From when the header is absent. */
+  replyTo?: string[];
   referencesHeader?: string;
   date?: Date;
   /** The server's own INTERNALDATE, which is a different field from the header date. */
@@ -205,6 +207,7 @@ function makeFakeClient(mailboxes: FakeMailbox[]): {
               from: [{ address: m.from }],
               to: (m.to ?? []).map((address) => ({ address })),
               cc: (m.cc ?? []).map((address) => ({ address })),
+              replyTo: (m.replyTo ?? [m.from]).map((address) => ({ address })),
               subject: m.subject,
               messageId: m.messageId,
               inReplyTo: m.inReplyTo,
@@ -884,6 +887,23 @@ describe('message normalization', () => {
 
     expect(message.threadId).toBe('bare@example.net');
     expect(message.rfcMessageId).toBe('bare@example.net');
+  });
+
+  it("stores the envelope's Reply-To when it names someone other than the sender", async () => {
+    const { client } = makeFakeClient([
+      inbox([
+        { uid: 1, from: 'no-reply@vendor.test', replyTo: ['Support@Vendor.TEST'] },
+        { uid: 2, from: 'someone@example.net' },
+      ]),
+    ]);
+    const provider = providerWith(client);
+
+    const { messages } = await provider.fetchSince(AUTH, null, SINCE);
+
+    expect(messages.map((message) => message.replyToAddresses)).toEqual([
+      ['support@vendor.test'],
+      [],
+    ]);
   });
 
   it('threads on References, not on another field in the same header block', async () => {

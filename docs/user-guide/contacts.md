@@ -236,7 +236,8 @@ pictures stay hidden — a picture can tell the sender you opened the mail — u
 **Compose** writes a new message from this record, and **Reply** answers one in its
 conversation; both are filed here, with an Email activity where the record has a timeline.
 They need a mailbox that can send. If you have none, they are disabled and say why; a reply
-also needs the mailbox that holds the conversation.
+also needs the mailbox that holds the conversation. A reply goes to the address the sender
+asked replies to go to (their Reply-To), when they named one, as other mail programs do.
 
 You see only your own mail, never a colleague's, even on a record you share. The section is
 not shown on a lead you cannot edit.

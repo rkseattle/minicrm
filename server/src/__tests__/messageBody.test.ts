@@ -21,6 +21,7 @@ import {
   parseMessage,
   parseMessageBody,
   snippetOf,
+  storedReplyTo,
   storedThreadingHeaders,
   subjectOf,
 } from '../services/mail/messageBody.js';
@@ -745,5 +746,60 @@ describe('normalizeFromSource — threading headers', () => {
 
     expect(normalized?.rfcMessageId).toBe('reply@example.net');
     expect(normalized?.references).toBe('<root@example.net> <parent@example.net>');
+  });
+});
+
+describe('storedReplyTo', () => {
+  it('keeps a Reply-To that sends replies elsewhere', () => {
+    expect(storedReplyTo(['support@vendor.test'], 'no-reply@vendor.test')).toEqual([
+      'support@vendor.test',
+    ]);
+  });
+
+  it('keeps every address, the sender included, when there are several', () => {
+    expect(storedReplyTo(['a@x.test', 'b@x.test'], 'a@x.test')).toEqual(['a@x.test', 'b@x.test']);
+  });
+
+  it('stores nothing when Reply-To names only the sender, as an IMAP envelope fills it', () => {
+    expect(storedReplyTo(['a@x.test'], 'a@x.test')).toEqual([]);
+  });
+
+  it('stores nothing when there is no Reply-To', () => {
+    expect(storedReplyTo([], 'a@x.test')).toEqual([]);
+  });
+});
+
+describe('normalizeFromSource — Reply-To', () => {
+  const META = {
+    providerMessageId: 'p1',
+    nativeThreadId: 't1',
+    fallbackThreadId: 'f1',
+    accountAddress: 'rep@b.c',
+    driver: 'test',
+  };
+
+  it("carries the document's Reply-To, lowercased", async () => {
+    const normalized = await normalizeFromSource(
+      mime(
+        'From: No Reply <no-reply@vendor.test>',
+        'Reply-To: Support <Support@Vendor.TEST>, billing@vendor.test',
+        'Content-Type: text/plain',
+        '',
+        'Body.',
+        '',
+      ),
+      META,
+    );
+
+    expect(normalized?.replyToAddresses).toEqual(['support@vendor.test', 'billing@vendor.test']);
+  });
+
+  it('stores none for a document without Reply-To', async () => {
+    const normalized = await normalizeFromSource(
+      mime('From: a@b.c', 'Content-Type: text/plain', '', 'Body.', ''),
+      META,
+    );
+
+    expect(normalized?.replyToAddresses).toEqual([]);
   });
 });

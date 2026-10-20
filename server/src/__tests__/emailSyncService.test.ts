@@ -62,6 +62,7 @@ function message(overrides: Partial<NormalizedMessage> = {}): NormalizedMessage 
     snippet: null,
     rfcMessageId: null,
     references: null,
+    replyToAddresses: [],
     ...overrides,
   };
 }
@@ -405,6 +406,24 @@ describe('syncOneAccount', () => {
 
     const [row] = await storedThreadingHeaders(account.id);
     expect(row).toEqual({ rfc_message_id: 'm2@x.test', references_header: '<m1@x.test>' });
+  });
+
+  it("stores where a message's sender asked replies to go, and keeps it on a re-read", async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [message({ replyToAddresses: ['support@vendor.test'] })] })]),
+    );
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [message()] })]),
+    );
+
+    const result = await pool.query<{ reply_to_addresses: string[] }>(
+      'SELECT reply_to_addresses FROM email_messages WHERE connected_account_id = $1',
+      [account.id],
+    );
+    expect(result.rows).toEqual([{ reply_to_addresses: ['support@vendor.test'] }]);
   });
 
   it('keeps an outbound message thread when its own Sent copy syncs back', async () => {

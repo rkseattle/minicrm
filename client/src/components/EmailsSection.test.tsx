@@ -25,6 +25,7 @@ function message(overrides: Partial<EmailMessage>): EmailMessage {
     from_address: 'ada@client.test',
     to_addresses: ['rep@example.com'],
     cc_addresses: [],
+    reply_to_addresses: [],
     subject: 'Hello',
     snippet: 'snippet',
     has_attachments: false,

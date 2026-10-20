@@ -70,6 +70,7 @@ erDiagram
   text message_snippet "First 200 characters of the plain-text body with whitespace collapsed, for list views that must not load a whole body. Derived from message_body_text, so it is null whenever that is."
   text rfc_message_id "The message's own RFC 5322 Message-ID, without angle brackets. A reply names it in In-Reply-To."
   text references_header "Ancestor Message-IDs, bracketed and space-separated, oldest first; bounded to the root plus the newest. A reply extends it."
+  text__ reply_to_addresses "Addresses the sender named in Reply-To, lowercased. Empty when there is none or it names only the sender; a reply then goes to from_address."
 }
 ```
 

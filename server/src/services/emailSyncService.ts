@@ -101,7 +101,7 @@ const BACKOFF_MAX_MS = 24 * 60 * 60 * 1000;
 const BACKOFF_JITTER = 0.2;
 
 /** Columns in the message insert, for the bind-parameter arithmetic below. */
-const MESSAGE_INSERT_COLUMN_COUNT = 15;
+const MESSAGE_INSERT_COLUMN_COUNT = 16;
 
 /**
  * Rows per INSERT.
@@ -185,6 +185,7 @@ async function storeMessages(
         message.snippet,
         message.rfcMessageId,
         message.references,
+        message.replyToAddresses,
       );
       // Generated rather than written out, so the count and the placeholders cannot drift.
       const placeholders = Array.from(
@@ -205,7 +206,7 @@ async function storeMessages(
          (connected_account_id, provider_message_id, thread_id, direction, from_address,
           to_addresses, cc_addresses, subject, has_attachments, sent_at,
           message_body_text, message_body_html, message_snippet,
-          rfc_message_id, references_header)
+          rfc_message_id, references_header, reply_to_addresses)
        VALUES ${tuples.join(', ')}
        ON CONFLICT (connected_account_id, provider_message_id) DO UPDATE
          -- An outbound row keeps the thread the send path filed it under. That row was
@@ -234,7 +235,12 @@ async function storeMessages(
                COALESCE(EXCLUDED.message_snippet, email_messages.message_snippet),
              rfc_message_id = COALESCE(EXCLUDED.rfc_message_id, email_messages.rfc_message_id),
              references_header =
-               COALESCE(EXCLUDED.references_header, email_messages.references_header)
+               COALESCE(EXCLUDED.references_header, email_messages.references_header),
+             -- Headers never change, so an empty re-read is a lost header, not a correction.
+             reply_to_addresses = CASE
+               WHEN cardinality(EXCLUDED.reply_to_addresses) > 0 THEN EXCLUDED.reply_to_addresses
+               ELSE email_messages.reply_to_addresses
+             END
        RETURNING id, from_address, to_addresses, cc_addresses, (xmax = 0) AS inserted`,
       values,
     );
