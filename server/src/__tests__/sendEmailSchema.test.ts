@@ -5,6 +5,7 @@ import {
   EMAIL_SEND_MAX_RECIPIENTS,
   EMAIL_SEND_SUBJECT_MAX,
   sendEmailSchema,
+  sendErrorOutcome,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 const ACCOUNT = '00000000-0000-4000-8000-000000000001';
@@ -120,5 +121,23 @@ describe('sendEmailSchema — templates, records, and threading', () => {
 
   it.each(['in_reply_to_message_id', 'forward_of_message_id'])('accepts %s alone', (field) => {
     expect(refusal(typed({ [field]: MESSAGE }))).toBeNull();
+  });
+});
+
+describe('sendErrorOutcome', () => {
+  it.each([
+    ['SENT_NOT_RECORDED', 'went'],
+    ['SEND_ALREADY_SENT', 'went'],
+    ['SEND_FAILED', 'not_sent'],
+    ['VALIDATION_ERROR', 'not_sent'],
+    ['SEND_NOT_CONFIRMED', 'unknown'],
+    ['SEND_UNCONFIRMED', 'unknown'],
+  ])('reads %s as %s', (code, outcome) => {
+    expect(sendErrorOutcome(code)).toBe(outcome);
+  });
+
+  // A code the client has never heard of may come from a send that went.
+  it.each([undefined, 'SOMETHING_NEW', 'toString', '__proto__'])('reads %s as unknown', (code) => {
+    expect(sendErrorOutcome(code)).toBe('unknown');
   });
 });

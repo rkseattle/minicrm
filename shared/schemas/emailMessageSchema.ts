@@ -199,3 +199,73 @@ export const sendEmailResponseSchema = z.object({
 });
 
 export type SendEmailResponse = z.infer<typeof sendEmailResponseSchema>;
+
+/** What a failed send means for the message: it went, it certainly did not, or nobody knows. */
+export type SendErrorOutcome = 'went' | 'not_sent' | 'unknown';
+
+/**
+ * Every code a send is refused with, by its route's middleware or its handler, and what it
+ * means for the message. A code not listed, such as an unexpected 5xx, reads as unknown: the
+ * client freezes the compose, since resending an unknown outcome can mail the recipient twice.
+ */
+export const SEND_ERROR_OUTCOMES = {
+  // Refused by authentication, the feature flag, the capability check or the body parser.
+  AUTH_MISSING_TOKEN: 'not_sent',
+  AUTH_INVALID_TOKEN: 'not_sent',
+  AUTH_SESSION_ABSOLUTE_TIMEOUT: 'not_sent',
+  USER_INACTIVE: 'not_sent',
+  PASSWORD_CHANGE_REQUIRED: 'not_sent',
+  UNAUTHENTICATED: 'not_sent',
+  FEATURE_DISABLED: 'not_sent',
+  AUTH_FORBIDDEN: 'not_sent',
+  SERVICE_ACCOUNT_UI_BLOCKED: 'not_sent',
+  PAYLOAD_TOO_LARGE: 'not_sent',
+  VALIDATION_ERROR: 'not_sent',
+  FORBIDDEN: 'not_sent',
+  NOT_FOUND: 'not_sent',
+  IDEMPOTENCY_KEY_REQUIRED: 'not_sent',
+  IDEMPOTENCY_KEY_INVALID: 'not_sent',
+  EMAIL_ACCOUNT_NOT_FOUND: 'not_sent',
+  EMAIL_MESSAGE_NOT_FOUND: 'not_sent',
+  TEMPLATE_NOT_FOUND: 'not_sent',
+  PROVIDER_SEND_UNSUPPORTED: 'not_sent',
+  PROVIDER_AUTH_EXPIRED: 'not_sent',
+  RECONNECT_REQUIRED: 'not_sent',
+  RATE_LIMITED: 'not_sent',
+  SEND_FAILED: 'not_sent',
+  SENT_NOT_RECORDED: 'went',
+  SEND_ALREADY_SENT: 'went',
+  SEND_NOT_CONFIRMED: 'unknown',
+  SEND_IN_PROGRESS: 'unknown',
+  SEND_UNCONFIRMED: 'unknown',
+  IDEMPOTENCY_KEY_REUSED: 'unknown',
+} as const satisfies Record<string, SendErrorOutcome>;
+
+export type SendErrorCode = keyof typeof SEND_ERROR_OUTCOMES;
+
+/** Refusals answered before the send service runs, by middleware or the controller. */
+export type SendRequestErrorCode = Extract<
+  SendErrorCode,
+  | 'AUTH_MISSING_TOKEN'
+  | 'AUTH_INVALID_TOKEN'
+  | 'AUTH_SESSION_ABSOLUTE_TIMEOUT'
+  | 'USER_INACTIVE'
+  | 'PASSWORD_CHANGE_REQUIRED'
+  | 'UNAUTHENTICATED'
+  | 'FEATURE_DISABLED'
+  | 'AUTH_FORBIDDEN'
+  | 'SERVICE_ACCOUNT_UI_BLOCKED'
+  | 'PAYLOAD_TOO_LARGE'
+  | 'VALIDATION_ERROR'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'IDEMPOTENCY_KEY_REQUIRED'
+  | 'IDEMPOTENCY_KEY_INVALID'
+>;
+
+/** The outcome a response's error code names; a missing or unlisted code is unknown. */
+export function sendErrorOutcome(code: string | undefined): SendErrorOutcome {
+  if (code === undefined || !Object.hasOwn(SEND_ERROR_OUTCOMES, code)) return 'unknown';
+  // Safe: the hasOwn check above proves code is one of the table's keys.
+  return SEND_ERROR_OUTCOMES[code as SendErrorCode];
+}

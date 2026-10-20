@@ -16,6 +16,7 @@ import type {
   EmailLinkRecordType,
   SendEmailInput,
   SendEmailResponse,
+  SendErrorCode,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
 import {
   INSUFFICIENT_SCOPE,
@@ -79,28 +80,28 @@ import { getDealAutoLink } from './settingsService.js';
 import { shouldSkipRateLimit } from '../utils/nodeEnv.js';
 
 /** The API's codes for a send that did not complete. The controller maps each to a status. */
-export const EMAIL_ACCOUNT_NOT_FOUND = 'EMAIL_ACCOUNT_NOT_FOUND';
-export const EMAIL_MESSAGE_NOT_FOUND = 'EMAIL_MESSAGE_NOT_FOUND';
-export const TEMPLATE_NOT_FOUND = 'TEMPLATE_NOT_FOUND';
-export const PROVIDER_SEND_UNSUPPORTED = 'PROVIDER_SEND_UNSUPPORTED';
-export const SEND_FAILED = 'SEND_FAILED';
-export const RATE_LIMITED = 'RATE_LIMITED';
-export const RECONNECT_REQUIRED = 'RECONNECT_REQUIRED';
+export const EMAIL_ACCOUNT_NOT_FOUND = 'EMAIL_ACCOUNT_NOT_FOUND' satisfies SendErrorCode;
+export const EMAIL_MESSAGE_NOT_FOUND = 'EMAIL_MESSAGE_NOT_FOUND' satisfies SendErrorCode;
+export const TEMPLATE_NOT_FOUND = 'TEMPLATE_NOT_FOUND' satisfies SendErrorCode;
+export const PROVIDER_SEND_UNSUPPORTED = 'PROVIDER_SEND_UNSUPPORTED' satisfies SendErrorCode;
+export const SEND_FAILED = 'SEND_FAILED' satisfies SendErrorCode;
+export const RATE_LIMITED = 'RATE_LIMITED' satisfies SendErrorCode;
+export const RECONNECT_REQUIRED = 'RECONNECT_REQUIRED' satisfies SendErrorCode;
 /** Sent, but not stored. Never to be retried: the recipient already has the message. */
-export const SENT_NOT_RECORDED = 'SENT_NOT_RECORDED';
+export const SENT_NOT_RECORDED = 'SENT_NOT_RECORDED' satisfies SendErrorCode;
 /**
  * The provider did not say whether the message went. Its own code, never SEND_FAILED: a
  * client told "not sent" would offer the resend that mails the recipient twice.
  */
-export const SEND_NOT_CONFIRMED = 'SEND_NOT_CONFIRMED';
+export const SEND_NOT_CONFIRMED = 'SEND_NOT_CONFIRMED' satisfies SendErrorCode;
 /** A repeat of a send still in flight under the same key. */
-export const SEND_IN_PROGRESS = 'SEND_IN_PROGRESS';
+export const SEND_IN_PROGRESS = 'SEND_IN_PROGRESS' satisfies SendErrorCode;
 /** A repeat of a send that went out and is not yet filed. */
-export const SEND_ALREADY_SENT = 'SEND_ALREADY_SENT';
+export const SEND_ALREADY_SENT = 'SEND_ALREADY_SENT' satisfies SendErrorCode;
 /** A repeat of a send whose outcome is unknown. Never resent under its key. */
-export const SEND_UNCONFIRMED = 'SEND_UNCONFIRMED';
+export const SEND_UNCONFIRMED = 'SEND_UNCONFIRMED' satisfies SendErrorCode;
 /** A key already used for a different message. */
-export const IDEMPOTENCY_KEY_REUSED = 'IDEMPOTENCY_KEY_REUSED';
+export const IDEMPOTENCY_KEY_REUSED = 'IDEMPOTENCY_KEY_REUSED' satisfies SendErrorCode;
 
 /** The client's key for one compose, and a hash of the request it was first used with. */
 export interface SendIdempotency {
@@ -130,7 +131,7 @@ export function requestHashOf(input: SendEmailInput): string {
 }
 
 /** A send refusal carrying the API code the controller maps. */
-function sendError(code: string, message: string): Error & { code: string } {
+function sendError(code: SendErrorCode, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
 }
 
@@ -336,7 +337,7 @@ async function sendingAuth(
     throw sendError(SEND_FAILED, 'The message was not sent. Try again in a moment.');
   }
   if (token === null) {
-    throw sendError(PROVIDER_AUTH_EXPIRED, 'This mailbox needs to be reconnected.');
+    throw sendError(SEND_AUTH_EXPIRED, 'This mailbox needs to be reconnected.');
   }
   return { ...account.auth, access_token: token };
 }
@@ -357,7 +358,7 @@ async function apiFailureFor(err: unknown, account: ConnectedAccountInternal): P
         // The user still needs the reconnect answer; the badge catches up on the next sync.
         logger.error({ err: statusErr, accountId: account.id }, 'emailSendService: status write');
       }
-      return sendError(PROVIDER_AUTH_EXPIRED, 'This mailbox needs to be reconnected.');
+      return sendError(SEND_AUTH_EXPIRED, 'This mailbox needs to be reconnected.');
     case SEND_SCOPE_MISSING:
       return sendError(RECONNECT_REQUIRED, 'Reconnect this mailbox to allow sending from it.');
     case SEND_RATE_LIMITED:

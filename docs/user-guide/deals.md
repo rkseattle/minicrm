@@ -266,3 +266,11 @@ Use one of the three export options in the editor header:
 
 Click **Close** to dismiss the editor. The draft is **not saved** anywhere in MiniCRM —
 export it first if you want to keep it.
+
+## Emails
+
+> **Feature flag:** `email_sync`.
+
+A deal's detail page has an **Emails** section showing your mail linked to
+it, with **Compose** and **Reply**. It works as it does on a contact: see
+[Emails](contacts.md#emails).

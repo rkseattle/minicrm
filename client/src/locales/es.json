@@ -2917,5 +2917,39 @@
       "5": "los viernes",
       "6": "los sábados"
     }
+  },
+  "emails": {
+    "sectionTitle": "Correos",
+    "compose": "Redactar",
+    "reply": "Responder",
+    "empty": "Todavía no hay correos vinculados a este registro.",
+    "loadError": "No se pudieron cargar los correos.",
+    "noMailboxTooltip": "Conecta un buzón que pueda enviar, en Configuración del perfil, para enviar correo desde aquí.",
+    "replyUnavailable": "El buzón de esta conversación no puede enviar. Vuelve a conectarlo en Configuración del perfil para responder.",
+    "directionIn": "Entrante",
+    "directionOut": "Saliente",
+    "showImages": "Mostrar imágenes",
+    "imagesShown": "Imágenes mostradas",
+    "bodyLoading": "Cargando mensaje…",
+    "bodyLoadError": "No se pudo cargar este mensaje.",
+    "noSubject": "(sin asunto)",
+    "participantsMore": "+{{count}} más",
+    "participantsMore_other": "+{{count}} más",
+    "bodyFrameTitle": "Correo: {{subject}}",
+    "composer": {
+      "newTitle": "Nuevo correo",
+      "replyTitle": "Responder",
+      "from": "De",
+      "to": "Para",
+      "cc": "CC",
+      "recipientsHint": "Separa las direcciones con comas. También vale \"Nombre <dirección>\".",
+      "subject": "Asunto",
+      "body": "Mensaje",
+      "send": "Enviar",
+      "sending": "Enviando…",
+      "sent": "Correo enviado desde {{mailbox}}",
+      "recipientsInvalid": "No se pueden leer estas direcciones. Sepáralas con comas."
+    },
+    "accountsLoadError": "No se pudieron cargar tus buzones, así que por ahora no se puede enviar desde aquí."
   }
 }

@@ -2917,5 +2917,39 @@
       "5": "les vendredis",
       "6": "les samedis"
     }
+  },
+  "emails": {
+    "sectionTitle": "E-mails",
+    "compose": "Rédiger",
+    "reply": "Répondre",
+    "empty": "Aucun e-mail n'est encore lié à cette fiche.",
+    "loadError": "Les e-mails n'ont pas pu être chargés.",
+    "noMailboxTooltip": "Connectez une boîte aux lettres capable d'envoyer, dans les paramètres du profil, pour envoyer des e-mails d'ici.",
+    "replyUnavailable": "La boîte aux lettres de cette conversation ne peut pas envoyer. Reconnectez-la dans les paramètres du profil pour répondre.",
+    "directionIn": "Reçu",
+    "directionOut": "Envoyé",
+    "showImages": "Afficher les images",
+    "imagesShown": "Images affichées",
+    "bodyLoading": "Chargement du message…",
+    "bodyLoadError": "Ce message n'a pas pu être chargé.",
+    "noSubject": "(sans objet)",
+    "participantsMore": "+{{count}} autre",
+    "participantsMore_other": "+{{count}} autres",
+    "bodyFrameTitle": "E-mail : {{subject}}",
+    "composer": {
+      "newTitle": "Nouvel e-mail",
+      "replyTitle": "Répondre",
+      "from": "De",
+      "to": "À",
+      "cc": "Cc",
+      "recipientsHint": "Séparez les adresses par des virgules. « Nom <adresse> » fonctionne aussi.",
+      "subject": "Objet",
+      "body": "Message",
+      "send": "Envoyer",
+      "sending": "Envoi…",
+      "sent": "E-mail envoyé depuis {{mailbox}}",
+      "recipientsInvalid": "Ces adresses sont illisibles. Séparez-les par des virgules."
+    },
+    "accountsLoadError": "Vos boîtes aux lettres n'ont pas pu être chargées ; l'envoi depuis ici est indisponible pour le moment."
   }
 }

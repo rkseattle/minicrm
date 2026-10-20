@@ -136,3 +136,11 @@ to explain this score yet" rather than guessing.
 
 > The score and its explanation are **rule-based and AI-generated** respectively — use
 > them to help prioritize outreach, not as a substitute for your own judgment.
+
+## Emails
+
+> **Feature flag:** `email_sync`.
+
+A lead's detail page has an **Emails** section showing your mail linked to
+it, with **Compose** and **Reply**. It works as it does on a contact: see
+[Emails](contacts.md#emails).

@@ -547,12 +547,20 @@ explicit allowlist rather than DOMPurify's `html` profile, which admits forms an
 Each call builds its own DOMPurify instance, because hooks are per-instance state and a
 shared one would carry one thread's image choice into the next.
 
-Sanitizing is one of two required layers, as in Open-Xchange App Suite and other webmail.
-Whatever renders a body must put the sanitized HTML inside a sandboxed iframe, with no
-`allow-scripts` and no `allow-same-origin` but with `allow-popups` and
-`allow-popups-to-escape-sandbox` (the sanitizer opens every link in a new tab, which a
-sandbox otherwise blocks or traps), whose Content-Security-Policy forbids images until the
-reader opts in, so a sanitizer miss still loads and runs nothing.
+Sanitizing is one of two layers, as in Open-Xchange App Suite and other webmail.
+`EmailBodyFrame` puts the sanitized HTML in an iframe with `sandbox="allow-popups
+allow-popups-to-escape-sandbox"` (no `allow-scripts`, no `allow-same-origin`; the sanitizer opens
+every link in a new tab, which a sandbox otherwise blocks or traps) and a `srcdoc` whose
+Content-Security-Policy is `default-src 'none'; style-src 'unsafe-inline'; img-src 'none'`, or
+`img-src https:` once the reader chooses **Show images**. A sanitizer miss then still loads and
+runs nothing. Without same-origin the parent cannot measure the frame's content, so it has a
+fixed height the reader can drag taller, by a wrapper's handle since Firefox ignores `resize` on
+an iframe. A thread opens on its latest message and loads an older body only when that message
+is opened, as Gmail does; bodies are cached under their own query key, which no send invalidates.
+
+Sends from the Emails section and from the contact modal share `useMailboxSend`: one
+`Idempotency-Key` per compose, and any failure that is not a definite "nothing was sent" freezes
+the form so only the stored request is resent under the same key.
 
 ## Sending mail
 

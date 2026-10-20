@@ -2917,5 +2917,39 @@
       "5": "[Frïdäyŝ~~~]",
       "6": "[Ŝätürdäyŝ~~~]"
     }
+  },
+  "emails": {
+    "sectionTitle": "[Ëmäïlŝ~~]",
+    "compose": "[Ĉömpöŝë~~~]",
+    "reply": "[Rëply~~]",
+    "empty": "[Ñö ëmäïl ïŝ lïñkëd tö thïŝ rëĉörd yët.~~~~~~~~~~~~]",
+    "loadError": "[Ëmäïlŝ ĉöüldñ't bë löädëd.~~~~~~~~]",
+    "noMailboxTooltip": "[Ĉöññëĉt ä mäïlböx thät ĉäñ ŝëñd, ïñ Pröfïlë Ŝëttïñgŝ, tö ŝëñd ëmäïl fröm hërë.~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "replyUnavailable": "[Thïŝ ĉöñvërŝätïöñ'ŝ mäïlböx ĉäñ't ŝëñd. Rëĉöññëĉt ït ïñ Pröfïlë Ŝëttïñgŝ tö rëply.~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "directionIn": "[Ïñ~]",
+    "directionOut": "[Öüt~]",
+    "showImages": "[Ŝhöw ïmägëŝ~~~~]",
+    "imagesShown": "[Ïmägëŝ ŝhöwñ~~~~]",
+    "bodyLoading": "[Löädïñg mëŝŝägë…~~~~~]",
+    "bodyLoadError": "[Thïŝ mëŝŝägë ĉöüldñ't bë löädëd.~~~~~~~~~~]",
+    "noSubject": "[(ñö ŝübjëĉt)~~~~]",
+    "participantsMore": "[+{{count}} mörë~~~~~]",
+    "participantsMore_other": "[+{{count}} mörë~~~~~]",
+    "bodyFrameTitle": "[Ëmäïl: {{subject}}~~~~~~]",
+    "composer": {
+      "newTitle": "[Ñëw ëmäïl~~~]",
+      "replyTitle": "[Rëply~~]",
+      "from": "[Fröm~~]",
+      "to": "[Tö~]",
+      "cc": "[Ĉĉ~]",
+      "recipientsHint": "[Ŝëpärätë äddrëŝŝëŝ wïth ĉömmäŝ. \"Ñämë <äddrëŝŝ>\" wörkŝ töö.~~~~~~~~~~~~~~~~~~]",
+      "subject": "[Ŝübjëĉt~~~]",
+      "body": "[Mëŝŝägë~~~]",
+      "send": "[Ŝëñd~~]",
+      "sending": "[Ŝëñdïñg…~~~]",
+      "sent": "[Ëmäïl ŝëñt fröm {{mailbox}}~~~~~~~~~]",
+      "recipientsInvalid": "[Thëŝë äddrëŝŝëŝ ĉäñ't bë rëäd. Ŝëpärätë thëm wïth ĉömmäŝ.~~~~~~~~~~~~~~~~~~]"
+    },
+    "accountsLoadError": "[Yöür mäïlböxëŝ ĉöüldñ't bë löädëd, ŝö ŝëñdïñg fröm hërë ïŝ üñäväïläblë för ñöw.~~~~~~~~~~~~~~~~~~~~~~~~]"
   }
 }

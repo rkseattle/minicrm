@@ -1,6 +1,6 @@
 /**
  * SendEmailModal — compose and send an outbound email to a contact.
- * Accessible dialog with focus trap and Escape dismissal.
+ * Accessible dialog: Tab stays inside it, and Escape dismisses it.
  *
  * Sends through the org's SMTP by default, or through one of the user's connected
  * mailboxes when they pick one; only a mailbox can send a template.
@@ -8,52 +8,26 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { AxiosError } from 'axios';
 import { resolveApiError } from '@/utils/apiError.js';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Capability } from '@shared/schemas/capabilitySchema.js';
-import type { SendEmailInput } from '@shared/schemas/emailMessageSchema.js';
+import { EMAIL_SEND_SUBJECT_MAX, type SendEmailInput } from '@shared/schemas/emailMessageSchema.js';
 import { Button } from '@/components/ui/Button.js';
+import { Input } from '@/components/ui/Input.js';
+import { Select } from '@/components/ui/Select.js';
+import { Textarea } from '@/components/ui/Textarea.js';
 import { sendContactEmail } from '@/api/contacts.js';
 import { CONNECTED_ACCOUNTS_QUERY_KEY, getConnectedAccounts } from '@/api/connectedAccounts.js';
-import { EMAIL_MESSAGES_QUERY_KEY, sendEmailMessage } from '@/api/emailMessages.js';
 import { EMAIL_TEMPLATES_QUERY_KEY, listEmailTemplates } from '@/api/emailTemplates.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { CLOSE_AFTER_SENT_MS, useMailboxSend } from '@/hooks/useMailboxSend.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
-import { newIdempotencyKey } from '@/utils/idempotencyKey.js';
+import { keepTabInside } from '@/utils/focusTrap.js';
 import { plainTextToHtml } from '@/utils/plainTextToHtml.js';
 import { sanitizeEmailHtml } from '@/utils/sanitizeEmailHtml.js';
 
 /** The selector value for the org's own SMTP, which every user has. */
 const ORG_SMTP = 'org';
-
-/** How long the confirmation shows before the modal closes. */
-const CLOSE_AFTER_SENT_MS = 1500;
-
-/** Codes that mean the message went, though the request did not succeed as asked. */
-const WENT_ANYWAY = new Set(['SENT_NOT_RECORDED', 'SEND_ALREADY_SENT']);
-
-/**
- * Refusals that say for certain nothing was sent. Any other failure — no response, a 5xx
- * without a code, a send still in flight, an unconfirmed outcome — may have mailed the
- * recipient, so the compose freezes: only a retry of the very same request, under the same
- * key, which the server answers from the first attempt.
- */
-const DEFINITELY_NOT_SENT = new Set([
-  'VALIDATION_ERROR',
-  'IDEMPOTENCY_KEY_REQUIRED',
-  'IDEMPOTENCY_KEY_INVALID',
-  'FORBIDDEN',
-  'NOT_FOUND',
-  'EMAIL_ACCOUNT_NOT_FOUND',
-  'EMAIL_MESSAGE_NOT_FOUND',
-  'TEMPLATE_NOT_FOUND',
-  'PROVIDER_SEND_UNSUPPORTED',
-  'PROVIDER_AUTH_EXPIRED',
-  'RECONNECT_REQUIRED',
-  'RATE_LIMITED',
-  'SEND_FAILED',
-]);
 
 interface SendEmailModalProps {
   /** Whether the modal is visible */
@@ -94,17 +68,12 @@ export default function SendEmailModal({
   onSent,
 }: SendEmailModalProps) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const subjectRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  // One idempotency key per compose: kept while the request is unchanged, so a retry never
-  // sends twice, and replaced once the user edits, since an edited message is a new send.
-  const attemptRef = useRef<{
-    key: string;
-    request: string;
-    input: SendEmailInput;
-    mailbox: string | undefined;
-  } | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mailboxSend = useMailboxSend();
+  const { frozen, reset: resetMailboxSend } = mailboxSend;
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -112,7 +81,6 @@ export default function SendEmailModal({
   const [templateId, setTemplateId] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [frozen, setFrozen] = useState(false);
 
   const { enabled: emailSyncEnabled } = useFeatureFlag('email_sync');
   const { can } = usePermissions();
@@ -169,6 +137,13 @@ export default function SendEmailModal({
     }
   }, [isOpen]);
 
+  // A confirmation timer must not outlive its compose: cleared on close and on unmount.
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, [isOpen]);
+
   // Reset form state when the modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -179,22 +154,19 @@ export default function SendEmailModal({
         setTemplateId('');
         setSuccessMessage(null);
         setErrorMessage(null);
-        setFrozen(false);
-        attemptRef.current = null;
+        resetMailboxSend();
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, resetMailboxSend]);
 
   function finishSent(message: string, throughMailbox: boolean): void {
     setSuccessMessage(message);
     setErrorMessage(null);
-    if (throughMailbox) void queryClient.invalidateQueries({ queryKey: EMAIL_MESSAGES_QUERY_KEY });
+    if (throughMailbox) mailboxSend.refreshMail();
     onSent();
     // Close after a brief pause so the user sees the confirmation
-    setTimeout(() => {
-      onClose();
-    }, CLOSE_AFTER_SENT_MS);
+    closeTimerRef.current = setTimeout(onClose, CLOSE_AFTER_SENT_MS);
   }
 
   /** The request this compose describes now, from what the form shows. */
@@ -219,31 +191,13 @@ export default function SendEmailModal({
         };
   }
 
-  /**
-   * Sends through a connected mailbox under this compose's key. A frozen compose resends the
-   * stored request itself, never one rebuilt from the form: a refetch can change what the
-   * form shows, and a changed request would be a new send to a recipient who may already
-   * have the first.
-   */
+  /** Sends through a connected mailbox; a frozen compose resends its stored request. */
   async function sendFromMailbox(): Promise<SentOutcome> {
-    let attempt = attemptRef.current;
-    if (!frozen || !attempt) {
-      const input = currentMailboxInput();
-      const request = JSON.stringify(input);
-      if (attempt?.request !== request) {
-        attempt = {
-          key: newIdempotencyKey(),
-          request,
-          input,
-          mailbox: sendableAccounts.find((account) => account.id === effectiveSendAs)
-            ?.email_address,
-        };
-      }
-      attemptRef.current = attempt;
-    }
-    const { mailbox } = attempt;
-    const sent = await sendEmailMessage(attempt.input, attempt.key);
-    const unresolved = sent.unresolved_merge_tags;
+    const { response, mailbox } = await mailboxSend.send(() => ({
+      input: currentMailboxInput(),
+      mailbox: sendableAccounts.find((account) => account.id === effectiveSendAs)?.email_address,
+    }));
+    const unresolved = response.unresolved_merge_tags;
     return {
       message:
         unresolved.length > 0
@@ -264,13 +218,14 @@ export default function SendEmailModal({
   const sendMutation = useMutation({
     mutationFn: () => (fromMailbox || frozen ? sendFromMailbox() : sendFromOrg()),
     onSuccess: (outcome) => finishSent(outcome.message, fromMailbox || frozen),
-    onError: (error: AxiosError<{ error?: { code?: string } }>) => {
-      const code = error.response?.data?.error?.code;
-      if (code && WENT_ANYWAY.has(code)) {
-        finishSent(t(`errors.${code}`), true);
-        return;
+    onError: (error: unknown) => {
+      if (fromMailbox || frozen) {
+        const failure = mailboxSend.settleFailure(error);
+        if (failure.kind === 'went') {
+          finishSent(t(`errors.${failure.code}`), true);
+          return;
+        }
       }
-      if (fromMailbox && !(code && DEFINITELY_NOT_SENT.has(code))) setFrozen(true);
       setErrorMessage(resolveApiError(error, t));
     },
   });
@@ -281,6 +236,7 @@ export default function SendEmailModal({
     if (e.key === 'Escape' && !sendMutation.isPending) {
       onClose();
     }
+    keepTabInside(e, dialogRef.current);
   }
 
   function handleSend(): void {
@@ -297,7 +253,8 @@ export default function SendEmailModal({
   // A frozen compose always has its stored request to resend, whatever the form now shows.
   const canSubmit =
     frozen || template !== undefined || (subject.trim() !== '' && body.trim() !== '');
-  const inputsDisabled = sendMutation.isPending || frozen;
+  // Once sent, an edit plus a click would be a new key: a second real send.
+  const inputsDisabled = sendMutation.isPending || frozen || successMessage !== null;
 
   return (
     <div
@@ -308,6 +265,7 @@ export default function SendEmailModal({
       onKeyDown={handleKeyDown}
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="send-email-modal-title"
@@ -336,19 +294,13 @@ export default function SendEmailModal({
           {/* Send as — only when the user has a mailbox that can send */}
           {sendableAccounts.length > 0 && (
             <div className="mb-4">
-              <label
-                htmlFor="send-email-from"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                {t('contacts.sendEmail.sendAsLabel')}
-              </label>
-              <select
+              <Select
                 id="send-email-from"
+                label={t('contacts.sendEmail.sendAsLabel')}
                 value={effectiveSendAs}
                 onChange={(e) => handleSendAsChange(e.target.value)}
                 disabled={inputsDisabled}
                 data-testid="send-email-from"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               >
                 <option value={ORG_SMTP}>{t('contacts.sendEmail.sendAsOrg')}</option>
                 {sendableAccounts.map((account) => (
@@ -356,7 +308,7 @@ export default function SendEmailModal({
                     {account.email_address}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
 
@@ -374,19 +326,13 @@ export default function SendEmailModal({
           {/* Template — only through a mailbox, which renders it against the contact */}
           {fromMailbox && templates.length > 0 && (
             <div className="mb-4">
-              <label
-                htmlFor="send-email-template"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                {t('contacts.sendEmail.templateLabel')}
-              </label>
-              <select
+              <Select
                 id="send-email-template"
+                label={t('contacts.sendEmail.templateLabel')}
                 value={templateId}
                 onChange={(e) => setTemplateId(e.target.value)}
                 disabled={inputsDisabled}
                 data-testid="send-email-template"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               >
                 <option value="">{t('contacts.sendEmail.templateNone')}</option>
                 {templates.map((candidate) => (
@@ -394,7 +340,7 @@ export default function SendEmailModal({
                     {candidate.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               {(templatesData?.total ?? 0) > templates.length && (
                 <p
                   data-testid="send-email-templates-truncated"
@@ -411,16 +357,14 @@ export default function SendEmailModal({
 
           {/* To field — read-only */}
           <div className="mb-4">
-            <label htmlFor="send-email-to" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('contacts.sendEmail.toLabel')}
-            </label>
-            <input
+            <Input
               id="send-email-to"
               type="email"
+              label={t('contacts.sendEmail.toLabel')}
               readOnly
               value={contactEmail}
               data-testid="send-email-to"
-              className="block w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 cursor-default"
+              className="bg-gray-50 text-gray-600 cursor-default"
             />
           </div>
 
@@ -438,42 +382,30 @@ export default function SendEmailModal({
             <>
               {/* Subject */}
               <div className="mb-4">
-                <label
-                  htmlFor="send-email-subject"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  {t('contacts.sendEmail.subjectLabel')}
-                </label>
-                <input
+                <Input
                   id="send-email-subject"
                   ref={subjectRef}
                   type="text"
+                  label={t('contacts.sendEmail.subjectLabel')}
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   disabled={inputsDisabled}
                   data-testid="send-email-subject"
-                  maxLength={255}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  maxLength={EMAIL_SEND_SUBJECT_MAX}
                   placeholder={t('contacts.sendEmail.subjectPlaceholder')}
                 />
               </div>
 
               {/* Body */}
               <div className="mb-5">
-                <label
-                  htmlFor="send-email-body"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  {t('contacts.sendEmail.bodyLabel')}
-                </label>
-                <textarea
+                <Textarea
                   id="send-email-body"
+                  label={t('contacts.sendEmail.bodyLabel')}
                   rows={4}
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   disabled={inputsDisabled}
                   data-testid="send-email-body"
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 resize-y"
                   placeholder={t('contacts.sendEmail.bodyPlaceholder')}
                 />
               </div>
@@ -510,7 +442,7 @@ export default function SendEmailModal({
               type="button"
               data-testid="send-email-submit"
               onClick={handleSend}
-              disabled={sendMutation.isPending || !canSubmit}
+              disabled={sendMutation.isPending || !canSubmit || successMessage !== null}
             >
               {sendMutation.isPending
                 ? t('contacts.sendEmail.sending')

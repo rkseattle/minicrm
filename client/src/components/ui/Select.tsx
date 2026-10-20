@@ -2,7 +2,7 @@
  * Shared select component styled to match the Input component.
  */
 
-import { forwardRef } from 'react';
+import { forwardRef, useId } from 'react';
 import type { SelectHTMLAttributes } from 'react';
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
@@ -28,27 +28,48 @@ const SELECT_ERROR_CLASSES = 'border-red-500 focus:border-transparent focus:ring
  * @param error - Error message rendered below the select; also applies red-border styling
  */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { label, error, id, className = '', children, ...props },
+  {
+    label,
+    error,
+    id,
+    className = '',
+    children,
+    'aria-describedby': describedBy,
+    'aria-invalid': ariaInvalid,
+    ...props
+  },
   ref,
 ) {
+  const generatedId = useId();
+  const selectId = id ?? generatedId;
+  // The message is announced with the field, not found later by browsing past it.
+  const errorId = `${selectId}-error`;
   const stateClasses = error ? SELECT_ERROR_CLASSES : SELECT_NORMAL_CLASSES;
 
   return (
     <div className="flex flex-col gap-1">
       {label !== undefined && (
-        <label htmlFor={id} className="text-sm font-medium text-gray-700">
+        <label htmlFor={selectId} className="text-sm font-medium text-gray-700">
           {label}
         </label>
       )}
       <select
         ref={ref}
-        id={id}
+        id={selectId}
+        aria-invalid={error ? true : ariaInvalid}
+        aria-describedby={
+          [describedBy, error ? errorId : undefined].filter(Boolean).join(' ') || undefined
+        }
         className={[SELECT_BASE_CLASSES, stateClasses, className].filter(Boolean).join(' ')}
         {...props}
       >
         {children}
       </select>
-      {error !== undefined && <p className="text-xs text-red-600">{error}</p>}
+      {error && (
+        <p id={errorId} className="text-xs text-red-600">
+          {error}
+        </p>
+      )}
     </div>
   );
 });

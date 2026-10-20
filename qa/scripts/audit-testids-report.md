@@ -1,13 +1,13 @@
 # data-testid Audit Report
 
-Generated: 2026-10-19T20:30:20.597Z
+Generated: 2026-10-20T02:07:14.691Z
 
 ## Summary
 
 - Matched: 597
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1029
-- Dynamic (manual review required): 689
+- Unexercised (in app, not in tests): 1051
+- Dynamic (manual review required): 700
 
 ## Stale testids (action required)
 
@@ -119,8 +119,30 @@ _None — all test-referenced testids are present in the application source._
 | `deal-owner-select` | client/src/components/DealForm.tsx | 401 |
 | `deal-form-cancel` | client/src/components/DealForm.tsx | 430 |
 | `deal-form` | client/src/components/DealForm.tsx | 223 |
+| `email-body-frame` | client/src/components/EmailBodyFrame.tsx | 52 |
+| `email-composer-from` | client/src/components/EmailComposer.tsx | 176 |
+| `email-composer-to` | client/src/components/EmailComposer.tsx | 196 |
+| `email-composer-cc` | client/src/components/EmailComposer.tsx | 214 |
+| `email-composer-subject` | client/src/components/EmailComposer.tsx | 229 |
+| `email-composer-body` | client/src/components/EmailComposer.tsx | 241 |
+| `email-composer-success` | client/src/components/EmailComposer.tsx | 248 |
+| `email-composer-error` | client/src/components/EmailComposer.tsx | 258 |
+| `email-composer-send` | client/src/components/EmailComposer.tsx | 271 |
+| `email-composer-cancel` | client/src/components/EmailComposer.tsx | 283 |
+| `email-composer` | client/src/components/EmailComposer.tsx | 148 |
 | `email-draft-error` | client/src/components/EmailDraftPanel.tsx | 140 |
 | `email-draft-copy-error` | client/src/components/EmailDraftPanel.tsx | 190 |
+| `emails-compose` | client/src/components/EmailsSection.tsx | 234 |
+| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 249 |
+| `emails-loading` | client/src/components/EmailsSection.tsx | 255 |
+| `emails-error` | client/src/components/EmailsSection.tsx | 262 |
+| `emails-empty` | client/src/components/EmailsSection.tsx | 268 |
+| `email-thread-participants` | client/src/components/EmailsSection.tsx | 312 |
+| `email-thread-date` | client/src/components/EmailsSection.tsx | 320 |
+| `email-thread-subject` | client/src/components/EmailsSection.tsx | 327 |
+| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 334 |
+| `emails-thread-list` | client/src/components/EmailsSection.tsx | 284 |
+| `emails-section` | client/src/components/EmailsSection.tsx | 223 |
 | `error-boundary-reload` | client/src/components/ErrorBoundary.tsx | 29 |
 | `error-boundary-dashboard-link` | client/src/components/ErrorBoundary.tsx | 37 |
 | `error-boundary-fallback` | client/src/components/ErrorBoundary.tsx | 20 |
@@ -233,17 +255,17 @@ _None — all test-referenced testids are present in the application source._
 | `proposal-draft-problem-statement-content` | client/src/components/RichTextField.tsx | 157 |
 | `proposal-draft-proposed-solution-content` | client/src/components/RichTextField.tsx | 157 |
 | `proposal-draft-next-steps-content` | client/src/components/RichTextField.tsx | 157 |
-| `send-email-accounts-loading` | client/src/components/SendEmailModal.tsx | 326 |
-| `send-email-accounts-error` | client/src/components/SendEmailModal.tsx | 331 |
-| `send-email-from` | client/src/components/SendEmailModal.tsx | 350 |
-| `send-email-templates-loading` | client/src/components/SendEmailModal.tsx | 364 |
-| `send-email-templates-error` | client/src/components/SendEmailModal.tsx | 369 |
-| `send-email-template` | client/src/components/SendEmailModal.tsx | 388 |
-| `send-email-templates-truncated` | client/src/components/SendEmailModal.tsx | 400 |
-| `send-email-to` | client/src/components/SendEmailModal.tsx | 422 |
-| `send-email-template-preview` | client/src/components/SendEmailModal.tsx | 428 |
-| `send-email-error` | client/src/components/SendEmailModal.tsx | 498 |
-| `send-email-cancel` | client/src/components/SendEmailModal.tsx | 522 |
+| `send-email-accounts-loading` | client/src/components/SendEmailModal.tsx | 284 |
+| `send-email-accounts-error` | client/src/components/SendEmailModal.tsx | 289 |
+| `send-email-from` | client/src/components/SendEmailModal.tsx | 303 |
+| `send-email-templates-loading` | client/src/components/SendEmailModal.tsx | 316 |
+| `send-email-templates-error` | client/src/components/SendEmailModal.tsx | 321 |
+| `send-email-template` | client/src/components/SendEmailModal.tsx | 335 |
+| `send-email-templates-truncated` | client/src/components/SendEmailModal.tsx | 346 |
+| `send-email-to` | client/src/components/SendEmailModal.tsx | 366 |
+| `send-email-template-preview` | client/src/components/SendEmailModal.tsx | 372 |
+| `send-email-error` | client/src/components/SendEmailModal.tsx | 430 |
+| `send-email-cancel` | client/src/components/SendEmailModal.tsx | 454 |
 | `setup-checklist-expand-button` | client/src/components/SetupChecklistWidget.tsx | 223 |
 | `setup-checklist-complete` | client/src/components/SetupChecklistWidget.tsx | 307 |
 | `settings-tab-list-select` | client/src/components/SubPageNav.tsx | 71 |
@@ -460,20 +482,20 @@ _None — all test-referenced testids are present in the application source._
 | `merge-search-results` | client/src/pages/ContactDetailPage.tsx | 1213 |
 | `merge-contact-panel` | client/src/pages/ContactDetailPage.tsx | 1188 |
 | `merge-contact-button` | client/src/pages/ContactDetailPage.tsx | 1180 |
-| `linked-deals-heading` | client/src/pages/ContactDetailPage.tsx | 1409 |
-| `linked-deals-list` | client/src/pages/ContactDetailPage.tsx | 1419 |
-| `linked-deals-empty` | client/src/pages/ContactDetailPage.tsx | 1415 |
-| `warm-intro-paths-heading` | client/src/pages/ContactDetailPage.tsx | 1461 |
-| `followup-timing-heading` | client/src/pages/ContactDetailPage.tsx | 1475 |
-| `sequence-enrollments-heading` | client/src/pages/ContactDetailPage.tsx | 1501 |
-| `enroll-sequence-button` | client/src/pages/ContactDetailPage.tsx | 1507 |
-| `sequence-enrollments-empty` | client/src/pages/ContactDetailPage.tsx | 1538 |
-| `sequence-enrollments-list` | client/src/pages/ContactDetailPage.tsx | 1547 |
-| `sequence-enrollments-section` | client/src/pages/ContactDetailPage.tsx | 1494 |
-| `enroll-sequence-select` | client/src/pages/ContactDetailPage.tsx | 1619 |
-| `enroll-submit-button` | client/src/pages/ContactDetailPage.tsx | 1635 |
-| `enroll-cancel-button` | client/src/pages/ContactDetailPage.tsx | 1646 |
-| `enroll-sequence-modal` | client/src/pages/ContactDetailPage.tsx | 1606 |
+| `linked-deals-heading` | client/src/pages/ContactDetailPage.tsx | 1410 |
+| `linked-deals-list` | client/src/pages/ContactDetailPage.tsx | 1420 |
+| `linked-deals-empty` | client/src/pages/ContactDetailPage.tsx | 1416 |
+| `warm-intro-paths-heading` | client/src/pages/ContactDetailPage.tsx | 1462 |
+| `followup-timing-heading` | client/src/pages/ContactDetailPage.tsx | 1476 |
+| `sequence-enrollments-heading` | client/src/pages/ContactDetailPage.tsx | 1502 |
+| `enroll-sequence-button` | client/src/pages/ContactDetailPage.tsx | 1508 |
+| `sequence-enrollments-empty` | client/src/pages/ContactDetailPage.tsx | 1539 |
+| `sequence-enrollments-list` | client/src/pages/ContactDetailPage.tsx | 1548 |
+| `sequence-enrollments-section` | client/src/pages/ContactDetailPage.tsx | 1495 |
+| `enroll-sequence-select` | client/src/pages/ContactDetailPage.tsx | 1620 |
+| `enroll-submit-button` | client/src/pages/ContactDetailPage.tsx | 1636 |
+| `enroll-cancel-button` | client/src/pages/ContactDetailPage.tsx | 1647 |
+| `enroll-sequence-modal` | client/src/pages/ContactDetailPage.tsx | 1607 |
 | `contacts-export-menu-button` | client/src/pages/ContactsPage.tsx | 381 |
 | `contacts-export-csv-button` | client/src/pages/ContactsPage.tsx | 385 |
 | `contacts-export-pdf-button` | client/src/pages/ContactsPage.tsx | 399 |
@@ -1146,8 +1168,19 @@ _None — all test-referenced testids are present in the application source._
 | `deal-card-probability-*` | client/src/components/DealCard.tsx | 108 | app |
 | `deal-card-stage-select-*` | client/src/components/DealCard.tsx | 127 | app |
 | `deal-card-*` | client/src/components/DealCard.tsx | 68 | app |
-| `**-tags-heading` | client/src/components/EntityDetailSidebar.tsx | 101 | app |
-| `**-tags-section` | client/src/components/EntityDetailSidebar.tsx | 96 | app |
+| `email-direction-*` | client/src/components/EmailsSection.tsx | 99 | app |
+| `email-body-loading-*` | client/src/components/EmailsSection.tsx | 121 | app |
+| `email-body-error-*` | client/src/components/EmailsSection.tsx | 128 | app |
+| `email-body-text-*` | client/src/components/EmailsSection.tsx | 145 | app |
+| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 305 | app |
+| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 348 | app |
+| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 373 | app |
+| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 417 | app |
+| `email-reply-*` | client/src/components/EmailsSection.tsx | 399 | app |
+| `email-message-*` | client/src/components/EmailsSection.tsx | 362 | app |
+| `email-thread-*` | client/src/components/EmailsSection.tsx | 297 | app |
+| `**-tags-heading` | client/src/components/EntityDetailSidebar.tsx | 108 | app |
+| `**-tags-section` | client/src/components/EntityDetailSidebar.tsx | 103 | app |
 | `field-merge-auto-*` | client/src/components/FieldMergeModal.tsx | 327 | app |
 | `field-merge-radio-*` | client/src/components/FieldMergeModal.tsx | 306 | app |
 | `field-merge-radio-*` | client/src/components/FieldMergeModal.tsx | 318 | app |
@@ -1318,10 +1351,10 @@ _None — all test-referenced testids are present in the application source._
 | `merge-choice-*` | client/src/pages/ContactDetailPage.tsx | 1304 | app |
 | `merge-field-row-*` | client/src/pages/ContactDetailPage.tsx | 1293 | app |
 | `merge-select-*` | client/src/pages/ContactDetailPage.tsx | 1220 | app |
-| `linked-deal-*` | client/src/pages/ContactDetailPage.tsx | 1424 | app |
-| `linked-deal-probability-*` | client/src/pages/ContactDetailPage.tsx | 1434 | app |
-| `unenroll-button-*` | client/src/pages/ContactDetailPage.tsx | 1572 | app |
-| `enrollment-row-*` | client/src/pages/ContactDetailPage.tsx | 1553 | app |
+| `linked-deal-*` | client/src/pages/ContactDetailPage.tsx | 1425 | app |
+| `linked-deal-probability-*` | client/src/pages/ContactDetailPage.tsx | 1435 | app |
+| `unenroll-button-*` | client/src/pages/ContactDetailPage.tsx | 1573 | app |
+| `enrollment-row-*` | client/src/pages/ContactDetailPage.tsx | 1554 | app |
 | `bulk-select-*` | client/src/pages/ContactsPage.tsx | 952 | app |
 | `contact-link-*` | client/src/pages/ContactsPage.tsx | 962 | app |
 | `contact-card-owner-*` | client/src/pages/ContactsPage.tsx | 977 | app |
@@ -1371,7 +1404,7 @@ _None — all test-referenced testids are present in the application source._
 | `deal-owner-*` | client/src/pages/DealsPage.tsx | 1285 | app |
 | `deal-tags-*` | client/src/pages/DealsPage.tsx | 1289 | app |
 | `pipeline-summary-*` | client/src/pages/DealsPage.tsx | 1070 | app |
-| `status-history-*` | client/src/pages/LeadDetailPage.tsx | 496 | app |
+| `status-history-*` | client/src/pages/LeadDetailPage.tsx | 497 | app |
 | `bulk-select-*` | client/src/pages/LeadsPage.tsx | 701 | app |
 | `view-lead-*` | client/src/pages/LeadsPage.tsx | 709 | app |
 | `status-badge-*` | client/src/pages/LeadsPage.tsx | 758 | app |

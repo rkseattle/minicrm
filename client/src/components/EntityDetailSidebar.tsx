@@ -1,6 +1,6 @@
 /**
  * EntityDetailSidebar — shared sidebar sections for entity detail pages.
- * Renders tags, activity timeline, attachments, notes, change history,
+ * Renders tags, activity timeline, emails, attachments, notes, change history,
  * and optionally GDPR & privacy controls.
  *
  * Each section is guarded by isEditing so nothing renders while the edit
@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import ActivityTimeline from '@/components/ActivityTimeline.js';
 import AttachmentsSection from '@/components/AttachmentsSection.js';
+import EmailsSection from '@/components/EmailsSection.js';
 import NotesSection from '@/components/NotesSection.js';
 import ChangeHistory from '@/components/ChangeHistory.js';
 import { ConnectedTagInput } from '@/components/TagInput.js';
@@ -50,6 +51,10 @@ interface EntityDetailSidebarProps {
   showTimeline?: boolean;
   /** Show the attachments section (default: true) */
   showAttachments?: boolean;
+  /** Show the emails section (default: true). It hides itself when email sync is unavailable. */
+  showEmails?: boolean;
+  /** The record's own address, offered as a new email's recipient */
+  emailRecipient?: string;
   /** Show the change history section (default: true). Must be false for lead — ChangeHistory does not support lead. */
   showChangeHistory?: boolean;
   /** When true and the current user is admin, renders GdprPrivacySection */
@@ -68,6 +73,8 @@ export default function EntityDetailSidebar({
   showTags = true,
   showTimeline = true,
   showAttachments = true,
+  showEmails = true,
+  emailRecipient,
   showChangeHistory = true,
   showGdpr = false,
   onGdprErased,
@@ -118,6 +125,17 @@ export default function EntityDetailSidebar({
         <ActivityTimeline {...timelineProp} />
       )}
 
+      {/* Emails — the section hides itself when email sync or mailbox access is missing */}
+      {showEmails && (
+        <EmailsSection
+          // Keyed by record: its page, open threads and any open composer belong to one.
+          key={`emails:${entityType}:${entityId}`}
+          recordType={entityType}
+          recordId={entityId}
+          defaultRecipient={emailRecipient}
+        />
+      )}
+
       {/* Attachments */}
       {showAttachments && <AttachmentsSection recordType={entityType} recordId={entityId} />}
 
@@ -126,7 +144,11 @@ export default function EntityDetailSidebar({
         <div className="mt-8 h-24 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
       )}
       {!notesLoading && notesEnabled && (
-        <NotesSection entityType={entityType} entityId={entityId} />
+        <NotesSection
+          key={`notes:${entityType}:${entityId}`}
+          entityType={entityType}
+          entityId={entityId}
+        />
       )}
 
       {/* Change history — not supported for lead */}

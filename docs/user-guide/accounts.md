@@ -198,3 +198,11 @@ notifications — a red badge shows how many are unread. Click a notification to
 straight to the account it concerns; click **Mark all as read** to clear the unread
 count. As of this release, churn/expansion detection is the only feature that generates
 in-app notifications.
+
+## Emails
+
+> **Feature flag:** `email_sync`.
+
+An account's detail page has an **Emails** section showing your mail linked to
+it, with **Compose** and **Reply**. It works as it does on a contact: see
+[Emails](contacts.md#emails).

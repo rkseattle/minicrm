@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import EntityDetailSidebar from './EntityDetailSidebar.js';
@@ -22,11 +23,21 @@ vi.mock('@/components/AttachmentsSection.js', () => ({
     <div data-testid="attachments-section">{recordType}</div>
   ),
 }));
-vi.mock('@/components/NotesSection.js', () => ({
-  default: ({ entityType }: { entityType: string }) => (
-    <div data-testid="notes-section">{entityType}</div>
-  ),
-}));
+vi.mock('@/components/NotesSection.js', async () => {
+  const { useState } = await import('react');
+  return {
+    default: function NotesSectionMock({
+      entityType,
+      entityId,
+    }: {
+      entityType: string;
+      entityId: string;
+    }) {
+      const [firstRecord] = useState(entityId);
+      return <div data-testid="notes-section">{`${entityType}:${firstRecord}`}</div>;
+    },
+  };
+});
 vi.mock('@/components/ChangeHistory.js', () => ({
   default: ({ recordType }: { recordType: string }) => (
     <div data-testid="change-history">{recordType}</div>
@@ -37,6 +48,24 @@ vi.mock('@/components/TagInput.js', () => ({
     <div data-testid="tag-input">{entityType}</div>
   ),
 }));
+// Holds the record it first rendered for, as real section state does, so a remount shows.
+vi.mock('@/components/EmailsSection.js', async () => {
+  const { useState } = await import('react');
+  return {
+    default: function EmailsSectionMock({
+      recordType,
+      recordId,
+      defaultRecipient,
+    }: {
+      recordType: string;
+      recordId: string;
+      defaultRecipient?: string;
+    }) {
+      const [firstRecord] = useState(`${recordType}:${recordId}`);
+      return <div data-testid="emails-section">{`${firstRecord}:${defaultRecipient ?? ''}`}</div>;
+    },
+  };
+});
 vi.mock('@/components/GdprPrivacySection.js', () => ({
   default: () => <div data-testid="gdpr-section" />,
 }));
@@ -54,6 +83,41 @@ describe('EntityDetailSidebar', () => {
       <EntityDetailSidebar {...BASE_PROPS} isEditing={true} />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('renders the emails section for the record, offering its address', () => {
+    renderWithProviders(<EntityDetailSidebar {...BASE_PROPS} emailRecipient="ada@client.test" />);
+
+    expect(screen.getByTestId('emails-section')).toHaveTextContent(
+      'contact:entity-123:ada@client.test',
+    );
+  });
+
+  it('starts the emails section afresh for each record, so no state crosses records', () => {
+    // One mounted tree, as a route change keeps; renderWithProviders' rerender drops the providers.
+    function RecordSwitcher() {
+      const [entityId, setEntityId] = useState('entity-123');
+      return (
+        <>
+          <button type="button" onClick={() => setEntityId('entity-456')}>
+            switch
+          </button>
+          <EntityDetailSidebar {...BASE_PROPS} entityId={entityId} />
+        </>
+      );
+    }
+    renderWithProviders(<RecordSwitcher />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'switch' }));
+
+    expect(screen.getByTestId('emails-section')).toHaveTextContent('contact:entity-456:');
+    expect(screen.getByTestId('notes-section')).toHaveTextContent('contact:entity-456');
+  });
+
+  it('omits the emails section when told to', () => {
+    renderWithProviders(<EntityDetailSidebar {...BASE_PROPS} showEmails={false} />);
+
+    expect(screen.queryByTestId('emails-section')).not.toBeInTheDocument();
   });
 
   it('renders all default sections for a contact', () => {

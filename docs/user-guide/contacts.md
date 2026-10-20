@@ -218,6 +218,29 @@ a second copy. To change the message instead, close the composer and check your 
 first. A failure that clearly sent nothing — a mailbox that needs reconnecting, say — leaves
 the message editable.
 
+### Emails
+
+> **Feature flag:** `email_sync`.
+
+Once you have [connected a mailbox](profile.md#connect-a-mailbox), the **Emails** section of a
+contact, lead, account or deal shows your mail linked to that record, as conversations with
+the latest first. Each row shows who took part, the subject, the start of the latest message
+and its date, with **In** or **Out** for mail you received or sent. Select a row, or move to
+it with the arrow keys and press Enter, to open it. A conversation opens on its latest
+message; the earlier ones show their first line, and you can select one to read it in full.
+
+Messages are shown as safely as webmail shows them: anything that could run is removed, and
+pictures stay hidden — a picture can tell the sender you opened the mail — until you choose
+**Show images** for that conversation.
+
+**Compose** writes a new message from this record, and **Reply** answers one in its
+conversation; both are filed here, with an Email activity where the record has a timeline.
+They need a mailbox that can send. If you have none, they are disabled and say why; a reply
+also needs the mailbox that holds the conversation.
+
+You see only your own mail, never a colleague's, even on a record you share. The section is
+not shown on a lead you cannot edit.
+
 ### AI Champion/Blocker badge
 
 > **Feature flag:** `ai_champion_blocker_detection`.
