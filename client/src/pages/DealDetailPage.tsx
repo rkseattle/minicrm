@@ -63,6 +63,7 @@ import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { recordPath } from '@shared/types/recordPath.js';
+import { todayIso } from '@/utils/utcDate.js';
 
 /** Maps a deal health status to the Badge color variant. */
 const HEALTH_STATUS_VARIANT: Record<DealHealthStatus, 'success' | 'warning' | 'error'> = {
@@ -964,7 +965,7 @@ export default function DealDetailPage() {
         <CloseDealModal
           isOpen={true}
           targetStage={pendingClose.stage}
-          initialCloseDate={new Date().toISOString().split('T')[0]}
+          initialCloseDate={todayIso()}
           isSubmitting={closeMutation.isPending}
           error={closeError ?? undefined}
           onConfirm={(closeDate, lossReason) => {

@@ -27,6 +27,7 @@ import { renderWithProviders } from '../test/renderWithProviders.js';
 import { AUTOMATION_RULE_1, AUTOMATION_LOG_1 } from '../test/msw/handlers.js';
 import { server } from '../test/setup.js';
 import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 describe('AutomationRulesPage', () => {
   describe('page structure', () => {
@@ -562,7 +563,7 @@ describe('AutomationRulesPage', () => {
 
       await user.click(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`));
 
-      const expectedText = new Date(AUTOMATION_LOG_1.triggered_at).toLocaleString('en');
+      const expectedText = formatLocalDateTime(AUTOMATION_LOG_1.triggered_at, 'en');
       await waitFor(() => {
         expect(screen.getByTestId(`log-timestamp-${AUTOMATION_LOG_1.id}`)).toHaveTextContent(
           expectedText,

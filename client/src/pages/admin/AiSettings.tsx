@@ -25,17 +25,7 @@ import { AiDataMinimizationSection } from './ai-settings/AiDataMinimizationSecti
 import { AiCoachingSection } from './ai-settings/AiCoachingSection.js';
 import { AiLeadRoutingSection } from './ai-settings/AiLeadRoutingSection.js';
 import { AiDataHygieneSection } from './ai-settings/AiDataHygieneSection.js';
-
-function formatTimestamp(iso: string | null | undefined): string {
-  if (!iso) return '';
-  return new Date(iso).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 // ── Toggle confirmation dialog ─────────────────────────────────────────────────
 
@@ -133,7 +123,7 @@ interface AiSettingsProps {
 }
 
 export default function AiSettings({ disabled = false }: AiSettingsProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -252,7 +242,7 @@ export default function AiSettings({ disabled = false }: AiSettingsProps) {
             {data.enabled_updated_at && (
               <p className="text-xs text-gray-400 mt-0.5">
                 {t('aiSettings.toggle.lastChanged', {
-                  timestamp: formatTimestamp(data.enabled_updated_at),
+                  timestamp: formatLocalDateTime(data.enabled_updated_at, i18n.language),
                 })}
               </p>
             )}

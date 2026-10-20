@@ -12,13 +12,14 @@ import {
   accountChurnExpansionQueryKey,
 } from '@/api/churnExpansion.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 interface ChurnExpansionBannerProps {
   accountId: string;
 }
 
 export default function ChurnExpansionBanner({ accountId }: ChurnExpansionBannerProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { enabled: featureEnabled } = useFeatureFlag('ai_churn_expansion_detection');
 
   const { data, isLoading, isError } = useQuery({
@@ -59,7 +60,7 @@ export default function ChurnExpansionBanner({ accountId }: ChurnExpansionBanner
       )}
       <p className="mt-1 text-xs opacity-75">
         {t('churnExpansion.detectedOn', {
-          date: new Date(signal.detected_at).toLocaleDateString(),
+          date: formatLocalDate(signal.detected_at, i18n.language),
         })}
       </p>
     </div>

@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getRecordAuditLog, RECORD_AUDIT_LOG_QUERY_KEY } from '@/api/auditLog.js';
 import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
+import { formatLocalDateTime, formatRelativeTime } from '@/utils/formatLocalDate.js';
 
 /** Props for the ChangeHistory component */
 export interface ChangeHistoryProps {
@@ -16,60 +17,6 @@ export interface ChangeHistoryProps {
   recordType: 'contact' | 'account' | 'deal';
   /** UUID of the record */
   recordId: string;
-}
-
-/**
- * Formats a timestamp as a relative string (e.g., "2 hours ago").
- * Falls back to the locale date/time string if the date is more than 7 days ago.
- *
- * @param dateStr - ISO date string
- * @param locale - Active i18n locale
- * @returns Relative or formatted date string
- */
-function formatRelativeTime(dateStr: string, locale: string): string {
-  const date = new Date(dateStr);
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffSecs = Math.floor(diffMs / 1000);
-  const diffMins = Math.floor(diffSecs / 60);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffSecs < 60) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(0, 'second');
-  }
-  if (diffMins < 60) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: 'always' }).format(-diffMins, 'minute');
-  }
-  if (diffHours < 24) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: 'always' }).format(-diffHours, 'hour');
-  }
-  if (diffDays < 7) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: 'always' }).format(-diffDays, 'day');
-  }
-
-  return date.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-/**
- * Formats an absolute timestamp for the hover tooltip.
- *
- * @param dateStr - ISO date string
- * @param locale - Active i18n locale
- * @returns Formatted absolute date/time string
- */
-function formatAbsoluteTime(dateStr: string, locale: string): string {
-  return new Date(dateStr).toLocaleString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 /**
@@ -201,7 +148,7 @@ export default function ChangeHistory({ recordType, recordId }: ChangeHistoryPro
                   <span className="text-sm text-gray-800 flex-1">{buildSummary(entry, t)}</span>
                   <time
                     dateTime={entry.created_at}
-                    title={formatAbsoluteTime(entry.created_at, i18n.language)}
+                    title={formatLocalDateTime(entry.created_at, i18n.language)}
                     className="text-xs text-gray-500 whitespace-nowrap shrink-0 cursor-default"
                     data-testid={`change-history-time-${entry.id}`}
                   >

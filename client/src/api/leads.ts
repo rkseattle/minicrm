@@ -13,6 +13,7 @@ import type {
   ConvertLeadInput,
 } from '@shared/schemas/leadSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
+import { localDateStamp } from '@/utils/formatLocalDate.js';
 
 interface LeadSingleResponse {
   lead: LeadResponse;
@@ -175,7 +176,7 @@ export async function exportLeadPdf(id: string): Promise<void> {
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-lead-${id}-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }
@@ -217,7 +218,7 @@ export async function exportLeadsCsv(params: ExportLeadsParams = {}): Promise<vo
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-leads-${date}.csv`;
   triggerCsvDownload(response.data, filename);
 }
@@ -236,7 +237,7 @@ export async function exportLeadsPdf(params: ExportLeadsParams = {}): Promise<vo
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-leads-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }

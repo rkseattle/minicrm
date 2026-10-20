@@ -12,6 +12,7 @@ import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 import ActivityTimeline from './ActivityTimeline.js';
 import { ACTIVITY_1, ACTIVITY_2, ADMIN_USER } from '@/test/msw/handlers.js';
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 describe('ActivityTimeline', () => {
   it('shows the loading state while fetching', () => {
@@ -60,7 +61,7 @@ describe('ActivityTimeline', () => {
 
     const meta = screen.getByTestId(`activity-meta-${ACTIVITY_1.id}`);
     expect(meta).toHaveTextContent(ACTIVITY_1.owner_name);
-    expect(meta).toHaveTextContent(new Date(ACTIVITY_1.created_at).toLocaleString('en'));
+    expect(meta).toHaveTextContent(formatLocalDateTime(ACTIVITY_1.created_at, 'en'));
   });
 
   it('shows "Mark complete" button for open tasks', async () => {

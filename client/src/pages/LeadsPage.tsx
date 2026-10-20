@@ -43,6 +43,7 @@ import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
 import BulkReassignModal from '@/components/BulkReassignModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { recordPath } from '@shared/types/recordPath.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 /** React Query cache key for the leads list */
 export const LEADS_QUERY_KEY = ['leads'] as const;
@@ -59,7 +60,7 @@ const STATUS_BADGE: Record<string, string> = {
  * Leads list page with status filters, inline status update, and inline create form.
  */
 export default function LeadsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -766,7 +767,7 @@ export default function LeadsPage() {
                           {resolveOwnerName(lead.owner_id, activeUsers, t('leads.ownerUnknown'))}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
-                          {new Date(lead.created_at).toLocaleDateString()}
+                          {formatLocalDate(lead.created_at, i18n.language)}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <button

@@ -33,10 +33,11 @@ import BulkActionBar from '@/components/BulkActionBar.js';
 import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { recordPathOrNull } from '@shared/types/recordPath.js';
+import { todayIso } from '@/utils/utcDate.js';
 
 /** Returns today's date string in YYYY-MM-DD format, recomputed on each call so overnight sessions stay accurate */
 function getToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayIso();
 }
 
 /** Badge variant for each activity type */

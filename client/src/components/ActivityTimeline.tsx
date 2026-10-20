@@ -52,6 +52,8 @@ const BRIEF_ELIGIBLE_TYPES: ReadonlySet<ActivityType> = new Set(['Call', 'Meetin
 /** Activity types the task-suggestion feature supports */
 const TASK_SUGGESTABLE_TYPES: ReadonlySet<ActivityType> = new Set(['Call', 'Meeting', 'Email']);
 import type { EmailDraftResponse } from '@shared/schemas/emailDraftSchema.js';
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
+import { todayIso } from '@/utils/utcDate.js';
 
 export interface ActivityTimelineProps {
   /** Filter activities to those linked to this contact */
@@ -583,7 +585,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                         >
                           {t('activities.meta', {
                             author: activity.owner_name,
-                            timestamp: new Date(activity.created_at).toLocaleString(i18n.language),
+                            timestamp: formatLocalDateTime(activity.created_at, i18n.language),
                           })}
                         </p>
                       </div>
@@ -619,7 +621,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                           activity.contact_id &&
                           BRIEF_ELIGIBLE_TYPES.has(activity.type as ActivityType) &&
                           activity.due_date &&
-                          activity.due_date >= new Date().toISOString().slice(0, 10) && (
+                          activity.due_date >= todayIso() && (
                             <Button
                               type="button"
                               variant="secondary"

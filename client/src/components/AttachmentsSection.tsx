@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/Button.js';
 import EmptyState from '@/components/EmptyState.js';
 import { useFocusTrap } from '@/hooks/useFocusTrap.js';
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 /** Maximum file size in bytes (25 MB) — mirrored from server for pre-flight check. */
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -42,14 +43,6 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-/** Formats an ISO timestamp as a locale date+time string. */
-function formatDateTime(iso: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(iso));
 }
 
 export interface AttachmentsSectionProps {
@@ -309,7 +302,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
                     <p className="text-xs text-gray-500 mt-0.5">
                       {formatBytes(attachment.file_size)}
                       {attachment.uploader_name ? ` · ${attachment.uploader_name}` : ''}
-                      {` · ${formatDateTime(attachment.uploaded_at, i18n.language)}`}
+                      {` · ${formatLocalDateTime(attachment.uploaded_at, i18n.language)}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

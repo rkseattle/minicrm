@@ -209,6 +209,8 @@ describe('getDashboardSummary — currency conversion', () => {
     const convertedValue = parseFloat(summary.convertedPipelineValue!);
     // EUR: 5,000 * 1.10 = 5,500
     expect(convertedValue).toBeCloseTo(5500, 1);
+    // ISO 8601, which every browser's Date parses.
+    expect(summary.ratesLastUpdated).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 
   it('returns hasRates=true and populated homeCurrency when rates table has non-home rows', async () => {
@@ -318,6 +320,8 @@ describe('getWinLossReport — currency conversion', () => {
     // winRate = 1 won / (1 won + 1 lost) = 0.5
     expect(report.winRate).toBeCloseTo(0.5, 5);
     expect(report.ratesLastUpdated).not.toBeNull();
+    // Safe: the assertion above proved it non-null.
+    expect(report.ratesLastUpdated!).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 });
 

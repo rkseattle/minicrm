@@ -26,6 +26,7 @@ import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
 import { AUDIT_RECORD_TYPES, AUDIT_EVENT_TYPES } from '@shared/schemas/auditSchema.js';
 import type { PlainMessage } from '@bufbuild/protobuf';
 import type { AuditEvent } from '@shared/generated/audit_pb.js';
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 /** Number of entries per page */
 const PAGE_SIZE = 50;
@@ -99,19 +100,6 @@ function buildRowSummary(
     default:
       return `${actor} — ${entry.event_type}`;
   }
-}
-
-/**
- * Formats an ISO timestamp for display.
- */
-function formatTimestamp(dateStr: string, locale: string): string {
-  return new Date(dateStr).toLocaleString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 /**
@@ -609,7 +597,7 @@ export default function AuditLogPage() {
                             className="text-xs text-gray-500 whitespace-nowrap"
                             data-testid={`audit-log-time-${entry.id}`}
                           >
-                            {formatTimestamp(entry.created_at, i18n.language)}
+                            {formatLocalDateTime(entry.created_at, i18n.language)}
                           </time>
                           <span
                             className="text-sm text-gray-800"

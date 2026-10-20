@@ -22,6 +22,7 @@ import {
   WIN_LOSS_REPORT_QUERY_KEY,
   type WinLossReportParams,
 } from '@/api/reports.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 /**
  * Formats a numeric string as a currency amount using the active i18next locale.
@@ -263,9 +264,7 @@ export function WinLossReportContent() {
               <p className="text-xs text-gray-500" data-testid="converted-totals-footnote">
                 {t('reports.winLoss.convertedFootnote', {
                   currency: report.homeCurrency ?? '',
-                  date: report.ratesLastUpdated
-                    ? new Date(report.ratesLastUpdated).toLocaleDateString(i18n.language)
-                    : '—',
+                  date: formatLocalDate(report.ratesLastUpdated, i18n.language),
                 })}
               </p>
               {/* Unrated currencies note */}

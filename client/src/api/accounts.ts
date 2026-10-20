@@ -13,6 +13,7 @@ import type {
 } from '@shared/schemas/accountSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 import type { AccountHealthListFilterState } from '@shared/schemas/accountHealthScoreSchema.js';
+import { localDateStamp } from '@/utils/formatLocalDate.js';
 
 interface AccountSingleResponse {
   account: AccountResponse;
@@ -178,7 +179,7 @@ export async function exportAccountsCsv(params: ExportAccountsParams = {}): Prom
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-accounts-${date}.csv`;
   triggerCsvDownload(response.data, filename);
 }
@@ -200,7 +201,7 @@ export async function exportAccountsPdf(params: ExportAccountsParams = {}): Prom
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-accounts-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }
@@ -216,7 +217,7 @@ export async function exportAccountPdf(id: string): Promise<void> {
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-account-${id}-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }

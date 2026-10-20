@@ -18,6 +18,7 @@ import { createActivity, ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
 import { resolveApiError } from '@/utils/apiError.js';
 import { formatHourOfDay } from '@/utils/formatHourOfDay.js';
 import type { FollowUpTimingSuggestion } from '@shared/schemas/followUpTimingSchema.js';
+import { toIso } from '@/utils/utcDate.js';
 
 interface FollowUpTimingCardProps {
   contactId: string;
@@ -56,7 +57,7 @@ function nextDateForDayOfWeek(dayOfWeek: number, timezone: string): string {
   // today's date at UTC midnight, used purely as a calendar-arithmetic anchor —
   // adding daysUntil and reading back the UTC calendar fields is timezone-safe.
   const anchor = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day) + daysUntil));
-  return anchor.toISOString().slice(0, 10);
+  return toIso(anchor);
 }
 
 export default function FollowUpTimingCard({

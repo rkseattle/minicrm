@@ -4,6 +4,7 @@
  */
 
 import pool from '../db.js';
+import { toUtcDateString } from '../utils/utcDate.js';
 
 /** Parameters for the win/loss report query */
 export interface WinLossReportParams {
@@ -55,7 +56,7 @@ interface WinLossAggRow {
   /** Number of deals with a value whose currency lacks a rate */
   unrated_count: string;
   /** ISO timestamp of the most recently updated currency rate */
-  rates_last_updated: string | null;
+  rates_last_updated: Date | null;
   /** Number of non-home currency rows in the currencies table */
   has_rates_count: string;
 }
@@ -203,7 +204,7 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
        (SELECT symbol FROM home_currency) AS home_symbol,
        COUNT(*) FILTER (WHERE NOT rac.has_rate AND d.value IS NOT NULL
                           AND d.currency != (SELECT code FROM home_currency)) AS unrated_count,
-       MAX(rac.currency_updated_at)::text AS rates_last_updated,
+       MAX(rac.currency_updated_at) AS rates_last_updated,
        (SELECT COUNT(*) FROM currencies WHERE is_home = false)::text AS has_rates_count`;
 
   const aggFrom = `
@@ -327,7 +328,8 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
     homeCurrency: aggRow.home_currency ?? null,
     homeSymbol: aggRow.home_symbol ?? null,
     unratedCount,
-    ratesLastUpdated: aggRow.rates_last_updated ?? null,
+    // ISO 8601, which every browser parses; Postgres's own text form is not.
+    ratesLastUpdated: aggRow.rates_last_updated?.toISOString() ?? null,
     hasRates,
     repRows,
   };
@@ -602,8 +604,8 @@ export async function getStageTrendReport(days: StageTrendDays): Promise<StageTr
   // windowStart is computed server-side so the query and returned metadata always agree.
   const windowStart = new Date();
   windowStart.setDate(windowStart.getDate() - days);
-  const windowStartStr = windowStart.toISOString().slice(0, 10);
-  const windowEndStr = new Date().toISOString().slice(0, 10);
+  const windowStartStr = toUtcDateString(windowStart);
+  const windowEndStr = toUtcDateString(new Date());
 
   // ── Main query ─────────────────────────────────────────────────────────────
   // For each audit_log entry recording a deal stage entry (field_name='stage'),

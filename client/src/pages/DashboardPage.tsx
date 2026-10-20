@@ -25,6 +25,7 @@ import {
 } from '@/api/dashboard.js';
 import { getMyCoachingInsights, MY_COACHING_INSIGHTS_QUERY_KEY } from '@/api/repCoaching.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 /**
  * Formats a numeric string as a currency amount using the active i18next locale.
@@ -419,9 +420,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-500" data-testid="converted-pipeline-footnote">
                   {t('dashboard.currencyConvertedFootnote', {
                     currency: data.homeCurrency ?? '',
-                    date: data.ratesLastUpdated
-                      ? new Date(data.ratesLastUpdated).toLocaleDateString(i18n.language)
-                      : '—',
+                    date: formatLocalDate(data.ratesLastUpdated, i18n.language),
                   })}
                 </p>
                 {/* Unrated currencies note */}

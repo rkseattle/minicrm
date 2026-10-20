@@ -17,9 +17,10 @@ import {
 } from '@/api/scim.js';
 import { listCustomRoles, CUSTOM_ROLES_QUERY_KEY } from '@/api/customRoles.js';
 import { Button } from '@/components/ui/Button.js';
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 export default function ScimSettings() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
 
   const [newRawToken, setNewRawToken] = useState<string | null>(null);
@@ -134,12 +135,12 @@ export default function ScimSettings() {
             <div className="text-sm text-gray-700 space-y-1" data-testid="scim-token-meta">
               <p>
                 <span className="font-medium">{t('settings.scim.tokenIssuedAt')}</span>{' '}
-                {new Date(tokenMeta.createdAt).toLocaleString()}
+                {formatLocalDateTime(tokenMeta.createdAt, i18n.language)}
               </p>
               {tokenMeta.lastUsedAt && (
                 <p>
                   <span className="font-medium">{t('settings.scim.tokenLastUsed')}</span>{' '}
-                  {new Date(tokenMeta.lastUsedAt).toLocaleString()}
+                  {formatLocalDateTime(tokenMeta.lastUsedAt, i18n.language)}
                 </p>
               )}
             </div>

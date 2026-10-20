@@ -5,7 +5,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { formatLocalDate, formatLocalDateTime } from './formatLocalDate.js';
+import {
+  formatLocalDate,
+  formatLocalDateTime,
+  formatRelativeTime,
+  localDateStamp,
+} from './formatLocalDate.js';
 
 describe('formatLocalDate', () => {
   it('formats a YYYY-MM-DD string in English', () => {
@@ -109,5 +114,42 @@ describe('formatLocalDateTime', () => {
 
   it.each([null, undefined, '', 'not-a-date'])('returns an em dash for %s', (value) => {
     expect(formatLocalDateTime(value, 'en')).toBe('—');
+  });
+});
+
+describe('formatRelativeTime', () => {
+  const NOW = Date.parse('2026-10-19T12:00:00Z');
+  const ago = (ms: number) => new Date(NOW - ms).toISOString();
+  const MINUTE = 60_000;
+
+  it.each([
+    [ago(10_000), 'now'],
+    [ago(5 * MINUTE), '5 minutes ago'],
+    [ago(3 * 60 * MINUTE), '3 hours ago'],
+    [ago(24 * 60 * MINUTE), 'yesterday'],
+    [ago(3 * 24 * 60 * MINUTE), '3 days ago'],
+  ])('reads %s as %s', (value, expected) => {
+    expect(formatRelativeTime(value, 'en', NOW)).toBe(expected);
+  });
+
+  it('falls back to the date once it is a week old', () => {
+    const old = ago(8 * 24 * 60 * MINUTE);
+    expect(formatRelativeTime(old, 'en', NOW)).toBe(formatLocalDate(old, 'en'));
+  });
+
+  it('speaks the given locale, not English', () => {
+    const expected = new Intl.RelativeTimeFormat('de', { numeric: 'auto' }).format(-5, 'minute');
+    expect(formatRelativeTime(ago(5 * MINUTE), 'de', NOW)).toBe(expected);
+  });
+
+  it.each([null, undefined, '', 'not-a-date'])('returns an em dash for %s', (value) => {
+    expect(formatRelativeTime(value, 'en', NOW)).toBe('—');
+  });
+});
+
+describe('localDateStamp', () => {
+  it("names the viewer's own calendar day, zero-padded", () => {
+    // Built from local fields, so the expectation holds in any timezone the suite runs in.
+    expect(localDateStamp(new Date(2026, 0, 5, 23, 30))).toBe('2026-01-05');
   });
 });

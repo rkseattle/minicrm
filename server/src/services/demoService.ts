@@ -6,7 +6,7 @@
  */
 
 import bcrypt from 'bcryptjs';
-import { utcDayOffset, ONE_DAY_MS } from '../utils/utcDate.js';
+import { utcDayOffset, ONE_DAY_MS, toUtcDateString } from '../utils/utcDate.js';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
@@ -305,7 +305,7 @@ function futureMonths(monthsAhead: number): string {
   const shifted = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + monthsAhead, now.getUTCDate()),
   );
-  return shifted.toISOString().slice(0, 10);
+  return toUtcDateString(shifted);
 }
 
 // pipeline: 'enterprise' deals are assigned to the Enterprise B2B demo pipeline.

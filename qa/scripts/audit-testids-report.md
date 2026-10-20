@@ -1,6 +1,6 @@
 # data-testid Audit Report
 
-Generated: 2026-10-20T02:37:49.538Z
+Generated: 2026-10-20T02:47:18.003Z
 
 ## Summary
 
@@ -35,21 +35,21 @@ _None — all test-referenced testids are present in the application source._
 | `activity-summary-discard` | client/src/components/ActivitySummaryModal.tsx | 267 |
 | `activity-summary-modal` | client/src/components/ActivitySummaryModal.tsx | 124 |
 | `activity-summary-modal-overlay` | client/src/components/ActivitySummaryModal.tsx | 115 |
-| `activity-timeline-heading` | client/src/components/ActivityTimeline.tsx | 371 |
-| `activity-create-form-container` | client/src/components/ActivityTimeline.tsx | 392 |
-| `activity-timeline-list` | client/src/components/ActivityTimeline.tsx | 426 |
-| `activity-timeline-load-more` | client/src/components/ActivityTimeline.tsx | 699 |
-| `activity-timeline-empty` | client/src/components/ActivityTimeline.tsx | 421 |
-| `activity-timeline-loading` | client/src/components/ActivityTimeline.tsx | 417 |
-| `complete-error` | client/src/components/ActivityTimeline.tsx | 711 |
-| `delete-error` | client/src/components/ActivityTimeline.tsx | 716 |
-| `email-draft-generate-error` | client/src/components/ActivityTimeline.tsx | 724 |
-| `meeting-brief-generate-error` | client/src/components/ActivityTimeline.tsx | 743 |
-| `attachments-not-configured` | client/src/components/AttachmentsSection.tsx | 195 |
-| `attachments-upload-zone` | client/src/components/AttachmentsSection.tsx | 208 |
-| `attachments-loading` | client/src/components/AttachmentsSection.tsx | 255 |
-| `attachments-list-error` | client/src/components/AttachmentsSection.tsx | 261 |
-| `attachments-empty-state` | client/src/components/AttachmentsSection.tsx | 268 |
+| `activity-timeline-heading` | client/src/components/ActivityTimeline.tsx | 373 |
+| `activity-create-form-container` | client/src/components/ActivityTimeline.tsx | 394 |
+| `activity-timeline-list` | client/src/components/ActivityTimeline.tsx | 428 |
+| `activity-timeline-load-more` | client/src/components/ActivityTimeline.tsx | 701 |
+| `activity-timeline-empty` | client/src/components/ActivityTimeline.tsx | 423 |
+| `activity-timeline-loading` | client/src/components/ActivityTimeline.tsx | 419 |
+| `complete-error` | client/src/components/ActivityTimeline.tsx | 713 |
+| `delete-error` | client/src/components/ActivityTimeline.tsx | 718 |
+| `email-draft-generate-error` | client/src/components/ActivityTimeline.tsx | 726 |
+| `meeting-brief-generate-error` | client/src/components/ActivityTimeline.tsx | 745 |
+| `attachments-not-configured` | client/src/components/AttachmentsSection.tsx | 188 |
+| `attachments-upload-zone` | client/src/components/AttachmentsSection.tsx | 201 |
+| `attachments-loading` | client/src/components/AttachmentsSection.tsx | 248 |
+| `attachments-list-error` | client/src/components/AttachmentsSection.tsx | 254 |
+| `attachments-empty-state` | client/src/components/AttachmentsSection.tsx | 261 |
 | `bulk-action-count` | client/src/components/BulkActionBar.tsx | 60 |
 | `bulk-see-details` | client/src/components/BulkActionBar.tsx | 73 |
 | `bulk-clear-selection` | client/src/components/BulkActionBar.tsx | 124 |
@@ -60,12 +60,12 @@ _None — all test-referenced testids are present in the application source._
 | `bulk-failed-details-close` | client/src/components/BulkFailedDetailsModal.tsx | 75 |
 | `bulk-failed-details-modal` | client/src/components/BulkFailedDetailsModal.tsx | 32 |
 | `bulk-reassign-modal-overlay` | client/src/components/BulkReassignModal.tsx | 78 |
-| `change-history-heading` | client/src/components/ChangeHistory.tsx | 178 |
-| `change-history-list` | client/src/components/ChangeHistory.tsx | 193 |
-| `change-history-empty` | client/src/components/ChangeHistory.tsx | 189 |
-| `change-history-loading` | client/src/components/ChangeHistory.tsx | 185 |
-| `change-history-toggle` | client/src/components/ChangeHistory.tsx | 223 |
-| `change-history-section` | client/src/components/ChangeHistory.tsx | 173 |
+| `change-history-heading` | client/src/components/ChangeHistory.tsx | 125 |
+| `change-history-list` | client/src/components/ChangeHistory.tsx | 140 |
+| `change-history-empty` | client/src/components/ChangeHistory.tsx | 136 |
+| `change-history-loading` | client/src/components/ChangeHistory.tsx | 132 |
+| `change-history-toggle` | client/src/components/ChangeHistory.tsx | 170 |
+| `change-history-section` | client/src/components/ChangeHistory.tsx | 120 |
 | `close-deal-loss-reason-input` | client/src/components/CloseDealModal.tsx | 136 |
 | `close-deal-error` | client/src/components/CloseDealModal.tsx | 151 |
 | `close-deal-modal-overlay` | client/src/components/CloseDealModal.tsx | 96 |
@@ -215,17 +215,17 @@ _None — all test-referenced testids are present in the application source._
 | `nav-left-automation` | client/src/components/NavLeft.tsx | 139 |
 | `nav-left-sequences` | client/src/components/NavLeft.tsx | 139 |
 | `nav-left-settings` | client/src/components/NavLeft.tsx | 139 |
-| `note-image` | client/src/components/NotesSection.tsx | 133 |
-| `toolbar-image` | client/src/components/NotesSection.tsx | 348 |
-| `notes-editor-toolbar` | client/src/components/NotesSection.tsx | 289 |
-| `notes-composer-content` | client/src/components/NotesSection.tsx | 572 |
-| `notes-image-input` | client/src/components/NotesSection.tsx | 593 |
-| `notes-image-upload-error` | client/src/components/NotesSection.tsx | 600 |
-| `notes-save-error` | client/src/components/NotesSection.tsx | 659 |
-| `notes-section-heading` | client/src/components/NotesSection.tsx | 861 |
-| `notes-loading` | client/src/components/NotesSection.tsx | 892 |
-| `notes-load-error` | client/src/components/NotesSection.tsx | 906 |
-| `notes-delete-error` | client/src/components/NotesSection.tsx | 975 |
+| `note-image` | client/src/components/NotesSection.tsx | 134 |
+| `toolbar-image` | client/src/components/NotesSection.tsx | 349 |
+| `notes-editor-toolbar` | client/src/components/NotesSection.tsx | 290 |
+| `notes-composer-content` | client/src/components/NotesSection.tsx | 560 |
+| `notes-image-input` | client/src/components/NotesSection.tsx | 581 |
+| `notes-image-upload-error` | client/src/components/NotesSection.tsx | 588 |
+| `notes-save-error` | client/src/components/NotesSection.tsx | 647 |
+| `notes-section-heading` | client/src/components/NotesSection.tsx | 851 |
+| `notes-loading` | client/src/components/NotesSection.tsx | 882 |
+| `notes-load-error` | client/src/components/NotesSection.tsx | 896 |
+| `notes-delete-error` | client/src/components/NotesSection.tsx | 965 |
 | `notification-mark-all-read` | client/src/components/NotificationBell.tsx | 101 |
 | `notification-dropdown` | client/src/components/NotificationBell.tsx | 91 |
 | `powered-by-badge` | client/src/components/PoweredByBadge.tsx | 16 |
@@ -394,45 +394,45 @@ _None — all test-referenced testids are present in the application source._
 | `ai-delete-cancel-button` | client/src/pages/AiPage.tsx | 768 |
 | `ai-retention-window-notice` | client/src/pages/AiPage.tsx | 876 |
 | `ai-thinking-indicator` | client/src/pages/AiPage.tsx | 952 |
-| `filter-from` | client/src/pages/AuditLogPage.tsx | 375 |
-| `filter-to` | client/src/pages/AuditLogPage.tsx | 393 |
-| `filter-user` | client/src/pages/AuditLogPage.tsx | 409 |
-| `filter-event-type` | client/src/pages/AuditLogPage.tsx | 455 |
-| `filter-source` | client/src/pages/AuditLogPage.tsx | 478 |
-| `clear-filters-button` | client/src/pages/AuditLogPage.tsx | 502 |
-| `audit-log-loading` | client/src/pages/AuditLogPage.tsx | 515 |
-| `audit-log-error` | client/src/pages/AuditLogPage.tsx | 526 |
-| `audit-log-empty-state` | client/src/pages/AuditLogPage.tsx | 538 |
-| `logs-drawer-title` | client/src/pages/AutomationRulesPage.tsx | 188 |
-| `logs-drawer-rule-name` | client/src/pages/AutomationRulesPage.tsx | 192 |
-| `logs-drawer-close` | client/src/pages/AutomationRulesPage.tsx | 201 |
-| `logs-loading` | client/src/pages/AutomationRulesPage.tsx | 209 |
-| `logs-error` | client/src/pages/AutomationRulesPage.tsx | 215 |
-| `logs-empty` | client/src/pages/AutomationRulesPage.tsx | 221 |
-| `logs-list` | client/src/pages/AutomationRulesPage.tsx | 227 |
-| `logs-drawer` | client/src/pages/AutomationRulesPage.tsx | 181 |
-| `logs-drawer-overlay` | client/src/pages/AutomationRulesPage.tsx | 170 |
-| `feature-disabled` | client/src/pages/AutomationRulesPage.tsx | 432 |
-| `new-rule-button` | client/src/pages/AutomationRulesPage.tsx | 454 |
-| `rule-name-input` | client/src/pages/AutomationRulesPage.tsx | 484 |
-| `trigger-type-select` | client/src/pages/AutomationRulesPage.tsx | 501 |
-| `trigger-stage-select` | client/src/pages/AutomationRulesPage.tsx | 525 |
-| `action-type-select` | client/src/pages/AutomationRulesPage.tsx | 546 |
-| `task-subject-input` | client/src/pages/AutomationRulesPage.tsx | 574 |
-| `task-type-select` | client/src/pages/AutomationRulesPage.tsx | 591 |
-| `assignee-type-select` | client/src/pages/AutomationRulesPage.tsx | 616 |
-| `assignee-user-select` | client/src/pages/AutomationRulesPage.tsx | 640 |
-| `due-date-offset-input` | client/src/pages/AutomationRulesPage.tsx | 667 |
-| `send-notification-hint` | client/src/pages/AutomationRulesPage.tsx | 680 |
-| `notification-message-input` | client/src/pages/AutomationRulesPage.tsx | 702 |
-| `form-error` | client/src/pages/AutomationRulesPage.tsx | 709 |
-| `create-rule-submit` | client/src/pages/AutomationRulesPage.tsx | 720 |
-| `create-rule-cancel` | client/src/pages/AutomationRulesPage.tsx | 734 |
-| `create-rule-form` | client/src/pages/AutomationRulesPage.tsx | 466 |
-| `rules-loading` | client/src/pages/AutomationRulesPage.tsx | 744 |
-| `rules-error` | client/src/pages/AutomationRulesPage.tsx | 750 |
-| `rules-list` | client/src/pages/AutomationRulesPage.tsx | 785 |
-| `rules-empty-state` | client/src/pages/AutomationRulesPage.tsx | 760 |
+| `filter-from` | client/src/pages/AuditLogPage.tsx | 363 |
+| `filter-to` | client/src/pages/AuditLogPage.tsx | 381 |
+| `filter-user` | client/src/pages/AuditLogPage.tsx | 397 |
+| `filter-event-type` | client/src/pages/AuditLogPage.tsx | 443 |
+| `filter-source` | client/src/pages/AuditLogPage.tsx | 466 |
+| `clear-filters-button` | client/src/pages/AuditLogPage.tsx | 490 |
+| `audit-log-loading` | client/src/pages/AuditLogPage.tsx | 503 |
+| `audit-log-error` | client/src/pages/AuditLogPage.tsx | 514 |
+| `audit-log-empty-state` | client/src/pages/AuditLogPage.tsx | 526 |
+| `logs-drawer-title` | client/src/pages/AutomationRulesPage.tsx | 177 |
+| `logs-drawer-rule-name` | client/src/pages/AutomationRulesPage.tsx | 181 |
+| `logs-drawer-close` | client/src/pages/AutomationRulesPage.tsx | 190 |
+| `logs-loading` | client/src/pages/AutomationRulesPage.tsx | 198 |
+| `logs-error` | client/src/pages/AutomationRulesPage.tsx | 204 |
+| `logs-empty` | client/src/pages/AutomationRulesPage.tsx | 210 |
+| `logs-list` | client/src/pages/AutomationRulesPage.tsx | 216 |
+| `logs-drawer` | client/src/pages/AutomationRulesPage.tsx | 170 |
+| `logs-drawer-overlay` | client/src/pages/AutomationRulesPage.tsx | 159 |
+| `feature-disabled` | client/src/pages/AutomationRulesPage.tsx | 421 |
+| `new-rule-button` | client/src/pages/AutomationRulesPage.tsx | 443 |
+| `rule-name-input` | client/src/pages/AutomationRulesPage.tsx | 473 |
+| `trigger-type-select` | client/src/pages/AutomationRulesPage.tsx | 490 |
+| `trigger-stage-select` | client/src/pages/AutomationRulesPage.tsx | 514 |
+| `action-type-select` | client/src/pages/AutomationRulesPage.tsx | 535 |
+| `task-subject-input` | client/src/pages/AutomationRulesPage.tsx | 563 |
+| `task-type-select` | client/src/pages/AutomationRulesPage.tsx | 580 |
+| `assignee-type-select` | client/src/pages/AutomationRulesPage.tsx | 605 |
+| `assignee-user-select` | client/src/pages/AutomationRulesPage.tsx | 629 |
+| `due-date-offset-input` | client/src/pages/AutomationRulesPage.tsx | 656 |
+| `send-notification-hint` | client/src/pages/AutomationRulesPage.tsx | 669 |
+| `notification-message-input` | client/src/pages/AutomationRulesPage.tsx | 691 |
+| `form-error` | client/src/pages/AutomationRulesPage.tsx | 698 |
+| `create-rule-submit` | client/src/pages/AutomationRulesPage.tsx | 709 |
+| `create-rule-cancel` | client/src/pages/AutomationRulesPage.tsx | 723 |
+| `create-rule-form` | client/src/pages/AutomationRulesPage.tsx | 455 |
+| `rules-loading` | client/src/pages/AutomationRulesPage.tsx | 733 |
+| `rules-error` | client/src/pages/AutomationRulesPage.tsx | 739 |
+| `rules-list` | client/src/pages/AutomationRulesPage.tsx | 774 |
+| `rules-empty-state` | client/src/pages/AutomationRulesPage.tsx | 749 |
 | `change-password-hint` | client/src/pages/ChangePasswordPage.tsx | 39 |
 | `churn-expansion-insights-error` | client/src/pages/ChurnExpansionInsightsPage.tsx | 99 |
 | `at-risk-accounts-heading` | client/src/pages/ChurnExpansionInsightsPage.tsx | 111 |
@@ -538,49 +538,49 @@ _None — all test-referenced testids are present in the application source._
 | `results-count` | client/src/pages/CustomReportBuilderPage.tsx | 1082 |
 | `report-chart` | client/src/pages/CustomReportBuilderPage.tsx | 1094 |
 | `report-results` | client/src/pages/CustomReportBuilderPage.tsx | 1077 |
-| `my-performance-view-all` | client/src/pages/DashboardPage.tsx | 172 |
-| `my-performance-list` | client/src/pages/DashboardPage.tsx | 177 |
-| `my-performance-section` | client/src/pages/DashboardPage.tsx | 163 |
-| `dashboard-loading` | client/src/pages/DashboardPage.tsx | 311 |
-| `dashboard-error` | client/src/pages/DashboardPage.tsx | 317 |
-| `converted-pipeline-footnote` | client/src/pages/DashboardPage.tsx | 419 |
-| `converted-pipeline-unrated-note` | client/src/pages/DashboardPage.tsx | 431 |
-| `converted-pipeline-summary` | client/src/pages/DashboardPage.tsx | 374 |
-| `stage-breakdown-table` | client/src/pages/DashboardPage.tsx | 477 |
-| `stage-breakdown-empty` | client/src/pages/DashboardPage.tsx | 452 |
-| `stage-breakdown` | client/src/pages/DashboardPage.tsx | 442 |
-| `data-hygiene-filter-all` | client/src/pages/DataHygienePage.tsx | 192 |
-| `data-hygiene-filter-contact` | client/src/pages/DataHygienePage.tsx | 192 |
-| `data-hygiene-filter-account` | client/src/pages/DataHygienePage.tsx | 192 |
-| `data-hygiene-filter-opportunity` | client/src/pages/DataHygienePage.tsx | 192 |
-| `data-hygiene-action-error` | client/src/pages/DataHygienePage.tsx | 208 |
-| `data-hygiene-error` | client/src/pages/DataHygienePage.tsx | 222 |
-| `data-hygiene-merge-cancel` | client/src/pages/DataHygienePage.tsx | 429 |
-| `data-hygiene-merge-confirm` | client/src/pages/DataHygienePage.tsx | 443 |
-| `data-hygiene-merge-dialog` | client/src/pages/DataHygienePage.tsx | 395 |
-| `back-to-deals` | client/src/pages/DealDetailPage.tsx | 411 |
-| `deal-detail-actions` | client/src/pages/DealDetailPage.tsx | 435 |
-| `export-pdf-error` | client/src/pages/DealDetailPage.tsx | 479 |
-| `delete-error` | client/src/pages/DealDetailPage.tsx | 484 |
-| `converted-from-lead-banner` | client/src/pages/DealDetailPage.tsx | 496 |
-| `stage-advancement-rationale` | client/src/pages/DealDetailPage.tsx | 520 |
-| `detail-stage` | client/src/pages/DealDetailPage.tsx | 600 |
-| `detail-value` | client/src/pages/DealDetailPage.tsx | 605 |
-| `detail-close-date` | client/src/pages/DealDetailPage.tsx | 610 |
-| `detail-probability` | client/src/pages/DealDetailPage.tsx | 625 |
-| `detail-loss-reason` | client/src/pages/DealDetailPage.tsx | 632 |
-| `detail-owner` | client/src/pages/DealDetailPage.tsx | 643 |
-| `deal-health-narrative` | client/src/pages/DealDetailPage.tsx | 699 |
-| `deal-health-next-actions` | client/src/pages/DealDetailPage.tsx | 704 |
-| `proposal-draft-heading` | client/src/pages/DealDetailPage.tsx | 728 |
-| `proposal-draft-error` | client/src/pages/DealDetailPage.tsx | 752 |
-| `stakeholder-map-heading` | client/src/pages/DealDetailPage.tsx | 783 |
-| `single-threaded-risk-warning` | client/src/pages/DealDetailPage.tsx | 792 |
-| `stakeholder-map-summary` | client/src/pages/DealDetailPage.tsx | 797 |
-| `linked-contacts-list` | client/src/pages/DealDetailPage.tsx | 827 |
-| `contacts-fetch-error` | client/src/pages/DealDetailPage.tsx | 897 |
-| `link-contact-form` | client/src/pages/DealDetailPage.tsx | 905 |
-| `link-contact-error` | client/src/pages/DealDetailPage.tsx | 939 |
+| `my-performance-view-all` | client/src/pages/DashboardPage.tsx | 173 |
+| `my-performance-list` | client/src/pages/DashboardPage.tsx | 178 |
+| `my-performance-section` | client/src/pages/DashboardPage.tsx | 164 |
+| `dashboard-loading` | client/src/pages/DashboardPage.tsx | 312 |
+| `dashboard-error` | client/src/pages/DashboardPage.tsx | 318 |
+| `converted-pipeline-footnote` | client/src/pages/DashboardPage.tsx | 420 |
+| `converted-pipeline-unrated-note` | client/src/pages/DashboardPage.tsx | 430 |
+| `converted-pipeline-summary` | client/src/pages/DashboardPage.tsx | 375 |
+| `stage-breakdown-table` | client/src/pages/DashboardPage.tsx | 476 |
+| `stage-breakdown-empty` | client/src/pages/DashboardPage.tsx | 451 |
+| `stage-breakdown` | client/src/pages/DashboardPage.tsx | 441 |
+| `data-hygiene-filter-all` | client/src/pages/DataHygienePage.tsx | 193 |
+| `data-hygiene-filter-contact` | client/src/pages/DataHygienePage.tsx | 193 |
+| `data-hygiene-filter-account` | client/src/pages/DataHygienePage.tsx | 193 |
+| `data-hygiene-filter-opportunity` | client/src/pages/DataHygienePage.tsx | 193 |
+| `data-hygiene-action-error` | client/src/pages/DataHygienePage.tsx | 209 |
+| `data-hygiene-error` | client/src/pages/DataHygienePage.tsx | 223 |
+| `data-hygiene-merge-cancel` | client/src/pages/DataHygienePage.tsx | 430 |
+| `data-hygiene-merge-confirm` | client/src/pages/DataHygienePage.tsx | 444 |
+| `data-hygiene-merge-dialog` | client/src/pages/DataHygienePage.tsx | 396 |
+| `back-to-deals` | client/src/pages/DealDetailPage.tsx | 412 |
+| `deal-detail-actions` | client/src/pages/DealDetailPage.tsx | 436 |
+| `export-pdf-error` | client/src/pages/DealDetailPage.tsx | 480 |
+| `delete-error` | client/src/pages/DealDetailPage.tsx | 485 |
+| `converted-from-lead-banner` | client/src/pages/DealDetailPage.tsx | 497 |
+| `stage-advancement-rationale` | client/src/pages/DealDetailPage.tsx | 521 |
+| `detail-stage` | client/src/pages/DealDetailPage.tsx | 601 |
+| `detail-value` | client/src/pages/DealDetailPage.tsx | 606 |
+| `detail-close-date` | client/src/pages/DealDetailPage.tsx | 611 |
+| `detail-probability` | client/src/pages/DealDetailPage.tsx | 626 |
+| `detail-loss-reason` | client/src/pages/DealDetailPage.tsx | 633 |
+| `detail-owner` | client/src/pages/DealDetailPage.tsx | 644 |
+| `deal-health-narrative` | client/src/pages/DealDetailPage.tsx | 700 |
+| `deal-health-next-actions` | client/src/pages/DealDetailPage.tsx | 705 |
+| `proposal-draft-heading` | client/src/pages/DealDetailPage.tsx | 729 |
+| `proposal-draft-error` | client/src/pages/DealDetailPage.tsx | 753 |
+| `stakeholder-map-heading` | client/src/pages/DealDetailPage.tsx | 784 |
+| `single-threaded-risk-warning` | client/src/pages/DealDetailPage.tsx | 793 |
+| `stakeholder-map-summary` | client/src/pages/DealDetailPage.tsx | 798 |
+| `linked-contacts-list` | client/src/pages/DealDetailPage.tsx | 828 |
+| `contacts-fetch-error` | client/src/pages/DealDetailPage.tsx | 898 |
+| `link-contact-form` | client/src/pages/DealDetailPage.tsx | 906 |
+| `link-contact-error` | client/src/pages/DealDetailPage.tsx | 940 |
 | `deals-export-all-button` | client/src/pages/DealsPage.tsx | 632 |
 | `deals-view-toggle` | client/src/pages/DealsPage.tsx | 645 |
 | `toggle-closed-deals` | client/src/pages/DealsPage.tsx | 731 |
@@ -594,39 +594,39 @@ _None — all test-referenced testids are present in the application source._
 | `pipeline-summary-bar` | client/src/pages/DealsPage.tsx | 1062 |
 | `deals-list-empty-state` | client/src/pages/DealsPage.tsx | 1096 |
 | `forgot-password-back-to-login` | client/src/pages/ForgotPasswordPage.tsx | 109 |
-| `back-to-leads` | client/src/pages/LeadDetailPage.tsx | 178 |
-| `lead-name` | client/src/pages/LeadDetailPage.tsx | 197 |
-| `lead-status-badge` | client/src/pages/LeadDetailPage.tsx | 212 |
-| `lead-converted-badge` | client/src/pages/LeadDetailPage.tsx | 205 |
-| `export-pdf-error` | client/src/pages/LeadDetailPage.tsx | 276 |
-| `delete-error` | client/src/pages/LeadDetailPage.tsx | 281 |
-| `converted-contact-link` | client/src/pages/LeadDetailPage.tsx | 441 |
-| `converted-account-link` | client/src/pages/LeadDetailPage.tsx | 450 |
-| `converted-deal-link` | client/src/pages/LeadDetailPage.tsx | 459 |
-| `leads-export-menu-button` | client/src/pages/LeadsPage.tsx | 348 |
-| `leads-export-csv-button` | client/src/pages/LeadsPage.tsx | 352 |
-| `leads-export-pdf-button` | client/src/pages/LeadsPage.tsx | 368 |
-| `leads-export-all-button` | client/src/pages/LeadsPage.tsx | 384 |
-| `duplicate-go-to-existing` | client/src/pages/LeadsPage.tsx | 423 |
-| `create-lead-error` | client/src/pages/LeadsPage.tsx | 440 |
-| `leads-bulk-reassign-button` | client/src/pages/LeadsPage.tsx | 475 |
-| `leads-bulk-delete-button` | client/src/pages/LeadsPage.tsx | 481 |
-| `leads-loading` | client/src/pages/LeadsPage.tsx | 517 |
-| `leads-error` | client/src/pages/LeadsPage.tsx | 522 |
-| `leads-select-all` | client/src/pages/LeadsPage.tsx | 658 |
-| `filter-status` | client/src/pages/LeadsPage.tsx | 545 |
-| `filter-source` | client/src/pages/LeadsPage.tsx | 563 |
-| `leads-empty-state` | client/src/pages/LeadsPage.tsx | 607 |
+| `back-to-leads` | client/src/pages/LeadDetailPage.tsx | 179 |
+| `lead-name` | client/src/pages/LeadDetailPage.tsx | 198 |
+| `lead-status-badge` | client/src/pages/LeadDetailPage.tsx | 213 |
+| `lead-converted-badge` | client/src/pages/LeadDetailPage.tsx | 206 |
+| `export-pdf-error` | client/src/pages/LeadDetailPage.tsx | 277 |
+| `delete-error` | client/src/pages/LeadDetailPage.tsx | 282 |
+| `converted-contact-link` | client/src/pages/LeadDetailPage.tsx | 442 |
+| `converted-account-link` | client/src/pages/LeadDetailPage.tsx | 451 |
+| `converted-deal-link` | client/src/pages/LeadDetailPage.tsx | 460 |
+| `leads-export-menu-button` | client/src/pages/LeadsPage.tsx | 349 |
+| `leads-export-csv-button` | client/src/pages/LeadsPage.tsx | 353 |
+| `leads-export-pdf-button` | client/src/pages/LeadsPage.tsx | 369 |
+| `leads-export-all-button` | client/src/pages/LeadsPage.tsx | 385 |
+| `duplicate-go-to-existing` | client/src/pages/LeadsPage.tsx | 424 |
+| `create-lead-error` | client/src/pages/LeadsPage.tsx | 441 |
+| `leads-bulk-reassign-button` | client/src/pages/LeadsPage.tsx | 476 |
+| `leads-bulk-delete-button` | client/src/pages/LeadsPage.tsx | 482 |
+| `leads-loading` | client/src/pages/LeadsPage.tsx | 518 |
+| `leads-error` | client/src/pages/LeadsPage.tsx | 523 |
+| `leads-select-all` | client/src/pages/LeadsPage.tsx | 659 |
+| `filter-status` | client/src/pages/LeadsPage.tsx | 546 |
+| `filter-source` | client/src/pages/LeadsPage.tsx | 564 |
+| `leads-empty-state` | client/src/pages/LeadsPage.tsx | 608 |
 | `sso-error-banner` | client/src/pages/LoginPage.tsx | 139 |
 | `login-forgot-password` | client/src/pages/LoginPage.tsx | 220 |
-| `tasks-bulk-delete-button` | client/src/pages/MyTasksPage.tsx | 219 |
-| `complete-error` | client/src/pages/MyTasksPage.tsx | 255 |
-| `tasks-select-all` | client/src/pages/MyTasksPage.tsx | 335 |
-| `my-tasks-table` | client/src/pages/MyTasksPage.tsx | 324 |
-| `my-tasks-empty-state` | client/src/pages/MyTasksPage.tsx | 266 |
-| `completed-tasks-empty` | client/src/pages/MyTasksPage.tsx | 595 |
-| `my-tasks-error` | client/src/pages/MyTasksPage.tsx | 248 |
-| `my-tasks-loading` | client/src/pages/MyTasksPage.tsx | 241 |
+| `tasks-bulk-delete-button` | client/src/pages/MyTasksPage.tsx | 220 |
+| `complete-error` | client/src/pages/MyTasksPage.tsx | 256 |
+| `tasks-select-all` | client/src/pages/MyTasksPage.tsx | 336 |
+| `my-tasks-table` | client/src/pages/MyTasksPage.tsx | 325 |
+| `my-tasks-empty-state` | client/src/pages/MyTasksPage.tsx | 267 |
+| `completed-tasks-empty` | client/src/pages/MyTasksPage.tsx | 596 |
+| `my-tasks-error` | client/src/pages/MyTasksPage.tsx | 249 |
+| `my-tasks-loading` | client/src/pages/MyTasksPage.tsx | 242 |
 | `profile-lang-loading` | client/src/pages/ProfilePage.tsx | 207 |
 | `profile-lang-error` | client/src/pages/ProfilePage.tsx | 213 |
 | `profile-language-select` | client/src/pages/ProfilePage.tsx | 234 |
@@ -679,11 +679,11 @@ _None — all test-referenced testids are present in the application source._
 | `sequences-error` | client/src/pages/SequencesPage.tsx | 202 |
 | `set-password-hint` | client/src/pages/SetPasswordPage.tsx | 28 |
 | `set-password-login-link` | client/src/pages/SetPasswordPage.tsx | 136 |
-| `report-filters` | client/src/pages/StageTrendReportPage.tsx | 285 |
-| `report-error` | client/src/pages/StageTrendReportPage.tsx | 319 |
-| `stage-trend-chart` | client/src/pages/StageTrendReportPage.tsx | 340 |
-| `stage-trend-chart-container` | client/src/pages/StageTrendReportPage.tsx | 336 |
-| `stage-trend-table-container` | client/src/pages/StageTrendReportPage.tsx | 351 |
+| `report-filters` | client/src/pages/StageTrendReportPage.tsx | 283 |
+| `report-error` | client/src/pages/StageTrendReportPage.tsx | 317 |
+| `stage-trend-chart` | client/src/pages/StageTrendReportPage.tsx | 338 |
+| `stage-trend-chart-container` | client/src/pages/StageTrendReportPage.tsx | 334 |
+| `stage-trend-table-container` | client/src/pages/StageTrendReportPage.tsx | 349 |
 | `invite-form-toggle` | client/src/pages/UsersPage.tsx | 101 |
 | `bulk-activate-button` | client/src/pages/UsersPage.tsx | 622 |
 | `bulk-deactivate-button` | client/src/pages/UsersPage.tsx | 628 |
@@ -719,36 +719,36 @@ _None — all test-referenced testids are present in the application source._
 | `loss-patterns-empty` | client/src/pages/WinLossInsightsPage.tsx | 194 |
 | `loss-reason-trends-list` | client/src/pages/WinLossInsightsPage.tsx | 224 |
 | `loss-reason-trends-empty` | client/src/pages/WinLossInsightsPage.tsx | 219 |
-| `report-error` | client/src/pages/WinLossReportPage.tsx | 116 |
-| `converted-totals-footnote` | client/src/pages/WinLossReportPage.tsx | 263 |
-| `converted-totals-unrated-note` | client/src/pages/WinLossReportPage.tsx | 273 |
-| `converted-totals-summary` | client/src/pages/WinLossReportPage.tsx | 218 |
-| `loss-reason-table` | client/src/pages/WinLossReportPage.tsx | 301 |
-| `loss-reason-empty` | client/src/pages/WinLossReportPage.tsx | 294 |
-| `loss-reason-breakdown` | client/src/pages/WinLossReportPage.tsx | 283 |
-| `rep-breakdown-table` | client/src/pages/WinLossReportPage.tsx | 358 |
-| `rep-breakdown-empty` | client/src/pages/WinLossReportPage.tsx | 350 |
-| `rep-breakdown-table-container` | client/src/pages/WinLossReportPage.tsx | 340 |
-| `ai-settings-loading` | client/src/pages/admin/AiSettings.tsx | 188 |
-| `ai-settings-error` | client/src/pages/admin/AiSettings.tsx | 196 |
-| `ai-toggle-status-label` | client/src/pages/admin/AiSettings.tsx | 248 |
-| `ai-usage-dashboard-heading` | client/src/pages/admin/AiUsageDashboardPage.tsx | 159 |
-| `ai-usage-export-error` | client/src/pages/admin/AiUsageDashboardPage.tsx | 194 |
-| `ai-usage-export-pdf-error` | client/src/pages/admin/AiUsageDashboardPage.tsx | 200 |
-| `ai-usage-disclaimer` | client/src/pages/admin/AiUsageDashboardPage.tsx | 208 |
-| `ai-usage-custom-start-input` | client/src/pages/admin/AiUsageDashboardPage.tsx | 273 |
-| `ai-usage-custom-end-input` | client/src/pages/admin/AiUsageDashboardPage.tsx | 286 |
-| `ai-usage-summary-loading` | client/src/pages/admin/AiUsageDashboardPage.tsx | 293 |
-| `ai-usage-summary-error` | client/src/pages/admin/AiUsageDashboardPage.tsx | 300 |
-| `ai-usage-cost-card` | client/src/pages/admin/AiUsageDashboardPage.tsx | 328 |
-| `ai-usage-trend-card` | client/src/pages/admin/AiUsageDashboardPage.tsx | 339 |
-| `ai-usage-daily-loading` | client/src/pages/admin/AiUsageDashboardPage.tsx | 363 |
-| `ai-usage-daily-error` | client/src/pages/admin/AiUsageDashboardPage.tsx | 367 |
-| `ai-usage-daily-bars` | client/src/pages/admin/AiUsageDashboardPage.tsx | 378 |
-| `ai-usage-daily-empty` | client/src/pages/admin/AiUsageDashboardPage.tsx | 374 |
-| `ai-usage-daily-chart` | client/src/pages/admin/AiUsageDashboardPage.tsx | 355 |
-| `ai-usage-per-feature-table` | client/src/pages/admin/AiUsageDashboardPage.tsx | 469 |
-| `ai-usage-dashboard-page` | client/src/pages/admin/AiUsageDashboardPage.tsx | 154 |
+| `report-error` | client/src/pages/WinLossReportPage.tsx | 117 |
+| `converted-totals-footnote` | client/src/pages/WinLossReportPage.tsx | 264 |
+| `converted-totals-unrated-note` | client/src/pages/WinLossReportPage.tsx | 272 |
+| `converted-totals-summary` | client/src/pages/WinLossReportPage.tsx | 219 |
+| `loss-reason-table` | client/src/pages/WinLossReportPage.tsx | 300 |
+| `loss-reason-empty` | client/src/pages/WinLossReportPage.tsx | 293 |
+| `loss-reason-breakdown` | client/src/pages/WinLossReportPage.tsx | 282 |
+| `rep-breakdown-table` | client/src/pages/WinLossReportPage.tsx | 357 |
+| `rep-breakdown-empty` | client/src/pages/WinLossReportPage.tsx | 349 |
+| `rep-breakdown-table-container` | client/src/pages/WinLossReportPage.tsx | 339 |
+| `ai-settings-loading` | client/src/pages/admin/AiSettings.tsx | 178 |
+| `ai-settings-error` | client/src/pages/admin/AiSettings.tsx | 186 |
+| `ai-toggle-status-label` | client/src/pages/admin/AiSettings.tsx | 238 |
+| `ai-usage-dashboard-heading` | client/src/pages/admin/AiUsageDashboardPage.tsx | 160 |
+| `ai-usage-export-error` | client/src/pages/admin/AiUsageDashboardPage.tsx | 195 |
+| `ai-usage-export-pdf-error` | client/src/pages/admin/AiUsageDashboardPage.tsx | 201 |
+| `ai-usage-disclaimer` | client/src/pages/admin/AiUsageDashboardPage.tsx | 209 |
+| `ai-usage-custom-start-input` | client/src/pages/admin/AiUsageDashboardPage.tsx | 274 |
+| `ai-usage-custom-end-input` | client/src/pages/admin/AiUsageDashboardPage.tsx | 287 |
+| `ai-usage-summary-loading` | client/src/pages/admin/AiUsageDashboardPage.tsx | 294 |
+| `ai-usage-summary-error` | client/src/pages/admin/AiUsageDashboardPage.tsx | 301 |
+| `ai-usage-cost-card` | client/src/pages/admin/AiUsageDashboardPage.tsx | 329 |
+| `ai-usage-trend-card` | client/src/pages/admin/AiUsageDashboardPage.tsx | 340 |
+| `ai-usage-daily-loading` | client/src/pages/admin/AiUsageDashboardPage.tsx | 364 |
+| `ai-usage-daily-error` | client/src/pages/admin/AiUsageDashboardPage.tsx | 368 |
+| `ai-usage-daily-bars` | client/src/pages/admin/AiUsageDashboardPage.tsx | 379 |
+| `ai-usage-daily-empty` | client/src/pages/admin/AiUsageDashboardPage.tsx | 375 |
+| `ai-usage-daily-chart` | client/src/pages/admin/AiUsageDashboardPage.tsx | 356 |
+| `ai-usage-per-feature-table` | client/src/pages/admin/AiUsageDashboardPage.tsx | 470 |
+| `ai-usage-dashboard-page` | client/src/pages/admin/AiUsageDashboardPage.tsx | 155 |
 | `contrast-indicator` | client/src/pages/admin/BrandingSettings.tsx | 68 |
 | `branding-preview` | client/src/pages/admin/BrandingSettings.tsx | 89 |
 | `branding-section-title` | client/src/pages/admin/BrandingSettings.tsx | 211 |
@@ -764,17 +764,17 @@ _None — all test-referenced testids are present in the application source._
 | `branding-reset-section` | client/src/pages/admin/BrandingSettings.tsx | 385 |
 | `branding-loading` | client/src/pages/admin/BrandingSettings.tsx | 459 |
 | `branding-load-error` | client/src/pages/admin/BrandingSettings.tsx | 467 |
-| `currency-section-title` | client/src/pages/admin/CurrencySettings.tsx | 183 |
-| `currency-loading` | client/src/pages/admin/CurrencySettings.tsx | 190 |
-| `currency-load-error` | client/src/pages/admin/CurrencySettings.tsx | 195 |
-| `default-currency-select` | client/src/pages/admin/CurrencySettings.tsx | 204 |
-| `currency-save-button` | client/src/pages/admin/CurrencySettings.tsx | 223 |
-| `currency-save-success` | client/src/pages/admin/CurrencySettings.tsx | 234 |
-| `currency-save-error` | client/src/pages/admin/CurrencySettings.tsx | 240 |
-| `exchange-rate-recalculated-banner` | client/src/pages/admin/CurrencySettings.tsx | 261 |
-| `exchange-rate-table` | client/src/pages/admin/CurrencySettings.tsx | 291 |
-| `add-currency-cancel` | client/src/pages/admin/CurrencySettings.tsx | 453 |
-| `exchange-rate-save-error` | client/src/pages/admin/CurrencySettings.tsx | 492 |
+| `currency-section-title` | client/src/pages/admin/CurrencySettings.tsx | 184 |
+| `currency-loading` | client/src/pages/admin/CurrencySettings.tsx | 191 |
+| `currency-load-error` | client/src/pages/admin/CurrencySettings.tsx | 196 |
+| `default-currency-select` | client/src/pages/admin/CurrencySettings.tsx | 205 |
+| `currency-save-button` | client/src/pages/admin/CurrencySettings.tsx | 224 |
+| `currency-save-success` | client/src/pages/admin/CurrencySettings.tsx | 235 |
+| `currency-save-error` | client/src/pages/admin/CurrencySettings.tsx | 241 |
+| `exchange-rate-recalculated-banner` | client/src/pages/admin/CurrencySettings.tsx | 262 |
+| `exchange-rate-table` | client/src/pages/admin/CurrencySettings.tsx | 292 |
+| `add-currency-cancel` | client/src/pages/admin/CurrencySettings.tsx | 454 |
+| `exchange-rate-save-error` | client/src/pages/admin/CurrencySettings.tsx | 493 |
 | `pipelines-section-title` | client/src/pages/admin/CustomisationSettings.tsx | 559 |
 | `pipelines-list` | client/src/pages/admin/CustomisationSettings.tsx | 577 |
 | `create-pipeline-cancel-button` | client/src/pages/admin/CustomisationSettings.tsx | 716 |
@@ -824,20 +824,20 @@ _None — all test-referenced testids are present in the application source._
 | `audit-log-section-title` | client/src/pages/admin/DataSettings.tsx | 391 |
 | `audit-log-link` | client/src/pages/admin/DataSettings.tsx | 399 |
 | `audit-log-section` | client/src/pages/admin/DataSettings.tsx | 387 |
-| `feature-flag-confirm-cancel` | client/src/pages/admin/FeatureFlagsSettings.tsx | 156 |
-| `group-create-open` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1063 |
-| `group-create-label` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1096 |
-| `group-create-key` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1111 |
-| `group-create-description` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1130 |
-| `group-create-submit` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1142 |
-| `group-create-cancel` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1153 |
-| `group-create-form` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1073 |
-| `groups-section-heading` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1252 |
-| `delete-group-error` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1275 |
-| `groups-section-heading` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1283 |
-| `feature-flags-loading` | client/src/pages/admin/FeatureFlagsSettings.tsx | 2018 |
-| `feature-flags-error` | client/src/pages/admin/FeatureFlagsSettings.tsx | 2030 |
-| `feature-flags-empty` | client/src/pages/admin/FeatureFlagsSettings.tsx | 2039 |
+| `feature-flag-confirm-cancel` | client/src/pages/admin/FeatureFlagsSettings.tsx | 131 |
+| `group-create-open` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1042 |
+| `group-create-label` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1075 |
+| `group-create-key` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1090 |
+| `group-create-description` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1109 |
+| `group-create-submit` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1121 |
+| `group-create-cancel` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1132 |
+| `group-create-form` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1052 |
+| `groups-section-heading` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1231 |
+| `delete-group-error` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1254 |
+| `groups-section-heading` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1262 |
+| `feature-flags-loading` | client/src/pages/admin/FeatureFlagsSettings.tsx | 2003 |
+| `feature-flags-error` | client/src/pages/admin/FeatureFlagsSettings.tsx | 2015 |
+| `feature-flags-empty` | client/src/pages/admin/FeatureFlagsSettings.tsx | 2024 |
 | `settings-loading` | client/src/pages/admin/GeneralSettings.tsx | 83 |
 | `settings-load-error` | client/src/pages/admin/GeneralSettings.tsx | 89 |
 | `default-language-select` | client/src/pages/admin/GeneralSettings.tsx | 112 |
@@ -928,22 +928,22 @@ _None — all test-referenced testids are present in the application source._
 | `roles-settings-update-error` | client/src/pages/admin/RolesSettings.tsx | 493 |
 | `roles-settings-list` | client/src/pages/admin/RolesSettings.tsx | 471 |
 | `roles-settings-panel` | client/src/pages/admin/RolesSettings.tsx | 419 |
-| `scim-section-title` | client/src/pages/admin/ScimSettings.tsx | 109 |
-| `scim-token-loading` | client/src/pages/admin/ScimSettings.tsx | 120 |
-| `scim-token-error` | client/src/pages/admin/ScimSettings.tsx | 126 |
-| `scim-no-token` | client/src/pages/admin/ScimSettings.tsx | 147 |
-| `scim-token-meta` | client/src/pages/admin/ScimSettings.tsx | 134 |
-| `scim-raw-token` | client/src/pages/admin/ScimSettings.tsx | 163 |
-| `scim-copy-token-button` | client/src/pages/admin/ScimSettings.tsx | 171 |
-| `scim-new-token-banner` | client/src/pages/admin/ScimSettings.tsx | 155 |
-| `scim-token-mutation-error` | client/src/pages/admin/ScimSettings.tsx | 184 |
-| `scim-generate-token-button` | client/src/pages/admin/ScimSettings.tsx | 195 |
-| `scim-revoke-token-button` | client/src/pages/admin/ScimSettings.tsx | 211 |
-| `scim-mappings-loading` | client/src/pages/admin/ScimSettings.tsx | 229 |
-| `scim-mappings-error` | client/src/pages/admin/ScimSettings.tsx | 235 |
-| `scim-no-mappings` | client/src/pages/admin/ScimSettings.tsx | 290 |
-| `scim-mappings-table` | client/src/pages/admin/ScimSettings.tsx | 245 |
-| `scim-section` | client/src/pages/admin/ScimSettings.tsx | 107 |
+| `scim-section-title` | client/src/pages/admin/ScimSettings.tsx | 110 |
+| `scim-token-loading` | client/src/pages/admin/ScimSettings.tsx | 121 |
+| `scim-token-error` | client/src/pages/admin/ScimSettings.tsx | 127 |
+| `scim-no-token` | client/src/pages/admin/ScimSettings.tsx | 148 |
+| `scim-token-meta` | client/src/pages/admin/ScimSettings.tsx | 135 |
+| `scim-raw-token` | client/src/pages/admin/ScimSettings.tsx | 164 |
+| `scim-copy-token-button` | client/src/pages/admin/ScimSettings.tsx | 172 |
+| `scim-new-token-banner` | client/src/pages/admin/ScimSettings.tsx | 156 |
+| `scim-token-mutation-error` | client/src/pages/admin/ScimSettings.tsx | 185 |
+| `scim-generate-token-button` | client/src/pages/admin/ScimSettings.tsx | 196 |
+| `scim-revoke-token-button` | client/src/pages/admin/ScimSettings.tsx | 212 |
+| `scim-mappings-loading` | client/src/pages/admin/ScimSettings.tsx | 230 |
+| `scim-mappings-error` | client/src/pages/admin/ScimSettings.tsx | 236 |
+| `scim-no-mappings` | client/src/pages/admin/ScimSettings.tsx | 291 |
+| `scim-mappings-table` | client/src/pages/admin/ScimSettings.tsx | 246 |
+| `scim-section` | client/src/pages/admin/ScimSettings.tsx | 108 |
 | `sso-section-title` | client/src/pages/admin/SsoSettings.tsx | 124 |
 | `sso-loading` | client/src/pages/admin/SsoSettings.tsx | 130 |
 | `sso-load-error` | client/src/pages/admin/SsoSettings.tsx | 136 |
@@ -975,18 +975,18 @@ _None — all test-referenced testids are present in the application source._
 | `visibility-settings-title` | client/src/pages/admin/VisibilitySettings.tsx | 106 |
 | `visibility-activities-select` | client/src/pages/admin/VisibilitySettings.tsx | 146 |
 | `visibility-settings-save-error` | client/src/pages/admin/VisibilitySettings.tsx | 192 |
-| `webhook-logs-close-button` | client/src/pages/admin/WebhookSettings.tsx | 78 |
-| `webhook-logs-prev-button` | client/src/pages/admin/WebhookSettings.tsx | 150 |
-| `webhook-logs-next-button` | client/src/pages/admin/WebhookSettings.tsx | 161 |
-| `webhook-logs-panel` | client/src/pages/admin/WebhookSettings.tsx | 68 |
-| `webhook-secret-copy-button` | client/src/pages/admin/WebhookSettings.tsx | 206 |
-| `webhook-success-msg` | client/src/pages/admin/WebhookSettings.tsx | 329 |
-| `webhook-error-msg` | client/src/pages/admin/WebhookSettings.tsx | 337 |
-| `webhook-subscriptions-table` | client/src/pages/admin/WebhookSettings.tsx | 356 |
-| `webhook-empty-state` | client/src/pages/admin/WebhookSettings.tsx | 351 |
-| `webhook-load-error` | client/src/pages/admin/WebhookSettings.tsx | 345 |
-| `webhook-events-select` | client/src/pages/admin/WebhookSettings.tsx | 437 |
-| `webhook-delete-cancel-button` | client/src/pages/admin/WebhookSettings.tsx | 485 |
+| `webhook-logs-close-button` | client/src/pages/admin/WebhookSettings.tsx | 79 |
+| `webhook-logs-prev-button` | client/src/pages/admin/WebhookSettings.tsx | 151 |
+| `webhook-logs-next-button` | client/src/pages/admin/WebhookSettings.tsx | 162 |
+| `webhook-logs-panel` | client/src/pages/admin/WebhookSettings.tsx | 69 |
+| `webhook-secret-copy-button` | client/src/pages/admin/WebhookSettings.tsx | 207 |
+| `webhook-success-msg` | client/src/pages/admin/WebhookSettings.tsx | 330 |
+| `webhook-error-msg` | client/src/pages/admin/WebhookSettings.tsx | 338 |
+| `webhook-subscriptions-table` | client/src/pages/admin/WebhookSettings.tsx | 357 |
+| `webhook-empty-state` | client/src/pages/admin/WebhookSettings.tsx | 352 |
+| `webhook-load-error` | client/src/pages/admin/WebhookSettings.tsx | 346 |
+| `webhook-events-select` | client/src/pages/admin/WebhookSettings.tsx | 438 |
+| `webhook-delete-cancel-button` | client/src/pages/admin/WebhookSettings.tsx | 486 |
 | `ai-coaching-min-closed-deals-input` | client/src/pages/admin/ai-settings/AiCoachingSection.tsx | 170 |
 | `ai-coaching-stage-ratio-input` | client/src/pages/admin/ai-settings/AiCoachingSection.tsx | 188 |
 | `ai-coaching-activity-ratio-input` | client/src/pages/admin/ai-settings/AiCoachingSection.tsx | 207 |
@@ -1028,19 +1028,19 @@ _None — all test-referenced testids are present in the application source._
 | `ai-retention-stats-loading` | client/src/pages/admin/ai-settings/AiDataRetentionSection.tsx | 264 |
 | `ai-retention-stats-error` | client/src/pages/admin/ai-settings/AiDataRetentionSection.tsx | 268 |
 | `ai-purge-error` | client/src/pages/admin/ai-settings/AiDataRetentionSection.tsx | 302 |
-| `ai-deployment-mode-badge` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 202 |
-| `ai-base-url-input` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 338 |
-| `ai-api-key-cancel-button` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 389 |
-| `ai-api-key-change-button` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 360 |
-| `ai-config-save-success` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 434 |
-| `ai-config-save-error` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 439 |
-| `ai-provider-dpa-link` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 467 |
-| `ai-custom-dpa-url-input` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 489 |
-| `ai-dpa-not-acknowledged-state` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 504 |
-| `ai-dpa-acknowledged-state` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 497 |
-| `ai-dpa-save-success` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 529 |
-| `ai-dpa-save-error` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 534 |
-| `ai-dpa-self-hosted-notice` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 544 |
+| `ai-deployment-mode-badge` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 192 |
+| `ai-base-url-input` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 328 |
+| `ai-api-key-cancel-button` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 379 |
+| `ai-api-key-change-button` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 350 |
+| `ai-config-save-success` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 424 |
+| `ai-config-save-error` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 429 |
+| `ai-provider-dpa-link` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 457 |
+| `ai-custom-dpa-url-input` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 479 |
+| `ai-dpa-not-acknowledged-state` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 494 |
+| `ai-dpa-acknowledged-state` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 487 |
+| `ai-dpa-save-success` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 519 |
+| `ai-dpa-save-error` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 524 |
+| `ai-dpa-self-hosted-notice` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 534 |
 | `lead-routing-low-confidence-threshold-input` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 184 |
 | `lead-routing-medium-confidence-threshold-input` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 203 |
 | `lead-routing-min-closed-deals-input` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 221 |
@@ -1081,32 +1081,32 @@ _None — all test-referenced testids are present in the application source._
 | `account-health-sparkline-*` | client/src/components/AccountHealthSparkline.tsx | 44 | app |
 | `activity-summary-task-dismiss-*` | client/src/components/ActivitySummaryModal.tsx | 242 | app |
 | `activity-summary-task-*` | client/src/components/ActivitySummaryModal.tsx | 231 | app |
-| `activity-direction-*` | client/src/components/ActivityTimeline.tsx | 504 | app |
-| `activity-complete-badge-*` | client/src/components/ActivityTimeline.tsx | 510 | app |
-| `activity-subject-*` | client/src/components/ActivityTimeline.tsx | 523 | app |
-| `activity-notes-*` | client/src/components/ActivityTimeline.tsx | 530 | app |
-| `activity-sentiment-flag-*` | client/src/components/ActivityTimeline.tsx | 551 | app |
-| `activity-sentiment-*` | client/src/components/ActivityTimeline.tsx | 546 | app |
-| `activity-outcome-*` | client/src/components/ActivityTimeline.tsx | 567 | app |
-| `activity-due-date-*` | client/src/components/ActivityTimeline.tsx | 575 | app |
-| `activity-meta-*` | client/src/components/ActivityTimeline.tsx | 582 | app |
-| `draft-email-*` | client/src/components/ActivityTimeline.tsx | 599 | app |
-| `generate-brief-*` | client/src/components/ActivityTimeline.tsx | 627 | app |
-| `mark-complete-*` | client/src/components/ActivityTimeline.tsx | 648 | app |
-| `edit-activity-*` | client/src/components/ActivityTimeline.tsx | 670 | app |
-| `delete-activity-*` | client/src/components/ActivityTimeline.tsx | 679 | app |
-| `activity-item-*` | client/src/components/ActivityTimeline.tsx | 431 | app |
-| `attachment-filename-*` | client/src/components/AttachmentsSection.tsx | 305 | app |
-| `attachment-download-*` | client/src/components/AttachmentsSection.tsx | 319 | app |
-| `attachment-delete-*` | client/src/components/AttachmentsSection.tsx | 327 | app |
-| `attachment-row-*` | client/src/components/AttachmentsSection.tsx | 300 | app |
+| `activity-direction-*` | client/src/components/ActivityTimeline.tsx | 506 | app |
+| `activity-complete-badge-*` | client/src/components/ActivityTimeline.tsx | 512 | app |
+| `activity-subject-*` | client/src/components/ActivityTimeline.tsx | 525 | app |
+| `activity-notes-*` | client/src/components/ActivityTimeline.tsx | 532 | app |
+| `activity-sentiment-flag-*` | client/src/components/ActivityTimeline.tsx | 553 | app |
+| `activity-sentiment-*` | client/src/components/ActivityTimeline.tsx | 548 | app |
+| `activity-outcome-*` | client/src/components/ActivityTimeline.tsx | 569 | app |
+| `activity-due-date-*` | client/src/components/ActivityTimeline.tsx | 577 | app |
+| `activity-meta-*` | client/src/components/ActivityTimeline.tsx | 584 | app |
+| `draft-email-*` | client/src/components/ActivityTimeline.tsx | 601 | app |
+| `generate-brief-*` | client/src/components/ActivityTimeline.tsx | 629 | app |
+| `mark-complete-*` | client/src/components/ActivityTimeline.tsx | 650 | app |
+| `edit-activity-*` | client/src/components/ActivityTimeline.tsx | 672 | app |
+| `delete-activity-*` | client/src/components/ActivityTimeline.tsx | 681 | app |
+| `activity-item-*` | client/src/components/ActivityTimeline.tsx | 433 | app |
+| `attachment-filename-*` | client/src/components/AttachmentsSection.tsx | 298 | app |
+| `attachment-download-*` | client/src/components/AttachmentsSection.tsx | 312 | app |
+| `attachment-delete-*` | client/src/components/AttachmentsSection.tsx | 320 | app |
+| `attachment-row-*` | client/src/components/AttachmentsSection.tsx | 293 | app |
 | `bulk-failed-details-row-*` | client/src/components/BulkFailedDetailsModal.tsx | 64 | app |
 | `champion-blocker-badge-*` | client/src/components/ChampionBlockerBadge.tsx | 54 | app |
 | `champion-blocker-why-*` | client/src/components/ChampionBlockerBadge.tsx | 61 | app |
 | `champion-blocker-why-panel-*` | client/src/components/ChampionBlockerBadge.tsx | 73 | app |
 | `champion-blocker-dismiss-*` | client/src/components/ChampionBlockerBadge.tsx | 87 | app |
-| `change-history-time-*` | client/src/components/ChangeHistory.tsx | 206 | app |
-| `change-history-entry-*` | client/src/components/ChangeHistory.tsx | 198 | app |
+| `change-history-time-*` | client/src/components/ChangeHistory.tsx | 153 | app |
+| `change-history-entry-*` | client/src/components/ChangeHistory.tsx | 145 | app |
 | `connected-account-status-*` | client/src/components/ConnectedAccountsPanel.tsx | 256 | app |
 | `connected-account-status-detail-*` | client/src/components/ConnectedAccountsPanel.tsx | 266 | app |
 | `connected-account-test-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 307 | app |
@@ -1185,25 +1185,25 @@ _None — all test-referenced testids are present in the application source._
 | `field-merge-radio-*` | client/src/components/FieldMergeModal.tsx | 311 | app |
 | `field-merge-radio-*` | client/src/components/FieldMergeModal.tsx | 323 | app |
 | `field-merge-row-*` | client/src/components/FieldMergeModal.tsx | 264 | app |
-| `followup-timing-suggestion-*` | client/src/components/FollowUpTimingCard.tsx | 99 | app |
-| `followup-timing-schedule-*` | client/src/components/FollowUpTimingCard.tsx | 110 | app |
-| `followup-timing-schedule-form-*` | client/src/components/FollowUpTimingCard.tsx | 118 | app |
-| `followup-timing-card-*` | client/src/components/FollowUpTimingCard.tsx | 97 | app |
+| `followup-timing-suggestion-*` | client/src/components/FollowUpTimingCard.tsx | 100 | app |
+| `followup-timing-schedule-*` | client/src/components/FollowUpTimingCard.tsx | 111 | app |
+| `followup-timing-schedule-form-*` | client/src/components/FollowUpTimingCard.tsx | 119 | app |
+| `followup-timing-card-*` | client/src/components/FollowUpTimingCard.tsx | 98 | app |
 | `search-result-contact-*` | client/src/components/GlobalSearch.tsx | 114 | app |
 | `search-result-account-*` | client/src/components/GlobalSearch.tsx | 140 | app |
 | `search-result-deal-*` | client/src/components/GlobalSearch.tsx | 163 | app |
 | `search-result-lead-*` | client/src/components/GlobalSearch.tsx | 189 | app |
 | `lead-routing-factor-*` | client/src/components/LeadForm.tsx | 165 | app |
 | `meeting-brief-news-item-*` | client/src/components/MeetingBriefPanel.tsx | 223 | app |
-| `note-tag-remove-*` | client/src/components/NotesSection.tsx | 637 | app |
-| `note-tag-*` | client/src/components/NotesSection.tsx | 630 | app |
-| `note-card-masked-*` | client/src/components/NotesSection.tsx | 724 | app |
-| `note-tag-display-*` | client/src/components/NotesSection.tsx | 751 | app |
-| `note-edit-*` | client/src/components/NotesSection.tsx | 763 | app |
-| `note-delete-*` | client/src/components/NotesSection.tsx | 771 | app |
-| `note-title-*` | client/src/components/NotesSection.tsx | 783 | app |
-| `note-body-*` | client/src/components/NotesSection.tsx | 791 | app |
-| `note-card-*` | client/src/components/NotesSection.tsx | 739 | app |
+| `note-tag-remove-*` | client/src/components/NotesSection.tsx | 625 | app |
+| `note-tag-*` | client/src/components/NotesSection.tsx | 618 | app |
+| `note-card-masked-*` | client/src/components/NotesSection.tsx | 712 | app |
+| `note-tag-display-*` | client/src/components/NotesSection.tsx | 741 | app |
+| `note-edit-*` | client/src/components/NotesSection.tsx | 753 | app |
+| `note-delete-*` | client/src/components/NotesSection.tsx | 761 | app |
+| `note-title-*` | client/src/components/NotesSection.tsx | 773 | app |
+| `note-body-*` | client/src/components/NotesSection.tsx | 781 | app |
+| `note-card-*` | client/src/components/NotesSection.tsx | 727 | app |
 | `notification-item-*` | client/src/components/NotificationBell.tsx | 123 | app |
 | `objection-classification-error-*` | client/src/components/ObjectionInsights.tsx | 63 | app |
 | `objection-category-badge-*` | client/src/components/ObjectionInsights.tsx | 79 | app |
@@ -1317,28 +1317,28 @@ _None — all test-referenced testids are present in the application source._
 | `ai-message-*` | client/src/pages/AiPage.tsx | 88 | app |
 | `ai-session-delete-*` | client/src/pages/AiPage.tsx | 201 | app |
 | `ai-session-item-*` | client/src/pages/AiPage.tsx | 184 | app |
-| `audit-log-time-*` | client/src/pages/AuditLogPage.tsx | 610 | app |
-| `audit-log-actor-*` | client/src/pages/AuditLogPage.tsx | 616 | app |
-| `audit-log-event-*` | client/src/pages/AuditLogPage.tsx | 629 | app |
-| `audit-log-record-type-*` | client/src/pages/AuditLogPage.tsx | 635 | app |
-| `audit-log-summary-*` | client/src/pages/AuditLogPage.tsx | 641 | app |
-| `audit-log-row-button-*` | client/src/pages/AuditLogPage.tsx | 604 | app |
-| `audit-log-detail-*` | client/src/pages/AuditLogPage.tsx | 657 | app |
-| `audit-log-row-*` | client/src/pages/AuditLogPage.tsx | 596 | app |
-| `log-outcome-*` | client/src/pages/AutomationRulesPage.tsx | 237 | app |
-| `log-timestamp-*` | client/src/pages/AutomationRulesPage.tsx | 243 | app |
-| `log-record-*` | client/src/pages/AutomationRulesPage.tsx | 247 | app |
-| `log-error-message-*` | client/src/pages/AutomationRulesPage.tsx | 256 | app |
-| `log-row-*` | client/src/pages/AutomationRulesPage.tsx | 229 | app |
-| `rule-toggle-*` | client/src/pages/AutomationRulesPage.tsx | 808 | app |
-| `rule-name-*` | client/src/pages/AutomationRulesPage.tsx | 821 | app |
-| `rule-trigger-*` | client/src/pages/AutomationRulesPage.tsx | 827 | app |
-| `rule-action-*` | client/src/pages/AutomationRulesPage.tsx | 831 | app |
-| `view-logs-*` | client/src/pages/AutomationRulesPage.tsx | 845 | app |
-| `delete-rule-*` | client/src/pages/AutomationRulesPage.tsx | 875 | app |
-| `confirm-delete-*` | client/src/pages/AutomationRulesPage.tsx | 857 | app |
-| `cancel-delete-*` | client/src/pages/AutomationRulesPage.tsx | 865 | app |
-| `rule-row-*` | client/src/pages/AutomationRulesPage.tsx | 791 | app |
+| `audit-log-time-*` | client/src/pages/AuditLogPage.tsx | 598 | app |
+| `audit-log-actor-*` | client/src/pages/AuditLogPage.tsx | 604 | app |
+| `audit-log-event-*` | client/src/pages/AuditLogPage.tsx | 617 | app |
+| `audit-log-record-type-*` | client/src/pages/AuditLogPage.tsx | 623 | app |
+| `audit-log-summary-*` | client/src/pages/AuditLogPage.tsx | 629 | app |
+| `audit-log-row-button-*` | client/src/pages/AuditLogPage.tsx | 592 | app |
+| `audit-log-detail-*` | client/src/pages/AuditLogPage.tsx | 645 | app |
+| `audit-log-row-*` | client/src/pages/AuditLogPage.tsx | 584 | app |
+| `log-outcome-*` | client/src/pages/AutomationRulesPage.tsx | 226 | app |
+| `log-timestamp-*` | client/src/pages/AutomationRulesPage.tsx | 232 | app |
+| `log-record-*` | client/src/pages/AutomationRulesPage.tsx | 236 | app |
+| `log-error-message-*` | client/src/pages/AutomationRulesPage.tsx | 245 | app |
+| `log-row-*` | client/src/pages/AutomationRulesPage.tsx | 218 | app |
+| `rule-toggle-*` | client/src/pages/AutomationRulesPage.tsx | 797 | app |
+| `rule-name-*` | client/src/pages/AutomationRulesPage.tsx | 810 | app |
+| `rule-trigger-*` | client/src/pages/AutomationRulesPage.tsx | 816 | app |
+| `rule-action-*` | client/src/pages/AutomationRulesPage.tsx | 820 | app |
+| `view-logs-*` | client/src/pages/AutomationRulesPage.tsx | 834 | app |
+| `delete-rule-*` | client/src/pages/AutomationRulesPage.tsx | 864 | app |
+| `confirm-delete-*` | client/src/pages/AutomationRulesPage.tsx | 846 | app |
+| `cancel-delete-*` | client/src/pages/AutomationRulesPage.tsx | 854 | app |
+| `rule-row-*` | client/src/pages/AutomationRulesPage.tsx | 780 | app |
 | `churn-expansion-account-*` | client/src/pages/ChurnExpansionInsightsPage.tsx | 21 | app |
 | `coaching-insight-outlier-badge-*` | client/src/pages/CoachingInsightsPage.tsx | 37 | app |
 | `coaching-insight-*` | client/src/pages/CoachingInsightsPage.tsx | 30 | app |
@@ -1375,25 +1375,25 @@ _None — all test-referenced testids are present in the application source._
 | `delete-report-*` | client/src/pages/CustomReportBuilderPage.tsx | 680 | app |
 | `field-checkbox-*` | client/src/pages/CustomReportBuilderPage.tsx | 774 | app |
 | `result-row-*` | client/src/pages/CustomReportBuilderPage.tsx | 1124 | app |
-| `my-performance-insight-*` | client/src/pages/DashboardPage.tsx | 182 | app |
-| `recent-activity-type-*` | client/src/pages/DashboardPage.tsx | 237 | app |
-| `recent-activity-subject-*` | client/src/pages/DashboardPage.tsx | 245 | app |
-| `recent-activity-record-*` | client/src/pages/DashboardPage.tsx | 262 | app |
-| `recent-activity-record-*` | client/src/pages/DashboardPage.tsx | 255 | app |
-| `recent-activity-time-*` | client/src/pages/DashboardPage.tsx | 271 | app |
-| `recent-activity-*` | client/src/pages/DashboardPage.tsx | 232 | app |
-| `stage-count-*` | client/src/pages/DashboardPage.tsx | 515 | app |
-| `stage-value-*` | client/src/pages/DashboardPage.tsx | 521 | app |
-| `stage-weighted-value-*` | client/src/pages/DashboardPage.tsx | 529 | app |
-| `stage-row-*` | client/src/pages/DashboardPage.tsx | 509 | app |
-| `data-hygiene-update-*` | client/src/pages/DataHygienePage.tsx | 281 | app |
-| `data-hygiene-merge-*` | client/src/pages/DataHygienePage.tsx | 291 | app |
-| `data-hygiene-archive-*` | client/src/pages/DataHygienePage.tsx | 309 | app |
-| `data-hygiene-dismiss-*` | client/src/pages/DataHygienePage.tsx | 327 | app |
-| `data-hygiene-finding-*` | client/src/pages/DataHygienePage.tsx | 258 | app |
-| `data-hygiene-merge-winner-*` | client/src/pages/DataHygienePage.tsx | 417 | app |
-| `linked-contact-*` | client/src/pages/DealDetailPage.tsx | 840 | app |
-| `unlink-contact-*` | client/src/pages/DealDetailPage.tsx | 867 | app |
+| `my-performance-insight-*` | client/src/pages/DashboardPage.tsx | 183 | app |
+| `recent-activity-type-*` | client/src/pages/DashboardPage.tsx | 238 | app |
+| `recent-activity-subject-*` | client/src/pages/DashboardPage.tsx | 246 | app |
+| `recent-activity-record-*` | client/src/pages/DashboardPage.tsx | 263 | app |
+| `recent-activity-record-*` | client/src/pages/DashboardPage.tsx | 256 | app |
+| `recent-activity-time-*` | client/src/pages/DashboardPage.tsx | 272 | app |
+| `recent-activity-*` | client/src/pages/DashboardPage.tsx | 233 | app |
+| `stage-count-*` | client/src/pages/DashboardPage.tsx | 514 | app |
+| `stage-value-*` | client/src/pages/DashboardPage.tsx | 520 | app |
+| `stage-weighted-value-*` | client/src/pages/DashboardPage.tsx | 528 | app |
+| `stage-row-*` | client/src/pages/DashboardPage.tsx | 508 | app |
+| `data-hygiene-update-*` | client/src/pages/DataHygienePage.tsx | 282 | app |
+| `data-hygiene-merge-*` | client/src/pages/DataHygienePage.tsx | 292 | app |
+| `data-hygiene-archive-*` | client/src/pages/DataHygienePage.tsx | 310 | app |
+| `data-hygiene-dismiss-*` | client/src/pages/DataHygienePage.tsx | 328 | app |
+| `data-hygiene-finding-*` | client/src/pages/DataHygienePage.tsx | 259 | app |
+| `data-hygiene-merge-winner-*` | client/src/pages/DataHygienePage.tsx | 418 | app |
+| `linked-contact-*` | client/src/pages/DealDetailPage.tsx | 841 | app |
+| `unlink-contact-*` | client/src/pages/DealDetailPage.tsx | 868 | app |
 | `bulk-select-*` | client/src/pages/DealsPage.tsx | 1330 | app |
 | `deal-list-card-link-*` | client/src/pages/DealsPage.tsx | 1340 | app |
 | `deal-list-card-owner-*` | client/src/pages/DealsPage.tsx | 1353 | app |
@@ -1404,34 +1404,34 @@ _None — all test-referenced testids are present in the application source._
 | `deal-owner-*` | client/src/pages/DealsPage.tsx | 1285 | app |
 | `deal-tags-*` | client/src/pages/DealsPage.tsx | 1289 | app |
 | `pipeline-summary-*` | client/src/pages/DealsPage.tsx | 1070 | app |
-| `status-history-*` | client/src/pages/LeadDetailPage.tsx | 497 | app |
-| `bulk-select-*` | client/src/pages/LeadsPage.tsx | 701 | app |
-| `view-lead-*` | client/src/pages/LeadsPage.tsx | 709 | app |
-| `status-badge-*` | client/src/pages/LeadsPage.tsx | 758 | app |
-| `status-select-*` | client/src/pages/LeadsPage.tsx | 745 | app |
-| `badge-converted-*` | client/src/pages/LeadsPage.tsx | 727 | app |
-| `delete-lead-*` | client/src/pages/LeadsPage.tsx | 781 | app |
-| `lead-row-*` | client/src/pages/LeadsPage.tsx | 693 | app |
-| `bulk-select-*` | client/src/pages/MyTasksPage.tsx | 497 | app |
-| `task-subject-*` | client/src/pages/MyTasksPage.tsx | 505 | app |
-| `task-type-*` | client/src/pages/MyTasksPage.tsx | 512 | app |
-| `task-due-date-*` | client/src/pages/MyTasksPage.tsx | 534 | app |
-| `task-overdue-badge-*` | client/src/pages/MyTasksPage.tsx | 525 | app |
-| `task-due-date-*` | client/src/pages/MyTasksPage.tsx | 518 | app |
-| `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 553 | app |
-| `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 545 | app |
-| `mark-complete-*` | client/src/pages/MyTasksPage.tsx | 564 | app |
-| `task-row-*` | client/src/pages/MyTasksPage.tsx | 490 | app |
-| `bulk-select-*` | client/src/pages/MyTasksPage.tsx | 386 | app |
-| `task-subject-*` | client/src/pages/MyTasksPage.tsx | 393 | app |
-| `task-type-*` | client/src/pages/MyTasksPage.tsx | 404 | app |
-| `task-due-date-*` | client/src/pages/MyTasksPage.tsx | 428 | app |
-| `task-overdue-badge-*` | client/src/pages/MyTasksPage.tsx | 419 | app |
-| `task-due-date-*` | client/src/pages/MyTasksPage.tsx | 412 | app |
-| `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 446 | app |
-| `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 439 | app |
-| `mark-complete-*` | client/src/pages/MyTasksPage.tsx | 458 | app |
-| `task-row-*` | client/src/pages/MyTasksPage.tsx | 378 | app |
+| `status-history-*` | client/src/pages/LeadDetailPage.tsx | 498 | app |
+| `bulk-select-*` | client/src/pages/LeadsPage.tsx | 702 | app |
+| `view-lead-*` | client/src/pages/LeadsPage.tsx | 710 | app |
+| `status-badge-*` | client/src/pages/LeadsPage.tsx | 759 | app |
+| `status-select-*` | client/src/pages/LeadsPage.tsx | 746 | app |
+| `badge-converted-*` | client/src/pages/LeadsPage.tsx | 728 | app |
+| `delete-lead-*` | client/src/pages/LeadsPage.tsx | 782 | app |
+| `lead-row-*` | client/src/pages/LeadsPage.tsx | 694 | app |
+| `bulk-select-*` | client/src/pages/MyTasksPage.tsx | 498 | app |
+| `task-subject-*` | client/src/pages/MyTasksPage.tsx | 506 | app |
+| `task-type-*` | client/src/pages/MyTasksPage.tsx | 513 | app |
+| `task-due-date-*` | client/src/pages/MyTasksPage.tsx | 535 | app |
+| `task-overdue-badge-*` | client/src/pages/MyTasksPage.tsx | 526 | app |
+| `task-due-date-*` | client/src/pages/MyTasksPage.tsx | 519 | app |
+| `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 554 | app |
+| `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 546 | app |
+| `mark-complete-*` | client/src/pages/MyTasksPage.tsx | 565 | app |
+| `task-row-*` | client/src/pages/MyTasksPage.tsx | 491 | app |
+| `bulk-select-*` | client/src/pages/MyTasksPage.tsx | 387 | app |
+| `task-subject-*` | client/src/pages/MyTasksPage.tsx | 394 | app |
+| `task-type-*` | client/src/pages/MyTasksPage.tsx | 405 | app |
+| `task-due-date-*` | client/src/pages/MyTasksPage.tsx | 429 | app |
+| `task-overdue-badge-*` | client/src/pages/MyTasksPage.tsx | 420 | app |
+| `task-due-date-*` | client/src/pages/MyTasksPage.tsx | 413 | app |
+| `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 447 | app |
+| `task-record-link-*` | client/src/pages/MyTasksPage.tsx | 440 | app |
+| `mark-complete-*` | client/src/pages/MyTasksPage.tsx | 459 | app |
+| `task-row-*` | client/src/pages/MyTasksPage.tsx | 379 | app |
 | `notif-checkbox-*` | client/src/pages/ProfilePage.tsx | 412 | app |
 | `notif-toggle-*` | client/src/pages/ProfilePage.tsx | 405 | app |
 | `reports-panel-*` | client/src/pages/ReportsPage.tsx | 158 | app |
@@ -1445,10 +1445,10 @@ _None — all test-referenced testids are present in the application source._
 | `sequence-toggle-*` | client/src/pages/SequencesPage.tsx | 277 | app |
 | `sequence-delete-*` | client/src/pages/SequencesPage.tsx | 297 | app |
 | `sequence-row-*` | client/src/pages/SequencesPage.tsx | 256 | app |
-| `stage-trend-entered-*` | client/src/pages/StageTrendReportPage.tsx | 400 | app |
-| `stage-trend-converted-*` | client/src/pages/StageTrendReportPage.tsx | 406 | app |
-| `stage-trend-rate-*` | client/src/pages/StageTrendReportPage.tsx | 412 | app |
-| `stage-trend-row-*` | client/src/pages/StageTrendReportPage.tsx | 395 | app |
+| `stage-trend-entered-*` | client/src/pages/StageTrendReportPage.tsx | 398 | app |
+| `stage-trend-converted-*` | client/src/pages/StageTrendReportPage.tsx | 404 | app |
+| `stage-trend-rate-*` | client/src/pages/StageTrendReportPage.tsx | 410 | app |
+| `stage-trend-row-*` | client/src/pages/StageTrendReportPage.tsx | 393 | app |
 | `set-password-input-*` | client/src/pages/UsersPage.tsx | 297 | app |
 | `set-password-confirm-*` | client/src/pages/UsersPage.tsx | 310 | app |
 | `set-password-submit-*` | client/src/pages/UsersPage.tsx | 323 | app |
@@ -1458,22 +1458,22 @@ _None — all test-referenced testids are present in the application source._
 | `bulk-select-*` | client/src/pages/UsersPage.tsx | 721 | app |
 | `user-card-*` | client/src/pages/UsersPage.tsx | 715 | app |
 | `win-loss-insight-*` | client/src/pages/WinLossInsightsPage.tsx | 30 | app |
-| `loss-reason-count-*` | client/src/pages/WinLossReportPage.tsx | 325 | app |
-| `loss-reason-row-*` | client/src/pages/WinLossReportPage.tsx | 321 | app |
-| `rep-breakdown-won-count-*` | client/src/pages/WinLossReportPage.tsx | 408 | app |
-| `rep-breakdown-won-value-*` | client/src/pages/WinLossReportPage.tsx | 414 | app |
-| `rep-breakdown-lost-count-*` | client/src/pages/WinLossReportPage.tsx | 420 | app |
-| `rep-breakdown-lost-value-*` | client/src/pages/WinLossReportPage.tsx | 426 | app |
-| `rep-breakdown-win-rate-*` | client/src/pages/WinLossReportPage.tsx | 432 | app |
-| `rep-breakdown-row-*` | client/src/pages/WinLossReportPage.tsx | 402 | app |
-| `ai-settings-panel-*` | client/src/pages/admin/AiSettings.tsx | 289 | app |
-| `ai-usage-daily-bar-*` | client/src/pages/admin/AiUsageDashboardPage.tsx | 388 | app |
-| `ai-usage-user-row-*` | client/src/pages/admin/AiUsageDashboardPage.tsx | 436 | app |
-| `ai-usage-feature-row-*` | client/src/pages/admin/AiUsageDashboardPage.tsx | 493 | app |
-| `exchange-rate-row-*` | client/src/pages/admin/CurrencySettings.tsx | 325 | app |
-| `exchange-rate-input-*` | client/src/pages/admin/CurrencySettings.tsx | 356 | app |
-| `exchange-rate-remove-*` | client/src/pages/admin/CurrencySettings.tsx | 377 | app |
-| `exchange-rate-row-*` | client/src/pages/admin/CurrencySettings.tsx | 345 | app |
+| `loss-reason-count-*` | client/src/pages/WinLossReportPage.tsx | 324 | app |
+| `loss-reason-row-*` | client/src/pages/WinLossReportPage.tsx | 320 | app |
+| `rep-breakdown-won-count-*` | client/src/pages/WinLossReportPage.tsx | 407 | app |
+| `rep-breakdown-won-value-*` | client/src/pages/WinLossReportPage.tsx | 413 | app |
+| `rep-breakdown-lost-count-*` | client/src/pages/WinLossReportPage.tsx | 419 | app |
+| `rep-breakdown-lost-value-*` | client/src/pages/WinLossReportPage.tsx | 425 | app |
+| `rep-breakdown-win-rate-*` | client/src/pages/WinLossReportPage.tsx | 431 | app |
+| `rep-breakdown-row-*` | client/src/pages/WinLossReportPage.tsx | 401 | app |
+| `ai-settings-panel-*` | client/src/pages/admin/AiSettings.tsx | 279 | app |
+| `ai-usage-daily-bar-*` | client/src/pages/admin/AiUsageDashboardPage.tsx | 389 | app |
+| `ai-usage-user-row-*` | client/src/pages/admin/AiUsageDashboardPage.tsx | 437 | app |
+| `ai-usage-feature-row-*` | client/src/pages/admin/AiUsageDashboardPage.tsx | 494 | app |
+| `exchange-rate-row-*` | client/src/pages/admin/CurrencySettings.tsx | 326 | app |
+| `exchange-rate-input-*` | client/src/pages/admin/CurrencySettings.tsx | 357 | app |
+| `exchange-rate-remove-*` | client/src/pages/admin/CurrencySettings.tsx | 378 | app |
+| `exchange-rate-row-*` | client/src/pages/admin/CurrencySettings.tsx | 346 | app |
 | `pipeline-name-*` | client/src/pages/admin/CustomisationSettings.tsx | 634 | app |
 | `pipeline-default-badge-*` | client/src/pages/admin/CustomisationSettings.tsx | 641 | app |
 | `pipeline-edit-button-*` | client/src/pages/admin/CustomisationSettings.tsx | 650 | app |
@@ -1505,66 +1505,66 @@ _None — all test-referenced testids are present in the application source._
 | `custom-field-row-*` | client/src/pages/admin/CustomisationSettings.tsx | 1265 | app |
 | `import-tab-*` | client/src/pages/admin/DataSettings.tsx | 166 | app |
 | `import-panel-*` | client/src/pages/admin/DataSettings.tsx | 189 | app |
-| `beta-user-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 356 | app |
-| `beta-user-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 345 | app |
-| `beta-user-search-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 374 | app |
-| `beta-user-option-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 393 | app |
-| `feature-flag-beta-panel-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 326 | app |
-| `override-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 538 | app |
-| `override-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 524 | app |
-| `override-search-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 556 | app |
-| `override-reason-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 599 | app |
-| `override-add-confirm-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 606 | app |
-| `override-add-cancel-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 617 | app |
-| `override-error-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 636 | app |
-| `feature-flag-overrides-panel-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 630 | app |
-| `group-beta-user-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 741 | app |
-| `group-beta-user-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 730 | app |
-| `group-beta-user-search-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 758 | app |
-| `group-beta-user-option-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 775 | app |
-| `group-beta-panel-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 712 | app |
-| `group-member-count-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 831 | app |
-| `group-beta-count-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 841 | app |
-| `group-badge-scheduled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 851 | app |
-| `group-badge-disabled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 861 | app |
-| `flag-group-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 891 | app |
-| `group-enable-at-input-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 925 | app |
-| `group-enable-at-clear-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 933 | app |
-| `group-enable-at-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 909 | app |
-| `group-detail-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 948 | app |
-| `group-member-flag-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 973 | app |
-| `group-delete-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 990 | app |
-| `flag-group-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 820 | app |
-| `feature-flag-beta-count-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1423 | app |
-| `feature-flag-badge-scheduled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1435 | app |
-| `feature-flag-badge-on-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1446 | app |
-| `feature-flag-badge-off-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1459 | app |
-| `rollout-percentage-badge-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1469 | app |
-| `override-count-force_enabled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1479 | app |
-| `override-count-force_disabled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1491 | app |
-| `flag-group-badge-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1505 | app |
-| `feature-flag-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1547 | app |
-| `feature-flag-role-override-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1593 | app |
-| `feature-flag-role-override-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1618 | app |
-| `feature-flag-role-override-unknown-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1610 | app |
-| `feature-flag-role-overrides-loading-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1577 | app |
-| `feature-flag-role-overrides-error-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1570 | app |
-| `feature-flag-role-overrides-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1564 | app |
-| `feature-flag-enable-at-input-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1646 | app |
-| `feature-flag-enable-at-clear-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1654 | app |
-| `feature-flag-enable-at-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1633 | app |
-| `feature-flag-advanced-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1669 | app |
-| `rollout-percentage-input-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1703 | app |
-| `rollout-stages-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1728 | app |
-| `rollout-stage-scheduled-at-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1751 | app |
-| `rollout-stage-percentage-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1765 | app |
-| `rollout-stage-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1772 | app |
-| `rollout-stage-add-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1786 | app |
-| `rollout-stages-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1719 | app |
-| `flag-group-select-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1811 | app |
-| `feature-flag-beta-expand-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1832 | app |
-| `feature-flag-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1410 | app |
-| `feature-flag-category-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 2092 | app |
+| `beta-user-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 331 | app |
+| `beta-user-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 320 | app |
+| `beta-user-search-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 349 | app |
+| `beta-user-option-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 368 | app |
+| `feature-flag-beta-panel-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 301 | app |
+| `override-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 515 | app |
+| `override-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 499 | app |
+| `override-search-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 533 | app |
+| `override-reason-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 576 | app |
+| `override-add-confirm-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 583 | app |
+| `override-add-cancel-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 594 | app |
+| `override-error-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 613 | app |
+| `feature-flag-overrides-panel-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 607 | app |
+| `group-beta-user-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 718 | app |
+| `group-beta-user-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 707 | app |
+| `group-beta-user-search-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 735 | app |
+| `group-beta-user-option-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 752 | app |
+| `group-beta-panel-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 689 | app |
+| `group-member-count-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 808 | app |
+| `group-beta-count-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 818 | app |
+| `group-badge-scheduled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 828 | app |
+| `group-badge-disabled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 840 | app |
+| `flag-group-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 870 | app |
+| `group-enable-at-input-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 904 | app |
+| `group-enable-at-clear-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 912 | app |
+| `group-enable-at-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 888 | app |
+| `group-detail-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 927 | app |
+| `group-member-flag-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 952 | app |
+| `group-delete-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 969 | app |
+| `flag-group-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 797 | app |
+| `feature-flag-beta-count-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1402 | app |
+| `feature-flag-badge-scheduled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1414 | app |
+| `feature-flag-badge-on-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1427 | app |
+| `feature-flag-badge-off-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1440 | app |
+| `rollout-percentage-badge-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1450 | app |
+| `override-count-force_enabled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1460 | app |
+| `override-count-force_disabled-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1472 | app |
+| `flag-group-badge-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1486 | app |
+| `feature-flag-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1532 | app |
+| `feature-flag-role-override-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1578 | app |
+| `feature-flag-role-override-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1603 | app |
+| `feature-flag-role-override-unknown-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1595 | app |
+| `feature-flag-role-overrides-loading-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1562 | app |
+| `feature-flag-role-overrides-error-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1555 | app |
+| `feature-flag-role-overrides-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1549 | app |
+| `feature-flag-enable-at-input-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1631 | app |
+| `feature-flag-enable-at-clear-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1639 | app |
+| `feature-flag-enable-at-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1618 | app |
+| `feature-flag-advanced-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1654 | app |
+| `rollout-percentage-input-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1688 | app |
+| `rollout-stages-toggle-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1713 | app |
+| `rollout-stage-scheduled-at-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1736 | app |
+| `rollout-stage-percentage-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1750 | app |
+| `rollout-stage-remove-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1757 | app |
+| `rollout-stage-add-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1771 | app |
+| `rollout-stages-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1704 | app |
+| `flag-group-select-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1796 | app |
+| `feature-flag-beta-expand-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1817 | app |
+| `feature-flag-row-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1389 | app |
+| `feature-flag-category-*` | client/src/pages/admin/FeatureFlagsSettings.tsx | 2077 | app |
 | `nav-layout-option-*` | client/src/pages/admin/GeneralSettings.tsx | 174 | app |
 | `tag-name-*` | client/src/pages/admin/PipelinesAndFieldsSettings.tsx | 449 | app |
 | `rename-tag-*` | client/src/pages/admin/PipelinesAndFieldsSettings.tsx | 457 | app |
@@ -1586,8 +1586,8 @@ _None — all test-referenced testids are present in the application source._
 | `role-view-button-*` | client/src/pages/admin/RolesSettings.tsx | 538 | app |
 | `role-capability-panel-*` | client/src/pages/admin/RolesSettings.tsx | 573 | app |
 | `role-row-*` | client/src/pages/admin/RolesSettings.tsx | 476 | app |
-| `scim-delete-mapping-*` | client/src/pages/admin/ScimSettings.tsx | 276 | app |
-| `scim-mapping-row-*` | client/src/pages/admin/ScimSettings.tsx | 263 | app |
+| `scim-delete-mapping-*` | client/src/pages/admin/ScimSettings.tsx | 277 | app |
+| `scim-mapping-row-*` | client/src/pages/admin/ScimSettings.tsx | 264 | app |
 | `team-members-loading-*` | client/src/pages/admin/TeamsSettings.tsx | 266 | app |
 | `team-members-error-*` | client/src/pages/admin/TeamsSettings.tsx | 277 | app |
 | `team-members-empty-*` | client/src/pages/admin/TeamsSettings.tsx | 300 | app |
@@ -1609,16 +1609,16 @@ _None — all test-referenced testids are present in the application source._
 | `team-edit-button-*` | client/src/pages/admin/TeamsSettings.tsx | 672 | app |
 | `team-delete-button-*` | client/src/pages/admin/TeamsSettings.tsx | 684 | app |
 | `team-row-*` | client/src/pages/admin/TeamsSettings.tsx | 604 | app |
-| `webhook-logs-button-*` | client/src/pages/admin/WebhookSettings.tsx | 380 | app |
-| `webhook-toggle-button-*` | client/src/pages/admin/WebhookSettings.tsx | 390 | app |
-| `webhook-delete-button-*` | client/src/pages/admin/WebhookSettings.tsx | 401 | app |
-| `webhook-row-*` | client/src/pages/admin/WebhookSettings.tsx | 359 | app |
-| `webhook-event-*` | client/src/pages/admin/WebhookSettings.tsx | 445 | app |
+| `webhook-logs-button-*` | client/src/pages/admin/WebhookSettings.tsx | 381 | app |
+| `webhook-toggle-button-*` | client/src/pages/admin/WebhookSettings.tsx | 391 | app |
+| `webhook-delete-button-*` | client/src/pages/admin/WebhookSettings.tsx | 402 | app |
+| `webhook-row-*` | client/src/pages/admin/WebhookSettings.tsx | 360 | app |
+| `webhook-event-*` | client/src/pages/admin/WebhookSettings.tsx | 446 | app |
 | `field-exclusion-toggle-*` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 39 | app |
 | `field-exclusion-row-*` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 30 | app |
 | `always-excluded-field-*` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 135 | app |
-| `ai-deployment-mode-radio-*` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 309 | app |
-| `ai-deployment-mode-*` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 299 | app |
+| `ai-deployment-mode-radio-*` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 299 | app |
+| `ai-deployment-mode-*` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 289 | app |
 | `lead-routing-*` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 164 | app |
 | `lead-routing-team-override-toggle-*` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 316 | app |
 | `lead-routing-team-override-*` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 307 | app |
