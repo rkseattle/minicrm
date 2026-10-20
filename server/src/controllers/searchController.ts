@@ -17,7 +17,7 @@ const searchQuerySchema = z.object({
 /**
  * GET /api/v1/search?q=<term>
  *
- * Returns contacts, accounts, and deals matching the query string.
+ * Returns contacts, accounts, deals, leads, and the caller's own email matching the query string.
  * Requires authentication (handled by middleware in route file).
  *
  * @param req - Express request; expects `req.user` from auth middleware
@@ -37,8 +37,10 @@ export async function globalSearchHandler(req: Request, res: Response): Promise<
   }
 
   const results = await globalSearch(parsed.data.q, {
+    // Safe: authenticate runs before this handler and sets req.user.
     userId: req.user!.id,
-    role: req.user!.role as 'admin' | 'rep',
+    // Safe: as above.
+    role: req.user!.role,
   });
 
   res.json(results);

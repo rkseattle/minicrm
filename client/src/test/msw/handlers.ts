@@ -1686,6 +1686,7 @@ export const handlers = [
         ? [{ id: DEAL_1.id, name: 'Acme Enterprise Deal', stage: 'Prospecting' }]
         : [],
       leads: [],
+      emails: [],
     };
     return HttpResponse.json(searchResponse);
   }),

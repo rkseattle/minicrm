@@ -1416,7 +1416,8 @@
     "inputLabel": "Search",
     "placeholder": "Search…",
     "minLengthHint": "Type at least {{min}} characters to search",
-    "noResults": "No results for \"{{query}}\""
+    "noResults": "No results for \"{{query}}\"",
+    "emails": "Emails"
   },
   "pagination": {
     "previous": "Previous",

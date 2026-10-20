@@ -8,10 +8,15 @@
  * accounts.name, and deals.name were added in migration 041 and
  * allow PostgreSQL to use index scans for leading-wildcard ILIKE patterns.
  * Migration 049 adds a GIN index on notes.body_text to support
- * the notes join added below.
+ * the notes join added below, and 187 indexes email subjects and snippets.
  */
 
 import pool from '../db.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
+import type { EmailLinkRecordType } from '@minicrm/shared/schemas/emailMessageSchema.js';
+import { buildVisibleLinkPredicate } from './emailMessageService.js';
+import { isFlagEnabledForUser } from './featureFlagService.js';
+import { userCapabilities } from './roleService.js';
 
 /** Minimum query length enforced before running a search */
 export const SEARCH_MIN_LENGTH = 2;
@@ -49,12 +54,24 @@ export interface LeadSearchResult {
   company_name: string | null;
 }
 
+/** Shape of an email search result, with the linked record it opens */
+export interface EmailSearchResult {
+  id: string;
+  subject: string | null;
+  snippet: string | null;
+  from_address: string;
+  sent_at: string | null;
+  record_type: EmailLinkRecordType;
+  record_id: string;
+}
+
 /** Aggregated search response returned by globalSearch */
 export interface SearchResults {
   contacts: ContactSearchResult[];
   accounts: AccountSearchResult[];
   deals: DealSearchResult[];
   leads: LeadSearchResult[];
+  emails: EmailSearchResult[];
 }
 
 /** Options controlling ownership scoping */
@@ -62,7 +79,56 @@ interface SearchOptions {
   /** Authenticated user's ID — used to scope rep results */
   userId: string;
   /** Authenticated user's role */
-  role: 'admin' | 'rep';
+  role: string;
+}
+
+/**
+ * Whether the caller may see mail at all: the same two gates the email endpoints apply at
+ * their router, so search never shows a message those endpoints would refuse.
+ */
+async function canSearchEmail(options: SearchOptions): Promise<boolean> {
+  const [flagOn, capabilities] = await Promise.all([
+    isFlagEnabledForUser('email_sync', options.userId, options.role),
+    userCapabilities(options.userId),
+  ]);
+  return flagOn && capabilities.has(Capability.ConnectedAccountsManage);
+}
+
+/**
+ * The caller's own messages whose subject or snippet matches, each with one linked record
+ * the caller may open.
+ *
+ * Scoped to the caller's mailboxes for every role: a message is readable only through its
+ * own mailbox, so an admin reading org-wide here would widen what no email endpoint allows.
+ * A message with no openable record is left out — search results are links, and unmatched
+ * mail has no page.
+ */
+async function searchEmails(pattern: string, options: SearchOptions): Promise<EmailSearchResult[]> {
+  if (!(await canSearchEmail(options))) return [];
+  const FIRST_LINK_PARAM = 4;
+  const link = await buildVisibleLinkPredicate(options.userId, options.role, FIRST_LINK_PARAM);
+  const result = await pool.query<Omit<EmailSearchResult, 'sent_at'> & { sent_at: Date | null }>(
+    `SELECT m.id, m.subject, m.message_snippet AS snippet, m.from_address, m.sent_at,
+            target.record_type, target.record_id
+       FROM email_messages m
+       JOIN connected_accounts ca ON ca.id = m.connected_account_id
+       CROSS JOIN LATERAL (
+         SELECT l.record_type, l.record_id
+           FROM email_message_links l
+          WHERE l.email_message_id = m.id AND ${link.sql}
+          ORDER BY l.record_type, l.record_id
+          LIMIT 1
+       ) target
+      WHERE ca.user_id = $2
+        AND (m.subject ILIKE $1 ESCAPE '\\' OR m.message_snippet ILIKE $1 ESCAPE '\\')
+      ORDER BY m.sent_at DESC NULLS LAST, m.id
+      LIMIT $3`,
+    [pattern, options.userId, SEARCH_RESULT_LIMIT, ...link.params],
+  );
+  return result.rows.map((row) => ({
+    ...row,
+    sent_at: row.sent_at ? row.sent_at.toISOString() : null,
+  }));
 }
 
 /**
@@ -75,7 +141,7 @@ function normalizeDealValueQuery(raw: string): string {
 }
 
 /**
- * Searches contacts, accounts, deals, and leads in parallel for the given query
+ * Searches contacts, accounts, deals, leads, and email in parallel for the given query
  * string. Activities that match are merged into the contacts/accounts/deals
  * sections based on their parent entity. Tag-matched entities are merged into
  * the contacts/accounts/deals sections as well. Admins see all matching records;
@@ -105,6 +171,7 @@ export async function globalSearch(query: string, options: SearchOptions): Promi
     tagContactRows,
     tagAccountRows,
     tagDealRows,
+    emails,
   ] = await Promise.all([
     // Contacts: match on name, email, phone, title, department, address fields,
     // and note body_text. DISTINCT prevents duplicates when multiple sources match.
@@ -297,6 +364,7 @@ export async function globalSearch(query: string, options: SearchOptions): Promi
        LIMIT $4`,
       [pattern, isAdmin, options.userId, SEARCH_RESULT_LIMIT],
     ),
+    searchEmails(pattern, options),
   ]);
 
   // Merge activity and tag results into the main entity arrays, deduplicating by ID.
@@ -333,5 +401,6 @@ export async function globalSearch(query: string, options: SearchOptions): Promi
     accounts: accounts.slice(0, SEARCH_RESULT_LIMIT),
     deals: deals.slice(0, SEARCH_RESULT_LIMIT),
     leads: leadRows.rows,
+    emails,
   };
 }

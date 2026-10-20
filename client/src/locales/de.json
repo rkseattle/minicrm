@@ -1451,7 +1451,8 @@
     "inputLabel": "Suche",
     "placeholder": "Suchen…",
     "minLengthHint": "Geben Sie mindestens {{min}} Zeichen ein",
-    "noResults": "Keine Ergebnisse für „{{query}}“"
+    "noResults": "Keine Ergebnisse für „{{query}}“",
+    "emails": "E-Mails"
   },
   "pagination": {
     "previous": "Zurück",

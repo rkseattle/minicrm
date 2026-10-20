@@ -1,13 +1,13 @@
 # data-testid Audit Report
 
-Generated: 2026-10-20T02:47:18.003Z
+Generated: 2026-10-20T02:55:01.012Z
 
 ## Summary
 
 - Matched: 597
 - Stale (broken locators): 0
 - Unexercised (in app, not in tests): 1051
-- Dynamic (manual review required): 700
+- Dynamic (manual review required): 701
 
 ## Stale testids (action required)
 
@@ -1189,10 +1189,11 @@ _None — all test-referenced testids are present in the application source._
 | `followup-timing-schedule-*` | client/src/components/FollowUpTimingCard.tsx | 111 | app |
 | `followup-timing-schedule-form-*` | client/src/components/FollowUpTimingCard.tsx | 119 | app |
 | `followup-timing-card-*` | client/src/components/FollowUpTimingCard.tsx | 98 | app |
-| `search-result-contact-*` | client/src/components/GlobalSearch.tsx | 114 | app |
-| `search-result-account-*` | client/src/components/GlobalSearch.tsx | 140 | app |
-| `search-result-deal-*` | client/src/components/GlobalSearch.tsx | 163 | app |
-| `search-result-lead-*` | client/src/components/GlobalSearch.tsx | 189 | app |
+| `search-result-contact-*` | client/src/components/GlobalSearch.tsx | 115 | app |
+| `search-result-account-*` | client/src/components/GlobalSearch.tsx | 141 | app |
+| `search-result-deal-*` | client/src/components/GlobalSearch.tsx | 164 | app |
+| `search-result-lead-*` | client/src/components/GlobalSearch.tsx | 190 | app |
+| `search-result-email-*` | client/src/components/GlobalSearch.tsx | 218 | app |
 | `lead-routing-factor-*` | client/src/components/LeadForm.tsx | 165 | app |
 | `meeting-brief-news-item-*` | client/src/components/MeetingBriefPanel.tsx | 223 | app |
 | `note-tag-remove-*` | client/src/components/NotesSection.tsx | 625 | app |
