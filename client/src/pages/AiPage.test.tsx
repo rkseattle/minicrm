@@ -32,6 +32,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../test/setup.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import AiPage from './AiPage.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const SESSION_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -855,5 +856,18 @@ describe('AiPage — optimistic state is scoped per session', () => {
     await waitFor(() => {
       expect(screen.getByText('Message from session A')).toBeInTheDocument();
     });
+  });
+});
+
+describe('AiPage — delete session dialog', () => {
+  it('keeps Tab inside the delete confirmation dialog', async () => {
+    mockSingleSession();
+    const user = userEvent.setup();
+    renderWithProviders(<AiPage />);
+
+    const [deleteButton] = await screen.findAllByTestId(`ai-session-delete-${SESSION_ID}`);
+    await user.click(deleteButton);
+
+    expectTabWrapsInside(screen.getByTestId('ai-delete-confirm-modal'));
   });
 });

@@ -26,6 +26,7 @@ vi.mock('@/hooks/useFeatureFlag.js', () => ({
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { AUTOMATION_RULE_1, AUTOMATION_LOG_1 } from '../test/msw/handlers.js';
 import { server } from '../test/setup.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 describe('AutomationRulesPage', () => {
   describe('page structure', () => {
@@ -453,6 +454,15 @@ describe('AutomationRulesPage', () => {
 
       await user.click(screen.getByTestId(`view-logs-${AUTOMATION_RULE_1.id}`));
       expect(screen.getByTestId('logs-drawer')).toBeInTheDocument();
+    });
+
+    it('keeps Tab inside the logs drawer', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AutomationRulesPage />);
+
+      await user.click(await screen.findByTestId(`view-logs-${AUTOMATION_RULE_1.id}`));
+
+      expectTabWrapsInside(screen.getByTestId('logs-drawer'));
     });
 
     it('shows the rule name in the logs drawer header', async () => {

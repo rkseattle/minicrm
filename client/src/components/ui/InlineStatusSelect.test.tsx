@@ -11,6 +11,7 @@ import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import { InlineStatusSelect } from './InlineStatusSelect.js';
 import type { UserResponse } from '@shared/schemas/userSchema.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const ACTIVE_USER: UserResponse = {
   id: 'user-active-1',
@@ -161,5 +162,19 @@ describe('InlineStatusSelect', () => {
     // Select stays at 'active' — no mutation fired, no error
     expect(select).toHaveValue('active');
     expect(onStatusError).not.toHaveBeenCalled();
+  });
+
+  it('keeps Tab inside the self-deactivation dialog', () => {
+    renderWithProviders(
+      <InlineStatusSelect
+        {...defaultProps({ user: ACTIVE_USER, currentUserId: ACTIVE_USER.id })}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId(`status-select-${ACTIVE_USER.id}`), {
+      target: { value: 'inactive' },
+    });
+
+    expectTabWrapsInside(screen.getByTestId('deactivate-self-dialog'));
   });
 });

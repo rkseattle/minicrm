@@ -11,6 +11,7 @@ import { http, HttpResponse } from 'msw';
 import MfaSetupModal from './MfaSetupModal.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const DUMMY_QR =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -178,5 +179,10 @@ describe('MfaSetupModal', () => {
         expect(screen.getByTestId('mfa-qr-code')).toBeInTheDocument();
       });
     });
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderModal();
+    expectTabWrapsInside(screen.getByRole('dialog'));
   });
 });

@@ -15,6 +15,7 @@ import BulkConfirmationBlock from '@/components/ai/BulkConfirmationBlock.js';
 import ContextPanel from '@/components/ai/ContextPanel.js';
 import ContextProposalChip from '@/components/ai/ContextProposalChip.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { useVisualViewportHeight } from '@/hooks/useVisualViewportHeight.js';
 import {
   AI_SESSIONS_QUERY_KEY,
@@ -263,6 +264,8 @@ export default function AiPage() {
 
   const threadEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(deleteDialogRef, Boolean(deleteConfirmId));
 
   // Session IDs created via the on-demand path (handleSend creating a session
   // because none existed yet) whose messages cache entry was seeded directly
@@ -742,6 +745,7 @@ export default function AiPage() {
       {/* Delete confirmation modal */}
       {deleteConfirmId && (
         <div
+          ref={deleteDialogRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           role="dialog"
           aria-modal="true"

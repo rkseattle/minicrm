@@ -14,7 +14,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAiConfig, setAiEnabled, AI_CONFIG_QUERY_KEY } from '@/api/ai.js';
 import { MY_FEATURE_FLAGS_QUERY_KEY } from '@/api/featureFlags.js';
-import { useState } from 'react';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
+import { useRef, useState } from 'react';
 import { AiSettingsSubNav } from './ai-settings/AiSettingsSubNav.js';
 import type { AiSettingsSubNavItem } from './ai-settings/AiSettingsSubNav.js';
 import { AiGeneralSection } from './ai-settings/AiGeneralSection.js';
@@ -52,8 +53,11 @@ function ToggleConfirmDialog({
   isPending,
 }: ToggleConfirmDialogProps) {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       role="dialog"
       aria-modal="true"

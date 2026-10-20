@@ -21,6 +21,7 @@ function Dialog({ empty = false }: { empty?: boolean }) {
           <button type="button" data-testid="last">
             last
           </button>
+          <input type="hidden" name="not-a-tab-stop" />
         </>
       )}
     </div>

@@ -3,8 +3,10 @@
  * bulk operation so admins can see which IDs failed and why.
  */
 
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BulkFailure } from '@/api/bulk.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 
 interface BulkFailedDetailsModalProps {
   isOpen: boolean;
@@ -18,6 +20,8 @@ export default function BulkFailedDetailsModal({
   onClose,
 }: BulkFailedDetailsModalProps) {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useFocusTrap(dialogRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -29,6 +33,7 @@ export default function BulkFailedDetailsModal({
       onClick={onClose}
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="bulk-failed-details-title"

@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 
 interface MfaRecoveryCodesModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export default function MfaRecoveryCodesModal({
   const [copied, setCopied] = useState(false);
   const doneButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -42,6 +44,8 @@ export default function MfaRecoveryCodesModal({
     setCopied(true);
   }
 
+  useFocusTrap(dialogRef, isOpen);
+
   if (!isOpen) return null;
 
   return (
@@ -51,6 +55,7 @@ export default function MfaRecoveryCodesModal({
       data-testid="mfa-recovery-codes-modal"
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="mfa-recovery-title"

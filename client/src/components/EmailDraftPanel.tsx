@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { Select } from '@/components/ui/Select.js';
 import { resolveApiError } from '@/utils/apiError.js';
 import { generateEmailDraft } from '@/api/emailDraft.js';
@@ -40,6 +41,7 @@ export default function EmailDraftPanel({
 }: EmailDraftPanelProps) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const [subject, setSubject] = useState(initialDraft.subject);

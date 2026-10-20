@@ -20,9 +20,9 @@ import { sendContactEmail } from '@/api/contacts.js';
 import { CONNECTED_ACCOUNTS_QUERY_KEY, getConnectedAccounts } from '@/api/connectedAccounts.js';
 import { EMAIL_TEMPLATES_QUERY_KEY, listEmailTemplates } from '@/api/emailTemplates.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { CLOSE_AFTER_SENT_MS, useMailboxSend } from '@/hooks/useMailboxSend.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
-import { keepTabInside } from '@/utils/focusTrap.js';
 import { plainTextToHtml } from '@/utils/plainTextToHtml.js';
 import { sanitizeEmailHtml } from '@/utils/sanitizeEmailHtml.js';
 
@@ -230,13 +230,14 @@ export default function SendEmailModal({
     },
   });
 
+  useFocusTrap(dialogRef, isOpen);
+
   if (!isOpen) return null;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>): void {
     if (e.key === 'Escape' && !sendMutation.isPending) {
       onClose();
     }
-    keepTabInside(e, dialogRef.current);
   }
 
   function handleSend(): void {

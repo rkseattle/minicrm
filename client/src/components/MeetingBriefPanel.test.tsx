@@ -8,6 +8,7 @@ import { describe, it, expect, vi } from 'vitest';
 import MeetingBriefPanel from './MeetingBriefPanel.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import type { MeetingBriefResponse } from '@shared/schemas/meetingBriefSchema.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const SAMPLE_BRIEF: MeetingBriefResponse = {
   activity_id: 'a1',
@@ -209,5 +210,10 @@ describe('MeetingBriefPanel', () => {
     expect(printSpy).toHaveBeenCalledOnce();
 
     printSpy.mockRestore();
+  });
+
+  it('keeps Tab inside the panel', () => {
+    renderPanel();
+    expectTabWrapsInside(screen.getByTestId('meeting-brief-panel'));
   });
 });

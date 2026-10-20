@@ -10,6 +10,7 @@ import { resolveApiError } from '@/utils/apiError.js';
 import { useMutation } from '@tanstack/react-query';
 import { Input } from '@/components/ui/Input.js';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { convertLead, searchAccountsForConversion } from '@/api/leads.js';
 import type { ConversionResult } from '@/api/leads.js';
 import type { LeadResponse } from '@shared/schemas/leadSchema.js';
@@ -27,6 +28,8 @@ interface ConvertLeadModalProps {
 export default function ConvertLeadModal({ lead, onClose, onConverted }: ConvertLeadModalProps) {
   const { t } = useTranslation();
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   // ── Contact fields ────────────────────────────────────────────────────────
   const [contactFirstName, setContactFirstName] = useState(lead.first_name);
@@ -149,6 +152,7 @@ export default function ConvertLeadModal({ lead, onClose, onConverted }: Convert
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="convert-lead-modal-title"

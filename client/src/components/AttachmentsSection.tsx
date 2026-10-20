@@ -22,6 +22,7 @@ import {
 } from '@/api/attachments.js';
 import { Button } from '@/components/ui/Button.js';
 import EmptyState from '@/components/EmptyState.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 
 /** Maximum file size in bytes (25 MB) — mirrored from server for pre-flight check. */
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -72,6 +73,8 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(deleteDialogRef, Boolean(pendingDeleteId));
 
   const queryKey = attachmentsQueryKey(recordType, recordId);
 
@@ -340,6 +343,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
       {/* Delete confirmation dialog */}
       {pendingDeleteId && (
         <div
+          ref={deleteDialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="attachment-delete-title"

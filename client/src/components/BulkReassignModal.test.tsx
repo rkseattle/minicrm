@@ -7,6 +7,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import BulkReassignModal from './BulkReassignModal.js';
 import type { ActiveUser } from '@/api/users.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const noop = () => {};
 
@@ -191,5 +192,22 @@ describe('BulkReassignModal', () => {
     );
     fireEvent.click(screen.getByTestId('bulk-reassign-modal-overlay'));
     expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(
+      <BulkReassignModal
+        isOpen={true}
+        selectedCount={2}
+        users={USERS}
+        isPending={false}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    fireEvent.change(screen.getByTestId('bulk-reassign-owner-select'), {
+      target: { value: 'u2' },
+    });
+    expectTabWrapsInside(screen.getByTestId('bulk-reassign-modal'));
   });
 });

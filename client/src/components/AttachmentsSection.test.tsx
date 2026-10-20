@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 import AttachmentsSection from './AttachmentsSection.js';
 import type { Attachment } from '@/api/attachments.js';
 
@@ -135,6 +136,15 @@ describe('AttachmentsSection — delete confirmation dialog', () => {
 
     fireEvent.click(screen.getByTestId(`attachment-delete-${ATTACHMENT_1.id}`));
     expect(screen.getByTestId('attachment-delete-dialog')).toBeInTheDocument();
+  });
+
+  it('keeps Tab inside the dialog', async () => {
+    withStorageConfigured([ATTACHMENT_1]);
+    renderWithProviders(<AttachmentsSection recordType="contact" recordId={CONTACT_ID} />);
+
+    fireEvent.click(await screen.findByTestId(`attachment-delete-${ATTACHMENT_1.id}`));
+
+    expectTabWrapsInside(screen.getByTestId('attachment-delete-dialog'));
   });
 
   it('closes the dialog on cancel', async () => {

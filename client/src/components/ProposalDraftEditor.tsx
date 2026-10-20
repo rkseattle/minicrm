@@ -8,10 +8,11 @@
  * DOCX) or dismisses. Supports regenerating with a focus-notes prompt.
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import RichTextField from '@/components/RichTextField.js';
 import { generateProposalDraft, exportProposalDraftDocx } from '@/api/proposalDraft.js';
 import { triggerCsvDownload as triggerFileDownload } from '@/utils/csvDownload.js';
@@ -64,6 +65,8 @@ export default function ProposalDraftEditor({
   onDismiss,
 }: ProposalDraftEditorProps) {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   const [draft, setDraft] = useState<ProposalDraft>(initialDraft);
   const [draftVersion, setDraftVersion] = useState(0);
   const [focusNotes, setFocusNotes] = useState('');
@@ -134,6 +137,7 @@ export default function ProposalDraftEditor({
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={t('proposalDraft.editorTitle')}

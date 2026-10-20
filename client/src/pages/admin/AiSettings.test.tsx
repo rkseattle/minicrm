@@ -24,6 +24,7 @@ import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import { MY_FEATURE_FLAGS_QUERY_KEY } from '../../api/featureFlags.js';
 import AiSettings from './AiSettings.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const DEFAULT_CONFIG = {
   enabled: false,
@@ -191,6 +192,13 @@ describe('AiSettings — master toggle', () => {
 
     fireEvent.click(screen.getByTestId('ai-master-toggle'));
     expect(screen.getByTestId('ai-toggle-confirm-dialog')).toBeInTheDocument();
+  });
+
+  it('keeps Tab inside the confirmation dialog', async () => {
+    renderWithProviders(<AiSettings />);
+    fireEvent.click(await screen.findByTestId('ai-master-toggle'));
+
+    expectTabWrapsInside(screen.getByTestId('ai-toggle-confirm-dialog'));
   });
 
   it('dismisses the dialog when cancel is clicked', async () => {
@@ -611,6 +619,13 @@ describe('AiSettings — retention stats and manual purge', () => {
     await waitFor(() => screen.getByTestId('ai-purge-now-button'));
     fireEvent.click(screen.getByTestId('ai-purge-now-button'));
     expect(screen.getByTestId('ai-purge-confirm-dialog')).toBeInTheDocument();
+  });
+
+  it('keeps Tab inside the purge confirmation dialog', async () => {
+    renderSection('data-retention');
+    fireEvent.click(await screen.findByTestId('ai-purge-now-button'));
+
+    expectTabWrapsInside(screen.getByTestId('ai-purge-confirm-dialog'));
   });
 
   it('cancels the purge dialog without calling the purge endpoint', async () => {

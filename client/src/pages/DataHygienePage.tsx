@@ -14,6 +14,7 @@ import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
 import { Button } from '@/components/ui/Button.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import {
   listHygieneFindings,
   dismissHygieneFinding,
@@ -80,6 +81,10 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
   // native <dialog> elements, so nothing does this automatically.
   const dismissCancelRef = useRef<HTMLButtonElement>(null);
   const mergeCancelRef = useRef<HTMLButtonElement>(null);
+  const dismissDialogRef = useRef<HTMLDivElement>(null);
+  const mergeDialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dismissDialogRef, dismissDialog !== null);
+  useFocusTrap(mergeDialogRef, mergeDialog !== null);
 
   useEffect(() => {
     if (dismissDialog) dismissCancelRef.current?.focus();
@@ -334,6 +339,7 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
 
       {dismissDialog && (
         <div
+          ref={dismissDialogRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           role="dialog"
           aria-modal="true"
@@ -382,6 +388,7 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
 
       {mergeDialog && (
         <div
+          ref={mergeDialogRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           role="dialog"
           aria-modal="true"

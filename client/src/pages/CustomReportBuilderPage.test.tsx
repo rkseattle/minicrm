@@ -12,6 +12,7 @@ import { CustomReportBuilderContent } from './CustomReportBuilderPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { MANAGER_USER, REP_USER } from '../test/msw/handlers.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const MOCK_USER_ID = 'user-abc';
 
@@ -232,6 +233,14 @@ describe('CustomReportBuilderContent — save report', () => {
     await userEvent.click(screen.getByTestId('save-report-button'));
     expect(screen.getByTestId('save-report-dialog')).toBeInTheDocument();
     expect(screen.getByTestId('save-report-visibility-select')).toBeInTheDocument();
+  });
+
+  it('keeps Tab inside the save dialog', async () => {
+    renderWithProviders(<CustomReportBuilderContent />);
+
+    await userEvent.click(await screen.findByTestId('save-report-button'));
+
+    expectTabWrapsInside(screen.getByTestId('save-report-dialog'));
   });
 
   it('closes save dialog when Cancel is clicked', async () => {

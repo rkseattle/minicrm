@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { verifyMfaLogin, verifyMfaRecoveryLogin } from '@/api/mfa.js';
 import type { MfaLoginResponse } from '@/api/mfa.js';
 
@@ -35,6 +36,7 @@ export default function MfaLoginModal({
   const [code, setCode] = useState('');
   const [invalidCode, setInvalidCode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const totpMutation = useMutation({
     mutationFn: (c: string) => verifyMfaLogin(mfaToken, c),
@@ -87,6 +89,8 @@ export default function MfaLoginModal({
     }
   }
 
+  useFocusTrap(dialogRef, isOpen);
+
   if (!isOpen) return null;
 
   const isTotpMode = mode === 'totp';
@@ -116,6 +120,7 @@ export default function MfaLoginModal({
       data-testid="mfa-login-modal"
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="mfa-login-title"

@@ -35,6 +35,7 @@ import {
   groupBetaUsersQueryKey,
 } from '@/api/featureFlags.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY } from '@/api/users.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import {
   listCustomRoles,
   CUSTOM_ROLES_QUERY_KEY,
@@ -116,9 +117,12 @@ function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       role="dialog"
       aria-modal="true"
@@ -180,6 +184,7 @@ function DeleteGroupDialog({ group, onConfirm, onCancel, triggerRef }: DeleteGro
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  useFocusTrap(dialogRef);
 
   // Return focus to the trigger button on unmount.
   useEffect(() => {
@@ -194,35 +199,9 @@ function DeleteGroupDialog({ group, onConfirm, onCancel, triggerRef }: DeleteGro
     cancelRef.current?.focus();
   }, []);
 
-  // Trap Tab / Shift+Tab within the dialog and close on Escape.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === 'Escape') {
-        onCancel();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusable = Array.from(
-        dialog.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        ),
-      ).filter((el) => !el.hasAttribute('disabled'));
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
+      if (e.key === 'Escape') onCancel();
     },
     [onCancel],
   );
@@ -236,7 +215,7 @@ function DeleteGroupDialog({ group, onConfirm, onCancel, triggerRef }: DeleteGro
       aria-labelledby="delete-group-dialog-title"
       data-testid="delete-group-confirm-dialog"
     >
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- keyboard trap on the panel div, not on a landmark */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape handler on the panel div, not on a landmark */}
       <div
         className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
         role="document"

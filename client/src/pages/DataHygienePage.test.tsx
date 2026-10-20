@@ -9,6 +9,7 @@ import { http, HttpResponse } from 'msw';
 import DataHygienePage from './DataHygienePage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 function renderPage(scope: 'mine' | 'all' = 'mine') {
   return renderWithProviders(<DataHygienePage scope={scope} />, {
@@ -118,6 +119,19 @@ describe('DataHygienePage', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('data-hygiene-heading')).not.toBeInTheDocument();
     });
+  });
+
+  it('keeps Tab inside the dismiss dialog', async () => {
+    server.use(
+      http.get('/api/v1/data-hygiene/findings', () =>
+        HttpResponse.json({ findings: [BASE_FINDING], total: 1 }),
+      ),
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId(`data-hygiene-dismiss-${BASE_FINDING.id}`));
+
+    expectTabWrapsInside(await screen.findByTestId('data-hygiene-dismiss-dialog'));
   });
 
   it('requires a non-empty reason before the dismiss confirm button is enabled', async () => {

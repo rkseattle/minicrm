@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import MfaRecoveryCodesModal from './MfaRecoveryCodesModal.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const RECOVERY_CODES = [
   'AAAA-1111',
@@ -78,5 +79,10 @@ describe('MfaRecoveryCodesModal', () => {
       await user.click(screen.getByTestId('mfa-recovery-done'));
       expect(onDone).toHaveBeenCalledOnce();
     });
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderModal();
+    expectTabWrapsInside(screen.getByRole('dialog'));
   });
 });

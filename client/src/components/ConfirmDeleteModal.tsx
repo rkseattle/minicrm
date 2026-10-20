@@ -1,13 +1,14 @@
 /**
  * ConfirmDeleteModal component.
  * Accessible confirmation dialog for destructive delete operations.
- * Implements focus trap, ARIA attributes, and Escape key dismissal.
+ * Keeps Tab inside the dialog (useFocusTrap), sets ARIA attributes, and closes on Escape.
  * Replaces window.confirm() on detail pages.
  */
 
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 
 interface ConfirmDeleteModalProps {
   /** Whether the modal is visible */
@@ -44,6 +45,7 @@ export default function ConfirmDeleteModal({
   const { t } = useTranslation();
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   /** Capture the currently-focused element before the modal opens, so we can restore it on close */
   useEffect(() => {
@@ -60,6 +62,8 @@ export default function ConfirmDeleteModal({
       }
     }
   }, [isOpen]);
+
+  useFocusTrap(dialogRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -84,6 +88,7 @@ export default function ConfirmDeleteModal({
       onKeyDown={handleKeyDown}
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="confirm-delete-title"

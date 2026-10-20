@@ -10,6 +10,7 @@ import ProposalDraftEditor from './ProposalDraftEditor.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import type { ProposalDraft } from '@shared/schemas/proposalDraftSchema.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const SAMPLE_DRAFT: ProposalDraft = {
   executive_summary: 'Executive summary text.',
@@ -249,5 +250,17 @@ describe('ProposalDraftEditor', () => {
       },
       { timeout: 5000 },
     );
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(
+      <ProposalDraftEditor
+        dealId="d1"
+        dealName="Acme Deal"
+        initialDraft={SAMPLE_DRAFT}
+        onDismiss={vi.fn()}
+      />,
+    );
+    expectTabWrapsInside(screen.getByTestId('proposal-draft-editor'));
   });
 });

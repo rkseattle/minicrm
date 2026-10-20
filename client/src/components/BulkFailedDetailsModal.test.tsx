@@ -6,6 +6,7 @@ import { screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import BulkFailedDetailsModal from './BulkFailedDetailsModal.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const FAILURES = [
   { id: '00000000-0000-0000-0000-000000000001', reason: 'Record not found' },
@@ -65,5 +66,12 @@ describe('BulkFailedDetailsModal', () => {
     renderWithProviders(<BulkFailedDetailsModal isOpen={true} failures={[]} onClose={vi.fn()} />);
     expect(screen.getByTestId('bulk-failed-details-modal')).toBeInTheDocument();
     expect(screen.queryByTestId('bulk-failed-details-row-0')).not.toBeInTheDocument();
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(
+      <BulkFailedDetailsModal isOpen={true} failures={FAILURES} onClose={vi.fn()} />,
+    );
+    expectTabWrapsInside(screen.getByRole('dialog'));
   });
 });

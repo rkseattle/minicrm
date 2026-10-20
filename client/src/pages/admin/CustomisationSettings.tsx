@@ -35,6 +35,7 @@ import type {
   FieldType,
 } from '@shared/schemas/customFieldSchema.js';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 
 type EntityType = 'contact' | 'account' | 'deal';
 
@@ -182,6 +183,8 @@ export default function CustomisationSettings() {
   const [addStageError, setAddStageError] = useState<string | null>(null);
 
   const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
+  const deleteStageDialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(deleteStageDialogRef, Boolean(deletingStageId));
   const [deleteBlockedMessage, setDeleteBlockedMessage] = useState<string | null>(null);
 
   const [stagesSectionFeedback, setStagesSectionFeedback] = useState<{
@@ -398,6 +401,8 @@ export default function CustomisationSettings() {
   const [addFieldError, setAddFieldError] = useState<string | null>(null);
 
   const [deletingFieldId, setDeletingFieldId] = useState<string | null>(null);
+  const deleteFieldDialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(deleteFieldDialogRef, Boolean(deletingFieldId));
   const [fieldsSectionFeedback, setFieldsSectionFeedback] = useState<{
     type: 'success' | 'error';
     key: string;
@@ -1508,6 +1513,7 @@ export default function CustomisationSettings() {
       {/* Delete custom field confirmation dialog */}
       {deletingFieldId && (
         <div
+          ref={deleteFieldDialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-field-confirm-title"
@@ -1555,6 +1561,7 @@ export default function CustomisationSettings() {
       {/* Delete stage confirmation dialog */}
       {deletingStageId && (
         <div
+          ref={deleteStageDialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-stage-confirm-title"

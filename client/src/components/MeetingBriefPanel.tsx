@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { formatHourOfDay } from '@/utils/formatHourOfDay.js';
 import type { MeetingBriefResponse } from '@shared/schemas/meetingBriefSchema.js';
 
@@ -33,6 +34,7 @@ export default function MeetingBriefPanel({
 }: MeetingBriefPanelProps) {
   const { t, i18n } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
