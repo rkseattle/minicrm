@@ -45,7 +45,10 @@ import {
   clearPersistedCoverageCorrelationId,
   CoverageSessionCheckoutFailedError,
 } from '@/coverageCorrelation.js';
-import { findActiveCoverageSessionByCorrelationId } from '@/api/coverageSessions.js';
+import {
+  findActiveCoverageSessionByCorrelationId,
+  COVERAGE_SESSION_RECONCILE_QUERY_KEY,
+} from '@/api/coverageSessions.js';
 
 const LOCALSTORAGE_POLL_INTERVAL_MS = 2000;
 const SERVER_RECONCILE_INTERVAL_MS = 10_000;
@@ -66,7 +69,7 @@ export default function CoverageSessionIndicator() {
   }, []);
 
   const { data: lookupResult, isFetched } = useQuery({
-    queryKey: ['coverage-session-reconcile', correlationId],
+    queryKey: [...COVERAGE_SESSION_RECONCILE_QUERY_KEY, correlationId],
     queryFn: () => findActiveCoverageSessionByCorrelationId(correlationId!),
     enabled: correlationId !== null,
     refetchInterval: SERVER_RECONCILE_INTERVAL_MS,

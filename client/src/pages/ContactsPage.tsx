@@ -26,6 +26,7 @@ import {
   createContact,
   exportContactsCsv,
   exportContactsPdf,
+  CONTACTS_QUERY_KEY,
 } from '@/api/contacts.js';
 import { bulkPatchContacts, bulkDeleteContacts } from '@/api/bulk.js';
 import type { BulkFailure } from '@/api/bulk.js';
@@ -36,10 +37,9 @@ import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
 import BulkReassignModal from '@/components/BulkReassignModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import type { DuplicateContactInfo } from '@/api/contacts.js';
-import { listAccounts } from '@/api/accounts.js';
+import { listAccounts, ACCOUNTS_QUERY_KEY } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
-import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -50,9 +50,6 @@ import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { useExportAction } from '@/hooks/useExportAction.js';
 import { explainDuplicate } from '@/api/duplicateExplanation.js';
 import { recordPath } from '@shared/types/recordPath.js';
-
-/** React Query cache key for the contacts list */
-export const CONTACTS_QUERY_KEY = ['contacts'] as const;
 
 /**
  * Contacts list page with owner filter and inline create form.

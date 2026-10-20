@@ -47,7 +47,7 @@ import { usePagination } from '@/hooks/usePagination.js';
 
 /** Max records fetched for the board view — fetches all by capping at the server max */
 const PAGINATION_MAX_BOARD_LIMIT = PAGINATION_MAX_LIMIT;
-import { listAccounts } from '@/api/accounts.js';
+import { listAccounts, ACCOUNTS_QUERY_KEY } from '@/api/accounts.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -280,7 +280,7 @@ export default function DealsPage() {
   const isError = viewMode === 'board' ? boardError : listError;
 
   const { data: accountsData } = useQuery({
-    queryKey: ['accounts'],
+    queryKey: ACCOUNTS_QUERY_KEY,
     queryFn: () => listAccounts(),
   });
 

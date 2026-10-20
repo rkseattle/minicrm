@@ -8,7 +8,12 @@ import { useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { globalSearch, type EmailSearchResult, type LeadSearchResult } from '@/api/search.js';
+import {
+  globalSearch,
+  type EmailSearchResult,
+  type LeadSearchResult,
+  GLOBAL_SEARCH_QUERY_KEY,
+} from '@/api/search.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { useOnClickOutside } from '@/hooks/useOnClickOutside.js';
 import { recordPath } from '@shared/types/recordPath.js';
@@ -30,7 +35,7 @@ export default function GlobalSearch() {
   const isQueryLong = debouncedQuery.trim().length >= MIN_QUERY_LENGTH;
 
   const { data } = useQuery({
-    queryKey: ['global-search', debouncedQuery],
+    queryKey: [...GLOBAL_SEARCH_QUERY_KEY, debouncedQuery],
     queryFn: () => globalSearch(debouncedQuery.trim()),
     enabled: isQueryLong,
     // Override global staleTime: 0 — brief cache avoids hammering the server on rapid typing.

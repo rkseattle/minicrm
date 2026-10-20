@@ -14,6 +14,9 @@ import axios from 'axios';
 import apiClient from './axiosInstance.js';
 import type { CoverageSession } from '@shared/schemas/coverageSessionSchema.js';
 
+/** React Query cache key for reconciling a coverage session by correlation id. */
+export const COVERAGE_SESSION_RECONCILE_QUERY_KEY = ['coverage-session-reconcile'] as const;
+
 interface CoverageSessionResponse {
   session: CoverageSession;
 }

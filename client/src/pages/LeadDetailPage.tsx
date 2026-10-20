@@ -23,11 +23,11 @@ import {
   deleteLead,
   getLeadStatusHistory,
   exportLeadPdf,
+  LEADS_QUERY_KEY,
 } from '@/api/leads.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { LeadFormValues } from '@/components/LeadForm.js';
-import { LEADS_QUERY_KEY } from '@/pages/LeadsPage.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
@@ -78,7 +78,7 @@ export default function LeadDetailPage() {
   });
 
   const { data: historyData } = useQuery({
-    queryKey: ['leads', id, 'status-history'],
+    queryKey: [...LEADS_QUERY_KEY, id, 'status-history'],
     queryFn: () => getLeadStatusHistory(id!),
     enabled: Boolean(id),
   });

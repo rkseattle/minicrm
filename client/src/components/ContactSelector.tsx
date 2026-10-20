@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { listContacts } from '@/api/contacts.js';
+import { listContacts, CONTACTS_QUERY_KEY } from '@/api/contacts.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { Input } from '@/components/ui/Input.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
@@ -46,7 +46,7 @@ export default function ContactSelector({
   const debouncedSearch = useDebounce(searchInput);
 
   const { data: searchData, isLoading: searchLoading } = useQuery({
-    queryKey: ['contacts', 'selector-search', debouncedSearch],
+    queryKey: [...CONTACTS_QUERY_KEY, 'selector-search', debouncedSearch],
     queryFn: () => listContacts({ search: debouncedSearch || undefined }),
     enabled: debouncedSearch.length > 0,
   });
@@ -54,7 +54,7 @@ export default function ContactSelector({
   // Fetch the selected contacts by searching without a filter so we can show their names.
   // Override global staleTime: 0 — picker results are stable while a form is being completed.
   const { data: selectedData } = useQuery({
-    queryKey: ['contacts', 'selector-selected-all'],
+    queryKey: [...CONTACTS_QUERY_KEY, 'selector-selected-all'],
     queryFn: () => listContacts(),
     enabled: selectedIds.length > 0,
     staleTime: 60_000,

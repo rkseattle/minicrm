@@ -13,6 +13,8 @@ import type {
   SetTeamRoutingOverrideInput,
 } from '@shared/schemas/leadRoutingSchema.js';
 
+/** React Query cache key for a lead's routing suggestion. */
+export const LEAD_ROUTING_SUGGESTION_QUERY_KEY = ['leadRoutingSuggestion'] as const;
 export const LEAD_ROUTING_CONFIG_QUERY_KEY = ['admin', 'ai', 'lead-routing-config'] as const;
 export const TEAM_ROUTING_OVERRIDES_QUERY_KEY = [
   'admin',
