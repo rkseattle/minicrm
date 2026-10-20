@@ -21,9 +21,15 @@ export function parseRecipients(value: string): string[] | null {
   );
 }
 
-/** Who a reply goes to: the sender of mail received, the recipients of mail sent. */
+/**
+ * Who a reply goes to: for mail received, its Reply-To when it names one (RFC 5322 §3.6.2),
+ * else its sender; for mail sent, its recipients.
+ */
 export function replyRecipients(message: EmailMessage): string[] {
-  return message.direction === 'inbound' ? [message.from_address] : [...message.to_addresses];
+  if (message.direction === 'outbound') return [...message.to_addresses];
+  return message.reply_to_addresses.length > 0
+    ? [...message.reply_to_addresses]
+    : [message.from_address];
 }
 
 /**

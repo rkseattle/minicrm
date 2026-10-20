@@ -345,6 +345,12 @@ is trimmed to its root plus the newest ids (`MAX_STORED_REFERENCES`), the trim R
 dropped. Ids are read by the same bracket and raw-value rule thread resolution uses, so
 which ids are stored does not depend on the driver.
 
+It stores `Reply-To` too, as `reply_to_addresses`, since a reply goes there when it is present
+(RFC 5322 §3.6.2), as Gmail, Outlook and Thunderbird do. An empty list means "reply to the
+sender": both no `Reply-To` and one naming only the sender store empty, because an IMAP server
+fills a missing `Reply-To` with `From` in the ENVELOPE (RFC 3501 §7.4.2) while a parsed
+document leaves it absent, and the same message must not store differently by driver.
+
 ## The engine
 
 `emailSyncService.ts` runs one tick over every mailbox that is due.

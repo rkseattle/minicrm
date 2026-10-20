@@ -218,6 +218,19 @@ export function storedThreadingHeaders(headers: ThreadingHeaders): StoredThreadi
   };
 }
 
+/**
+ * The Reply-To a message stores: empty unless it sends replies somewhere other than the sender.
+ *
+ * An IMAP server fills a missing Reply-To with From in the ENVELOPE (RFC 3501 §7.4.2) while a
+ * parsed document leaves it absent, so storing the list as read would make the same message
+ * differ by driver. Either way a reply goes to the sender, which is what empty means.
+ */
+export function storedReplyTo(replyTo: readonly string[], fromAddress: string): string[] {
+  if (replyTo.length === 0) return [];
+  if (replyTo.length === 1 && replyTo[0] === fromAddress) return [];
+  return [...replyTo];
+}
+
 /** The body fields parsed out of one message. */
 export interface ParsedMessageBody {
   bodyText: string | null;
@@ -343,6 +356,7 @@ export async function normalizeFromSource(
     bodyHtml: parsed.bodyHtml,
     snippet: parsed.snippet,
     ...storedThreadingHeaders(parsed.threading),
+    replyToAddresses: storedReplyTo(parsed.replyToAddresses, parsed.fromAddress),
   };
 }
 
@@ -352,6 +366,8 @@ export interface ParsedMessage extends ParsedMessageBody {
   fromAddress: string;
   toAddresses: string[];
   ccAddresses: string[];
+  /** Reply-To as written, lowercased; empty when the document has none. */
+  replyToAddresses: string[];
   subject: string | null;
   /** Send time, or null when the document carried no usable date. */
   sentAt: Date | null;
@@ -409,6 +425,7 @@ export async function parseMessage(
     fromAddress: '',
     toAddresses: [],
     ccAddresses: [],
+    replyToAddresses: [],
     subject: null,
     sentAt: null,
     hasAttachments: false,
@@ -446,6 +463,7 @@ export async function parseMessage(
       fromAddress: addressesOf(parsed.from)[0] ?? '',
       toAddresses: addressesOf(parsed.to),
       ccAddresses: addressesOf(parsed.cc),
+      replyToAddresses: addressesOf(parsed.replyTo),
       subject: subjectOf(parsed.subject),
       sentAt: usableDate(parsed.date),
       hasAttachments: hasRealAttachment(parsed.attachments),

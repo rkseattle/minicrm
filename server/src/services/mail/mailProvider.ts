@@ -78,6 +78,11 @@ export interface NormalizedMessage {
   rfcMessageId: string | null;
   /** Its ancestry as bracketed ids, oldest first. What a reply to it extends. */
   references: string | null;
+  /**
+   * Where the sender asked replies to go (RFC 5322 §3.6.2), lowercased. Empty when the
+   * message names none, or names only its sender — see `storedReplyTo`.
+   */
+  replyToAddresses: string[];
 }
 
 /** One page of history, plus where to resume. */

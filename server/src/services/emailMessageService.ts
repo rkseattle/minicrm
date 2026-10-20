@@ -55,6 +55,7 @@ export interface EmailMessageRow {
   from_address: string;
   to_addresses: string[];
   cc_addresses: string[];
+  reply_to_addresses: string[];
   subject: string | null;
   message_snippet: string | null;
   has_attachments: boolean;
@@ -69,8 +70,8 @@ export interface EmailMessageRow {
  * stored unsanitized. Only `findMessageForUser` adds them, for one message at a time.
  */
 export const MESSAGE_SELECT = `m.id, m.connected_account_id, m.thread_id, m.direction, m.from_address,
-       m.to_addresses, m.cc_addresses, m.subject, m.message_snippet, m.has_attachments,
-       m.sent_at, m.is_private`;
+       m.to_addresses, m.cc_addresses, m.reply_to_addresses, m.subject, m.message_snippet,
+       m.has_attachments, m.sent_at, m.is_private`;
 
 /** Maps a row to the API shape, rendering timestamps as ISO strings. */
 export function toEmailMessage(row: EmailMessageRow): EmailMessage {
@@ -82,6 +83,7 @@ export function toEmailMessage(row: EmailMessageRow): EmailMessage {
     from_address: row.from_address,
     to_addresses: row.to_addresses,
     cc_addresses: row.cc_addresses,
+    reply_to_addresses: row.reply_to_addresses,
     subject: row.subject,
     snippet: row.message_snippet,
     has_attachments: row.has_attachments,

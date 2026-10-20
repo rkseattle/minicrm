@@ -11,6 +11,7 @@ function message(overrides: Partial<EmailMessage>): EmailMessage {
     from_address: 'ada@client.test',
     to_addresses: ['rep@example.com', 'team@example.com'],
     cc_addresses: [],
+    reply_to_addresses: [],
     subject: 'Hello',
     snippet: null,
     has_attachments: false,
@@ -47,11 +48,22 @@ describe('replyRecipients', () => {
     expect(replyRecipients(message({ direction: 'inbound' }))).toEqual(['ada@client.test']);
   });
 
-  it('answers the recipients of mail sent', () => {
-    expect(replyRecipients(message({ direction: 'outbound' }))).toEqual([
-      'rep@example.com',
-      'team@example.com',
-    ]);
+  it('answers the Reply-To of mail received when it names one', () => {
+    expect(
+      replyRecipients(
+        message({
+          direction: 'inbound',
+          from_address: 'no-reply@vendor.test',
+          reply_to_addresses: ['support@vendor.test', 'billing@vendor.test'],
+        }),
+      ),
+    ).toEqual(['support@vendor.test', 'billing@vendor.test']);
+  });
+
+  it('answers the recipients of mail sent, whatever its Reply-To', () => {
+    expect(
+      replyRecipients(message({ direction: 'outbound', reply_to_addresses: ['x@y.test'] })),
+    ).toEqual(['rep@example.com', 'team@example.com']);
   });
 });
 

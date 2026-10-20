@@ -10581,6 +10581,13 @@
           "type": "text",
           "nullable": true,
           "comment": "Ancestor Message-IDs, bracketed and space-separated, oldest first; bounded to the root plus the newest. A reply extends it."
+        },
+        {
+          "name": "reply_to_addresses",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]",
+          "comment": "Addresses the sender named in Reply-To, lowercased. Empty when there is none or it names only the sender; a reply then goes to from_address."
         }
       ],
       "indexes": [

@@ -52,6 +52,11 @@ const componentSchemas = {
       from_address: { type: 'string' },
       to_addresses: { type: 'array', items: { type: 'string' } },
       cc_addresses: { type: 'array', items: { type: 'string' } },
+      reply_to_addresses: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Where the sender asked replies to go. Empty means reply to from_address.',
+      },
       subject: { type: 'string', nullable: true },
       snippet: {
         type: 'string',

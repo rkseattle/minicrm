@@ -198,6 +198,8 @@ email_messages
   rfc_message_id  references_header  ← what a reply names in In-Reply-To and extends in
     References. Not derivable from thread_id, which may be a native id or a digest.
     The sync upsert keeps a stored value when a re-read has none.
+  reply_to_addresses  ← where the sender asked replies to go; empty means the sender, and
+    is also what a Reply-To naming only the sender stores, so every driver agrees.
 
 email_sync_jobs
   status(pending|running|complete|failed)

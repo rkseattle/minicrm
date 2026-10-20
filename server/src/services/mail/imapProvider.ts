@@ -42,6 +42,7 @@ import {
   EMPTY_MESSAGE_BODY,
   MAX_MESSAGE_SOURCE_BYTES,
   parseMessageBody,
+  storedReplyTo,
   storedThreadingHeaders,
   stripNul,
   subjectOf,
@@ -250,6 +251,7 @@ function normalize(
     bodyHtml: body.bodyHtml,
     snippet: body.snippet,
     ...storedThreadingHeaders(threading),
+    replyToAddresses: storedReplyTo(addressesOf(envelope?.replyTo), fromAddress),
   };
 }
 

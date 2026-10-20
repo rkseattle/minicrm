@@ -59,6 +59,8 @@ export const emailMessageSchema = z.object({
   from_address: z.string(),
   to_addresses: z.array(z.string()),
   cc_addresses: z.array(z.string()),
+  /** Where the sender asked replies to go; empty means reply to the sender. */
+  reply_to_addresses: z.array(z.string()),
   subject: z.string().nullable(),
   snippet: z.string().nullable(),
   has_attachments: z.boolean(),

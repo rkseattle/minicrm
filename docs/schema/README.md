@@ -88,7 +88,7 @@
 | [public.data_hygiene_findings](public.data_hygiene_findings.md) | 13 | Current data hygiene queue (MINCRM-476), one row per flagged record per issue type. Upserted nightly by dataHygieneService; mutated in place by update/merge/archive/dismiss actions rather than appended — reflects current state, not a history log. A finding is cleared (deleted) once the nightly scan no longer detects the issue, or the underlying record is deleted/archived. dismissed_until implements the 90-day (admin-configurable) dismiss suppression window. | BASE TABLE |
 | [public.connected_accounts](public.connected_accounts.md) | 15 | Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth tokens or IMAP credentials as JSON); it is never returned by any API. | BASE TABLE |
 | [public.connected_account_oauth_states](public.connected_account_oauth_states.md) | 6 | Single-use OAuth authorization-code state. Binds a flow to the user who started it and holds that flow PKCE verifier until the callback consumes the row. | BASE TABLE |
-| [public.email_messages](public.email_messages.md) | 18 | Messages synced from a connected mailbox. Headers, metadata, and body text. All three body columns are nullable: a message may store its headers with no body. | BASE TABLE |
+| [public.email_messages](public.email_messages.md) | 19 | Messages synced from a connected mailbox. Headers, metadata, and body text. All three body columns are nullable: a message may store its headers with no body. | BASE TABLE |
 | [public.email_sync_jobs](public.email_sync_jobs.md) | 9 | Progress of a bounded mailbox backfill. One row per backfill run; incremental syncs create none. | BASE TABLE |
 | [public.email_message_links](public.email_message_links.md) | 7 | Links a synced message to the CRM records its addresses name. record_type + record_id form a polymorphic reference with no FK constraint, because a PostgreSQL FK cannot span several parent tables. Valid record_type values: 'contact', 'lead', 'account', 'deal'. Orphan cleanup is the application's responsibility: a hard-delete of one of those records must clear its links in the same transaction, and a consolidating path — a contact merge, a lead conversion — must move them to the surviving record rather than drop them. See docs/dev/schema.md — Polymorphic FK Pattern. | BASE TABLE |
 | [public.email_message_link_suppressions](public.email_message_link_suppressions.md) | 5 | Automatic email-to-record links a user removed. Re-derivation consults this table so an unlink is not undone by a later relationship change. | BASE TABLE |
@@ -1177,6 +1177,7 @@ erDiagram
   text message_snippet "First 200 characters of the plain-text body with whitespace collapsed, for list views that must not load a whole body. Derived from message_body_text, so it is null whenever that is."
   text rfc_message_id "The message's own RFC 5322 Message-ID, without angle brackets. A reply names it in In-Reply-To."
   text references_header "Ancestor Message-IDs, bracketed and space-separated, oldest first; bounded to the root plus the newest. A reply extends it."
+  text__ reply_to_addresses "Addresses the sender named in Reply-To, lowercased. Empty when there is none or it names only the sender; a reply then goes to from_address."
 }
 "public.email_sync_jobs" {
   uuid id ""
