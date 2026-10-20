@@ -43,7 +43,7 @@ describe('GlobalSearch', () => {
   it('shows the empty state when query returns no results', async () => {
     server.use(
       http.get('/api/v1/search', () =>
-        HttpResponse.json({ contacts: [], accounts: [], deals: [], leads: [] }),
+        HttpResponse.json({ contacts: [], accounts: [], deals: [], leads: [], emails: [] }),
       ),
     );
     const user = userEvent.setup();
@@ -134,6 +134,7 @@ describe('GlobalSearch', () => {
               company_name: 'Lead Co',
             },
           ],
+          emails: [],
         }),
       ),
     );
@@ -163,6 +164,7 @@ describe('GlobalSearch', () => {
               company_name: null,
             },
           ],
+          emails: [],
         }),
       ),
     );
@@ -200,5 +202,69 @@ describe('GlobalSearch', () => {
       screen.getByTestId('search-result-contact-00000000-0000-0000-0000-000000000101'),
     );
     expect(screen.queryByTestId('search-results-panel')).not.toBeInTheDocument();
+  });
+
+  describe('email results', () => {
+    const EMAIL_ID = '00000000-0000-0000-0000-000000000501';
+    const CONTACT_ID = '00000000-0000-0000-0000-000000000101';
+
+    function serveEmails(subject: string | null): void {
+      server.use(
+        http.get('/api/v1/search', () =>
+          HttpResponse.json({
+            contacts: [],
+            accounts: [],
+            deals: [],
+            leads: [],
+            emails: [
+              {
+                id: EMAIL_ID,
+                subject,
+                snippet: 'the renewal terms',
+                from_address: 'ada@client.test',
+                sent_at: '2026-08-01T12:00:00.000Z',
+                record_type: 'contact',
+                record_id: CONTACT_ID,
+              },
+            ],
+          }),
+        ),
+      );
+    }
+
+    it('shows an emails-only result rather than the empty state', async () => {
+      serveEmails('Renewal');
+      const user = userEvent.setup();
+      renderWithProviders(<GlobalSearch />);
+      await user.type(screen.getByTestId('global-search-input'), 'renewal');
+
+      const link = await screen.findByTestId(`search-result-email-${EMAIL_ID}`);
+      expect(link).toHaveTextContent('Renewal');
+      expect(link).toHaveTextContent('ada@client.test — the renewal terms');
+      expect(screen.queryByTestId('search-empty-state')).not.toBeInTheDocument();
+    });
+
+    it('opens the record the email is linked to', async () => {
+      serveEmails('Renewal');
+      const user = userEvent.setup();
+      renderWithProviders(<GlobalSearch />);
+      await user.type(screen.getByTestId('global-search-input'), 'renewal');
+
+      expect(await screen.findByTestId(`search-result-email-${EMAIL_ID}`)).toHaveAttribute(
+        'href',
+        `/contacts/${CONTACT_ID}`,
+      );
+    });
+
+    it('names a message with no subject', async () => {
+      serveEmails(null);
+      const user = userEvent.setup();
+      renderWithProviders(<GlobalSearch />);
+      await user.type(screen.getByTestId('global-search-input'), 'renewal');
+
+      expect(await screen.findByTestId(`search-result-email-${EMAIL_ID}`)).toHaveTextContent(
+        '(no subject)',
+      );
+    });
   });
 });

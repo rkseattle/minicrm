@@ -1451,7 +1451,8 @@
     "inputLabel": "Rechercher",
     "placeholder": "Rechercher…",
     "minLengthHint": "Saisissez au moins {{min}} caractères pour rechercher",
-    "noResults": "Aucun résultat pour « {{query}} »"
+    "noResults": "Aucun résultat pour « {{query}} »",
+    "emails": "E-mails"
   },
   "pagination": {
     "previous": "Précédent",

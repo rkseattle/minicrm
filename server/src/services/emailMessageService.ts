@@ -258,6 +258,25 @@ async function buildVisibleLinkExists(
   userRole: string,
   paramOffset: number,
 ): Promise<{ sql: string; params: unknown[] }> {
+  const link = await buildVisibleLinkPredicate(userId, userRole, paramOffset);
+  return {
+    sql: `EXISTS (
+      SELECT 1 FROM email_message_links l
+       WHERE l.email_message_id = m.id AND ${link.sql}
+    )`,
+    params: link.params,
+  };
+}
+
+/**
+ * Builds "the caller can follow this link", as SQL over a link aliased `l`, for a query that
+ * must name the record it reached and not just know one exists.
+ */
+export async function buildVisibleLinkPredicate(
+  userId: string,
+  userRole: string,
+  paramOffset: number,
+): Promise<{ sql: string; params: unknown[] }> {
   const params: unknown[] = [];
   const arms: string[] = [];
 
@@ -295,10 +314,7 @@ async function buildVisibleLinkExists(
   }
 
   return {
-    sql: `EXISTS (
-      SELECT 1 FROM email_message_links l
-       WHERE l.email_message_id = m.id AND (${arms.join(' OR ')})
-    )`,
+    sql: `(${arms.join(' OR ')})`,
     params,
   };
 }

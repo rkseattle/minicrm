@@ -1451,7 +1451,8 @@
     "inputLabel": "搜索",
     "placeholder": "搜索…",
     "minLengthHint": "请输入至少 {{min}} 个字符",
-    "noResults": "未找到《{{query}}》的结果"
+    "noResults": "未找到《{{query}}》的结果",
+    "emails": "邮件"
   },
   "pagination": {
     "previous": "上一页",

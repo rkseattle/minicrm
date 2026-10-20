@@ -4,6 +4,7 @@
  */
 
 import apiClient from './axiosInstance.js';
+import type { EmailLinkRecordType } from '@shared/schemas/emailMessageSchema.js';
 
 /** A contact result returned by the search endpoint */
 export interface ContactSearchResult {
@@ -35,19 +36,31 @@ export interface LeadSearchResult {
   company_name: string | null;
 }
 
+/** One of the caller's own messages, with the linked record it opens */
+export interface EmailSearchResult {
+  id: string;
+  subject: string | null;
+  snippet: string | null;
+  from_address: string;
+  sent_at: string | null;
+  record_type: EmailLinkRecordType;
+  record_id: string;
+}
+
 /** Full response from GET /api/v1/search */
 export interface SearchResponse {
   contacts: ContactSearchResult[];
   accounts: AccountSearchResult[];
   deals: DealSearchResult[];
   leads: LeadSearchResult[];
+  emails: EmailSearchResult[];
 }
 
 /**
  * Performs a global cross-entity search.
  *
  * @param query - The search term (minimum 2 characters)
- * @returns Grouped search results for contacts, accounts, and deals
+ * @returns Grouped search results for contacts, accounts, deals, leads, and email
  */
 export async function globalSearch(query: string): Promise<SearchResponse> {
   const response = await apiClient.get<SearchResponse>('/search', { params: { q: query } });

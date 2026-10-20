@@ -1416,7 +1416,8 @@
     "inputLabel": "[Ŝëärĉh~~]",
     "placeholder": "[Ŝëärĉh…~~~]",
     "minLengthHint": "[Typë ät lëäŝt {{min}} ĉhäräĉtërŝ tö ŝëärĉh~~~~~~~~~~~~~]",
-    "noResults": "[Ñö rëŝültŝ för \"{{query}}\"~~~~~~~~]"
+    "noResults": "[Ñö rëŝültŝ för \"{{query}}\"~~~~~~~~]",
+    "emails": "[Ëmäïlŝ~~]"
   },
   "pagination": {
     "previous": "[Prëvïöüŝ~~~]",

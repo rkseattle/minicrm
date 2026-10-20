@@ -59,7 +59,12 @@ characters — below that it prompts you rather than searching.
 Results are grouped under **Contacts**, **Accounts**, **Deals**, and **Leads**, with up
 to ten matches in each group. You see only records you own; admins see everything.
 
-Those four groups are what the dropdown shows, but the search itself looks wider than
+With email sync on and a [connected mailbox](profile.md#connect-a-mailbox), an **Emails**
+group lists up to ten of your own messages whose subject or opening text matches, newest
+first. Selecting one opens the record it is linked to. Only your own mail is searched —
+admins included — and a message linked to no record you can open is not listed.
+
+Those groups are what the dropdown shows, but the record search looks wider than
 that. A record surfaces when the text matches any of:
 
 - Names, email addresses, phone numbers, job titles, and departments

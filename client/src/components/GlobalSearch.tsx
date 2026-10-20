@@ -1,6 +1,6 @@
 /**
  * GlobalSearch — search bar in the navigation that queries across contacts,
- * accounts, and deals simultaneously. Results appear in a dropdown panel
+ * accounts, deals, leads, and the user's own email simultaneously. Results appear in a dropdown panel
  * grouped by entity type.
  */
 
@@ -8,7 +8,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { globalSearch, type LeadSearchResult } from '@/api/search.js';
+import { globalSearch, type EmailSearchResult, type LeadSearchResult } from '@/api/search.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { useOnClickOutside } from '@/hooks/useOnClickOutside.js';
 import { recordPath } from '@shared/types/recordPath.js';
@@ -60,7 +60,8 @@ export default function GlobalSearch() {
     (data.contacts.length > 0 ||
       data.accounts.length > 0 ||
       data.deals.length > 0 ||
-      data.leads.length > 0);
+      data.leads.length > 0 ||
+      data.emails.length > 0);
 
   const showDropdown = open && query.trim().length > 0;
 
@@ -195,6 +196,35 @@ export default function GlobalSearch() {
                       </span>
                       <span className="text-xs text-gray-500 truncate">
                         {lead.company_name ?? lead.email}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Emails group — each opens the record it is linked to */}
+          {data && data.emails.length > 0 && (
+            <section aria-label={t('search.emails')}>
+              <header className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b border-gray-100">
+                {t('search.emails')}
+              </header>
+              <ul>
+                {data.emails.map((email: EmailSearchResult) => (
+                  <li key={email.id}>
+                    <Link
+                      to={recordPath(email.record_type, email.record_id)}
+                      data-testid={`search-result-email-${email.id}`}
+                      onClick={closeDropdown}
+                      className="flex flex-col px-4 py-2.5 hover:bg-primary-50 transition-colors min-w-0"
+                    >
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {email.subject ?? t('emails.noSubject')}
+                      </span>
+                      <span className="text-xs text-gray-500 truncate">
+                        {email.from_address}
+                        {email.snippet ? ` — ${email.snippet}` : ''}
                       </span>
                     </Link>
                   </li>

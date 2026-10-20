@@ -10641,6 +10641,22 @@
             "connected_account_id",
             "thread_id"
           ]
+        },
+        {
+          "name": "email_messages_subject_trgm_idx",
+          "def": "CREATE INDEX email_messages_subject_trgm_idx ON public.email_messages USING gin (subject gin_trgm_ops)",
+          "table": "public.email_messages",
+          "columns": [
+            "subject"
+          ]
+        },
+        {
+          "name": "email_messages_snippet_trgm_idx",
+          "def": "CREATE INDEX email_messages_snippet_trgm_idx ON public.email_messages USING gin (message_snippet gin_trgm_ops)",
+          "table": "public.email_messages",
+          "columns": [
+            "message_snippet"
+          ]
         }
       ],
       "constraints": [
