@@ -19,8 +19,8 @@ import apiClient from './axiosInstance.js';
 export const EMAIL_MESSAGES_QUERY_KEY = ['email-messages'] as const;
 
 /**
- * Cache key for one message's bodies. Its own root, not under EMAIL_MESSAGES_QUERY_KEY: a body
- * never changes, so a send's refresh must not refetch it.
+ * Cache key for one message's bodies. Its own root, so list queries never match it; a later
+ * sync can fill in or replace a body, so it goes stale like any other query.
  */
 export const EMAIL_MESSAGE_BODY_QUERY_KEY = ['email-message-body'] as const;
 

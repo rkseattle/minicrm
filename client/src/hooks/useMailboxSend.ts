@@ -16,7 +16,12 @@ import {
   type SendEmailInput,
   type SendEmailResponse,
 } from '@shared/schemas/emailMessageSchema.js';
-import { EMAIL_MESSAGES_QUERY_KEY, sendEmailMessage } from '@/api/emailMessages.js';
+import { ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
+import {
+  EMAIL_MESSAGE_BODY_QUERY_KEY,
+  EMAIL_MESSAGES_QUERY_KEY,
+  sendEmailMessage,
+} from '@/api/emailMessages.js';
 import { newIdempotencyKey } from '@/utils/idempotencyKey.js';
 
 /** How long a send's confirmation shows before its form closes. */
@@ -47,7 +52,7 @@ export interface MailboxSend {
   send(current: () => MailboxRequest): Promise<{ response: SendEmailResponse; mailbox?: string }>;
   /** Settles a failed send: says how it ended, and freezes the compose when it may have gone. */
   settleFailure(error: unknown): MailboxFailure;
-  /** Called after any send that went, to refresh the synced-mail lists. */
+  /** Called after any send that went: refreshes mail, bodies, and the activity it logged. */
   refreshMail(): void;
   /** Forgets the compose, for a closed form. */
   reset(): void;
@@ -84,6 +89,8 @@ export function useMailboxSend(): MailboxSend {
 
   function refreshMail(): void {
     void queryClient.invalidateQueries({ queryKey: EMAIL_MESSAGES_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: EMAIL_MESSAGE_BODY_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY });
   }
 
   // Stable, so a form can call it from an effect keyed on being open.

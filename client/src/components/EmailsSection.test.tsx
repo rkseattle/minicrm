@@ -1,10 +1,11 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { QueryClient, type QueryKey } from '@tanstack/react-query';
 import type { ConnectedAccountResponse } from '@shared/schemas/connectedAccountSchema.js';
 import type { EmailMessage, EmailThread } from '@shared/schemas/emailMessageSchema.js';
 import { MY_FEATURE_FLAGS_QUERY_KEY } from '@/api/featureFlags.js';
+import { ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
 import { EMAIL_MESSAGES_QUERY_KEY } from '@/api/emailMessages.js';
 import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
@@ -132,9 +133,12 @@ function serve(
   );
 }
 
-function renderSection(): QueryClient {
+/** Keeps an unmounted body cached, so only staleness can make a reopen read it again. */
+const KEEP_CACHE_MS = 60_000;
+
+function renderSection(gcTime = 0): QueryClient {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+    defaultOptions: { queries: { retry: false, gcTime }, mutations: { retry: false } },
   });
   renderWithProviders(
     <EmailsSection recordType="contact" recordId={RECORD_ID} defaultRecipient="ada@client.test" />,
@@ -553,7 +557,7 @@ describe('EmailsSection — compose and reply', () => {
     ]);
   });
 
-  it('refreshes the thread list after a send without reading any body again', async () => {
+  it('refreshes the thread list, the open body, and the activity timeline after a send', async () => {
     const pages: number[] = [];
     const bodies: string[] = [];
     serve({ pages, bodies });
@@ -562,7 +566,8 @@ describe('EmailsSection — compose and reply', () => {
         HttpResponse.json({ message: SECOND, unresolved_merge_tags: [] }, { status: 201 }),
       ),
     );
-    renderSection();
+    const queryClient = renderSection();
+    const invalidated = vi.spyOn(queryClient, 'invalidateQueries');
     fireEvent.click(await screen.findByTestId(`email-thread-row-${T1}`));
     await screen.findByTestId('email-body-frame');
     const compose = screen.getByTestId('emails-compose');
@@ -575,7 +580,22 @@ describe('EmailsSection — compose and reply', () => {
     await screen.findByTestId('email-composer-success');
 
     await waitFor(() => expect(pages).toHaveLength(2));
-    expect(bodies).toEqual([SECOND.id]);
+    await waitFor(() => expect(bodies).toEqual([SECOND.id, SECOND.id]));
+    expect(invalidated).toHaveBeenCalledWith({ queryKey: ACTIVITIES_QUERY_KEY });
+  });
+
+  it('reads a body again when its message is reopened, since a later sync can change it', async () => {
+    const bodies: string[] = [];
+    serve({ bodies });
+    renderSection(KEEP_CACHE_MS);
+    fireEvent.click(await screen.findByTestId(`email-thread-row-${T1}`));
+    await screen.findByTestId('email-body-frame');
+
+    fireEvent.click(screen.getByTestId(`email-message-toggle-${SECOND.id}`));
+    expect(screen.queryByTestId('email-body-frame')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId(`email-message-toggle-${SECOND.id}`));
+
+    await waitFor(() => expect(bodies).toEqual([SECOND.id, SECOND.id]));
   });
 
   it('replies to the sender, in the conversation, from its mailbox', async () => {
