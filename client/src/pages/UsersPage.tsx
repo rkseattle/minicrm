@@ -28,6 +28,7 @@ import {
   resetUserOnboarding,
   issueApiToken,
   revokeApiToken,
+  USERS_QUERY_KEY,
 } from '@/api/users.js';
 import { bulkPatchUsers, bulkDeleteUsers, type BulkFailure } from '@/api/bulk.js';
 import { listUserRoles } from '@/api/customRoles.js';
@@ -39,9 +40,6 @@ import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 import BulkActionBar from '@/components/BulkActionBar.js';
 import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
-
-/** React Query cache key for the users list */
-const USERS_QUERY_KEY = ['users'] as const;
 
 interface InviteUserFormProps {
   onSuccess?: () => void;
@@ -411,7 +409,7 @@ export default function UsersPage() {
   // Fetch assigned custom roles for each user on the current page
   const userRoleQueries = useQueries({
     queries: users.map((u) => ({
-      queryKey: ['users', u.id, 'roles'] as const,
+      queryKey: [...USERS_QUERY_KEY, u.id, 'roles'] as const,
       queryFn: () => listUserRoles(u.id),
       staleTime: 5 * 60 * 1000,
     })),

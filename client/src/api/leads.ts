@@ -15,6 +15,9 @@ import type {
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 import { localDateStamp } from '@/utils/formatLocalDate.js';
 
+/** React Query cache key for the leads list; every leads query sits under it. */
+export const LEADS_QUERY_KEY = ['leads'] as const;
+
 interface LeadSingleResponse {
   lead: LeadResponse;
 }

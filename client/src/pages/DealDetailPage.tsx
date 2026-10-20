@@ -31,8 +31,8 @@ import {
   DEALS_QUERY_KEY,
 } from '@/api/deals.js';
 import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
-import { listAccounts } from '@/api/accounts.js';
-import { listContacts } from '@/api/contacts.js';
+import { listAccounts, ACCOUNTS_QUERY_KEY } from '@/api/accounts.js';
+import { listContacts, CONTACTS_QUERY_KEY } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import { runDealHealthCheck } from '@/api/dealHealth.js';
@@ -186,7 +186,7 @@ export default function DealDetailPage() {
   });
 
   const { data: accountsData } = useQuery({
-    queryKey: ['accounts'],
+    queryKey: ACCOUNTS_QUERY_KEY,
     queryFn: () => listAccounts(),
   });
 
@@ -196,7 +196,7 @@ export default function DealDetailPage() {
   });
 
   const { data: allContactsData, isError: isContactsError } = useQuery({
-    queryKey: ['contacts'],
+    queryKey: CONTACTS_QUERY_KEY,
     queryFn: () => listContacts({ limit: PAGINATION_MAX_LIMIT }),
   });
 

@@ -26,6 +26,7 @@ import {
   deleteLead,
   exportLeadsCsv,
   exportLeadsPdf,
+  LEADS_QUERY_KEY,
 } from '@/api/leads.js';
 import type { DuplicateLeadInfo } from '@/api/leads.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -44,9 +45,6 @@ import BulkReassignModal from '@/components/BulkReassignModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { recordPath } from '@shared/types/recordPath.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
-
-/** React Query cache key for the leads list */
-export const LEADS_QUERY_KEY = ['leads'] as const;
 
 /** Tailwind badge classes by status */
 const STATUS_BADGE: Record<string, string> = {

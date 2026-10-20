@@ -35,6 +35,9 @@ interface ActiveUsersResponse {
 
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
+/** React Query cache key for the users list; every users query sits under it. */
+export const USERS_QUERY_KEY = ['users'] as const;
+
 interface UserSingleResponse {
   user: UserResponse;
 }

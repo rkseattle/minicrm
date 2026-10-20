@@ -15,7 +15,7 @@ import type { ActiveUser } from '@/api/users.js';
 import { LEAD_SOURCES } from '@shared/schemas/leadSchema.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
-import { getLeadRoutingSuggestion } from '@/api/leadRouting.js';
+import { getLeadRoutingSuggestion, LEAD_ROUTING_SUGGESTION_QUERY_KEY } from '@/api/leadRouting.js';
 import type { LeadRoutingSuggestionResponse } from '@shared/schemas/leadRoutingSchema.js';
 
 /** Form field values managed by this component */
@@ -108,7 +108,7 @@ function RoutingSuggestionPanel({
   const isDismissedForCurrentProfile = dismissedForKey === profileKey;
 
   const { data: suggestion, isFetching } = useQuery({
-    queryKey: ['leadRoutingSuggestion', profileKey],
+    queryKey: [...LEAD_ROUTING_SUGGESTION_QUERY_KEY, profileKey],
     queryFn: () =>
       getLeadRoutingSuggestion({
         territory: debouncedTerritory || undefined,

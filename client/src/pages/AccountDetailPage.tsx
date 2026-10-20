@@ -22,13 +22,13 @@ import {
   deleteAccount,
   listChildAccounts,
   exportAccountPdf,
+  ACCOUNTS_QUERY_KEY,
 } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
-import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import ChurnExpansionBanner from '@/components/ChurnExpansionBanner.js';
 import SentimentSparkline from '@/components/SentimentSparkline.js';
 import AccountHealthBadge from '@/components/AccountHealthBadge.js';

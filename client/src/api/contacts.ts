@@ -14,6 +14,9 @@ import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 import { localDateStamp } from '@/utils/formatLocalDate.js';
 
+/** React Query cache key for the contacts list; every contacts query sits under it. */
+export const CONTACTS_QUERY_KEY = ['contacts'] as const;
+
 interface ContactSingleResponse {
   contact: ContactResponse;
 }

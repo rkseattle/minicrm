@@ -15,6 +15,9 @@ import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 import type { AccountHealthListFilterState } from '@shared/schemas/accountHealthScoreSchema.js';
 import { localDateStamp } from '@/utils/formatLocalDate.js';
 
+/** React Query cache key for the accounts list; every accounts query sits under it. */
+export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
+
 interface AccountSingleResponse {
   account: AccountResponse;
 }

@@ -29,6 +29,7 @@ import {
   deleteContactAddress,
   setDefaultContactAddress,
   exportContactPdf,
+  CONTACTS_QUERY_KEY,
 } from '@/api/contacts.js';
 import {
   contactEnrollmentsQueryKey,
@@ -42,13 +43,11 @@ import type { EnrollmentResponse, SequenceResponse } from '@shared/schemas/seque
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
 import type { ContactAddress, ContactAddressInput } from '@/api/contacts.js';
-import { listAccounts, getAccount } from '@/api/accounts.js';
+import { listAccounts, getAccount, ACCOUNTS_QUERY_KEY } from '@/api/accounts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
-import { CONTACTS_QUERY_KEY } from '@/pages/ContactsPage.js';
-import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { MergeFieldChoice } from '@/api/contacts.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
@@ -73,6 +72,7 @@ import { getFollowUpTiming, followUpTimingQueryKey } from '@/api/followUpTiming.
 import FollowUpTimingCard from '@/components/FollowUpTimingCard.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
 import { recordPath } from '@shared/types/recordPath.js';
+import { ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
 
 /**
  * Single contact detail page with view/edit/delete.
@@ -207,7 +207,7 @@ export default function ContactDetailPage() {
 
   const linkedAccountId = data?.contact?.account_id ?? null;
   const { data: linkedAccountData, isLoading: linkedAccountLoading } = useQuery({
-    queryKey: ['accounts', linkedAccountId],
+    queryKey: [...ACCOUNTS_QUERY_KEY, linkedAccountId],
     queryFn: () => getAccount(linkedAccountId!),
     enabled: Boolean(linkedAccountId),
   });
@@ -218,7 +218,7 @@ export default function ContactDetailPage() {
   });
 
   const { data: contactDealsData } = useQuery({
-    queryKey: ['contacts', id, 'deals'],
+    queryKey: [...CONTACTS_QUERY_KEY, id, 'deals'],
     queryFn: () => listContactDeals(id!),
     enabled: Boolean(id),
   });
@@ -1421,7 +1421,7 @@ export default function ContactDetailPage() {
             emailRecipient={contact?.email ?? undefined}
             showGdpr={user?.role === 'admin'}
             onGdprErased={() => {
-              void queryClient.invalidateQueries({ queryKey: ['contacts', id] });
+              void queryClient.invalidateQueries({ queryKey: [...CONTACTS_QUERY_KEY, id] });
             }}
           >
             {/* Linked deals */}
@@ -1703,7 +1703,7 @@ export default function ContactDetailPage() {
           contactName={`${contact.first_name} ${contact.last_name}`}
           onClose={() => setIsSendEmailOpen(false)}
           onSent={() => {
-            queryClient.invalidateQueries({ queryKey: ['activities'] });
+            queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY });
           }}
         />
       )}

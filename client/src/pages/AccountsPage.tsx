@@ -26,6 +26,7 @@ import {
   createAccount,
   exportAccountsCsv,
   exportAccountsPdf,
+  ACCOUNTS_QUERY_KEY,
 } from '@/api/accounts.js';
 import { bulkAccounts } from '@/api/bulk.js';
 import { listAllTags, ALL_TAGS_QUERY_KEY } from '@/api/tags.js';
@@ -48,9 +49,6 @@ import { useExportAction } from '@/hooks/useExportAction.js';
 import { explainDuplicate } from '@/api/duplicateExplanation.js';
 import AccountHealthBadge from '@/components/AccountHealthBadge.js';
 import { recordPath } from '@shared/types/recordPath.js';
-
-/** React Query cache key for the accounts list */
-export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
 
 /**
  * Accounts list page with owner filter and inline create form.

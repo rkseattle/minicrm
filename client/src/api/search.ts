@@ -6,6 +6,9 @@
 import apiClient from './axiosInstance.js';
 import type { EmailLinkRecordType } from '@shared/schemas/emailMessageSchema.js';
 
+/** React Query cache key for global search results. */
+export const GLOBAL_SEARCH_QUERY_KEY = ['global-search'] as const;
+
 /** A contact result returned by the search endpoint */
 export interface ContactSearchResult {
   id: string;
