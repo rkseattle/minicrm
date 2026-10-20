@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
 import { sanitizeEmailHtml } from './sanitizeEmailHtml.js';
+import {
+  DISALLOWED_FUNCTION_STYLES,
+  HOSTILE_EMAIL_STYLES,
+} from './__fixtures__/hostileEmailStyles.js';
 
 /** Parses sanitized output so assertions read the DOM a browser would build, not a string. */
 function render(html: string, allowImages = false): HTMLElement {
@@ -84,24 +88,7 @@ describe('sanitizeEmailHtml — hostile markup', () => {
     );
   });
 
-  it.each([
-    'background-image: url(https://evil.test/pixel)',
-    'background: url(https://evil.test/pixel)',
-    'width: expression(alert(1))',
-    'behavior: url(x.htc)',
-    // CSS escapes resolve before the parser sees url(, so a text filter misses them.
-    'background:u\\72l(https://evil.test/p)',
-    'background:\\75rl(https://evil.test/p)',
-    // image-set takes a bare string, no url( at all.
-    "background-image:image-set('https://evil.test/p' 1x)",
-    "background-image:-webkit-image-set('https://evil.test/p' 1x)",
-    'background-image:var(--pixel)',
-    'list-style-image: url(https://evil.test/p)',
-    'border-image: url(https://evil.test/p) 30',
-    'content: url(https://evil.test/p)',
-    'cursor: url(https://evil.test/p), auto',
-    'background:u/**/rl(https://evil.test/p)',
-  ])('keeps nothing that could load from the style %s', (style) => {
+  it.each(HOSTILE_EMAIL_STYLES)('keeps nothing that could load from the style %s', (style) => {
     const host = render(`<p style="${style}">x</p>`);
 
     expect(host.innerHTML).not.toContain('evil.test');
@@ -116,7 +103,7 @@ describe('sanitizeEmailHtml — hostile markup', () => {
     expect(style).toBe('background-color: rgb(255, 255, 255)');
   });
 
-  it.each(['color: var(--tracker)', 'color: color-mix(in srgb, red, blue)', 'width: attr(data-x)'])(
+  it.each(DISALLOWED_FUNCTION_STYLES)(
     'drops an allowed property whose value calls a function that is not allowed: %s',
     (style) => {
       expect(render(`<p style="${style}">x</p>`).querySelector('p')?.hasAttribute('style')).toBe(

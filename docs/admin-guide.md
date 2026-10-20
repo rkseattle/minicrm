@@ -31,6 +31,7 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 22. [Sequences](#22-sequences)
 23. [Custom Reports](#23-custom-reports)
 24. [Insights](#24-insights)
+25. [Connected Mailboxes and Synced Email](#25-connected-mailboxes-and-synced-email)
 
 ---
 
@@ -2511,3 +2512,30 @@ behaviours that correlate with winning and losing.
 
 Coaching threshold changes are audited. The nightly runs themselves are not — check the
 server logs if you need to confirm a job ran.
+
+## 25. Connected Mailboxes and Synced Email
+
+> **Feature flag:** `email_sync` (off by default). Users also need the
+> `connected_accounts:manage` capability, which admins, managers and reps have.
+
+With the flag on, each user can connect their own Google, Microsoft or IMAP mailbox from
+[Profile](user-guide/profile.md#connect-a-mailbox). MiniCRM then:
+
+- files synced mail against the contacts, leads, accounts and deals it mentions, shown in
+  the **Emails** section of each record's page;
+- lets the user **Compose** and **Reply** from that section, and send from their mailbox in
+  a contact's **Send Email** dialog, where they can also pick an
+  [email template](#15-email-templates);
+- adds an **Emails** group to global search, over subjects and message previews.
+
+**Everyone sees only their own mail**, admins included: a message is readable only through
+the mailbox it was synced from, even on a record several people share. A lead's mail is
+shown only to the lead's owner and admins.
+
+| Setting                   | Where                                                | Default |
+| ------------------------- | ---------------------------------------------------- | ------- |
+| Deal auto-link            | API only — see [System Settings](#3-system-settings) | On      |
+| Messages per user, hourly | `EMAIL_SEND_MAX_PER_HOUR` server variable            | 100     |
+
+Turning the flag off hides the section, the search group and mailbox sending at once;
+nothing synced is deleted. Disconnecting a mailbox deletes everything synced from it.

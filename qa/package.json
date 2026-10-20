@@ -30,6 +30,7 @@
     "@types/pg": "^8.11.0",
     "@typescript-eslint/typescript-estree": "^8.57.2",
     "c8": "^11.0.0",
+    "esbuild": "^0.28.2",
     "node-pg-migrate": "^8.0.4",
     "pg": "^8.13.0",
     "promptfoo": "^0.124.1",

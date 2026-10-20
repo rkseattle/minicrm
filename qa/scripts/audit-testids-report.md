@@ -1,12 +1,12 @@
 # data-testid Audit Report
 
-Generated: 2026-10-20T02:55:01.012Z
+Generated: 2026-10-20T03:16:44.490Z
 
 ## Summary
 
-- Matched: 597
+- Matched: 601
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1051
+- Unexercised (in app, not in tests): 1048
 - Dynamic (manual review required): 701
 
 ## Stale testids (action required)
@@ -132,17 +132,14 @@ _None — all test-referenced testids are present in the application source._
 | `email-composer` | client/src/components/EmailComposer.tsx | 148 |
 | `email-draft-error` | client/src/components/EmailDraftPanel.tsx | 142 |
 | `email-draft-copy-error` | client/src/components/EmailDraftPanel.tsx | 192 |
-| `emails-compose` | client/src/components/EmailsSection.tsx | 234 |
 | `emails-accounts-error` | client/src/components/EmailsSection.tsx | 249 |
 | `emails-loading` | client/src/components/EmailsSection.tsx | 255 |
 | `emails-error` | client/src/components/EmailsSection.tsx | 262 |
-| `emails-empty` | client/src/components/EmailsSection.tsx | 268 |
 | `email-thread-participants` | client/src/components/EmailsSection.tsx | 312 |
 | `email-thread-date` | client/src/components/EmailsSection.tsx | 320 |
 | `email-thread-subject` | client/src/components/EmailsSection.tsx | 327 |
 | `email-thread-snippet` | client/src/components/EmailsSection.tsx | 334 |
 | `emails-thread-list` | client/src/components/EmailsSection.tsx | 284 |
-| `emails-section` | client/src/components/EmailsSection.tsx | 223 |
 | `error-boundary-reload` | client/src/components/ErrorBoundary.tsx | 29 |
 | `error-boundary-dashboard-link` | client/src/components/ErrorBoundary.tsx | 37 |
 | `error-boundary-fallback` | client/src/components/ErrorBoundary.tsx | 20 |
