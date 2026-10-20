@@ -17,6 +17,8 @@ import pool from '../db.js';
 import {
   withMigrationLock,
   assertBaselineCoverageMatches,
+  baselineCoveredMigrationNames,
+  migrateFromBaseline,
   runCoverageMigrations,
   runMigrations,
 } from '../migrate.js';
@@ -435,5 +437,114 @@ describe('runMigrations', () => {
         await cleanupClient.end();
       }
     }
+  });
+});
+
+describe('migrateFromBaseline', () => {
+  const PREFIX = 'migrate_baseline_test';
+  const MIGRATIONS_TABLE = `${PREFIX}_pgmigrations`;
+  const TABLES = ['a', 'b', 'c', 'd'].map((suffix) => `${PREFIX}_${suffix}`);
+  let dir: string;
+
+  /** A migration creating one table; run twice it fails, which is how a test sees it ran. */
+  function writeCreate(file: string, table: string): void {
+    writeFileSync(
+      join(dir, file),
+      `exports.up = (pgm) => { pgm.createTable('${table}', { id: 'id' }); };\n` +
+        `exports.down = (pgm) => { pgm.dropTable('${table}'); };\n`,
+    );
+  }
+
+  async function cleanUp(): Promise<void> {
+    for (const table of TABLES) await pool.query(`DROP TABLE IF EXISTS ${table}`);
+    await pool.query(`DROP TABLE IF EXISTS ${MIGRATIONS_TABLE}`);
+  }
+
+  async function tableExists(table: string): Promise<boolean> {
+    const { rows } = await pool.query('SELECT to_regclass($1) AS name', [`public.${table}`]);
+    // Safe: SELECT with no FROM always returns exactly one row.
+    return rows[0]!.name !== null;
+  }
+
+  function migrate(): Promise<void> {
+    return migrateFromBaseline({
+      databaseUrl,
+      dir,
+      migrationsTable: MIGRATIONS_TABLE,
+      baselineName: '000_baseline',
+      coveredNames: ['001_create_a', '002_create_b'],
+      log: () => {},
+    });
+  }
+
+  beforeEach(async () => {
+    await cleanUp();
+    dir = mkdtempSync(join(tmpdir(), `${PREFIX}-`));
+    // The baseline creates what 001 and 002 would, as a squashed baseline does.
+    writeFileSync(
+      join(dir, '000_baseline.js'),
+      `exports.up = (pgm) => {\n` +
+        `  pgm.createTable('${TABLES[0]}', { id: 'id' });\n` +
+        `  pgm.createTable('${TABLES[1]}', { id: 'id' });\n};\n`,
+    );
+    // Safe: TABLES is a four-element literal above.
+    writeCreate('001_create_a.js', TABLES[0]!);
+    writeCreate('002_create_b.js', TABLES[1]!);
+    writeCreate('003_create_c.js', TABLES[2]!);
+  });
+
+  afterEach(async () => {
+    await cleanUp();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('records covered migrations without running them, and runs the rest, on a fresh database', async () => {
+    await migrate();
+
+    // Safe: as above.
+    expect(await tableExists(TABLES[2]!)).toBe(true);
+    const { rows } = await pool.query<{ name: string }>(
+      `SELECT name FROM ${MIGRATIONS_TABLE} ORDER BY name`,
+    );
+    expect(rows.map((row) => row.name)).toEqual([
+      '000_baseline',
+      '001_create_a',
+      '002_create_b',
+      '003_create_c',
+    ]);
+  });
+
+  it('runs a migration added later on a database that already exists, never marking it unrun', async () => {
+    await migrate();
+    // Safe: as above.
+    writeCreate('004_create_d.js', TABLES[3]!);
+
+    await migrate();
+
+    // Safe: as above.
+    expect(await tableExists(TABLES[3]!)).toBe(true);
+  });
+
+  it('re-records a covered migration missing from the table instead of running it', async () => {
+    await migrate();
+    await pool.query(`DELETE FROM ${MIGRATIONS_TABLE} WHERE name = '002_create_b'`);
+
+    // Running 002 for real would fail: its table already exists.
+    await expect(migrate()).resolves.toBeUndefined();
+    const { rowCount } = await pool.query(
+      `SELECT 1 FROM ${MIGRATIONS_TABLE} WHERE name = '002_create_b'`,
+    );
+    expect(rowCount).toBe(1);
+  });
+});
+
+describe('baselineCoveredMigrationNames', () => {
+  it('names files 1 through the covered count, without extensions, and nothing else', () => {
+    expect(
+      baselineCoveredMigrationNames(
+        ['000_baseline.js', '001_a.js', '002_b.js', '003_c.js', 'README.md'],
+        2,
+      ),
+    ).toEqual(['001_a', '002_b']);
   });
 });
