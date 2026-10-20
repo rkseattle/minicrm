@@ -27,6 +27,7 @@ import type {
   DataHygieneEntityType,
 } from '@shared/schemas/dataHygieneSchema.js';
 import { recordPath, type RecordLinkType } from '@shared/types/recordPath.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 const ENTITY_TYPE_FILTERS: Array<DataHygieneEntityType | 'all'> = [
   'all',
@@ -65,7 +66,7 @@ interface DataHygienePageProps {
 }
 
 export default function DataHygienePage({ scope }: DataHygienePageProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { enabled: featureEnabled, isLoading: featureFlagLoading } = useFeatureFlag(
     'ai_data_hygiene_assistant',
@@ -268,7 +269,7 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
                       <p className="text-xs text-gray-500 mt-0.5">
                         {t(`dataHygiene.issue.${finding.issue_type}`)}
                         {finding.last_activity_at &&
-                          ` — ${t('dataHygiene.lastActivity', { date: new Date(finding.last_activity_at).toLocaleDateString() })}`}
+                          ` — ${t('dataHygiene.lastActivity', { date: formatLocalDate(finding.last_activity_at, i18n.language) })}`}
                       </p>
                     </div>
                   </div>

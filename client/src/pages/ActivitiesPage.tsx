@@ -491,7 +491,7 @@ export default function ActivitiesPage() {
                         className="px-6 py-4 text-sm text-gray-600"
                         data-testid={`activity-date-${activity.id}`}
                       >
-                        {formatLocalDate(String(activity.updated_at).slice(0, 10), i18n.language)}
+                        {formatLocalDate(activity.updated_at, i18n.language)}
                       </td>
                     </tr>
                   );

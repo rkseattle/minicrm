@@ -70,6 +70,7 @@ import { listNotes, createNote, updateNote, deleteNote, notesQueryKey } from '@/
 import { uploadAttachment } from '@/api/attachments.js';
 import axios from 'axios';
 import { useAuth } from '@/hooks/useAuth.js';
+import { formatRelativeTime } from '@/utils/formatLocalDate.js';
 import EmptyState from '@/components/EmptyState.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
@@ -406,19 +407,6 @@ export interface NotesSectionProps {
 
 const VISIBILITY_OPTIONS: NoteVisibility[] = ['team', 'private', 'public'];
 
-function formatRelative(isoString: string): string {
-  const date = new Date(isoString);
-  const diffMs = Date.now() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return 'just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 30) return `${diffDay}d ago`;
-  return date.toLocaleDateString();
-}
-
 // ── Visibility badge ───────────────────────────────────────────────────────────
 
 function VisibilityBadge({ visibility }: { visibility: NoteVisibility }) {
@@ -714,7 +702,7 @@ function getRenderEditor(): LexicalEditor {
 }
 
 function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: NoteCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const canEditOrDelete = note.created_by === currentUserId || currentUserRole === 'admin';
 
   if (note.is_masked) {
@@ -725,7 +713,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: No
       >
         {t('notes.privateNoteLabel', {
           author: note.created_by_name,
-          date: formatRelative(note.created_at),
+          date: formatRelativeTime(note.created_at, i18n.language),
         })}
       </div>
     );
@@ -740,7 +728,9 @@ function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: No
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <span className="text-xs font-medium text-gray-900">{note.created_by_name}</span>
         <span className="text-xs text-gray-400">·</span>
-        <span className="text-xs text-gray-500">{formatRelative(note.created_at)}</span>
+        <span className="text-xs text-gray-500">
+          {formatRelativeTime(note.created_at, i18n.language)}
+        </span>
         <VisibilityBadge visibility={note.visibility} />
         {note.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">

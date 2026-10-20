@@ -13,6 +13,7 @@ import { assertUrlIsFetchSafe } from '../utils/urlSafetyUtils.js';
 import logger from '../logger.js';
 import type { NoteResponse } from '@minicrm/shared/schemas/noteSchema.js';
 import type { BrandingConfig, SupportedFontId } from '@minicrm/shared/schemas/brandingSchema.js';
+import { toUtcDateString } from '../utils/utcDate.js';
 
 /** Max notes rendered in a single-record detail PDF */
 export const DETAIL_PDF_NOTES_LIMIT = 50;
@@ -299,7 +300,7 @@ export function buildNotesTableSection(notes: NoteResponse[]): PdfSection {
  * mirroring csvFilename()'s convention.
  */
 export function pdfFilename(entity: string): string {
-  const date = new Date().toISOString().split('T')[0];
+  const date = toUtcDateString(new Date());
   return `minicrm-${entity}-${date}.pdf`;
 }
 

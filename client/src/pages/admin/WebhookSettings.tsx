@@ -22,6 +22,7 @@ import type {
   WebhookDeliveryLogResponse,
   WebhookEventType,
 } from '@shared/schemas/webhookSchema.js';
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 // ── Add-webhook form state ─────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ interface DeliveryLogsProps {
 }
 
 function DeliveryLogsPanel({ subscription, onClose }: DeliveryLogsProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
@@ -129,7 +130,7 @@ function DeliveryLogsPanel({ subscription, onClose }: DeliveryLogsProps) {
                       {log.response_ms !== null ? `${log.response_ms}ms` : '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-700">
-                      {new Date(log.delivered_at).toLocaleString()}
+                      {formatLocalDateTime(log.delivered_at, i18n.language)}
                     </td>
                     <td className="px-4 py-3 text-red-600 break-words max-w-xs">
                       {log.error ?? '—'}

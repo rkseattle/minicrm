@@ -125,6 +125,28 @@ describe('ActivitiesPage', () => {
     });
   });
 
+  it("dates an activity by the viewer's own day, not the UTC day", async () => {
+    // 03:00 UTC on the 20th is still the evening of the 19th in Los Angeles.
+    const lateEvening = { ...ACTIVITY_1, updated_at: '2026-10-20T03:00:00.000Z' };
+    server.use(
+      http.get('/api/v1/activities', () =>
+        HttpResponse.json({ data: [lateEvening], total: 1, page: 1, limit: 100 }),
+      ),
+    );
+    const originalTimezone = process.env.TZ;
+    process.env.TZ = 'America/Los_Angeles';
+    try {
+      renderWithProviders(<ActivitiesPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`activity-date-${lateEvening.id}`)).toHaveTextContent(
+          'Oct 19, 2026',
+        );
+      });
+    } finally {
+      process.env.TZ = originalTimezone;
+    }
+  });
+
   it('passes type param to server when ?type param is set', async () => {
     server.use(
       http.get('/api/v1/activities', ({ request }) => {

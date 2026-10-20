@@ -2,6 +2,8 @@
  * CSV serialization utilities for export endpoints.
  */
 
+import { toUtcDateString } from './utcDate.js';
+
 /** Characters that Excel/Sheets treat as formula starters — prefix with ' to prevent DDE injection */
 const FORMULA_START_CHARS = new Set(['=', '+', '-', '@', '\t', '\r']);
 
@@ -66,6 +68,6 @@ export function serializeToCsv(
  * @returns Filename string
  */
 export function csvFilename(entity: string): string {
-  const date = new Date().toISOString().split('T')[0];
+  const date = toUtcDateString(new Date());
   return `minicrm-${entity}-${date}.csv`;
 }

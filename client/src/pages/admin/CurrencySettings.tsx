@@ -19,6 +19,7 @@ import type { SupportedCurrency } from '@shared/schemas/settingsSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 /** A single row in the exchange rate editor state */
 interface RateRow {
@@ -31,7 +32,7 @@ interface RateRow {
 }
 
 export default function CurrencySettings() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -367,7 +368,7 @@ export default function CurrencySettings() {
                       />
                     </td>
                     <td className="px-3 py-3 text-sm text-gray-500">
-                      {row.updated_at ? new Date(row.updated_at).toLocaleDateString() : '—'}
+                      {formatLocalDate(row.updated_at, i18n.language)}
                     </td>
                     <td className="pe-4 ps-3 py-3">
                       <Button

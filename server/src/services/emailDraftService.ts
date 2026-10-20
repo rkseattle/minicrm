@@ -21,6 +21,7 @@ import type {
   EmailDraftResponse,
   EmailDraftTone,
 } from '@minicrm/shared/schemas/emailDraftSchema.js';
+import { toUtcDateString } from '../utils/utcDate.js';
 
 const IS_E2E = process.env.E2E === 'true';
 const AI_USAGE_FEATURE_LABEL = 'email_draft';
@@ -130,7 +131,9 @@ async function gatherEmailDraftContext(contactId: string): Promise<EmailDraftCon
     last_name: contact.last_name,
     title: contact.title,
     company_name: accountResult.rows[0]?.name ?? null,
-    last_interaction_date: recentActivities[0]?.created_at.toISOString().slice(0, 10) ?? null,
+    last_interaction_date: recentActivities[0]
+      ? toUtcDateString(recentActivities[0].created_at)
+      : null,
     recent_activity_summary:
       recentActivities.length > 0
         ? recentActivities

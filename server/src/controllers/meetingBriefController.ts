@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import { handleAiServiceError } from '../utils/aiErrorHandling.js';
 import { findActivityById } from '../services/activityService.js';
 import { generateMeetingBrief, getMeetingBrief } from '../services/meetingBriefService.js';
+import { toUtcDateString } from '../utils/utcDate.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -28,7 +29,7 @@ const BRIEF_ELIGIBLE_TYPES: ReadonlySet<string> = new Set(['Call', 'Meeting']);
 function isBriefEligible(activity: { type: string; due_date: string | null }): boolean {
   if (!BRIEF_ELIGIBLE_TYPES.has(activity.type)) return false;
   if (!activity.due_date) return false;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toUtcDateString(new Date());
   return activity.due_date >= today;
 }
 

@@ -12,6 +12,7 @@ import type {
 } from '@shared/schemas/contactSchema.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
+import { localDateStamp } from '@/utils/formatLocalDate.js';
 
 interface ContactSingleResponse {
   contact: ContactResponse;
@@ -159,7 +160,7 @@ export async function exportContactsCsv(params: ExportContactsParams = {}): Prom
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-contacts-${date}.csv`;
   triggerCsvDownload(response.data, filename);
 }
@@ -182,7 +183,7 @@ export async function exportContactsPdf(params: ExportContactsParams = {}): Prom
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-contacts-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }
@@ -198,7 +199,7 @@ export async function exportContactPdf(id: string): Promise<void> {
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-contact-${id}-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }

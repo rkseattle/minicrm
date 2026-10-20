@@ -43,6 +43,7 @@ comment at `:166` explains the choice.
 | `toUtcDateString()`                     | `server/src/utils/utcDate.ts` | `Date` → UTC `YYYY-MM-DD` for binding |
 | `utcDayOffset()`                        | `server/src/utils/utcDate.ts` | `YYYY-MM-DD` N days from UTC midnight |
 | `utcMonthStart()`                       | `server/src/utils/utcDate.ts` | Month boundary at a month offset, UTC |
+| `toIso()`                               | `client/src/utils/utcDate.ts` | `Date` → UTC `YYYY-MM-DD`, client     |
 | `todayIso()`                            | `client/src/utils/utcDate.ts` | Today's UTC day, client side          |
 | `firstOfMonthIso()`                     | `client/src/utils/utcDate.ts` | First of the UTC month, client side   |
 | `dayOffsetIso()`                        | `client/src/utils/utcDate.ts` | UTC day N days out, client side       |
@@ -57,16 +58,29 @@ one per workspace, since the two cannot import across the boundary. Import from 
 rather than writing another local copy; three divergent implementations of "N days from
 UTC midnight" is what prompted the extraction.
 
-**This is the target convention, not yet the state of the repo.** MINCRM-700 consolidated
-the call sites it touched. Several already-correct local copies of `toISOString().slice(0, 10)`
-survive elsewhere — `aiTokenBudgetService.ts`'s `currentDate`, `dealController.ts`,
-`meetingBriefController.ts`, `taskSuggestionService.ts`, `activitySummaryService.ts`, and
-on the client `MyTasksPage.tsx`, `DealDetailPage.tsx`, `ActivityTimeline.tsx`. None is a
-live defect. Two pairs are worth folding in when they are next touched, because each pair
-has to agree and nothing enforces it: `ActivityTimeline.tsx` / `meetingBriefController.ts`
-(the same brief-eligibility gate) and `MyTasksPage.tsx` / `dashboardService.ts` (the same
-overdue rule). `qa/` cannot import from either workspace, so its specs carry a documented
-local mirror instead.
+Every server and client site that turned a `Date` into a `YYYY-MM-DD` day now goes through
+these helpers; `grep -rn "toISOString().slice(0, 10)" server/src client/src` finds only the
+two helpers themselves. The pairs that must agree — `ActivityTimeline.tsx` with
+`meetingBriefController.ts` (brief eligibility) and `MyTasksPage.tsx` with
+`dashboardService.ts` (overdue) — each read "today" through their workspace's UTC helper.
+`qa/` cannot import from either workspace, so its specs carry a documented local mirror.
+
+## Showing a date to a user
+
+Display is the one place the viewer's own timezone and the app's language belong. Every
+client screen formats through `client/src/utils/formatLocalDate.ts`, never
+`toLocaleString` or a hand-built `Intl.DateTimeFormat`, so no screen falls back to the
+browser's language instead of the one the user chose:
+
+| Helper                  | Shows                                                                  |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `formatLocalDate()`     | A calendar day. A bare `YYYY-MM-DD` is read as that day, never shifted |
+| `formatLocalDateTime()` | An instant as date and time in the viewer's timezone                   |
+| `formatRelativeTime()`  | "3 hours ago" through `Intl.RelativeTimeFormat`, the date after a week |
+| `localDateStamp()`      | The viewer's own day as `YYYY-MM-DD`, for a downloaded file's name     |
+
+Each takes the active i18n language. An API returns instants as ISO 8601
+(`toISOString()`), never Postgres's `::text` form, which not every browser's `Date` parses.
 
 No date library is used: `date-fns`, `dayjs`, and `luxon` are all deliberately absent
 from `server/package.json`. `Date.UTC` plus the `getUTC*` accessors covers every case

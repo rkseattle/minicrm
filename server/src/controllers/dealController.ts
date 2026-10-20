@@ -41,6 +41,7 @@ import {
 } from '../services/pdfExportService.js';
 import { z } from 'zod';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
+import { toUtcDateString } from '../utils/utcDate.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -226,7 +227,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   // Use live terminal stage list so custom terminal stages are respected.
   if (parsed.data.close_date) {
     const stageForTerminalCheck = parsed.data.stage ?? existing.stage;
-    const today = new Date().toISOString().split('T')[0];
+    const today = toUtcDateString(new Date());
     const terminalStages = await getTerminalStageNames(effectivePipelineId);
     if (terminalStages.includes(stageForTerminalCheck) && parsed.data.close_date > today) {
       res.status(400).json({

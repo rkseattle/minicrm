@@ -40,18 +40,7 @@ import {
 import { PIPELINE_STAGES } from '@shared/schemas/dealSchema.js';
 import { usePipelineStages } from '@/hooks/usePipelineStages.js';
 import { ACTIVITY_TYPES } from '@shared/schemas/activitySchema.js';
-
-/**
- * Formats an ISO timestamp string for display using the active i18n locale.
- *
- * @param value - ISO timestamp string or Date object
- * @param locale - BCP 47 locale tag from i18next (e.g. "en", "de", "zh-Hans")
- * @returns Locale-formatted date/time string
- */
-function formatTimestamp(value: string | Date, locale: string): string {
-  const date = typeof value === 'string' ? new Date(value) : value;
-  return date.toLocaleString(locale);
-}
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 /** Form state for creating a new automation rule */
 interface RuleFormState {
@@ -241,7 +230,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
                         : t('automation.logOutcomeError')}
                     </span>
                     <span className="text-xs text-gray-500" data-testid={`log-timestamp-${log.id}`}>
-                      {formatTimestamp(log.triggered_at, i18n.language)}
+                      {formatLocalDateTime(log.triggered_at, i18n.language)}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1" data-testid={`log-record-${log.id}`}>

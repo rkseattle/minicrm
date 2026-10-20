@@ -14,7 +14,7 @@
  */
 
 /** Formats a Date as a UTC `YYYY-MM-DD` string. */
-function toIso(date: Date): string {
+export function toIso(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 

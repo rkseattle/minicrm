@@ -23,17 +23,7 @@ import type {
 } from '@shared/schemas/settingsSchema.js';
 import { AI_PROVIDERS, AI_DEPLOYMENT_MODES } from '@shared/schemas/settingsSchema.js';
 import { Button } from '@/components/ui/Button.js';
-
-function formatTimestamp(iso: string | null | undefined): string {
-  if (!iso) return '';
-  return new Date(iso).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 function DataPostureBadge({ posture }: { posture: AiDataPosture }) {
   const { t } = useTranslation();
@@ -73,7 +63,7 @@ function DpaStatusBadge({ status }: { status: AiDpaStatus }) {
 }
 
 export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
 
   // ── Provider & model form state ───────────────────────────────────────────
@@ -497,7 +487,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
               <p className="text-sm text-gray-700" data-testid="ai-dpa-acknowledged-state">
                 {t('aiSettings.dpa.acknowledgedBy', {
                   name: data.dpa_acknowledged_by,
-                  date: formatTimestamp(data.dpa_acknowledged_at),
+                  date: formatLocalDateTime(data.dpa_acknowledged_at, i18n.language),
                 })}
               </p>
             ) : (

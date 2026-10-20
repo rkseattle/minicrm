@@ -7,8 +7,6 @@
  *
  * Chart is drawn on a <canvas> element using the native Canvas 2D API — no
  * third-party charting library required.
- *
- * Localized date labels use Intl.DateTimeFormat with the active i18next locale.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';

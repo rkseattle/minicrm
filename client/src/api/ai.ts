@@ -31,6 +31,7 @@ import type {
   SetAiCostRatesInput,
   UsageDateRangePreset,
 } from '@shared/schemas/aiUsageSchema.js';
+import { localDateStamp } from '@/utils/formatLocalDate.js';
 
 /** React Query cache key for the AI configuration */
 export const AI_CONFIG_QUERY_KEY = ['admin', 'ai', 'config'] as const;
@@ -261,7 +262,7 @@ export async function exportAiUsageCsv(range: UsageDateRangeQuery): Promise<void
     params: toQueryParams(range),
     responseType: 'blob',
   });
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   triggerCsvDownload(response.data, `minicrm-ai-usage-${date}.csv`);
 }
 
@@ -273,7 +274,7 @@ export async function exportAiUsagePdf(range: UsageDateRangeQuery): Promise<void
     params: toQueryParams(range),
     responseType: 'blob',
   });
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   triggerCsvDownload(response.data, `minicrm-ai-usage-${date}.pdf`);
 }
 

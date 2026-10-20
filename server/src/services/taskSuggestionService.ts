@@ -17,6 +17,7 @@ import { applyPiiFilter } from '../ai/piiFilter.js';
 import { findActivityById } from './activityService.js';
 import { withRlsQuery } from './rlsContextService.js';
 import type { TaskSuggestionResponse } from '@minicrm/shared/schemas/taskSuggestionSchema.js';
+import { toUtcDateString } from '../utils/utcDate.js';
 
 const IS_E2E = process.env.E2E === 'true';
 const AI_USAGE_FEATURE_LABEL = 'task_suggestions';
@@ -26,7 +27,7 @@ const E2E_STUB_RESPONSE: TaskSuggestionResponse = {
   suggestions: [
     {
       description: '[E2E stub] Send follow-up recap email',
-      suggested_due_date: new Date(0).toISOString().slice(0, 10),
+      suggested_due_date: toUtcDateString(new Date(0)),
       linked_entity: 'contact',
     },
   ],
@@ -127,7 +128,7 @@ async function gatherTaskSuggestionContext(
 }
 
 function buildSystemPrompt(): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toUtcDateString(new Date());
   return (
     `You are a CRM sales assistant suggesting follow-up tasks right after a rep logs an ` +
     `activity. Today's date is ${today}. You are given the activity type, its notes, the ` +

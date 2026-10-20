@@ -16,6 +16,7 @@ import { decryptVersioned } from './cryptoService.js';
 import { recordTokenUsage } from './aiTokenBudgetService.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
 import type { ActivitySummaryResponse } from '@minicrm/shared/schemas/activitySummarySchema.js';
+import { toUtcDateString } from '../utils/utcDate.js';
 
 const IS_E2E = process.env.E2E === 'true';
 const AI_USAGE_FEATURE_LABEL = 'activity_summary';
@@ -27,7 +28,7 @@ const E2E_STUB_RESPONSE: ActivitySummaryResponse = {
   suggested_follow_up_tasks: [
     {
       description: '[E2E stub] Follow up on revised proposal',
-      suggested_due_date: new Date(0).toISOString().slice(0, 10),
+      suggested_due_date: toUtcDateString(new Date(0)),
     },
   ],
   generated_at: new Date(0).toISOString(),
@@ -80,7 +81,7 @@ interface AiConfigRow {
 }
 
 function buildSystemPrompt(): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toUtcDateString(new Date());
   return (
     `You are a CRM sales assistant summarizing a pasted call transcript, meeting notes, or raw ` +
     `call recording text for a CRM activity record. Today's date is ${today}. Write a 2-4 sentence ` +

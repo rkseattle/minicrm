@@ -6,6 +6,7 @@
 
 import apiClient from './axiosInstance.js';
 import { triggerCsvDownload } from '../utils/csvDownload.js';
+import { localDateStamp } from '@/utils/formatLocalDate.js';
 
 /** React Query cache key for win/loss report queries */
 export const WIN_LOSS_REPORT_QUERY_KEY = ['reports', 'win-loss'] as const;
@@ -173,7 +174,7 @@ export async function exportActivityVolumeReportPdf(
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   triggerCsvDownload(response.data, `minicrm-activity-volume-${date}.pdf`);
 }
 

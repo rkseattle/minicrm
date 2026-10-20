@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import NavBar from '@/components/NavBar.js';
 import { ExportMenu } from '@/components/ui/ExportMenu.js';
-import { todayIso, firstOfMonthIso } from '@/utils/utcDate.js';
+import { todayIso, firstOfMonthIso, toIso } from '@/utils/utcDate.js';
 import {
   getAiUsageSummary,
   getAiUsageDaily,
@@ -32,6 +32,7 @@ import type {
   DailyUsagePoint,
   UsageDailySeriesResponse,
 } from '@shared/schemas/aiUsageSchema.js';
+import { formatLocalDate } from '@/utils/formatLocalDate.js';
 
 const PRESETS: UsageDateRangePreset[] = ['current_month', 'last_month', 'last_3_months'];
 
@@ -62,7 +63,7 @@ function fillMissingDays(series: UsageDailySeriesResponse): DailyUsagePoint[] {
   const cursor = new Date(series.range_start);
   const end = new Date(series.range_end);
   while (cursor < end) {
-    const date = cursor.toISOString().slice(0, 10);
+    const date = toIso(cursor);
     points.push(byDate.get(date) ?? { date, input_tokens: 0, output_tokens: 0 });
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
@@ -70,7 +71,7 @@ function fillMissingDays(series: UsageDailySeriesResponse): DailyUsagePoint[] {
 }
 
 export default function AiUsageDashboardPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [preset, setPreset] = useState<UsageDateRangePreset | 'custom'>('current_month');
   // `null` until the user picks the custom preset, then seeded from the clock at
@@ -384,7 +385,7 @@ export default function AiUsageDashboardPage() {
                             key={point.date}
                             className="flex-1 bg-primary-500 rounded-t"
                             style={{ height: `${heightPct}%` }}
-                            title={`${point.date}: ${total.toLocaleString()} tokens`}
+                            title={`${formatLocalDate(point.date, i18n.language)}: ${total.toLocaleString()} tokens`}
                             data-testid={`ai-usage-daily-bar-${point.date}`}
                           />
                         );

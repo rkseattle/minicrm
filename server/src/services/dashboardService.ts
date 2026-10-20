@@ -63,7 +63,7 @@ interface DealTotalsRow {
   /** Comma-separated list of unrated currency codes */
   unrated_currencies: string | null;
   /** ISO timestamp of the most recently updated currency rate */
-  rates_last_updated: string | null;
+  rates_last_updated: Date | null;
   /** Number of non-home currency rows in the currencies table */
   has_rates_count: string;
 }
@@ -221,7 +221,7 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
        STRING_AGG(DISTINCT d.currency, ', ')
          FILTER (WHERE c.code IS NULL AND d.value IS NOT NULL
                    AND d.currency != (SELECT code FROM currencies WHERE is_home = true LIMIT 1)) AS unrated_currencies,
-       MAX(c.updated_at)::text AS rates_last_updated,
+       MAX(c.updated_at) AS rates_last_updated,
        (SELECT COUNT(*) FROM currencies WHERE is_home = false)::text AS has_rates_count`;
 
   const dealTotalsFrom = `
@@ -382,7 +382,8 @@ export async function getDashboardSummary(ownerId: string | null): Promise<Dashb
     homeSymbol: dealTotalsRow.home_symbol ?? null,
     unratedCount,
     unratedCurrencies: dealTotalsRow.unrated_currencies ?? null,
-    ratesLastUpdated: dealTotalsRow.rates_last_updated ?? null,
+    // ISO 8601, which every browser parses; Postgres's own text form is not.
+    ratesLastUpdated: dealTotalsRow.rates_last_updated?.toISOString() ?? null,
     hasRates,
   };
 }

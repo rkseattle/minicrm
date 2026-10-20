@@ -55,34 +55,9 @@ import type {
   RolloutStage,
   FlagGroupRow,
 } from '@shared/schemas/featureFlagSchema.js';
+import { formatLocalDate, formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 const ACTIVE_USER_WARNING_THRESHOLD = 1;
-
-function formatUpdatedAt(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function formatEnableAt(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 /** Returns true when an ISO enable_at string is in the future relative to a given timestamp. */
 function isEnableAtPending(enableAt: string, nowMs: number): boolean {
@@ -410,7 +385,7 @@ interface UserOverridesPanelProps {
 }
 
 function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
 
   const [overrideError, setOverrideError] = useState<string | null>(null);
@@ -528,7 +503,9 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
                   {entry.reason && (
                     <span className="text-gray-400 ms-1 italic">{entry.reason}</span>
                   )}
-                  <span className="text-gray-400 ms-1">{formatDate(entry.added_at)}</span>
+                  <span className="text-gray-400 ms-1">
+                    {formatLocalDate(entry.added_at, i18n.language)}
+                  </span>
                 </span>
                 <button
                   type="button"
@@ -808,7 +785,7 @@ function GroupRow({
   isPending,
   nowMs,
 }: GroupRowProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [showDetail, setShowDetail] = useState(false);
 
   const isPendingSchedule =
@@ -849,7 +826,9 @@ function GroupRow({
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700"
                 data-testid={`group-badge-scheduled-${group.group_key}`}
-                title={t('featureFlags.scheduledLabel', { date: formatEnableAt(group.enable_at) })}
+                title={t('featureFlags.scheduledLabel', {
+                  date: formatLocalDateTime(group.enable_at, i18n.language),
+                })}
               >
                 {t('featureFlags.scheduledBadge')}
               </span>
@@ -873,7 +852,7 @@ function GroupRow({
             <p className="text-xs text-gray-400 mt-1">
               {t('featureFlags.lastChanged', {
                 name: group.updated_by_name,
-                date: formatUpdatedAt(group.updated_at),
+                date: formatLocalDate(group.updated_at, i18n.language),
               })}
             </p>
           )}
@@ -1347,7 +1326,7 @@ function FlagRow({
   isPending,
   nowMs,
 }: FlagRowProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [showBetaPanel, setShowBetaPanel] = useState(false);
   const [showRolloutStages, setShowRolloutStages] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -1433,7 +1412,9 @@ function FlagRow({
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700"
                 data-testid={`feature-flag-badge-scheduled-${flag.flag_key}`}
-                title={t('featureFlags.scheduledLabel', { date: formatEnableAt(flag.enable_at) })}
+                title={t('featureFlags.scheduledLabel', {
+                  date: formatLocalDateTime(flag.enable_at, i18n.language),
+                })}
               >
                 {t('featureFlags.scheduledBadge')}
               </span>
@@ -1445,7 +1426,7 @@ function FlagRow({
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700"
                 data-testid={`feature-flag-badge-on-${flag.flag_key}`}
                 title={t('featureFlags.scheduledFiredLabel', {
-                  date: formatEnableAt(flag.enable_at),
+                  date: formatLocalDateTime(flag.enable_at, i18n.language),
                 })}
               >
                 {t('featureFlags.onBadge')}
@@ -1514,14 +1495,18 @@ function FlagRow({
           {/* Scheduled enable date/time display — future only */}
           {isPendingSchedule && flag.enable_at !== null && (
             <p className="text-xs text-amber-600 mt-0.5">
-              {t('featureFlags.scheduledLabel', { date: formatEnableAt(flag.enable_at) })}
+              {t('featureFlags.scheduledLabel', {
+                date: formatLocalDateTime(flag.enable_at, i18n.language),
+              })}
             </p>
           )}
 
           {/* Fired schedule display — past enable_at */}
           {isScheduleFired && flag.enable_at !== null && (
             <p className="text-xs text-green-600 mt-0.5">
-              {t('featureFlags.scheduledFiredLabel', { date: formatEnableAt(flag.enable_at) })}
+              {t('featureFlags.scheduledFiredLabel', {
+                date: formatLocalDateTime(flag.enable_at, i18n.language),
+              })}
             </p>
           )}
 
@@ -1529,7 +1514,7 @@ function FlagRow({
             <p className="text-xs text-gray-400 mt-1">
               {t('featureFlags.lastChanged', {
                 name: flag.updated_by_name,
-                date: formatUpdatedAt(flag.updated_at),
+                date: formatLocalDate(flag.updated_at, i18n.language),
               })}
             </p>
           )}

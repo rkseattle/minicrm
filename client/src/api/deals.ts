@@ -7,6 +7,7 @@ import apiClient from './axiosInstance.js';
 import { triggerCsvDownload } from '@/utils/csvDownload.js';
 import type { DealResponse, CreateDealInput, UpdateDealInput } from '@shared/schemas/dealSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
+import { localDateStamp } from '@/utils/formatLocalDate.js';
 
 /** React Query cache key for the deals list */
 export const DEALS_QUERY_KEY = ['deals'] as const;
@@ -159,7 +160,7 @@ export async function exportDealsCsv(params: ExportDealsParams = {}): Promise<vo
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-deals-${date}.csv`;
   triggerCsvDownload(response.data, filename);
 }
@@ -180,7 +181,7 @@ export async function exportDealsPdf(params: ExportDealsParams = {}): Promise<vo
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-deals-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }
@@ -196,7 +197,7 @@ export async function exportDealPdf(id: string): Promise<void> {
     responseType: 'blob',
   });
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDateStamp();
   const filename = `minicrm-deal-${id}-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }

@@ -32,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { recordPath } from '@shared/types/recordPath.js';
+import { formatLocalDate, formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
 /** Tailwind badge classes by status */
 const STATUS_BADGE: Record<string, string> = {
@@ -45,7 +46,7 @@ const STATUS_BADGE: Record<string, string> = {
  * Single lead detail page with view/edit/delete/convert.
  */
 export default function LeadDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -422,7 +423,7 @@ export default function LeadDetailPage() {
                   {t('leads.createdLabel')}
                 </dt>
                 <dd className="mt-1 text-sm text-gray-900 whitespace-nowrap">
-                  {new Date(lead.created_at).toLocaleDateString()}
+                  {formatLocalDate(lead.created_at, i18n.language)}
                 </dd>
               </div>
             </dl>
@@ -513,7 +514,7 @@ export default function LeadDetailPage() {
                               actor: entry.changed_by_name ?? t('leads.unknownActor'),
                             })}
                         {' · '}
-                        {new Date(entry.created_at).toLocaleString()}
+                        {formatLocalDateTime(entry.created_at, i18n.language)}
                       </span>
                     </li>
                   ))}
