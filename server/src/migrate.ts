@@ -2,12 +2,12 @@
  * Runs all pending database migrations using node-pg-migrate's programmatic API.
  * Safe to call on every startup — already-applied migrations are skipped.
  *
- * Uses the two-step fresh-bootstrap strategy so this function works
- * correctly on a brand-new database as well as an already-migrated one:
- *   1. Run count:1 — applies 000_baseline if not yet applied (no-op otherwise).
- *   2. Fake-mark the remaining baseline-covered migrations so they are never
- *      re-executed (no-op when they are already recorded in pgmigrations).
- *   3. Run all remaining truly-pending migrations for real.
+ * Uses the fresh-bootstrap strategy so this function works correctly on a brand-new
+ * database as well as an already-migrated one:
+ *   1. Apply 000_baseline if not yet applied (no-op otherwise).
+ *   2. Record the migrations the baseline covers, BY NAME, as applied without running
+ *      them (no-op when they are already recorded) — Flyway's baseline-on-migrate.
+ *   3. Run every other pending migration for real.
  *
  * The whole sequence is wrapped in a Postgres advisory lock so that
  * concurrent invocations — e.g. the test server's boot-time runMigrations() racing
@@ -204,6 +204,100 @@ export function countBaselineCoveredMigrations(): number {
   return BASELINE_COVERED_MIGRATION_COUNT;
 }
 
+/** The name node-pg-migrate records for a migration file: its basename without extension. */
+function migrationName(file: string): string {
+  return file.replace(/\.[^.]+$/, '');
+}
+
+/** Names of the migrations a baseline covers: files 1..coveredCount, by numeric prefix. */
+export function baselineCoveredMigrationNames(files: string[], coveredCount: number): string[] {
+  return files
+    .filter((file) => {
+      const match = MIGRATION_FILENAME_PREFIX.exec(file);
+      return match !== null && Number(match[1]) >= 1 && Number(match[1]) <= coveredCount;
+    })
+    .map(migrationName);
+}
+
+/** What `migrateFromBaseline` needs to know about one migration sequence. */
+export interface BaselineMigrationOptions {
+  databaseUrl: string;
+  dir: string;
+  migrationsTable: string;
+  /** The squashed baseline's migration name, e.g. `000_baseline`. */
+  baselineName: string;
+  /** Migrations whose schema the baseline already creates. */
+  coveredNames: readonly string[];
+  log: (message: string) => void;
+}
+
+/**
+ * Brings one database up to date from a squashed baseline, under the migration lock.
+ *
+ * Covered migrations are marked by NAME. node-pg-migrate's `count` takes the next N
+ * PENDING migrations, so on a database that already records the covered ones a count
+ * would mark the newest migrations applied without ever running them. Every unrecorded
+ * covered migration sorts before every newer one (lower numeric prefix), so marking
+ * "the next k pending", k being the unrecorded covered count, marks exactly those.
+ */
+export async function migrateFromBaseline(options: BaselineMigrationOptions): Promise<void> {
+  const shared = {
+    databaseUrl: options.databaseUrl,
+    dir: options.dir,
+    direction: 'up' as const,
+    migrationsTable: options.migrationsTable,
+    checkOrder: false, // 000_baseline was added after 001-101 on existing DBs
+    log: options.log,
+  };
+
+  await withMigrationLock(options.databaseUrl, async () => {
+    await migrationRunner({ ...shared, file: options.baselineName });
+
+    const recorded = await recordedMigrationNames(options.databaseUrl, options.migrationsTable);
+    const unrecordedCovered = options.coveredNames.filter((name) => !recorded.has(name));
+    if (unrecordedCovered.length > 0) {
+      await migrationRunner({ ...shared, fake: true, count: unrecordedCovered.length });
+    }
+
+    await migrationRunner(shared);
+  });
+}
+
+/** Names already recorded in a migrations table. */
+async function recordedMigrationNames(
+  databaseUrl: string,
+  migrationsTable: string,
+): Promise<Set<string>> {
+  const client = new pg.Client({ connectionString: databaseUrl });
+  await client.connect();
+  try {
+    const { rows } = await client.query<{ name: string }>(
+      `SELECT name FROM ${pg.escapeIdentifier(migrationsTable)}`,
+    );
+    return new Set(rows.map((row) => row.name));
+  } finally {
+    await client.end();
+  }
+}
+
+/** Options for the product database's own migration sequence. */
+export function productMigrationOptions(
+  databaseUrl: string,
+  log: (message: string) => void,
+): BaselineMigrationOptions {
+  return {
+    databaseUrl,
+    dir: MIGRATIONS_DIR,
+    migrationsTable: 'pgmigrations',
+    baselineName: migrationName('000_baseline.js'),
+    coveredNames: baselineCoveredMigrationNames(
+      readdirSync(MIGRATIONS_DIR),
+      countBaselineCoveredMigrations(),
+    ),
+    log,
+  };
+}
+
 export async function runMigrations(): Promise<void> {
   const dbUser = process.env.DB_USER ?? '';
   const dbPassword = process.env.DB_PASSWORD ?? '';
@@ -215,28 +309,7 @@ export async function runMigrations(): Promise<void> {
   const databaseUrl = `postgres://${encodeURIComponent(dbUser)}:${encodeURIComponent(dbPassword)}@${process.env.DB_HOST ?? 'localhost'}:${process.env.DB_PORT ?? 5432}/${process.env.DB_NAME}`;
 
   logger.info('Running database migrations...');
-
-  const SHARED_OPTIONS = {
-    databaseUrl,
-    dir: MIGRATIONS_DIR,
-    direction: 'up' as const,
-    migrationsTable: 'pgmigrations',
-    checkOrder: false, // 000_baseline was added after 001-101 on existing DBs
-    log: (msg: string) => logger.debug(msg),
-  };
-
-  await withMigrationLock(databaseUrl, async () => {
-    // Step 1: apply 000_baseline (no-op if already applied).
-    await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
-
-    // Step 2: fake-mark all baseline-covered migrations (no-op if already recorded).
-    const baselineCoveredCount = countBaselineCoveredMigrations();
-    await migrationRunner({ ...SHARED_OPTIONS, fake: true, count: baselineCoveredCount });
-
-    // Step 3: run any truly-pending migrations (post-baseline) for real.
-    await migrationRunner(SHARED_OPTIONS);
-  });
-
+  await migrateFromBaseline(productMigrationOptions(databaseUrl, (msg) => logger.debug(msg)));
   logger.info('Migrations complete.');
 }
 

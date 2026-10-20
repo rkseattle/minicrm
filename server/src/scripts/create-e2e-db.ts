@@ -16,8 +16,7 @@
 
 import 'dotenv/config';
 import pg from 'pg';
-import { runner as migrationRunner } from 'node-pg-migrate';
-import { MIGRATIONS_DIR, countBaselineCoveredMigrations, withMigrationLock } from '../migrate.js';
+import { migrateFromBaseline, productMigrationOptions } from '../migrate.js';
 import { assertTestDatabasePort } from './assertTestDatabaseTarget.js';
 
 const E2E_DB_NAME = 'minicrm_e2e';
@@ -60,31 +59,9 @@ async function main(): Promise<void> {
 
   const databaseUrl = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${E2E_DB_NAME}`;
 
-  // Use the three-step fresh-bootstrap approach: step 1 runs only
-  // 000_baseline (prevents "relation already exists" on fresh databases); step 2
-  // fake-marks the migrations 000_baseline was last regenerated to cover; step 3
-  // runs any migrations added since then for real, so their schema changes apply.
-  const SHARED_OPTIONS = {
-    databaseUrl,
-    dir: MIGRATIONS_DIR,
-    direction: 'up' as const,
-    migrationsTable: 'pgmigrations',
-    checkOrder: false,
-    log: () => {},
-  };
-
-  // Shares the same advisory lock key as runMigrations(), so this
-  // script cannot interleave with a concurrent server boot's migration run
-  // against the same database.
-  await withMigrationLock(databaseUrl, async () => {
-    await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
-    await migrationRunner({
-      ...SHARED_OPTIONS,
-      fake: true,
-      count: countBaselineCoveredMigrations(),
-    });
-    await migrationRunner(SHARED_OPTIONS);
-  });
+  // Shares runMigrations()'s bootstrap and its advisory lock, so this script cannot
+  // interleave with a concurrent server boot against the same database.
+  await migrateFromBaseline(productMigrationOptions(databaseUrl, () => {}));
 
   console.log(`[create-e2e-db] Migrations complete on ${E2E_DB_NAME}.`);
 }

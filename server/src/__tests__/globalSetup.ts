@@ -19,9 +19,9 @@ import 'dotenv/config';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import {
-  MIGRATIONS_DIR,
   COVERAGE_MIGRATIONS_DIR,
-  countBaselineCoveredMigrations,
+  migrateFromBaseline,
+  productMigrationOptions,
   withMigrationLock,
 } from '../migrate.js';
 import { assertTestDatabasePort } from '../scripts/assertTestDatabaseTarget.js';
@@ -77,34 +77,9 @@ export default async function globalSetup(): Promise<void> {
   // Run migrations against the product test database
   const databaseUrl = `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
 
-  // Use the same three-step fresh-bootstrap approach as runMigrations() in
-  // ../migrate.ts: step 1 runs only 000_baseline; step 2 fake-marks
-  // the fixed number of migrations 000_baseline was last regenerated to cover
-  // (countBaselineCoveredMigrations() — NOT every file on disk, which would
-  // silently skip real execution of any migration added since); step 3 runs
-  // all remaining truly-pending migrations for real.
-  const SHARED_OPTIONS = {
-    databaseUrl,
-    dir: MIGRATIONS_DIR,
-    direction: 'up' as const,
-    migrationsTable: 'pgmigrations',
-    checkOrder: false,
-    log: () => {},
-  };
-
-  // Shares the same advisory lock key as runMigrations(), create-e2e-db.ts, and
-  // migrate-fresh.ts, so this bootstrap cannot interleave with a
-  // concurrent migration run against the same database (e.g. a developer
-  // running `npm test` while the test server is also booting against minicrm_test).
-  await withMigrationLock(databaseUrl, async () => {
-    await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
-    await migrationRunner({
-      ...SHARED_OPTIONS,
-      fake: true,
-      count: countBaselineCoveredMigrations(),
-    });
-    await migrationRunner(SHARED_OPTIONS);
-  });
+  // The same bootstrap and advisory lock as runMigrations(), so this cannot interleave
+  // with a test server booting against minicrm_test.
+  await migrateFromBaseline(productMigrationOptions(databaseUrl, () => {}));
 
   // Same for the coverage/TIA test database — a separate database (see
   // coverageDb.ts) with its own migration sequence (qa/migrations/, no

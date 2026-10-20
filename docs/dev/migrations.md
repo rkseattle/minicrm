@@ -34,9 +34,18 @@ DATABASE_URL=postgres://... npm run migrate:fresh --workspace=minicrm-server
 
 `server/src/scripts/migrate-fresh.ts`:
 
-1. Runs only `000_baseline` (`count: 1`) — creates the full schema
-2. Marks all subsequent migrations as applied via node-pg-migrate's `fake` mode
-3. Future migrations run normally via `npm run migrate`
+1. Runs only `000_baseline` — creates the full schema
+2. Records the migrations the baseline covers (`BASELINE_COVERED_MIGRATION_COUNT`) as applied
+   without running them, via node-pg-migrate's `fake` mode — chosen **by name**, never by a
+   bare `count`
+3. Runs every other pending migration for real
+
+Step 2 is Flyway's baseline-on-migrate. node-pg-migrate's `count` means "the next N
+**pending** migrations", so on a database that already records the covered ones a
+`count: BASELINE_COVERED_MIGRATION_COUNT` marks the newest migrations applied without ever
+running them. Until this was fixed, every server boot did exactly that to any migration added
+after the baseline on a long-lived database; `migrateFromBaseline()` marks only unrecorded
+covered names, and `migrate.test.ts` pins it.
 
 ---
 
@@ -118,7 +127,8 @@ docker exec minicrm-test-db psql -U minicrm -d postgres \
 
 All three migration entry points — `runMigrations()` (`server/src/migrate.ts`, called at every
 server boot), `create-e2e-db.ts` (`npm run e2e:setup`), and `migrate-fresh.ts`
-(`npm run migrate:fresh`) — run the same three-step baseline/fake-mark/real-run sequence and
+(`npm run migrate:fresh`), plus the server suite's `globalSetup.ts` — run the same
+`migrateFromBaseline()` and
 share a single Postgres advisory lock (`withMigrationLock()` in `server/src/migrate.ts`,
 MINCRM-658).
 
