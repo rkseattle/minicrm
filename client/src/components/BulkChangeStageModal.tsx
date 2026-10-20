@@ -1,12 +1,14 @@
 /**
  * BulkChangeStageModal component.
  * Stage picker for bulk change-stage operations on deals.
- * Accessible dialog with focus trap and Escape dismissal.
+ * Keeps Tab inside the dialog (useFocusTrap) and closes on Escape.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { Select } from '@/components/ui/Select.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import type { PipelineStageResponse } from '@shared/schemas/pipelineStageSchema.js';
 
@@ -40,6 +42,7 @@ export default function BulkChangeStageModal({
   const { t } = useTranslation();
   const selectRef = useRef<HTMLSelectElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [selectedStage, setSelectedStage] = useState('');
 
   useEffect(() => {
@@ -52,6 +55,8 @@ export default function BulkChangeStageModal({
       previousFocusRef.current?.focus();
     }
   }, [isOpen]);
+
+  useFocusTrap(dialogRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -76,6 +81,7 @@ export default function BulkChangeStageModal({
       onKeyDown={handleKeyDown}
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="bulk-change-stage-title"
@@ -94,28 +100,24 @@ export default function BulkChangeStageModal({
             {t('bulk.changeStageMessage', { count: selectedCount })}
           </p>
 
-          <label
-            htmlFor="bulk-change-stage-select"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            {t('bulk.newStageLabel')}
-          </label>
-          <select
-            id="bulk-change-stage-select"
-            ref={selectRef}
-            value={selectedStage}
-            onChange={(e) => setSelectedStage(e.target.value)}
-            disabled={isPending}
-            data-testid="bulk-change-stage-select"
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 mb-6"
-          >
-            <option value="">{t('bulk.selectStage')}</option>
-            {stages.map((stage) => (
-              <option key={stage.id} value={stage.name}>
-                {getStageDisplayName(stage.name, t)}
-              </option>
-            ))}
-          </select>
+          <div className="mb-6">
+            <Select
+              id="bulk-change-stage-select"
+              ref={selectRef}
+              label={t('bulk.newStageLabel')}
+              value={selectedStage}
+              onChange={(e) => setSelectedStage(e.target.value)}
+              disabled={isPending}
+              data-testid="bulk-change-stage-select"
+            >
+              <option value="">{t('bulk.selectStage')}</option>
+              {stages.map((stage) => (
+                <option key={stage.id} value={stage.name}>
+                  {getStageDisplayName(stage.name, t)}
+                </option>
+              ))}
+            </Select>
+          </div>
 
           <div className="flex items-center gap-3">
             <Button

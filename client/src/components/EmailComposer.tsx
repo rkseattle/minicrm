@@ -20,10 +20,10 @@ import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
 import { Textarea } from '@/components/ui/Textarea.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { CLOSE_AFTER_SENT_MS, useMailboxSend } from '@/hooks/useMailboxSend.js';
 import { parseRecipients, replyRecipients, replySubject } from '@/utils/emailCompose.js';
 import { resolveApiError } from '@/utils/apiError.js';
-import { keepTabInside } from '@/utils/focusTrap.js';
 import { plainTextToHtml } from '@/utils/plainTextToHtml.js';
 
 /** What the composer was opened to do. */
@@ -49,6 +49,7 @@ export default function EmailComposer({
   const { t } = useTranslation();
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  useFocusTrap(dialogRef);
   const mailboxSend = useMailboxSend();
   const { frozen } = mailboxSend;
 
@@ -135,7 +136,6 @@ export default function EmailComposer({
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>): void {
     if (e.key === 'Escape' && !sendMutation.isPending) onClose();
-    keepTabInside(e, dialogRef.current);
   }
 
   const titleId = 'email-composer-title';

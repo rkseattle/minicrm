@@ -20,6 +20,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import DataSettings from './DataSettings.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 // Resolve feature flags synchronously so flag-gated sections render without waitFor.
 vi.mock('@/hooks/useFeatureFlag.js', () => ({
@@ -134,6 +135,14 @@ describe('DataSettings — demo data', () => {
     fireEvent.click(screen.getByTestId('demo-seed-button'));
 
     expect(screen.getByTestId('demo-confirm-dialog')).toBeInTheDocument();
+  });
+
+  it('keeps Tab inside the confirm dialog', async () => {
+    renderWithProviders(<DataSettings />);
+
+    fireEvent.click(await screen.findByTestId('demo-seed-button'));
+
+    expectTabWrapsInside(screen.getByTestId('demo-confirm-dialog'));
   });
 
   it('closes confirm dialog on Cancel', async () => {

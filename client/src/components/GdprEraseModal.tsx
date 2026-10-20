@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 
 interface GdprEraseModalProps {
   /** Whether the modal is visible */
@@ -55,6 +56,7 @@ export default function GdprEraseModal({
   const { t } = useTranslation();
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [confirmText, setConfirmText] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -71,6 +73,8 @@ export default function GdprEraseModal({
       previousFocusRef.current?.focus();
     }
   }, [isOpen]);
+
+  useFocusTrap(dialogRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -94,6 +98,7 @@ export default function GdprEraseModal({
       onKeyDown={handleKeyDown}
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="gdpr-erase-title"

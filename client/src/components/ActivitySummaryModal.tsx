@@ -4,13 +4,15 @@
  * summarizer, and previews the result (summary, action items, suggested follow-up
  * tasks) before applying it to the activity form. The user can edit the summary
  * and action items inline, and accept or dismiss each suggested task individually.
- * Accessible dialog with focus trap and Escape dismissal, following BulkReassignModal.
+ * Keeps Tab inside the dialog (useFocusTrap) and closes on Escape.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button.js';
+import { Textarea } from '@/components/ui/Textarea.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { resolveApiError } from '@/utils/apiError.js';
 import { summarizeActivityText } from '@/api/activitySummary.js';
 import type { SuggestedFollowUpTask } from '@shared/schemas/activitySummarySchema.js';
@@ -45,6 +47,7 @@ export default function ActivitySummaryModal({
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [rawText, setRawText] = useState('');
   const [summary, setSummary] = useState('');
@@ -84,6 +87,8 @@ export default function ActivitySummaryModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset-on-close only needs isOpen
   }, [isOpen]);
 
+  useFocusTrap(dialogRef, isOpen);
+
   if (!isOpen) return null;
 
   const hasResult = summarizeMutation.isSuccess;
@@ -112,6 +117,7 @@ export default function ActivitySummaryModal({
       onKeyDown={handleKeyDown}
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="activity-summary-title"
@@ -129,25 +135,19 @@ export default function ActivitySummaryModal({
 
           {!hasResult && (
             <>
-              <label
-                htmlFor="activity-summary-input"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                {t('activities.summarize.inputLabel')}
-              </label>
-              <textarea
-                id="activity-summary-input"
-                ref={textareaRef}
-                data-testid="activity-summary-input"
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                rows={8}
-                disabled={summarizeMutation.isPending}
-                placeholder={t('activities.summarize.inputPlaceholder')}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900
-                           placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
-                           focus:border-primary-500 resize-none mb-4"
-              />
+              <div className="mb-4">
+                <Textarea
+                  id="activity-summary-input"
+                  ref={textareaRef}
+                  label={t('activities.summarize.inputLabel')}
+                  data-testid="activity-summary-input"
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                  rows={8}
+                  disabled={summarizeMutation.isPending}
+                  placeholder={t('activities.summarize.inputPlaceholder')}
+                />
+              </div>
 
               {summarizeMutation.isError && (
                 <p
@@ -186,22 +186,16 @@ export default function ActivitySummaryModal({
 
           {hasResult && (
             <>
-              <label
-                htmlFor="activity-summary-preview"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                {t('activities.summarize.summaryLabel')}
-              </label>
-              <textarea
-                id="activity-summary-preview"
-                data-testid="activity-summary-preview"
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                rows={3}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900
-                           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                           resize-none mb-4"
-              />
+              <div className="mb-4">
+                <Textarea
+                  id="activity-summary-preview"
+                  label={t('activities.summarize.summaryLabel')}
+                  data-testid="activity-summary-preview"
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                  rows={3}
+                />
+              </div>
 
               {actionItems.length > 0 && (
                 <>

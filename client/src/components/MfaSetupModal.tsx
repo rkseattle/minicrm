@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { setupMfa, verifyMfaSetup } from '@/api/mfa.js';
 
 interface MfaSetupModalProps {
@@ -30,6 +31,7 @@ export default function MfaSetupModal({ isOpen, onSuccess, onCancel }: MfaSetupM
   const [invalidCode, setInvalidCode] = useState(false);
   const codeInputRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const setupMutation = useMutation({
     mutationFn: setupMfa,
@@ -83,6 +85,8 @@ export default function MfaSetupModal({ isOpen, onSuccess, onCancel }: MfaSetupM
     verifyMutation.mutate(code);
   }
 
+  useFocusTrap(dialogRef, isOpen);
+
   if (!isOpen) return null;
 
   return (
@@ -93,6 +97,7 @@ export default function MfaSetupModal({ isOpen, onSuccess, onCancel }: MfaSetupM
       data-testid="mfa-setup-modal"
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="mfa-setup-title"

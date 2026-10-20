@@ -16,6 +16,7 @@ import {
   DEMO_STATUS_QUERY_KEY,
 } from '@/api/demo.js';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 
 type DemoAction = 'seed' | 'reset' | 'remove';
@@ -44,6 +45,8 @@ export default function DataSettings() {
   });
 
   const [pendingAction, setPendingAction] = useState<DemoAction | null>(null);
+  const confirmDialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(confirmDialogRef, pendingAction !== null);
   const [demoFeedback, setDemoFeedback] = useState<{
     type: 'success' | 'error';
     key: string;
@@ -334,6 +337,7 @@ export default function DataSettings() {
           {/* ── Demo confirmation dialog ──────────────────────────────────── */}
           {pendingAction && (
             <div
+              ref={confirmDialogRef}
               role="dialog"
               aria-modal="true"
               aria-labelledby="demo-confirm-title"

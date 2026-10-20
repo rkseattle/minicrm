@@ -6,6 +6,7 @@ import { screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import GdprEraseModal from './GdprEraseModal.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const noop = () => {};
 
@@ -186,5 +187,18 @@ describe('GdprEraseModal', () => {
     );
     fireEvent.keyDown(screen.getByTestId('gdpr-erase-modal-overlay'), { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(
+      <GdprEraseModal
+        isOpen={true}
+        recordType="contact"
+        isErasing={false}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    expectTabWrapsInside(screen.getByTestId('gdpr-erase-modal'));
   });
 });

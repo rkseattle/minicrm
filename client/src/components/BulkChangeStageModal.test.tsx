@@ -7,6 +7,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import BulkChangeStageModal from './BulkChangeStageModal.js';
 import type { PipelineStageResponse } from '@shared/schemas/pipelineStageSchema.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const noop = () => {};
 
@@ -190,5 +191,22 @@ describe('BulkChangeStageModal', () => {
     );
     fireEvent.click(screen.getByTestId('bulk-change-stage-modal'));
     expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(
+      <BulkChangeStageModal
+        isOpen={true}
+        selectedCount={3}
+        stages={STAGES}
+        isPending={false}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    fireEvent.change(screen.getByTestId('bulk-change-stage-select'), {
+      target: { value: 'Qualification' },
+    });
+    expectTabWrapsInside(screen.getByRole('dialog'));
   });
 });

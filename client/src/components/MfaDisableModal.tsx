@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { disableMfa } from '@/api/mfa.js';
 
 interface MfaDisableModalProps {
@@ -24,6 +25,7 @@ export default function MfaDisableModal({ isOpen, onSuccess, onCancel }: MfaDisa
   const [invalidPassword, setInvalidPassword] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const disableMutation = useMutation({
     mutationFn: (currentPassword: string) => disableMfa(currentPassword),
@@ -59,6 +61,8 @@ export default function MfaDisableModal({ isOpen, onSuccess, onCancel }: MfaDisa
     disableMutation.mutate(password);
   }
 
+  useFocusTrap(dialogRef, isOpen);
+
   if (!isOpen) return null;
 
   return (
@@ -69,6 +73,7 @@ export default function MfaDisableModal({ isOpen, onSuccess, onCancel }: MfaDisa
       data-testid="mfa-disable-modal"
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="mfa-disable-title"

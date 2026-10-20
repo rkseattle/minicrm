@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { resolveApiError } from '@/utils/apiError.js';
 import { enrichContactFromText } from '@/api/contactEnrichment.js';
 import type { ContactEnrichmentFields } from '@shared/schemas/contactEnrichmentSchema.js';
@@ -34,6 +35,7 @@ export default function ContactEnrichmentModal({
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const [rawText, setRawText] = useState('');
 
@@ -55,6 +57,8 @@ export default function ContactEnrichmentModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset-on-close only needs isOpen
   }, [isOpen]);
+
+  useFocusTrap(dialogRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -78,6 +82,7 @@ export default function ContactEnrichmentModal({
       onKeyDown={handleKeyDown}
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="contact-enrichment-title"

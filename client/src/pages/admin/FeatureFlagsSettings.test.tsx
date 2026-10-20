@@ -11,6 +11,7 @@ import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import { FEATURE_FLAGS_FIXTURE } from '../../test/msw/handlers.js';
 import FeatureFlagsSettings from './FeatureFlagsSettings.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 describe('FeatureFlagsSettings', () => {
   // ── Loading state ───────────────────────────────────────────────────────────
@@ -275,6 +276,14 @@ describe('FeatureFlagsSettings', () => {
     fireEvent.click(screen.getByTestId('feature-flag-toggle-notes'));
 
     expect(screen.getByTestId('feature-flag-confirm-dialog')).toBeInTheDocument();
+  });
+
+  it('keeps Tab inside the confirmation dialog', async () => {
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    fireEvent.click(await screen.findByTestId('feature-flag-toggle-notes'));
+
+    expectTabWrapsInside(screen.getByTestId('feature-flag-confirm-dialog'));
   });
 
   it('cancels without mutation when cancel is clicked', async () => {
@@ -625,6 +634,16 @@ describe('FeatureFlagsSettings', () => {
       expect(screen.getByTestId('group-delete-test_group')).toBeInTheDocument();
     });
   }
+
+  it('keeps Tab inside the delete group dialog', async () => {
+    setupGroupHandlers(0);
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await openGroupDetail();
+    fireEvent.click(screen.getByTestId('group-delete-test_group'));
+
+    expectTabWrapsInside(await screen.findByTestId('delete-group-confirm-dialog'));
+  });
 
   it('always opens the confirm dialog when delete is clicked for an empty group (member_count=0)', async () => {
     setupGroupHandlers(0);

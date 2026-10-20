@@ -13,6 +13,7 @@ import UsersPage from './UsersPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { ADMIN_USER, REP_USER, INVITED_USER } from '../test/msw/handlers.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 describe('UsersPage', () => {
   describe('loading state', () => {
@@ -612,6 +613,16 @@ describe('UsersPage', () => {
       const user = userEvent.setup();
       await user.click(screen.getByTestId(`user-actions-${ADMIN_USER.id}`));
       expect(screen.queryByTestId(`reset-onboarding-${ADMIN_USER.id}`)).not.toBeInTheDocument();
+    });
+
+    it('keeps Tab inside the reset onboarding dialog', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<UsersPage />);
+      await openMenuForRep(user);
+
+      await user.click(screen.getByTestId(`reset-onboarding-${REP_USER.id}`));
+
+      expectTabWrapsInside(await screen.findByTestId('reset-onboarding-dialog'));
     });
 
     it('clicking Reset onboarding opens the confirmation dialog', async () => {

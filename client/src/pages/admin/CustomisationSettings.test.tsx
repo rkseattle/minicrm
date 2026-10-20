@@ -24,6 +24,7 @@ import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import CustomisationSettings from './CustomisationSettings.js';
 import { PIPELINE_STAGES_FIXTURE } from '../../test/msw/handlers.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const FIELD_ID = '00000000-0000-0000-0000-000000000099';
 
@@ -401,6 +402,15 @@ describe('CustomisationSettings — custom fields section', () => {
     expect(screen.getByTestId('delete-field-confirm-dialog')).toBeInTheDocument();
     expect(screen.getByTestId('delete-field-confirm')).toBeInTheDocument();
     expect(screen.getByTestId('delete-field-cancel')).toBeInTheDocument();
+  });
+
+  it('keeps Tab inside the delete confirm dialog', async () => {
+    mockCustomFieldsWithOne();
+    renderWithProviders(<CustomisationSettings />);
+
+    fireEvent.click(await screen.findByTestId(`custom-field-delete-${FIELD_ID}`));
+
+    expectTabWrapsInside(screen.getByTestId('delete-field-confirm-dialog'));
   });
 
   it('dismisses delete dialog when cancel is clicked', async () => {

@@ -6,6 +6,7 @@ import { screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import ConfirmDeleteModal from './ConfirmDeleteModal.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const noop = () => {};
 const MESSAGE = 'Are you sure you want to delete this item? This cannot be undone.';
@@ -157,5 +158,18 @@ describe('ConfirmDeleteModal', () => {
     );
     fireEvent.keyDown(screen.getByTestId('confirm-delete-modal-overlay'), { key: 'Escape' });
     expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(
+      <ConfirmDeleteModal
+        isOpen={true}
+        message={MESSAGE}
+        isDeleting={false}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    expectTabWrapsInside(screen.getByTestId('confirm-delete-modal'));
   });
 });

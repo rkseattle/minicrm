@@ -9,6 +9,7 @@ import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 import ActivityForm from './ActivityForm.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const noop = () => {};
 
@@ -258,6 +259,18 @@ describe('ActivityForm', () => {
         target: { value: 'Meeting' },
       });
       expect(await screen.findByTestId('activity-summarize-button')).toBeInTheDocument();
+    });
+
+    it('keeps Tab inside the summarize dialog', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(
+        <ActivityForm onSubmit={vi.fn()} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+      );
+
+      await user.click(await screen.findByTestId('activity-summarize-button'));
+      await user.type(screen.getByTestId('activity-summary-input'), 'Raw call transcript text');
+
+      expectTabWrapsInside(screen.getByTestId('activity-summary-modal'));
     });
 
     it('summarizes pasted text, populates notes, and reports accepted tasks on apply', async () => {

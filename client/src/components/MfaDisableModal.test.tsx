@@ -11,6 +11,7 @@ import { http, HttpResponse } from 'msw';
 import MfaDisableModal from './MfaDisableModal.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 function renderModal(isOpen = true, onSuccess = vi.fn(), onCancel = vi.fn()) {
   return renderWithProviders(
@@ -98,5 +99,10 @@ describe('MfaDisableModal', () => {
       renderModal();
       expect(screen.getByTestId('mfa-disable-password-input')).toHaveValue('');
     });
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderModal();
+    expectTabWrapsInside(screen.getByRole('dialog'));
   });
 });

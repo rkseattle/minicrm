@@ -6,6 +6,7 @@ import { screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import FieldMergeModal from './FieldMergeModal.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const noop = () => {};
 
@@ -367,5 +368,21 @@ describe('FieldMergeModal', () => {
     );
     // Should default back to Theirs
     expect(screen.getByTestId('field-merge-radio-notes-theirs')).toBeChecked();
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(
+      <FieldMergeModal
+        isOpen={true}
+        onClose={noop}
+        entityType="contact"
+        base={BASE}
+        theirs={{ ...BASE, first_name: 'Alicia' }}
+        mine={{ ...BASE, first_name: 'Ali' }}
+        fieldLabels={FIELD_LABELS}
+        onResolve={noop}
+      />,
+    );
+    expectTabWrapsInside(screen.getByTestId('field-merge-modal'));
   });
 });

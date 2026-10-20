@@ -10,6 +10,7 @@ import EmailDraftPanel from './EmailDraftPanel.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import type { EmailDraftResponse } from '@shared/schemas/emailDraftSchema.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const SAMPLE_DRAFT: EmailDraftResponse = {
   subject: 'Following up on our conversation',
@@ -149,5 +150,12 @@ describe('EmailDraftPanel', () => {
     const panel = await screen.findByTestId('email-draft-panel');
     fireEvent.keyDown(panel, { key: 'Escape' });
     expect(handleDismiss).toHaveBeenCalledOnce();
+  });
+
+  it('keeps Tab inside the panel', () => {
+    renderWithProviders(
+      <EmailDraftPanel contactId="c1" initialDraft={SAMPLE_DRAFT} onDismiss={vi.fn()} />,
+    );
+    expectTabWrapsInside(screen.getByTestId('email-draft-panel'));
   });
 });

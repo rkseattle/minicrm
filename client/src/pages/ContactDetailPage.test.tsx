@@ -2,7 +2,7 @@
  * Tests for the ContactDetailPage component.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
@@ -18,6 +18,7 @@ import {
   DEAL_1,
 } from '../test/msw/handlers.js';
 import * as contactsApi from '@/api/contacts.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 describe('ContactDetailPage', () => {
   it('renders the contact name', async () => {
@@ -1311,5 +1312,31 @@ describe('ContactDetailPage — sequence enrollments visibility', () => {
     await waitFor(() => {
       expect(screen.getByTestId('sequence-enrollments-heading')).toBeInTheDocument();
     });
+  });
+
+  it('keeps Tab inside the enroll modal', async () => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+
+    fireEvent.click(await screen.findByTestId('enroll-sequence-button'));
+
+    expectTabWrapsInside(screen.getByTestId('enroll-sequence-modal'));
+  });
+
+  it('closes the enroll modal on Escape, and labels its sequence picker', async () => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    fireEvent.click(await screen.findByTestId('enroll-sequence-button'));
+    expect(screen.getByTestId('enroll-sequence-select')).toHaveAccessibleName();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByTestId('enroll-sequence-modal')).not.toBeInTheDocument();
   });
 });

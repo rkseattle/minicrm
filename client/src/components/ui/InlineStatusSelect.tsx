@@ -4,10 +4,11 @@
  * Invited users show a read-only badge with tooltip.
  */
 
-import { useState, useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateUserStatus } from '@/api/users.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import type { UserResponse } from '@shared/schemas/userSchema.js';
 
 export interface InlineStatusSelectProps {
@@ -40,6 +41,8 @@ export function InlineStatusSelect({
 
   const [optimisticActive, setOptimisticActive] = useState<boolean>(user.status === 'active');
   const [showSelfDeactivateBlock, setShowSelfDeactivateBlock] = useState(false);
+  const selfDeactivateDialogRef = useRef<HTMLDialogElement>(null);
+  useFocusTrap(selfDeactivateDialogRef, showSelfDeactivateBlock);
 
   const mutation = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => updateUserStatus(id, active),
@@ -125,6 +128,7 @@ export function InlineStatusSelect({
           onClick={handleSelfDeactivateClose}
         >
           <dialog
+            ref={selfDeactivateDialogRef}
             open
             aria-modal="true"
             aria-labelledby="deactivate-self-title"

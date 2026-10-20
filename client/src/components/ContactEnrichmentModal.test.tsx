@@ -9,6 +9,7 @@ import { http, HttpResponse } from 'msw';
 import ContactEnrichmentModal from './ContactEnrichmentModal.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 describe('ContactEnrichmentModal', () => {
   it('extracts fields and applies them on Apply', async () => {
@@ -121,5 +122,12 @@ describe('ContactEnrichmentModal', () => {
 
     await user.click(screen.getByTestId('contact-enrichment-cancel'));
     expect(handleCancel).toHaveBeenCalledOnce();
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(
+      <ContactEnrichmentModal isOpen={true} onApply={vi.fn()} onCancel={vi.fn()} />,
+    );
+    expectTabWrapsInside(screen.getByTestId('contact-enrichment-modal'));
   });
 });

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { diffChars } from 'diff';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 
 export interface FieldMergeModalProps {
   isOpen: boolean;
@@ -117,6 +118,7 @@ export default function FieldMergeModal({
   const { t } = useTranslation();
   const firstFocusRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const rows: FieldRow[] = Object.entries(fieldLabels)
     .map(([key, label]) => ({
@@ -156,6 +158,8 @@ export default function FieldMergeModal({
       previousFocusRef.current?.focus();
     }
   }, [isOpen]);
+
+  useFocusTrap(dialogRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -201,6 +205,7 @@ export default function FieldMergeModal({
       onKeyDown={handleKeyDown}
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="field-merge-modal-title"

@@ -12,6 +12,7 @@ import { ADMIN_USER } from '../test/msw/handlers.js';
 import MfaLoginModal from './MfaLoginModal.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const MFA_TOKEN = 'test-mfa-token';
 
@@ -151,5 +152,10 @@ describe('MfaLoginModal', () => {
         expect(screen.getByTestId('mfa-login-invalid-code')).toBeInTheDocument();
       });
     });
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderModal();
+    expectTabWrapsInside(screen.getByRole('dialog'));
   });
 });

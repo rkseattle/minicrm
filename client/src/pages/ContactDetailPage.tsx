@@ -16,6 +16,7 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import SendEmailModal from '@/components/SendEmailModal.js';
 import CustomFieldsSection from '@/components/CustomFieldsSection.js';
 import { Button } from '@/components/ui/Button.js';
+import { Select } from '@/components/ui/Select.js';
 import {
   getContact,
   updateContact,
@@ -54,6 +55,7 @@ import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 import ChampionBlockerBadge from '@/components/ChampionBlockerBadge.js';
 import SentimentSparkline from '@/components/SentimentSparkline.js';
@@ -136,6 +138,7 @@ export default function ContactDetailPage() {
 
   // Sequence enrollment state
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const enrollModalRef = useRef<HTMLDivElement>(null);
   // The enrollment endpoints need sequences:enroll, which viewers and service accounts
   // lack — reading the list 403s, so the section is hidden rather than shown erroring.
   const { canWrite } = usePermissions();
@@ -423,6 +426,25 @@ export default function ContactDetailPage() {
   const handleDelete = (): void => {
     setIsConfirmDeleteOpen(true);
   };
+
+  const enrollModalOpen = sequencingEnabled && isEnrollModalOpen;
+  useFocusTrap(enrollModalRef, enrollModalOpen);
+
+  function closeEnrollModal(): void {
+    setIsEnrollModalOpen(false);
+    setEnrollSequenceId('');
+    setEnrollError(null);
+  }
+
+  // Escape dismisses, as every other dialog here does; never mid-request.
+  useEffect(() => {
+    if (!enrollModalOpen) return;
+    function handleEscape(event: KeyboardEvent): void {
+      if (event.key === 'Escape' && !enrollMutation.isPending) closeEnrollModal();
+    }
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [enrollModalOpen, enrollMutation.isPending]);
 
   if (isLoading) {
     return (
@@ -1599,8 +1621,9 @@ export default function ContactDetailPage() {
       </main>
 
       {/* Enroll in sequence modal */}
-      {sequencingEnabled && isEnrollModalOpen && (
+      {enrollModalOpen && (
         <div
+          ref={enrollModalRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="enroll-modal-title"
@@ -1616,44 +1639,44 @@ export default function ContactDetailPage() {
                 {enrollError}
               </p>
             )}
-            <select
-              data-testid="enroll-sequence-select"
-              value={enrollSequenceId}
-              onChange={(e) => setEnrollSequenceId(e.target.value)}
-              className="mb-4 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            >
-              <option value="">{t('sequences.enrollSelectPlaceholder')}</option>
-              {availableSequences
-                .filter((s) => s.enabled)
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-            </select>
+            <div className="mb-4">
+              <Select
+                data-testid="enroll-sequence-select"
+                aria-labelledby="enroll-modal-title"
+                value={enrollSequenceId}
+                onChange={(e) => setEnrollSequenceId(e.target.value)}
+              >
+                <option value="">{t('sequences.enrollSelectPlaceholder')}</option>
+                {availableSequences
+                  .filter((s) => s.enabled)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+              </Select>
+            </div>
             <div className="flex gap-2">
-              <button
+              <Button
+                type="button"
                 data-testid="enroll-submit-button"
                 onClick={() => {
                   if (!enrollSequenceId) return;
                   enrollMutation.mutate(enrollSequenceId);
                 }}
                 disabled={!enrollSequenceId || enrollMutation.isPending}
-                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 {t('sequences.enrollSubmit')}
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
                 data-testid="enroll-cancel-button"
-                onClick={() => {
-                  setIsEnrollModalOpen(false);
-                  setEnrollSequenceId('');
-                  setEnrollError(null);
-                }}
-                className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                onClick={closeEnrollModal}
+                disabled={enrollMutation.isPending}
               >
                 {t('sequences.cancel')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

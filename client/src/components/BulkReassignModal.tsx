@@ -1,12 +1,14 @@
 /**
  * BulkReassignModal component.
  * Owner picker for bulk reassign operations.
- * Accessible dialog with focus trap and Escape dismissal.
+ * Keeps Tab inside the dialog (useFocusTrap) and closes on Escape.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { Select } from '@/components/ui/Select.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import type { ActiveUser } from '@/api/users.js';
 
 interface BulkReassignModalProps {
@@ -39,6 +41,7 @@ export default function BulkReassignModal({
   const { t } = useTranslation();
   const selectRef = useRef<HTMLSelectElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [selectedOwner, setSelectedOwner] = useState('');
 
   useEffect(() => {
@@ -51,6 +54,8 @@ export default function BulkReassignModal({
       previousFocusRef.current?.focus();
     }
   }, [isOpen]);
+
+  useFocusTrap(dialogRef, isOpen);
 
   if (!isOpen) return null;
 
@@ -75,6 +80,7 @@ export default function BulkReassignModal({
       onKeyDown={handleKeyDown}
     >
       <dialog
+        ref={dialogRef}
         open
         aria-modal="true"
         aria-labelledby="bulk-reassign-title"
@@ -94,28 +100,24 @@ export default function BulkReassignModal({
             {t('bulk.reassignMessage', { count: selectedCount })}
           </p>
 
-          <label
-            htmlFor="bulk-reassign-owner"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            {t('bulk.newOwnerLabel')}
-          </label>
-          <select
-            id="bulk-reassign-owner"
-            ref={selectRef}
-            value={selectedOwner}
-            onChange={(e) => setSelectedOwner(e.target.value)}
-            disabled={isPending}
-            data-testid="bulk-reassign-owner-select"
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 mb-6"
-          >
-            <option value="">{t('bulk.selectOwner')}</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
+          <div className="mb-6">
+            <Select
+              id="bulk-reassign-owner"
+              ref={selectRef}
+              label={t('bulk.newOwnerLabel')}
+              value={selectedOwner}
+              onChange={(e) => setSelectedOwner(e.target.value)}
+              disabled={isPending}
+              data-testid="bulk-reassign-owner-select"
+            >
+              <option value="">{t('bulk.selectOwner')}</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </Select>
+          </div>
 
           <div className="flex items-center gap-3">
             <Button

@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ExportMenu } from '@/components/ui/ExportMenu.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { Capability } from '@shared/schemas/capabilitySchema.js';
 import {
   listCustomReports,
@@ -331,6 +332,8 @@ function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogPr
   const [name, setName] = useState(initialName);
   const [visibility, setVisibility] = useState<ReportVisibility>('public');
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -343,6 +346,7 @@ function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogPr
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
       role="dialog"
       aria-modal="true"

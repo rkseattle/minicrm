@@ -12,6 +12,7 @@ import ConvertLeadModal from './ConvertLeadModal.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { LEAD_1, ACCOUNT_1 } from '../test/msw/handlers.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 // Plain function — not a spy, so call counts don't accumulate across tests
 const noop = () => {};
@@ -230,5 +231,10 @@ describe('ConvertLeadModal', () => {
       renderWithProviders(<ConvertLeadModal lead={LEAD_1} onClose={noop} onConverted={noop} />);
       expect(screen.getByTestId('convert-contact-email')).toHaveAttribute('type', 'email');
     });
+  });
+
+  it('keeps Tab inside the dialog', () => {
+    renderWithProviders(<ConvertLeadModal lead={LEAD_1} onClose={noop} onConverted={noop} />);
+    expectTabWrapsInside(screen.getByRole('dialog'));
   });
 });

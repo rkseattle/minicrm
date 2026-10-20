@@ -15,6 +15,7 @@ import {
   AI_RETENTION_STATS_QUERY_KEY,
 } from '@/api/ai.js';
 import { Button } from '@/components/ui/Button.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 
 // ── Manual purge confirmation dialog ────────────────────────────────────────
 
@@ -26,8 +27,11 @@ interface PurgeConfirmDialogProps {
 
 function PurgeConfirmDialog({ onConfirm, onCancel, isPending }: PurgeConfirmDialogProps) {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       role="dialog"
       aria-modal="true"

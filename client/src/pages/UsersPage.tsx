@@ -18,6 +18,7 @@ import { InlineStatusSelect } from '@/components/ui/InlineStatusSelect.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { PagedListLayout } from '@/components/PagedListLayout.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import {
   listUsers,
   inviteUser,
@@ -524,6 +525,16 @@ export default function UsersPage() {
   const [showBulkChangeRole, setShowBulkChangeRole] = useState(false);
   const [showBulkActivate, setShowBulkActivate] = useState(false);
   const [showBulkDeactivate, setShowBulkDeactivate] = useState(false);
+  const resetOnboardingDialogRef = useRef<HTMLDialogElement>(null);
+  const bulkChangeRoleDialogRef = useRef<HTMLDialogElement>(null);
+  const bulkActivateDialogRef = useRef<HTMLDialogElement>(null);
+  const bulkDeactivateDialogRef = useRef<HTMLDialogElement>(null);
+  const apiTokenDialogRef = useRef<HTMLDialogElement>(null);
+  useFocusTrap(resetOnboardingDialogRef, resetOnboardingUserId !== null);
+  useFocusTrap(bulkChangeRoleDialogRef, showBulkChangeRole);
+  useFocusTrap(bulkActivateDialogRef, showBulkActivate);
+  useFocusTrap(bulkDeactivateDialogRef, showBulkDeactivate);
+  useFocusTrap(apiTokenDialogRef, issuedTokenResult !== null);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [bulkSelectedRole, setBulkSelectedRole] = useState<string>('');
 
@@ -853,6 +864,7 @@ export default function UsersPage() {
             onClick={() => setResetOnboardingUserId(null)}
           >
             <dialog
+              ref={resetOnboardingDialogRef}
               open
               aria-modal="true"
               aria-labelledby="reset-onboarding-dialog-title"
@@ -950,6 +962,7 @@ export default function UsersPage() {
             onClick={() => setShowBulkChangeRole(false)}
           >
             <dialog
+              ref={bulkChangeRoleDialogRef}
               open
               aria-modal="true"
               aria-labelledby="bulk-change-role-title"
@@ -1018,6 +1031,7 @@ export default function UsersPage() {
             onClick={() => setShowBulkActivate(false)}
           >
             <dialog
+              ref={bulkActivateDialogRef}
               open
               aria-modal="true"
               aria-labelledby="bulk-activate-title"
@@ -1069,6 +1083,7 @@ export default function UsersPage() {
             onClick={() => setShowBulkDeactivate(false)}
           >
             <dialog
+              ref={bulkDeactivateDialogRef}
               open
               aria-modal="true"
               aria-labelledby="bulk-deactivate-title"
@@ -1159,6 +1174,7 @@ export default function UsersPage() {
             onClick={() => setIssuedTokenResult(null)}
           >
             <dialog
+              ref={apiTokenDialogRef}
               open
               aria-modal="true"
               aria-labelledby="api-token-dialog-title"
