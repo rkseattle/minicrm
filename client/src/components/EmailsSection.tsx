@@ -113,8 +113,6 @@ function MessageBody({ message, allowImages }: { message: EmailMessage; allowIma
   const { data, isLoading, isError } = useQuery({
     queryKey: [...EMAIL_MESSAGE_BODY_QUERY_KEY, message.id],
     queryFn: () => getEmailMessage(message.id),
-    // A stored body never changes.
-    staleTime: Infinity,
   });
 
   if (isLoading) {
