@@ -8,6 +8,7 @@
 
 import { z } from 'zod';
 
+import { Capability } from './capabilitySchema.js';
 import { paginationParamsSchema } from './paginationSchema.js';
 
 /**
@@ -20,6 +21,39 @@ import { paginationParamsSchema } from './paginationSchema.js';
 export const EMAIL_LINK_RECORD_TYPES = ['contact', 'lead', 'account', 'deal'] as const;
 
 export type EmailLinkRecordType = (typeof EMAIL_LINK_RECORD_TYPES)[number];
+
+/**
+ * The capability that governs editing each record type.
+ *
+ * Filing mail against a record is a CRM write, so it takes the record's own edit
+ * capability on top of the router's mailbox gate — the way bulk contact edits stack
+ * BulkOperations with ContactsEdit. Accounts and leads have no capability of their own in
+ * the enum and are gated by `contacts:edit` everywhere they are written
+ * (`routes/accounts.ts`, `routes/leads.ts`); following that here rather than exempting
+ * them is what stops a custom role without `contacts:edit` — which migration 170 still
+ * grants `connected_accounts:manage` — from filing mail it cannot file against a contact.
+ */
+export const EMAIL_LINK_EDIT_CAPABILITY: Readonly<Record<EmailLinkRecordType, Capability>> = {
+  contact: Capability.ContactsEdit,
+  deal: Capability.DealsEdit,
+  account: Capability.ContactsEdit,
+  lead: Capability.ContactsEdit,
+};
+
+/** Whether sending from a record also logs an Email activity on it; leads have no timeline. */
+export function sendLogsActivity(recordType: EmailLinkRecordType): boolean {
+  return recordType !== 'lead';
+}
+
+/**
+ * Every capability sending from a record needs, so a client can refuse before the user
+ * writes a message the server would answer with FORBIDDEN.
+ */
+export function capabilitiesToSendFrom(recordType: EmailLinkRecordType): Capability[] {
+  const needed = [EMAIL_LINK_EDIT_CAPABILITY[recordType]];
+  if (sendLogsActivity(recordType)) needed.push(Capability.ActivitiesCreate);
+  return needed;
+}
 
 /**
  * The record a message is filed against.

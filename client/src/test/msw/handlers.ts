@@ -293,6 +293,9 @@ export const ROLE_CAPABILITIES: Record<string, string[]> = {
     'sequences:enroll',
     'dashboards:view',
     'connected_accounts:manage',
+    'contacts:edit',
+    'deals:edit',
+    'activities:create',
   ],
   manager: [
     'reports:view',
@@ -303,6 +306,9 @@ export const ROLE_CAPABILITIES: Record<string, string[]> = {
     'sequences:enroll',
     'dashboards:view',
     'connected_accounts:manage',
+    'contacts:edit',
+    'deals:edit',
+    'activities:create',
   ],
   rep: [
     'reports:view',
@@ -310,9 +316,12 @@ export const ROLE_CAPABILITIES: Record<string, string[]> = {
     'sequences:enroll',
     'dashboards:view',
     'connected_accounts:manage',
+    'contacts:edit',
+    'deals:edit',
+    'activities:create',
   ],
   viewer: ['reports:view', 'dashboards:view'],
-  service_account: [],
+  service_account: ['contacts:edit', 'deals:edit', 'activities:create'],
 };
 
 /** Builds a GET /auth/me body for a fixture user, with the capabilities their role holds. */

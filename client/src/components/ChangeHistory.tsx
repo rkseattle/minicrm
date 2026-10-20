@@ -8,7 +8,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getRecordAuditLog, RECORD_AUDIT_LOG_QUERY_KEY } from '@/api/auditLog.js';
-import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
+import {
+  RECORD_HISTORY_EVENT_TYPES,
+  type AuditLogEntry,
+  type RecordHistoryEventType,
+} from '@shared/schemas/auditSchema.js';
 import { formatLocalDateTime, formatRelativeTime } from '@/utils/formatLocalDate.js';
 
 /** Props for the ChangeHistory component */
@@ -17,6 +21,12 @@ export interface ChangeHistoryProps {
   recordType: 'contact' | 'account' | 'deal';
   /** UUID of the record */
   recordId: string;
+}
+
+/** Whether an event is one Change History has its own wording for. */
+function isRecordHistoryEvent(eventType: string): eventType is RecordHistoryEventType {
+  // Safe: widening a readonly tuple of strings to readonly string[] only loosens reads.
+  return (RECORD_HISTORY_EVENT_TYPES as readonly string[]).includes(eventType);
 }
 
 /**
@@ -32,8 +42,13 @@ function buildSummary(
 ): string {
   const actor = entry.changed_by_name ?? 'Unknown';
   const recordType = t(`auditLog.recordTypes.${entry.record_type}`);
+  const eventType = entry.event_type;
+  // An event filed on another kind of record still renders by its label, never raw.
+  if (!isRecordHistoryEvent(eventType)) {
+    return t('auditLog.summary.other', { actor, event: t(`auditLog.eventTypes.${eventType}`) });
+  }
 
-  switch (entry.event_type) {
+  switch (eventType) {
     case 'created':
       return t('auditLog.summary.created', { actor, recordType });
     case 'updated':
@@ -74,7 +89,7 @@ function buildSummary(
     default: {
       // Unreachable for any schema-admitted value. Typed as never so adding an event type
       // without a case here fails the build rather than leaking its raw identifier.
-      const unhandled: never = entry.event_type;
+      const unhandled: never = eventType;
       return `${actor} — ${String(unhandled)}`;
     }
   }
