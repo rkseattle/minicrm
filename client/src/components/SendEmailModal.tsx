@@ -11,7 +11,11 @@ import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Capability } from '@shared/schemas/capabilitySchema.js';
-import { EMAIL_SEND_SUBJECT_MAX, type SendEmailInput } from '@shared/schemas/emailMessageSchema.js';
+import {
+  capabilitiesToSendFrom,
+  EMAIL_SEND_SUBJECT_MAX,
+  type SendEmailInput,
+} from '@shared/schemas/emailMessageSchema.js';
 import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
@@ -84,7 +88,11 @@ export default function SendEmailModal({
 
   const { enabled: emailSyncEnabled } = useFeatureFlag('email_sync');
   const { can } = usePermissions();
-  const mailboxesAvailable = emailSyncEnabled && can(Capability.ConnectedAccountsManage);
+  // Sending through a mailbox files the message on the contact, which needs those writes too.
+  const mailboxesAvailable =
+    emailSyncEnabled &&
+    can(Capability.ConnectedAccountsManage) &&
+    capabilitiesToSendFrom('contact').every((capability) => can(capability));
 
   const {
     data: accountsData,
@@ -95,12 +103,15 @@ export default function SendEmailModal({
     queryFn: getConnectedAccounts,
     enabled: isOpen && mailboxesAvailable,
   });
+  // Gated on availability, not just the query: a disabled query still returns cached data.
   const sendableAccounts = useMemo(
     () =>
-      (accountsData?.accounts ?? []).filter(
-        (account) => account.status === 'active' && account.can_send,
-      ),
-    [accountsData],
+      mailboxesAvailable
+        ? (accountsData?.accounts ?? []).filter(
+            (account) => account.status === 'active' && account.can_send,
+          )
+        : [],
+    [accountsData, mailboxesAvailable],
   );
   // A refetch can drop the chosen mailbox; fall back rather than send through a choice the
   // form no longer shows. A frozen compose is unaffected: it resends its stored request.
@@ -286,7 +297,7 @@ export default function SendEmailModal({
               {t('contacts.sendEmail.accountsLoading')}
             </p>
           )}
-          {accountsFailed && (
+          {mailboxesAvailable && accountsFailed && (
             <p data-testid="send-email-accounts-error" className="mb-4 text-sm text-amber-700">
               {t('contacts.sendEmail.accountsLoadError')}
             </p>

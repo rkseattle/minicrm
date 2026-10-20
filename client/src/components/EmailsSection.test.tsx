@@ -9,7 +9,7 @@ import { EMAIL_MESSAGES_QUERY_KEY } from '@/api/emailMessages.js';
 import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
-import { allFlagsEnabled, authMeBody, VIEWER_USER } from '@/test/msw/handlers.js';
+import { ADMIN_USER, allFlagsEnabled, authMeBody, VIEWER_USER } from '@/test/msw/handlers.js';
 import EmailsSection, { threadDomId } from './EmailsSection.js';
 
 const RECORD_ID = '00000000-0000-4000-8000-000000000a01';
@@ -473,6 +473,51 @@ describe('EmailsSection — compose and reply', () => {
 
     await waitFor(() => expect(screen.getByTestId(`email-reply-${SECOND.id}`)).not.toBeDisabled());
     expect(screen.getByTestId(`email-reply-${OTHER.id}`)).toBeDisabled();
+  });
+
+  it.each([
+    ['contact', 'activities:create'],
+    ['contact', 'contacts:edit'],
+    ['deal', 'deals:edit'],
+  ] as const)(
+    'disables Compose and Reply on a %s, saying why, without %s',
+    async (recordType, missing) => {
+      serve();
+      const admin = authMeBody(ADMIN_USER);
+      server.use(
+        http.get('/api/v1/auth/me', () =>
+          HttpResponse.json({
+            ...admin,
+            capabilities: admin.capabilities.filter((capability) => capability !== missing),
+          }),
+        ),
+      );
+      renderWithProviders(<EmailsSection recordType={recordType} recordId={RECORD_ID} />);
+
+      const compose = await screen.findByTestId('emails-compose');
+      await waitFor(() => expect(compose).toBeDisabled());
+      expect(compose).toHaveAccessibleDescription(expect.stringMatching(/ask an admin/i));
+      fireEvent.click(screen.getByTestId(`email-thread-row-${T1}`));
+      expect(screen.getByTestId(`email-reply-${SECOND.id}`)).toBeDisabled();
+    },
+  );
+
+  it('lets a lead be written to without activity access, since a lead logs none', async () => {
+    serve();
+    const admin = authMeBody(ADMIN_USER);
+    server.use(
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json({
+          ...admin,
+          capabilities: admin.capabilities.filter(
+            (capability) => capability !== 'activities:create',
+          ),
+        }),
+      ),
+    );
+    renderWithProviders(<EmailsSection recordType="lead" recordId={RECORD_ID} />);
+
+    await waitFor(() => expect(screen.getByTestId('emails-compose')).toBeEnabled());
   });
 
   it('composes a new message to the record, filed on it', async () => {

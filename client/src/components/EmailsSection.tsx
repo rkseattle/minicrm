@@ -12,10 +12,11 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { Capability } from '@shared/schemas/capabilitySchema.js';
-import type {
-  EmailLinkRecordType,
-  EmailMessage,
-  EmailThread,
+import {
+  capabilitiesToSendFrom,
+  type EmailLinkRecordType,
+  type EmailMessage,
+  type EmailThread,
 } from '@shared/schemas/emailMessageSchema.js';
 import { CONNECTED_ACCOUNTS_QUERY_KEY, getConnectedAccounts } from '@/api/connectedAccounts.js';
 import {
@@ -213,9 +214,15 @@ export default function EmailsSection({
     target.focus();
   }
 
+  // The server refuses a send from a record the user may not file mail on or log activity to.
+  const maySendHere = capabilitiesToSendFrom(recordType).every((capability) => can(capability));
   // Only a loaded list proves the user has no mailbox; loading or failed proves nothing.
   const noMailbox = accounts.isSuccess && sendable.length === 0;
-  const noMailboxReason = t('emails.noMailboxTooltip');
+  const composeBlockedReason = !maySendHere
+    ? t('emails.noPermissionTooltip')
+    : noMailbox
+      ? t('emails.noMailboxTooltip')
+      : null;
 
   return (
     <section
@@ -227,22 +234,22 @@ export default function EmailsSection({
         <h2 id="emails-section-title" className="text-lg font-semibold text-gray-900">
           {t('emails.sectionTitle')}
         </h2>
-        <span title={noMailbox ? noMailboxReason : undefined}>
+        <span title={composeBlockedReason ?? undefined}>
           <Button
             type="button"
             size="sm"
             data-testid="emails-compose"
-            disabled={sendable.length === 0}
-            aria-describedby={noMailbox ? 'emails-no-mailbox' : undefined}
+            disabled={!maySendHere || sendable.length === 0}
+            aria-describedby={composeBlockedReason ? 'emails-compose-blocked' : undefined}
             onClick={() => setCompose({ kind: 'new', defaultTo: defaultRecipient })}
           >
             {t('emails.compose')}
           </Button>
         </span>
       </div>
-      {noMailbox && (
-        <p id="emails-no-mailbox" className="sr-only">
-          {noMailboxReason}
+      {composeBlockedReason && (
+        <p id="emails-compose-blocked" className="sr-only">
+          {composeBlockedReason}
         </p>
       )}
       {accounts.isError && (
@@ -290,9 +297,9 @@ export default function EmailsSection({
               const latest = messages[messages.length - 1]!;
               const participants = participantsOf(messages);
               const isOpen = expanded.has(key);
-              const canReply = sendable.some(
-                (account) => account.id === thread.connected_account_id,
-              );
+              const canReply =
+                maySendHere &&
+                sendable.some((account) => account.id === thread.connected_account_id);
               return (
                 <li key={key} data-testid={`email-thread-${domId}`}>
                   <button
@@ -387,9 +394,11 @@ export default function EmailsSection({
                                 <div
                                   className="mt-2"
                                   title={
-                                    canReply || !accounts.isSuccess
-                                      ? undefined
-                                      : t('emails.replyUnavailable')
+                                    !maySendHere
+                                      ? t('emails.noPermissionTooltip')
+                                      : canReply || !accounts.isSuccess
+                                        ? undefined
+                                        : t('emails.replyUnavailable')
                                   }
                                 >
                                   <Button

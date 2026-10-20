@@ -1,6 +1,6 @@
 # data-testid Audit Report
 
-Generated: 2026-10-20T03:16:44.490Z
+Generated: 2026-10-20T09:19:11.765Z
 
 ## Summary
 
@@ -60,12 +60,12 @@ _None — all test-referenced testids are present in the application source._
 | `bulk-failed-details-close` | client/src/components/BulkFailedDetailsModal.tsx | 75 |
 | `bulk-failed-details-modal` | client/src/components/BulkFailedDetailsModal.tsx | 32 |
 | `bulk-reassign-modal-overlay` | client/src/components/BulkReassignModal.tsx | 78 |
-| `change-history-heading` | client/src/components/ChangeHistory.tsx | 125 |
-| `change-history-list` | client/src/components/ChangeHistory.tsx | 140 |
-| `change-history-empty` | client/src/components/ChangeHistory.tsx | 136 |
-| `change-history-loading` | client/src/components/ChangeHistory.tsx | 132 |
-| `change-history-toggle` | client/src/components/ChangeHistory.tsx | 170 |
-| `change-history-section` | client/src/components/ChangeHistory.tsx | 120 |
+| `change-history-heading` | client/src/components/ChangeHistory.tsx | 140 |
+| `change-history-list` | client/src/components/ChangeHistory.tsx | 155 |
+| `change-history-empty` | client/src/components/ChangeHistory.tsx | 151 |
+| `change-history-loading` | client/src/components/ChangeHistory.tsx | 147 |
+| `change-history-toggle` | client/src/components/ChangeHistory.tsx | 185 |
+| `change-history-section` | client/src/components/ChangeHistory.tsx | 135 |
 | `close-deal-loss-reason-input` | client/src/components/CloseDealModal.tsx | 136 |
 | `close-deal-error` | client/src/components/CloseDealModal.tsx | 151 |
 | `close-deal-modal-overlay` | client/src/components/CloseDealModal.tsx | 96 |
@@ -132,14 +132,14 @@ _None — all test-referenced testids are present in the application source._
 | `email-composer` | client/src/components/EmailComposer.tsx | 148 |
 | `email-draft-error` | client/src/components/EmailDraftPanel.tsx | 142 |
 | `email-draft-copy-error` | client/src/components/EmailDraftPanel.tsx | 192 |
-| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 249 |
-| `emails-loading` | client/src/components/EmailsSection.tsx | 255 |
-| `emails-error` | client/src/components/EmailsSection.tsx | 262 |
-| `email-thread-participants` | client/src/components/EmailsSection.tsx | 312 |
-| `email-thread-date` | client/src/components/EmailsSection.tsx | 320 |
-| `email-thread-subject` | client/src/components/EmailsSection.tsx | 327 |
-| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 334 |
-| `emails-thread-list` | client/src/components/EmailsSection.tsx | 284 |
+| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 256 |
+| `emails-loading` | client/src/components/EmailsSection.tsx | 262 |
+| `emails-error` | client/src/components/EmailsSection.tsx | 269 |
+| `email-thread-participants` | client/src/components/EmailsSection.tsx | 319 |
+| `email-thread-date` | client/src/components/EmailsSection.tsx | 327 |
+| `email-thread-subject` | client/src/components/EmailsSection.tsx | 334 |
+| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 341 |
+| `emails-thread-list` | client/src/components/EmailsSection.tsx | 291 |
 | `error-boundary-reload` | client/src/components/ErrorBoundary.tsx | 29 |
 | `error-boundary-dashboard-link` | client/src/components/ErrorBoundary.tsx | 37 |
 | `error-boundary-fallback` | client/src/components/ErrorBoundary.tsx | 20 |
@@ -252,17 +252,17 @@ _None — all test-referenced testids are present in the application source._
 | `proposal-draft-problem-statement-content` | client/src/components/RichTextField.tsx | 157 |
 | `proposal-draft-proposed-solution-content` | client/src/components/RichTextField.tsx | 157 |
 | `proposal-draft-next-steps-content` | client/src/components/RichTextField.tsx | 157 |
-| `send-email-accounts-loading` | client/src/components/SendEmailModal.tsx | 285 |
-| `send-email-accounts-error` | client/src/components/SendEmailModal.tsx | 290 |
-| `send-email-from` | client/src/components/SendEmailModal.tsx | 304 |
-| `send-email-templates-loading` | client/src/components/SendEmailModal.tsx | 317 |
-| `send-email-templates-error` | client/src/components/SendEmailModal.tsx | 322 |
-| `send-email-template` | client/src/components/SendEmailModal.tsx | 336 |
-| `send-email-templates-truncated` | client/src/components/SendEmailModal.tsx | 347 |
-| `send-email-to` | client/src/components/SendEmailModal.tsx | 367 |
-| `send-email-template-preview` | client/src/components/SendEmailModal.tsx | 373 |
-| `send-email-error` | client/src/components/SendEmailModal.tsx | 431 |
-| `send-email-cancel` | client/src/components/SendEmailModal.tsx | 455 |
+| `send-email-accounts-loading` | client/src/components/SendEmailModal.tsx | 296 |
+| `send-email-accounts-error` | client/src/components/SendEmailModal.tsx | 301 |
+| `send-email-from` | client/src/components/SendEmailModal.tsx | 315 |
+| `send-email-templates-loading` | client/src/components/SendEmailModal.tsx | 328 |
+| `send-email-templates-error` | client/src/components/SendEmailModal.tsx | 333 |
+| `send-email-template` | client/src/components/SendEmailModal.tsx | 347 |
+| `send-email-templates-truncated` | client/src/components/SendEmailModal.tsx | 358 |
+| `send-email-to` | client/src/components/SendEmailModal.tsx | 378 |
+| `send-email-template-preview` | client/src/components/SendEmailModal.tsx | 384 |
+| `send-email-error` | client/src/components/SendEmailModal.tsx | 442 |
+| `send-email-cancel` | client/src/components/SendEmailModal.tsx | 466 |
 | `setup-checklist-expand-button` | client/src/components/SetupChecklistWidget.tsx | 223 |
 | `setup-checklist-complete` | client/src/components/SetupChecklistWidget.tsx | 307 |
 | `settings-tab-list-select` | client/src/components/SubPageNav.tsx | 71 |
@@ -1102,8 +1102,8 @@ _None — all test-referenced testids are present in the application source._
 | `champion-blocker-why-*` | client/src/components/ChampionBlockerBadge.tsx | 61 | app |
 | `champion-blocker-why-panel-*` | client/src/components/ChampionBlockerBadge.tsx | 73 | app |
 | `champion-blocker-dismiss-*` | client/src/components/ChampionBlockerBadge.tsx | 87 | app |
-| `change-history-time-*` | client/src/components/ChangeHistory.tsx | 153 | app |
-| `change-history-entry-*` | client/src/components/ChangeHistory.tsx | 145 | app |
+| `change-history-time-*` | client/src/components/ChangeHistory.tsx | 168 | app |
+| `change-history-entry-*` | client/src/components/ChangeHistory.tsx | 160 | app |
 | `connected-account-status-*` | client/src/components/ConnectedAccountsPanel.tsx | 256 | app |
 | `connected-account-status-detail-*` | client/src/components/ConnectedAccountsPanel.tsx | 266 | app |
 | `connected-account-test-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 307 | app |
@@ -1165,17 +1165,17 @@ _None — all test-referenced testids are present in the application source._
 | `deal-card-probability-*` | client/src/components/DealCard.tsx | 108 | app |
 | `deal-card-stage-select-*` | client/src/components/DealCard.tsx | 127 | app |
 | `deal-card-*` | client/src/components/DealCard.tsx | 68 | app |
-| `email-direction-*` | client/src/components/EmailsSection.tsx | 99 | app |
-| `email-body-loading-*` | client/src/components/EmailsSection.tsx | 121 | app |
-| `email-body-error-*` | client/src/components/EmailsSection.tsx | 128 | app |
-| `email-body-text-*` | client/src/components/EmailsSection.tsx | 145 | app |
-| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 305 | app |
-| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 348 | app |
-| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 373 | app |
-| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 417 | app |
-| `email-reply-*` | client/src/components/EmailsSection.tsx | 399 | app |
-| `email-message-*` | client/src/components/EmailsSection.tsx | 362 | app |
-| `email-thread-*` | client/src/components/EmailsSection.tsx | 297 | app |
+| `email-direction-*` | client/src/components/EmailsSection.tsx | 100 | app |
+| `email-body-loading-*` | client/src/components/EmailsSection.tsx | 122 | app |
+| `email-body-error-*` | client/src/components/EmailsSection.tsx | 129 | app |
+| `email-body-text-*` | client/src/components/EmailsSection.tsx | 146 | app |
+| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 312 | app |
+| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 355 | app |
+| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 380 | app |
+| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 426 | app |
+| `email-reply-*` | client/src/components/EmailsSection.tsx | 408 | app |
+| `email-message-*` | client/src/components/EmailsSection.tsx | 369 | app |
+| `email-thread-*` | client/src/components/EmailsSection.tsx | 304 | app |
 | `**-tags-heading` | client/src/components/EntityDetailSidebar.tsx | 108 | app |
 | `**-tags-section` | client/src/components/EntityDetailSidebar.tsx | 103 | app |
 | `field-merge-auto-*` | client/src/components/FieldMergeModal.tsx | 332 | app |

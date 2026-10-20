@@ -4,12 +4,16 @@
 
 import { useState } from 'react';
 import { act, screen, fireEvent, waitFor } from '@testing-library/react';
-import { focusManager, QueryClient } from '@tanstack/react-query';
+import { focusManager, QueryClient, type QueryKey } from '@tanstack/react-query';
 import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
-import { allFlagsEnabled, authMeBody, VIEWER_USER } from '@/test/msw/handlers.js';
+import { ADMIN_USER, allFlagsEnabled, authMeBody, VIEWER_USER } from '@/test/msw/handlers.js';
+import { CONNECTED_ACCOUNTS_QUERY_KEY } from '@/api/connectedAccounts.js';
+import { EMAIL_TEMPLATES_QUERY_KEY } from '@/api/emailTemplates.js';
+import { MY_FEATURE_FLAGS_QUERY_KEY } from '@/api/featureFlags.js';
+import { AUTH_QUERY_KEY } from '@/hooks/useAuth.js';
 import type { ConnectedAccountResponse } from '@shared/schemas/connectedAccountSchema.js';
 import { CLOSE_AFTER_SENT_MS } from '@/hooks/useMailboxSend.js';
 import SendEmailModal from './SendEmailModal.js';
@@ -399,7 +403,7 @@ describe('SendEmailModal — sending through a connected mailbox', () => {
     return { bodies, keys };
   }
 
-  function open(onSent = noop): void {
+  function open(onSent = noop, queryClient = testQueryClient()): QueryClient {
     renderWithProviders(
       <SendEmailModal
         isOpen={true}
@@ -409,7 +413,24 @@ describe('SendEmailModal — sending through a connected mailbox', () => {
         onClose={noop}
         onSent={onSent}
       />,
+      { queryClient },
     );
+    return queryClient;
+  }
+
+  function testQueryClient(): QueryClient {
+    return new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+    });
+  }
+
+  /** Waits until every query under `key` has answered, so an absence is a decision, not a delay. */
+  async function settled(queryClient: QueryClient, key: QueryKey): Promise<void> {
+    await waitFor(() => {
+      const queries = queryClient.getQueryCache().findAll({ queryKey: key });
+      expect(queries.length).toBeGreaterThan(0);
+      for (const query of queries) expect(query.state.status).not.toBe('pending');
+    });
   }
 
   async function chooseMailbox(): Promise<void> {
@@ -579,9 +600,6 @@ describe('SendEmailModal — sending through a connected mailbox', () => {
   });
 
   /** Lets every pending request and its re-render settle. */
-  async function settle(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
 
   it('offers no selector when email sync is on but no mailbox can send', async () => {
     let accountRequests = 0;
@@ -592,10 +610,10 @@ describe('SendEmailModal — sending through a connected mailbox', () => {
         return HttpResponse.json({ accounts: [mailbox({ can_send: false })] });
       }),
     );
-    open();
+    const queryClient = open();
 
-    await waitFor(() => expect(accountRequests).toBe(1));
-    await settle();
+    await settled(queryClient, CONNECTED_ACCOUNTS_QUERY_KEY);
+    expect(accountRequests).toBe(1);
     expect(screen.queryByTestId('send-email-from')).not.toBeInTheDocument();
   });
 
@@ -609,13 +627,49 @@ describe('SendEmailModal — sending through a connected mailbox', () => {
         return HttpResponse.json({ accounts: [mailbox()] });
       }),
     );
-    open();
+    const queryClient = open();
 
-    await screen.findByTestId('send-email-subject');
-    await settle();
+    await settled(queryClient, MY_FEATURE_FLAGS_QUERY_KEY);
+    await settled(queryClient, AUTH_QUERY_KEY);
     expect(accountRequests).toBe(0);
     expect(screen.queryByTestId('send-email-from')).not.toBeInTheDocument();
   });
+
+  it('offers no mailbox once email sync is off, even with mailboxes cached', async () => {
+    serve([mailbox()]);
+    server.use(
+      http.get('/api/v1/feature-flags/me', () =>
+        HttpResponse.json({ flags: { ...allFlagsEnabled(), email_sync: false } }),
+      ),
+    );
+    const queryClient = testQueryClient();
+    queryClient.setQueryData(CONNECTED_ACCOUNTS_QUERY_KEY, { accounts: [mailbox()] });
+    open(noop, queryClient);
+
+    await settled(queryClient, MY_FEATURE_FLAGS_QUERY_KEY);
+    expect(screen.queryByTestId('send-email-from')).not.toBeInTheDocument();
+  });
+
+  it.each(['activities:create', 'contacts:edit'])(
+    'offers no mailbox to a user without %s, which filing on the contact needs',
+    async (missing) => {
+      serve([mailbox()]);
+      const admin = authMeBody(ADMIN_USER);
+      server.use(
+        http.get('/api/v1/auth/me', () =>
+          HttpResponse.json({
+            ...admin,
+            capabilities: admin.capabilities.filter((capability) => capability !== missing),
+          }),
+        ),
+      );
+      const queryClient = open();
+
+      await settled(queryClient, AUTH_QUERY_KEY);
+      await settled(queryClient, MY_FEATURE_FLAGS_QUERY_KEY);
+      expect(screen.queryByTestId('send-email-from')).not.toBeInTheDocument();
+    },
+  );
 
   it('says why only the company email is offered when mailboxes fail to load', async () => {
     serve([]);
@@ -675,11 +729,11 @@ describe('SendEmailModal — sending through a connected mailbox', () => {
         return HttpResponse.json({ data: [], total: 0, page: 1, limit: 100 });
       }),
     );
-    open();
+    const queryClient = open();
     await chooseMailbox();
 
-    await waitFor(() => expect(templateRequests).toBe(1));
-    await settle();
+    await settled(queryClient, EMAIL_TEMPLATES_QUERY_KEY);
+    expect(templateRequests).toBe(1);
     expect(screen.queryByTestId('send-email-template')).not.toBeInTheDocument();
   });
 

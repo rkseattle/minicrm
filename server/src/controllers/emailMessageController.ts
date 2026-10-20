@@ -10,7 +10,9 @@ import {
   IDEMPOTENCY_KEY_HEADER,
   idempotencyKeySchema,
   recordMessagesParamsSchema,
+  EMAIL_LINK_EDIT_CAPABILITY,
   sendEmailSchema,
+  sendLogsActivity,
   type EmailLinkRecordType,
   type SendErrorCode,
   type SendRequestErrorCode,
@@ -148,24 +150,6 @@ export async function getMessageHandler(req: Request, res: Response): Promise<vo
 }
 
 /**
- * The capability that governs editing each record type.
- *
- * Filing mail against a record is a CRM write, so it takes the record's own edit
- * capability on top of the router's mailbox gate — the way bulk contact edits stack
- * BulkOperations with ContactsEdit. Accounts and leads have no capability of their own in
- * the enum and are gated by `contacts:edit` everywhere they are written
- * (`routes/accounts.ts`, `routes/leads.ts`); following that here rather than exempting
- * them is what stops a custom role without `contacts:edit` — which migration 170 still
- * grants `connected_accounts:manage` — from filing mail it cannot file against a contact.
- */
-const EDIT_CAPABILITY: Readonly<Record<EmailLinkRecordType, Capability>> = {
-  contact: Capability.ContactsEdit,
-  deal: Capability.DealsEdit,
-  account: Capability.ContactsEdit,
-  lead: Capability.ContactsEdit,
-};
-
-/**
  * Whether the caller may file mail against this record: capability, then visibility.
  *
  * @param capabilities - The set requireCapability already resolved for this request.
@@ -177,7 +161,7 @@ async function canWriteLinkToRecord(
   capabilities: ReadonlySet<Capability> | undefined,
 ): Promise<boolean> {
   const held = capabilities ?? (await userCapabilities(user.id));
-  if (!held.has(EDIT_CAPABILITY[recordType])) return false;
+  if (!held.has(EMAIL_LINK_EDIT_CAPABILITY[recordType])) return false;
   return canReadLinkedRecord(recordType, ownerId, user);
 }
 
@@ -388,7 +372,7 @@ export async function sendEmailHandler(req: Request, res: Response): Promise<voi
     }
     // Sending from a contact, account, or deal files an activity there, so it needs the
     // capability POST /activities does. A lead takes no activity.
-    if (input.record_type !== 'lead') {
+    if (sendLogsActivity(input.record_type)) {
       const held: ReadonlySet<Capability> =
         res.locals.capabilities ?? (await userCapabilities(req.user!.id));
       if (!held.has(Capability.ActivitiesCreate)) {
