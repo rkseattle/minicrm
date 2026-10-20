@@ -789,9 +789,9 @@ the ambient value.
 
 ## Not covered here
 
-- **Any UI over synced mail** — the read API exists, but nothing renders it yet.
-  `is_private` still ships defaulted to `false` with no writer, so the filter that honors it
-  is exercised only by tests that set the column directly.
+- **Marking a message private** — `is_private` still ships defaulted to `false` with no
+  writer, so the filter that honors it is exercised only by tests that set the column
+  directly.
 - **GDPR erasure for synced mail, and the backfill window as an admin setting** — the
   window is a module constant until that lands.
 - **Validation of Graph send against a real mailbox** — whether the Sent Items copy keeps

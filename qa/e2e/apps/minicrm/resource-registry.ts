@@ -155,6 +155,12 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
   },
   {
+    file: 'qa/e2e/tests/apps/minicrm/functional/email-messages/email-timeline.spec.ts',
+    // The Emails section's list query hits the same flag-gated router, so the row is written.
+    reads: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+    writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+  },
+  {
     file: 'qa/e2e/tests/apps/minicrm/functional/visibility/visibility.spec.ts',
     reads: ['settings.visibility_policy'],
     writes: ['settings.visibility_policy'],

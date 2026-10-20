@@ -21,6 +21,12 @@ subject_ appears in its addresses is a separate question — the messages hold c
 data while belonging to the connected user — and is decided by the email privacy story, which
 owns whether that is address redaction or row deletion and extends `gdpr_deletion_log` to match.
 
+Mail a user **sends** from a record is stored the same way, with `direction = 'outbound'`, and
+follows the same rules: no time purge, deleted with its mailbox's `connected_accounts` row, and
+covered by the same email privacy decision. Its body holds the contact's personal data just as
+a synced message's does; that it was written here rather than synced changes nothing about how
+long it is kept.
+
 That question is wider than addresses: the table stores message **bodies**, so a data subject's
 personal data can appear anywhere in free text rather than only in an indexed address column,
 and address redaction alone would not erase it. Note that `docs/gdpr.md`'s `body_text` scrub
