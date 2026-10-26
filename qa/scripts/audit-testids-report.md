@@ -1,13 +1,13 @@
 # data-testid Audit Report
 
-Generated: 2026-10-20T09:19:11.765Z
+Generated: 2026-10-26T22:13:57.167Z
 
 ## Summary
 
 - Matched: 601
 - Stale (broken locators): 0
 - Unexercised (in app, not in tests): 1048
-- Dynamic (manual review required): 701
+- Dynamic (manual review required): 702
 
 ## Stale testids (action required)
 
@@ -108,9 +108,9 @@ _None — all test-referenced testids are present in the application source._
 | `convert-deal-close-date` | client/src/components/ConvertLeadModal.tsx | 358 |
 | `convert-error` | client/src/components/ConvertLeadModal.tsx | 370 |
 | `convert-cancel` | client/src/components/ConvertLeadModal.tsx | 383 |
-| `coverage-session-indicator-checkout-button` | client/src/components/CoverageSessionIndicator.tsx | 131 |
-| `coverage-session-indicator-checkout-error` | client/src/components/CoverageSessionIndicator.tsx | 140 |
-| `coverage-session-indicator` | client/src/components/CoverageSessionIndicator.tsx | 119 |
+| `coverage-session-indicator-checkout-button` | client/src/components/CoverageSessionIndicator.tsx | 134 |
+| `coverage-session-indicator-checkout-error` | client/src/components/CoverageSessionIndicator.tsx | 143 |
+| `coverage-session-indicator` | client/src/components/CoverageSessionIndicator.tsx | 122 |
 | `deal-pipeline-select` | client/src/components/DealForm.tsx | 243 |
 | `deal-currency-select` | client/src/components/DealForm.tsx | 311 |
 | `deal-probability-input` | client/src/components/DealForm.tsx | 340 |
@@ -132,14 +132,14 @@ _None — all test-referenced testids are present in the application source._
 | `email-composer` | client/src/components/EmailComposer.tsx | 148 |
 | `email-draft-error` | client/src/components/EmailDraftPanel.tsx | 142 |
 | `email-draft-copy-error` | client/src/components/EmailDraftPanel.tsx | 192 |
-| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 256 |
-| `emails-loading` | client/src/components/EmailsSection.tsx | 262 |
-| `emails-error` | client/src/components/EmailsSection.tsx | 269 |
-| `email-thread-participants` | client/src/components/EmailsSection.tsx | 319 |
-| `email-thread-date` | client/src/components/EmailsSection.tsx | 327 |
-| `email-thread-subject` | client/src/components/EmailsSection.tsx | 334 |
-| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 341 |
-| `emails-thread-list` | client/src/components/EmailsSection.tsx | 291 |
+| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 254 |
+| `emails-loading` | client/src/components/EmailsSection.tsx | 260 |
+| `emails-error` | client/src/components/EmailsSection.tsx | 267 |
+| `email-thread-participants` | client/src/components/EmailsSection.tsx | 317 |
+| `email-thread-date` | client/src/components/EmailsSection.tsx | 325 |
+| `email-thread-subject` | client/src/components/EmailsSection.tsx | 332 |
+| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 339 |
+| `emails-thread-list` | client/src/components/EmailsSection.tsx | 289 |
 | `error-boundary-reload` | client/src/components/ErrorBoundary.tsx | 29 |
 | `error-boundary-dashboard-link` | client/src/components/ErrorBoundary.tsx | 37 |
 | `error-boundary-fallback` | client/src/components/ErrorBoundary.tsx | 20 |
@@ -212,17 +212,17 @@ _None — all test-referenced testids are present in the application source._
 | `nav-left-automation` | client/src/components/NavLeft.tsx | 139 |
 | `nav-left-sequences` | client/src/components/NavLeft.tsx | 139 |
 | `nav-left-settings` | client/src/components/NavLeft.tsx | 139 |
-| `note-image` | client/src/components/NotesSection.tsx | 134 |
-| `toolbar-image` | client/src/components/NotesSection.tsx | 349 |
-| `notes-editor-toolbar` | client/src/components/NotesSection.tsx | 290 |
-| `notes-composer-content` | client/src/components/NotesSection.tsx | 560 |
-| `notes-image-input` | client/src/components/NotesSection.tsx | 581 |
-| `notes-image-upload-error` | client/src/components/NotesSection.tsx | 588 |
-| `notes-save-error` | client/src/components/NotesSection.tsx | 647 |
-| `notes-section-heading` | client/src/components/NotesSection.tsx | 851 |
-| `notes-loading` | client/src/components/NotesSection.tsx | 882 |
-| `notes-load-error` | client/src/components/NotesSection.tsx | 896 |
-| `notes-delete-error` | client/src/components/NotesSection.tsx | 965 |
+| `note-image` | client/src/components/NotesSection.tsx | 138 |
+| `toolbar-image` | client/src/components/NotesSection.tsx | 407 |
+| `notes-editor-toolbar` | client/src/components/NotesSection.tsx | 348 |
+| `notes-composer-content` | client/src/components/NotesSection.tsx | 652 |
+| `notes-image-input` | client/src/components/NotesSection.tsx | 673 |
+| `notes-image-upload-error` | client/src/components/NotesSection.tsx | 680 |
+| `notes-save-error` | client/src/components/NotesSection.tsx | 739 |
+| `notes-section-heading` | client/src/components/NotesSection.tsx | 956 |
+| `notes-loading` | client/src/components/NotesSection.tsx | 987 |
+| `notes-load-error` | client/src/components/NotesSection.tsx | 1001 |
+| `notes-delete-error` | client/src/components/NotesSection.tsx | 1070 |
 | `notification-mark-all-read` | client/src/components/NotificationBell.tsx | 101 |
 | `notification-dropdown` | client/src/components/NotificationBell.tsx | 91 |
 | `powered-by-badge` | client/src/components/PoweredByBadge.tsx | 16 |
@@ -247,7 +247,7 @@ _None — all test-referenced testids are present in the application source._
 | `owner-filter-select` | client/src/components/ReportFilterBar.tsx | 169 |
 | `report-filters` | client/src/components/ReportFilterBar.tsx | 92 |
 | `date-range-error` | client/src/components/ReportFilterBar.tsx | 187 |
-| `rich-text-toolbar` | client/src/components/RichTextField.tsx | 77 |
+| `rich-text-toolbar` | client/src/components/RichTextField.tsx | 78 |
 | `proposal-draft-executive-summary-content` | client/src/components/RichTextField.tsx | 157 |
 | `proposal-draft-problem-statement-content` | client/src/components/RichTextField.tsx | 157 |
 | `proposal-draft-proposed-solution-content` | client/src/components/RichTextField.tsx | 157 |
@@ -319,23 +319,23 @@ _None — all test-referenced testids are present in the application source._
 | `linked-contacts-list` | client/src/pages/AccountDetailPage.tsx | 497 |
 | `subsidiary-accounts-heading` | client/src/pages/AccountDetailPage.tsx | 523 |
 | `subsidiary-accounts-list` | client/src/pages/AccountDetailPage.tsx | 530 |
-| `accounts-export-menu-button` | client/src/pages/AccountsPage.tsx | 341 |
-| `accounts-export-csv-button` | client/src/pages/AccountsPage.tsx | 345 |
-| `accounts-export-pdf-button` | client/src/pages/AccountsPage.tsx | 359 |
-| `accounts-export-all-button` | client/src/pages/AccountsPage.tsx | 373 |
-| `duplicate-account-warning-message` | client/src/pages/AccountsPage.tsx | 405 |
-| `duplicate-account-go-to-existing` | client/src/pages/AccountsPage.tsx | 411 |
-| `duplicate-account-create-anyway` | client/src/pages/AccountsPage.tsx | 418 |
-| `duplicate-account-explain-button` | client/src/pages/AccountsPage.tsx | 431 |
-| `duplicate-account-explanation-error` | client/src/pages/AccountsPage.tsx | 446 |
-| `duplicate-account-explanation-text` | client/src/pages/AccountsPage.tsx | 454 |
-| `duplicate-account-warning` | client/src/pages/AccountsPage.tsx | 401 |
-| `accounts-sort-name` | client/src/pages/AccountsPage.tsx | 748 |
-| `accounts-industry-filter` | client/src/pages/AccountsPage.tsx | 582 |
-| `accounts-type-filter` | client/src/pages/AccountsPage.tsx | 595 |
-| `accounts-health-filter` | client/src/pages/AccountsPage.tsx | 620 |
-| `accounts-tag-filter` | client/src/pages/AccountsPage.tsx | 635 |
-| `accounts-active-tag-filters` | client/src/pages/AccountsPage.tsx | 656 |
+| `accounts-export-menu-button` | client/src/pages/AccountsPage.tsx | 339 |
+| `accounts-export-csv-button` | client/src/pages/AccountsPage.tsx | 343 |
+| `accounts-export-pdf-button` | client/src/pages/AccountsPage.tsx | 357 |
+| `accounts-export-all-button` | client/src/pages/AccountsPage.tsx | 371 |
+| `duplicate-account-warning-message` | client/src/pages/AccountsPage.tsx | 403 |
+| `duplicate-account-go-to-existing` | client/src/pages/AccountsPage.tsx | 409 |
+| `duplicate-account-create-anyway` | client/src/pages/AccountsPage.tsx | 416 |
+| `duplicate-account-explain-button` | client/src/pages/AccountsPage.tsx | 429 |
+| `duplicate-account-explanation-error` | client/src/pages/AccountsPage.tsx | 444 |
+| `duplicate-account-explanation-text` | client/src/pages/AccountsPage.tsx | 452 |
+| `duplicate-account-warning` | client/src/pages/AccountsPage.tsx | 399 |
+| `accounts-sort-name` | client/src/pages/AccountsPage.tsx | 746 |
+| `accounts-industry-filter` | client/src/pages/AccountsPage.tsx | 580 |
+| `accounts-type-filter` | client/src/pages/AccountsPage.tsx | 593 |
+| `accounts-health-filter` | client/src/pages/AccountsPage.tsx | 618 |
+| `accounts-tag-filter` | client/src/pages/AccountsPage.tsx | 633 |
+| `accounts-active-tag-filters` | client/src/pages/AccountsPage.tsx | 654 |
 | `activities-page-heading` | client/src/pages/ActivitiesPage.tsx | 224 |
 | `activities-page-filter-summary` | client/src/pages/ActivitiesPage.tsx | 228 |
 | `activities-page-loading` | client/src/pages/ActivitiesPage.tsx | 236 |
@@ -493,19 +493,19 @@ _None — all test-referenced testids are present in the application source._
 | `enroll-submit-button` | client/src/pages/ContactDetailPage.tsx | 1662 |
 | `enroll-cancel-button` | client/src/pages/ContactDetailPage.tsx | 1674 |
 | `enroll-sequence-modal` | client/src/pages/ContactDetailPage.tsx | 1630 |
-| `contacts-export-menu-button` | client/src/pages/ContactsPage.tsx | 381 |
-| `contacts-export-csv-button` | client/src/pages/ContactsPage.tsx | 385 |
-| `contacts-export-pdf-button` | client/src/pages/ContactsPage.tsx | 399 |
-| `contacts-export-all-button` | client/src/pages/ContactsPage.tsx | 413 |
-| `duplicate-warning-message` | client/src/pages/ContactsPage.tsx | 447 |
-| `duplicate-go-to-existing` | client/src/pages/ContactsPage.tsx | 455 |
-| `duplicate-explanation-error` | client/src/pages/ContactsPage.tsx | 492 |
-| `contacts-loading` | client/src/pages/ContactsPage.tsx | 537 |
-| `bulk-success-message` | client/src/pages/ContactsPage.tsx | 561 |
-| `contacts-sort-email` | client/src/pages/ContactsPage.tsx | 817 |
-| `contacts-account-search` | client/src/pages/ContactsPage.tsx | 653 |
-| `contacts-tag-filter` | client/src/pages/ContactsPage.tsx | 672 |
-| `contacts-active-tag-filters` | client/src/pages/ContactsPage.tsx | 693 |
+| `contacts-export-menu-button` | client/src/pages/ContactsPage.tsx | 378 |
+| `contacts-export-csv-button` | client/src/pages/ContactsPage.tsx | 382 |
+| `contacts-export-pdf-button` | client/src/pages/ContactsPage.tsx | 396 |
+| `contacts-export-all-button` | client/src/pages/ContactsPage.tsx | 410 |
+| `duplicate-warning-message` | client/src/pages/ContactsPage.tsx | 444 |
+| `duplicate-go-to-existing` | client/src/pages/ContactsPage.tsx | 452 |
+| `duplicate-explanation-error` | client/src/pages/ContactsPage.tsx | 489 |
+| `contacts-loading` | client/src/pages/ContactsPage.tsx | 534 |
+| `bulk-success-message` | client/src/pages/ContactsPage.tsx | 558 |
+| `contacts-sort-email` | client/src/pages/ContactsPage.tsx | 814 |
+| `contacts-account-search` | client/src/pages/ContactsPage.tsx | 650 |
+| `contacts-tag-filter` | client/src/pages/ContactsPage.tsx | 669 |
+| `contacts-active-tag-filters` | client/src/pages/ContactsPage.tsx | 690 |
 | `save-report-visibility-select` | client/src/pages/CustomReportBuilderPage.tsx | 382 |
 | `save-report-cancel` | client/src/pages/CustomReportBuilderPage.tsx | 395 |
 | `save-report-dialog` | client/src/pages/CustomReportBuilderPage.tsx | 354 |
@@ -600,20 +600,20 @@ _None — all test-referenced testids are present in the application source._
 | `converted-contact-link` | client/src/pages/LeadDetailPage.tsx | 442 |
 | `converted-account-link` | client/src/pages/LeadDetailPage.tsx | 451 |
 | `converted-deal-link` | client/src/pages/LeadDetailPage.tsx | 460 |
-| `leads-export-menu-button` | client/src/pages/LeadsPage.tsx | 349 |
-| `leads-export-csv-button` | client/src/pages/LeadsPage.tsx | 353 |
-| `leads-export-pdf-button` | client/src/pages/LeadsPage.tsx | 369 |
-| `leads-export-all-button` | client/src/pages/LeadsPage.tsx | 385 |
-| `duplicate-go-to-existing` | client/src/pages/LeadsPage.tsx | 424 |
-| `create-lead-error` | client/src/pages/LeadsPage.tsx | 441 |
-| `leads-bulk-reassign-button` | client/src/pages/LeadsPage.tsx | 476 |
-| `leads-bulk-delete-button` | client/src/pages/LeadsPage.tsx | 482 |
-| `leads-loading` | client/src/pages/LeadsPage.tsx | 518 |
-| `leads-error` | client/src/pages/LeadsPage.tsx | 523 |
-| `leads-select-all` | client/src/pages/LeadsPage.tsx | 659 |
-| `filter-status` | client/src/pages/LeadsPage.tsx | 546 |
-| `filter-source` | client/src/pages/LeadsPage.tsx | 564 |
-| `leads-empty-state` | client/src/pages/LeadsPage.tsx | 608 |
+| `leads-export-menu-button` | client/src/pages/LeadsPage.tsx | 347 |
+| `leads-export-csv-button` | client/src/pages/LeadsPage.tsx | 351 |
+| `leads-export-pdf-button` | client/src/pages/LeadsPage.tsx | 367 |
+| `leads-export-all-button` | client/src/pages/LeadsPage.tsx | 383 |
+| `duplicate-go-to-existing` | client/src/pages/LeadsPage.tsx | 422 |
+| `create-lead-error` | client/src/pages/LeadsPage.tsx | 439 |
+| `leads-bulk-reassign-button` | client/src/pages/LeadsPage.tsx | 474 |
+| `leads-bulk-delete-button` | client/src/pages/LeadsPage.tsx | 480 |
+| `leads-loading` | client/src/pages/LeadsPage.tsx | 516 |
+| `leads-error` | client/src/pages/LeadsPage.tsx | 521 |
+| `leads-select-all` | client/src/pages/LeadsPage.tsx | 657 |
+| `filter-status` | client/src/pages/LeadsPage.tsx | 544 |
+| `filter-source` | client/src/pages/LeadsPage.tsx | 562 |
+| `leads-empty-state` | client/src/pages/LeadsPage.tsx | 606 |
 | `sso-error-banner` | client/src/pages/LoginPage.tsx | 139 |
 | `login-forgot-password` | client/src/pages/LoginPage.tsx | 220 |
 | `tasks-bulk-delete-button` | client/src/pages/MyTasksPage.tsx | 220 |
@@ -681,32 +681,32 @@ _None — all test-referenced testids are present in the application source._
 | `stage-trend-chart` | client/src/pages/StageTrendReportPage.tsx | 338 |
 | `stage-trend-chart-container` | client/src/pages/StageTrendReportPage.tsx | 334 |
 | `stage-trend-table-container` | client/src/pages/StageTrendReportPage.tsx | 349 |
-| `invite-form-toggle` | client/src/pages/UsersPage.tsx | 101 |
-| `bulk-activate-button` | client/src/pages/UsersPage.tsx | 622 |
-| `bulk-deactivate-button` | client/src/pages/UsersPage.tsx | 628 |
-| `bulk-change-role-button` | client/src/pages/UsersPage.tsx | 634 |
-| `inline-error-dismiss` | client/src/pages/UsersPage.tsx | 946 |
-| `inline-error-toast` | client/src/pages/UsersPage.tsx | 940 |
-| `bulk-change-role-select` | client/src/pages/UsersPage.tsx | 985 |
-| `bulk-change-role-confirm` | client/src/pages/UsersPage.tsx | 1001 |
-| `bulk-change-role-cancel` | client/src/pages/UsersPage.tsx | 1014 |
-| `bulk-change-role-dialog` | client/src/pages/UsersPage.tsx | 969 |
-| `bulk-change-role-overlay` | client/src/pages/UsersPage.tsx | 961 |
-| `bulk-activate-confirm` | client/src/pages/UsersPage.tsx | 1055 |
-| `bulk-activate-cancel` | client/src/pages/UsersPage.tsx | 1066 |
-| `bulk-activate-dialog` | client/src/pages/UsersPage.tsx | 1038 |
-| `bulk-activate-overlay` | client/src/pages/UsersPage.tsx | 1030 |
-| `bulk-deactivate-confirm` | client/src/pages/UsersPage.tsx | 1111 |
-| `bulk-deactivate-cancel` | client/src/pages/UsersPage.tsx | 1122 |
-| `bulk-deactivate-dialog` | client/src/pages/UsersPage.tsx | 1090 |
-| `bulk-deactivate-overlay` | client/src/pages/UsersPage.tsx | 1082 |
-| `bulk-success-dismiss` | client/src/pages/UsersPage.tsx | 1153 |
-| `bulk-success-toast` | client/src/pages/UsersPage.tsx | 1146 |
-| `api-token-value` | client/src/pages/UsersPage.tsx | 1200 |
-| `api-token-copy-button` | client/src/pages/UsersPage.tsx | 1209 |
-| `api-token-modal-close` | client/src/pages/UsersPage.tsx | 1217 |
-| `api-token-modal` | client/src/pages/UsersPage.tsx | 1181 |
-| `api-token-modal-overlay` | client/src/pages/UsersPage.tsx | 1173 |
+| `invite-form-toggle` | client/src/pages/UsersPage.tsx | 99 |
+| `bulk-activate-button` | client/src/pages/UsersPage.tsx | 620 |
+| `bulk-deactivate-button` | client/src/pages/UsersPage.tsx | 626 |
+| `bulk-change-role-button` | client/src/pages/UsersPage.tsx | 632 |
+| `inline-error-dismiss` | client/src/pages/UsersPage.tsx | 944 |
+| `inline-error-toast` | client/src/pages/UsersPage.tsx | 938 |
+| `bulk-change-role-select` | client/src/pages/UsersPage.tsx | 983 |
+| `bulk-change-role-confirm` | client/src/pages/UsersPage.tsx | 999 |
+| `bulk-change-role-cancel` | client/src/pages/UsersPage.tsx | 1012 |
+| `bulk-change-role-dialog` | client/src/pages/UsersPage.tsx | 967 |
+| `bulk-change-role-overlay` | client/src/pages/UsersPage.tsx | 959 |
+| `bulk-activate-confirm` | client/src/pages/UsersPage.tsx | 1053 |
+| `bulk-activate-cancel` | client/src/pages/UsersPage.tsx | 1064 |
+| `bulk-activate-dialog` | client/src/pages/UsersPage.tsx | 1036 |
+| `bulk-activate-overlay` | client/src/pages/UsersPage.tsx | 1028 |
+| `bulk-deactivate-confirm` | client/src/pages/UsersPage.tsx | 1109 |
+| `bulk-deactivate-cancel` | client/src/pages/UsersPage.tsx | 1120 |
+| `bulk-deactivate-dialog` | client/src/pages/UsersPage.tsx | 1088 |
+| `bulk-deactivate-overlay` | client/src/pages/UsersPage.tsx | 1080 |
+| `bulk-success-dismiss` | client/src/pages/UsersPage.tsx | 1151 |
+| `bulk-success-toast` | client/src/pages/UsersPage.tsx | 1144 |
+| `api-token-value` | client/src/pages/UsersPage.tsx | 1198 |
+| `api-token-copy-button` | client/src/pages/UsersPage.tsx | 1207 |
+| `api-token-modal-close` | client/src/pages/UsersPage.tsx | 1215 |
+| `api-token-modal` | client/src/pages/UsersPage.tsx | 1179 |
+| `api-token-modal-overlay` | client/src/pages/UsersPage.tsx | 1171 |
 | `win-loss-export-error` | client/src/pages/WinLossInsightsPage.tsx | 135 |
 | `win-loss-insights-error` | client/src/pages/WinLossInsightsPage.tsx | 148 |
 | `win-patterns-list` | client/src/pages/WinLossInsightsPage.tsx | 175 |
@@ -1166,16 +1166,16 @@ _None — all test-referenced testids are present in the application source._
 | `deal-card-stage-select-*` | client/src/components/DealCard.tsx | 127 | app |
 | `deal-card-*` | client/src/components/DealCard.tsx | 68 | app |
 | `email-direction-*` | client/src/components/EmailsSection.tsx | 100 | app |
-| `email-body-loading-*` | client/src/components/EmailsSection.tsx | 122 | app |
-| `email-body-error-*` | client/src/components/EmailsSection.tsx | 129 | app |
-| `email-body-text-*` | client/src/components/EmailsSection.tsx | 146 | app |
-| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 312 | app |
-| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 355 | app |
-| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 380 | app |
-| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 426 | app |
-| `email-reply-*` | client/src/components/EmailsSection.tsx | 408 | app |
-| `email-message-*` | client/src/components/EmailsSection.tsx | 369 | app |
-| `email-thread-*` | client/src/components/EmailsSection.tsx | 304 | app |
+| `email-body-loading-*` | client/src/components/EmailsSection.tsx | 120 | app |
+| `email-body-error-*` | client/src/components/EmailsSection.tsx | 127 | app |
+| `email-body-text-*` | client/src/components/EmailsSection.tsx | 144 | app |
+| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 310 | app |
+| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 353 | app |
+| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 378 | app |
+| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 424 | app |
+| `email-reply-*` | client/src/components/EmailsSection.tsx | 406 | app |
+| `email-message-*` | client/src/components/EmailsSection.tsx | 367 | app |
+| `email-thread-*` | client/src/components/EmailsSection.tsx | 302 | app |
 | `**-tags-heading` | client/src/components/EntityDetailSidebar.tsx | 108 | app |
 | `**-tags-section` | client/src/components/EntityDetailSidebar.tsx | 103 | app |
 | `field-merge-auto-*` | client/src/components/FieldMergeModal.tsx | 332 | app |
@@ -1186,22 +1186,23 @@ _None — all test-referenced testids are present in the application source._
 | `followup-timing-schedule-*` | client/src/components/FollowUpTimingCard.tsx | 111 | app |
 | `followup-timing-schedule-form-*` | client/src/components/FollowUpTimingCard.tsx | 119 | app |
 | `followup-timing-card-*` | client/src/components/FollowUpTimingCard.tsx | 98 | app |
-| `search-result-contact-*` | client/src/components/GlobalSearch.tsx | 115 | app |
-| `search-result-account-*` | client/src/components/GlobalSearch.tsx | 141 | app |
-| `search-result-deal-*` | client/src/components/GlobalSearch.tsx | 164 | app |
-| `search-result-lead-*` | client/src/components/GlobalSearch.tsx | 190 | app |
-| `search-result-email-*` | client/src/components/GlobalSearch.tsx | 218 | app |
+| `search-result-contact-*` | client/src/components/GlobalSearch.tsx | 120 | app |
+| `search-result-account-*` | client/src/components/GlobalSearch.tsx | 146 | app |
+| `search-result-deal-*` | client/src/components/GlobalSearch.tsx | 169 | app |
+| `search-result-lead-*` | client/src/components/GlobalSearch.tsx | 195 | app |
+| `search-result-email-*` | client/src/components/GlobalSearch.tsx | 223 | app |
 | `lead-routing-factor-*` | client/src/components/LeadForm.tsx | 165 | app |
 | `meeting-brief-news-item-*` | client/src/components/MeetingBriefPanel.tsx | 223 | app |
-| `note-tag-remove-*` | client/src/components/NotesSection.tsx | 625 | app |
-| `note-tag-*` | client/src/components/NotesSection.tsx | 618 | app |
-| `note-card-masked-*` | client/src/components/NotesSection.tsx | 712 | app |
-| `note-tag-display-*` | client/src/components/NotesSection.tsx | 741 | app |
-| `note-edit-*` | client/src/components/NotesSection.tsx | 753 | app |
-| `note-delete-*` | client/src/components/NotesSection.tsx | 761 | app |
-| `note-title-*` | client/src/components/NotesSection.tsx | 773 | app |
-| `note-body-*` | client/src/components/NotesSection.tsx | 781 | app |
-| `note-card-*` | client/src/components/NotesSection.tsx | 727 | app |
+| `note-tag-remove-*` | client/src/components/NotesSection.tsx | 717 | app |
+| `note-tag-*` | client/src/components/NotesSection.tsx | 710 | app |
+| `note-card-masked-*` | client/src/components/NotesSection.tsx | 812 | app |
+| `note-tag-display-*` | client/src/components/NotesSection.tsx | 837 | app |
+| `note-edit-*` | client/src/components/NotesSection.tsx | 849 | app |
+| `note-delete-*` | client/src/components/NotesSection.tsx | 857 | app |
+| `note-title-*` | client/src/components/NotesSection.tsx | 869 | app |
+| `note-body-*` | client/src/components/NotesSection.tsx | 884 | app |
+| `note-body-*` | client/src/components/NotesSection.tsx | 878 | app |
+| `note-card-*` | client/src/components/NotesSection.tsx | 823 | app |
 | `notification-item-*` | client/src/components/NotificationBell.tsx | 123 | app |
 | `objection-classification-error-*` | client/src/components/ObjectionInsights.tsx | 63 | app |
 | `objection-category-badge-*` | client/src/components/ObjectionInsights.tsx | 79 | app |
@@ -1278,18 +1279,18 @@ _None — all test-referenced testids are present in the application source._
 | `reactivate-*` | client/src/components/ui/UserActionsMenu.tsx | 171 | app |
 | `linked-contact-*` | client/src/pages/AccountDetailPage.tsx | 502 | app |
 | `subsidiary-account-*` | client/src/pages/AccountDetailPage.tsx | 536 | app |
-| `bulk-select-*` | client/src/pages/AccountsPage.tsx | 908 | app |
-| `account-card-link-*` | client/src/pages/AccountsPage.tsx | 918 | app |
-| `account-card-owner-*` | client/src/pages/AccountsPage.tsx | 931 | app |
-| `account-card-tags-*` | client/src/pages/AccountsPage.tsx | 943 | app |
-| `account-card-health-*` | client/src/pages/AccountsPage.tsx | 951 | app |
-| `account-card-*` | client/src/pages/AccountsPage.tsx | 903 | app |
-| `bulk-select-*` | client/src/pages/AccountsPage.tsx | 805 | app |
-| `account-link-*` | client/src/pages/AccountsPage.tsx | 816 | app |
-| `account-type-*` | client/src/pages/AccountsPage.tsx | 822 | app |
-| `account-owner-*` | client/src/pages/AccountsPage.tsx | 847 | app |
-| `account-tags-*` | client/src/pages/AccountsPage.tsx | 855 | app |
-| `account-health-*` | client/src/pages/AccountsPage.tsx | 863 | app |
+| `bulk-select-*` | client/src/pages/AccountsPage.tsx | 906 | app |
+| `account-card-link-*` | client/src/pages/AccountsPage.tsx | 916 | app |
+| `account-card-owner-*` | client/src/pages/AccountsPage.tsx | 929 | app |
+| `account-card-tags-*` | client/src/pages/AccountsPage.tsx | 941 | app |
+| `account-card-health-*` | client/src/pages/AccountsPage.tsx | 949 | app |
+| `account-card-*` | client/src/pages/AccountsPage.tsx | 901 | app |
+| `bulk-select-*` | client/src/pages/AccountsPage.tsx | 803 | app |
+| `account-link-*` | client/src/pages/AccountsPage.tsx | 814 | app |
+| `account-type-*` | client/src/pages/AccountsPage.tsx | 820 | app |
+| `account-owner-*` | client/src/pages/AccountsPage.tsx | 845 | app |
+| `account-tags-*` | client/src/pages/AccountsPage.tsx | 853 | app |
+| `account-health-*` | client/src/pages/AccountsPage.tsx | 861 | app |
 | `bulk-select-*` | client/src/pages/ActivitiesPage.tsx | 439 | app |
 | `activity-type-*` | client/src/pages/ActivitiesPage.tsx | 451 | app |
 | `activity-subject-*` | client/src/pages/ActivitiesPage.tsx | 460 | app |
@@ -1353,16 +1354,16 @@ _None — all test-referenced testids are present in the application source._
 | `linked-deal-probability-*` | client/src/pages/ContactDetailPage.tsx | 1457 | app |
 | `unenroll-button-*` | client/src/pages/ContactDetailPage.tsx | 1595 | app |
 | `enrollment-row-*` | client/src/pages/ContactDetailPage.tsx | 1576 | app |
-| `bulk-select-*` | client/src/pages/ContactsPage.tsx | 952 | app |
-| `contact-link-*` | client/src/pages/ContactsPage.tsx | 962 | app |
-| `contact-card-owner-*` | client/src/pages/ContactsPage.tsx | 977 | app |
-| `contact-card-tags-*` | client/src/pages/ContactsPage.tsx | 989 | app |
-| `contact-card-*` | client/src/pages/ContactsPage.tsx | 946 | app |
-| `bulk-select-*` | client/src/pages/ContactsPage.tsx | 865 | app |
-| `contact-link-*` | client/src/pages/ContactsPage.tsx | 876 | app |
-| `contact-email-*` | client/src/pages/ContactsPage.tsx | 884 | app |
-| `contact-owner-*` | client/src/pages/ContactsPage.tsx | 902 | app |
-| `contact-tags-*` | client/src/pages/ContactsPage.tsx | 910 | app |
+| `bulk-select-*` | client/src/pages/ContactsPage.tsx | 949 | app |
+| `contact-link-*` | client/src/pages/ContactsPage.tsx | 959 | app |
+| `contact-card-owner-*` | client/src/pages/ContactsPage.tsx | 974 | app |
+| `contact-card-tags-*` | client/src/pages/ContactsPage.tsx | 986 | app |
+| `contact-card-*` | client/src/pages/ContactsPage.tsx | 943 | app |
+| `bulk-select-*` | client/src/pages/ContactsPage.tsx | 862 | app |
+| `contact-link-*` | client/src/pages/ContactsPage.tsx | 873 | app |
+| `contact-email-*` | client/src/pages/ContactsPage.tsx | 881 | app |
+| `contact-owner-*` | client/src/pages/ContactsPage.tsx | 899 | app |
+| `contact-tags-*` | client/src/pages/ContactsPage.tsx | 907 | app |
 | `filter-field-*` | client/src/pages/CustomReportBuilderPage.tsx | 268 | app |
 | `filter-operator-*` | client/src/pages/CustomReportBuilderPage.tsx | 284 | app |
 | `filter-value-*` | client/src/pages/CustomReportBuilderPage.tsx | 303 | app |
@@ -1403,13 +1404,13 @@ _None — all test-referenced testids are present in the application source._
 | `deal-tags-*` | client/src/pages/DealsPage.tsx | 1289 | app |
 | `pipeline-summary-*` | client/src/pages/DealsPage.tsx | 1070 | app |
 | `status-history-*` | client/src/pages/LeadDetailPage.tsx | 498 | app |
-| `bulk-select-*` | client/src/pages/LeadsPage.tsx | 702 | app |
-| `view-lead-*` | client/src/pages/LeadsPage.tsx | 710 | app |
-| `status-badge-*` | client/src/pages/LeadsPage.tsx | 759 | app |
-| `status-select-*` | client/src/pages/LeadsPage.tsx | 746 | app |
-| `badge-converted-*` | client/src/pages/LeadsPage.tsx | 728 | app |
-| `delete-lead-*` | client/src/pages/LeadsPage.tsx | 782 | app |
-| `lead-row-*` | client/src/pages/LeadsPage.tsx | 694 | app |
+| `bulk-select-*` | client/src/pages/LeadsPage.tsx | 700 | app |
+| `view-lead-*` | client/src/pages/LeadsPage.tsx | 708 | app |
+| `status-badge-*` | client/src/pages/LeadsPage.tsx | 757 | app |
+| `status-select-*` | client/src/pages/LeadsPage.tsx | 744 | app |
+| `badge-converted-*` | client/src/pages/LeadsPage.tsx | 726 | app |
+| `delete-lead-*` | client/src/pages/LeadsPage.tsx | 780 | app |
+| `lead-row-*` | client/src/pages/LeadsPage.tsx | 692 | app |
 | `bulk-select-*` | client/src/pages/MyTasksPage.tsx | 498 | app |
 | `task-subject-*` | client/src/pages/MyTasksPage.tsx | 506 | app |
 | `task-type-*` | client/src/pages/MyTasksPage.tsx | 513 | app |
@@ -1447,14 +1448,14 @@ _None — all test-referenced testids are present in the application source._
 | `stage-trend-converted-*` | client/src/pages/StageTrendReportPage.tsx | 404 | app |
 | `stage-trend-rate-*` | client/src/pages/StageTrendReportPage.tsx | 410 | app |
 | `stage-trend-row-*` | client/src/pages/StageTrendReportPage.tsx | 393 | app |
-| `set-password-input-*` | client/src/pages/UsersPage.tsx | 297 | app |
-| `set-password-confirm-*` | client/src/pages/UsersPage.tsx | 310 | app |
-| `set-password-submit-*` | client/src/pages/UsersPage.tsx | 323 | app |
-| `set-password-cancel-*` | client/src/pages/UsersPage.tsx | 333 | app |
-| `set-password-form-*` | client/src/pages/UsersPage.tsx | 288 | app |
-| `user-card-*` | client/src/pages/UsersPage.tsx | 796 | app |
-| `bulk-select-*` | client/src/pages/UsersPage.tsx | 721 | app |
-| `user-card-*` | client/src/pages/UsersPage.tsx | 715 | app |
+| `set-password-input-*` | client/src/pages/UsersPage.tsx | 295 | app |
+| `set-password-confirm-*` | client/src/pages/UsersPage.tsx | 308 | app |
+| `set-password-submit-*` | client/src/pages/UsersPage.tsx | 321 | app |
+| `set-password-cancel-*` | client/src/pages/UsersPage.tsx | 331 | app |
+| `set-password-form-*` | client/src/pages/UsersPage.tsx | 286 | app |
+| `user-card-*` | client/src/pages/UsersPage.tsx | 794 | app |
+| `bulk-select-*` | client/src/pages/UsersPage.tsx | 719 | app |
+| `user-card-*` | client/src/pages/UsersPage.tsx | 713 | app |
 | `win-loss-insight-*` | client/src/pages/WinLossInsightsPage.tsx | 30 | app |
 | `loss-reason-count-*` | client/src/pages/WinLossReportPage.tsx | 324 | app |
 | `loss-reason-row-*` | client/src/pages/WinLossReportPage.tsx | 320 | app |

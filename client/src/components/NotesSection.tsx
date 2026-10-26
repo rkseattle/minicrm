@@ -15,6 +15,7 @@ import {
   useCallback,
   useRef,
   useEffect,
+  useMemo,
   type ReactElement,
   type MutableRefObject,
 } from 'react';
@@ -35,6 +36,8 @@ import {
   $getSelection,
   $isRangeSelection,
   $createParagraphNode,
+  $createTextNode,
+  $getRoot,
   $insertNodes,
   FORMAT_TEXT_COMMAND,
   COMMAND_PRIORITY_EDITOR,
@@ -48,6 +51,7 @@ import {
   type Spread,
 } from 'lexical';
 import { $setBlocksType } from '@lexical/selection';
+import { captureException } from '../sentry.js';
 import {
   $createHeadingNode,
   $createQuoteNode,
@@ -170,30 +174,84 @@ function serializeEditor(editor: LexicalEditor): string {
   return JSON.stringify(editor.getEditorState().toJSON());
 }
 
-/** Parse stored JSON back to Lexical state, setting it on the editor */
-function loadEditorState(editor: LexicalEditor, json: string | null | undefined): void {
-  if (!json) return;
-  try {
-    const state = editor.parseEditorState(json);
-    editor.setEditorState(state);
-  } catch {
-    // ignore malformed stored state
+/** Tags the fallback load, so the composer can tell it from an edit the user made. */
+const FALLBACK_LOAD_TAG = 'note-fallback-load';
+
+/** A stored body that looks like a lexical state but did not parse. Carries no note text. */
+class NoteBodyParseError extends Error {
+  constructor(noteId: string, cause: unknown) {
+    super(`Note ${noteId} body did not parse as a lexical editor state`);
+    this.name = 'NoteBodyParseError';
+    // The cause's message can quote the body (V8's JSON.parse does), so only its class is kept.
+    this.cause = cause instanceof Error ? cause.name : typeof cause;
   }
 }
 
-/** Render stored JSON to sanitized HTML for read-only display */
-function renderNoteHtml(editor: LexicalEditor, json: string | null | undefined): string {
-  if (!json) return '';
+/**
+ * Whether a stored body is a lexical state this editor can show, checked on the read-only
+ * render editor, which rethrows. Bodies the server writes in other shapes on purpose — a
+ * Tiptap document from demo data, GDPR's "[GDPR deleted]" — are expected, so only a
+ * lexical-shaped body that fails is reported.
+ */
+function isReadableBody(json: string, noteId: string): boolean {
   try {
-    const state = editor.parseEditorState(json);
-    let html = '';
-    state.read(() => {
-      html = $generateHtmlFromNodes(editor);
-    });
-    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
-  } catch {
-    return '';
+    getRenderEditor().parseEditorState(json);
+    return true;
+  } catch (err) {
+    if (isLexicalShaped(json)) captureException(new NoteBodyParseError(noteId, err));
+    return false;
   }
+}
+
+function isLexicalShaped(json: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(json);
+    return typeof parsed === 'object' && parsed !== null && 'root' in parsed;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Set a stored body on the editor and say whether it loaded. One that does not shows its
+ * plain-text copy instead; the caller must then not save that copy over the original.
+ */
+function loadEditorState(
+  editor: LexicalEditor,
+  json: string | null | undefined,
+  fallbackText: string | null | undefined,
+  noteId: string,
+): boolean {
+  if (!json) return true;
+  if (isReadableBody(json, noteId)) {
+    editor.setEditorState(editor.parseEditorState(json));
+    return true;
+  }
+  if (fallbackText) {
+    editor.update(
+      () => {
+        const paragraph = $createParagraphNode();
+        paragraph.append($createTextNode(fallbackText));
+        $getRoot().clear().append(paragraph);
+      },
+      { tag: FALLBACK_LOAD_TAG },
+    );
+  }
+  return false;
+}
+
+/**
+ * Render stored JSON to sanitized HTML for read-only display, or null when the body
+ * cannot be parsed so the caller shows the note's plain-text copy instead.
+ */
+function renderNoteHtml(editor: LexicalEditor, json: string, noteId: string): string | null {
+  if (!isReadableBody(json, noteId)) return null;
+  const state = editor.parseEditorState(json);
+  let html = '';
+  state.read(() => {
+    html = $generateHtmlFromNodes(editor);
+  });
+  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
 }
 
 // ── Toolbar plugin ─────────────────────────────────────────────────────────────
@@ -360,13 +418,34 @@ function ToolbarPlugin({ onImageUpload }: ToolbarPluginProps) {
 
 // ── Load-state plugin (sets content when editing an existing note) ─────────────
 
-function LoadStatePlugin({ body }: { body: string | null | undefined }) {
+function LoadStatePlugin({
+  note,
+  onUnreadable,
+}: {
+  note: NoteResponse | undefined;
+  onUnreadable: () => void;
+}) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
-    loadEditorState(editor, body ?? null);
+    if (!note) return;
+    if (!loadEditorState(editor, note.body, note.body_text, note.id)) onUnreadable();
     // Run once on mount only — editingNote.id change remounts the composer
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  return null;
+}
+
+/** Flags the first change to the content the user makes, ignoring the fallback load. */
+function ContentEditedPlugin({ onEdited }: { onEdited: () => void }) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(
+    () =>
+      editor.registerUpdateListener(({ dirtyElements, dirtyLeaves, tags }) => {
+        if (tags.has(FALLBACK_LOAD_TAG)) return;
+        if (dirtyElements.size > 0 || dirtyLeaves.size > 0) onEdited();
+      }),
+    [editor, onEdited],
+  );
   return null;
 }
 
@@ -452,6 +531,15 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
   const [tagInput, setTagInput] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  // An edit whose stored body did not load must not save the stand-in over it untouched.
+  const bodyUnreadableRef = useRef(false);
+  const contentEditedRef = useRef(false);
+  const markBodyUnreadable = useCallback(() => {
+    bodyUnreadableRef.current = true;
+  }, []);
+  const markContentEdited = useCallback(() => {
+    contentEditedRef.current = true;
+  }, []);
 
   const handleImageUpload = useCallback(
     async (file: File): Promise<string> => {
@@ -489,10 +577,12 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
     if (!editor) return;
     const body = serializeEditor(editor);
     const data = { title: title.trim() || undefined, body, visibility, tags };
-    if (editingNote) {
-      updateMutation.mutate(data);
-    } else {
+    if (!editingNote) {
       createMutation.mutate(data);
+    } else if (bodyUnreadableRef.current && !contentEditedRef.current) {
+      updateMutation.mutate({ ...data, body: undefined });
+    } else {
+      updateMutation.mutate(data);
     }
   }
 
@@ -529,7 +619,8 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
     namespace: `NoteComposer-${composerKey}`,
     theme: LEXICAL_THEME,
     nodes: LEXICAL_NODES,
-    onError: (err: Error) => console.error('[Lexical]', err),
+    // Reported, not rethrown: lexical restores the last good state after onError returns.
+    onError: (error: Error) => captureException(error),
   };
 
   return (
@@ -547,7 +638,8 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
       {/* Lexical editor */}
       <LexicalComposer key={composerKey} initialConfig={initialConfig}>
         <GetEditorPlugin editorRef={editorRef} />
-        <LoadStatePlugin body={editingNote?.body} />
+        <LoadStatePlugin note={editingNote} onUnreadable={markBodyUnreadable} />
+        <ContentEditedPlugin onEdited={markContentEdited} />
         <ToolbarPlugin onImageUpload={() => imageInputRef.current?.click()} />
         <div
           className="relative min-h-[120px] px-3 py-2 focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-inset"
@@ -695,7 +787,10 @@ function getRenderEditor(): LexicalEditor {
       namespace: 'NoteReader',
       theme: LEXICAL_THEME,
       nodes: LEXICAL_NODES,
-      onError: () => {},
+      // Rethrown so renderNoteHtml can fall back to the plain-text copy, not render blank.
+      onError: (error: Error) => {
+        throw error;
+      },
     });
   }
   return _renderEditor;
@@ -704,6 +799,11 @@ function getRenderEditor(): LexicalEditor {
 function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: NoteCardProps) {
   const { t, i18n } = useTranslation();
   const canEditOrDelete = note.created_by === currentUserId || currentUserRole === 'admin';
+  // Parsed once per mounted body, not on every re-render of the list.
+  const renderedHtml = useMemo(
+    () => (note.body ? renderNoteHtml(getRenderEditor(), note.body, note.id) : null),
+    [note.body, note.id],
+  );
 
   if (note.is_masked) {
     return (
@@ -718,10 +818,6 @@ function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: No
       </div>
     );
   }
-
-  const renderedHtml = note.body
-    ? renderNoteHtml(getRenderEditor(), note.body)
-    : DOMPurify.sanitize(note.body_text ?? '', { USE_PROFILES: { html: true } });
 
   return (
     <div className="px-4 py-4" data-testid={`note-card-${note.id}`}>
@@ -776,11 +872,20 @@ function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: No
         </h3>
       )}
 
-      <div
-        className="prose prose-sm max-w-none min-w-0 break-words text-sm"
-        data-testid={`note-body-${note.id}`}
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
-      />
+      {renderedHtml !== null ? (
+        <div
+          className="prose prose-sm max-w-none min-w-0 break-words text-sm"
+          data-testid={`note-body-${note.id}`}
+          dangerouslySetInnerHTML={{ __html: renderedHtml }}
+        />
+      ) : (
+        <div
+          className="prose prose-sm max-w-none min-w-0 break-words text-sm whitespace-pre-wrap"
+          data-testid={`note-body-${note.id}`}
+        >
+          {note.body_text}
+        </div>
+      )}
     </div>
   );
 }
