@@ -1969,8 +1969,8 @@ export async function getAiModelOptionCount(
 ): Promise<number> {
   const locator = await new AdminSettingsPage(context).aiModelSelectLocator();
   return locator.evaluate(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (el: Element) => (el as unknown as any).options.length as number,
+    // Runs in the browser on the <select>; qa compiles against Node's types, not the DOM's.
+    (el: unknown) => (el as { options: { length: number } }).options.length,
   );
 }
 
