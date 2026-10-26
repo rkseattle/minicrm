@@ -78,7 +78,7 @@ jobs:
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
 
       - name: Install dependencies
-        run: npm ci && npm install --prefix client
+        run: npm ci
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'

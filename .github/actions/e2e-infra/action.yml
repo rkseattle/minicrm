@@ -80,12 +80,8 @@ runs:
         key: playwright-chromium-${{ hashFiles('qa/package.json') }}
 
     - name: Install dependencies
-      # @rollup/rollup-linux-x64-gnu is a platform-specific optional dep omitted
-      # from the macOS-generated lockfile. npm install --prefix client forces
-      # fresh resolution of platform-specific optional binaries. (npm workspace
-      # optional-deps bug)
       shell: bash
-      run: npm ci && npm install --prefix client
+      run: npm ci
 
     - name: Install Playwright browsers
       if: steps.playwright-cache.outputs.cache-hit != 'true'

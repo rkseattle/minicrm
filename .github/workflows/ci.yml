@@ -1197,11 +1197,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        # @rolldown/binding-linux-x64-gnu is a platform-specific optional dep omitted from
-        # the macOS-generated lockfile. Running npm install from within client/ bypasses
-        # the root workspace lockfile and forces fresh resolution of platform-specific
-        # optional binaries (npm workspace optional-deps bug: https://github.com/npm/cli/issues/4828).
-        run: npm ci && npm install --prefix client
+        run: npm ci
 
       - name: Run server tests with coverage
         run: npm run test:coverage --workspace=minicrm-server
@@ -1309,21 +1305,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Cache client node_modules
-        # MINCRM-331: cache client/node_modules separately from the root cache so
-        # platform-specific optional binaries (@rollup/rollup-linux-x64-gnu) resolved
-        # by the npm install --prefix client step below are persisted across runs.
-        uses: actions/cache@v6
-        with:
-          path: client/node_modules
-          key: client-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
       - name: Install dependencies
-        # @rollup/rollup-linux-x64-gnu is a platform-specific optional dep omitted from
-        # the macOS-generated lockfile. Running npm install from within client/ bypasses
-        # the root workspace lockfile and forces fresh resolution of platform-specific
-        # optional binaries (npm workspace optional-deps bug).
-        run: npm ci && npm install --prefix client
+        run: npm ci
 
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
@@ -1399,15 +1382,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Cache coverage-dashboard node_modules
-        # Same platform-specific-optional-deps rationale as client-tests' own cache step.
-        uses: actions/cache@v6
-        with:
-          path: coverage-dashboard/node_modules
-          key: coverage-dashboard-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-
       - name: Install dependencies
-        run: npm ci && npm install --prefix coverage-dashboard
+        run: npm ci
 
       - name: Run coverage-dashboard tests with coverage
         run: npm run test:coverage --workspace=minicrm-coverage-dashboard
@@ -1821,11 +1797,7 @@ jobs:
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
 
       - name: Install dependencies
-        # @rollup/rollup-linux-x64-gnu is a platform-specific optional dep omitted from
-        # the macOS-generated lockfile. Running npm install from within client/ bypasses
-        # the root workspace lockfile and forces fresh resolution of platform-specific
-        # optional binaries (npm workspace optional-deps bug).
-        run: npm ci && npm install --prefix client
+        run: npm ci
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -2213,7 +2185,7 @@ jobs:
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
 
       - name: Install dependencies
-        run: npm ci && npm install --prefix client
+        run: npm ci
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -3257,7 +3229,7 @@ jobs:
           key: playwright-chromium-${{ hashFiles('qa/package.json') }}
 
       - name: Install dependencies
-        run: npm ci && npm install --prefix client
+        run: npm ci
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'

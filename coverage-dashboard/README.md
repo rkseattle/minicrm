@@ -18,10 +18,11 @@ architecture (data model, mapping engine, TIA test selection).
    docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
    ```
 
-2. Install dependencies (first time, or after a `package.json` change):
+2. Install dependencies from the repo root (first time, or after a `package.json` change).
+   The root lockfile covers every workspace, this one included:
 
    ```bash
-   npm install --prefix coverage-dashboard
+   npm install
    ```
 
 3. Set the three env vars this app's endpoints are gated on, in your `.env`, and
