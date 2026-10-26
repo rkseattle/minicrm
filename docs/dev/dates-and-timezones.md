@@ -92,8 +92,9 @@ Pin the instant; do not read the wall clock. Give the function an injectable
 `now: Date = new Date()` parameter and pass a fixed instant from the test — see
 `resolveDateRange` in `aiUsageDashboardService.ts`.
 
-**Do not reach for `vi.setSystemTime`.** In vitest 4 it requires `vi.useFakeTimers()`
-first, and faked timers cannot wrap `pool.query` — the call hangs on the pool's
+**Do not reach for `vi.setSystemTime`.** It fakes `Date` for the whole test file, while
+the database keeps its real clock, so a query comparing a stored timestamp with "now" sees
+two different times. With `vi.useFakeTimers()` as well, `pool.query` hangs on the pool's
 connection and idle timeouts. Every existing fake-timer use in the server suite
 (`notificationService.test.ts`, `verifyTestAttestation.test.ts`) deliberately avoids
 awaiting DB work inside the faked window.

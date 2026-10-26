@@ -27,7 +27,7 @@ if (typeof globalThis.ProgressEvent === 'undefined') {
   } as unknown as typeof ProgressEvent;
 }
 
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { setupServer } from 'msw/node';
 import { beforeAll, afterEach, afterAll, vi } from 'vitest';
 import i18n from 'i18next';
