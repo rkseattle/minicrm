@@ -76,10 +76,11 @@ cover it. So does a 0.x minor whose changelog marks it breaking.
 
 ### Held
 
-| Package      | Held at | Why                                                                                                                            |
-| ------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `typescript` | 6.x     | 7.x: `@typescript-eslint/parser` (latest, 8.72.1) declares `typescript <6.1.0`                                                 |
-| `eslint`     | 9.x     | 10.x: the newest ESLint `eslint-plugin-react` 7.37.5 accepts is `^9.7`, and `eslint-plugin-jsx-a11y` 6.10.2 `^9` (both latest) |
+| Package       | Held at | Why                                                                                                                            |
+| ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `typescript`  | 6.x     | 7.x: `@typescript-eslint/parser` (latest, 8.72.1) declares `typescript <6.1.0`                                                 |
+| `eslint`      | 9.x     | 10.x: the newest ESLint `eslint-plugin-react` 7.37.5 accepts is `^9.7`, and `eslint-plugin-jsx-a11y` 6.10.2 `^9` (both latest) |
+| `@types/node` | 24.x    | DefinitelyTyped versions it by Node major, and the runtime is Node 24 (`.nvmrc`, the images); 26.x declares APIs 24 lacks      |
 
 ### Types that lag their runtime
 
