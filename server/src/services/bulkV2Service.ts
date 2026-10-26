@@ -35,6 +35,7 @@ import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 import type { UserStatus } from '@minicrm/shared/schemas/userSchema.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
 import { getDealAutoLink } from './settingsService.js';
+import { VALIDATION_ERROR_CODE } from '../utils/validationError.js';
 
 // ── Result shape ──────────────────────────────────────────────────────────────
 
@@ -509,7 +510,7 @@ export async function bulkPatchDeals(
     const validStages = await getStageNames();
     if (!validStages.includes(patch.stage)) {
       throw Object.assign(new Error(`Invalid stage: "${patch.stage}"`), {
-        code: 'VALIDATION_ERROR',
+        code: VALIDATION_ERROR_CODE,
       });
     }
   }

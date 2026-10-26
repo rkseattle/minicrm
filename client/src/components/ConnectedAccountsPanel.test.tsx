@@ -18,7 +18,7 @@ import { server } from '@/test/setup.js';
 
 import ConnectedAccountsPanel from './ConnectedAccountsPanel.js';
 
-const ACCOUNT_ID = '00000000-0000-0000-0000-0000000000c1';
+const ACCOUNT_ID = '00000000-0000-4000-8000-0000000000c1';
 
 const ACCOUNT: ConnectedAccountResponse = {
   id: ACCOUNT_ID,
@@ -401,7 +401,7 @@ describe('ConnectedAccountsPanel', () => {
   it('keeps a response-only answer for one account when another is tested', async () => {
     // UNTESTABLE_PROVIDER is never written to the row, so it lives only in the response.
     // Held in one slot for the whole list, testing a second account would erase it.
-    const OTHER_ID = '00000000-0000-0000-0000-0000000000c2';
+    const OTHER_ID = '00000000-0000-4000-8000-0000000000c2';
     enableEmailSync();
     respondWithAccounts([
       { ...ACCOUNT, status: 'active' },

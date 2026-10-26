@@ -100,7 +100,7 @@ describe('issueServiceAccountToken', () => {
   });
 
   it('returns null for a non-existent user ID', async () => {
-    const result = await issueServiceAccountToken('00000000-0000-0000-0000-999999999999', ACTOR);
+    const result = await issueServiceAccountToken('00000000-0000-4000-8000-999999999999', ACTOR);
     expect(result).toBeNull();
   });
 
@@ -175,7 +175,7 @@ describe('revokeServiceAccountToken', () => {
   });
 
   it('returns false for a non-existent user ID', async () => {
-    const result = await revokeServiceAccountToken('00000000-0000-0000-0000-999999999999', ACTOR);
+    const result = await revokeServiceAccountToken('00000000-0000-4000-8000-999999999999', ACTOR);
     expect(result).toBe(false);
   });
 

@@ -365,7 +365,7 @@ describe('MyTasksPage', () => {
     it('shows "No record" when a task has no linked record', async () => {
       const unlinkedTask = {
         ...MY_TASK_1,
-        id: '00000000-0000-0000-0000-000000000601',
+        id: '00000000-0000-4000-8000-000000000601',
         contact_id: null,
         account_id: null,
         deal_id: null,
@@ -392,7 +392,7 @@ describe('MyTasksPage', () => {
     it('shows "No due date" when a task has no due date set', async () => {
       const noDueDateTask = {
         ...MY_TASK_1,
-        id: '00000000-0000-0000-0000-000000000602',
+        id: '00000000-0000-4000-8000-000000000602',
         due_date: null,
       };
       server.use(

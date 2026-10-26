@@ -19,6 +19,7 @@ import {
   getOriginalPiiFromCascadeLog,
   type CascadeRecordType,
 } from '../services/gdprService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 /** Schema for the optional notes field in erasure request bodies */
 const eraseBodySchema = z.object({
@@ -36,17 +37,13 @@ export async function eraseContactHandler(req: Request, res: Response): Promise<
   const id = String(req.params['id']);
   const idParsed = uuidSchema.safeParse(id);
   if (!idParsed.success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+    respondValidationMessage(res, 'id must be a valid UUID');
     return;
   }
 
   const bodyParsed = eraseBodySchema.safeParse(req.body);
   if (!bodyParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: bodyParsed.error.errors[0].message },
-    });
+    respondValidationError(res, bodyParsed.error);
     return;
   }
 
@@ -83,17 +80,13 @@ export async function eraseLeadHandler(req: Request, res: Response): Promise<voi
   const id = String(req.params['id']);
   const idParsed = uuidSchema.safeParse(id);
   if (!idParsed.success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+    respondValidationMessage(res, 'id must be a valid UUID');
     return;
   }
 
   const bodyParsed = eraseBodySchema.safeParse(req.body);
   if (!bodyParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: bodyParsed.error.errors[0].message },
-    });
+    respondValidationError(res, bodyParsed.error);
     return;
   }
 
@@ -130,9 +123,7 @@ export async function gdprExportContactHandler(req: Request, res: Response): Pro
   const id = String(req.params['id']);
   const idParsed = uuidSchema.safeParse(id);
   if (!idParsed.success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+    respondValidationMessage(res, 'id must be a valid UUID');
     return;
   }
 
@@ -151,9 +142,7 @@ export async function gdprExportLeadHandler(req: Request, res: Response): Promis
   const id = String(req.params['id']);
   const idParsed = uuidSchema.safeParse(id);
   if (!idParsed.success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+    respondValidationMessage(res, 'id must be a valid UUID');
     return;
   }
 
@@ -171,9 +160,7 @@ export async function gdprExportLeadHandler(req: Request, res: Response): Promis
 export async function listGdprDeletionsHandler(req: Request, res: Response): Promise<void> {
   const parsed = paginationParamsSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -192,9 +179,7 @@ function makeTriggerAiCascadeHandler(recordType: CascadeRecordType) {
     const id = String(req.params['id']);
     const idParsed = uuidSchema.safeParse(id);
     if (!idParsed.success) {
-      res
-        .status(400)
-        .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+      respondValidationMessage(res, 'id must be a valid UUID');
       return;
     }
 
@@ -254,9 +239,7 @@ function makeGetAiCascadeLogHandler(recordType: CascadeRecordType) {
     const id = String(req.params['id']);
     const idParsed = uuidSchema.safeParse(id);
     if (!idParsed.success) {
-      res
-        .status(400)
-        .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+      respondValidationMessage(res, 'id must be a valid UUID');
       return;
     }
 
@@ -278,9 +261,7 @@ export async function getGdprStatusHandler(req: Request, res: Response): Promise
 
   const idParsed = uuidSchema.safeParse(recordId);
   if (!idParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'recordId must be a valid UUID' },
-    });
+    respondValidationMessage(res, 'recordId must be a valid UUID');
     return;
   }
 

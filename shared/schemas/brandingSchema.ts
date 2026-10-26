@@ -52,7 +52,7 @@ export const setBrandingSchema = z.object({
   primaryColor: hexColorSchema.optional().nullable(),
   fontFamily: z
     .enum(SUPPORTED_FONT_IDS, {
-      errorMap: () => ({ message: `Font must be one of: ${SUPPORTED_FONT_IDS.join(', ')}` }),
+      error: `Font must be one of: ${SUPPORTED_FONT_IDS.join(', ')}`,
     })
     .optional()
     .nullable(),

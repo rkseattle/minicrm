@@ -22,6 +22,11 @@ import {
   deleteAutomationRule,
   listRuleLogs,
 } from '../services/automationService.js';
+import {
+  firstIssueMessage,
+  respondValidationError,
+  respondValidationMessage,
+} from '../utils/validationError.js';
 
 /**
  * Validates trigger_config and action_config shapes based on the rule's
@@ -43,24 +48,24 @@ function validateConfigShapes(
   if (triggerType === 'deal_stage_changed') {
     const parsed = dealStageChangedConfigSchema.safeParse(triggerConfig);
     if (!parsed.success) {
-      return `trigger_config: ${parsed.error.errors[0].message}`;
+      return `trigger_config: ${firstIssueMessage(parsed.error)}`;
     }
   }
 
   if (actionType === 'create_task') {
     const parsed = createTaskActionConfigSchema.safeParse(actionConfig);
     if (!parsed.success) {
-      return `action_config: ${parsed.error.errors[0].message}`;
+      return `action_config: ${firstIssueMessage(parsed.error)}`;
     }
   } else if (actionType === 'send_notification') {
     const parsed = sendNotificationActionConfigSchema.safeParse(actionConfig);
     if (!parsed.success) {
-      return `action_config: ${parsed.error.errors[0].message}`;
+      return `action_config: ${firstIssueMessage(parsed.error)}`;
     }
   } else if (actionType === 'send_webhook') {
     const parsed = sendWebhookActionConfigSchema.safeParse(actionConfig);
     if (!parsed.success) {
-      return `action_config: ${parsed.error.errors[0].message}`;
+      return `action_config: ${firstIssueMessage(parsed.error)}`;
     }
   }
 
@@ -75,9 +80,7 @@ export async function createAutomationRuleHandler(req: Request, res: Response): 
   const parsed = createAutomationRuleSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -89,7 +92,7 @@ export async function createAutomationRuleHandler(req: Request, res: Response): 
   );
 
   if (configError) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: configError } });
+    respondValidationMessage(res, configError);
     return;
   }
 
@@ -105,9 +108,7 @@ export async function createAutomationRuleHandler(req: Request, res: Response): 
 export async function listAutomationRulesHandler(req: Request, res: Response): Promise<void> {
   const parsed = paginationParamsSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
   const result = await listAutomationRules(parsed.data.page, parsed.data.limit);
@@ -138,9 +139,7 @@ export async function updateAutomationRuleHandler(req: Request, res: Response): 
   const parsed = updateAutomationRuleSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -166,7 +165,7 @@ export async function updateAutomationRuleHandler(req: Request, res: Response): 
   );
 
   if (configError) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: configError } });
+    respondValidationMessage(res, configError);
     return;
   }
 

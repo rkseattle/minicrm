@@ -112,7 +112,7 @@ describe('ContactsPage', () => {
   it('filters contacts to current user when Mine toggle is clicked', async () => {
     const repContact = {
       ...CONTACT_1,
-      id: '00000000-0000-0000-0000-000000000103',
+      id: '00000000-0000-4000-8000-000000000103',
       first_name: 'Bob',
       last_name: 'Jones',
       owner_id: REP_USER.id,
@@ -151,7 +151,7 @@ describe('ContactsPage', () => {
     server.use(
       http.get('/api/v1/contacts', () =>
         HttpResponse.json({
-          data: [{ ...CONTACT_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+          data: [{ ...CONTACT_1, owner_id: '00000000-0000-4000-8000-000000000999' }],
           total: 1,
           page: 1,
           limit: 25,
@@ -326,7 +326,7 @@ describe('ContactsPage', () => {
           {
             contact: {
               ...duplicateContact,
-              id: '00000000-0000-0000-0000-000000000199',
+              id: '00000000-0000-4000-8000-000000000199',
             },
           },
           { status: 201 },

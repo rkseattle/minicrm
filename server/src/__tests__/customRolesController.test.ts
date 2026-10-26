@@ -395,7 +395,7 @@ describe('POST /api/v1/users/:id/roles', () => {
     const res = await request(app)
       .post('/api/v1/users/00000000-0000-0000-0000-000000000000/roles')
       .set('Cookie', adminCookie)
-      .send({ roleId: '00000000-0000-0000-0000-000000000001' });
+      .send({ roleId: '00000000-0000-4000-8000-000000000001' });
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('USER_NOT_FOUND');

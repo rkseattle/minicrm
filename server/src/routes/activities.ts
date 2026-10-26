@@ -121,16 +121,16 @@ const router = Router();
  *                     $ref: '#/components/schemas/Activity'
  *             example:
  *               activities:
- *                 - id: ac1b2c3d-0000-0000-0000-000000000001
+ *                 - id: ac1b2c3d-0000-4000-8000-000000000001
  *                   type: Call
  *                   subject: Discovery Call
  *                   notes: Discussed renewal pricing options.
  *                   due_date: '2025-04-01'
  *                   status: open
- *                   contact_id: c1d2e3f4-0000-0000-0000-000000000001
- *                   account_id: a1b2c3d4-0000-0000-0000-000000000001
- *                   deal_id: d1e2f3a4-0000-0000-0000-000000000001
- *                   owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   contact_id: c1d2e3f4-0000-4000-8000-000000000001
+ *                   account_id: a1b2c3d4-0000-4000-8000-000000000001
+ *                   deal_id: d1e2f3a4-0000-4000-8000-000000000001
+ *                   owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                   created_at: '2025-03-15T09:00:00.000Z'
  *                   updated_at: '2025-03-15T09:00:00.000Z'
  *       400:
@@ -201,7 +201,7 @@ router.get(
  *                   type: integer
  *             example:
  *               tasks:
- *                 - id: ac1b2c3d-0000-0000-0000-000000000001
+ *                 - id: ac1b2c3d-0000-4000-8000-000000000001
  *                   type: Task
  *                   subject: Send revised proposal to Acme
  *                   status: open
@@ -242,8 +242,8 @@ router.get(
  *             subject: Discovery Call
  *             notes: Discussed renewal pricing options.
  *             due_date: '2025-04-01'
- *             contact_id: c1d2e3f4-0000-0000-0000-000000000001
- *             deal_id: d1e2f3a4-0000-0000-0000-000000000001
+ *             contact_id: c1d2e3f4-0000-4000-8000-000000000001
+ *             deal_id: d1e2f3a4-0000-4000-8000-000000000001
  *     responses:
  *       201:
  *         description: Activity created
@@ -256,16 +256,16 @@ router.get(
  *                   $ref: '#/components/schemas/Activity'
  *             example:
  *               activity:
- *                 id: ac1b2c3d-0000-0000-0000-000000000001
+ *                 id: ac1b2c3d-0000-4000-8000-000000000001
  *                 type: Call
  *                 subject: Discovery Call
  *                 notes: Discussed renewal pricing options.
  *                 due_date: '2025-04-01'
  *                 status: open
- *                 contact_id: c1d2e3f4-0000-0000-0000-000000000001
+ *                 contact_id: c1d2e3f4-0000-4000-8000-000000000001
  *                 account_id: null
- *                 deal_id: d1e2f3a4-0000-0000-0000-000000000001
- *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 deal_id: d1e2f3a4-0000-4000-8000-000000000001
+ *                 owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       400:
@@ -424,16 +424,16 @@ router.delete(
  *                   $ref: '#/components/schemas/Activity'
  *             example:
  *               activity:
- *                 id: ac1b2c3d-0000-0000-0000-000000000001
+ *                 id: ac1b2c3d-0000-4000-8000-000000000001
  *                 type: Call
  *                 subject: Discovery Call
  *                 notes: Discussed renewal pricing options.
  *                 due_date: '2025-04-01'
  *                 status: open
- *                 contact_id: c1d2e3f4-0000-0000-0000-000000000001
- *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
- *                 deal_id: d1e2f3a4-0000-0000-0000-000000000001
- *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 contact_id: c1d2e3f4-0000-4000-8000-000000000001
+ *                 account_id: a1b2c3d4-0000-4000-8000-000000000001
+ *                 deal_id: d1e2f3a4-0000-4000-8000-000000000001
+ *                 owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
@@ -498,16 +498,16 @@ router.get(
  *                   $ref: '#/components/schemas/Activity'
  *             example:
  *               activity:
- *                 id: ac1b2c3d-0000-0000-0000-000000000001
+ *                 id: ac1b2c3d-0000-4000-8000-000000000001
  *                 type: Call
  *                 subject: Discovery Call
  *                 notes: Sent revised pricing proposal after the call.
  *                 due_date: '2025-04-01'
  *                 status: complete
- *                 contact_id: c1d2e3f4-0000-0000-0000-000000000001
- *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
- *                 deal_id: d1e2f3a4-0000-0000-0000-000000000001
- *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 contact_id: c1d2e3f4-0000-4000-8000-000000000001
+ *                 account_id: a1b2c3d4-0000-4000-8000-000000000001
+ *                 deal_id: d1e2f3a4-0000-4000-8000-000000000001
+ *                 owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-16T10:30:00.000Z'
  *       400:

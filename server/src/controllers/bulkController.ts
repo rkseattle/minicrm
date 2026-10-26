@@ -6,6 +6,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { bulkContacts, bulkAccounts, bulkDeals } from '../services/bulkService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 const FORBIDDEN_BULK_ERROR = {
   error: {
@@ -51,9 +52,7 @@ const bulkDealSchema = z
 export async function bulkContactsHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkContactAccountSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -75,9 +74,7 @@ export async function bulkContactsHandler(req: Request, res: Response): Promise<
 export async function bulkAccountsHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkContactAccountSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -99,9 +96,7 @@ export async function bulkAccountsHandler(req: Request, res: Response): Promise<
 export async function bulkDealsHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkDealSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -114,9 +109,7 @@ export async function bulkDealsHandler(req: Request, res: Response): Promise<voi
   }
 
   if ('invalidStage' in result) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: `Invalid stage: "${parsed.data.stage}"` },
-    });
+    respondValidationMessage(res, `Invalid stage: "${parsed.data.stage}"`);
     return;
   }
 

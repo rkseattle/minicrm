@@ -25,7 +25,7 @@ import {
 } from '../services/aiContextService.js';
 
 const FILE_PREFIX = 'aic-svc';
-const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test User' };
+const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test User' };
 
 let userId: string;
 let otherUserId: string;
@@ -141,7 +141,7 @@ describe('updateContextEntry', () => {
   });
 
   it('throws 404 when entry does not exist', async () => {
-    const fakeId = '00000000-0000-0000-0000-000000000099';
+    const fakeId = '00000000-0000-4000-8000-000000000099';
     await expect(updateContextEntry(fakeId, userId, { value: 'x' }, ACTOR)).rejects.toMatchObject({
       statusCode: 404,
     });
@@ -176,7 +176,7 @@ describe('deleteContextEntry', () => {
   });
 
   it('throws 404 when entry does not exist', async () => {
-    const fakeId = '00000000-0000-0000-0000-000000000098';
+    const fakeId = '00000000-0000-4000-8000-000000000098';
     await expect(deleteContextEntry(fakeId, userId, ACTOR)).rejects.toMatchObject({
       statusCode: 404,
     });

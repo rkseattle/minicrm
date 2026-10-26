@@ -22,6 +22,13 @@ import {
 } from '../services/bulkV2Service.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 import { updateRoleSchema } from '@minicrm/shared/schemas/userSchema.js';
+import {
+  VALIDATION_ERROR_CODE,
+  firstIssueMessage,
+  respondValidationError,
+  respondValidationMessage,
+} from '../utils/validationError.js';
+import { errorBody } from '../utils/errorBody.js';
 
 /** Maximum number of IDs allowed in a single bulk request. */
 const BULK_MAX_IDS = 500;
@@ -79,23 +86,19 @@ const bulkActivityPatchSchema = z.object({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Returns a 400 response when Zod validation fails.
- * Checks ids.length first so over-limit batches get BULK_LIMIT_EXCEEDED rather
- * than a generic VALIDATION_ERROR.
- */
-function sendValidationError(res: Response, message: string, isOverLimit: boolean): void {
-  res.status(400).json({
-    error: {
-      code: isOverLimit ? 'BULK_LIMIT_EXCEEDED' : 'VALIDATION_ERROR',
-      message,
-    },
-  });
-}
+const BULK_LIMIT_EXCEEDED_CODE = 'BULK_LIMIT_EXCEEDED';
 
-/** Returns true when the Zod failure is specifically the ids array exceeding BULK_MAX_IDS. */
-function isIdsOverLimit(err: z.ZodError): boolean {
-  return err.issues.some((e) => e.code === 'too_big' && e.path[0] === 'ids');
+/**
+ * Answers a failed bulk-request parse with 400. A batch over BULK_MAX_IDS gets its own code,
+ * so a client can tell "split the batch" from "fix the request".
+ */
+function respondBulkValidationError(res: Response, error: z.ZodError): void {
+  const isIdsOverLimit = error.issues.some((e) => e.code === 'too_big' && e.path[0] === 'ids');
+  if (!isIdsOverLimit) {
+    respondValidationError(res, error);
+    return;
+  }
+  res.status(400).json(errorBody(BULK_LIMIT_EXCEEDED_CODE, firstIssueMessage(error)));
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────
@@ -107,8 +110,7 @@ function isIdsOverLimit(err: z.ZodError): boolean {
 export async function bulkPatchUsersHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkUserPatchSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 
@@ -124,8 +126,7 @@ export async function bulkPatchUsersHandler(req: Request, res: Response): Promis
 export async function bulkDeleteUsersHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 
@@ -143,8 +144,7 @@ export async function bulkDeleteUsersHandler(req: Request, res: Response): Promi
 export async function bulkPatchContactsHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkContactPatchSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 
@@ -160,8 +160,7 @@ export async function bulkPatchContactsHandler(req: Request, res: Response): Pro
 export async function bulkDeleteContactsHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 
@@ -179,8 +178,7 @@ export async function bulkDeleteContactsHandler(req: Request, res: Response): Pr
 export async function bulkPatchDealsHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkDealPatchSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 
@@ -190,10 +188,8 @@ export async function bulkPatchDealsHandler(req: Request, res: Response): Promis
     res.json(result);
   } catch (err) {
     const code = (err as { code?: string }).code;
-    if (code === 'VALIDATION_ERROR') {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: (err as Error).message },
-      });
+    if (code === VALIDATION_ERROR_CODE) {
+      respondValidationMessage(res, (err as Error).message);
       return;
     }
     throw err;
@@ -207,8 +203,7 @@ export async function bulkPatchDealsHandler(req: Request, res: Response): Promis
 export async function bulkDeleteDealsHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 
@@ -226,8 +221,7 @@ export async function bulkDeleteDealsHandler(req: Request, res: Response): Promi
 export async function bulkPatchActivitiesHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkActivityPatchSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 
@@ -243,8 +237,7 @@ export async function bulkPatchActivitiesHandler(req: Request, res: Response): P
 export async function bulkDeleteActivitiesHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 
@@ -269,8 +262,7 @@ const bulkLeadPatchSchema = z.object({
 export async function bulkPatchLeadsHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkLeadPatchSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 
@@ -286,8 +278,7 @@ export async function bulkPatchLeadsHandler(req: Request, res: Response): Promis
 export async function bulkDeleteLeadsHandler(req: Request, res: Response): Promise<void> {
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
-    const message = parsed.error.errors[0].message;
-    sendValidationError(res, message, isIdsOverLimit(parsed.error));
+    respondBulkValidationError(res, parsed.error);
     return;
   }
 

@@ -46,6 +46,7 @@ import {
   refreshAccessToken,
   revokeProviderTokens,
 } from '../services/oauthProviderService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 /** Path parameter guard — an unvalidated string reaching a uuid column throws a PG error. */
 const accountIdSchema = z.string().uuid();
@@ -66,9 +67,7 @@ export async function listConnectedAccountsHandler(req: Request, res: Response):
 export async function createConnectedAccountHandler(req: Request, res: Response): Promise<void> {
   const parsed = imapCredentialsSchema.safeParse(req.body);
   if (!parsed.success) {
-    res
-      .status(400)
-      .json(errorBody('VALIDATION_ERROR', parsed.error.errors[0]?.message ?? 'Invalid request'));
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -106,7 +105,7 @@ export async function createConnectedAccountHandler(req: Request, res: Response)
 export async function deleteConnectedAccountHandler(req: Request, res: Response): Promise<void> {
   const idParse = accountIdSchema.safeParse(req.params.id);
   if (!idParse.success) {
-    res.status(400).json(errorBody('VALIDATION_ERROR', 'Invalid connected account ID'));
+    respondValidationMessage(res, 'Invalid connected account ID');
     return;
   }
 
@@ -139,7 +138,7 @@ export async function deleteConnectedAccountHandler(req: Request, res: Response)
 export async function testConnectedAccountHandler(req: Request, res: Response): Promise<void> {
   const idParse = accountIdSchema.safeParse(req.params.id);
   if (!idParse.success) {
-    res.status(400).json(errorBody('VALIDATION_ERROR', 'Invalid connected account ID'));
+    respondValidationMessage(res, 'Invalid connected account ID');
     return;
   }
 

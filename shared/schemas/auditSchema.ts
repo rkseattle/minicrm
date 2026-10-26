@@ -151,7 +151,8 @@ export const auditLogEntrySchema = z.object({
   field_name: z.string().nullable(),
   old_value: z.string().nullable(),
   new_value: z.string().nullable(),
-  changed_by_id: z.string().uuid().nullable(),
+  // Audit actors include fixed system ids, such as SCIM's, that are not RFC 9562 UUIDs.
+  changed_by_id: z.guid().nullable(),
   changed_by_name: z.string().nullable(),
   source: z.string().nullable(),
   created_at: z.string(),
@@ -163,7 +164,8 @@ export type AuditLogEntry = z.infer<typeof auditLogEntrySchema>;
 export const listAuditLogParamsSchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
-  userId: z.string().uuid().optional(),
+  // An actor id, so the same non-RFC system ids as changed_by_id.
+  userId: z.guid().optional(),
   recordType: z.enum(AUDIT_RECORD_TYPES).optional(),
   eventType: z.enum(AUDIT_EVENT_TYPES).optional(),
   source: z.enum(['AI (NLI)', 'AI (context)', 'human']).optional(),

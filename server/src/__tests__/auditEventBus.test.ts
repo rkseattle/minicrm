@@ -19,10 +19,10 @@ import { createUser } from '../services/userService.js';
 const FILE_PREFIX = 'audit-event-bus';
 // Each test uses its own RECORD_ID to prevent LISTEN notifications from one
 // test bleeding into another test's event handler during the timing window.
-const RECORD_ID_EMIT = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01';
-const RECORD_ID_NOEMIT = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee02';
-const RECORD_ID_GDPR = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
-const ACTOR_ID = 'e0e0e0e0-e0e0-e0e0-e0e0-e0e0e0e0e0e0';
+const RECORD_ID_EMIT = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01';
+const RECORD_ID_NOEMIT = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeee02';
+const RECORD_ID_GDPR = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+const ACTOR_ID = 'e0e0e0e0-e0e0-40e0-80e0-e0e0e0e0e0e0';
 const ACTOR_NAME = 'EventBus Test Actor';
 
 let requestedById: string;
@@ -194,7 +194,7 @@ describe('auditEventBus', () => {
 
 describe('maskAuditEvent', () => {
   const baseEvent: AuditNotification = {
-    id: '11111111-1111-1111-1111-111111111111',
+    id: '11111111-1111-4111-8111-111111111111',
     record_type: 'contact',
     record_id: RECORD_ID_GDPR,
     record_name: 'Test Subject',

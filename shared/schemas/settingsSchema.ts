@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /** All language codes supported by the application */
 export const SUPPORTED_LOCALES = ['en', 'zh-Hans', 'es', 'fr', 'de'] as const;
@@ -81,12 +82,13 @@ export const SUPPORTED_CURRENCIES = SUPPORTED_CURRENCY_LIST.map(
  * Schema for the PATCH /api/v1/settings/default-language request body.
  */
 export const setDefaultLanguageSchema = z.object({
-  language: z.enum(SUPPORTED_LOCALES, {
-    errorMap: (issue) =>
-      issue.code === 'invalid_type' && issue.received === 'undefined'
-        ? { message: 'Language is required' }
-        : { message: `Language must be one of: ${SUPPORTED_LOCALES.join(', ')}` },
-  }),
+  language: z.enum(
+    SUPPORTED_LOCALES,
+    typeErrorMessages({
+      required: 'Language is required',
+      invalid: `Language must be one of: ${SUPPORTED_LOCALES.join(', ')}`,
+    }),
+  ),
 });
 
 /** The shape returned by GET /api/v1/settings/default-language */
@@ -98,12 +100,13 @@ export const defaultLanguageResponseSchema = z.object({
  * Schema for the PATCH /api/v1/settings/default-currency request body.
  */
 export const setDefaultCurrencySchema = z.object({
-  currency: z.enum(SUPPORTED_CURRENCIES, {
-    errorMap: (issue) =>
-      issue.code === 'invalid_type' && issue.received === 'undefined'
-        ? { message: 'Currency is required' }
-        : { message: `Currency must be one of: ${SUPPORTED_CURRENCIES.join(', ')}` },
-  }),
+  currency: z.enum(
+    SUPPORTED_CURRENCIES,
+    typeErrorMessages({
+      required: 'Currency is required',
+      invalid: `Currency must be one of: ${SUPPORTED_CURRENCIES.join(', ')}`,
+    }),
+  ),
 });
 
 /** The shape returned by GET /api/v1/settings/default-currency */
@@ -152,19 +155,20 @@ export type DefaultTimezoneResponse = z.infer<typeof defaultTimezoneResponseSche
  * A nav layout value with the shared validation messages. The per-user preference
  * schema derives its nullable variant from this, so both report layout errors alike.
  */
-export const navLayoutEnum = z.enum(NAV_LAYOUTS, {
-  errorMap: (issue) =>
-    issue.code === 'invalid_type' && issue.received === 'undefined'
-      ? { message: 'Layout is required' }
-      : { message: `Layout must be one of: ${NAV_LAYOUTS.join(', ')}` },
-});
+export const navLayoutEnum = z.enum(
+  NAV_LAYOUTS,
+  typeErrorMessages({
+    required: 'Layout is required',
+    invalid: `Layout must be one of: ${NAV_LAYOUTS.join(', ')}`,
+  }),
+);
 
 /**
  * Schema for the PATCH /api/v1/settings/nav-layout request body.
  */
 /** Body of PATCH /api/v1/settings/deal-auto-link. */
 export const dealAutoLinkSchema = z.object({
-  enabled: z.boolean({ required_error: 'enabled must be a boolean' }),
+  enabled: z.boolean(typeErrorMessages({ required: 'enabled must be a boolean' })),
 });
 
 export const setNavLayoutSchema = z.object({
@@ -201,7 +205,7 @@ export type SsoProtocol = (typeof SSO_PROTOCOLS)[number];
  */
 export const setSsoConfigSchema = z.object({
   protocol: z.enum(SSO_PROTOCOLS, {
-    errorMap: () => ({ message: `Protocol must be one of: ${SSO_PROTOCOLS.join(', ')}` }),
+    error: `Protocol must be one of: ${SSO_PROTOCOLS.join(', ')}`,
   }),
   idp_metadata_url: z
     .string()
@@ -312,14 +316,12 @@ export interface AiConfigResponse {
 export const setAiConfigSchema = z
   .object({
     provider: z.enum(AI_PROVIDERS, {
-      errorMap: () => ({ message: `Provider must be one of: ${AI_PROVIDERS.join(', ')}` }),
+      error: `Provider must be one of: ${AI_PROVIDERS.join(', ')}`,
     }),
     model: z.string().min(1, { message: 'Model is required' }).max(100),
     api_key: z.string().max(512, { message: 'API key must be 512 characters or fewer' }).optional(),
     deployment_mode: z.enum(AI_DEPLOYMENT_MODES, {
-      errorMap: () => ({
-        message: `Deployment mode must be one of: ${AI_DEPLOYMENT_MODES.join(', ')}`,
-      }),
+      error: `Deployment mode must be one of: ${AI_DEPLOYMENT_MODES.join(', ')}`,
     }),
     base_url: z
       .string()
@@ -368,13 +370,13 @@ export type SetAiConfigInput = z.infer<typeof setAiConfigSchema>;
 
 /** Schema for PATCH /api/v1/admin/ai/master-toggle request body. */
 export const setAiEnabledSchema = z.object({
-  enabled: z.boolean({ required_error: 'enabled is required' }),
+  enabled: z.boolean(typeErrorMessages({ required: 'enabled is required' })),
 });
 
 /** Schema for PATCH /api/v1/admin/ai/session-retention request body. */
 export const setAiSessionRetentionSchema = z.object({
   ai_session_retention_days: z
-    .number({ required_error: 'ai_session_retention_days is required' })
+    .number(typeErrorMessages({ required: 'ai_session_retention_days is required' }))
     .int({ message: 'ai_session_retention_days must be an integer' })
     .min(30, { message: 'Retention window must be at least 30 days' })
     .max(3650, { message: 'Retention window must be at most 3650 days (10 years)' }),
@@ -385,22 +387,22 @@ export type SetAiSessionRetentionInput = z.infer<typeof setAiSessionRetentionSch
 /** Schema for PATCH /api/v1/admin/ai/coaching-config request body. */
 export const setRepCoachingConfigSchema = z.object({
   min_closed_deals: z
-    .number({ required_error: 'min_closed_deals is required' })
+    .number(typeErrorMessages({ required: 'min_closed_deals is required' }))
     .int({ message: 'min_closed_deals must be an integer' })
     .min(1, { message: 'min_closed_deals must be at least 1' }),
   stage_time_outlier_ratio: z
-    .number({ required_error: 'stage_time_outlier_ratio is required' })
+    .number(typeErrorMessages({ required: 'stage_time_outlier_ratio is required' }))
     .gt(1, { message: 'stage_time_outlier_ratio must be greater than 1' }),
   activity_frequency_outlier_ratio: z
-    .number({ required_error: 'activity_frequency_outlier_ratio is required' })
+    .number(typeErrorMessages({ required: 'activity_frequency_outlier_ratio is required' }))
     .gt(0, { message: 'activity_frequency_outlier_ratio must be greater than 0' })
     .lt(1, { message: 'activity_frequency_outlier_ratio must be less than 1' }),
   response_time_outlier_hours: z
-    .number({ required_error: 'response_time_outlier_hours is required' })
+    .number(typeErrorMessages({ required: 'response_time_outlier_hours is required' }))
     .int({ message: 'response_time_outlier_hours must be an integer' })
     .min(1, { message: 'response_time_outlier_hours must be at least 1' }),
   win_rate_outlier_delta: z
-    .number({ required_error: 'win_rate_outlier_delta is required' })
+    .number(typeErrorMessages({ required: 'win_rate_outlier_delta is required' }))
     .gt(0, { message: 'win_rate_outlier_delta must be greater than 0' })
     .lt(1, { message: 'win_rate_outlier_delta must be less than 1' }),
 });
@@ -441,7 +443,7 @@ export type SetAiEnabledInput = z.infer<typeof setAiEnabledSchema>;
 
 /** Schema for POST /api/v1/admin/ai/dpa-acknowledgment request body. */
 export const setAiDpaAcknowledgmentSchema = z.object({
-  acknowledged: z.boolean({ required_error: 'acknowledged is required' }),
+  acknowledged: z.boolean(typeErrorMessages({ required: 'acknowledged is required' })),
   custom_dpa_url: z
     .string()
     .max(2048, { message: 'Custom DPA URL must be 2048 characters or fewer' })
@@ -455,7 +457,7 @@ export type SetAiDpaAcknowledgmentInput = z.infer<typeof setAiDpaAcknowledgmentS
 export const testAiConnectionSchema = z
   .object({
     provider: z.enum(AI_PROVIDERS, {
-      errorMap: () => ({ message: `Provider must be one of: ${AI_PROVIDERS.join(', ')}` }),
+      error: `Provider must be one of: ${AI_PROVIDERS.join(', ')}`,
     }),
     model: z.string().min(1, { message: 'Model is required' }).max(100),
     /** If omitted, the stored API key is used for the test. */
@@ -593,10 +595,12 @@ export interface AiTokenBudgetsResponse {
 /** Request body for PATCH /api/v1/admin/ai/token-budgets/org */
 export const setOrgTokenBudgetSchema = z.object({
   monthly_limit: z
-    .number({
-      required_error: 'monthly_limit is required',
-      invalid_type_error: 'monthly_limit must be a number',
-    })
+    .number(
+      typeErrorMessages({
+        required: 'monthly_limit is required',
+        invalid: 'monthly_limit must be a number',
+      }),
+    )
     .int('monthly_limit must be an integer')
     .min(0, 'monthly_limit must be 0 or greater'),
 });
@@ -606,10 +610,12 @@ export type SetOrgTokenBudgetInput = z.infer<typeof setOrgTokenBudgetSchema>;
 /** Request body for PATCH /api/v1/admin/ai/token-budgets/users/:userId */
 export const setUserTokenBudgetSchema = z.object({
   monthly_limit: z
-    .number({
-      required_error: 'monthly_limit is required',
-      invalid_type_error: 'monthly_limit must be a number',
-    })
+    .number(
+      typeErrorMessages({
+        required: 'monthly_limit is required',
+        invalid: 'monthly_limit must be a number',
+      }),
+    )
     .int('monthly_limit must be an integer')
     .min(0, 'monthly_limit must be 0 or greater')
     .nullable(),

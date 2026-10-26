@@ -97,15 +97,15 @@ const router = Router();
  *                     $ref: '#/components/schemas/Contact'
  *             example:
  *               contacts:
- *                 - id: c1d2e3f4-0000-0000-0000-000000000001
+ *                 - id: c1d2e3f4-0000-4000-8000-000000000001
  *                   first_name: Jane
  *                   last_name: Smith
  *                   email: jane.smith@acme.com
  *                   phone: '+1-415-555-0192'
  *                   title: VP of Engineering
  *                   department: Engineering
- *                   account_id: a1b2c3d4-0000-0000-0000-000000000001
- *                   owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   account_id: a1b2c3d4-0000-4000-8000-000000000001
+ *                   owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                   created_at: '2025-03-15T09:00:00.000Z'
  *                   updated_at: '2025-03-15T09:00:00.000Z'
  *       400:
@@ -543,7 +543,7 @@ router.delete(
  *             phone: '+1-415-555-0192'
  *             title: VP of Engineering
  *             department: Engineering
- *             account_id: a1b2c3d4-0000-0000-0000-000000000001
+ *             account_id: a1b2c3d4-0000-4000-8000-000000000001
  *     responses:
  *       201:
  *         description: Contact created
@@ -556,15 +556,15 @@ router.delete(
  *                   $ref: '#/components/schemas/Contact'
  *             example:
  *               contact:
- *                 id: c1d2e3f4-0000-0000-0000-000000000001
+ *                 id: c1d2e3f4-0000-4000-8000-000000000001
  *                 first_name: Jane
  *                 last_name: Smith
  *                 email: jane.smith@acme.com
  *                 phone: '+1-415-555-0192'
  *                 title: VP of Engineering
  *                 department: Engineering
- *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
- *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 account_id: a1b2c3d4-0000-4000-8000-000000000001
+ *                 owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       400:
@@ -616,15 +616,15 @@ router.post(
  *                   $ref: '#/components/schemas/Contact'
  *             example:
  *               contact:
- *                 id: c1d2e3f4-0000-0000-0000-000000000001
+ *                 id: c1d2e3f4-0000-4000-8000-000000000001
  *                 first_name: Jane
  *                 last_name: Smith
  *                 email: jane.smith@acme.com
  *                 phone: '+1-415-555-0192'
  *                 title: VP of Engineering
  *                 department: Engineering
- *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
- *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 account_id: a1b2c3d4-0000-4000-8000-000000000001
+ *                 owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
@@ -723,15 +723,15 @@ router.get(
  *                   $ref: '#/components/schemas/Contact'
  *             example:
  *               contact:
- *                 id: c1d2e3f4-0000-0000-0000-000000000001
+ *                 id: c1d2e3f4-0000-4000-8000-000000000001
  *                 first_name: Jane
  *                 last_name: Smith
  *                 email: jane.smith@acme.com
  *                 phone: '+1-415-555-0199'
  *                 title: CTO
  *                 department: Engineering
- *                 account_id: a1b2c3d4-0000-0000-0000-000000000001
- *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 account_id: a1b2c3d4-0000-4000-8000-000000000001
+ *                 owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-16T10:30:00.000Z'
  *       400:
@@ -860,14 +860,14 @@ router.delete(
  *                     $ref: '#/components/schemas/Deal'
  *             example:
  *               deals:
- *                 - id: d1e2f3a4-0000-0000-0000-000000000001
+ *                 - id: d1e2f3a4-0000-4000-8000-000000000001
  *                   name: Acme Renewal
  *                   stage: Proposal
  *                   value: '12500.00'
  *                   close_date: '2025-12-31'
  *                   loss_reason: null
- *                   account_id: a1b2c3d4-0000-0000-0000-000000000001
- *                   owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   account_id: a1b2c3d4-0000-4000-8000-000000000001
+ *                   owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                   created_at: '2025-03-15T09:00:00.000Z'
  *                   updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
@@ -1764,7 +1764,7 @@ router.delete(
  *                 type: string
  *                 format: uuid
  *           example:
- *             sequence_id: 5e6f7a8b-0000-0000-0000-000000000001
+ *             sequence_id: 5e6f7a8b-0000-4000-8000-000000000001
  *     responses:
  *       201:
  *         description: Contact enrolled
@@ -2326,7 +2326,7 @@ router.post(
  *             example:
  *               error:
  *                 code: VALIDATION_ERROR
- *                 message: Invalid enum value
+ *                 message: 'Invalid option: expected one of "champion"|"likely_champion"|"neutral"|"likely_blocker"|"blocker"'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:
@@ -2684,7 +2684,7 @@ router.get(
  *             example:
  *               error:
  *                 code: VALIDATION_ERROR
- *                 message: Invalid enum value
+ *                 message: 'Invalid option: expected one of "Professional"|"Friendly"|"Concise"'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:

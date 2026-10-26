@@ -806,7 +806,7 @@ describe('fireAutomationTrigger — send_notification', () => {
 
 // ── Audit log coverage ─────────────────────────────────────────────
 
-const AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000003', name: 'Automation Audit Actor' };
+const AUDIT_ACTOR = { id: '00000000-0000-4000-8000-000000000003', name: 'Automation Audit Actor' };
 
 describe('audit log entries for automation rules', () => {
   beforeEach(async () => {

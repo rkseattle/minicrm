@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 // ── Step action types ──────────────────────────────────────────────────────────
 
@@ -48,10 +49,11 @@ export const createSequenceStepSchema = z.object({
     .number()
     .int('Sort order must be a whole number')
     .min(1, 'Sort order must be at least 1'),
-  action_type: z.enum(SEQUENCE_STEP_ACTION_TYPES, {
-    required_error: 'Action type is required',
-  }),
-  action_config: z.record(z.unknown()),
+  action_type: z.enum(
+    SEQUENCE_STEP_ACTION_TYPES,
+    typeErrorMessages({ required: 'Action type is required' }),
+  ),
+  action_config: z.record(z.string(), z.unknown()),
   delay_days: z
     .number()
     .int('Delay days must be a whole number')
@@ -63,7 +65,7 @@ export const updateSequenceStepSchema = z
   .object({
     sort_order: z.number().int().min(1).optional(),
     action_type: z.enum(SEQUENCE_STEP_ACTION_TYPES).optional(),
-    action_config: z.record(z.unknown()).optional(),
+    action_config: z.record(z.string(), z.unknown()).optional(),
     delay_days: z.number().int().min(0).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
@@ -101,7 +103,7 @@ export const sequenceStepResponseSchema = z.object({
   sequence_id: z.string().uuid(),
   sort_order: z.number(),
   action_type: z.enum(SEQUENCE_STEP_ACTION_TYPES),
-  action_config: z.record(z.unknown()),
+  action_config: z.record(z.string(), z.unknown()),
   delay_days: z.number(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),

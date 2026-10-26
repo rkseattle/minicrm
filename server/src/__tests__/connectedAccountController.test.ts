@@ -118,14 +118,14 @@ describe('authentication boundary', () => {
 
   it('returns 401 on DELETE when unauthenticated', async () => {
     const res = await request(app).delete(
-      '/api/v1/connected-accounts/00000000-0000-0000-0000-000000000001',
+      '/api/v1/connected-accounts/00000000-0000-4000-8000-000000000001',
     );
     expect(res.status).toBe(401);
   });
 
   it('returns 401 on the test endpoint when unauthenticated', async () => {
     const res = await request(app).post(
-      '/api/v1/connected-accounts/00000000-0000-0000-0000-000000000001/test',
+      '/api/v1/connected-accounts/00000000-0000-4000-8000-000000000001/test',
     );
     expect(res.status).toBe(401);
   });
@@ -392,7 +392,7 @@ describe('POST /api/v1/connected-accounts/:id/test', () => {
 
   it('returns 404 for an account that does not exist', async () => {
     const res = await request(app)
-      .post('/api/v1/connected-accounts/00000000-0000-0000-0000-000000000001/test')
+      .post('/api/v1/connected-accounts/00000000-0000-4000-8000-000000000001/test')
       .set('Cookie', repACookie);
 
     expect(res.status).toBe(404);

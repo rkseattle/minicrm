@@ -10,7 +10,7 @@ import FollowUpTimingCard from './FollowUpTimingCard.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 
-const CONTACT_ID = '00000000-0000-0000-0000-000000000101';
+const CONTACT_ID = '00000000-0000-4000-8000-000000000101';
 
 const SUGGESTION = {
   contact_id: CONTACT_ID,

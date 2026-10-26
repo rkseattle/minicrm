@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 import { ACTIVITY_TYPES } from './activitySchema.js';
 
 // ── Trigger types ──────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ export type AutomationAssigneeType = (typeof AUTOMATION_ASSIGNEE_TYPES)[number];
  * pipeline_stages table in the service layer, where the table is reachable.
  */
 export const dealStageChangedConfigSchema = z.object({
-  stage: z.string({ required_error: 'Stage is required' }).min(1, 'Stage is required'),
+  stage: z.string(typeErrorMessages({ required: 'Stage is required' })).min(1, 'Stage is required'),
 });
 
 /** Config for triggers with no extra parameters. */
@@ -58,10 +59,11 @@ export const emptyConfigSchema = z.object({});
 export const createTaskActionConfigSchema = z
   .object({
     subject: z.string().min(1, 'Task subject is required').trim(),
-    task_type: z.enum(ACTIVITY_TYPES, { required_error: 'Task type is required' }),
-    assignee_type: z.enum(AUTOMATION_ASSIGNEE_TYPES, {
-      required_error: 'Assignee type is required',
-    }),
+    task_type: z.enum(ACTIVITY_TYPES, typeErrorMessages({ required: 'Task type is required' })),
+    assignee_type: z.enum(
+      AUTOMATION_ASSIGNEE_TYPES,
+      typeErrorMessages({ required: 'Assignee type is required' }),
+    ),
     /** Required when assignee_type is 'specific'. */
     assignee_id: z.string().uuid('assignee_id must be a valid UUID').optional(),
     /** Number of days after the trigger date to set the task due date. Must be >= 0. */
@@ -84,7 +86,7 @@ export const sendNotificationActionConfigSchema = z.object({
 export const sendWebhookActionConfigSchema = z.object({
   url: z.string().url('URL must be a valid URL'),
   method: z.enum(['POST', 'GET']),
-  headers: z.record(z.string()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
 });
 
 // ── Rule create schema ─────────────────────────────────────────────────────────
@@ -98,14 +100,16 @@ export const sendWebhookActionConfigSchema = z.object({
 export const createAutomationRuleSchema = z.object({
   name: z.string().min(1, 'Rule name is required').trim(),
   enabled: z.boolean().default(true),
-  trigger_type: z.enum(AUTOMATION_TRIGGER_TYPES, {
-    required_error: 'Trigger type is required',
-  }),
-  trigger_config: z.record(z.unknown()).default({}),
-  action_type: z.enum(AUTOMATION_ACTION_TYPES, {
-    required_error: 'Action type is required',
-  }),
-  action_config: z.record(z.unknown()),
+  trigger_type: z.enum(
+    AUTOMATION_TRIGGER_TYPES,
+    typeErrorMessages({ required: 'Trigger type is required' }),
+  ),
+  trigger_config: z.record(z.string(), z.unknown()).default({}),
+  action_type: z.enum(
+    AUTOMATION_ACTION_TYPES,
+    typeErrorMessages({ required: 'Action type is required' }),
+  ),
+  action_config: z.record(z.string(), z.unknown()),
 });
 
 // ── Rule update schema ─────────────────────────────────────────────────────────
@@ -119,9 +123,9 @@ export const updateAutomationRuleSchema = z
     name: z.string().min(1, 'Rule name is required').trim().optional(),
     enabled: z.boolean().optional(),
     trigger_type: z.enum(AUTOMATION_TRIGGER_TYPES).optional(),
-    trigger_config: z.record(z.unknown()).optional(),
+    trigger_config: z.record(z.string(), z.unknown()).optional(),
     action_type: z.enum(AUTOMATION_ACTION_TYPES).optional(),
-    action_config: z.record(z.unknown()).optional(),
+    action_config: z.record(z.string(), z.unknown()).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
@@ -135,9 +139,9 @@ export const automationRuleResponseSchema = z.object({
   name: z.string(),
   enabled: z.boolean(),
   trigger_type: z.enum(AUTOMATION_TRIGGER_TYPES),
-  trigger_config: z.record(z.unknown()),
+  trigger_config: z.record(z.string(), z.unknown()),
   action_type: z.enum(AUTOMATION_ACTION_TYPES),
-  action_config: z.record(z.unknown()),
+  action_config: z.record(z.string(), z.unknown()),
   created_by: z.string().uuid(),
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
@@ -153,7 +157,7 @@ export const automationRuleLogResponseSchema = z.object({
   triggering_record_id: z.string().uuid(),
   outcome: z.enum(['success', 'error']),
   error_message: z.string().nullable(),
-  action_config_snapshot: z.record(z.unknown()).nullable(),
+  action_config_snapshot: z.record(z.string(), z.unknown()).nullable(),
 });
 
 // ── Inferred types ─────────────────────────────────────────────────────────────

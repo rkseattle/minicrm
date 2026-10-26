@@ -11,12 +11,12 @@ import ChangeHistory from './ChangeHistory.js';
 import { AUDIT_EVENT_TYPES } from '@shared/schemas/auditSchema.js';
 import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
 
-const RECORD_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const RECORD_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 /** A minimal audit entry fixture */
 function makeEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
   return {
-    id: '00000000-0000-0000-0000-000000000001',
+    id: '00000000-0000-4000-8000-000000000001',
     record_type: 'contact',
     record_id: RECORD_ID,
     record_name: 'Alice Smith',
@@ -24,7 +24,7 @@ function makeEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
     field_name: null,
     old_value: null,
     new_value: null,
-    changed_by_id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    changed_by_id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
     changed_by_name: 'Test User',
     source: null,
     created_at: new Date().toISOString(),
@@ -121,7 +121,7 @@ describe('ChangeHistory', () => {
     const preview = Array.from({ length: 20 }, (_, i) =>
       makeEntry({ id: `00000000-0000-0000-0000-0000000000${String(i).padStart(2, '0')}` }),
     );
-    const extra = makeEntry({ id: '00000000-0000-0000-0000-000000000099' });
+    const extra = makeEntry({ id: '00000000-0000-4000-8000-000000000099' });
 
     server.use(
       http.get('/api/v1/audit-log/record', ({ request }) => {
@@ -356,7 +356,7 @@ describe('ChangeHistory', () => {
     const preview = Array.from({ length: 20 }, (_, i) =>
       makeEntry({ id: `00000000-0000-0000-0000-0000000000${String(i).padStart(2, '0')}` }),
     );
-    const extra = makeEntry({ id: '00000000-0000-0000-0000-000000000099' });
+    const extra = makeEntry({ id: '00000000-0000-4000-8000-000000000099' });
 
     server.use(
       http.get('/api/v1/audit-log/record', ({ request }) => {

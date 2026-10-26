@@ -4,12 +4,13 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 export const RAW_TEXT_MAX_LENGTH = 20000;
 
 export const summarizeActivityTextSchema = z.object({
   raw_text: z
-    .string({ required_error: 'Text to summarize is required' })
+    .string(typeErrorMessages({ required: 'Text to summarize is required' }))
     .trim()
     .min(1, 'Text to summarize is required')
     .max(RAW_TEXT_MAX_LENGTH, `Text must be ${RAW_TEXT_MAX_LENGTH} characters or fewer`),

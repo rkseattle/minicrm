@@ -39,7 +39,7 @@ import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import { getAllVisibilityPolicies, updateVisibilityConfig } from '../services/visibilityService.js';
 import { updateVisibilityConfigSchema } from '@minicrm/shared/schemas/visibilitySchema.js';
 import logger from '../logger.js';
-import { errorBody } from '../utils/errorBody.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/settings/default-language
@@ -64,12 +64,7 @@ export async function getDefaultLanguageHandler(_req: Request, res: Response): P
 export async function setDefaultLanguageHandler(req: Request, res: Response): Promise<void> {
   const parsed = setDefaultLanguageSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -114,12 +109,7 @@ export async function getNavLayoutHandler(_req: Request, res: Response): Promise
 export async function setNavLayoutHandler(req: Request, res: Response): Promise<void> {
   const parsed = setNavLayoutSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -171,9 +161,7 @@ export async function setEmailNotificationsEnabledHandler(
   res: Response,
 ): Promise<void> {
   if (typeof req.body.enabled !== 'boolean') {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'enabled must be a boolean' },
-    });
+    respondValidationMessage(res, 'enabled must be a boolean');
     return;
   }
 
@@ -219,9 +207,7 @@ export async function getDealAutoLinkHandler(_req: Request, res: Response): Prom
 export async function setDealAutoLinkHandler(req: Request, res: Response): Promise<void> {
   const parsed = dealAutoLinkSchema.safeParse(req.body);
   if (!parsed.success) {
-    res
-      .status(400)
-      .json(errorBody('VALIDATION_ERROR', parsed.error.errors[0]?.message ?? 'Invalid request'));
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -268,12 +254,7 @@ export async function getDefaultCurrencyHandler(_req: Request, res: Response): P
 export async function setDefaultCurrencyHandler(req: Request, res: Response): Promise<void> {
   const parsed = setDefaultCurrencySchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -319,12 +300,7 @@ export async function getDefaultTimezoneHandler(_req: Request, res: Response): P
 export async function setDefaultTimezoneHandler(req: Request, res: Response): Promise<void> {
   const parsed = setDefaultTimezoneSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -370,9 +346,7 @@ export async function getTagsRestrictCreationHandler(_req: Request, res: Respons
  */
 export async function setTagsRestrictCreationHandler(req: Request, res: Response): Promise<void> {
   if (typeof req.body.restricted !== 'boolean') {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'restricted must be a boolean' },
-    });
+    respondValidationMessage(res, 'restricted must be a boolean');
     return;
   }
 
@@ -419,12 +393,7 @@ export async function getCurrenciesHandler(_req: Request, res: Response): Promis
 export async function updateCurrenciesHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateCurrenciesSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -476,9 +445,7 @@ export async function getOnboardingStatusHandler(req: Request, res: Response): P
  */
 export async function setOnboardingCompletedHandler(req: Request, res: Response): Promise<void> {
   if (typeof req.body.onboarding_completed !== 'boolean') {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'onboarding_completed must be a boolean' },
-    });
+    respondValidationMessage(res, 'onboarding_completed must be a boolean');
     return;
   }
 
@@ -542,9 +509,7 @@ export async function getMfaRequiredHandler(_req: Request, res: Response): Promi
  */
 export async function setMfaRequiredHandler(req: Request, res: Response): Promise<void> {
   if (typeof req.body.mfa_required !== 'boolean') {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'mfa_required must be a boolean' },
-    });
+    respondValidationMessage(res, 'mfa_required must be a boolean');
     return;
   }
 
@@ -582,9 +547,7 @@ export async function getVisibilityConfigHandler(_req: Request, res: Response): 
 export async function putVisibilityConfigHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateVisibilityConfigSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

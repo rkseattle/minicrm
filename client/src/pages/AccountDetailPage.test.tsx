@@ -78,13 +78,13 @@ describe('AccountDetailPage', () => {
           has_sufficient_data: true,
           points: [
             {
-              activity_id: '00000000-0000-0000-0000-000000000401',
+              activity_id: '00000000-0000-4000-8000-000000000401',
               sentiment: 'negative',
               flagged_inaccurate: false,
               created_at: '2026-07-01T00:00:00.000Z',
             },
             {
-              activity_id: '00000000-0000-0000-0000-000000000402',
+              activity_id: '00000000-0000-4000-8000-000000000402',
               sentiment: 'positive',
               flagged_inaccurate: false,
               created_at: '2026-06-01T00:00:00.000Z',
@@ -310,7 +310,7 @@ describe('AccountDetailPage', () => {
       http.get('/api/v1/accounts/:id', ({ params }) => {
         if (params.id === ACCOUNT_1.id) {
           return HttpResponse.json({
-            account: { ...ACCOUNT_1, owner_id: '00000000-0000-0000-0000-000000000999' },
+            account: { ...ACCOUNT_1, owner_id: '00000000-0000-4000-8000-000000000999' },
           });
         }
         return HttpResponse.json(

@@ -8,7 +8,7 @@ import type { EmailTemplateSummary } from '@minicrm/shared/schemas/emailTemplate
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
 import { listEmailTemplates } from '../services/emailTemplateService.js';
-import { errorBody } from '../utils/errorBody.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/email-templates
@@ -17,9 +17,7 @@ import { errorBody } from '../utils/errorBody.js';
 export async function listEmailTemplatesHandler(req: Request, res: Response): Promise<void> {
   const parsed = paginationParamsSchema.safeParse({ page: req.query.page, limit: req.query.limit });
   if (!parsed.success) {
-    res
-      .status(400)
-      .json(errorBody('VALIDATION_ERROR', parsed.error.errors[0]?.message ?? 'Invalid request'));
+    respondValidationError(res, parsed.error);
     return;
   }
 

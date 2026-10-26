@@ -990,7 +990,7 @@ describe('updateContact — address-only PATCH', () => {
   });
 
   it('returns null for a non-existent contact id', async () => {
-    const result = await updateContact('00000000-0000-0000-0000-000000000001', {
+    const result = await updateContact('00000000-0000-4000-8000-000000000001', {
       address_line1: '1 Ghost St',
       version: 1,
     });

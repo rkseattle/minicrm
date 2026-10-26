@@ -259,7 +259,7 @@ describe('LeadDetailPage', () => {
         HttpResponse.json({
           history: [
             {
-              id: '00000000-0000-0000-0000-000000000901',
+              id: '00000000-0000-4000-8000-000000000901',
               lead_id: LEAD_1.id,
               from_status: null,
               to_status: 'New',
@@ -267,7 +267,7 @@ describe('LeadDetailPage', () => {
               created_at: '2025-01-01T00:00:00.000Z',
             },
             {
-              id: '00000000-0000-0000-0000-000000000902',
+              id: '00000000-0000-4000-8000-000000000902',
               lead_id: LEAD_1.id,
               from_status: 'New',
               to_status: 'Contacted',
@@ -286,7 +286,7 @@ describe('LeadDetailPage', () => {
       expect(screen.getByText('Status history')).toBeInTheDocument();
     });
     expect(
-      screen.getByTestId('status-history-00000000-0000-0000-0000-000000000902'),
+      screen.getByTestId('status-history-00000000-0000-4000-8000-000000000902'),
     ).toBeInTheDocument();
   });
 
@@ -298,9 +298,9 @@ describe('LeadDetailPage', () => {
           lead: {
             ...LEAD_1,
             converted_at: '2025-06-01T00:00:00.000Z',
-            converted_contact_id: '00000000-0000-0000-0000-000000000101',
-            converted_account_id: '00000000-0000-0000-0000-000000000201',
-            converted_deal_id: '00000000-0000-0000-0000-000000000301',
+            converted_contact_id: '00000000-0000-4000-8000-000000000101',
+            converted_account_id: '00000000-0000-4000-8000-000000000201',
+            converted_deal_id: '00000000-0000-4000-8000-000000000301',
           },
         }),
       ),
@@ -478,9 +478,9 @@ describe('LeadDetailPage', () => {
             lead: {
               ...LEAD_1,
               converted_at: '2025-06-01T00:00:00.000Z',
-              converted_contact_id: '00000000-0000-0000-0000-000000000101',
-              converted_account_id: '00000000-0000-0000-0000-000000000201',
-              converted_deal_id: '00000000-0000-0000-0000-000000000301',
+              converted_contact_id: '00000000-0000-4000-8000-000000000101',
+              converted_account_id: '00000000-0000-4000-8000-000000000201',
+              converted_deal_id: '00000000-0000-4000-8000-000000000301',
             },
           });
         }),
@@ -489,9 +489,9 @@ describe('LeadDetailPage', () => {
           return HttpResponse.json(
             {
               conversion: {
-                contact_id: '00000000-0000-0000-0000-000000000101',
-                account_id: '00000000-0000-0000-0000-000000000201',
-                deal_id: '00000000-0000-0000-0000-000000000301',
+                contact_id: '00000000-0000-4000-8000-000000000101',
+                account_id: '00000000-0000-4000-8000-000000000201',
+                deal_id: '00000000-0000-4000-8000-000000000301',
               },
             },
             { status: 201 },

@@ -4,12 +4,13 @@
 
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { typeErrorMessages } from '@minicrm/shared/schemas/typeErrorMessages.js';
 import { globalSearch, SEARCH_MIN_LENGTH } from '../services/searchService.js';
 
 /** Zod schema for the search query parameters */
 const searchQuerySchema = z.object({
   q: z
-    .string({ required_error: 'q is required' })
+    .string(typeErrorMessages({ required: 'q is required' }))
     .trim()
     .min(SEARCH_MIN_LENGTH, `Search query must be at least ${SEARCH_MIN_LENGTH} characters.`),
 });

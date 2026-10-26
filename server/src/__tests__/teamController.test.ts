@@ -15,7 +15,7 @@ import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
 const FILE_PREFIX = 'team-ctrl';
-const ACTOR = { id: '00000000-0000-0000-0000-000000000002', name: 'Controller Test Actor' };
+const ACTOR = { id: '00000000-0000-4000-8000-000000000002', name: 'Controller Test Actor' };
 
 let adminCookie: string;
 let repCookie: string;
@@ -110,7 +110,7 @@ describe('POST /api/v1/teams', () => {
     const res = await request(app)
       .post('/api/v1/teams')
       .set('Cookie', adminCookie)
-      .send({ name: 'Bad Manager Team', manager_id: '00000000-0000-0000-0000-000000000099' });
+      .send({ name: 'Bad Manager Team', manager_id: '00000000-0000-4000-8000-000000000099' });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('MANAGER_OR_PARENT_NOT_FOUND');
   });
@@ -299,7 +299,7 @@ describe('POST /api/v1/teams/:id/members', () => {
     const res = await request(app)
       .post('/api/v1/teams/00000000-0000-0000-0000-000000000000/members')
       .set('Cookie', adminCookie)
-      .send({ user_id: '00000000-0000-0000-0000-000000000001', role: 'member' });
+      .send({ user_id: '00000000-0000-4000-8000-000000000001', role: 'member' });
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('TEAM_NOT_FOUND');
   });
@@ -354,7 +354,7 @@ describe('DELETE /api/v1/teams/:id/members/:userId', () => {
   it('returns 404 TEAM_NOT_FOUND when the team does not exist', async () => {
     const res = await request(app)
       .delete(
-        '/api/v1/teams/00000000-0000-0000-0000-000000000000/members/00000000-0000-0000-0000-000000000001',
+        '/api/v1/teams/00000000-0000-0000-0000-000000000000/members/00000000-0000-4000-8000-000000000001',
       )
       .set('Cookie', adminCookie);
     expect(res.status).toBe(404);

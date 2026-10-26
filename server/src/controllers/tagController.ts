@@ -21,6 +21,7 @@ import {
   detachTag,
 } from '../services/tagService.js';
 import { getTagsRestrictCreation } from '../services/settingsService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 // ── Global tag CRUD ────────────────────────────────────────────────────────────
 
@@ -31,9 +32,7 @@ import { getTagsRestrictCreation } from '../services/settingsService.js';
 export async function listTagsHandler(req: Request, res: Response): Promise<void> {
   const parsed = paginationParamsSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
   const result = await listTags(parsed.data.page, parsed.data.limit);
@@ -48,9 +47,7 @@ export async function listTagsHandler(req: Request, res: Response): Promise<void
 export async function createTagHandler(req: Request, res: Response): Promise<void> {
   const parsed = createTagSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -78,9 +75,7 @@ export async function createTagHandler(req: Request, res: Response): Promise<voi
 export async function updateTagHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateTagSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
   const tag = await updateTag(String(req.params['id']), parsed.data);
@@ -136,9 +131,7 @@ export async function listDealTagsHandler(req: Request, res: Response): Promise<
 export async function attachContactTagHandler(req: Request, res: Response): Promise<void> {
   const parsed = attachTagSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
   const actor = { id: req.user!.id, name: req.user!.name };
@@ -149,9 +142,7 @@ export async function attachContactTagHandler(req: Request, res: Response): Prom
 export async function attachAccountTagHandler(req: Request, res: Response): Promise<void> {
   const parsed = attachTagSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
   const actor = { id: req.user!.id, name: req.user!.name };
@@ -162,9 +153,7 @@ export async function attachAccountTagHandler(req: Request, res: Response): Prom
 export async function attachDealTagHandler(req: Request, res: Response): Promise<void> {
   const parsed = attachTagSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
   const actor = { id: req.user!.id, name: req.user!.name };

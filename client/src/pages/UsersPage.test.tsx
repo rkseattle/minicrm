@@ -467,7 +467,7 @@ describe('UsersPage', () => {
 
   describe('API token management — service accounts', () => {
     const SA_USER = {
-      id: '00000000-0000-0000-0000-000000000099',
+      id: '00000000-0000-4000-8000-000000000099',
       email: 'sa@example.com',
       name: 'Service Account',
       role: 'service_account' as const,

@@ -325,7 +325,7 @@ describe('viewer blocked from writing leads', () => {
   it('PATCH /leads/:id returns 403 AUTH_FORBIDDEN (using non-existent UUID)', async () => {
     // 403 must fire before the 404 check — blockViewer runs first in the middleware chain
     const res = await request(app)
-      .patch('/api/v1/leads/00000000-0000-0000-0000-000000000001')
+      .patch('/api/v1/leads/00000000-0000-4000-8000-000000000001')
       .set('Cookie', viewerCookie)
       .send({ first_name: 'Hacked', version: 1 });
 
@@ -335,7 +335,7 @@ describe('viewer blocked from writing leads', () => {
 
   it('DELETE /leads/:id returns 403 AUTH_FORBIDDEN (using non-existent UUID)', async () => {
     const res = await request(app)
-      .delete('/api/v1/leads/00000000-0000-0000-0000-000000000001')
+      .delete('/api/v1/leads/00000000-0000-4000-8000-000000000001')
       .set('Cookie', viewerCookie);
 
     expect(res.status).toBe(403);

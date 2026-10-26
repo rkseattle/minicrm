@@ -5,7 +5,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 
-import { errorBody } from './errorBody.js';
+import { respondValidationMessage } from './validationError.js';
 
 const uuid = z.string().uuid();
 
@@ -25,7 +25,7 @@ export function uuidParams(
   for (const name of names) {
     const parsed = uuid.safeParse(req.params[name]);
     if (!parsed.success) {
-      res.status(400).json(errorBody('VALIDATION_ERROR', message));
+      respondValidationMessage(res, message);
       return null;
     }
     values.push(parsed.data);

@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /** All supported activity types. */
 export const ACTIVITY_TYPES = ['Note', 'Call', 'Email', 'Meeting', 'Task'] as const;
@@ -23,9 +24,9 @@ export type ActivityDirection = (typeof ACTIVITY_DIRECTIONS)[number];
  */
 export const createActivitySchema = z
   .object({
-    type: z.enum(ACTIVITY_TYPES, { required_error: 'Activity type is required' }),
+    type: z.enum(ACTIVITY_TYPES, typeErrorMessages({ required: 'Activity type is required' })),
     subject: z
-      .string({ required_error: 'Subject is required' })
+      .string(typeErrorMessages({ required: 'Subject is required' }))
       .min(1, 'Subject is required')
       .trim(),
     notes: z.string().trim().optional(),

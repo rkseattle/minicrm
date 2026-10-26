@@ -4,12 +4,13 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 export const RAW_ENRICHMENT_TEXT_MAX_LENGTH = 5000;
 
 export const enrichContactFromTextSchema = z.object({
   raw_text: z
-    .string({ required_error: 'Text to parse is required' })
+    .string(typeErrorMessages({ required: 'Text to parse is required' }))
     .trim()
     .min(1, 'Text to parse is required')
     .max(

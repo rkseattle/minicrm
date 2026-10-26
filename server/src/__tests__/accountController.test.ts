@@ -397,7 +397,7 @@ describe('GET /api/v1/accounts/:id — visibility', () => {
 
 describe('GET /api/v1/accounts — ?owner=my_team filter', () => {
   const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
-  const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
+  const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test Actor' };
 
   it('returns accounts owned by all team co-members including the requesting user', async () => {
     const userA = await createUser({

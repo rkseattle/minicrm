@@ -35,7 +35,7 @@ describe('sendOverdueTaskDigest', () => {
   it('resolves with a single task that has a linked record', async () => {
     const tasks: OverdueTaskItem[] = [
       {
-        id: '00000000-0000-0000-0000-000000000001',
+        id: '00000000-0000-4000-8000-000000000001',
         subject: 'Follow up',
         due_date: '2026-01-01',
         linked_record_name: 'Alice Smith',
@@ -50,7 +50,7 @@ describe('sendOverdueTaskDigest', () => {
   it('resolves with a task that has no linked record (null branch)', async () => {
     const tasks: OverdueTaskItem[] = [
       {
-        id: '00000000-0000-0000-0000-000000000002',
+        id: '00000000-0000-4000-8000-000000000002',
         subject: 'Orphan task',
         due_date: '2026-01-02',
         linked_record_name: null,
@@ -63,7 +63,7 @@ describe('sendOverdueTaskDigest', () => {
   it('resolves with a task that has a name but no path (name-only branch)', async () => {
     const tasks: OverdueTaskItem[] = [
       {
-        id: '00000000-0000-0000-0000-000000000003',
+        id: '00000000-0000-4000-8000-000000000003',
         subject: 'Name only task',
         due_date: '2026-01-03',
         linked_record_name: 'Acme Corp',
@@ -78,14 +78,14 @@ describe('sendOverdueTaskDigest', () => {
   it('resolves with multiple tasks (plural subject line branch)', async () => {
     const tasks: OverdueTaskItem[] = [
       {
-        id: '00000000-0000-0000-0000-000000000004',
+        id: '00000000-0000-4000-8000-000000000004',
         subject: 'Task one',
         due_date: '2026-01-01',
         linked_record_name: 'Deal A',
         linked_record_path: '/deals/uuid-a',
       },
       {
-        id: '00000000-0000-0000-0000-000000000005',
+        id: '00000000-0000-4000-8000-000000000005',
         subject: 'Task two',
         due_date: '2026-01-02',
         linked_record_name: null,
@@ -98,7 +98,7 @@ describe('sendOverdueTaskDigest', () => {
   it('HTML-escapes user-supplied strings', async () => {
     const tasks: OverdueTaskItem[] = [
       {
-        id: '00000000-0000-0000-0000-000000000006',
+        id: '00000000-0000-4000-8000-000000000006',
         subject: '<script>alert(1)</script>',
         due_date: '2026-01-01',
         linked_record_name: '<b>Injected</b>',
@@ -182,7 +182,7 @@ describe('sendOverdueTaskDigest — APP_URL branch', () => {
       await expect(
         sendOverdueTaskDigest('user@example.com', 'Eve', [
           {
-            id: '00000000-0000-0000-0000-000000000010',
+            id: '00000000-0000-4000-8000-000000000010',
             subject: 'Call back',
             due_date: '2026-02-01',
             linked_record_name: 'Acme',

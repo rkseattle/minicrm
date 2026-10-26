@@ -9,8 +9,8 @@ import BulkFailedDetailsModal from './BulkFailedDetailsModal.js';
 import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const FAILURES = [
-  { id: '00000000-0000-0000-0000-000000000001', reason: 'Record not found' },
-  { id: '00000000-0000-0000-0000-000000000002', reason: 'Permission denied' },
+  { id: '00000000-0000-4000-8000-000000000001', reason: 'Record not found' },
+  { id: '00000000-0000-4000-8000-000000000002', reason: 'Permission denied' },
 ];
 
 describe('BulkFailedDetailsModal', () => {

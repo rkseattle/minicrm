@@ -22,6 +22,7 @@ import type { DataHygieneEntityType } from '@minicrm/shared/schemas/dataHygieneS
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
 import { z } from 'zod';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/data-hygiene/findings
@@ -31,9 +32,7 @@ import { z } from 'zod';
 export async function listHygieneFindingsHandler(req: Request, res: Response): Promise<void> {
   const parsed = listHygieneFindingsQuerySchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -61,9 +60,7 @@ export async function dismissHygieneFindingHandler(req: Request, res: Response):
   const findingId = String(req.params['id']);
   const parsed = dismissHygieneFindingSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -99,9 +96,7 @@ const clearFindingsParamsSchema = z.object({
 export async function clearFindingsForEntityHandler(req: Request, res: Response): Promise<void> {
   const parsed = clearFindingsParamsSchema.safeParse(req.params);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -147,9 +142,7 @@ export async function mergeDuplicateContactFindingsHandler(
 ): Promise<void> {
   const parsed = mergeDuplicatesSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -189,9 +182,7 @@ export async function getDataHygieneConfigHandler(_req: Request, res: Response):
 export async function setDataHygieneConfigHandler(req: Request, res: Response): Promise<void> {
   const parsed = setDataHygieneConfigSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

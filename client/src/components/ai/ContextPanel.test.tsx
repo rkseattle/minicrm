@@ -22,7 +22,7 @@ import type { AiContextEntryResponse } from '@shared/schemas/aiContextSchema.js'
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const ENTRY_1: AiContextEntryResponse = {
-  id: 'aaaaaaaa-0000-0000-0000-000000000001',
+  id: 'aaaaaaaa-0000-4000-8000-000000000001',
   user_id: 'user-1',
   key: 'a while',
   value: '30+ days without activity',
@@ -31,7 +31,7 @@ const ENTRY_1: AiContextEntryResponse = {
 };
 
 const ENTRY_2: AiContextEntryResponse = {
-  id: 'aaaaaaaa-0000-0000-0000-000000000002',
+  id: 'aaaaaaaa-0000-4000-8000-000000000002',
   user_id: 'user-1',
   key: 'high-value',
   value: 'deals over $50k',

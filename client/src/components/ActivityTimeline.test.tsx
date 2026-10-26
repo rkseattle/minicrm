@@ -27,7 +27,7 @@ describe('ActivityTimeline', () => {
       ),
     );
 
-    renderWithProviders(<ActivityTimeline dealId="00000000-0000-0000-0000-000000000999" />);
+    renderWithProviders(<ActivityTimeline dealId="00000000-0000-4000-8000-000000000999" />);
 
     await waitFor(() => {
       expect(screen.getByTestId('activity-timeline-empty')).toBeInTheDocument();
@@ -116,7 +116,7 @@ describe('ActivityTimeline', () => {
     server.use(
       http.get('/api/v1/auth/me', () =>
         HttpResponse.json({
-          user: { ...ADMIN_USER, id: '00000000-0000-0000-0000-000000000999', role: 'rep' },
+          user: { ...ADMIN_USER, id: '00000000-0000-4000-8000-000000000999', role: 'rep' },
         }),
       ),
     );
@@ -188,7 +188,7 @@ describe('ActivityTimeline', () => {
   it('renders the direction badge when an activity has a direction set', async () => {
     const activityWithDirection = {
       ...ACTIVITY_1,
-      id: '00000000-0000-0000-0000-000000000411',
+      id: '00000000-0000-4000-8000-000000000411',
       type: 'Call',
       direction: 'Inbound',
     };
@@ -215,7 +215,7 @@ describe('ActivityTimeline', () => {
   it('renders the outcome text when an activity has an outcome set', async () => {
     const activityWithOutcome = {
       ...ACTIVITY_1,
-      id: '00000000-0000-0000-0000-000000000412',
+      id: '00000000-0000-4000-8000-000000000412',
       outcome: 'Left voicemail',
     };
     server.use(
@@ -236,8 +236,8 @@ describe('ActivityTimeline', () => {
   it('shows edit/delete for activities owned by another user when current user is admin', async () => {
     const foreignActivity = {
       ...ACTIVITY_1,
-      id: '00000000-0000-0000-0000-000000000413',
-      owner_id: '00000000-0000-0000-0000-000000000099',
+      id: '00000000-0000-4000-8000-000000000413',
+      owner_id: '00000000-0000-4000-8000-000000000099',
     };
     server.use(
       http.get('/api/v1/activities', () =>
@@ -320,7 +320,7 @@ describe('ActivityTimeline', () => {
       http.post('/api/v1/activities', () => {
         createCalled = true;
         return HttpResponse.json(
-          { activity: { ...ACTIVITY_1, id: '00000000-0000-0000-0000-000000000414' } },
+          { activity: { ...ACTIVITY_1, id: '00000000-0000-4000-8000-000000000414' } },
           { status: 201 },
         );
       }),
@@ -534,7 +534,7 @@ describe('ActivityTimeline', () => {
           {
             activity: {
               ...ACTIVITY_1,
-              id: '00000000-0000-0000-0000-000000000404',
+              id: '00000000-0000-4000-8000-000000000404',
               type: body['type'],
               subject: body['subject'],
               due_date: body['due_date'],
@@ -648,7 +648,7 @@ describe('ActivityTimeline', () => {
         ),
       );
       const user = userEvent.setup();
-      renderWithProviders(<ActivityTimeline contactId="00000000-0000-0000-0000-000000000101" />);
+      renderWithProviders(<ActivityTimeline contactId="00000000-0000-4000-8000-000000000101" />);
 
       await waitFor(() => {
         expect(screen.getByTestId('add-activity-button')).toBeInTheDocument();
@@ -691,13 +691,13 @@ describe('ActivityTimeline', () => {
           const body = (await request.json()) as Record<string, unknown>;
           createdActivityBodies.push(body);
           return HttpResponse.json(
-            { activity: { ...ACTIVITY_1, id: '00000000-0000-0000-0000-000000000405', ...body } },
+            { activity: { ...ACTIVITY_1, id: '00000000-0000-4000-8000-000000000405', ...body } },
             { status: 201 },
           );
         }),
       );
       const user = userEvent.setup();
-      renderWithProviders(<ActivityTimeline contactId="00000000-0000-0000-0000-000000000101" />);
+      renderWithProviders(<ActivityTimeline contactId="00000000-0000-4000-8000-000000000101" />);
 
       await waitFor(() => {
         expect(screen.getByTestId('add-activity-button')).toBeInTheDocument();
@@ -824,7 +824,7 @@ describe('ActivityTimeline', () => {
   describe('meeting brief generation', () => {
     const FUTURE_CALL_ACTIVITY = {
       ...ACTIVITY_2,
-      id: '00000000-0000-0000-0000-000000000403',
+      id: '00000000-0000-4000-8000-000000000403',
       type: 'Call',
       due_date: '2099-01-01',
     };
@@ -870,7 +870,7 @@ describe('ActivityTimeline', () => {
               suggested_talking_points: ['Confirm budget.'],
               known_objections: [],
             },
-            generated_by: '00000000-0000-0000-0000-000000000001',
+            generated_by: '00000000-0000-4000-8000-000000000001',
             generated_at: '2026-07-01T00:00:00.000Z',
           }),
         ),

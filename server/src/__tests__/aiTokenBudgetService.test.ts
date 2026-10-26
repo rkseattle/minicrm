@@ -28,7 +28,7 @@ import {
 } from '../services/aiTokenBudgetService.js';
 
 const FILE_PREFIX = 'atb-svc';
-const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Admin' };
+const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test Admin' };
 const CURRENT_MONTH = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
 
 let adminId: string;

@@ -10,6 +10,7 @@ import {
   setFieldExclusion,
 } from '../services/aiFieldExclusionService.js';
 import { setFieldExclusionSchema } from '@minicrm/shared/schemas/aiFieldExclusionSchema.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 export async function listFieldExclusionsHandler(req: Request, res: Response): Promise<void> {
   const list = await getEffectiveExclusionList();
@@ -19,9 +20,7 @@ export async function listFieldExclusionsHandler(req: Request, res: Response): P
 export async function setFieldExclusionHandler(req: Request, res: Response): Promise<void> {
   const parsed = setFieldExclusionSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /**
  * All valid feature flag keys — must match the seed rows in migrations 066, 071, 140, 147-149,
@@ -166,10 +167,13 @@ export interface UserOverrideEntry {
 
 /** Request body for PUT /admin/feature-flags/:key/overrides/:userId */
 export const upsertUserOverrideSchema = z.object({
-  override: z.enum(OVERRIDE_DIRECTIONS, {
-    required_error: 'override is required',
-    invalid_type_error: "override must be 'force_enabled' or 'force_disabled'",
-  }),
+  override: z.enum(
+    OVERRIDE_DIRECTIONS,
+    typeErrorMessages({
+      required: 'override is required',
+      invalid: "override must be 'force_enabled' or 'force_disabled'",
+    }),
+  ),
   reason: z.string().max(1000).nullable().optional(),
 });
 
@@ -185,10 +189,9 @@ export interface OverrideCount {
 
 /** Request body for PATCH /api/v1/admin/feature-flags/:key */
 export const updateFeatureFlagSchema = z.object({
-  enabled: z.boolean({
-    required_error: 'enabled is required',
-    invalid_type_error: 'enabled must be a boolean',
-  }),
+  enabled: z.boolean(
+    typeErrorMessages({ required: 'enabled is required', invalid: 'enabled must be a boolean' }),
+  ),
   role_overrides: roleOverridesSchema.optional(),
   enable_at: z
     .string()
@@ -294,7 +297,7 @@ export type CreateFlagGroupInput = z.input<typeof createFlagGroupSchema>;
 
 /** Request body for PATCH /admin/feature-flags/groups/:key */
 export const updateFlagGroupSchema = z.object({
-  enabled: z.boolean({ invalid_type_error: 'enabled must be a boolean' }).optional(),
+  enabled: z.boolean(typeErrorMessages({ invalid: 'enabled must be a boolean' })).optional(),
   label: z
     .string()
     .min(1, { message: 'label must be non-empty' })

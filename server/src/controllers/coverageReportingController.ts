@@ -24,10 +24,7 @@ import {
   listIssueKeysForCommit,
   getTiaValueMetrics,
 } from '../services/coverageReportingService.js';
-
-function respondValidationError(res: Response, message: string): void {
-  res.status(400).json({ error: { code: 'VALIDATION_ERROR', message } });
-}
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/admin/coverage/reporting/summary
@@ -36,7 +33,7 @@ function respondValidationError(res: Response, message: string): void {
 export async function getCoverageSummaryHandler(req: Request, res: Response): Promise<void> {
   const parsed = getCoverageSummaryRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    respondValidationError(res, parsed.error.errors[0].message);
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -59,7 +56,7 @@ export async function getCoverageSummaryHandler(req: Request, res: Response): Pr
 export async function getCoverageTrendHandler(req: Request, res: Response): Promise<void> {
   const parsed = getCoverageTrendRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    respondValidationError(res, parsed.error.errors[0].message);
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -75,7 +72,7 @@ export async function getCoverageTrendHandler(req: Request, res: Response): Prom
 export async function getGapsHandler(req: Request, res: Response): Promise<void> {
   const parsed = getGapsRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    respondValidationError(res, parsed.error.errors[0].message);
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -99,13 +96,13 @@ export async function getGapsHandler(req: Request, res: Response): Promise<void>
 export async function getIssueCoverageHandler(req: Request, res: Response): Promise<void> {
   const parsed = getIssueCoverageRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    respondValidationError(res, parsed.error.errors[0].message);
+    respondValidationError(res, parsed.error);
     return;
   }
 
   const issueKey = req.params.issueKey;
   if (typeof issueKey !== 'string' || issueKey.length === 0) {
-    respondValidationError(res, 'issueKey is required');
+    respondValidationMessage(res, 'issueKey is required');
     return;
   }
 
@@ -121,7 +118,7 @@ export async function getIssueCoverageHandler(req: Request, res: Response): Prom
 export async function listIssueKeysHandler(req: Request, res: Response): Promise<void> {
   const parsed = listIssueKeysRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    respondValidationError(res, parsed.error.errors[0].message);
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -136,7 +133,7 @@ export async function listIssueKeysHandler(req: Request, res: Response): Promise
 export async function getTiaValueMetricsHandler(req: Request, res: Response): Promise<void> {
   const parsed = getTiaValueMetricsRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    respondValidationError(res, parsed.error.errors[0].message);
+    respondValidationError(res, parsed.error);
     return;
   }
 

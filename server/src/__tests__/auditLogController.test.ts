@@ -58,7 +58,7 @@ afterAll(async () => {
 
 describe('GET /api/v1/audit-log/record', () => {
   it('returns entries for a specific record', async () => {
-    const recordId = '00000000-0000-0000-0000-000000000001';
+    const recordId = '00000000-0000-4000-8000-000000000001';
 
     await pool.query(
       `INSERT INTO audit_log (record_type, record_id, record_name, event_type, changed_by_id, changed_by_name)
@@ -77,7 +77,7 @@ describe('GET /api/v1/audit-log/record', () => {
 
   it('returns 400 when record_type is missing', async () => {
     const res = await request(app)
-      .get('/api/v1/audit-log/record?record_id=00000000-0000-0000-0000-000000000001')
+      .get('/api/v1/audit-log/record?record_id=00000000-0000-4000-8000-000000000001')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(400);
@@ -96,7 +96,7 @@ describe('GET /api/v1/audit-log/record', () => {
   it('is accessible to authenticated reps', async () => {
     const res = await request(app)
       .get(
-        '/api/v1/audit-log/record?record_type=contact&record_id=00000000-0000-0000-0000-000000000001',
+        '/api/v1/audit-log/record?record_type=contact&record_id=00000000-0000-4000-8000-000000000001',
       )
       .set('Cookie', repCookie);
 

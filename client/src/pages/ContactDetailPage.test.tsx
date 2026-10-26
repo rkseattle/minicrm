@@ -241,13 +241,13 @@ describe('ContactDetailPage', () => {
           has_sufficient_data: true,
           points: [
             {
-              activity_id: '00000000-0000-0000-0000-000000000401',
+              activity_id: '00000000-0000-4000-8000-000000000401',
               sentiment: 'positive',
               flagged_inaccurate: false,
               created_at: '2026-07-01T00:00:00.000Z',
             },
             {
-              activity_id: '00000000-0000-0000-0000-000000000402',
+              activity_id: '00000000-0000-4000-8000-000000000402',
               sentiment: 'neutral',
               flagged_inaccurate: false,
               created_at: '2026-06-25T00:00:00.000Z',
@@ -471,7 +471,7 @@ describe('ContactDetailPage', () => {
       http.get('/api/v1/contacts/:id', ({ params }) => {
         if (params.id === CONTACT_1.id) {
           return HttpResponse.json({
-            contact: { ...CONTACT_1, owner_id: '00000000-0000-0000-0000-000000000999' },
+            contact: { ...CONTACT_1, owner_id: '00000000-0000-4000-8000-000000000999' },
           });
         }
         return HttpResponse.json(
@@ -533,7 +533,7 @@ describe('ContactDetailPage', () => {
   });
 
   it('shows a disabled unknown option in the edit form when the owner is deactivated', async () => {
-    const deactivatedOwnerId = '00000000-0000-0000-0000-000000000999';
+    const deactivatedOwnerId = '00000000-0000-4000-8000-000000000999';
     server.use(
       http.get('/api/v1/contacts/:id', ({ params }) => {
         if (params.id === CONTACT_1.id) {
@@ -980,7 +980,7 @@ describe('ContactDetailPage', () => {
     });
 
     it('shows existing addresses when the address list is non-empty', async () => {
-      const addressId = '00000000-0000-0000-0000-000000000501';
+      const addressId = '00000000-0000-4000-8000-000000000501';
       server.use(
         http.get('/api/v1/contacts/:id/addresses', () =>
           HttpResponse.json({
@@ -1016,7 +1016,7 @@ describe('ContactDetailPage', () => {
     });
 
     it('removes an address when Remove is clicked', async () => {
-      const addressId = '00000000-0000-0000-0000-000000000502';
+      const addressId = '00000000-0000-4000-8000-000000000502';
       let deleted = false;
       server.use(
         http.get('/api/v1/contacts/:id/addresses', () =>
@@ -1063,7 +1063,7 @@ describe('ContactDetailPage', () => {
     });
 
     it('sets an address as default when Set as Default is clicked', async () => {
-      const addressId = '00000000-0000-0000-0000-000000000503';
+      const addressId = '00000000-0000-4000-8000-000000000503';
       server.use(
         http.get('/api/v1/contacts/:id/addresses', () =>
           HttpResponse.json({

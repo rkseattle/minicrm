@@ -24,6 +24,7 @@ import {
   CoverageSessionEndedError,
   CoverageSessionCorrelationMismatchError,
 } from '../services/coverageSessionService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 const sessionIdParamSchema = z.string().uuid();
 const correlationIdParamSchema = z.string().uuid();
@@ -59,7 +60,7 @@ function actorFromRequest(req: Request): { id: string } {
 function parseSessionIdParam(req: Request, res: Response): string | undefined {
   const parsed = sessionIdParamSchema.safeParse(req.params['sessionId']);
   if (!parsed.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid session ID' } });
+    respondValidationMessage(res, 'Invalid session ID');
     return undefined;
   }
   return parsed.data;
@@ -72,9 +73,7 @@ function parseSessionIdParam(req: Request, res: Response): string | undefined {
 export async function startCoverageSessionHandler(req: Request, res: Response): Promise<void> {
   const parsed = startCoverageSessionRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -95,9 +94,7 @@ export async function listActiveCoverageSessionsHandler(
     limit: req.query['limit'],
   });
   if (!paginationParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
-    });
+    respondValidationError(res, paginationParsed.error);
     return;
   }
 
@@ -124,9 +121,7 @@ export async function getCoverageSessionByCorrelationIdHandler(
 ): Promise<void> {
   const parsed = correlationIdParamSchema.safeParse(req.params['correlationId']);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'Invalid correlation ID' },
-    });
+    respondValidationMessage(res, 'Invalid correlation ID');
     return;
   }
 
@@ -170,9 +165,7 @@ export async function endCoverageSessionHandler(req: Request, res: Response): Pr
   if (!sessionId) return;
   const parsed = endCoverageSessionRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -201,9 +194,7 @@ export async function recordCoverageSessionDumpHandler(req: Request, res: Respon
   if (!sessionId) return;
   const parsed = recordCoverageSessionDumpRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

@@ -16,11 +16,13 @@
 import crypto from 'crypto';
 import * as nodeSaml from '@node-saml/node-saml';
 import { discovery, buildAuthorizationUrl, authorizationCodeGrant } from 'openid-client';
+import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { getSsoConfigInternal, SSO_JIT_DEFAULT_ROLE_ID_KEY } from './ssoSettingsService.js';
 import { encrypt, decrypt } from './cryptoService.js';
-import { writeAuditEntry } from './auditService.js';
+import { isX509Certificate, issueSelfSignedCertificate } from './selfSignedCertificate.js';
+import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import type { UserRow } from './userService.js';
 import type { SsoProtocol } from '@minicrm/shared/schemas/settingsSchema.js';
@@ -35,9 +37,6 @@ import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
  */
 const SSO_JIT_ROLE = 'rep' as const;
 
-/** System actor used for JIT-provision audit entries */
-const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
-
 /**
  * Base URL for SP callback and metadata URLs — must point to the API server.
  * In development this is the Express server (port 3001), NOT the Vite dev server.
@@ -49,63 +48,114 @@ const SSO_CALLBACK_BASE_URL =
 /** system_settings keys for the persisted SP key pair */
 const SP_PRIVATE_KEY_KEY = 'sso_sp_private_key_encrypted';
 const SP_SIGNING_CERT_KEY = 'sso_sp_signing_cert';
+const SP_CERT_SUBJECT = 'MiniCRM SAML SP';
+const SP_KEY_MODULUS_BITS = 2048;
+const SP_KEY_PAIR_LOCK_NAME = 'sso_sp_key_pair';
+
+interface SamlSpKeyPair {
+  privateKey: string;
+  signingCert: string;
+}
 
 /** Process-level cache — avoids a DB round-trip on every SAML request */
-let _samlSpKeyPairCache: { privateKey: string; signingCert: string } | null = null;
+let _samlSpKeyPairCache: SamlSpKeyPair | null = null;
+let _samlSpKeyPairLoading: Promise<SamlSpKeyPair> | null = null;
+
+/** Clears the cached SP key pair so a test can load it from system_settings again. */
+export function _resetSamlSpKeyPairCacheForTesting(): void {
+  _samlSpKeyPairCache = null;
+  _samlSpKeyPairLoading = null;
+}
 
 /**
  * Returns the SAML SP key pair, loading from system_settings or generating on
  * first use. The private key is stored AES-256-GCM encrypted (same as IdP
  * certificate); the signing cert (public) is stored in plaintext. A stable key
  * pair means IdP registration only needs to happen once — not on every restart.
+ * A stored bare-key certificate is reissued for the same key on load, so the
+ * public metadata endpoint can write the certificate row and an audit entry.
  */
-async function getSamlSpKeyPair(): Promise<{ privateKey: string; signingCert: string }> {
+async function getSamlSpKeyPair(): Promise<SamlSpKeyPair> {
   if (_samlSpKeyPairCache) return _samlSpKeyPairCache;
-
-  // Try to load from system_settings first.
-  const rows = await pool.query<{ key: string; value: string }>(
-    `SELECT key, value FROM system_settings WHERE key = ANY($1)`,
-    [[SP_PRIVATE_KEY_KEY, SP_SIGNING_CERT_KEY]],
-  );
-  const byKey = Object.fromEntries(rows.rows.map((r) => [r.key, r.value]));
-
-  if (byKey[SP_PRIVATE_KEY_KEY] && byKey[SP_SIGNING_CERT_KEY]) {
-    const privateKey = decrypt(byKey[SP_PRIVATE_KEY_KEY]);
-    const signingCert = byKey[SP_SIGNING_CERT_KEY];
-    _samlSpKeyPairCache = { privateKey, signingCert };
-    return _samlSpKeyPairCache;
-  }
-
-  // Generate a new RSA-2048 SP key pair and persist it.
-  // Node 15+ ships with X.509 cert generation via crypto.X509Certificate — however,
-  // self-signed cert creation requires the `x509` module which is not yet stable in
-  // all LTS versions. We use the PKCS#8 private key PEM directly for signing;
-  // the signingCert is the SPKI public key wrapped in cert headers so that
-  // @node-saml/node-saml's generateServiceProviderMetadata can embed it in the
-  // metadata document. The IdP will strip the headers and use the raw public key material.
-  const { privateKey: privPem, publicKey: pubPem } = crypto.generateKeyPairSync('rsa', {
-    modulusLength: 2048,
-    publicKeyEncoding: { type: 'spki', format: 'pem' },
-    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  _samlSpKeyPairLoading ??= loadSamlSpKeyPair().finally(() => {
+    _samlSpKeyPairLoading = null;
   });
+  return _samlSpKeyPairLoading;
+}
 
-  // Wrap the SPKI public key in X.509 certificate PEM headers.
-  const signingCert = pubPem
-    .replace('-----BEGIN PUBLIC KEY-----', '-----BEGIN CERTIFICATE-----')
-    .replace('-----END PUBLIC KEY-----', '-----END CERTIFICATE-----');
+async function loadSamlSpKeyPair(): Promise<SamlSpKeyPair> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Another process may be generating or reissuing the same rows; one of them wins.
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [SP_KEY_PAIR_LOCK_NAME]);
 
-  const encryptedPrivKey = encrypt(privPem);
+    const rows = await client.query<{ key: string; value: string }>(
+      `SELECT key, value FROM system_settings WHERE key = ANY($1)`,
+      [[SP_PRIVATE_KEY_KEY, SP_SIGNING_CERT_KEY]],
+    );
+    const byKey = Object.fromEntries(rows.rows.map((r) => [r.key, r.value]));
 
-  // Upsert both halves atomically.
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now()), ($3, $4, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [SP_PRIVATE_KEY_KEY, encryptedPrivKey, SP_SIGNING_CERT_KEY, signingCert],
-  );
+    let keyPair: SamlSpKeyPair;
+    if (byKey[SP_PRIVATE_KEY_KEY] && byKey[SP_SIGNING_CERT_KEY]) {
+      keyPair = {
+        privateKey: decrypt(byKey[SP_PRIVATE_KEY_KEY]),
+        signingCert: byKey[SP_SIGNING_CERT_KEY],
+      };
+      // A stored value may be a bare public key under certificate headers. Reissuing for the
+      // same key keeps every IdP that registered it verifying our signatures.
+      if (!isX509Certificate(keyPair.signingCert)) {
+        keyPair.signingCert = await issueSelfSignedCertificate(keyPair.privateKey, SP_CERT_SUBJECT);
+        await client.query(
+          `UPDATE system_settings SET value = $2, updated_at = now() WHERE key = $1`,
+          [SP_SIGNING_CERT_KEY, keyPair.signingCert],
+        );
+        await writeSpKeyPairAudit(client, 'updated', 'reissued as an X.509 certificate');
+        logger.info('Reissued the SAML SP signing certificate for its existing key');
+      }
+    } else {
+      const { privateKey } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: SP_KEY_MODULUS_BITS,
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+      keyPair = {
+        privateKey,
+        signingCert: await issueSelfSignedCertificate(privateKey, SP_CERT_SUBJECT),
+      };
+      await client.query(
+        `INSERT INTO system_settings (key, value, updated_at)
+         VALUES ($1, $2, now()), ($3, $4, now())
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+        [SP_PRIVATE_KEY_KEY, encrypt(privateKey), SP_SIGNING_CERT_KEY, keyPair.signingCert],
+      );
+      await writeSpKeyPairAudit(client, 'created', 'generated');
+    }
 
-  _samlSpKeyPairCache = { privateKey: privPem, signingCert };
-  return _samlSpKeyPairCache;
+    await client.query('COMMIT');
+    _samlSpKeyPairCache = keyPair;
+    return keyPair;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function writeSpKeyPairAudit(
+  client: PoolClient,
+  eventType: 'created' | 'updated',
+  newValue: string,
+): Promise<void> {
+  await writeAuditEntry(client, {
+    recordType: 'system_settings',
+    recordName: SP_SIGNING_CERT_KEY,
+    eventType,
+    newValue,
+    changedById: SYSTEM_ACTOR.id,
+    changedByName: SYSTEM_ACTOR.name,
+  });
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────

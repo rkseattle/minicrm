@@ -240,7 +240,7 @@ describe('DealsPage', () => {
   it('hides closed deals from list view when hide-closed toggle is clicked', async () => {
     const closedDeal = {
       ...DEAL_1,
-      id: '00000000-0000-0000-0000-000000000399',
+      id: '00000000-0000-4000-8000-000000000399',
       name: 'Closed Won Deal',
       stage: 'Closed Won' as const,
     };
@@ -350,7 +350,7 @@ describe('DealsPage', () => {
   it('filters deals to current user when Mine toggle is clicked in list view', async () => {
     const repDeal = {
       ...DEAL_1,
-      id: '00000000-0000-0000-0000-000000000303',
+      id: '00000000-0000-4000-8000-000000000303',
       name: 'Rep Deal',
       owner_id: REP_USER.id,
     };
@@ -386,7 +386,7 @@ describe('DealsPage', () => {
     server.use(
       http.get('/api/v1/deals', () =>
         HttpResponse.json({
-          data: [{ ...DEAL_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+          data: [{ ...DEAL_1, owner_id: '00000000-0000-4000-8000-000000000999' }],
           total: 1,
           page: 1,
           limit: 50,
@@ -407,9 +407,9 @@ describe('DealsPage', () => {
   it('preserves owner filter when switching between board and list views', async () => {
     const repDeal = {
       ...DEAL_1,
-      id: '00000000-0000-0000-0000-000000000303',
+      id: '00000000-0000-4000-8000-000000000303',
       name: 'Rep Deal',
-      owner_id: '00000000-0000-0000-0000-000000000002',
+      owner_id: '00000000-0000-4000-8000-000000000002',
     };
     server.use(
       http.get('/api/v1/deals', ({ request }) => {
@@ -622,7 +622,7 @@ describe('DealsPage', () => {
   describe('bulk selection', () => {
     const DEAL_2 = {
       ...DEAL_1,
-      id: '00000000-0000-0000-0000-000000000302',
+      id: '00000000-0000-4000-8000-000000000302',
       name: 'Second Deal',
     };
 

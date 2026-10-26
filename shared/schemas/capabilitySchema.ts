@@ -15,6 +15,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /** All discrete capability strings in the system. */
 export enum Capability {
@@ -129,20 +130,20 @@ export const customRoleResponseSchema = z.object({
 /** Zod schema for POST /api/v1/custom-roles request body. */
 export const createCustomRoleSchema = z.object({
   name: z
-    .string({ required_error: 'Name is required' })
+    .string(typeErrorMessages({ required: 'Name is required' }))
     .min(1, 'Name is required')
     .max(100, 'Name must be 100 characters or fewer')
     .trim(),
   description: z.string().max(500, 'Description must be 500 characters or fewer').trim().optional(),
   capabilities: z
-    .array(capabilitySchema, { required_error: 'Capabilities are required' })
+    .array(capabilitySchema, typeErrorMessages({ required: 'Capabilities are required' }))
     .min(1, 'At least one capability is required'),
 });
 
 /** Zod schema for PUT /api/v1/custom-roles/:id request body. */
 export const updateCustomRoleSchema = z.object({
   name: z
-    .string({ required_error: 'Name is required' })
+    .string(typeErrorMessages({ required: 'Name is required' }))
     .min(1, 'Name is required')
     .max(100, 'Name must be 100 characters or fewer')
     .trim()
@@ -158,7 +159,9 @@ export const updateCustomRoleSchema = z.object({
 
 /** Zod schema for POST /api/v1/users/:id/roles request body. */
 export const assignUserRoleSchema = z.object({
-  roleId: z.string({ required_error: 'roleId is required' }).uuid('roleId must be a valid UUID'),
+  roleId: z
+    .string(typeErrorMessages({ required: 'roleId is required' }))
+    .uuid('roleId must be a valid UUID'),
 });
 
 export type CustomRoleResponse = z.infer<typeof customRoleResponseSchema>;

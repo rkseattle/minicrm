@@ -16,6 +16,7 @@ import {
   createPipelineSchema,
   updatePipelineSchema,
 } from '@minicrm/shared/schemas/pipelineSchema.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/pipelines
@@ -33,12 +34,7 @@ export async function listPipelinesHandler(_req: Request, res: Response): Promis
 export async function createPipelineHandler(req: Request, res: Response): Promise<void> {
   const parsed = createPipelineSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -66,12 +62,7 @@ export async function updatePipelineHandler(req: Request, res: Response): Promis
 
   const parsed = updatePipelineSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

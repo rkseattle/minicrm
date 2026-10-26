@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /**
  * Known AI feature names that record token usage. Not a DB constraint —
@@ -18,12 +19,12 @@ export type AiFeatureName = (typeof AI_FEATURE_NAMES)[number];
 /** Request body for PATCH /api/v1/admin/ai/cost-rates. */
 export const setAiCostRatesSchema = z.object({
   ai_input_cost_per_million_cents: z
-    .number({ required_error: 'ai_input_cost_per_million_cents is required' })
+    .number(typeErrorMessages({ required: 'ai_input_cost_per_million_cents is required' }))
     .int({ message: 'ai_input_cost_per_million_cents must be an integer' })
     .min(0, { message: 'Cost rate must be nonnegative' })
     .max(1_000_000, { message: 'Cost rate must be at most 1,000,000 cents per million tokens' }),
   ai_output_cost_per_million_cents: z
-    .number({ required_error: 'ai_output_cost_per_million_cents is required' })
+    .number(typeErrorMessages({ required: 'ai_output_cost_per_million_cents is required' }))
     .int({ message: 'ai_output_cost_per_million_cents must be an integer' })
     .min(0, { message: 'Cost rate must be nonnegative' })
     .max(1_000_000, { message: 'Cost rate must be at most 1,000,000 cents per million tokens' }),

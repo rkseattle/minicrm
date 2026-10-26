@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 import { SUPPORTED_CURRENCIES } from './settingsSchema.js';
 
 /**
@@ -33,7 +34,7 @@ export type PipelineStage = (typeof PIPELINE_STAGES)[number];
  */
 export const createDealSchema = z.object({
   name: z
-    .string({ required_error: 'Deal name is required' })
+    .string(typeErrorMessages({ required: 'Deal name is required' }))
     .min(1, 'Deal name is required')
     .trim(),
   /** UUID of the pipeline this deal belongs to. Defaults to the default pipeline. */
@@ -43,7 +44,7 @@ export const createDealSchema = z.object({
    * The server additionally validates the value against the live pipeline_stages
    * table. The client validates against the cached stage list.
    */
-  stage: z.string({ required_error: 'Stage is required' }).min(1, 'Stage is required'),
+  stage: z.string(typeErrorMessages({ required: 'Stage is required' })).min(1, 'Stage is required'),
   value: z.number().nonnegative('Value must be 0 or greater').optional(),
   /** ISO 4217 currency code for the deal value. Defaults to the system default currency. */
   currency: z.enum(SUPPORTED_CURRENCIES).optional(),

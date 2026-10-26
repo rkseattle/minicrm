@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import { handleAiServiceError } from '../utils/aiErrorHandling.js';
 import { enrichContactFromTextSchema } from '@minicrm/shared/schemas/contactEnrichmentSchema.js';
 import { enrichContactFromText } from '../services/contactEnrichmentService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * POST /api/v1/contacts/enrich-from-text
@@ -17,12 +18,7 @@ import { enrichContactFromText } from '../services/contactEnrichmentService.js';
 export async function enrichContactFromTextHandler(req: Request, res: Response): Promise<void> {
   const parsed = enrichContactFromTextSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid input',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

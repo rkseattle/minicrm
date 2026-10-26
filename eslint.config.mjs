@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 /**
  * Root ESLint flat config (ESLint 9).
  * Applies TypeScript rules to all packages, with file-pattern overrides
@@ -21,6 +22,9 @@ import requireLocatorFallback from './eslint-plugins/require-locator-fallback.mj
 import noWorkItemIdInComment from './eslint-plugins/no-work-item-id-in-comment.mjs';
 import requireOpenapiTag from './eslint-plugins/require-openapi-tag.mjs';
 import i18nextPlugin from 'eslint-plugin-i18next';
+
+// The Node floor the n plugin checks against is the one package.json declares.
+const rootPackage = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 /** Files covered by TypeScript rules */
 const TS_FILES = ['**/*.ts', '**/*.tsx'];
@@ -169,9 +173,7 @@ const serverConfig = {
     n: nodePlugin,
   },
   settings: {
-    // AsyncLocalStorage graduated from experimental in Node 16.4.0.
-    // Declare the floor version so the n plugin does not incorrectly flag it.
-    n: { version: '>=18.0.0' },
+    n: { version: rootPackage.engines.node },
   },
   rules: {
     ...nodePlugin.configs['flat/recommended-module'].rules,

@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 export const ENTITY_TYPES = ['contact', 'account', 'deal'] as const;
 export type EntityType = (typeof ENTITY_TYPES)[number];
@@ -34,7 +35,7 @@ export type CustomFieldDefinitionResponse = z.infer<typeof customFieldDefinition
 export const createCustomFieldDefinitionSchema = z.object({
   entity_type: z.enum(ENTITY_TYPES),
   name: z
-    .string({ required_error: 'Field name is required' })
+    .string(typeErrorMessages({ required: 'Field name is required' }))
     .min(1, 'Field name is required')
     .max(100, 'Field name must be 100 characters or fewer')
     .trim(),

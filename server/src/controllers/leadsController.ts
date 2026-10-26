@@ -41,6 +41,7 @@ import {
   type PdfTableColumn,
   type PdfTableRow,
 } from '../services/pdfExportService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -58,9 +59,7 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
 export async function createLeadHandler(req: Request, res: Response): Promise<void> {
   const parsed = createLeadSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -100,9 +99,7 @@ export async function createLeadHandler(req: Request, res: Response): Promise<vo
 export async function getLeadRoutingSuggestionHandler(req: Request, res: Response): Promise<void> {
   const parsed = leadRoutingSuggestionRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -157,9 +154,7 @@ export async function listLeadsHandler(req: Request, res: Response): Promise<voi
     limit: req.query.limit,
   });
   if (!paginationParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
-    });
+    respondValidationError(res, paginationParsed.error);
     return;
   }
 
@@ -376,9 +371,7 @@ export async function exportLeadsPdfHandler(req: Request, res: Response): Promis
 export async function updateLeadHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateLeadSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -458,9 +451,7 @@ export async function convertLeadHandler(req: Request, res: Response): Promise<v
 
   const parsed = convertLeadSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -504,9 +495,7 @@ export async function convertLeadHandler(req: Request, res: Response): Promise<v
 export async function searchAccountsHandler(req: Request, res: Response): Promise<void> {
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   if (q.length < 1) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'q query parameter is required' },
-    });
+    respondValidationMessage(res, 'q query parameter is required');
     return;
   }
 

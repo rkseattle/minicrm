@@ -9,6 +9,7 @@ import { generateEmailDraftSchema } from '@minicrm/shared/schemas/emailDraftSche
 import { findContactById } from '../services/contactService.js';
 import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import { generateEmailDraft } from '../services/emailDraftService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 const FORBIDDEN_VISIBILITY_ERROR = {
   error: {
@@ -26,12 +27,7 @@ export async function generateEmailDraftHandler(req: Request, res: Response): Pr
   const id = String(req.params['id']);
   const parsed = generateEmailDraftSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid input',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

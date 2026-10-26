@@ -13,6 +13,7 @@ import {
   setAccountHealthScoringConfig,
 } from '../services/relationshipHealthService.js';
 import { setAccountHealthScoringConfigSchema } from '@minicrm/shared/schemas/accountHealthScoreSchema.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 async function assertAccountAccess(
   req: Request,
@@ -87,12 +88,7 @@ export async function setAccountHealthScoringConfigHandler(
 ): Promise<void> {
   const parsed = setAccountHealthScoringConfigSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

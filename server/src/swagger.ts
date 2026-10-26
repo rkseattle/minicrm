@@ -24,6 +24,7 @@ import {
   AUTOMATION_TRIGGER_TYPES,
   AUTOMATION_ACTION_TYPES,
 } from '@minicrm/shared/schemas/automationSchema.js';
+import { VALIDATION_ERROR_CODE } from './utils/validationError.js';
 
 /** Derived from the schema that enforces it, so the two cannot drift. */
 const PASSWORD_POLICY_DESCRIPTION = `At least ${PASSWORD_MIN_LENGTH} characters, one letter, one number, and one special character`;
@@ -115,7 +116,7 @@ const componentSchemas = {
         type: 'object',
         required: ['code', 'message'],
         properties: {
-          code: { type: 'string', example: 'VALIDATION_ERROR' },
+          code: { type: 'string', example: VALIDATION_ERROR_CODE },
           message: { type: 'string', example: 'First name is required' },
         },
       },
@@ -178,7 +179,7 @@ const componentSchemas = {
   User: {
     type: 'object',
     properties: {
-      id: { type: 'string', format: 'uuid', example: 'u1b2c3d4-0000-0000-0000-000000000001' },
+      id: { type: 'string', format: 'uuid', example: 'b1b2c3d4-0000-4000-8000-000000000001' },
       email: { type: 'string', format: 'email', example: 'jane.smith@acme.com' },
       name: { type: 'string', example: 'Jane Smith' },
       role: {
@@ -292,7 +293,7 @@ const componentSchemas = {
   Contact: {
     type: 'object',
     properties: {
-      id: { type: 'string', format: 'uuid', example: 'c1d2e3f4-0000-0000-0000-000000000001' },
+      id: { type: 'string', format: 'uuid', example: 'c1d2e3f4-0000-4000-8000-000000000001' },
       first_name: { type: 'string', example: 'Jane' },
       last_name: { type: 'string', example: 'Smith' },
       email: { type: 'string', format: 'email', example: 'jane.smith@acme.com' },
@@ -303,12 +304,12 @@ const componentSchemas = {
         type: 'string',
         format: 'uuid',
         nullable: true,
-        example: 'a1b2c3d4-0000-0000-0000-000000000001',
+        example: 'a1b2c3d4-0000-4000-8000-000000000001',
       },
       owner_id: {
         type: 'string',
         format: 'uuid',
-        example: 'u1b2c3d4-0000-0000-0000-000000000001',
+        example: 'b1b2c3d4-0000-4000-8000-000000000001',
       },
       created_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
       updated_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
@@ -328,7 +329,7 @@ const componentSchemas = {
         type: 'string',
         format: 'uuid',
         nullable: true,
-        example: 'a1b2c3d4-0000-0000-0000-000000000001',
+        example: 'a1b2c3d4-0000-4000-8000-000000000001',
       },
     },
   },
@@ -346,12 +347,12 @@ const componentSchemas = {
         type: 'string',
         format: 'uuid',
         nullable: true,
-        example: 'a1b2c3d4-0000-0000-0000-000000000001',
+        example: 'a1b2c3d4-0000-4000-8000-000000000001',
       },
       owner_id: {
         type: 'string',
         format: 'uuid',
-        example: 'u1b2c3d4-0000-0000-0000-000000000001',
+        example: 'b1b2c3d4-0000-4000-8000-000000000001',
       },
     },
   },
@@ -360,7 +361,7 @@ const componentSchemas = {
   Account: {
     type: 'object',
     properties: {
-      id: { type: 'string', format: 'uuid', example: 'a1b2c3d4-0000-0000-0000-000000000001' },
+      id: { type: 'string', format: 'uuid', example: 'a1b2c3d4-0000-4000-8000-000000000001' },
       name: { type: 'string', example: 'Acme Corp' },
       industry: { type: 'string', nullable: true, example: 'Technology' },
       website: {
@@ -374,7 +375,7 @@ const componentSchemas = {
       owner_id: {
         type: 'string',
         format: 'uuid',
-        example: 'u1b2c3d4-0000-0000-0000-000000000001',
+        example: 'b1b2c3d4-0000-4000-8000-000000000001',
       },
       created_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
       updated_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
@@ -403,7 +404,7 @@ const componentSchemas = {
       owner_id: {
         type: 'string',
         format: 'uuid',
-        example: 'u1b2c3d4-0000-0000-0000-000000000001',
+        example: 'b1b2c3d4-0000-4000-8000-000000000001',
       },
     },
   },
@@ -412,7 +413,7 @@ const componentSchemas = {
   Deal: {
     type: 'object',
     properties: {
-      id: { type: 'string', format: 'uuid', example: 'd1e2f3a4-0000-0000-0000-000000000001' },
+      id: { type: 'string', format: 'uuid', example: 'd1e2f3a4-0000-4000-8000-000000000001' },
       name: { type: 'string', example: 'Acme Renewal' },
       stage: {
         type: 'string',
@@ -445,12 +446,12 @@ const componentSchemas = {
         type: 'string',
         format: 'uuid',
         nullable: true,
-        example: 'a1b2c3d4-0000-0000-0000-000000000001',
+        example: 'a1b2c3d4-0000-4000-8000-000000000001',
       },
       owner_id: {
         type: 'string',
         format: 'uuid',
-        example: 'u1b2c3d4-0000-0000-0000-000000000001',
+        example: 'b1b2c3d4-0000-4000-8000-000000000001',
       },
       created_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
       updated_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
@@ -489,7 +490,7 @@ const componentSchemas = {
       account_id: {
         type: 'string',
         format: 'uuid',
-        example: 'a1b2c3d4-0000-0000-0000-000000000001',
+        example: 'a1b2c3d4-0000-4000-8000-000000000001',
       },
     },
   },
@@ -530,12 +531,12 @@ const componentSchemas = {
         type: 'string',
         format: 'uuid',
         nullable: true,
-        example: 'a1b2c3d4-0000-0000-0000-000000000001',
+        example: 'a1b2c3d4-0000-4000-8000-000000000001',
       },
       owner_id: {
         type: 'string',
         format: 'uuid',
-        example: 'u1b2c3d4-0000-0000-0000-000000000001',
+        example: 'b1b2c3d4-0000-4000-8000-000000000001',
       },
     },
   },
@@ -544,7 +545,7 @@ const componentSchemas = {
   Activity: {
     type: 'object',
     properties: {
-      id: { type: 'string', format: 'uuid', example: 'ac1b2c3d-0000-0000-0000-000000000001' },
+      id: { type: 'string', format: 'uuid', example: 'ac1b2c3d-0000-4000-8000-000000000001' },
       type: {
         type: 'string',
         enum: ['Note', 'Call', 'Email', 'Meeting', 'Task'],
@@ -564,24 +565,24 @@ const componentSchemas = {
         type: 'string',
         format: 'uuid',
         nullable: true,
-        example: 'c1d2e3f4-0000-0000-0000-000000000001',
+        example: 'c1d2e3f4-0000-4000-8000-000000000001',
       },
       account_id: {
         type: 'string',
         format: 'uuid',
         nullable: true,
-        example: 'a1b2c3d4-0000-0000-0000-000000000001',
+        example: 'a1b2c3d4-0000-4000-8000-000000000001',
       },
       deal_id: {
         type: 'string',
         format: 'uuid',
         nullable: true,
-        example: 'd1e2f3a4-0000-0000-0000-000000000001',
+        example: 'd1e2f3a4-0000-4000-8000-000000000001',
       },
       owner_id: {
         type: 'string',
         format: 'uuid',
-        example: 'u1b2c3d4-0000-0000-0000-000000000001',
+        example: 'b1b2c3d4-0000-4000-8000-000000000001',
       },
       created_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
       updated_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
@@ -608,17 +609,17 @@ const componentSchemas = {
       contact_id: {
         type: 'string',
         format: 'uuid',
-        example: 'c1d2e3f4-0000-0000-0000-000000000001',
+        example: 'c1d2e3f4-0000-4000-8000-000000000001',
       },
       account_id: {
         type: 'string',
         format: 'uuid',
-        example: 'a1b2c3d4-0000-0000-0000-000000000001',
+        example: 'a1b2c3d4-0000-4000-8000-000000000001',
       },
       deal_id: {
         type: 'string',
         format: 'uuid',
-        example: 'd1e2f3a4-0000-0000-0000-000000000001',
+        example: 'd1e2f3a4-0000-4000-8000-000000000001',
       },
     },
   },
@@ -701,13 +702,13 @@ const componentSchemas = {
   Team: {
     type: 'object',
     properties: {
-      id: { type: 'string', format: 'uuid', example: 't1b2c3d4-0000-0000-0000-000000000001' },
+      id: { type: 'string', format: 'uuid', example: 'f1b2c3d4-0000-4000-8000-000000000001' },
       name: { type: 'string', example: 'West Coast Sales' },
       manager_id: {
         type: 'string',
         format: 'uuid',
         nullable: true,
-        example: 'u1b2c3d4-0000-0000-0000-000000000001',
+        example: 'b1b2c3d4-0000-4000-8000-000000000001',
       },
       manager_name: { type: 'string', nullable: true, example: 'Jane Smith' },
       parent_team_id: { type: 'string', format: 'uuid', nullable: true, example: null },
@@ -718,8 +719,8 @@ const componentSchemas = {
   TeamMember: {
     type: 'object',
     properties: {
-      team_id: { type: 'string', format: 'uuid', example: 't1b2c3d4-0000-0000-0000-000000000001' },
-      user_id: { type: 'string', format: 'uuid', example: 'u1b2c3d4-0000-0000-0000-000000000001' },
+      team_id: { type: 'string', format: 'uuid', example: 'f1b2c3d4-0000-4000-8000-000000000001' },
+      user_id: { type: 'string', format: 'uuid', example: 'b1b2c3d4-0000-4000-8000-000000000001' },
       user_name: { type: 'string', example: 'Jane Smith' },
       user_email: { type: 'string', format: 'email', example: 'jane.smith@acme.com' },
       role: { type: 'string', enum: ['lead', 'member'], example: 'member' },
@@ -747,7 +748,7 @@ const componentSchemas = {
     type: 'object',
     required: ['user_id', 'role'],
     properties: {
-      user_id: { type: 'string', format: 'uuid', example: 'u1b2c3d4-0000-0000-0000-000000000001' },
+      user_id: { type: 'string', format: 'uuid', example: 'b1b2c3d4-0000-4000-8000-000000000001' },
       role: { type: 'string', enum: ['lead', 'member'], example: 'member' },
     },
   },

@@ -10,7 +10,7 @@ import { server } from '@/test/setup.js';
 import GdprPrivacySection from './GdprPrivacySection.js';
 import * as gdprApi from '@/api/gdpr.js';
 
-const RECORD_ID = '11111111-1111-1111-1111-111111111111';
+const RECORD_ID = '11111111-1111-4111-8111-111111111111';
 const ERASE_DATE = '2026-05-14T12:00:00.000Z';
 
 describe('GdprPrivacySection — loading state', () => {
@@ -56,10 +56,10 @@ describe('GdprPrivacySection — already erased', () => {
       http.get('/api/v1/gdpr/status/:recordType/:recordId', () => {
         return HttpResponse.json({
           status: {
-            id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
             record_type: 'contact',
             record_id: RECORD_ID,
-            requested_by: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            requested_by: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
             requested_at: ERASE_DATE,
             completed_at: ERASE_DATE,
             erasure_scope: ['first_name', 'last_name', 'email'],

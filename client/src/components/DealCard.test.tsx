@@ -13,17 +13,17 @@ const noop = () => {};
 
 /** Deal fixture where probability is inherited from stage default */
 const DEAL_DEFAULT_PROB: DealResponse = {
-  id: '00000000-0000-0000-0000-000000000401',
+  id: '00000000-0000-4000-8000-000000000401',
   name: 'Stage Default Deal',
-  pipeline_stage_id: '00000000-0000-0000-0000-000000000a01',
+  pipeline_stage_id: '00000000-0000-4000-8000-000000000a01',
   stage: 'Prospecting',
   value: '50000.00',
   currency: 'USD',
   close_date: null,
   loss_reason: null,
   account_id: null,
-  owner_id: '00000000-0000-0000-0000-000000000001',
-  pipeline_id: '00000000-0000-0000-0000-000000000001',
+  owner_id: '00000000-0000-4000-8000-000000000001',
+  pipeline_id: '00000000-0000-4000-8000-000000000001',
   effective_probability: 10,
   probability_is_overridden: false,
   created_at: '2026-01-01T00:00:00.000Z',
@@ -34,7 +34,7 @@ const DEAL_DEFAULT_PROB: DealResponse = {
 /** Deal fixture where probability is manually overridden */
 const DEAL_OVERRIDDEN_PROB: DealResponse = {
   ...DEAL_DEFAULT_PROB,
-  id: '00000000-0000-0000-0000-000000000402',
+  id: '00000000-0000-4000-8000-000000000402',
   name: 'Overridden Probability Deal',
   effective_probability: 75,
   probability_is_overridden: true,

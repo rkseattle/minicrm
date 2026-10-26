@@ -22,6 +22,7 @@ import {
   type PdfTableColumn,
   type PdfTableRow,
 } from '../services/pdfExportService.js';
+import { respondValidationMessage } from '../utils/validationError.js';
 
 /**
  * Validates the date-range query params at the HTTP boundary, then resolves
@@ -39,12 +40,10 @@ function parseDateRangeQuery(req: Request): DateRange | null {
 
 /** Sends the shared 400 response for an invalid/unparsable date range query. */
 function sendInvalidDateRangeError(res: Response): void {
-  res.status(400).json({
-    error: {
-      code: 'VALIDATION_ERROR',
-      message: 'Invalid date range. Provide a valid preset, or start/end ISO dates.',
-    },
-  });
+  respondValidationMessage(
+    res,
+    'Invalid date range. Provide a valid preset, or start/end ISO dates.',
+  );
 }
 
 export async function getAiUsageSummaryHandler(req: Request, res: Response): Promise<void> {

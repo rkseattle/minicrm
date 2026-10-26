@@ -7,6 +7,7 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { typeErrorMessages } from '@minicrm/shared/schemas/typeErrorMessages.js';
 import {
   inviteUserSchema,
   setPasswordSchema,
@@ -23,13 +24,13 @@ import { sanitizeUser } from '../utils/userUtils.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { countActiveNotificationRecipients } from '../services/userService.js';
 import { sendInviteEmail } from '../services/emailService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /** Zod schema for PATCH /users/:id/status body */
 const updateStatusSchema = z.object({
-  active: z.boolean({
-    required_error: 'active is required',
-    invalid_type_error: 'active must be a boolean',
-  }),
+  active: z.boolean(
+    typeErrorMessages({ required: 'active is required', invalid: 'active must be a boolean' }),
+  ),
 });
 
 /** Invite token expiry — 72 hours */
@@ -43,12 +44,7 @@ const INVITE_TOKEN_EXPIRY = '72h';
 export async function inviteUser(req: Request, res: Response): Promise<void> {
   const parseResult = inviteUserSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -106,9 +102,7 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
     limit: req.query.limit,
   });
   if (!paginationParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
-    });
+    respondValidationError(res, paginationParsed.error);
     return;
   }
 
@@ -133,12 +127,7 @@ export async function listActiveUsersHandler(_req: Request, res: Response): Prom
 export async function updateUserRole(req: Request, res: Response): Promise<void> {
   const parseResult = updateRoleSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -209,12 +198,7 @@ export async function reactivateUser(req: Request, res: Response): Promise<void>
 export async function updateUserStatusHandler(req: Request, res: Response): Promise<void> {
   const parseResult = updateStatusSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -254,12 +238,7 @@ export async function updateUserStatusHandler(req: Request, res: Response): Prom
 export async function setPassword(req: Request, res: Response): Promise<void> {
   const parseResult = setPasswordSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -326,12 +305,7 @@ export async function getMyPreferredLanguage(req: Request, res: Response): Promi
 export async function setMyPreferredLanguage(req: Request, res: Response): Promise<void> {
   const parseResult = updatePreferredLanguageSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -365,12 +339,7 @@ export async function getMyNavLayout(req: Request, res: Response): Promise<void>
 export async function setMyNavLayout(req: Request, res: Response): Promise<void> {
   const parseResult = updateNavLayoutSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -410,12 +379,7 @@ export async function getMyNotificationPrefs(req: Request, res: Response): Promi
 export async function updateMyNotificationPrefs(req: Request, res: Response): Promise<void> {
   const parseResult = updateNotificationPrefsSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -555,12 +519,7 @@ export async function revokeApiToken(req: Request, res: Response): Promise<void>
 export async function adminSetPassword(req: Request, res: Response): Promise<void> {
   const parseResult = adminSetPasswordSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 

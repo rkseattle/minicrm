@@ -15,6 +15,7 @@ import {
   getDealStakeholderMap,
 } from '../services/championBlockerService.js';
 import { CHAMPION_BLOCKER_STATUSES } from '@minicrm/shared/schemas/championBlockerSchema.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 const overrideSchema = z.object({
   status: z.enum(CHAMPION_BLOCKER_STATUSES),
@@ -97,9 +98,7 @@ export async function overrideContactChampionBlockerHandler(
   const id = String(req.params['id']);
   const parsed = overrideSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

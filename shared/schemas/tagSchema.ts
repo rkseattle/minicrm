@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /**
  * Schema for creating a new tag.
@@ -11,7 +12,7 @@ import { z } from 'zod';
  */
 export const createTagSchema = z.object({
   name: z
-    .string({ required_error: 'Tag name is required' })
+    .string(typeErrorMessages({ required: 'Tag name is required' }))
     .min(1, 'Tag name is required')
     .max(100, 'Tag name must be 100 characters or fewer')
     .trim()
@@ -42,7 +43,7 @@ export const updateTagSchema = z
  */
 export const attachTagSchema = z.object({
   name: z
-    .string({ required_error: 'Tag name is required' })
+    .string(typeErrorMessages({ required: 'Tag name is required' }))
     .min(1, 'Tag name is required')
     .max(100, 'Tag name must be 100 characters or fewer')
     .trim()

@@ -61,7 +61,7 @@ describe('GlobalSearch', () => {
     await user.type(screen.getByTestId('global-search-input'), 'alice');
     await waitFor(() => {
       expect(
-        screen.getByTestId('search-result-contact-00000000-0000-0000-0000-000000000101'),
+        screen.getByTestId('search-result-contact-00000000-0000-4000-8000-000000000101'),
       ).toBeInTheDocument();
     });
   });
@@ -72,7 +72,7 @@ describe('GlobalSearch', () => {
     await user.type(screen.getByTestId('global-search-input'), 'acme');
     await waitFor(() => {
       expect(
-        screen.getByTestId('search-result-account-00000000-0000-0000-0000-000000000201'),
+        screen.getByTestId('search-result-account-00000000-0000-4000-8000-000000000201'),
       ).toBeInTheDocument();
     });
   });
@@ -83,7 +83,7 @@ describe('GlobalSearch', () => {
     await user.type(screen.getByTestId('global-search-input'), 'acme');
     await waitFor(() => {
       expect(
-        screen.getByTestId('search-result-deal-00000000-0000-0000-0000-000000000301'),
+        screen.getByTestId('search-result-deal-00000000-0000-4000-8000-000000000301'),
       ).toBeInTheDocument();
     });
   });
@@ -93,8 +93,8 @@ describe('GlobalSearch', () => {
     renderWithProviders(<GlobalSearch />);
     await user.type(screen.getByTestId('global-search-input'), 'alice');
     await waitFor(() => {
-      const link = screen.getByTestId('search-result-contact-00000000-0000-0000-0000-000000000101');
-      expect(link).toHaveAttribute('href', '/contacts/00000000-0000-0000-0000-000000000101');
+      const link = screen.getByTestId('search-result-contact-00000000-0000-4000-8000-000000000101');
+      expect(link).toHaveAttribute('href', '/contacts/00000000-0000-4000-8000-000000000101');
     });
   });
 
@@ -103,8 +103,8 @@ describe('GlobalSearch', () => {
     renderWithProviders(<GlobalSearch />);
     await user.type(screen.getByTestId('global-search-input'), 'acme');
     await waitFor(() => {
-      const link = screen.getByTestId('search-result-account-00000000-0000-0000-0000-000000000201');
-      expect(link).toHaveAttribute('href', '/accounts/00000000-0000-0000-0000-000000000201');
+      const link = screen.getByTestId('search-result-account-00000000-0000-4000-8000-000000000201');
+      expect(link).toHaveAttribute('href', '/accounts/00000000-0000-4000-8000-000000000201');
     });
   });
 
@@ -113,8 +113,8 @@ describe('GlobalSearch', () => {
     renderWithProviders(<GlobalSearch />);
     await user.type(screen.getByTestId('global-search-input'), 'acme');
     await waitFor(() => {
-      const link = screen.getByTestId('search-result-deal-00000000-0000-0000-0000-000000000301');
-      expect(link).toHaveAttribute('href', '/deals/00000000-0000-0000-0000-000000000301');
+      const link = screen.getByTestId('search-result-deal-00000000-0000-4000-8000-000000000301');
+      expect(link).toHaveAttribute('href', '/deals/00000000-0000-4000-8000-000000000301');
     });
   });
 
@@ -127,7 +127,7 @@ describe('GlobalSearch', () => {
           deals: [],
           leads: [
             {
-              id: '00000000-0000-0000-0000-000000000401',
+              id: '00000000-0000-4000-8000-000000000401',
               first_name: 'Lead',
               last_name: 'Person',
               email: 'lead@example.com',
@@ -143,7 +143,7 @@ describe('GlobalSearch', () => {
     await user.type(screen.getByTestId('global-search-input'), 'lead');
     await waitFor(() => {
       expect(
-        screen.getByTestId('search-result-lead-00000000-0000-0000-0000-000000000401'),
+        screen.getByTestId('search-result-lead-00000000-0000-4000-8000-000000000401'),
       ).toBeInTheDocument();
     });
   });
@@ -157,7 +157,7 @@ describe('GlobalSearch', () => {
           deals: [],
           leads: [
             {
-              id: '00000000-0000-0000-0000-000000000401',
+              id: '00000000-0000-4000-8000-000000000401',
               first_name: 'Lead',
               last_name: 'Person',
               email: 'lead@example.com',
@@ -172,8 +172,8 @@ describe('GlobalSearch', () => {
     renderWithProviders(<GlobalSearch />);
     await user.type(screen.getByTestId('global-search-input'), 'lead');
     await waitFor(() => {
-      const link = screen.getByTestId('search-result-lead-00000000-0000-0000-0000-000000000401');
-      expect(link).toHaveAttribute('href', '/leads/00000000-0000-0000-0000-000000000401');
+      const link = screen.getByTestId('search-result-lead-00000000-0000-4000-8000-000000000401');
+      expect(link).toHaveAttribute('href', '/leads/00000000-0000-4000-8000-000000000401');
     });
   });
 
@@ -195,18 +195,18 @@ describe('GlobalSearch', () => {
     await user.type(screen.getByTestId('global-search-input'), 'alice');
     await waitFor(() => {
       expect(
-        screen.getByTestId('search-result-contact-00000000-0000-0000-0000-000000000101'),
+        screen.getByTestId('search-result-contact-00000000-0000-4000-8000-000000000101'),
       ).toBeInTheDocument();
     });
     await user.click(
-      screen.getByTestId('search-result-contact-00000000-0000-0000-0000-000000000101'),
+      screen.getByTestId('search-result-contact-00000000-0000-4000-8000-000000000101'),
     );
     expect(screen.queryByTestId('search-results-panel')).not.toBeInTheDocument();
   });
 
   describe('email results', () => {
-    const EMAIL_ID = '00000000-0000-0000-0000-000000000501';
-    const CONTACT_ID = '00000000-0000-0000-0000-000000000101';
+    const EMAIL_ID = '00000000-0000-4000-8000-000000000501';
+    const CONTACT_ID = '00000000-0000-4000-8000-000000000101';
 
     function serveEmails(subject: string | null): void {
       server.use(

@@ -17,6 +17,7 @@ import {
   searchTestIds,
 } from '../services/coverageMappingService.js';
 import { searchUnitKeys } from '../services/coverageModelService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/admin/coverage/mapping/tests-for-unit
@@ -26,9 +27,7 @@ import { searchUnitKeys } from '../services/coverageModelService.js';
 export async function findTestsForUnitHandler(req: Request, res: Response): Promise<void> {
   const parsed = findTestsForUnitRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -48,9 +47,7 @@ export async function findTestsForUnitHandler(req: Request, res: Response): Prom
 export async function findUnitsForTestHandler(req: Request, res: Response): Promise<void> {
   const parsed = findUnitsForTestRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -65,9 +62,7 @@ export async function findUnitsForTestHandler(req: Request, res: Response): Prom
 export async function searchUnitKeysHandler(req: Request, res: Response): Promise<void> {
   const parsed = searchUnitKeysRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -86,9 +81,7 @@ export async function searchUnitKeysHandler(req: Request, res: Response): Promis
 export async function searchTestIdsHandler(req: Request, res: Response): Promise<void> {
   const parsed = searchTestIdsRequestSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

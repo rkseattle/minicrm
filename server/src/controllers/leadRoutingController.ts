@@ -15,6 +15,7 @@ import {
   setLeadRoutingConfigSchema,
   setTeamRoutingOverrideSchema,
 } from '@minicrm/shared/schemas/leadRoutingSchema.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /** GET /api/v1/admin/ai/lead-routing-config */
 export async function getLeadRoutingConfigHandler(_req: Request, res: Response): Promise<void> {
@@ -26,9 +27,7 @@ export async function getLeadRoutingConfigHandler(_req: Request, res: Response):
 export async function setLeadRoutingConfigHandler(req: Request, res: Response): Promise<void> {
   const parsed = setLeadRoutingConfigSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -48,9 +47,7 @@ export async function setTeamRoutingOverrideHandler(req: Request, res: Response)
   const teamId = String(req.params['teamId']);
   const parsed = setTeamRoutingOverrideSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

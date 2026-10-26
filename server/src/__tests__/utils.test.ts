@@ -140,7 +140,7 @@ describe('POST /api/v1/users/:id/reset-onboarding', () => {
 
   it('returns 404 when target user does not exist', async () => {
     const res = await request(app)
-      .post('/api/v1/users/00000000-0000-0000-0000-999999999999/reset-onboarding')
+      .post('/api/v1/users/00000000-0000-4000-8000-999999999999/reset-onboarding')
       .set('Cookie', adminCookie);
 
     expect(res.status).toBe(404);

@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 export const REPORT_ENTITY_TYPES = ['contact', 'account', 'deal', 'lead', 'activity'] as const;
 export type ReportEntityType = (typeof REPORT_ENTITY_TYPES)[number];
@@ -62,7 +63,7 @@ export type ReportConfig = z.infer<typeof reportConfigSchema>;
 /** Request body for creating a new saved custom report. */
 export const createCustomReportSchema = z.object({
   name: z
-    .string({ required_error: 'Report name is required' })
+    .string(typeErrorMessages({ required: 'Report name is required' }))
     .min(1, 'Report name is required')
     .max(200, 'Report name must be 200 characters or fewer')
     .trim(),
@@ -106,7 +107,7 @@ export type ReportResultRow = Record<string, string | number | null>;
 /** Response from POST /api/v1/reports/custom/:id/run */
 export const runReportResponseSchema = z.object({
   columns: z.array(z.string()),
-  rows: z.array(z.record(z.union([z.string(), z.number(), z.null()]))),
+  rows: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.null()]))),
   row_count: z.number().int(),
 });
 export type RunReportResponse = z.infer<typeof runReportResponseSchema>;

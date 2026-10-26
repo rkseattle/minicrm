@@ -10,6 +10,7 @@ import { findContactById } from '../services/contactService.js';
 import { findAccountById } from '../services/accountService.js';
 import { explainDuplicateMatch } from '../services/duplicateExplanationService.js';
 import type { DuplicateMatchCandidate } from '../services/duplicateMatchService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 /** Maps a contact row to the fields the duplicate-match engine compares. */
 function contactToCandidate(contact: {
@@ -59,12 +60,7 @@ async function loadCandidateA(
 export async function explainDuplicateHandler(req: Request, res: Response): Promise<void> {
   const parsed = explainDuplicateSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid input',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -95,9 +91,7 @@ export async function explainDuplicateHandler(req: Request, res: Response): Prom
   }
 
   if (!candidateB) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'record_b_id or record_b_fields is required' },
-    });
+    respondValidationMessage(res, 'record_b_id or record_b_fields is required');
     return;
   }
 

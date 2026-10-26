@@ -23,6 +23,7 @@ import type { AuditActor } from './auditService.js';
 import { setRlsUserId } from './rlsContextService.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
 import { getDealAutoLink } from './settingsService.js';
+import { VALIDATION_ERROR_CODE } from '../utils/validationError.js';
 
 /** Valid bulk actions for contacts and accounts */
 const CONTACT_ACCOUNT_ACTIONS: ReadonlySet<string> = new Set(['reassign', 'delete']);
@@ -113,7 +114,7 @@ export async function bulkContacts(
   const { action, ids, owner_id } = input;
 
   if (!CONTACT_ACCOUNT_ACTIONS.has(action)) {
-    throw Object.assign(new Error(`Invalid action: ${action}`), { code: 'VALIDATION_ERROR' });
+    throw Object.assign(new Error(`Invalid action: ${action}`), { code: VALIDATION_ERROR_CODE });
   }
 
   const client: PoolClient = await pool.connect();
@@ -223,7 +224,7 @@ export async function bulkAccounts(
   const { action, ids, owner_id } = input;
 
   if (!CONTACT_ACCOUNT_ACTIONS.has(action)) {
-    throw Object.assign(new Error(`Invalid action: ${action}`), { code: 'VALIDATION_ERROR' });
+    throw Object.assign(new Error(`Invalid action: ${action}`), { code: VALIDATION_ERROR_CODE });
   }
 
   const client: PoolClient = await pool.connect();
@@ -328,7 +329,7 @@ export async function bulkDeals(
   const { action, ids, owner_id, stage } = input;
 
   if (!DEAL_ACTIONS.has(action)) {
-    throw Object.assign(new Error(`Invalid action: ${action}`), { code: 'VALIDATION_ERROR' });
+    throw Object.assign(new Error(`Invalid action: ${action}`), { code: VALIDATION_ERROR_CODE });
   }
 
   // Validate stage against live table before opening transaction

@@ -367,7 +367,7 @@ describe('createLead with routing_suggestion echo — persists a routing decisio
   // assert against the independently-recomputed suggestion, not the fake echo.
 
   it('ignores a fabricated suggested_rep_id and persists the recomputed suggestion instead', async () => {
-    const fakeRepId = '00000000-0000-0000-0000-000000000099';
+    const fakeRepId = '00000000-0000-4000-8000-000000000099';
     const recomputed = await computeLeadRoutingSuggestion({
       territory: null,
       industry: null,

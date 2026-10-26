@@ -15,7 +15,7 @@ import pool from '../db.js';
 import { auditPartitionName, ensureAuditLogPartitions } from '../services/auditPartitionService.js';
 
 /** Fixed record_id used exclusively by this test file to allow targeted cleanup. */
-const TEST_RECORD_ID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+const TEST_RECORD_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 /** Returns all child partition names of audit_log from pg_inherits. */
 async function listAuditLogPartitions(): Promise<string[]> {

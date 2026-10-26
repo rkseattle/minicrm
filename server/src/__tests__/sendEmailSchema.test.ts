@@ -29,7 +29,7 @@ function addresses(count: number): string[] {
 /** The first issue's message, or null when the body parses. */
 function refusal(body: Record<string, unknown>): string | null {
   const parsed = sendEmailSchema.safeParse(body);
-  return parsed.success ? null : (parsed.error.errors[0]?.message ?? 'refused');
+  return parsed.success ? null : (parsed.error.issues[0]?.message ?? 'refused');
 }
 
 describe('sendEmailSchema — recipients', () => {

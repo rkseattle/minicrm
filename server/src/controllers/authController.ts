@@ -34,6 +34,7 @@ import { issueMfaToken } from '../services/mfaService.js';
 import { getMfaRequired } from '../services/settingsService.js';
 import { isSsoBoundUser } from '../services/ssoService.js';
 import logger from '../logger.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 // Session lifetime and cookie policy live in auth/sessionCookie.ts — one
 // definition shared by every login path, rather than a copy per controller kept
@@ -48,12 +49,7 @@ import logger from '../logger.js';
 export async function login(req: Request, res: Response): Promise<void> {
   const parseResult = loginSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -227,20 +223,13 @@ export async function changePassword(req: Request, res: Response): Promise<void>
   };
 
   if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'currentPassword and newPassword are required' },
-    });
+    respondValidationMessage(res, 'currentPassword and newPassword are required');
     return;
   }
 
   const complexityResult = passwordComplexitySchema.safeParse(newPassword);
   if (!complexityResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: complexityResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, complexityResult.error);
     return;
   }
 
@@ -284,12 +273,7 @@ if (!process.env.APP_BASE_URL && isProductionEnv()) {
 export async function forgotPassword(req: Request, res: Response): Promise<void> {
   const parseResult = forgotPasswordSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -318,12 +302,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
 export async function resetPassword(req: Request, res: Response): Promise<void> {
   const parseResult = resetPasswordSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parseResult.error.errors[0].message,
-      },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 

@@ -228,7 +228,7 @@ describe('deleteDefinition', () => {
       name: 'Cascade Test',
       field_type: 'text',
     });
-    const recordId = '11111111-1111-1111-1111-111111111111';
+    const recordId = '11111111-1111-4111-8111-111111111111';
 
     await upsertValues(
       recordId,
@@ -254,7 +254,7 @@ describe('upsertValues', () => {
       name: 'Score',
       field_type: 'number',
     });
-    const recordId = '22222222-2222-2222-2222-222222222222';
+    const recordId = '22222222-2222-4222-8222-222222222222';
 
     await upsertValues(recordId, [{ definition_id: def.id, value: '42' }], SYSTEM_ACTOR, 'contact');
 
@@ -270,7 +270,7 @@ describe('upsertValues', () => {
       name: 'Level',
       field_type: 'text',
     });
-    const recordId = '33333333-3333-3333-3333-333333333333';
+    const recordId = '33333333-3333-4333-8333-333333333333';
 
     await upsertValues(
       recordId,
@@ -292,7 +292,7 @@ describe('upsertValues', () => {
 
   it('stores null values', async () => {
     const def = await createDefinition({ entity_type: 'deal', name: 'Notes', field_type: 'text' });
-    const recordId = '44444444-4444-4444-4444-444444444444';
+    const recordId = '44444444-4444-4444-8444-444444444444';
 
     await upsertValues(recordId, [{ definition_id: def.id, value: null }], SYSTEM_ACTOR, 'deal');
 
@@ -302,7 +302,7 @@ describe('upsertValues', () => {
 
   it('is a no-op when given an empty array', async () => {
     await expect(
-      upsertValues('55555555-5555-5555-5555-555555555555', [], SYSTEM_ACTOR, 'contact'),
+      upsertValues('55555555-5555-4555-8555-555555555555', [], SYSTEM_ACTOR, 'contact'),
     ).resolves.toBeUndefined();
   });
 });

@@ -42,6 +42,7 @@ import {
 import { z } from 'zod';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
 import { toUtcDateString } from '../utils/utcDate.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -59,18 +60,14 @@ export async function createDealHandler(req: Request, res: Response): Promise<vo
   const parsed = createDealSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
   // Validate stage against live pipeline_stages table for the specified pipeline
   const validStages = await getStageNames(parsed.data.pipeline_id);
   if (!validStages.includes(parsed.data.stage)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: `Invalid stage: "${parsed.data.stage}"` },
-    });
+    respondValidationMessage(res, `Invalid stage: "${parsed.data.stage}"`);
     return;
   }
 
@@ -105,9 +102,7 @@ export async function listDealsHandler(req: Request, res: Response): Promise<voi
     limit: req.query.limit,
   });
   if (!paginationParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
-    });
+    respondValidationError(res, paginationParsed.error);
     return;
   }
 
@@ -173,9 +168,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   const parsed = updateDealSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -196,16 +189,12 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   if (parsed.data.pipeline_id !== undefined && parsed.data.pipeline_id !== existing.pipeline_id) {
     const targetPipeline = await findPipelineById(parsed.data.pipeline_id);
     if (!targetPipeline) {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Pipeline not found' },
-      });
+      respondValidationMessage(res, 'Pipeline not found');
       return;
     }
     // Stage is required when changing pipeline — the current stage may not exist in the new pipeline
     if (parsed.data.stage === undefined) {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Stage is required when changing pipeline' },
-      });
+      respondValidationMessage(res, 'Stage is required when changing pipeline');
       return;
     }
   }
@@ -215,9 +204,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
   if (parsed.data.stage !== undefined) {
     const validStages = await getStageNames(effectivePipelineId);
     if (!validStages.includes(parsed.data.stage)) {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: `Invalid stage: "${parsed.data.stage}"` },
-      });
+      respondValidationMessage(res, `Invalid stage: "${parsed.data.stage}"`);
       return;
     }
   }
@@ -230,9 +217,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     const today = toUtcDateString(new Date());
     const terminalStages = await getTerminalStageNames(effectivePipelineId);
     if (terminalStages.includes(stageForTerminalCheck) && parsed.data.close_date > today) {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Close date cannot be in the future' },
-      });
+      respondValidationMessage(res, 'Close date cannot be in the future');
       return;
     }
   }
@@ -423,9 +408,7 @@ async function resolveDealExportData(req: Request, res: Response): Promise<DealE
   if (typeof req.query.account === 'string' && req.query.account.length > 0) {
     const parsed = z.string().uuid().safeParse(req.query.account);
     if (!parsed.success) {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' },
-      });
+      respondValidationMessage(res, 'account must be a valid UUID');
       return null;
     }
     accountId = parsed.data;

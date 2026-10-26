@@ -121,7 +121,7 @@ router.post('/set-password', asyncHandler(setPassword));
  *                     $ref: '#/components/schemas/User'
  *             example:
  *               users:
- *                 - id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 - id: b1b2c3d4-0000-4000-8000-000000000001
  *                   email: jane.smith@acme.com
  *                   name: Jane Smith
  *                   role: rep
@@ -404,7 +404,7 @@ router.use(authenticate, requireRole('admin'));
  *                     $ref: '#/components/schemas/User'
  *             example:
  *               users:
- *                 - id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 - id: b1b2c3d4-0000-4000-8000-000000000001
  *                   email: jane.smith@acme.com
  *                   name: Jane Smith
  *                   role: rep
@@ -515,7 +515,7 @@ router.get('/notification-recipient-count', asyncHandler(getNotificationRecipien
  *                     (e.g. /set-password?token=<inviteToken>). Intentional camelCase exception.
  *             example:
  *               user:
- *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 id: b1b2c3d4-0000-4000-8000-000000000001
  *                 email: jane.smith@acme.com
  *                 name: Jane Smith
  *                 role: rep
@@ -606,7 +606,7 @@ router.post('/invite', asyncHandler(inviteUser));
  *                   $ref: '#/components/schemas/User'
  *             example:
  *               user:
- *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 id: b1b2c3d4-0000-4000-8000-000000000001
  *                 email: jane.smith@acme.com
  *                 name: Jane Smith
  *                 role: admin
@@ -689,7 +689,7 @@ router.patch('/:id/role', asyncHandler(updateUserRole));
  *                   $ref: '#/components/schemas/User'
  *             example:
  *               user:
- *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 id: b1b2c3d4-0000-4000-8000-000000000001
  *                 email: jane.smith@acme.com
  *                 name: Jane Smith
  *                 role: rep
@@ -760,7 +760,7 @@ router.patch('/:id/deactivate', asyncHandler(deactivateUser));
  *                   $ref: '#/components/schemas/User'
  *             example:
  *               user:
- *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 id: b1b2c3d4-0000-4000-8000-000000000001
  *                 email: jane.smith@acme.com
  *                 name: Jane Smith
  *                 role: rep
@@ -920,7 +920,7 @@ router.patch('/:id/status', asyncHandler(updateUserStatusHandler));
  *                   $ref: '#/components/schemas/User'
  *             example:
  *               user:
- *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 id: b1b2c3d4-0000-4000-8000-000000000001
  *                 email: jane.smith@acme.com
  *                 name: Jane Smith
  *                 role: rep

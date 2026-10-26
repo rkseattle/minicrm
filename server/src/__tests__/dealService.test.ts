@@ -140,7 +140,7 @@ describe('updateDealSchema — close_date future-date validation', () => {
       version: 1,
     });
     expect(result.success).toBe(false);
-    expect(result.error?.errors[0].message).toBe('Close date cannot be in the future');
+    expect(result.error?.issues[0].message).toBe('Close date cannot be in the future');
   });
 
   it('rejects a future close_date for Closed Lost', () => {

@@ -15,6 +15,7 @@ import { setSsoConfigSchema } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { SsoConfigPublic } from '@minicrm/shared/schemas/settingsSchema.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/settings/sso
@@ -43,12 +44,7 @@ export async function getSsoStatusHandler(_req: Request, res: Response): Promise
 export async function putSsoConfigHandler(req: Request, res: Response): Promise<void> {
   const parsed = setSsoConfigSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

@@ -16,9 +16,9 @@ import { server } from '../test/setup.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import CustomFieldsSection from './CustomFieldsSection.js';
 
-const DEF_ID = '00000000-0000-0000-0000-000000000001';
-const DEF_ID_2 = '00000000-0000-0000-0000-000000000002';
-const RECORD_ID = '00000000-0000-0000-0000-000000000010';
+const DEF_ID = '00000000-0000-4000-8000-000000000001';
+const DEF_ID_2 = '00000000-0000-4000-8000-000000000002';
+const RECORD_ID = '00000000-0000-4000-8000-000000000010';
 
 function mockDefinitions(defs: object[]) {
   server.use(

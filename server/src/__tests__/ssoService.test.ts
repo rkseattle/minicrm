@@ -27,7 +27,7 @@ import {
 import type { SsoIdentityClaims } from '../services/ssoService.js';
 import { setSsoConfig } from '../services/ssoSettingsService.js';
 
-const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
+const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test Actor' };
 
 const CLAIMS: SsoIdentityClaims = {
   subject: 'sso-sub-12345',

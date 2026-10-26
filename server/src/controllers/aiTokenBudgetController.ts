@@ -15,6 +15,7 @@ import {
   setOrgTokenBudget,
   setUserTokenBudget,
 } from '../services/aiTokenBudgetService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 export async function getAiTokenBudgetsHandler(req: Request, res: Response): Promise<void> {
   const summary = await getOrgConsumptionSummary();
@@ -24,9 +25,7 @@ export async function getAiTokenBudgetsHandler(req: Request, res: Response): Pro
 export async function setOrgTokenBudgetHandler(req: Request, res: Response): Promise<void> {
   const parsed = setOrgTokenBudgetSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -38,17 +37,13 @@ export async function setOrgTokenBudgetHandler(req: Request, res: Response): Pro
 export async function setUserTokenBudgetHandler(req: Request, res: Response): Promise<void> {
   const parsed = setUserTokenBudgetSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
   const userIdResult = z.string().uuid().safeParse(req.params['userId']);
   if (!userIdResult.success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid user ID format' } });
+    respondValidationMessage(res, 'Invalid user ID format');
     return;
   }
   const userId = userIdResult.data;

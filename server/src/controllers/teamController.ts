@@ -19,6 +19,7 @@ import {
   addTeamMember,
   removeTeamMember,
 } from '../services/teamService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 // ── Teams ──────────────────────────────────────────────────────────────────────
 
@@ -39,9 +40,7 @@ export async function getTeamHandler(req: Request, res: Response): Promise<void>
 export async function createTeamHandler(req: Request, res: Response): Promise<void> {
   const parsed = createTeamSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -66,9 +65,7 @@ export async function createTeamHandler(req: Request, res: Response): Promise<vo
 export async function updateTeamHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateTeamSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -129,9 +126,7 @@ export async function listTeamMembersHandler(req: Request, res: Response): Promi
 export async function addTeamMemberHandler(req: Request, res: Response): Promise<void> {
   const parsed = addTeamMemberSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

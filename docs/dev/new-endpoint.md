@@ -6,7 +6,8 @@ architecture rule in CLAUDE.md; the checklist is the operational form of those r
 ## Layering
 
 - [ ] **Route:** `@openapi` JSDoc plus `asyncHandler` only — no logic
-- [ ] **Controller:** Zod `.safeParse()` before the service call; no `pool.query()`
+- [ ] **Controller:** Zod `.safeParse()` before the service call, answering a refusal with
+      `respondValidationError` (`server/src/utils/validationError.ts`); no `pool.query()`
 - [ ] **Service:** all business logic and all database access, with an explicit return type
 
 ## Input

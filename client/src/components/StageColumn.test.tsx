@@ -11,17 +11,17 @@ import type { DealResponse } from '@shared/schemas/dealSchema.js';
 const noop = () => {};
 
 const DEAL_FIXTURE: DealResponse = {
-  id: '00000000-0000-0000-0000-000000000301',
-  pipeline_stage_id: '00000000-0000-0000-0000-000000000a01',
+  id: '00000000-0000-4000-8000-000000000301',
+  pipeline_stage_id: '00000000-0000-4000-8000-000000000a01',
   name: 'Acme Enterprise Deal',
   stage: 'Prospecting',
   value: '50000',
   currency: 'USD',
   close_date: null,
   loss_reason: null,
-  account_id: '00000000-0000-0000-0000-000000000101',
-  owner_id: '00000000-0000-0000-0000-000000000001',
-  pipeline_id: '00000000-0000-0000-0000-000000000001',
+  account_id: '00000000-0000-4000-8000-000000000101',
+  owner_id: '00000000-0000-4000-8000-000000000001',
+  pipeline_id: '00000000-0000-4000-8000-000000000001',
   effective_probability: 10,
   probability_is_overridden: false,
   created_at: '2026-01-01T00:00:00.000Z',
@@ -29,7 +29,7 @@ const DEAL_FIXTURE: DealResponse = {
   version: 1,
 };
 
-const accountNames = new Map([['00000000-0000-0000-0000-000000000101', 'Acme Corp']]);
+const accountNames = new Map([['00000000-0000-4000-8000-000000000101', 'Acme Corp']]);
 
 describe('StageColumn', () => {
   it('renders the stage name in the column header', () => {
@@ -224,7 +224,7 @@ describe('StageColumn', () => {
 
 const DEAL_EUR: DealResponse = {
   ...DEAL_FIXTURE,
-  id: '00000000-0000-0000-0000-000000000302',
+  id: '00000000-0000-4000-8000-000000000302',
   currency: 'EUR',
 };
 
