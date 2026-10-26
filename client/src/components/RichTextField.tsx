@@ -15,6 +15,7 @@
 
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { captureException } from '../sentry.js';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -128,9 +129,8 @@ export default function RichTextField({
     namespace: `proposal-field-${testId}`,
     theme: LEXICAL_THEME,
     nodes: LEXICAL_NODES,
-    onError: (error: Error) => {
-      throw error;
-    },
+    // Reported, not rethrown: lexical restores the last good state after onError returns.
+    onError: (error: Error) => captureException(error),
     // LexicalComposer reads editorState once on mount only. When the AI regenerates a
     // section, the parent must remount this field with a new `key` for the new value to apply.
     editorState: buildInitialEditorState(value),

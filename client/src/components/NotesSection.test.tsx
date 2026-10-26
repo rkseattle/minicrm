@@ -2,13 +2,29 @@
  * Tests for NotesSection component.
  */
 
-import { screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 import { ADMIN_USER, REP_USER } from '@/test/msw/handlers.js';
-import NotesSection from './NotesSection.js';
+import NotesSection, { ImageNode } from './NotesSection.js';
+import {
+  LEXICAL_044_HELLO_BODY,
+  LEXICAL_044_RICH_NOTE_BODY,
+  LEXICAL_044_RICH_NOTE_TEXT,
+} from './__fixtures__/lexical044Notes.js';
+import * as sentry from '../sentry.js';
+import {
+  $createParagraphNode,
+  $createTextNode,
+  $getRoot,
+  $isElementNode,
+  createEditor,
+  getNearestEditorFromDOMNode,
+} from 'lexical';
+import type { ElementNode, LexicalEditor } from 'lexical';
+import { $generateHtmlFromNodes } from '@lexical/html';
 import type { NoteResponse } from '@shared/schemas/noteSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
@@ -17,10 +33,7 @@ const NOTE_ID_1 = '00000000-0000-4000-8000-000000000b01';
 const NOTE_ID_2 = '00000000-0000-4000-8000-000000000b02';
 const NOTE_ID_PRIVATE = '00000000-0000-4000-8000-000000000b03';
 
-const BODY_JSON = JSON.stringify({
-  type: 'doc',
-  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello world' }] }],
-});
+const BODY_JSON = LEXICAL_044_HELLO_BODY;
 
 const NOTE_1: NoteResponse = {
   id: NOTE_ID_1,
@@ -637,5 +650,256 @@ describe('NotesSection — image upload errors', () => {
     });
     // File input is cleared after each upload so the same file can be re-selected
     expect(fileInput.value).toBe('');
+  });
+});
+
+describe('ImageNode — the custom node survives serialization', () => {
+  function editorWithImage(): LexicalEditor {
+    const editor = createEditor({
+      nodes: [ImageNode],
+      onError: (error) => {
+        throw error;
+      },
+    });
+    editor.update(
+      () => {
+        const paragraph = $createParagraphNode();
+        paragraph.append(new ImageNode('https://cdn.example.test/a.png', 'A chart'));
+        $getRoot().append(paragraph);
+      },
+      { discrete: true },
+    );
+    return editor;
+  }
+
+  it('round-trips through JSON with its src and alt', () => {
+    const json = JSON.stringify(editorWithImage().getEditorState().toJSON());
+    const restored = createEditor({
+      nodes: [ImageNode],
+      onError: (error) => {
+        throw error;
+      },
+    });
+    const state = restored.parseEditorState(json);
+
+    const image = state.read(() => {
+      const paragraph = $getRoot().getFirstChild();
+      const child = $isElementNode(paragraph) ? paragraph.getFirstChild() : null;
+      return child instanceof ImageNode ? child.exportJSON() : null;
+    });
+
+    expect(image).toMatchObject({ src: 'https://cdn.example.test/a.png', alt: 'A chart' });
+  });
+
+  it('exports an img element with its src and alt', () => {
+    const editor = editorWithImage();
+    const html = editor.getEditorState().read(() => $generateHtmlFromNodes(editor, null));
+
+    expect(html).toContain('src="https://cdn.example.test/a.png"');
+    expect(html).toContain('alt="A chart"');
+  });
+});
+
+describe('NotesSection — notes saved by an earlier editor version', () => {
+  const RICH_NOTE: NoteResponse = {
+    ...NOTE_1,
+    title: null,
+    body: LEXICAL_044_RICH_NOTE_BODY,
+    body_text: LEXICAL_044_RICH_NOTE_TEXT,
+  };
+
+  it('renders a lexical 0.44 note with its structure and image', async () => {
+    withNotes([RICH_NOTE]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+
+    const body = await screen.findByTestId(`note-body-${NOTE_ID_1}`);
+    expect(body.querySelector('h2')?.textContent).toBe('Renewal call');
+    expect(body.querySelector('strong')?.textContent).toBe('budget approved');
+    expect(body.querySelector('blockquote')?.textContent).toBe('Ship by Friday');
+    expect([...body.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
+      'Send contract',
+      'Book demo',
+    ]);
+    const image = body.querySelector('img');
+    expect(image?.getAttribute('src')).toBe('https://cdn.example.test/chart.png');
+    expect(image?.getAttribute('alt')).toBe('Pipeline chart');
+  });
+
+  it('opens a lexical 0.44 note in the editor with its structure', async () => {
+    const report = vi.spyOn(sentry, 'captureException').mockImplementation(() => undefined);
+    withNotes([RICH_NOTE]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+
+    fireEvent.click(await screen.findByTestId(`note-edit-${NOTE_ID_1}`));
+
+    const content = screen.getByTestId('notes-composer-content');
+    await waitFor(() => {
+      expect(content.querySelector('h2')?.textContent).toBe('Renewal call');
+    });
+    expect(content.querySelectorAll('li')).toHaveLength(2);
+    expect(within(content).getByTestId('note-image')).toHaveAttribute('alt', 'Pipeline chart');
+    expect(report).not.toHaveBeenCalled();
+    report.mockRestore();
+  });
+});
+
+describe('NotesSection — a body the editor cannot read', () => {
+  const UNREADABLE_NOTE: NoteResponse = {
+    ...NOTE_1,
+    body: '{"root":{"type":"no-such-node"}}',
+    body_text: 'Use <Enter> to submit',
+  };
+
+  it('shows the plain-text copy as text, and reports the failure once', async () => {
+    const report = vi.spyOn(sentry, 'captureException').mockImplementation(() => undefined);
+    withNotes([UNREADABLE_NOTE]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+
+    const body = await screen.findByTestId(`note-body-${NOTE_ID_1}`);
+    expect(body.textContent).toBe('Use <Enter> to submit');
+    expect(body.children).toHaveLength(0);
+    // Opening the composer re-renders every card; the failure is still reported once.
+    fireEvent.click(screen.getByTestId('notes-add-button'));
+    expect(report).toHaveBeenCalledTimes(1);
+    report.mockRestore();
+  });
+
+  it('opens the plain-text copy in the editor, so a save cannot erase the note', async () => {
+    const report = vi.spyOn(sentry, 'captureException').mockImplementation(() => undefined);
+    withNotes([UNREADABLE_NOTE]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+    const editButton = await screen.findByTestId(`note-edit-${NOTE_ID_1}`);
+    const reportsBeforeLoad = report.mock.calls.length;
+    fireEvent.click(editButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('notes-composer-content').textContent).toBe(
+        'Use <Enter> to submit',
+      );
+    });
+    expect(report.mock.calls.length).toBeGreaterThan(reportsBeforeLoad);
+    report.mockRestore();
+  });
+
+  it('leaves the editor empty, and still reports, when there is no plain-text copy', async () => {
+    const report = vi.spyOn(sentry, 'captureException').mockImplementation(() => undefined);
+    withNotes([{ ...UNREADABLE_NOTE, body_text: null }]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+    const editButton = await screen.findByTestId(`note-edit-${NOTE_ID_1}`);
+    const reportsBeforeLoad = report.mock.calls.length;
+    fireEvent.click(editButton);
+
+    await waitFor(() => {
+      expect(report.mock.calls.length).toBeGreaterThan(reportsBeforeLoad);
+    });
+    expect(screen.getByTestId('notes-composer-content').textContent).toBe('');
+    report.mockRestore();
+  });
+});
+
+describe('NotesSection — bodies the server writes in other shapes', () => {
+  it.each([
+    ['a Tiptap document from demo data', '{"type":"doc","content":[]}'],
+    ['the GDPR erasure marker', '[GDPR deleted]'],
+  ])('shows %s as its plain-text copy without reporting it', async (_label, body) => {
+    const report = vi.spyOn(sentry, 'captureException').mockImplementation(() => undefined);
+    withNotes([{ ...NOTE_1, body, body_text: 'Expected text' }]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+
+    const shown = await screen.findByTestId(`note-body-${NOTE_ID_1}`);
+    expect(shown.textContent).toBe('Expected text');
+    expect(report).not.toHaveBeenCalled();
+    report.mockRestore();
+  });
+});
+
+describe('NotesSection — reporting an unreadable body', () => {
+  it('reports the note id and the error class, never the note text', async () => {
+    const report = vi.spyOn(sentry, 'captureException').mockImplementation(() => undefined);
+    const body = '{"root":{"type":"no-such-node","children":[{"text":"Jane Doe medical leave"}]}}';
+    withNotes([{ ...NOTE_1, body, body_text: 'Jane Doe medical leave' }]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+    await screen.findByTestId(`note-body-${NOTE_ID_1}`);
+
+    const reported = report.mock.calls[0]?.[0];
+    expect(reported).toBeInstanceOf(Error);
+    const error = reported as Error;
+    expect(error.name).toBe('NoteBodyParseError');
+    expect(error.message).toContain(NOTE_ID_1);
+    expect(JSON.stringify({ message: error.message, cause: error.cause })).not.toContain(
+      'Jane Doe',
+    );
+    report.mockRestore();
+  });
+});
+
+describe('NotesSection — saving a note whose body did not load', () => {
+  const UNREADABLE: NoteResponse = {
+    ...NOTE_1,
+    body: '{"root":{"type":"no-such-node"}}',
+    body_text: 'Plain copy',
+  };
+
+  function capturePatch(): { body: () => Record<string, unknown> | null } {
+    let sent: Record<string, unknown> | null = null;
+    server.use(
+      http.patch(`/api/v1/contact/${CONTACT_ID}/notes/${NOTE_ID_1}`, async ({ request }) => {
+        sent = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ note: NOTE_1 });
+      }),
+    );
+    return { body: () => sent };
+  }
+
+  async function openEditor(note: NoteResponse): Promise<HTMLElement> {
+    vi.spyOn(sentry, 'captureException').mockImplementation(() => undefined);
+    withNotes([note]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+    fireEvent.click(await screen.findByTestId(`note-edit-${NOTE_ID_1}`));
+    const content = screen.getByTestId('notes-composer-content');
+    await waitFor(() => expect(content.textContent).not.toBe(''));
+    return content;
+  }
+
+  it('leaves the stored body alone when only the title changed', async () => {
+    const patch = capturePatch();
+    await openEditor(UNREADABLE);
+
+    fireEvent.change(screen.getByTestId('notes-composer-title'), { target: { value: 'New' } });
+    fireEvent.click(screen.getByTestId('notes-composer-save'));
+
+    await waitFor(() => expect(patch.body()).not.toBeNull());
+    expect(patch.body()).toMatchObject({ title: 'New' });
+    expect(patch.body()).not.toHaveProperty('body');
+    vi.restoreAllMocks();
+  });
+
+  it('saves the body once the user has edited the plain-text copy', async () => {
+    const patch = capturePatch();
+    const content = await openEditor(UNREADABLE);
+
+    const editor = getNearestEditorFromDOMNode(content);
+    editor?.update(
+      () => {
+        $getRoot().getFirstChildOrThrow<ElementNode>().append($createTextNode(' and more'));
+      },
+      { discrete: true },
+    );
+    fireEvent.click(screen.getByTestId('notes-composer-save'));
+
+    await waitFor(() => expect(patch.body()).not.toBeNull());
+    expect(String(patch.body()?.body)).toContain('Plain copy and more');
+    vi.restoreAllMocks();
+  });
+
+  it('saves the body as usual when the stored body loaded', async () => {
+    const patch = capturePatch();
+    await openEditor({ ...NOTE_1, body: LEXICAL_044_RICH_NOTE_BODY });
+
+    fireEvent.click(screen.getByTestId('notes-composer-save'));
+
+    await waitFor(() => expect(patch.body()).not.toBeNull());
+    expect(String(patch.body()?.body)).toContain('Renewal call');
+    vi.restoreAllMocks();
   });
 });
