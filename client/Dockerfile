@@ -5,14 +5,13 @@ FROM node:${NODE_VERSION}-alpine AS builder
 WORKDIR /app
 
 # Copy workspace manifests first for layer caching
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY client/package.json ./client/
 COPY shared/package.json ./shared/
 COPY server/package.json ./server/
 
-# Use npm install (not npm ci) so Docker resolves platform-specific optional deps
-# (e.g. @rollup/rollup-linux-arm64-musl) that aren't in a macOS-generated lockfile
-RUN npm install --workspace=minicrm-client
+# The root lockfile carries every platform's native bindings, musl included.
+RUN npm ci --workspace=minicrm-client
 
 # Copy source files needed for the build
 COPY client/ ./client/

@@ -160,6 +160,11 @@ rm -rf node_modules package-lock.json && npm install
 bash scripts/npm-audit-gate.sh  # expect a pass; raw npm audit also counts the allowlist
 ```
 
+The clean re-resolve also keeps every platform's native bindings in the lockfile. An
+incremental install over an existing `node_modules` can drop the Linux and musl ones
+(npm/cli#4828, still open), and CI and the client image install from this lockfile alone,
+so that shows up there as a missing native binding.
+
 Then verify the consumer still works. A pin change is a dependency change for whatever
 sits on top of it: after moving `basic-ftp`, run the promptfoo evals; after moving
 `sharp`, build the client.
