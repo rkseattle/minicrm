@@ -104,7 +104,7 @@
     "@vitest/coverage-v8": "4.1.12",
     "ajv": "8.20.0",
     "eslint-plugin-jsdoc": "62.9.0",
-    "eslint-plugin-n": "17.24.0",
+    "eslint-plugin-n": "18.5.0",
     "nodemon": "3.1.14",
     "supertest": "7.3.1",
     "tsx": "4.23.15",
