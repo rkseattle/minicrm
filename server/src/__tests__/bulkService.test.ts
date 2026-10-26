@@ -136,7 +136,7 @@ describe('bulkContacts — delete', () => {
   });
 
   it('returns affected: 0 when no IDs match', async () => {
-    const fakeId = '00000000-0000-0000-0000-000000000001';
+    const fakeId = '00000000-0000-4000-8000-000000000001';
     const result = await bulkContacts({ action: 'delete', ids: [fakeId] }, ownerActor());
     expect(result).toEqual({ affected: 0 });
   });

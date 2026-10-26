@@ -21,6 +21,7 @@ import {
   type PdfTableColumn,
   type PdfTableRow,
 } from '../services/pdfExportService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 /**
  * Column labels for the activity volume PDF export table, in display order.
@@ -50,18 +51,14 @@ const winLossQuerySchema = z.object({
 export async function getWinLossReportHandler(req: Request, res: Response): Promise<void> {
   const parsed = winLossQuerySchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
   const { start, end, owner_id } = parsed.data;
 
   if (start > end) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'start date must not be after end date' },
-    });
+    respondValidationMessage(res, 'start date must not be after end date');
     return;
   }
 
@@ -102,18 +99,14 @@ function resolveActivityVolumeParams(
 ): { startDate: string; endDate: string; ownerId: string | null } | null {
   const parsed = activityVolumeQuerySchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return null;
   }
 
   const { start, end, owner_id } = parsed.data;
 
   if (start > end) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'start date must not be after end date' },
-    });
+    respondValidationMessage(res, 'start date must not be after end date');
     return null;
   }
 
@@ -196,7 +189,7 @@ const stageTrendQuerySchema = z.object({
     .enum(['30', '60', '90'])
     .transform((v) => parseInt(v, 10) as StageTrendDays)
     .optional()
-    .default('30'),
+    .default(30),
 });
 
 /**
@@ -208,17 +201,13 @@ const stageTrendQuerySchema = z.object({
 export async function getStageTrendReportHandler(req: Request, res: Response): Promise<void> {
   const parsed = stageTrendQuerySchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
   const { days } = parsed.data;
   if (!STAGE_TREND_DAYS_OPTIONS.includes(days)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'days must be 30, 60, or 90' },
-    });
+    respondValidationMessage(res, 'days must be 30, 60, or 90');
     return;
   }
 

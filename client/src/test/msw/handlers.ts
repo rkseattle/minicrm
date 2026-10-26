@@ -35,7 +35,7 @@ import type { FeatureFlagRow } from '@shared/schemas/featureFlagSchema.js';
 import { FEATURE_FLAG_KEYS } from '@shared/schemas/featureFlagSchema.js';
 
 /** Default pipeline ID used in test fixtures */
-export const DEFAULT_PIPELINE_ID = '00000000-0000-0000-0000-000000000001';
+export const DEFAULT_PIPELINE_ID = '00000000-0000-4000-8000-000000000001';
 
 /** Default pipeline fixture for tests */
 export const DEFAULT_PIPELINE_FIXTURE: PipelineResponse = {
@@ -118,7 +118,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
 
 /** Reusable fixture: an automation rule */
 export const AUTOMATION_RULE_1: AutomationRuleResponse = {
-  id: '00000000-0000-0000-0000-000000000601',
+  id: '00000000-0000-4000-8000-000000000601',
   name: 'New deal follow-up task',
   enabled: true,
   trigger_type: 'deal_created',
@@ -130,19 +130,19 @@ export const AUTOMATION_RULE_1: AutomationRuleResponse = {
     assignee_type: 'owner',
     due_date_offset_days: 1,
   },
-  created_by: '00000000-0000-0000-0000-000000000001',
+  created_by: '00000000-0000-4000-8000-000000000001',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };
 
 /** Reusable fixture: an automation rule execution log entry */
 export const AUTOMATION_LOG_1: AutomationRuleLogResponse = {
-  id: '00000000-0000-0000-0000-000000000701',
+  id: '00000000-0000-4000-8000-000000000701',
   rule_id: AUTOMATION_RULE_1.id,
   rule_name: AUTOMATION_RULE_1.name,
   triggered_at: '2025-01-02T10:00:00.000Z',
   triggering_record_type: 'deal',
-  triggering_record_id: '00000000-0000-0000-0000-000000000301',
+  triggering_record_id: '00000000-0000-4000-8000-000000000301',
   outcome: 'success',
   error_message: null,
   action_config_snapshot: { assignee_type: 'owner', due_date_offset_days: 1 },
@@ -174,12 +174,12 @@ export const WIN_LOSS_REPORT: WinLossReportResponse = {
 
 /** Reusable fixture: a recent activity entry on the dashboard */
 export const RECENT_ACTIVITY_1 = {
-  id: '00000000-0000-0000-0000-000000000901',
+  id: '00000000-0000-4000-8000-000000000901',
   type: 'Call',
   subject: 'Intro call with Acme',
   updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
   linkedRecordName: 'Jane Doe',
-  linkedRecordPath: '/contacts/00000000-0000-0000-0000-000000000301',
+  linkedRecordPath: '/contacts/00000000-0000-4000-8000-000000000301',
 };
 
 /** Reusable fixture: dashboard summary response */
@@ -225,13 +225,13 @@ export const DASHBOARD_SUMMARY: DashboardSummaryResponse = {
 export const ACTIVITY_VOLUME_REPORT: ActivityVolumeReportResponse = {
   rows: [
     {
-      ownerId: '00000000-0000-0000-0000-000000000001',
+      ownerId: '00000000-0000-4000-8000-000000000001',
       ownerName: 'Test Admin',
       counts: { Note: 3, Call: 5, Email: 2, Meeting: 1, Task: 4 },
       total: 15,
     },
     {
-      ownerId: '00000000-0000-0000-0000-000000000002',
+      ownerId: '00000000-0000-4000-8000-000000000002',
       ownerName: 'Test Rep',
       counts: { Note: 1, Call: 2, Email: 0, Meeting: 0, Task: 1 },
       total: 4,
@@ -257,7 +257,7 @@ export const STAGE_TREND_REPORT: StageTrendReportResponse = {
 
 /** Reusable fixture: admin user */
 export const ADMIN_USER: UserResponse = {
-  id: '00000000-0000-0000-0000-000000000001',
+  id: '00000000-0000-4000-8000-000000000001',
   email: 'admin@example.com',
   name: 'Test Admin',
   role: 'admin',
@@ -268,7 +268,7 @@ export const ADMIN_USER: UserResponse = {
 
 /** Reusable fixture: rep user */
 export const REP_USER: UserResponse = {
-  id: '00000000-0000-0000-0000-000000000002',
+  id: '00000000-0000-4000-8000-000000000002',
   email: 'rep@example.com',
   name: 'Test Rep',
   role: 'rep',
@@ -334,7 +334,7 @@ export function authMeBody(user: UserResponse): {
 
 /** Reusable fixture: viewer — read-only, holds no write capability. */
 export const VIEWER_USER: UserResponse = {
-  id: '00000000-0000-0000-0000-000000000007',
+  id: '00000000-0000-4000-8000-000000000007',
   email: 'viewer@example.com',
   name: 'Test Viewer',
   role: 'viewer',
@@ -345,7 +345,7 @@ export const VIEWER_USER: UserResponse = {
 
 /** Reusable fixture: manager — holds the reports:* capabilities a rep does not. */
 export const MANAGER_USER: UserResponse = {
-  id: '00000000-0000-0000-0000-000000000006',
+  id: '00000000-0000-4000-8000-000000000006',
   email: 'manager@example.com',
   name: 'Test Manager',
   role: 'manager',
@@ -356,7 +356,7 @@ export const MANAGER_USER: UserResponse = {
 
 /** Reusable fixture: invited user */
 export const INVITED_USER: UserResponse = {
-  id: '00000000-0000-0000-0000-000000000003',
+  id: '00000000-0000-4000-8000-000000000003',
   email: 'invited@example.com',
   name: 'Invited User',
   role: 'rep',
@@ -367,13 +367,13 @@ export const INVITED_USER: UserResponse = {
 
 /** Reusable fixture: an account record */
 export const ACCOUNT_1: AccountResponse = {
-  id: '00000000-0000-0000-0000-000000000201',
+  id: '00000000-0000-4000-8000-000000000201',
   name: 'Acme Corp',
   industry: 'Technology',
   website: 'https://acme.example.com',
   employee_range: '51-200',
   revenue_range: '10M-50M',
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
   version: 1,
@@ -381,15 +381,15 @@ export const ACCOUNT_1: AccountResponse = {
 
 /** Reusable fixture: a contact record linked to ACCOUNT_1 */
 export const CONTACT_1: ContactResponse = {
-  id: '00000000-0000-0000-0000-000000000101',
+  id: '00000000-0000-4000-8000-000000000101',
   first_name: 'Alice',
   last_name: 'Smith',
   email: 'alice@example.com',
   phone: '+1-555-0100',
   title: 'VP Sales',
   department: 'Sales',
-  account_id: '00000000-0000-0000-0000-000000000201',
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  account_id: '00000000-0000-4000-8000-000000000201',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   default_address: null,
   linkedin_url: null,
   twitter_x_url: null,
@@ -401,7 +401,7 @@ export const CONTACT_1: ContactResponse = {
 
 /** Reusable fixture: a second contact record for link/unlink tests */
 export const CONTACT_2: ContactResponse = {
-  id: '00000000-0000-0000-0000-000000000102',
+  id: '00000000-0000-4000-8000-000000000102',
   first_name: 'Bob',
   last_name: 'Jones',
   email: 'bob@example.com',
@@ -409,7 +409,7 @@ export const CONTACT_2: ContactResponse = {
   title: 'Engineer',
   department: 'Engineering',
   account_id: null,
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   default_address: null,
   linkedin_url: null,
   twitter_x_url: null,
@@ -421,17 +421,17 @@ export const CONTACT_2: ContactResponse = {
 
 /** Reusable fixture: a deal record */
 export const DEAL_1: DealResponse = {
-  id: '00000000-0000-0000-0000-000000000301',
+  id: '00000000-0000-4000-8000-000000000301',
   pipeline_id: DEFAULT_PIPELINE_ID,
-  pipeline_stage_id: '00000000-0000-0000-0000-000000000a01',
+  pipeline_stage_id: '00000000-0000-4000-8000-000000000a01',
   name: 'Acme Enterprise Deal',
   stage: 'Prospecting',
   value: '50000.00',
   currency: 'USD',
   close_date: '2026-12-31',
   loss_reason: null,
-  account_id: '00000000-0000-0000-0000-000000000201',
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  account_id: '00000000-0000-4000-8000-000000000201',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   effective_probability: 10,
   probability_is_overridden: false,
   created_at: '2025-01-01T00:00:00.000Z',
@@ -441,7 +441,7 @@ export const DEAL_1: DealResponse = {
 
 /** Reusable fixture: a lead record */
 export const LEAD_1: LeadResponse = {
-  id: '00000000-0000-0000-0000-000000000801',
+  id: '00000000-0000-4000-8000-000000000801',
   first_name: 'Carol',
   last_name: 'White',
   email: 'carol.white@example.com',
@@ -451,7 +451,7 @@ export const LEAD_1: LeadResponse = {
   status: 'New',
   disqualification_reason: null,
   notes: 'Met at conference',
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   territory: null,
   industry: null,
   employee_range: null,
@@ -466,7 +466,7 @@ export const LEAD_1: LeadResponse = {
 
 /** Reusable fixture: an open task for My Tasks view, linked to DEAL_1 */
 export const MY_TASK_1: MyTaskResponse = {
-  id: '00000000-0000-0000-0000-000000000501',
+  id: '00000000-0000-4000-8000-000000000501',
   type: 'Task',
   subject: 'Send proposal to client',
   notes: null,
@@ -476,8 +476,8 @@ export const MY_TASK_1: MyTaskResponse = {
   outcome: null,
   contact_id: null,
   account_id: null,
-  deal_id: '00000000-0000-0000-0000-000000000301',
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  deal_id: '00000000-0000-4000-8000-000000000301',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   owner_name: 'Admin User',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
@@ -488,7 +488,7 @@ export const MY_TASK_1: MyTaskResponse = {
 
 /** Reusable fixture: an overdue open task for My Tasks view, linked to CONTACT_1 */
 export const MY_TASK_OVERDUE: MyTaskResponse = {
-  id: '00000000-0000-0000-0000-000000000502',
+  id: '00000000-0000-4000-8000-000000000502',
   type: 'Task',
   subject: 'Call Alice about renewal',
   notes: null,
@@ -496,10 +496,10 @@ export const MY_TASK_OVERDUE: MyTaskResponse = {
   status: 'open',
   direction: null,
   outcome: null,
-  contact_id: '00000000-0000-0000-0000-000000000101',
+  contact_id: '00000000-0000-4000-8000-000000000101',
   account_id: null,
   deal_id: null,
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   owner_name: 'Admin User',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
@@ -510,7 +510,7 @@ export const MY_TASK_OVERDUE: MyTaskResponse = {
 
 /** Reusable fixture: a completed task for My Tasks view */
 export const MY_TASK_COMPLETE: MyTaskResponse = {
-  id: '00000000-0000-0000-0000-000000000503',
+  id: '00000000-0000-4000-8000-000000000503',
   type: 'Task',
   subject: 'Submit contract',
   notes: null,
@@ -519,9 +519,9 @@ export const MY_TASK_COMPLETE: MyTaskResponse = {
   direction: null,
   outcome: null,
   contact_id: null,
-  account_id: '00000000-0000-0000-0000-000000000201',
+  account_id: '00000000-0000-4000-8000-000000000201',
   deal_id: null,
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   owner_name: 'Admin User',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
@@ -532,7 +532,7 @@ export const MY_TASK_COMPLETE: MyTaskResponse = {
 
 /** Reusable fixture: an open task activity linked to DEAL_1 */
 export const ACTIVITY_1: ActivityResponse = {
-  id: '00000000-0000-0000-0000-000000000401',
+  id: '00000000-0000-4000-8000-000000000401',
   type: 'Task',
   subject: 'Follow up with decision maker',
   notes: 'Discuss pricing options',
@@ -542,8 +542,8 @@ export const ACTIVITY_1: ActivityResponse = {
   outcome: null,
   contact_id: null,
   account_id: null,
-  deal_id: '00000000-0000-0000-0000-000000000301',
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  deal_id: '00000000-0000-4000-8000-000000000301',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   owner_name: 'Admin User',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
@@ -552,7 +552,7 @@ export const ACTIVITY_1: ActivityResponse = {
 
 /** Reusable fixture: a completed note activity linked to CONTACT_1 */
 export const ACTIVITY_2: ActivityResponse = {
-  id: '00000000-0000-0000-0000-000000000402',
+  id: '00000000-0000-4000-8000-000000000402',
   type: 'Note',
   subject: 'Initial discovery call notes',
   notes: null,
@@ -560,10 +560,10 @@ export const ACTIVITY_2: ActivityResponse = {
   status: 'complete',
   direction: null,
   outcome: null,
-  contact_id: '00000000-0000-0000-0000-000000000101',
+  contact_id: '00000000-0000-4000-8000-000000000101',
   account_id: null,
   deal_id: null,
-  owner_id: '00000000-0000-0000-0000-000000000001',
+  owner_id: '00000000-0000-4000-8000-000000000001',
   owner_name: 'Admin User',
   created_at: '2025-01-02T00:00:00.000Z',
   updated_at: '2025-01-02T00:00:00.000Z',
@@ -572,11 +572,11 @@ export const ACTIVITY_2: ActivityResponse = {
 
 /** Reusable fixture: a sequence */
 export const SEQUENCE_1: SequenceResponse = {
-  id: '00000000-0000-0000-0000-000000000801',
+  id: '00000000-0000-4000-8000-000000000801',
   name: 'New Customer Onboarding',
   description: 'A 3-step onboarding cadence',
   enabled: true,
-  created_by: '00000000-0000-0000-0000-000000000001',
+  created_by: '00000000-0000-4000-8000-000000000001',
   step_count: 2,
   active_enrollment_count: 0,
   created_at: '2025-01-01T00:00:00.000Z',
@@ -585,7 +585,7 @@ export const SEQUENCE_1: SequenceResponse = {
 
 /** Reusable fixture: a step belonging to SEQUENCE_1 */
 export const SEQUENCE_STEP_1: SequenceStepResponse = {
-  id: '00000000-0000-0000-0000-000000000901',
+  id: '00000000-0000-4000-8000-000000000901',
   sequence_id: SEQUENCE_1.id,
   sort_order: 1,
   action_type: 'create_task',
@@ -597,7 +597,7 @@ export const SEQUENCE_STEP_1: SequenceStepResponse = {
 
 /** Reusable fixture: a step belonging to SEQUENCE_1 */
 export const SEQUENCE_STEP_2: SequenceStepResponse = {
-  id: '00000000-0000-0000-0000-000000000902',
+  id: '00000000-0000-4000-8000-000000000902',
   sequence_id: SEQUENCE_1.id,
   sort_order: 2,
   action_type: 'log_call_reminder',
@@ -609,11 +609,11 @@ export const SEQUENCE_STEP_2: SequenceStepResponse = {
 
 /** Reusable fixture: an active enrollment */
 export const ENROLLMENT_1: EnrollmentResponse = {
-  id: '00000000-0000-0000-0000-000000000a01',
+  id: '00000000-0000-4000-8000-000000000a01',
   sequence_id: SEQUENCE_1.id,
   sequence_name: SEQUENCE_1.name,
-  contact_id: '00000000-0000-0000-0000-000000000101',
-  enrolled_by_id: '00000000-0000-0000-0000-000000000001',
+  contact_id: '00000000-0000-4000-8000-000000000101',
+  enrolled_by_id: '00000000-0000-4000-8000-000000000001',
   enrolled_at: '2025-01-02T00:00:00.000Z',
   status: 'active',
   current_step_id: SEQUENCE_STEP_1.id,
@@ -920,7 +920,7 @@ export const handlers = [
     return HttpResponse.json(
       {
         user: {
-          id: '00000000-0000-0000-0000-000000000099',
+          id: '00000000-0000-4000-8000-000000000099',
           email: body.email,
           name: body.name,
           role: body.role,
@@ -1019,7 +1019,7 @@ export const handlers = [
       {
         contact: {
           ...CONTACT_1,
-          id: '00000000-0000-0000-0000-000000000102',
+          id: '00000000-0000-4000-8000-000000000102',
           first_name: body.first_name ?? 'New',
           last_name: body.last_name ?? 'Contact',
           email: body.email ?? 'new@example.com',
@@ -1078,7 +1078,7 @@ export const handlers = [
       {
         account: {
           ...ACCOUNT_1,
-          id: '00000000-0000-0000-0000-000000000202',
+          id: '00000000-0000-4000-8000-000000000202',
           name: body.name ?? 'New Account',
           industry: body.industry ?? null,
           website: body.website ?? null,
@@ -1191,7 +1191,7 @@ export const handlers = [
       {
         deal: {
           ...DEAL_1,
-          id: '00000000-0000-0000-0000-000000000302',
+          id: '00000000-0000-4000-8000-000000000302',
           name: body.name ?? 'New Deal',
           stage: body.stage ?? 'Prospecting',
           value: body.value != null ? String(body.value) : null,
@@ -1290,7 +1290,7 @@ export const handlers = [
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json(
       {
-        id: '00000000-0000-0000-0000-000000000099',
+        id: '00000000-0000-4000-8000-000000000099',
         name: body['name'] ?? 'Test Report',
         entity_type: body['entity_type'] ?? 'contact',
         config: body['config'] ?? { selected_fields: ['id'], filters: [] },
@@ -1352,7 +1352,7 @@ export const handlers = [
       {
         activity: {
           ...ACTIVITY_1,
-          id: '00000000-0000-0000-0000-000000000403',
+          id: '00000000-0000-4000-8000-000000000403',
           type: body.type ?? 'Note',
           subject: body.subject ?? 'New activity',
           notes: body.notes ?? null,
@@ -1542,7 +1542,7 @@ export const handlers = [
       {
         rule: {
           ...AUTOMATION_RULE_1,
-          id: '00000000-0000-0000-0000-000000000602',
+          id: '00000000-0000-4000-8000-000000000602',
           name: body.name ?? 'New Rule',
           enabled: body.enabled ?? true,
           trigger_type: body.trigger_type ?? 'deal_created',
@@ -1712,13 +1712,13 @@ export const handlers = [
     return HttpResponse.json(
       {
         attachment: {
-          id: '00000000-0000-0000-0000-000000000a01',
+          id: '00000000-0000-4000-8000-000000000a01',
           record_type: 'contact',
-          record_id: '00000000-0000-0000-0000-000000000101',
+          record_id: '00000000-0000-4000-8000-000000000101',
           filename: 'uploaded.pdf',
           file_size: 1024,
           mime_type: 'application/pdf',
-          uploader_id: '00000000-0000-0000-0000-000000000001',
+          uploader_id: '00000000-0000-4000-8000-000000000001',
           uploader_name: 'Test Admin',
           uploaded_at: new Date().toISOString(),
         },
@@ -1862,7 +1862,7 @@ export const handlers = [
       {
         lead: {
           ...LEAD_1,
-          id: '00000000-0000-0000-0000-000000000802',
+          id: '00000000-0000-4000-8000-000000000802',
           first_name: body.first_name ?? 'New',
           last_name: body.last_name ?? null,
           email: body.email ?? 'new@example.com',
@@ -1932,9 +1932,9 @@ export const handlers = [
     return HttpResponse.json(
       {
         conversion: {
-          contact_id: '00000000-0000-0000-0000-000000000101',
-          account_id: '00000000-0000-0000-0000-000000000201',
-          deal_id: '00000000-0000-0000-0000-000000000301',
+          contact_id: '00000000-0000-4000-8000-000000000101',
+          account_id: '00000000-0000-4000-8000-000000000201',
+          deal_id: '00000000-0000-4000-8000-000000000301',
         },
       },
       { status: 201 },
@@ -1972,7 +1972,7 @@ export const handlers = [
   http.post('/api/v1/pipelines', async ({ request }) => {
     const body = (await request.json()) as { name: string };
     const newPipeline: PipelineResponse = {
-      id: '00000000-0000-0000-0000-000000000002',
+      id: '00000000-0000-4000-8000-000000000002',
       name: body.name,
       is_default: false,
       created_at: new Date().toISOString(),
@@ -2006,7 +2006,7 @@ export const handlers = [
   http.post('/api/v1/settings/pipeline-stages', async ({ request }) => {
     const body = (await request.json()) as { name: string; probability?: number };
     const newStage: PipelineStageResponse = {
-      id: '00000000-0000-0000-0000-000000000901',
+      id: '00000000-0000-4000-8000-000000000901',
       name: body.name,
       sort_order: 50,
       probability: body.probability ?? 0,
@@ -2107,7 +2107,7 @@ export const handlers = [
     return HttpResponse.json(
       {
         tag: {
-          id: '00000000-0000-0000-0000-000000000b01',
+          id: '00000000-0000-4000-8000-000000000b01',
           name: body.name,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -2157,7 +2157,7 @@ export const handlers = [
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
       tag: {
-        id: '00000000-0000-0000-0000-000000000b02',
+        id: '00000000-0000-4000-8000-000000000b02',
         name: body.name,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -2180,7 +2180,7 @@ export const handlers = [
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
       tag: {
-        id: '00000000-0000-0000-0000-000000000b03',
+        id: '00000000-0000-4000-8000-000000000b03',
         name: body.name,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -2203,7 +2203,7 @@ export const handlers = [
     const body = (await request.json()) as { name: string };
     return HttpResponse.json({
       tag: {
-        id: '00000000-0000-0000-0000-000000000b04',
+        id: '00000000-0000-4000-8000-000000000b04',
         name: body.name,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -2267,7 +2267,7 @@ export const handlers = [
   http.post('/api/v1/contacts/:id/send-email', () => {
     return HttpResponse.json({
       delivered: false,
-      activityId: '00000000-0000-0000-0000-000000000e01',
+      activityId: '00000000-0000-4000-8000-000000000e01',
     });
   }),
 
@@ -2285,7 +2285,7 @@ export const handlers = [
     };
     return HttpResponse.json(
       {
-        id: '00000000-0000-0000-0000-000000000cf1',
+        id: '00000000-0000-4000-8000-000000000cf1',
         entity_type: body.entity_type,
         name: body.name,
         field_type: body.field_type,
@@ -2341,11 +2341,11 @@ export const handlers = [
     return HttpResponse.json(
       {
         subscription: {
-          id: '00000000-0000-0000-0000-000000000wh1',
+          id: '00000000-0000-4000-8000-000000000eb1',
           url: body.url,
           events: body.events,
           status: 'active',
-          created_by: '00000000-0000-0000-0000-000000000001',
+          created_by: '00000000-0000-4000-8000-000000000001',
           created_at: new Date().toISOString(),
         },
         plaintextSecret: 'test-plaintext-secret-64-chars-placeholder-value-padding-here',
@@ -2362,7 +2362,7 @@ export const handlers = [
         url: 'https://example.com/hook',
         events: ['contact.created'],
         status: 'active',
-        created_by: '00000000-0000-0000-0000-000000000001',
+        created_by: '00000000-0000-4000-8000-000000000001',
         created_at: new Date().toISOString(),
       },
     });
@@ -2377,7 +2377,7 @@ export const handlers = [
         url: body.url ?? 'https://example.com/hook',
         events: body.events ?? ['contact.created'],
         status: body.status ?? 'active',
-        created_by: '00000000-0000-0000-0000-000000000001',
+        created_by: '00000000-0000-4000-8000-000000000001',
         created_at: new Date().toISOString(),
       },
     });
@@ -2522,7 +2522,7 @@ export const handlers = [
       {
         sequence: {
           ...SEQUENCE_1,
-          id: '00000000-0000-0000-0000-000000000802',
+          id: '00000000-0000-4000-8000-000000000802',
           name: body.name,
           description: body.description ?? null,
           enabled: body.enabled ?? true,
@@ -2571,7 +2571,7 @@ export const handlers = [
       {
         step: {
           ...SEQUENCE_STEP_1,
-          id: '00000000-0000-0000-0000-000000000903',
+          id: '00000000-0000-4000-8000-000000000903',
           sequence_id: params['id'] as string,
           sort_order: body.sort_order ?? 1,
           action_type: body.action_type ?? 'create_task',

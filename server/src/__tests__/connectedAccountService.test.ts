@@ -1114,7 +1114,7 @@ describe('getAccountAuthForSync', () => {
     // Not the nil UUID, which is SYSTEM_ACTOR's id and meaningful on this path.
     const refresh = countingRefresh();
     expect(
-      await getAccountAuthForSync('11111111-2222-3333-4444-555555555555', refresh.fn),
+      await getAccountAuthForSync('11111111-2222-4333-8444-555555555555', refresh.fn),
     ).toBeNull();
     expect(refresh.calls).toBe(0);
   });

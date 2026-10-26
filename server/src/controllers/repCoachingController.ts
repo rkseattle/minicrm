@@ -23,6 +23,7 @@ import {
 import { setRepCoachingConfigSchema } from '@minicrm/shared/schemas/settingsSchema.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 const FORBIDDEN_ERROR = {
   error: {
@@ -92,9 +93,7 @@ export async function getRepCoachingConfigHandler(_req: Request, res: Response):
 export async function setRepCoachingConfigHandler(req: Request, res: Response): Promise<void> {
   const parsed = setRepCoachingConfigSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

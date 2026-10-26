@@ -20,6 +20,7 @@ import {
   ENTITY_TYPES,
 } from '@minicrm/shared/schemas/customFieldSchema.js';
 import { z } from 'zod';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 /** Validates that a string is a known entity type */
 function isValidEntityType(value: string): value is (typeof ENTITY_TYPES)[number] {
@@ -36,9 +37,7 @@ export async function listCustomFieldDefinitionsHandler(
 ): Promise<void> {
   const entityType = String(req.query['entity_type'] ?? '');
   if (!isValidEntityType(entityType)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'entity_type must be contact, account, or deal' },
-    });
+    respondValidationMessage(res, 'entity_type must be contact, account, or deal');
     return;
   }
 
@@ -56,12 +55,7 @@ export async function createCustomFieldDefinitionHandler(
 ): Promise<void> {
   const parsed = createCustomFieldDefinitionSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.issues[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -92,12 +86,7 @@ export async function updateCustomFieldDefinitionHandler(
 
   const parsed = updateCustomFieldDefinitionSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.issues[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -148,9 +137,7 @@ export async function getCustomFieldValuesHandler(req: Request, res: Response): 
   const recordId = String(req.params['recordId']);
 
   if (!isValidEntityType(entityType)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'entityType must be contact, account, or deal' },
-    });
+    respondValidationMessage(res, 'entityType must be contact, account, or deal');
     return;
   }
 
@@ -175,20 +162,13 @@ export async function putCustomFieldValuesHandler(req: Request, res: Response): 
   const recordId = String(req.params['recordId']);
 
   if (!isValidEntityType(entityType)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'entityType must be contact, account, or deal' },
-    });
+    respondValidationMessage(res, 'entityType must be contact, account, or deal');
     return;
   }
 
   const parsed = z.array(customFieldValueSchema).safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.issues[0]?.message ?? 'Invalid request body',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

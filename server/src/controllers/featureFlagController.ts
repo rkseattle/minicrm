@@ -32,6 +32,7 @@ import {
   FEATURE_FLAG_KEYS,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import type { MyFeatureFlagsResponse } from '@minicrm/shared/schemas/featureFlagSchema.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/admin/feature-flags
@@ -80,12 +81,7 @@ export async function updateFeatureFlagHandler(req: Request, res: Response): Pro
 
   const parsed = updateFeatureFlagSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -157,12 +153,7 @@ export async function enrollBetaUserHandler(req: Request, res: Response): Promis
 
   const parsed = enrollBetaUserSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -217,9 +208,7 @@ export async function removeBetaUserHandler(req: Request, res: Response): Promis
   const userId = req.params['userId'] as string;
 
   if (!UUID_REGEX.test(userId)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'userId must be a valid UUID' },
-    });
+    respondValidationMessage(res, 'userId must be a valid UUID');
     return;
   }
 
@@ -261,20 +250,13 @@ export async function upsertUserOverrideHandler(req: Request, res: Response): Pr
   const userId = req.params['userId'] as string;
 
   if (!UUID_REGEX.test(userId)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'userId must be a valid UUID' },
-    });
+    respondValidationMessage(res, 'userId must be a valid UUID');
     return;
   }
 
   const parsed = upsertUserOverrideSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -324,9 +306,7 @@ export async function deleteUserOverrideHandler(req: Request, res: Response): Pr
   const userId = req.params['userId'] as string;
 
   if (!UUID_REGEX.test(userId)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'userId must be a valid UUID' },
-    });
+    respondValidationMessage(res, 'userId must be a valid UUID');
     return;
   }
 
@@ -364,12 +344,7 @@ export async function listFlagGroupsHandler(req: Request, res: Response): Promis
 export async function createFlagGroupHandler(req: Request, res: Response): Promise<void> {
   const parsed = createFlagGroupSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -404,22 +379,15 @@ export async function updateFlagGroupHandler(req: Request, res: Response): Promi
 
   const parsed = updateFlagGroupSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
   if (Object.keys(parsed.data).length === 0) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'At least one field (enabled, label, description, enable_at) is required',
-      },
-    });
+    respondValidationMessage(
+      res,
+      'At least one field (enabled, label, description, enable_at) is required',
+    );
     return;
   }
 
@@ -493,12 +461,7 @@ export async function enrollGroupBetaUserHandler(req: Request, res: Response): P
 
   const parsed = enrollBetaUserSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -551,9 +514,7 @@ export async function removeGroupBetaUserHandler(req: Request, res: Response): P
   const userId = req.params['userId'] as string;
 
   if (!UUID_REGEX.test(userId)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'userId must be a valid UUID' },
-    });
+    respondValidationMessage(res, 'userId must be a valid UUID');
     return;
   }
 

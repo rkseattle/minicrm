@@ -28,6 +28,7 @@ import {
   unenrollContact,
   validateStepActionConfig,
 } from '../services/sequenceService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 // ── Sequence handlers ──────────────────────────────────────────────────────────
 
@@ -38,9 +39,7 @@ import {
 export async function createSequenceHandler(req: Request, res: Response): Promise<void> {
   const parsed = createSequenceSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -56,9 +55,7 @@ export async function createSequenceHandler(req: Request, res: Response): Promis
 export async function listSequencesHandler(req: Request, res: Response): Promise<void> {
   const parsed = paginationParamsSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
   const result = await listSequences(parsed.data.page, parsed.data.limit);
@@ -86,9 +83,7 @@ export async function getSequenceHandler(req: Request, res: Response): Promise<v
 export async function updateSequenceHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateSequenceSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -167,9 +162,7 @@ export async function createStepHandler(req: Request, res: Response): Promise<vo
 
   const parsed = createSequenceStepSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -178,7 +171,7 @@ export async function createStepHandler(req: Request, res: Response): Promise<vo
     parsed.data.action_config as Record<string, unknown>,
   );
   if (configError) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: configError } });
+    respondValidationMessage(res, configError);
     return;
   }
 
@@ -212,9 +205,7 @@ export async function updateStepHandler(req: Request, res: Response): Promise<vo
 
   const parsed = updateSequenceStepSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -230,7 +221,7 @@ export async function updateStepHandler(req: Request, res: Response): Promise<vo
     (parsed.data.action_config as Record<string, unknown> | undefined) ?? existing.action_config;
   const configError = validateStepActionConfig(mergedActionType, mergedActionConfig);
   if (configError) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: configError } });
+    respondValidationMessage(res, configError);
     return;
   }
 
@@ -298,9 +289,7 @@ export async function enrollContactHandler(req: Request, res: Response): Promise
 
   const sequenceIdRaw = req.body?.sequence_id;
   if (!sequenceIdRaw || typeof sequenceIdRaw !== 'string') {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'sequence_id is required' },
-    });
+    respondValidationMessage(res, 'sequence_id is required');
     return;
   }
 

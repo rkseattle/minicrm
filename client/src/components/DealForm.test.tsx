@@ -18,7 +18,7 @@ const noop = () => {};
 
 /** Existing deal fixture with a probability override */
 const DEAL_WITH_OVERRIDE: Partial<DealResponse> = {
-  id: '00000000-0000-0000-0000-000000000401',
+  id: '00000000-0000-4000-8000-000000000401',
   name: 'Override Deal',
   stage: 'Prospecting',
   value: '50000.00',

@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /**
  * Schema for the stage_exit_requirements jsonb column.
@@ -43,7 +44,7 @@ export type PipelineStageResponse = z.infer<typeof pipelineStageResponseSchema>;
  */
 export const createPipelineStageSchema = z.object({
   name: z
-    .string({ required_error: 'Stage name is required' })
+    .string(typeErrorMessages({ required: 'Stage name is required' }))
     .min(1, 'Stage name cannot be blank')
     .max(100, 'Stage name must be 100 characters or fewer')
     .trim(),

@@ -16,6 +16,7 @@ import {
   refreshSession,
 } from '../controllers/authController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { respondValidationMessage } from '../utils/validationError.js';
 
 // In E2E/test environments the BVT suite submits multiple logins per run from a
 // single IP. Disable the limiter so the suite does not exhaust the window during
@@ -108,7 +109,7 @@ const router = Router();
  *               $ref: '#/components/schemas/LoginResponse'
  *             example:
  *               user:
- *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 id: b1b2c3d4-0000-4000-8000-000000000001
  *                 email: jane.smith@acme.com
  *                 name: Jane Smith
  *                 role: rep
@@ -203,7 +204,7 @@ router.post('/logout', authenticate, asyncHandler(logout));
  *                   $ref: '#/components/schemas/User'
  *             example:
  *               user:
- *                 id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 id: b1b2c3d4-0000-4000-8000-000000000001
  *                 email: jane.smith@acme.com
  *                 name: Jane Smith
  *                 role: rep
@@ -421,7 +422,7 @@ if (isAuthBypassEnv()) {
     asyncHandler(async (req, res) => {
       const { email } = req.body as { email?: unknown };
       if (typeof email !== 'string' || !email) {
-        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'email required' } });
+        respondValidationMessage(res, 'email required');
         return;
       }
       const { findUserByEmail, createPasswordResetToken } =

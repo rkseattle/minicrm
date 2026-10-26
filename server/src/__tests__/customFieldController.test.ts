@@ -304,7 +304,7 @@ describe('PUT /api/v1/custom-fields/:entityType/:recordId/custom-fields', () => 
 
   it('returns 400 VALIDATION_ERROR when body is not an array', async () => {
     const res = await request(app)
-      .put(`/api/v1/custom-fields/contact/00000000-0000-0000-0000-000000000001/custom-fields`)
+      .put(`/api/v1/custom-fields/contact/00000000-0000-4000-8000-000000000001/custom-fields`)
       .set('Cookie', repCookie)
       .send({ definition_id: 'x', value: 'y' });
 

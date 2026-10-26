@@ -13,6 +13,7 @@ import {
 } from '@minicrm/shared/schemas/capabilitySchema.js';
 import * as roleService from '../services/roleService.js';
 import { findUserById } from '../services/userService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 // ── Custom role CRUD ──────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ export async function listCustomRolesHandler(req: Request, res: Response): Promi
 export async function getCustomRoleHandler(req: Request, res: Response): Promise<void> {
   const idParse = z.string().uuid().safeParse(req.params.id);
   if (!idParse.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid role ID' } });
+    respondValidationMessage(res, 'Invalid role ID');
     return;
   }
 
@@ -42,9 +43,7 @@ export async function getCustomRoleHandler(req: Request, res: Response): Promise
 export async function createCustomRoleHandler(req: Request, res: Response): Promise<void> {
   const parse = createCustomRoleSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parse.error.errors[0].message },
-    });
+    respondValidationError(res, parse.error);
     return;
   }
 
@@ -69,15 +68,13 @@ export async function createCustomRoleHandler(req: Request, res: Response): Prom
 export async function updateCustomRoleHandler(req: Request, res: Response): Promise<void> {
   const idParse = z.string().uuid().safeParse(req.params.id);
   if (!idParse.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid role ID' } });
+    respondValidationMessage(res, 'Invalid role ID');
     return;
   }
 
   const parse = updateCustomRoleSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parse.error.errors[0].message },
-    });
+    respondValidationError(res, parse.error);
     return;
   }
 
@@ -105,7 +102,7 @@ export async function updateCustomRoleHandler(req: Request, res: Response): Prom
 export async function deleteCustomRoleHandler(req: Request, res: Response): Promise<void> {
   const idParse = z.string().uuid().safeParse(req.params.id);
   if (!idParse.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid role ID' } });
+    respondValidationMessage(res, 'Invalid role ID');
     return;
   }
 
@@ -141,7 +138,7 @@ export async function deleteCustomRoleHandler(req: Request, res: Response): Prom
 export async function listUserRolesHandler(req: Request, res: Response): Promise<void> {
   const idParse = z.string().uuid().safeParse(req.params.id);
   if (!idParse.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid user ID' } });
+    respondValidationMessage(res, 'Invalid user ID');
     return;
   }
 
@@ -159,15 +156,13 @@ export async function listUserRolesHandler(req: Request, res: Response): Promise
 export async function assignUserRoleHandler(req: Request, res: Response): Promise<void> {
   const idParse = z.string().uuid().safeParse(req.params.id);
   if (!idParse.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid user ID' } });
+    respondValidationMessage(res, 'Invalid user ID');
     return;
   }
 
   const parse = assignUserRoleSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parse.error.errors[0].message },
-    });
+    respondValidationError(res, parse.error);
     return;
   }
 
@@ -197,13 +192,13 @@ export async function assignUserRoleHandler(req: Request, res: Response): Promis
 export async function removeUserRoleHandler(req: Request, res: Response): Promise<void> {
   const userIdParse = z.string().uuid().safeParse(req.params.id);
   if (!userIdParse.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid user ID' } });
+    respondValidationMessage(res, 'Invalid user ID');
     return;
   }
 
   const roleIdParse = z.string().uuid().safeParse(req.params.roleId);
   if (!roleIdParse.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid role ID' } });
+    respondValidationMessage(res, 'Invalid role ID');
     return;
   }
 

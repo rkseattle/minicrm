@@ -15,6 +15,7 @@ import {
   updateContextEntry,
   deleteContextEntry,
 } from '../services/aiContextService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 const idSchema = z.string().uuid();
 
@@ -26,9 +27,7 @@ export async function listAiContextHandler(req: Request, res: Response): Promise
 export async function createAiContextHandler(req: Request, res: Response): Promise<void> {
   const parsed = createAiContextSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -64,15 +63,13 @@ export async function createAiContextHandler(req: Request, res: Response): Promi
 export async function updateAiContextHandler(req: Request, res: Response): Promise<void> {
   const idParsed = idSchema.safeParse(req.params['id']);
   if (!idParsed.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid entry ID' } });
+    respondValidationMessage(res, 'Invalid entry ID');
     return;
   }
 
   const parsed = updateAiContextSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -103,7 +100,7 @@ export async function updateAiContextHandler(req: Request, res: Response): Promi
 export async function deleteAiContextHandler(req: Request, res: Response): Promise<void> {
   const idParsed = idSchema.safeParse(req.params['id']);
   if (!idParsed.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid entry ID' } });
+    respondValidationMessage(res, 'Invalid entry ID');
     return;
   }
 

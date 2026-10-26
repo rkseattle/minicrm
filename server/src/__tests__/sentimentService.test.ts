@@ -167,7 +167,7 @@ async function createTestAccount(): Promise<string> {
 describe('scoreActivitySentiment', () => {
   it('no-ops when there is no note or subject text', async () => {
     await scoreActivitySentiment({
-      activityId: '00000000-0000-0000-0000-000000000001',
+      activityId: '00000000-0000-4000-8000-000000000001',
       notes: null,
       subject: '',
     });

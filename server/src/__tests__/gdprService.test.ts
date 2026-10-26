@@ -191,7 +191,7 @@ describe('eraseContact', () => {
   });
 
   it('returns NOT_FOUND error for a non-existent contact', async () => {
-    const fakeId = '00000000-0000-0000-0000-000000000099';
+    const fakeId = '00000000-0000-4000-8000-000000000099';
     await expect(eraseContact(fakeId, adminActor)).rejects.toMatchObject({
       code: 'NOT_FOUND',
     });
@@ -244,7 +244,7 @@ describe('eraseLead', () => {
   });
 
   it('returns NOT_FOUND error for a non-existent lead', async () => {
-    const fakeId = '00000000-0000-0000-0000-000000000098';
+    const fakeId = '00000000-0000-4000-8000-000000000098';
     await expect(eraseLead(fakeId, adminActor)).rejects.toMatchObject({
       code: 'NOT_FOUND',
     });

@@ -169,7 +169,7 @@ describe('LeadsPage', () => {
           );
         }
         return HttpResponse.json(
-          { lead: { ...LEAD_1, id: '00000000-0000-0000-0000-000000000803' } },
+          { lead: { ...LEAD_1, id: '00000000-0000-4000-8000-000000000803' } },
           { status: 201 },
         );
       }),

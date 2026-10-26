@@ -55,10 +55,6 @@ EVALUATOR="${SCRIPT_DIR}/npm-audit-evaluate.mjs"
 # entry names its package, why it is unreachable in production, and where the
 # fix is tracked upstream. Delete an entry the day its advisory goes away.
 ALLOWLISTED_ADVISORIES=(
-  # braces <=3.0.3 (stack-exhaustion DoS on nested patterns). Only dev/build
-  # tooling expands globs with it — markdownlint-cli2, tailwindcss 3, nodemon,
-  # promptfoo — over patterns this repo writes. Fix: micromatch/braces#87.
-  "GHSA-vfj7-8cjw-p6xm"
   # node-forge <=1.4.0 (lenient RSA PKCS#1 v1.5 verification). Optional dep of
   # promptfoo's jks-js, a qa/ eval tool; absent from `npm ls --omit=dev`.
   # Fix: digitalbazaar/forge#1159.

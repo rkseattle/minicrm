@@ -332,7 +332,7 @@ describe('tag cascade delete', () => {
 
 // ── Audit log coverage ─────────────────────────────────────────────
 
-const TAG_AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000004', name: 'Tag Audit Actor' };
+const TAG_AUDIT_ACTOR = { id: '00000000-0000-4000-8000-000000000004', name: 'Tag Audit Actor' };
 
 describe('audit log entries for tag attach/detach', () => {
   beforeEach(async () => {

@@ -50,6 +50,7 @@ import {
   type PdfTableRow,
 } from '../services/pdfExportService.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -71,9 +72,7 @@ export async function createAccountHandler(req: Request, res: Response): Promise
   const parsed = createAccountSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -150,9 +149,7 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
     limit: req.query.limit,
   });
   if (!paginationParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
-    });
+    respondValidationError(res, paginationParsed.error);
     return;
   }
 
@@ -238,9 +235,7 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
   const parsed = updateAccountSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

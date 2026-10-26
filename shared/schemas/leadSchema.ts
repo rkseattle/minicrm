@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 import { LEAD_ROUTING_CONFIDENCE_LEVELS, LEAD_ROUTING_FACTOR_TYPES } from './leadRoutingSchema.js';
 
 /** Valid lead source values */
@@ -20,12 +21,12 @@ export type LeadStatus = (typeof LEAD_STATUSES)[number];
  */
 export const createLeadSchema = z.object({
   first_name: z
-    .string({ required_error: 'First name is required' })
+    .string(typeErrorMessages({ required: 'First name is required' }))
     .min(1, 'First name is required')
     .trim(),
   last_name: z.string().trim().optional(),
   email: z
-    .string({ required_error: 'Email is required' })
+    .string(typeErrorMessages({ required: 'Email is required' }))
     .email('Must be a valid email address')
     .toLowerCase()
     .trim(),

@@ -272,12 +272,12 @@ describe('DB constraints — activities', () => {
 // ── Schema validation — direction/type rules ────────────────────────────────────
 
 describe('createActivitySchema — direction validation', () => {
-  const base = { subject: 'S', contact_id: '00000000-0000-0000-0000-000000000001' };
+  const base = { subject: 'S', contact_id: '00000000-0000-4000-8000-000000000001' };
 
   it('rejects a Call without direction', () => {
     const result = createActivitySchema.safeParse({ ...base, type: 'Call' });
     expect(result.success).toBe(false);
-    expect(result.error?.errors[0].message).toMatch(/direction is required/i);
+    expect(result.error?.issues[0].message).toMatch(/direction is required/i);
   });
 
   it('rejects an Email without direction', () => {
@@ -300,7 +300,7 @@ describe('updateActivitySchema — direction validation', () => {
   it('rejects a type change to Call without direction', () => {
     const result = updateActivitySchema.safeParse({ type: 'Call', version: 1 });
     expect(result.success).toBe(false);
-    expect(result.error?.errors[0].message).toMatch(/direction is required/i);
+    expect(result.error?.issues[0].message).toMatch(/direction is required/i);
   });
 
   it('rejects a type change to Email without direction', () => {
@@ -897,7 +897,7 @@ describe('deleteActivity', () => {
 
 // ── Audit log coverage ─────────────────────────────────────────────
 
-const TEST_ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Audit Test Actor' };
+const TEST_ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Audit Test Actor' };
 
 describe('audit log entries', () => {
   beforeEach(async () => {

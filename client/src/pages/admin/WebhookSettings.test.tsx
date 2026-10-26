@@ -27,36 +27,36 @@ import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const WEBHOOK_1: WebhookSubscriptionResponse = {
-  id: '00000000-0000-0000-0000-000000000w01',
+  id: '00000000-0000-4000-8000-000000000f01',
   url: 'https://example.com/hook',
   events: ['contact.created', 'deal.won'],
   status: 'active',
-  created_by: '00000000-0000-0000-0000-000000000001',
+  created_by: '00000000-0000-4000-8000-000000000001',
   created_at: '2025-01-01T00:00:00.000Z',
 };
 
 const WEBHOOK_2: WebhookSubscriptionResponse = {
-  id: '00000000-0000-0000-0000-000000000w02',
+  id: '00000000-0000-4000-8000-000000000f02',
   url: 'https://other.example.com/hook',
   events: ['account.created'],
   status: 'disabled',
-  created_by: '00000000-0000-0000-0000-000000000001',
+  created_by: '00000000-0000-4000-8000-000000000001',
   created_at: '2025-01-02T00:00:00.000Z',
 };
 
 const WEBHOOK_FAILED: WebhookSubscriptionResponse = {
-  id: '00000000-0000-0000-0000-000000000w03',
+  id: '00000000-0000-4000-8000-000000000f03',
   url: 'https://broken.example.com/hook',
   events: ['deal.created'],
   status: 'failed',
-  created_by: '00000000-0000-0000-0000-000000000001',
+  created_by: '00000000-0000-4000-8000-000000000001',
   created_at: '2025-01-03T00:00:00.000Z',
 };
 
 const DELIVERY_LOG_1: WebhookDeliveryLogResponse = {
-  id: '00000000-0000-0000-0000-000000000d01',
+  id: '00000000-0000-4000-8000-000000000d01',
   subscription_id: WEBHOOK_1.id,
-  event_id: '00000000-0000-0000-0000-000000000e01',
+  event_id: '00000000-0000-4000-8000-000000000e01',
   event_type: 'contact.created',
   attempt: 1,
   status_code: 200,
@@ -82,11 +82,11 @@ function mockWebhookCreate(plaintextSecret = 'abc123secretvalue') {
       return HttpResponse.json(
         {
           subscription: {
-            id: '00000000-0000-0000-0000-000000000w99',
+            id: '00000000-0000-4000-8000-000000000f99',
             url: body.url,
             events: body.events,
             status: 'active',
-            created_by: '00000000-0000-0000-0000-000000000001',
+            created_by: '00000000-0000-4000-8000-000000000001',
             created_at: new Date().toISOString(),
           },
           plaintextSecret,
@@ -166,11 +166,11 @@ describe('WebhookSettings — create form', () => {
         HttpResponse.json({
           subscriptions: [
             {
-              id: '00000000-0000-0000-0000-000000000w99',
+              id: '00000000-0000-4000-8000-000000000f99',
               url: 'https://new.example.com/hook',
               events: ['contact.created'],
               status: 'active',
-              created_by: '00000000-0000-0000-0000-000000000001',
+              created_by: '00000000-0000-4000-8000-000000000001',
               created_at: new Date().toISOString(),
             },
           ],

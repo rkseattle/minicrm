@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import { handleAiServiceError } from '../utils/aiErrorHandling.js';
 import { summarizeActivityTextSchema } from '@minicrm/shared/schemas/activitySummarySchema.js';
 import { summarizeActivityText } from '../services/activitySummaryService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * POST /api/v1/activities/summarize
@@ -17,12 +18,7 @@ import { summarizeActivityText } from '../services/activitySummaryService.js';
 export async function summarizeActivityHandler(req: Request, res: Response): Promise<void> {
   const parsed = summarizeActivityTextSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid input',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

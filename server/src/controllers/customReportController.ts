@@ -27,6 +27,7 @@ import {
   type PdfTableColumn,
   type PdfTableRow,
 } from '../services/pdfExportService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 function isValidEntityType(value: string): value is (typeof REPORT_ENTITY_TYPES)[number] {
   return (REPORT_ENTITY_TYPES as readonly string[]).includes(value);
@@ -64,12 +65,7 @@ export async function getCustomReportHandler(req: Request, res: Response): Promi
 export async function createCustomReportHandler(req: Request, res: Response): Promise<void> {
   const parsed = createCustomReportSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.issues[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -105,12 +101,7 @@ export async function updateCustomReportHandler(req: Request, res: Response): Pr
 
   const parsed = updateCustomReportSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.issues[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -214,23 +205,13 @@ export async function runCustomReportHandler(req: Request, res: Response): Promi
 export async function runAdHocReportHandler(req: Request, res: Response): Promise<void> {
   const entityTypeRaw = String(req.body?.entity_type ?? '');
   if (!isValidEntityType(entityTypeRaw)) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: `entity_type must be one of: ${REPORT_ENTITY_TYPES.join(', ')}`,
-      },
-    });
+    respondValidationMessage(res, `entity_type must be one of: ${REPORT_ENTITY_TYPES.join(', ')}`);
     return;
   }
 
   const configParsed = reportConfigSchema.safeParse(req.body?.config);
   if (!configParsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: configParsed.error.issues[0]?.message ?? 'Invalid config',
-      },
-    });
+    respondValidationError(res, configParsed.error);
     return;
   }
 

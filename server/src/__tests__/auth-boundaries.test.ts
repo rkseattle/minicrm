@@ -703,7 +703,7 @@ describe('manager and viewer are blocked from admin-only endpoints', () => {
   it("returns 403 AUTH_FORBIDDEN when a viewer reads a contact's sequence enrollments", async () => {
     // The capability gate answers before the contact is resolved, so the id need not exist.
     const res = await request(app)
-      .get('/api/v1/contacts/00000000-0000-0000-0000-0000000000ff/sequence-enrollments')
+      .get('/api/v1/contacts/00000000-0000-4000-8000-0000000000ff/sequence-enrollments')
       .set('Cookie', viewerCookie);
 
     expect(res.status).toBe(403);

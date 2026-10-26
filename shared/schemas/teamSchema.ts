@@ -4,13 +4,17 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /** Roles a user can hold within a team */
 export const TEAM_MEMBER_ROLES = ['lead', 'member'] as const;
 export type TeamMemberRole = (typeof TEAM_MEMBER_ROLES)[number];
 
 export const createTeamSchema = z.object({
-  name: z.string({ required_error: 'Name is required' }).min(1, 'Name is required').trim(),
+  name: z
+    .string(typeErrorMessages({ required: 'Name is required' }))
+    .min(1, 'Name is required')
+    .trim(),
   manager_id: z.string().uuid('manager_id must be a valid UUID').optional().nullable(),
   parent_team_id: z.string().uuid('parent_team_id must be a valid UUID').optional().nullable(),
 });
@@ -22,11 +26,16 @@ export const updateTeamSchema = z.object({
 });
 
 export const addTeamMemberSchema = z.object({
-  user_id: z.string({ required_error: 'user_id is required' }).uuid('user_id must be a valid UUID'),
-  role: z.enum(TEAM_MEMBER_ROLES, {
-    required_error: 'Role is required',
-    invalid_type_error: 'Role must be one of: lead, member',
-  }),
+  user_id: z
+    .string(typeErrorMessages({ required: 'user_id is required' }))
+    .uuid('user_id must be a valid UUID'),
+  role: z.enum(
+    TEAM_MEMBER_ROLES,
+    typeErrorMessages({
+      required: 'Role is required',
+      invalid: 'Role must be one of: lead, member',
+    }),
+  ),
 });
 
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;

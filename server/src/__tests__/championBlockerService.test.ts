@@ -130,7 +130,7 @@ async function createTestContact(): Promise<string> {
 describe('analyzeContactSignals', () => {
   it('no-ops when the activity has no linked contact', async () => {
     await analyzeContactSignals({
-      activityId: '00000000-0000-0000-0000-000000000001',
+      activityId: '00000000-0000-4000-8000-000000000001',
       contactId: null,
       notes: 'Mentioned sharing proposal with VP Finance',
       subject: 'Call',

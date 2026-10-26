@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 import { NAV_LAYOUTS, navLayoutEnum, SUPPORTED_LOCALES } from './settingsSchema.js';
 
 /** Allowed user roles */
@@ -18,11 +19,13 @@ export const USER_STATUSES = ['active', 'invited', 'inactive'] as const;
  */
 export const loginSchema = z.object({
   email: z
-    .string({ required_error: 'Email is required' })
+    .string(typeErrorMessages({ required: 'Email is required' }))
     .email('Must be a valid email address')
     .toLowerCase()
     .trim(),
-  password: z.string({ required_error: 'Password is required' }).min(1, 'Password is required'),
+  password: z
+    .string(typeErrorMessages({ required: 'Password is required' }))
+    .min(1, 'Password is required'),
 });
 
 /**
@@ -31,15 +34,21 @@ export const loginSchema = z.object({
  */
 export const inviteUserSchema = z.object({
   email: z
-    .string({ required_error: 'Email is required' })
+    .string(typeErrorMessages({ required: 'Email is required' }))
     .email('Must be a valid email address')
     .toLowerCase()
     .trim(),
-  name: z.string({ required_error: 'Name is required' }).min(1, 'Name is required').trim(),
-  role: z.enum(USER_ROLES, {
-    required_error: 'Role is required',
-    invalid_type_error: 'Role must be one of: admin, rep, manager, viewer, service_account',
-  }),
+  name: z
+    .string(typeErrorMessages({ required: 'Name is required' }))
+    .min(1, 'Name is required')
+    .trim(),
+  role: z.enum(
+    USER_ROLES,
+    typeErrorMessages({
+      required: 'Role is required',
+      invalid: 'Role must be one of: admin, rep, manager, viewer, service_account',
+    }),
+  ),
 });
 
 /** Minimum password length */
@@ -50,7 +59,7 @@ export const PASSWORD_MIN_LENGTH = 12;
  * at least 12 characters, one letter, one number, and one special character.
  */
 export const passwordComplexitySchema = z
-  .string({ required_error: 'Password is required' })
+  .string(typeErrorMessages({ required: 'Password is required' }))
   .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`)
   .regex(/[a-zA-Z]/, 'Password must contain at least one letter')
   .regex(/[0-9]/, 'Password must contain at least one number')
@@ -60,7 +69,7 @@ export const passwordComplexitySchema = z
  * Schema for the set-password request body (used in the invite acceptance flow).
  */
 export const setPasswordSchema = z.object({
-  token: z.string({ required_error: 'Token is required' }).min(1),
+  token: z.string(typeErrorMessages({ required: 'Token is required' })).min(1),
   password: passwordComplexitySchema,
 });
 
@@ -77,7 +86,7 @@ export const adminSetPasswordSchema = z.object({
  */
 export const forgotPasswordSchema = z.object({
   email: z
-    .string({ required_error: 'Email is required' })
+    .string(typeErrorMessages({ required: 'Email is required' }))
     .email('Must be a valid email address')
     .toLowerCase()
     .trim(),
@@ -87,7 +96,7 @@ export const forgotPasswordSchema = z.object({
  * Schema for the POST /api/v1/auth/reset-password request body.
  */
 export const resetPasswordSchema = z.object({
-  token: z.string({ required_error: 'Token is required' }).min(1, 'Token is required'),
+  token: z.string(typeErrorMessages({ required: 'Token is required' })).min(1, 'Token is required'),
   password: passwordComplexitySchema,
 });
 
@@ -95,10 +104,13 @@ export const resetPasswordSchema = z.object({
  * Schema for the update-role request body.
  */
 export const updateRoleSchema = z.object({
-  role: z.enum(USER_ROLES, {
-    required_error: 'Role is required',
-    invalid_type_error: 'Role must be one of: admin, rep, manager, viewer, service_account',
-  }),
+  role: z.enum(
+    USER_ROLES,
+    typeErrorMessages({
+      required: 'Role is required',
+      invalid: 'Role must be one of: admin, rep, manager, viewer, service_account',
+    }),
+  ),
 });
 
 /**
@@ -107,12 +119,13 @@ export const updateRoleSchema = z.object({
  */
 export const updatePreferredLanguageSchema = z.object({
   language: z
-    .enum(SUPPORTED_LOCALES, {
-      errorMap: (issue) =>
-        issue.code === 'invalid_type' && issue.received === 'undefined'
-          ? { message: 'Language is required' }
-          : { message: `Language must be one of: ${SUPPORTED_LOCALES.join(', ')}` },
-    })
+    .enum(
+      SUPPORTED_LOCALES,
+      typeErrorMessages({
+        required: 'Language is required',
+        invalid: `Language must be one of: ${SUPPORTED_LOCALES.join(', ')}`,
+      }),
+    )
     .nullable(),
 });
 

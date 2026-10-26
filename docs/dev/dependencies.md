@@ -195,6 +195,17 @@ change. Retire the pin once `get-uri` declares `^6`.
 
 ---
 
+## Worked example: the `@azure/msal-node` pin crosses a major
+
+`@azure/msal-node` is pinned to 7.x under `@azure/identity`, past the `^6.0.0` it declares
+(`promptfoo` → `@azure/identity`, dev only). No 6.x release fixes `GHSA-xcx6-jx8p-x3h5`.
+
+Safe for a verified reason: 7.0.0's sole breaking change removes `responseMode` from
+`acquireTokenInteractive`, and `@azure/identity` never passes it. Retire the pin once
+`@azure/identity` declares `^7`.
+
+---
+
 ## Related
 
 - [CI Pipeline](ci.md) — where the audit gate runs and what it blocks

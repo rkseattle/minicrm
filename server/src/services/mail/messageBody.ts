@@ -280,7 +280,7 @@ export function snippetOf(bodyText: string | null): string | null {
  * rather than taking whatever the parser produced is what stops a body from depending on
  * whether the sender used a multipart wrapper.
  */
-function bodyTextOf(text: string | undefined, html: string | false): string | null {
+function bodyTextOf(text: string | undefined, html: string | false | undefined): string | null {
   if (typeof text === 'string' && text.trim() !== '') return storable(text);
   if (typeof html === 'string' && html !== '') {
     // Tested after converting, not before: markup that is only a spacer or an entity —
@@ -443,7 +443,7 @@ export async function parseMessage(
 
     // Inside the try, not after it: htmlToText recurses over sender-controlled markup and
     // overflows the stack on deep nesting, which a 220 KB document already reaches.
-    // `html` is false, not undefined, when a message has no HTML part.
+    // mailparser types `html` as false or undefined when a message has no HTML part.
     //
     // A caller that asked for headers only still gets them: a message too large to store
     // a body for is worth keeping as correspondence, and dropping it would lose it

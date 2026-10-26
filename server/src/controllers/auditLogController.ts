@@ -6,6 +6,7 @@
 import type { Request, Response } from 'express';
 import { recordAuditLogParamsSchema } from '@minicrm/shared/schemas/auditSchema.js';
 import { getRecordAuditLog, listAuditLogActors } from '../services/auditService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/audit-log/record
@@ -17,9 +18,7 @@ export async function getRecordAuditLogHandler(req: Request, res: Response): Pro
   const parsed = recordAuditLogParamsSchema.safeParse(req.query);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

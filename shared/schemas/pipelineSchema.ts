@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /**
  * Shape of a pipeline row as returned by GET /api/v1/pipelines.
@@ -23,7 +24,7 @@ export type PipelineResponse = z.infer<typeof pipelineResponseSchema>;
  */
 export const createPipelineSchema = z.object({
   name: z
-    .string({ required_error: 'Pipeline name is required' })
+    .string(typeErrorMessages({ required: 'Pipeline name is required' }))
     .trim()
     .min(1, 'Pipeline name cannot be blank')
     .max(100, 'Pipeline name must be 100 characters or fewer'),

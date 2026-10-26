@@ -17,6 +17,7 @@ import {
   generateProposalDraftSchema,
   exportProposalDraftSchema,
 } from '@minicrm/shared/schemas/proposalDraftSchema.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 const FORBIDDEN_VISIBILITY_ERROR = {
   error: {
@@ -47,9 +48,7 @@ export async function generateProposalDraftHandler(req: Request, res: Response):
 
   const parsed = generateProposalDraftSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -88,9 +87,7 @@ export async function exportProposalDraftDocxHandler(req: Request, res: Response
 
   const parsed = exportProposalDraftSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

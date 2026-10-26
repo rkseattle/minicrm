@@ -211,8 +211,8 @@ describe('coverage session control API — validation', () => {
       .post('/api/v1/admin/coverage/sessions/not-a-uuid/dumps')
       .set('Cookie', adminCookie)
       .send({
-        dumpId: '11111111-1111-1111-1111-111111111111',
-        correlationId: '22222222-2222-2222-2222-222222222222',
+        dumpId: '11111111-1111-4111-8111-111111111111',
+        correlationId: '22222222-2222-4222-8222-222222222222',
       });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -338,7 +338,7 @@ describe('coverage session control API — dump attribution', () => {
       .set('Cookie', adminCookie)
       .send(baseSessionBody('dump-attribution'));
     const session = startRes.body.session;
-    const dumpId = '33333333-3333-3333-3333-333333333333';
+    const dumpId = '33333333-3333-4333-8333-333333333333';
 
     const recordRes = await request(app)
       .post(`/api/v1/admin/coverage/sessions/${session.id}/dumps`)
@@ -371,7 +371,7 @@ describe('coverage session control API — dump attribution', () => {
       .post(`/api/v1/admin/coverage/sessions/${session.id}/dumps`)
       .set('Cookie', adminCookie)
       .send({
-        dumpId: '44444444-4444-4444-4444-444444444444',
+        dumpId: '44444444-4444-4444-8444-444444444444',
         correlationId: session.correlationId,
       });
     expect(dumpRes.status).toBe(409);
@@ -383,8 +383,8 @@ describe('coverage session control API — dump attribution', () => {
       .post('/api/v1/admin/coverage/sessions/00000000-0000-0000-0000-000000000000/dumps')
       .set('Cookie', adminCookie)
       .send({
-        dumpId: '55555555-5555-5555-5555-555555555555',
-        correlationId: '66666666-6666-6666-6666-666666666666',
+        dumpId: '55555555-5555-4555-8555-555555555555',
+        correlationId: '66666666-6666-4666-8666-666666666666',
       });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('COVERAGE_SESSION_NOT_FOUND');
@@ -407,7 +407,7 @@ describe('coverage session control API — dump attribution', () => {
       .post(`/api/v1/admin/coverage/sessions/${sessionA.id}/dumps`)
       .set('Cookie', adminCookie)
       .send({
-        dumpId: '77777777-7777-7777-7777-777777777777',
+        dumpId: '77777777-7777-4777-8777-777777777777',
         correlationId: sessionB.correlationId,
       });
     expect(res.status).toBe(400);

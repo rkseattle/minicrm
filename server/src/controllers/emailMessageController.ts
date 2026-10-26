@@ -52,6 +52,7 @@ import { userCapabilities } from '../services/roleService.js';
 import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import { errorBody } from '../utils/errorBody.js';
 import { uuidParams } from '../utils/uuidParams.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * Whether the caller may see the record a message is filed against.
@@ -83,9 +84,7 @@ export async function listRecordMessagesHandler(req: Request, res: Response): Pr
     limit: req.query.limit,
   });
   if (!parsed.success) {
-    res
-      .status(400)
-      .json(errorBody('VALIDATION_ERROR', parsed.error.errors[0]?.message ?? 'Invalid request'));
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -121,9 +120,7 @@ export async function listUnmatchedMessagesHandler(req: Request, res: Response):
     limit: req.query.limit,
   });
   if (!parsed.success) {
-    res
-      .status(400)
-      .json(errorBody('VALIDATION_ERROR', parsed.error.errors[0]?.message ?? 'Invalid request'));
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -175,9 +172,7 @@ export async function createLinkHandler(req: Request, res: Response): Promise<vo
 
   const parsed = createEmailMessageLinkSchema.safeParse(req.body);
   if (!parsed.success) {
-    res
-      .status(400)
-      .json(errorBody('VALIDATION_ERROR', parsed.error.errors[0]?.message ?? 'Invalid request'));
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -331,9 +326,7 @@ export async function sendEmailHandler(req: Request, res: Response): Promise<voi
   }
   const parsed = sendEmailSchema.safeParse(req.body);
   if (!parsed.success) {
-    res
-      .status(400)
-      .json(errorBody('VALIDATION_ERROR', parsed.error.errors[0]?.message ?? 'Invalid request'));
+    respondValidationError(res, parsed.error);
     return;
   }
   const input = parsed.data;

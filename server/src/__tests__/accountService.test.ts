@@ -602,7 +602,7 @@ describe('setAccountContacts — cross-account links', () => {
     // Silently dropping it is the defect this replaced, so it still refuses — but not
     // as CONTACT_LINKED_ELSEWHERE, which would send the user hunting for an account
     // that does not hold it.
-    const missingId = '00000000-0000-0000-0000-0000000000ff';
+    const missingId = '00000000-0000-4000-8000-0000000000ff';
 
     await expect(
       updateAccount(account.id, {

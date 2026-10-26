@@ -36,6 +36,7 @@ import {
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import { z } from 'zod';
 import logger from '../logger.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 // ── Parse handlers (Step 1: upload → headers + preview) ───────────────────────
 
@@ -46,13 +47,11 @@ import logger from '../logger.js';
 export async function parseAccountsCsv(req: Request, res: Response): Promise<void> {
   const file = req.file;
   if (!file) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'No CSV file uploaded' } });
+    respondValidationMessage(res, 'No CSV file uploaded');
     return;
   }
   if (file.size > MAX_CSV_BYTES) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'File exceeds 10 MB limit' } });
+    respondValidationMessage(res, 'File exceeds 10 MB limit');
     return;
   }
 
@@ -72,13 +71,11 @@ export async function parseAccountsCsv(req: Request, res: Response): Promise<voi
 export async function parseContactsCsv(req: Request, res: Response): Promise<void> {
   const file = req.file;
   if (!file) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'No CSV file uploaded' } });
+    respondValidationMessage(res, 'No CSV file uploaded');
     return;
   }
   if (file.size > MAX_CSV_BYTES) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'File exceeds 10 MB limit' } });
+    respondValidationMessage(res, 'File exceeds 10 MB limit');
     return;
   }
 
@@ -98,13 +95,11 @@ export async function parseContactsCsv(req: Request, res: Response): Promise<voi
 export async function parseDealsCsv(req: Request, res: Response): Promise<void> {
   const file = req.file;
   if (!file) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'No CSV file uploaded' } });
+    respondValidationMessage(res, 'No CSV file uploaded');
     return;
   }
   if (file.size > MAX_CSV_BYTES) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'File exceeds 10 MB limit' } });
+    respondValidationMessage(res, 'File exceeds 10 MB limit');
     return;
   }
 
@@ -173,13 +168,11 @@ async function startImportJob(
 ): Promise<void> {
   const file = req.file;
   if (!file) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'No CSV file uploaded' } });
+    respondValidationMessage(res, 'No CSV file uploaded');
     return;
   }
   if (file.size > MAX_CSV_BYTES) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'File exceeds 10 MB limit' } });
+    respondValidationMessage(res, 'File exceeds 10 MB limit');
     return;
   }
 
@@ -255,20 +248,13 @@ export async function runAccountsImport(req: Request, res: Response): Promise<vo
   try {
     rawMapping = JSON.parse(typeof req.body.mapping === 'string' ? req.body.mapping : '{}');
   } catch {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'mapping must be valid JSON' } });
+    respondValidationMessage(res, 'mapping must be valid JSON');
     return;
   }
 
   const parsed = accountMappingSchema.safeParse(rawMapping);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid mapping',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -300,20 +286,13 @@ export async function runContactsImport(req: Request, res: Response): Promise<vo
   try {
     rawMapping = JSON.parse(typeof req.body.mapping === 'string' ? req.body.mapping : '{}');
   } catch {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'mapping must be valid JSON' } });
+    respondValidationMessage(res, 'mapping must be valid JSON');
     return;
   }
 
   const parsed = contactMappingSchema.safeParse(rawMapping);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid mapping',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -346,20 +325,13 @@ export async function runDealsImport(req: Request, res: Response): Promise<void>
   try {
     rawMapping = JSON.parse(typeof req.body.mapping === 'string' ? req.body.mapping : '{}');
   } catch {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'mapping must be valid JSON' } });
+    respondValidationMessage(res, 'mapping must be valid JSON');
     return;
   }
 
   const parsed = dealMappingSchema.safeParse(rawMapping);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid mapping',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

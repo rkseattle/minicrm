@@ -10,7 +10,7 @@ import WarmIntroPathsPanel from './WarmIntroPathsPanel.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 
-const CONTACT_ID = '00000000-0000-0000-0000-000000000101';
+const CONTACT_ID = '00000000-0000-4000-8000-000000000101';
 
 describe('WarmIntroPathsPanel', () => {
   it('does not fetch paths until the button is clicked', () => {
@@ -38,7 +38,7 @@ describe('WarmIntroPathsPanel', () => {
             {
               links: [
                 {
-                  contact_id: '00000000-0000-0000-0000-000000000201',
+                  contact_id: '00000000-0000-4000-8000-000000000201',
                   first_name: 'Alex',
                   last_name: 'Rivera',
                   title: 'VP Sales',

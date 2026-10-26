@@ -21,6 +21,7 @@ import {
   updateActivity,
   deleteActivity,
 } from '../services/activityService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -38,9 +39,7 @@ export async function createActivityHandler(req: Request, res: Response): Promis
   const parsed = createActivitySchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -77,21 +76,15 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
   const rawDeal = typeof req.query.deal === 'string' ? req.query.deal : undefined;
 
   if (rawContact && !uuidQuerySchema.safeParse(rawContact).success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'contact must be a valid UUID' } });
+    respondValidationMessage(res, 'contact must be a valid UUID');
     return;
   }
   if (rawAccount && !uuidQuerySchema.safeParse(rawAccount).success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' } });
+    respondValidationMessage(res, 'account must be a valid UUID');
     return;
   }
   if (rawDeal && !uuidQuerySchema.safeParse(rawDeal).success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'deal must be a valid UUID' } });
+    respondValidationMessage(res, 'deal must be a valid UUID');
     return;
   }
 
@@ -115,9 +108,7 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
     limit: req.query.limit,
   });
   if (!paginationParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
-    });
+    respondValidationError(res, paginationParsed.error);
     return;
   }
 
@@ -128,15 +119,11 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
   // Validate date format (YYYY-MM-DD) to prevent malformed SQL comparisons
   const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
   if (rawStart && !isoDatePattern.test(rawStart)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'start must be a date in YYYY-MM-DD format' },
-    });
+    respondValidationMessage(res, 'start must be a date in YYYY-MM-DD format');
     return;
   }
   if (rawEnd && !isoDatePattern.test(rawEnd)) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'end must be a date in YYYY-MM-DD format' },
-    });
+    respondValidationMessage(res, 'end must be a date in YYYY-MM-DD format');
     return;
   }
 
@@ -179,9 +166,7 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
   const parsed = updateActivitySchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -204,12 +189,7 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
   const effectiveType = parsed.data.type ?? existing.type;
   const isCommunicationType = effectiveType === 'Call' || effectiveType === 'Email';
   if (isCommunicationType && parsed.data.direction === null) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Direction is required for Call and Email activities',
-      },
-    });
+    respondValidationMessage(res, 'Direction is required for Call and Email activities');
     return;
   }
 

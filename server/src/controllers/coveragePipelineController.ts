@@ -12,6 +12,7 @@ import {
   CoverageDumpNotFoundError,
   ingestCoverageDump,
 } from '../coverageAgent/pipeline/coverageIngestionService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * POST /api/v1/admin/coverage/pipeline/ingest
@@ -22,9 +23,7 @@ import {
 export async function ingestCoverageDumpHandler(req: Request, res: Response): Promise<void> {
   const parsed = ingestCoverageDumpRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

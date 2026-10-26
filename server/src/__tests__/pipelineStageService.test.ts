@@ -456,7 +456,7 @@ describe('reorderPipelineStages', () => {
     const before = await listPipelineStages();
     const ids = before.map((s) => s.id);
     // Include a non-existent UUID to force a rollback
-    const badIds = [...ids, '00000000-0000-0000-0000-000000000099'];
+    const badIds = [...ids, '00000000-0000-4000-8000-000000000099'];
 
     await expect(reorderPipelineStages({ stages: badIds }, ACTOR)).rejects.toMatchObject({
       code: 'STAGE_NOT_FOUND',

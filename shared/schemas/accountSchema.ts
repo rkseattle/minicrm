@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 import { ACCOUNT_HEALTH_STATES } from './accountHealthScoreSchema.js';
 
 /** Valid values for the account_type field */
@@ -23,7 +24,7 @@ export type AccountType = (typeof ACCOUNT_TYPE_VALUES)[number];
  */
 export const createAccountSchema = z.object({
   name: z
-    .string({ required_error: 'Company name is required' })
+    .string(typeErrorMessages({ required: 'Company name is required' }))
     .min(1, 'Company name is required')
     .trim(),
   industry: z.string().trim().optional(),

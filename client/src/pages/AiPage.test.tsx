@@ -34,7 +34,7 @@ import { renderWithProviders } from '../test/renderWithProviders.js';
 import AiPage from './AiPage.js';
 import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
-const SESSION_ID = '11111111-1111-1111-1111-111111111111';
+const SESSION_ID = '11111111-1111-4111-8111-111111111111';
 
 function mockEmptySessions() {
   server.use(
@@ -462,7 +462,7 @@ describe('AiPage — send handshake cache correctness', () => {
   });
 
   it('does not lose the exchange on the new-session-on-demand path when the cache entry does not exist yet at onSuccess', async () => {
-    const NEW_SESSION_ID = '22222222-2222-2222-2222-222222222222';
+    const NEW_SESSION_ID = '22222222-2222-4222-8222-222222222222';
     mockEmptySessions();
 
     // Server-side message store, populated by the POST handler — mirrors a
@@ -586,7 +586,7 @@ describe('AiPage — send handshake cache correctness', () => {
     // even before this fix, since a returned exchange for the same turn is
     // reconciled rather than duplicated. This test covers the case that
     // was NOT safe: the GET winning the race with stale data.
-    const NEW_SESSION_ID = '33333333-3333-3333-3333-333333333333';
+    const NEW_SESSION_ID = '33333333-3333-4333-8333-333333333333';
     mockEmptySessions();
 
     let releaseInitialGet: (() => void) | undefined;
@@ -772,7 +772,7 @@ describe('AiPage — send handshake cache correctness', () => {
 
 describe('AiPage — optimistic state is scoped per session', () => {
   it('does not clear a different session’s in-flight optimistic bubble when switching sessions', async () => {
-    const SESSION_B_ID = '33333333-3333-3333-3333-333333333333';
+    const SESSION_B_ID = '33333333-3333-4333-8333-333333333333';
     server.use(
       http.get('/api/v1/ai/sessions', () =>
         HttpResponse.json({

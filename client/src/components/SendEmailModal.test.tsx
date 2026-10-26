@@ -18,7 +18,7 @@ import type { ConnectedAccountResponse } from '@shared/schemas/connectedAccountS
 import { CLOSE_AFTER_SENT_MS } from '@/hooks/useMailboxSend.js';
 import SendEmailModal from './SendEmailModal.js';
 
-const CONTACT_ID = '00000000-0000-0000-0000-000000000c01';
+const CONTACT_ID = '00000000-0000-4000-8000-000000000c01';
 const CONTACT_EMAIL = 'jane@example.com';
 const CONTACT_NAME = 'Jane Smith';
 
@@ -201,7 +201,7 @@ describe('SendEmailModal', () => {
       http.post('/api/v1/contacts/:id/send-email', () => {
         return HttpResponse.json({
           delivered: true,
-          activityId: '00000000-0000-0000-0000-000000000e02',
+          activityId: '00000000-0000-4000-8000-000000000e02',
         });
       }),
     );

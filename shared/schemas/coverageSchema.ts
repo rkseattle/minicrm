@@ -15,7 +15,7 @@ export const coverageSnapshotRequestSchema = z.object({
 export const coverageDumpRequestSchema = z.object({
   label: z.string().min(1, 'label is required'),
   source: coverageDumpSourceSchema.optional(),
-  payload: z.record(z.unknown()).optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type CoverageSnapshotRequest = z.infer<typeof coverageSnapshotRequestSchema>;

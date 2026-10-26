@@ -18,14 +18,14 @@ import { server } from '../test/setup.js';
 import type { TagResponse } from '@shared/schemas/tagSchema.js';
 
 const TAG_1: TagResponse = {
-  id: '00000000-0000-0000-0000-000000001001',
+  id: '00000000-0000-4000-8000-000000001001',
   name: 'enterprise',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };
 
 const TAG_2: TagResponse = {
-  id: '00000000-0000-0000-0000-000000001002',
+  id: '00000000-0000-4000-8000-000000001002',
   name: 'priority',
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
@@ -334,7 +334,7 @@ describe('AdminTagsPage — create tag flow', () => {
         return HttpResponse.json(
           {
             tag: {
-              id: '00000000-0000-0000-0000-000000001099',
+              id: '00000000-0000-4000-8000-000000001099',
               name: body.name,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),

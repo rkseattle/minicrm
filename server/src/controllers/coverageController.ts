@@ -23,6 +23,7 @@ import {
   recordCoverageSessionDump,
 } from '../services/coverageSessionService.js';
 import logger from '../logger.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 const DEFAULT_DUMP_LABEL = 'unlabeled';
 
@@ -78,9 +79,7 @@ export async function resetCoverageHandler(_req: Request, res: Response): Promis
 export async function snapshotCoverageHandler(req: Request, res: Response): Promise<void> {
   const parsed = coverageSnapshotRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -106,9 +105,7 @@ export async function snapshotCoverageHandler(req: Request, res: Response): Prom
 export async function dumpCoverageHandler(req: Request, res: Response): Promise<void> {
   const parsed = coverageDumpRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -117,12 +114,7 @@ export async function dumpCoverageHandler(req: Request, res: Response): Promise<
   try {
     if (source === 'browser') {
       if (!payload) {
-        res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'payload is required when source is "browser"',
-          },
-        });
+        respondValidationMessage(res, 'payload is required when source is "browser"');
         return;
       }
       const dump = await ingestBrowserCoverage(label, payload);

@@ -12,10 +12,10 @@ import NotesSection from './NotesSection.js';
 import type { NoteResponse } from '@shared/schemas/noteSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
-const CONTACT_ID = '00000000-0000-0000-0000-000000000101';
-const NOTE_ID_1 = '00000000-0000-0000-0000-000000000b01';
-const NOTE_ID_2 = '00000000-0000-0000-0000-000000000b02';
-const NOTE_ID_PRIVATE = '00000000-0000-0000-0000-000000000b03';
+const CONTACT_ID = '00000000-0000-4000-8000-000000000101';
+const NOTE_ID_1 = '00000000-0000-4000-8000-000000000b01';
+const NOTE_ID_2 = '00000000-0000-4000-8000-000000000b02';
+const NOTE_ID_PRIVATE = '00000000-0000-4000-8000-000000000b03';
 
 const BODY_JSON = JSON.stringify({
   type: 'doc',
@@ -605,7 +605,7 @@ describe('NotesSection — image upload errors', () => {
   });
 
   it('does not show an error and clears the file input after a successful upload', async () => {
-    const ATTACHMENT_ID = '00000000-0000-0000-0000-000000000a01';
+    const ATTACHMENT_ID = '00000000-0000-4000-8000-000000000a01';
     withNotes([]);
     server.use(
       http.post('/api/v1/attachments', () =>

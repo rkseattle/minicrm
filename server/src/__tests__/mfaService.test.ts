@@ -29,7 +29,7 @@ import {
 import { decrypt } from '../services/cryptoService.js';
 import { makeAuthCookie } from './testUtils.js';
 
-const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
+const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test Actor' };
 const BASE_USER = {
   name: 'MFA Test User',
   role: 'rep' as const,

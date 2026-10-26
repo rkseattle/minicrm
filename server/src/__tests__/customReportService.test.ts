@@ -516,7 +516,7 @@ describe('executeReport', () => {
   });
 
   it('applies owner scoping', async () => {
-    const randomId = 'aaaaaaaa-0000-0000-0000-000000000000';
+    const randomId = 'aaaaaaaa-0000-4000-8000-000000000000';
     const result = await executeReport(
       'contact',
       { selected_fields: ['email'], filters: [] },

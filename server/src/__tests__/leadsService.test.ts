@@ -493,7 +493,7 @@ describe('convertLead', () => {
   });
 
   it('rejects conversion when last_name is empty', () => {
-    // Absent key → "Required"; empty string → our custom message. Both cases must fail.
+    // Absent key → Zod's own message; empty string → our custom message. Both cases must fail.
     const absentParsed = convertLeadSchema.safeParse({
       contact: { first_name: 'Jane', email: 'jane@example.com' },
       account: { mode: 'create', name: 'Acme' },
@@ -508,7 +508,7 @@ describe('convertLead', () => {
     });
     expect(emptyParsed.success).toBe(false);
     if (!emptyParsed.success) {
-      expect(emptyParsed.error.errors[0].message).toMatch(/last name is required/i);
+      expect(emptyParsed.error.issues[0].message).toMatch(/last name is required/i);
     }
   });
 });
@@ -647,7 +647,7 @@ describe('searchAccountsForConversion', () => {
 
 // ── Audit log coverage ─────────────────────────────────────────────
 
-const AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000002', name: 'Lead Audit Actor' };
+const AUDIT_ACTOR = { id: '00000000-0000-4000-8000-000000000002', name: 'Lead Audit Actor' };
 
 describe('audit log entries for leads', () => {
   beforeEach(async () => {

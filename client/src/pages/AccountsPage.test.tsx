@@ -256,7 +256,7 @@ describe('AccountsPage', () => {
   it('filters accounts to current user when Mine toggle is clicked', async () => {
     const repAccount = {
       ...ACCOUNT_1,
-      id: '00000000-0000-0000-0000-000000000203',
+      id: '00000000-0000-4000-8000-000000000203',
       name: 'Rep Corp',
       owner_id: REP_USER.id,
     };
@@ -288,7 +288,7 @@ describe('AccountsPage', () => {
     server.use(
       http.get('/api/v1/accounts', () =>
         HttpResponse.json({
-          data: [{ ...ACCOUNT_1, owner_id: '00000000-0000-0000-0000-000000000999' }],
+          data: [{ ...ACCOUNT_1, owner_id: '00000000-0000-4000-8000-000000000999' }],
           total: 1,
           page: 1,
           limit: 50,
@@ -382,7 +382,7 @@ describe('AccountsPage', () => {
   describe('bulk selection', () => {
     const ACCOUNT_2 = {
       ...ACCOUNT_1,
-      id: '00000000-0000-0000-0000-000000000202',
+      id: '00000000-0000-4000-8000-000000000202',
       name: 'Beta Corp',
     };
 

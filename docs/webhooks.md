@@ -199,7 +199,7 @@ For `*.updated` and `deal.stage_changed` events a `previous_data` key is also pr
     "phone": "+1-555-0100",
     "job_title": "VP Sales",
     "account_id": null,
-    "owner_id": "u1000000-0000-0000-0000-000000000001",
+    "owner_id": "b1000000-0000-4000-8000-000000000001",
     "created_at": "2026-05-29T09:00:00.000Z",
     "updated_at": "2026-05-29T09:00:00.000Z"
   }
@@ -223,7 +223,7 @@ For `*.updated` and `deal.stage_changed` events a `previous_data` key is also pr
     "probability": 100,
     "close_date": "2026-05-29",
     "account_id": "acc00000-0000-0000-0000-000000000001",
-    "owner_id": "u1000000-0000-0000-0000-000000000001",
+    "owner_id": "b1000000-0000-4000-8000-000000000001",
     "created_at": "2026-04-01T10:00:00.000Z",
     "updated_at": "2026-05-29T15:00:00.000Z"
   }

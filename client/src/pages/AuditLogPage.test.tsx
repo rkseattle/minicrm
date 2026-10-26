@@ -40,9 +40,9 @@ function makeProtoEvent(
   }> = {},
 ) {
   return {
-    id: '00000000-0000-0000-0000-000000000001',
+    id: '00000000-0000-4000-8000-000000000001',
     recordType: 'contact',
-    recordId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    recordId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     action: 'created',
     fieldName: '',
     oldValue: '',
@@ -209,8 +209,8 @@ describe('AuditLogPage', () => {
 
   it('shows pagination controls with next enabled when there are multiple pages', async () => {
     const events = [
-      makeProtoEvent({ id: '00000000-0000-0000-0000-000000000001' }),
-      makeProtoEvent({ id: '00000000-0000-0000-0000-000000000002' }),
+      makeProtoEvent({ id: '00000000-0000-4000-8000-000000000001' }),
+      makeProtoEvent({ id: '00000000-0000-4000-8000-000000000002' }),
     ];
     mockListAuditEvents.mockReturnValue(
       Promise.resolve({ events, total: 100, page: 1, limit: 50 }),
@@ -288,11 +288,11 @@ describe('AuditLogPage', () => {
 
   it('prepends live events from the stream to the top of the first unfiltered page', async () => {
     const existing = makeProtoEvent({
-      id: '00000000-0000-0000-0000-aaaaaaaaaaaa',
+      id: '00000000-0000-4000-8000-aaaaaaaaaaaa',
       changedBy: 'Existing',
     });
     const live = makeProtoEvent({
-      id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
+      id: '00000000-0000-4000-8000-bbbbbbbbbbbb',
       changedBy: 'Live Event',
     });
 
@@ -315,7 +315,7 @@ describe('AuditLogPage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
 
     try {
-      const eventAfterReconnect = makeProtoEvent({ id: '00000000-0000-0000-0000-cccccccccccc' });
+      const eventAfterReconnect = makeProtoEvent({ id: '00000000-0000-4000-8000-cccccccccccc' });
 
       // First call: throws immediately (simulates proxy timeout / network error).
       // Second call: yields an event then hangs (simulates successful reconnect).
@@ -347,7 +347,7 @@ describe('AuditLogPage', () => {
   });
 
   it('clears live events when a filter is applied', async () => {
-    const live = makeProtoEvent({ id: '00000000-0000-0000-0000-bbbbbbbbbbbb' });
+    const live = makeProtoEvent({ id: '00000000-0000-4000-8000-bbbbbbbbbbbb' });
 
     async function* streamWithEvent() {
       yield live;

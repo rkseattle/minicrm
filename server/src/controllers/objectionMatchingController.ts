@@ -13,6 +13,7 @@ import {
   findObjectionPrecedents,
 } from '../services/objectionMatchingService.js';
 import { OBJECTION_CATEGORIES } from '@minicrm/shared/schemas/objectionSchema.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 const FORBIDDEN_VISIBILITY_ERROR = {
   error: {
@@ -83,9 +84,7 @@ export async function getObjectionPrecedentsHandler(req: Request, res: Response)
 
   const parsed = precedentsQuerySchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

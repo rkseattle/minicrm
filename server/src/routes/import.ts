@@ -25,6 +25,7 @@ import {
   runDealsImport,
   getImportJob,
 } from '../controllers/importController.js';
+import { respondValidationMessage } from '../utils/validationError.js';
 
 const router = Router();
 
@@ -281,7 +282,7 @@ router.get('/jobs/:job_id', asyncHandler(getImportJob));
 
 router.use((err: Error, _req: Request, res: Response, _next: NextFunction): void => {
   if (err instanceof multer.MulterError || err.message === 'Only .csv files are accepted') {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: err.message } });
+    respondValidationMessage(res, err.message);
     return;
   }
   // Not a multer error — let the global handler deal with it

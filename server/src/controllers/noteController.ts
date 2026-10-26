@@ -20,6 +20,7 @@ import {
   deleteNote,
 } from '../services/noteService.js';
 import { getTagsRestrictCreation } from '../services/settingsService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 /** Validates that a string is a UUID */
 const uuidSchema = z.string().uuid();
@@ -36,28 +37,19 @@ function parseEntityType(raw: string): NoteEntityType | null {
 export async function listNotesHandler(req: Request, res: Response): Promise<void> {
   const entityType = parseEntityType(String(req.params['entityType']));
   if (!entityType) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'entityType must be one of: contact, account, deal, lead',
-      },
-    });
+    respondValidationMessage(res, 'entityType must be one of: contact, account, deal, lead');
     return;
   }
 
   const entityId = String(req.params['entityId']);
   if (!uuidSchema.safeParse(entityId).success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'entityId must be a valid UUID' } });
+    respondValidationMessage(res, 'entityId must be a valid UUID');
     return;
   }
 
   const pagination = paginationParamsSchema.safeParse(req.query);
   if (!pagination.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: pagination.error.errors[0]!.message },
-    });
+    respondValidationError(res, pagination.error);
     return;
   }
   const { page, limit } = pagination.data;
@@ -72,28 +64,19 @@ export async function listNotesHandler(req: Request, res: Response): Promise<voi
 export async function createNoteHandler(req: Request, res: Response): Promise<void> {
   const entityType = parseEntityType(String(req.params['entityType']));
   if (!entityType) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'entityType must be one of: contact, account, deal, lead',
-      },
-    });
+    respondValidationMessage(res, 'entityType must be one of: contact, account, deal, lead');
     return;
   }
 
   const entityId = String(req.params['entityId']);
   if (!uuidSchema.safeParse(entityId).success) {
-    res
-      .status(400)
-      .json({ error: { code: 'VALIDATION_ERROR', message: 'entityId must be a valid UUID' } });
+    respondValidationMessage(res, 'entityId must be a valid UUID');
     return;
   }
 
   const parsed = createNoteSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0]!.message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -135,21 +118,14 @@ export async function createNoteHandler(req: Request, res: Response): Promise<vo
 export async function getNoteHandler(req: Request, res: Response): Promise<void> {
   const entityType = parseEntityType(String(req.params['entityType']));
   if (!entityType) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'entityType must be one of: contact, account, deal, lead',
-      },
-    });
+    respondValidationMessage(res, 'entityType must be one of: contact, account, deal, lead');
     return;
   }
 
   const entityId = String(req.params['entityId']);
   const noteId = String(req.params['noteId']);
   if (!uuidSchema.safeParse(entityId).success || !uuidSchema.safeParse(noteId).success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'entityId and noteId must be valid UUIDs' },
-    });
+    respondValidationMessage(res, 'entityId and noteId must be valid UUIDs');
     return;
   }
 
@@ -168,29 +144,20 @@ export async function getNoteHandler(req: Request, res: Response): Promise<void>
 export async function updateNoteHandler(req: Request, res: Response): Promise<void> {
   const entityType = parseEntityType(String(req.params['entityType']));
   if (!entityType) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'entityType must be one of: contact, account, deal, lead',
-      },
-    });
+    respondValidationMessage(res, 'entityType must be one of: contact, account, deal, lead');
     return;
   }
 
   const entityId = String(req.params['entityId']);
   const noteId = String(req.params['noteId']);
   if (!uuidSchema.safeParse(entityId).success || !uuidSchema.safeParse(noteId).success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'entityId and noteId must be valid UUIDs' },
-    });
+    respondValidationMessage(res, 'entityId and noteId must be valid UUIDs');
     return;
   }
 
   const parsed = updateNoteSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0]!.message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -249,21 +216,14 @@ export async function updateNoteHandler(req: Request, res: Response): Promise<vo
 export async function deleteNoteHandler(req: Request, res: Response): Promise<void> {
   const entityType = parseEntityType(String(req.params['entityType']));
   if (!entityType) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'entityType must be one of: contact, account, deal, lead',
-      },
-    });
+    respondValidationMessage(res, 'entityType must be one of: contact, account, deal, lead');
     return;
   }
 
   const entityId = String(req.params['entityId']);
   const noteId = String(req.params['noteId']);
   if (!uuidSchema.safeParse(entityId).success || !uuidSchema.safeParse(noteId).success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'entityId and noteId must be valid UUIDs' },
-    });
+    respondValidationMessage(res, 'entityId and noteId must be valid UUIDs');
     return;
   }
 

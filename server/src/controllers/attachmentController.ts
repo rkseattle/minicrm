@@ -17,6 +17,7 @@ import {
   setStorageConfig,
   testStorageConnection,
 } from '../services/storageService.js';
+import { respondValidationMessage } from '../utils/validationError.js';
 
 const VALID_RECORD_TYPES = new Set<RecordType>(['contact', 'account', 'deal', 'lead']);
 
@@ -33,18 +34,11 @@ export async function listAttachmentsHandler(req: Request, res: Response): Promi
   const { recordType, recordId } = req.query;
 
   if (typeof recordType !== 'string' || !VALID_RECORD_TYPES.has(recordType as RecordType)) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'recordType must be contact, account, deal, or lead',
-      },
-    });
+    respondValidationMessage(res, 'recordType must be contact, account, deal, or lead');
     return;
   }
   if (typeof recordId !== 'string' || !recordId) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'recordId is required' },
-    });
+    respondValidationMessage(res, 'recordId is required');
     return;
   }
 
@@ -62,35 +56,26 @@ export async function listAttachmentsHandler(req: Request, res: Response): Promi
  */
 export async function uploadAttachmentHandler(req: Request, res: Response): Promise<void> {
   if (!req.file) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'No file provided' } });
+    respondValidationMessage(res, 'No file provided');
     return;
   }
 
   const { recordType, recordId } = req.body as { recordType: unknown; recordId: unknown };
 
   if (typeof recordType !== 'string' || !VALID_RECORD_TYPES.has(recordType as RecordType)) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'recordType must be contact, account, deal, or lead',
-      },
-    });
+    respondValidationMessage(res, 'recordType must be contact, account, deal, or lead');
     return;
   }
   if (typeof recordId !== 'string' || !recordId) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'recordId is required' },
-    });
+    respondValidationMessage(res, 'recordId is required');
     return;
   }
 
   if (!ALLOWED_MIME_TYPES.has(req.file.mimetype)) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Unsupported file type. Accepted: PDF, .docx, .xlsx, .png, .jpg, .txt',
-      },
-    });
+    respondValidationMessage(
+      res,
+      'Unsupported file type. Accepted: PDF, .docx, .xlsx, .png, .jpg, .txt',
+    );
     return;
   }
 
@@ -256,12 +241,10 @@ export async function setStorageConfigHandler(req: Request, res: Response): Prom
     typeof secretAccessKey !== 'string' ||
     !secretAccessKey
   ) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'endpoint, bucket, accessKeyId, and secretAccessKey are required',
-      },
-    });
+    respondValidationMessage(
+      res,
+      'endpoint, bucket, accessKeyId, and secretAccessKey are required',
+    );
     return;
   }
 
@@ -305,12 +288,10 @@ export async function testStorageConfigHandler(req: Request, res: Response): Pro
     typeof secretAccessKey !== 'string' ||
     !secretAccessKey
   ) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'endpoint, bucket, accessKeyId, and secretAccessKey are required',
-      },
-    });
+    respondValidationMessage(
+      res,
+      'endpoint, bucket, accessKeyId, and secretAccessKey are required',
+    );
     return;
   }
 

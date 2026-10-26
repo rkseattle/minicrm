@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /**
  * Schema for creating a new contact.
@@ -11,15 +12,15 @@ import { z } from 'zod';
  */
 export const createContactSchema = z.object({
   first_name: z
-    .string({ required_error: 'First name is required' })
+    .string(typeErrorMessages({ required: 'First name is required' }))
     .min(1, 'First name is required')
     .trim(),
   last_name: z
-    .string({ required_error: 'Last name is required' })
+    .string(typeErrorMessages({ required: 'Last name is required' }))
     .min(1, 'Last name is required')
     .trim(),
   email: z
-    .string({ required_error: 'Email is required' })
+    .string(typeErrorMessages({ required: 'Email is required' }))
     .email('Must be a valid email address')
     .toLowerCase()
     .trim(),

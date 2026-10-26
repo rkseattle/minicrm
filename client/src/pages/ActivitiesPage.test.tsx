@@ -109,7 +109,7 @@ describe('ActivitiesPage', () => {
   it('renders a dash when the activity has no linked record', async () => {
     const noRecord = {
       ...ACTIVITY_1,
-      id: '00000000-0000-0000-0000-000000000499',
+      id: '00000000-0000-4000-8000-000000000499',
       contact_id: null,
       account_id: null,
       deal_id: null,
@@ -214,7 +214,7 @@ describe('ActivitiesPage', () => {
       }),
     );
     renderWithProviders(<ActivitiesPage />, {
-      initialEntries: ['/activities?owner=00000000-0000-0000-0000-000000000001'],
+      initialEntries: ['/activities?owner=00000000-0000-4000-8000-000000000001'],
     });
     await waitFor(() => {
       expect(capturedOwner).toBe('me');
@@ -222,7 +222,7 @@ describe('ActivitiesPage', () => {
   });
 
   it('passes owner UUID to API when admin uses ?owner param', async () => {
-    const adminUuid = '00000000-0000-0000-0000-000000000001';
+    const adminUuid = '00000000-0000-4000-8000-000000000001';
     let capturedOwner: string | null = null;
     server.use(
       http.get('/api/v1/activities', ({ request }) => {

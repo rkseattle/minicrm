@@ -19,6 +19,7 @@ import {
   listWebhookDeliveryLogs,
   WebhookUrlNotAllowedError,
 } from '../services/webhookService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * POST /api/v1/admin/webhooks
@@ -28,9 +29,7 @@ import {
 export async function createWebhookSubscriptionHandler(req: Request, res: Response): Promise<void> {
   const parsed = createWebhookSubscriptionSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -115,9 +114,7 @@ export async function getWebhookSubscriptionHandler(req: Request, res: Response)
 export async function updateWebhookSubscriptionHandler(req: Request, res: Response): Promise<void> {
   const parsed = updateWebhookSubscriptionSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -189,9 +186,7 @@ export async function listWebhookDeliveryLogsHandler(req: Request, res: Response
 
   const parsed = paginationParamsSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

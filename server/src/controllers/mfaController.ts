@@ -16,6 +16,7 @@ import {
 } from '@minicrm/shared/schemas/mfaSchema.js';
 import logger from '../logger.js';
 import { JWT_IDLE_EXPIRY_SECONDS, setSessionCookie } from '../auth/sessionCookie.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/auth/mfa/status
@@ -53,9 +54,7 @@ export async function setupMfa(req: Request, res: Response): Promise<void> {
 export async function verifyMfaSetup(req: Request, res: Response): Promise<void> {
   const parseResult = mfaVerifySetupSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parseResult.error.errors[0].message },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -95,9 +94,7 @@ export async function verifyMfaSetup(req: Request, res: Response): Promise<void>
 export async function disableMfa(req: Request, res: Response): Promise<void> {
   const parseResult = mfaDisableSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parseResult.error.errors[0].message },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -141,9 +138,7 @@ export async function disableMfa(req: Request, res: Response): Promise<void> {
 export async function verifyMfaLogin(req: Request, res: Response): Promise<void> {
   const parseResult = mfaVerifyLoginSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parseResult.error.errors[0].message },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 
@@ -187,9 +182,7 @@ export async function verifyMfaLogin(req: Request, res: Response): Promise<void>
 export async function verifyMfaRecoveryLogin(req: Request, res: Response): Promise<void> {
   const parseResult = mfaRecoveryLoginSchema.safeParse(req.body);
   if (!parseResult.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parseResult.error.errors[0].message },
-    });
+    respondValidationError(res, parseResult.error);
     return;
   }
 

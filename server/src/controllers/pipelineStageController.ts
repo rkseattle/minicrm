@@ -21,6 +21,7 @@ import {
   reorderPipelineStagesSchema,
 } from '@minicrm/shared/schemas/pipelineStageSchema.js';
 import logger from '../logger.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 /**
  * GET /api/v1/settings/pipeline-stages
@@ -48,12 +49,7 @@ export async function listPipelineStagesHandler(req: Request, res: Response): Pr
 export async function createPipelineStageHandler(req: Request, res: Response): Promise<void> {
   const parsed = createPipelineStageSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -95,12 +91,7 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
 
   const parsed = updatePipelineStageSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -151,12 +142,7 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
 export async function reorderPipelineStagesHandler(req: Request, res: Response): Promise<void> {
   const parsed = reorderPipelineStagesSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

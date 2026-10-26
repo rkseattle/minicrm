@@ -59,7 +59,7 @@ describe('invite token expiry', () => {
   it('rejects an expired invite token with AUTH_INVALID_TOKEN', async () => {
     // Sign a token that expired 1 second ago
     const expiredToken = jwt.sign(
-      { id: '00000000-0000-0000-0000-000000000001', purpose: 'invite' },
+      { id: '00000000-0000-4000-8000-000000000001', purpose: 'invite' },
       process.env.JWT_SECRET ?? '',
       { expiresIn: -1 },
     );
@@ -126,7 +126,7 @@ describe('invite token cannot be substituted with an auth JWT', () => {
   it('rejects a regular session JWT used as an invite token', async () => {
     // Sign a token that looks like a session token (no purpose claim)
     const sessionToken = jwt.sign(
-      { id: '00000000-0000-0000-0000-000000000002', email: 'x@x.com', role: 'rep' },
+      { id: '00000000-0000-4000-8000-000000000002', email: 'x@x.com', role: 'rep' },
       process.env.JWT_SECRET ?? '',
       { expiresIn: '1h' },
     );

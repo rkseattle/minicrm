@@ -21,6 +21,7 @@ import {
 } from '@minicrm/shared/schemas/sequenceSchema.js';
 import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { firstIssueMessage } from '../utils/validationError.js';
 
 /** Concurrent enrollment-processing limit for the due-enrollments cron. */
 const ENROLLMENT_PROCESSING_CONCURRENCY = 5;
@@ -118,13 +119,13 @@ export function validateStepActionConfig(
 ): string | null {
   if (actionType === 'send_email') {
     const parsed = sendEmailStepConfigSchema.safeParse(actionConfig);
-    if (!parsed.success) return `action_config: ${parsed.error.errors[0].message}`;
+    if (!parsed.success) return `action_config: ${firstIssueMessage(parsed.error)}`;
   } else if (actionType === 'log_call_reminder') {
     const parsed = logCallReminderStepConfigSchema.safeParse(actionConfig);
-    if (!parsed.success) return `action_config: ${parsed.error.errors[0].message}`;
+    if (!parsed.success) return `action_config: ${firstIssueMessage(parsed.error)}`;
   } else if (actionType === 'create_task') {
     const parsed = createTaskStepConfigSchema.safeParse(actionConfig);
-    if (!parsed.success) return `action_config: ${parsed.error.errors[0].message}`;
+    if (!parsed.success) return `action_config: ${firstIssueMessage(parsed.error)}`;
   }
   return null;
 }

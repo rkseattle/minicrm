@@ -21,6 +21,7 @@ import {
   sendWebhookActionConfigSchema,
 } from '@minicrm/shared/schemas/automationSchema.js';
 import { sendWebhookForAutomation } from './webhookService.js';
+import { firstIssueMessage } from '../utils/validationError.js';
 
 /** Columns that may be updated via updateAutomationRule — guards against SQL injection */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateAutomationRuleInput> = new Set([
@@ -373,7 +374,7 @@ async function executeRule(rule: AutomationRuleRow, context: TriggerContext): Pr
     if (rule.action_type === 'create_task') {
       const configParsed = createTaskActionConfigSchema.safeParse(rule.action_config);
       if (!configParsed.success) {
-        throw new Error(`Invalid action_config: ${configParsed.error.errors[0].message}`);
+        throw new Error(`Invalid action_config: ${firstIssueMessage(configParsed.error)}`);
       }
 
       const { subject, task_type, assignee_type, assignee_id, due_date_offset_days } =
@@ -402,7 +403,7 @@ async function executeRule(rule: AutomationRuleRow, context: TriggerContext): Pr
     } else if (rule.action_type === 'send_notification') {
       const configParsed = sendNotificationActionConfigSchema.safeParse(rule.action_config);
       if (!configParsed.success) {
-        throw new Error(`Invalid action_config: ${configParsed.error.errors[0].message}`);
+        throw new Error(`Invalid action_config: ${firstIssueMessage(configParsed.error)}`);
       }
       // Notification is logged to the application logger.
       // Full email/in-app notification delivery is post-alpha.
@@ -418,7 +419,7 @@ async function executeRule(rule: AutomationRuleRow, context: TriggerContext): Pr
     } else if (rule.action_type === 'send_webhook') {
       const configParsed = sendWebhookActionConfigSchema.safeParse(rule.action_config);
       if (!configParsed.success) {
-        throw new Error(`Invalid action_config: ${configParsed.error.errors[0].message}`);
+        throw new Error(`Invalid action_config: ${firstIssueMessage(configParsed.error)}`);
       }
       await sendWebhookForAutomation({
         url: configParsed.data.url,

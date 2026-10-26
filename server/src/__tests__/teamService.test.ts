@@ -21,7 +21,7 @@ import {
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 
-const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
+const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test Actor' };
 
 const BASE_USER = {
   passwordHash: '$2b$12$placeholder_hash',

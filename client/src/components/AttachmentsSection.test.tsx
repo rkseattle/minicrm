@@ -11,28 +11,28 @@ import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 import AttachmentsSection from './AttachmentsSection.js';
 import type { Attachment } from '@/api/attachments.js';
 
-const CONTACT_ID = '00000000-0000-0000-0000-000000000101';
+const CONTACT_ID = '00000000-0000-4000-8000-000000000101';
 
 const ATTACHMENT_1: Attachment = {
-  id: '00000000-0000-0000-0000-000000000a01',
+  id: '00000000-0000-4000-8000-000000000a01',
   record_type: 'contact',
   record_id: CONTACT_ID,
   filename: 'proposal.pdf',
   file_size: 1024 * 512, // 512 KB
   mime_type: 'application/pdf',
-  uploader_id: '00000000-0000-0000-0000-000000000001',
+  uploader_id: '00000000-0000-4000-8000-000000000001',
   uploader_name: 'Test Admin',
   uploaded_at: '2025-06-01T10:00:00.000Z',
 };
 
 const ATTACHMENT_2: Attachment = {
-  id: '00000000-0000-0000-0000-000000000a02',
+  id: '00000000-0000-4000-8000-000000000a02',
   record_type: 'contact',
   record_id: CONTACT_ID,
   filename: 'contract.docx',
   file_size: 2048,
   mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  uploader_id: '00000000-0000-0000-0000-000000000001',
+  uploader_id: '00000000-0000-4000-8000-000000000001',
   uploader_name: 'Test Admin',
   uploaded_at: '2025-06-02T10:00:00.000Z',
 };
@@ -369,7 +369,7 @@ describe('AttachmentsSection — file size formatting', () => {
   it('displays MB for large attachments', async () => {
     const largeAttachment = {
       ...ATTACHMENT_1,
-      id: '00000000-0000-0000-0000-000000000a03',
+      id: '00000000-0000-4000-8000-000000000a03',
       file_size: 2 * 1024 * 1024, // 2 MB — above the 1 MB threshold
     };
     withStorageConfigured([largeAttachment]);

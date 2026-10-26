@@ -18,6 +18,7 @@ import {
   deleteSession,
   sendMessage,
 } from '../services/aiSessionService.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 export async function listAiSessionsHandler(req: Request, res: Response): Promise<void> {
   const sessions = await listSessions(req.user!.id); // authenticate guarantees req.user
@@ -27,9 +28,7 @@ export async function listAiSessionsHandler(req: Request, res: Response): Promis
 export async function createAiSessionHandler(req: Request, res: Response): Promise<void> {
   const parsed = createAiSessionSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -41,7 +40,7 @@ export async function createAiSessionHandler(req: Request, res: Response): Promi
 export async function getAiSessionHandler(req: Request, res: Response): Promise<void> {
   const idParsed = sessionIdSchema.safeParse(req.params['sessionId']);
   if (!idParsed.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid session ID' } });
+    respondValidationMessage(res, 'Invalid session ID');
     return;
   }
   const sessionId = idParsed.data;
@@ -63,7 +62,7 @@ export async function getAiSessionHandler(req: Request, res: Response): Promise<
 export async function deleteAiSessionHandler(req: Request, res: Response): Promise<void> {
   const idParsed = sessionIdSchema.safeParse(req.params['sessionId']);
   if (!idParsed.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid session ID' } });
+    respondValidationMessage(res, 'Invalid session ID');
     return;
   }
   const sessionId = idParsed.data;
@@ -86,15 +85,13 @@ export async function deleteAiSessionHandler(req: Request, res: Response): Promi
 export async function sendAiMessageHandler(req: Request, res: Response): Promise<void> {
   const parsed = sendAiMessageSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
   const idParsed = sessionIdSchema.safeParse(req.params['sessionId']);
   if (!idParsed.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid session ID' } });
+    respondValidationMessage(res, 'Invalid session ID');
     return;
   }
   const sessionId = idParsed.data;

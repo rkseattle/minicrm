@@ -64,11 +64,12 @@
   },
   "//overrides.basic-ftp": "Crosses get-uri's declared ^5.3.1 because no 5.x fixes GHSA-c475-qrg2-pj4r; npm ls marks it invalid. Safe because get-uri imports only Client, and 6.0.0's sole break is refusing a separate FTP transfer host by default. Retire once get-uri declares ^6. See docs/dev/dependencies.md.",
   "//overrides.undici": "Knowingly violates @connectrpc/connect-node's ^5.28.4; npm ls marks it invalid. Safe only because its sole undici use is a globalThis.Headers polyfill gated on node major < 18, dead at this repo's Node 24 floor \u2014 recheck if connect-node starts using undici for real. Held on 7.x because promptfoo declares >=7.28.0 <8, a range 8.x would break. See docs/dev/dependencies.md. (MINCRM-746)",
+  "//overrides.@azure/identity": "Pins @azure/msal-node past the ^6.0.0 @azure/identity declares, because no 6.x fixes GHSA-xcx6-jx8p-x3h5; npm ls marks it invalid. Safe because 7.0.0's sole break removes responseMode from acquireTokenInteractive, which @azure/identity never passes (msal-node CHANGELOG.md). Dev only, via promptfoo. Retire once @azure/identity declares ^7. See docs/dev/dependencies.md.",
   "overrides": {
-    "undici": "7.29.1",
+    "undici": "7.30.1",
     "markdownlint-cli2": {
       "js-yaml": "4.3.2",
-      "markdown-it": "14.2.0",
+      "markdown-it": "14.3.3",
       "smol-toml": "1.7.1"
     },
     "sharp": "0.35.5",
@@ -80,7 +81,12 @@
     "qs": "6.16.0",
     "@xmldom/xmldom": "0.9.12",
     "decode-uri-component": "0.5.0",
-    "basic-ftp": "6.2.3"
+    "basic-ftp": "6.2.3",
+    "body-parser@1": "1.20.9",
+    "body-parser@2": "2.4.0",
+    "@azure/identity": {
+      "@azure/msal-node": "7.1.1"
+    }
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.2",

@@ -32,7 +32,7 @@ const SHARED_MODULE = 'shared/types/recordPath.ts';
 /** Authenticated non-admin routes declared today; see userGuideRouteParity for why. */
 const EXPECTED_ROUTE_COUNT = 23;
 
-const SAMPLE_ID = '11111111-2222-3333-4444-555555555555';
+const SAMPLE_ID = '11111111-2222-4333-8444-555555555555';
 
 /** Rewrites a concrete path back to its route shape, so an id matches `:id`. */
 function toRouteShape(path: string): string {

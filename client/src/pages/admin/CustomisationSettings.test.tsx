@@ -26,7 +26,7 @@ import CustomisationSettings from './CustomisationSettings.js';
 import { PIPELINE_STAGES_FIXTURE } from '../../test/msw/handlers.js';
 import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
-const FIELD_ID = '00000000-0000-0000-0000-000000000099';
+const FIELD_ID = '00000000-0000-4000-8000-000000000099';
 
 // ── Pipeline stages section ──────────────────────────────────────────────────
 

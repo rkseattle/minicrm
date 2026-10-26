@@ -403,7 +403,7 @@ describe('setUserPassword', () => {
 
 // ── adminSetUserPassword ───────────────────────────────────────────────────────
 
-const ADMIN_ID = '00000000-0000-0000-0000-000000000001';
+const ADMIN_ID = '00000000-0000-4000-8000-000000000001';
 
 describe('adminSetUserPassword', () => {
   it('hashes and stores the password', async () => {
@@ -1057,7 +1057,7 @@ describe('resetUserOnboarding', () => {
 
   it('throws USER_NOT_FOUND for a non-existent user', async () => {
     await expect(
-      resetUserOnboarding('00000000-0000-0000-0000-999999999999', ACTOR),
+      resetUserOnboarding('00000000-0000-4000-8000-999999999999', ACTOR),
     ).rejects.toMatchObject({ code: 'USER_NOT_FOUND' });
   });
 

@@ -63,7 +63,7 @@ export function capabilitiesToSendFrom(recordType: EmailLinkRecordType): Capabil
  */
 export const emailLinkTargetSchema = z.object({
   record_type: z.enum(EMAIL_LINK_RECORD_TYPES, {
-    errorMap: () => ({ message: 'record_type must be contact, lead, account, or deal' }),
+    error: 'record_type must be contact, lead, account, or deal',
   }),
   record_id: z.string().uuid('record_id must be a UUID'),
 });

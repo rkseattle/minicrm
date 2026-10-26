@@ -238,10 +238,10 @@ async function writeEveryReasonResults(): Promise<void> {
  */
 function dump(overrides: Partial<CoverageSessionDump> = {}): CoverageSessionDump {
   return {
-    id: '00000000-0000-0000-0000-0000000000d1',
-    sessionId: '00000000-0000-0000-0000-00000000005a',
-    dumpId: '00000000-0000-0000-0000-0000000000e1',
-    correlationId: '00000000-0000-0000-0000-0000000000c1',
+    id: '00000000-0000-4000-8000-0000000000d1',
+    sessionId: '00000000-0000-4000-8000-00000000005a',
+    dumpId: '00000000-0000-4000-8000-0000000000e1',
+    correlationId: '00000000-0000-4000-8000-0000000000c1',
     testId: 'test-1',
     testName: 'a test',
     testFile: 'qa/e2e/tests/apps/minicrm/functional/a.spec.ts',

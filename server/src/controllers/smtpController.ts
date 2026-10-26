@@ -13,6 +13,7 @@ import {
 } from '../services/smtpSettingsService.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 
@@ -48,12 +49,7 @@ export async function getSmtpConfigHandler(_req: Request, res: Response): Promis
 export async function putSmtpConfigHandler(req: Request, res: Response): Promise<void> {
   const parsed = putSmtpSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -78,12 +74,7 @@ export async function putSmtpConfigHandler(req: Request, res: Response): Promise
 export async function testSmtpHandler(req: Request, res: Response): Promise<void> {
   const parsed = testSmtpSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid request',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

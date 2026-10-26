@@ -25,11 +25,11 @@ import {
   listAuditLogActors,
 } from '../services/auditService.js';
 
-const RECORD_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-const RECORD_ID_2 = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-const ACTOR = { id: 'cccccccc-cccc-cccc-cccc-cccccccccccc', name: 'Test Actor' };
+const RECORD_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const RECORD_ID_2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const ACTOR = { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Test Actor' };
 /** Second actor used only in listAuditLogActors tests. */
-const ACTOR_2_ID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+const ACTOR_2_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 
 /** record_ids and actor IDs written exclusively by this file. */
 const FILE_RECORD_IDS = [RECORD_ID, RECORD_ID_2];

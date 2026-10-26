@@ -91,7 +91,7 @@ tests:
   - description: Response is relevant and directly addresses the query
     vars:
       query: How many contacts do we have named Alice?
-      tool_results: '{"contacts":[{"id":"c1000000-0000-0000-0000-000000000001","first_name":"Alice","last_name":"Chen","email":"alice.chen@example.com","company":"Acme Corp"}],"total":1}'
+      tool_results: '{"contacts":[{"id":"c1000000-0000-4000-8000-000000000001","first_name":"Alice","last_name":"Chen","email":"alice.chen@example.com","company":"Acme Corp"}],"total":1}'
     assert:
       - type: llm-rubric
         value: >
@@ -103,7 +103,7 @@ tests:
   - description: Response does not hallucinate entity names or field values
     vars:
       query: What deals do we have in the Enterprise pipeline?
-      tool_results: '{"deals":[{"id":"d1000000-0000-0000-0000-000000000001","title":"Acme Enterprise Contract","value":75000,"currency":"USD","stage":"proposal","pipeline":"Enterprise","status":"open"}],"total":1}'
+      tool_results: '{"deals":[{"id":"d1000000-0000-4000-8000-000000000001","title":"Acme Enterprise Contract","value":75000,"currency":"USD","stage":"proposal","pipeline":"Enterprise","status":"open"}],"total":1}'
     assert:
       - type: llm-rubric
         value: >
@@ -146,7 +146,7 @@ tests:
   - description: Multi-record search result lists each entity without fabricating fields
     vars:
       query: Show me all open deals
-      tool_results: '{"deals":[{"id":"d1000000-0000-0000-0000-000000000001","title":"Acme Contract","value":50000,"currency":"USD","stage":"proposal","status":"open"},{"id":"d1000000-0000-0000-0000-000000000002","title":"Beta SaaS Renewal","value":12000,"currency":"USD","stage":"negotiation","status":"open"}],"total":2}'
+      tool_results: '{"deals":[{"id":"d1000000-0000-4000-8000-000000000001","title":"Acme Contract","value":50000,"currency":"USD","stage":"proposal","status":"open"},{"id":"d1000000-0000-4000-8000-000000000002","title":"Beta SaaS Renewal","value":12000,"currency":"USD","stage":"negotiation","status":"open"}],"total":2}'
     assert:
       - type: llm-rubric
         value: >
@@ -158,7 +158,7 @@ tests:
   - description: Account lookup response reflects only the single matching record
     vars:
       query: Tell me about Globex Corp
-      tool_results: '{"accounts":[{"id":"a1000000-0000-0000-0000-000000000001","name":"Globex Corp","website":"globex.example.com","industry":"Manufacturing","phone":"+1-555-0100"}],"total":1}'
+      tool_results: '{"accounts":[{"id":"a1000000-0000-4000-8000-000000000001","name":"Globex Corp","website":"globex.example.com","industry":"Manufacturing","phone":"+1-555-0100"}],"total":1}'
     assert:
       - type: llm-rubric
         value: >
@@ -172,7 +172,7 @@ tests:
   - description: Successful write operation confirms what was created without overpromising
     vars:
       query: Create a note on the Acme account saying the renewal call went well
-      tool_results: '{"id":"n1000000-0000-0000-0000-000000000001","subject":"Renewal call","content":"The renewal call went well","entity_type":"account","entity_id":"a1000000-0000-0000-0000-000000000001","created_at":"2026-06-28T10:00:00Z"}'
+      tool_results: '{"id":"91000000-0000-4000-8000-000000000001","subject":"Renewal call","content":"The renewal call went well","entity_type":"account","entity_id":"a1000000-0000-4000-8000-000000000001","created_at":"2026-06-28T10:00:00Z"}'
     assert:
       - type: llm-rubric
         value: >
@@ -221,7 +221,7 @@ tests:
         [Prior turn — assistant asked: "I'm about to create a new contact for
         Bob Smith (bob@example.com). Shall I go ahead?"]
         User reply: Yes, go ahead.
-      tool_results: '{"id":"c1000000-0000-0000-0000-000000000001","first_name":"Bob","last_name":"Smith","email":"bob@example.com","created_at":"2026-06-28T10:00:00Z"}'
+      tool_results: '{"id":"c1000000-0000-4000-8000-000000000001","first_name":"Bob","last_name":"Smith","email":"bob@example.com","created_at":"2026-06-28T10:00:00Z"}'
     assert:
       - type: llm-rubric
         value: >
@@ -237,7 +237,7 @@ tests:
   - description: Response with ambiguous term can include a %%CONTEXT_PROPOSAL%% marker (MINCRM-429)
     vars:
       query: Find contacts I haven't heard from in a while
-      tool_results: '[{"id":"c1000000-0000-0000-0000-000000000001","first_name":"Alice","last_name":"Smith","last_activity_date":"2025-10-01"}]'
+      tool_results: '[{"id":"c1000000-0000-4000-8000-000000000001","first_name":"Alice","last_name":"Smith","last_activity_date":"2025-10-01"}]'
     assert:
       # Deterministic check: the contact named in the tool result must appear in the
       # response, with no hallucinated names. llm-rubric was previously used here but
@@ -274,7 +274,7 @@ tests:
   - description: Cross-entity note search result lists matching notes without fabricating entity names (MINCRM-432)
     vars:
       query: Show me all notes mentioning budget freeze
-      tool_results: '{"notes":[{"id":"n1000000-0000-0000-0000-000000000001","body_text":"The client raised a budget freeze concern during the Q3 review.","entity_type":"account","entity_id":"a1000000-0000-0000-0000-000000000001","author_name":"Alice Chen","created_at":"2026-06-01T10:00:00Z"},{"id":"n1000000-0000-0000-0000-000000000002","body_text":"Budget freeze mentioned again — deal on hold.","entity_type":"deal","entity_id":"d1000000-0000-0000-0000-000000000001","author_name":"Bob Lee","created_at":"2026-06-15T14:30:00Z"}],"total":2}'
+      tool_results: '{"notes":[{"id":"91000000-0000-4000-8000-000000000001","body_text":"The client raised a budget freeze concern during the Q3 review.","entity_type":"account","entity_id":"a1000000-0000-4000-8000-000000000001","author_name":"Alice Chen","created_at":"2026-06-01T10:00:00Z"},{"id":"91000000-0000-4000-8000-000000000002","body_text":"Budget freeze mentioned again — deal on hold.","entity_type":"deal","entity_id":"d1000000-0000-4000-8000-000000000001","author_name":"Bob Lee","created_at":"2026-06-15T14:30:00Z"}],"total":2}'
     assert:
       - type: llm-rubric
         value: >
@@ -300,7 +300,7 @@ tests:
   - description: Tag rename confirmation summary includes per-entity affected counts (MINCRM-433)
     vars:
       query: "Rename the tag 'cold' to 'dormant'"
-      tool_results: '{"renamed":true,"tag":{"id":"t1000000-0000-0000-0000-000000000001","name":"dormant"},"affected":{"contacts":3,"accounts":1,"deals":2,"leads":4,"total":10}}'
+      tool_results: '{"renamed":true,"tag":{"id":"f1000000-0000-4000-8000-000000000001","name":"dormant"},"affected":{"contacts":3,"accounts":1,"deals":2,"leads":4,"total":10}}'
     assert:
       - type: llm-rubric
         value: >
@@ -330,7 +330,7 @@ tests:
   - description: Report save confirmation identifies the report name and type (MINCRM-424)
     vars:
       query: Save this report as Q2 Pipeline Trend
-      tool_results: '{"saved":true,"report_id":"r1000000-0000-0000-0000-000000000001","name":"Q2 Pipeline Trend"}'
+      tool_results: '{"saved":true,"report_id":"81000000-0000-4000-8000-000000000001","name":"Q2 Pipeline Trend"}'
     assert:
       - type: llm-rubric
         value: >

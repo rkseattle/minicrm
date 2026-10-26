@@ -5,6 +5,7 @@
 
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { typeErrorMessages } from '@minicrm/shared/schemas/typeErrorMessages.js';
 import { createContactSchema, updateContactSchema } from '@minicrm/shared/schemas/contactSchema.js';
 import {
   createContact,
@@ -45,6 +46,7 @@ import {
 } from '../services/pdfExportService.js';
 import logger from '../logger.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
+import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -66,9 +68,7 @@ export async function createContactHandler(req: Request, res: Response): Promise
   const parsed = createContactSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -138,9 +138,7 @@ export async function listContactsHandler(req: Request, res: Response): Promise<
   if (typeof req.query.account === 'string' && req.query.account.length > 0) {
     const parsed = z.string().uuid().safeParse(req.query.account);
     if (!parsed.success) {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' },
-      });
+      respondValidationMessage(res, 'account must be a valid UUID');
       return;
     }
     accountId = parsed.data;
@@ -161,9 +159,7 @@ export async function listContactsHandler(req: Request, res: Response): Promise<
     limit: req.query.limit,
   });
   if (!paginationParsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
-    });
+    respondValidationError(res, paginationParsed.error);
     return;
   }
 
@@ -222,9 +218,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
   const parsed = updateContactSchema.safeParse(req.body);
 
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -357,9 +351,7 @@ async function resolveContactExportData(
   if (typeof req.query.account === 'string' && req.query.account.length > 0) {
     const parsed = z.string().uuid().safeParse(req.query.account);
     if (!parsed.success) {
-      res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' },
-      });
+      respondValidationMessage(res, 'account must be a valid UUID');
       return null;
     }
     accountId = parsed.data;
@@ -642,9 +634,7 @@ export async function mergeContactHandler(req: Request, res: Response): Promise<
   };
 
   if (!loserId || typeof loserId !== 'string') {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'loserId is required' },
-    });
+    respondValidationMessage(res, 'loserId is required');
     return;
   }
 
@@ -662,9 +652,7 @@ export async function mergeContactHandler(req: Request, res: Response): Promise<
   }
 
   if (winnerId === loserId) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: 'Cannot merge a contact with itself' },
-    });
+    respondValidationMessage(res, 'Cannot merge a contact with itself');
     return;
   }
 
@@ -716,12 +704,7 @@ export async function addContactAddressHandler(req: Request, res: Response): Pro
   const id = String(req.params['id']);
   const parsed = contactAddressSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid input',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -744,12 +727,7 @@ export async function updateContactAddressHandler(req: Request, res: Response): 
   const addressId = String(req.params['addressId']);
   const parsed = contactAddressSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: parsed.error.errors[0]?.message ?? 'Invalid input',
-      },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -794,11 +772,14 @@ export async function setDefaultContactAddressHandler(req: Request, res: Respons
 /** Zod schema for the send-email request body */
 const sendContactEmailSchema = z.object({
   subject: z
-    .string({ required_error: 'Subject is required' })
+    .string(typeErrorMessages({ required: 'Subject is required' }))
     .min(1, 'Subject is required')
     .max(255, 'Subject must be 255 characters or fewer')
     .trim(),
-  body: z.string({ required_error: 'Body is required' }).min(1, 'Body is required').trim(),
+  body: z
+    .string(typeErrorMessages({ required: 'Body is required' }))
+    .min(1, 'Body is required')
+    .trim(),
   deal_id: z.string().uuid('deal_id must be a valid UUID').optional(),
 });
 
@@ -824,9 +805,7 @@ export async function sendContactEmailHandler(req: Request, res: Response): Prom
 
   const parsed = sendContactEmailSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

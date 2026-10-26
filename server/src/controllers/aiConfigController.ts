@@ -22,6 +22,7 @@ import {
   getAiSessionRetentionDays,
   setAiCostRates,
 } from '../services/aiConfigService.js';
+import { respondValidationError } from '../utils/validationError.js';
 
 export async function getAiConfigHandler(req: Request, res: Response): Promise<void> {
   const config = await getAiConfig();
@@ -31,9 +32,7 @@ export async function getAiConfigHandler(req: Request, res: Response): Promise<v
 export async function setAiConfigHandler(req: Request, res: Response): Promise<void> {
   const parsed = setAiConfigSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -45,9 +44,7 @@ export async function setAiConfigHandler(req: Request, res: Response): Promise<v
 export async function setAiEnabledHandler(req: Request, res: Response): Promise<void> {
   const parsed = setAiEnabledSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -59,9 +56,7 @@ export async function setAiEnabledHandler(req: Request, res: Response): Promise<
 export async function setAiDpaAcknowledgmentHandler(req: Request, res: Response): Promise<void> {
   const parsed = setAiDpaAcknowledgmentSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -73,9 +68,7 @@ export async function setAiDpaAcknowledgmentHandler(req: Request, res: Response)
 export async function setAiSessionRetentionHandler(req: Request, res: Response): Promise<void> {
   const parsed = setAiSessionRetentionSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -87,9 +80,7 @@ export async function setAiSessionRetentionHandler(req: Request, res: Response):
 export async function testAiConnectionHandler(req: Request, res: Response): Promise<void> {
   const parsed = testAiConnectionSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 
@@ -109,9 +100,7 @@ export async function getMyRetentionWindowHandler(req: Request, res: Response): 
 export async function setAiCostRatesHandler(req: Request, res: Response): Promise<void> {
   const parsed = setAiCostRatesSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
-    });
+    respondValidationError(res, parsed.error);
     return;
   }
 

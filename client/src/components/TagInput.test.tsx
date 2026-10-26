@@ -247,7 +247,7 @@ describe('TagInput — admin with restriction enabled', () => {
 
 // ── ConnectedTagInput — entity type routing ────────────────────────────────────
 
-const CONNECTED_ID = '00000000-0000-0000-0000-000000000099';
+const CONNECTED_ID = '00000000-0000-4000-8000-000000000099';
 const ENTITY_QUERY_KEY = ['contact', CONNECTED_ID] as const;
 
 const EXISTING_TAG: TagResponse = {

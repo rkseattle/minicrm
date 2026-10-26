@@ -1659,6 +1659,12 @@ directly. **Save your configuration before pointing the IdP at it** — until **
 is set, the document advertises a placeholder entity ID built from the callback base URL,
 which is not a real endpoint.
 
+The metadata carries MiniCRM's signing certificate, self-signed and valid for ten years. An
+installation upgraded from a release that published a bare public key there gets a proper
+certificate for the same key the first time MiniCRM uses it — a metadata fetch or a SAML
+sign-in. If your IdP stored the
+old value, refresh the metadata in the IdP once.
+
 #### Step 3 — Enter your IdP's details
 
 | Field                              | Applies to | Notes                                                     |

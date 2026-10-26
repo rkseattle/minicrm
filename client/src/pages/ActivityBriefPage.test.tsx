@@ -16,7 +16,7 @@ import ActivityBriefPage from './ActivityBriefPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 
-const ACTIVITY_ID = '00000000-0000-0000-0000-000000000401';
+const ACTIVITY_ID = '00000000-0000-4000-8000-000000000401';
 const BRIEF_ROUTE = '/activities/:id/brief';
 const BRIEF_URL = `/activities/${ACTIVITY_ID}/brief`;
 
@@ -58,7 +58,7 @@ describe('ActivityBriefPage', () => {
             suggested_talking_points: ['Confirm budget owner.'],
             known_objections: [],
           },
-          generated_by: '00000000-0000-0000-0000-000000000001',
+          generated_by: '00000000-0000-4000-8000-000000000001',
           generated_at: '2026-07-01T00:00:00.000Z',
         }),
       ),

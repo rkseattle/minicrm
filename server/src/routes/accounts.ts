@@ -69,13 +69,13 @@ const router = Router();
  *                     $ref: '#/components/schemas/Account'
  *             example:
  *               accounts:
- *                 - id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 - id: a1b2c3d4-0000-4000-8000-000000000001
  *                   name: Acme Corp
  *                   industry: Technology
  *                   website: https://www.acme.com
  *                   employee_range: 51-200
  *                   revenue_range: $10M-$50M
- *                   owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                   owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                   created_at: '2025-03-15T09:00:00.000Z'
  *                   updated_at: '2025-03-15T09:00:00.000Z'
  *       400:
@@ -281,13 +281,13 @@ router.post(
  *                   $ref: '#/components/schemas/Account'
  *             example:
  *               account:
- *                 id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 id: a1b2c3d4-0000-4000-8000-000000000001
  *                 name: Acme Corp
  *                 industry: Technology
  *                 website: https://www.acme.com
  *                 employee_range: 51-200
  *                 revenue_range: $10M-$50M
- *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       400:
@@ -370,13 +370,13 @@ router.get('/search', authenticate, asyncHandler(searchAccountsHandler));
  *                   $ref: '#/components/schemas/Account'
  *             example:
  *               account:
- *                 id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 id: a1b2c3d4-0000-4000-8000-000000000001
  *                 name: Acme Corp
  *                 industry: Technology
  *                 website: https://www.acme.com
  *                 employee_range: 51-200
  *                 revenue_range: $10M-$50M
- *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-15T09:00:00.000Z'
  *       401:
@@ -475,13 +475,13 @@ router.get(
  *                   $ref: '#/components/schemas/Account'
  *             example:
  *               account:
- *                 id: a1b2c3d4-0000-0000-0000-000000000001
+ *                 id: a1b2c3d4-0000-4000-8000-000000000001
  *                 name: Acme Corp
  *                 industry: SaaS
  *                 website: https://www.acme.com
  *                 employee_range: 201-500
  *                 revenue_range: $10M-$50M
- *                 owner_id: u1b2c3d4-0000-0000-0000-000000000001
+ *                 owner_id: b1b2c3d4-0000-4000-8000-000000000001
  *                 created_at: '2025-03-15T09:00:00.000Z'
  *                 updated_at: '2025-03-16T10:30:00.000Z'
  *       400:
