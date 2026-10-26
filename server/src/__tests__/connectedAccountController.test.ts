@@ -533,11 +533,11 @@ describe('DELETE of an OAuth account', () => {
 });
 
 /*
- * The flag is a single row every test in this file shares, so these run in sequence and
- * restore it. Vitest interleaves `it`s within a file, and a parallel block that switched
- * the flag off turned every other test in the file into a 403.
+ * The flag is a single row every test in this file shares, so these must never run
+ * concurrently: one that switched it off would turn the others into 403s. `concurrent:
+ * false` keeps that true even if sequence.concurrent is ever turned on.
  */
-describe.sequential('the email_sync feature flag gates every route', () => {
+describe('the email_sync feature flag gates every route', { concurrent: false }, () => {
   /** The file-level beforeEach turns the flag on, so each test here turns it back off. */
   async function disableEmailSync(): Promise<void> {
     await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
@@ -570,7 +570,7 @@ describe.sequential('the email_sync feature flag gates every route', () => {
  * are invisible to a status-code assertion alone — the Location value is the only proof
  * that a specific guard fired.
  */
-describe.sequential('OAuth routes reject before reaching a provider', () => {
+describe('OAuth routes reject before reaching a provider', { concurrent: false }, () => {
   function connectCode(location: string | undefined): string | null {
     if (!location) return null;
     return new URL(location, 'http://localhost').searchParams.get('connect');
@@ -673,7 +673,7 @@ describe.sequential('OAuth routes reject before reaching a provider', () => {
   });
 });
 
-describe.sequential('OAuth state is bound to the session that issued it', () => {
+describe('OAuth state is bound to the session that issued it', { concurrent: false }, () => {
   it("refuses a state issued to rep A when rep B's session replays it", async () => {
     const state = 'state-issued-to-rep-a';
     await pool.query(

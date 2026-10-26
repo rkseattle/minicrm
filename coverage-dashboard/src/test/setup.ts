@@ -4,7 +4,7 @@
  * English-only, see coverage-dashboard's own docs).
  */
 
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { setupServer } from 'msw/node';
 import { beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { handlers } from './msw/handlers.js';
