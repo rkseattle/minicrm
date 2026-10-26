@@ -80,6 +80,12 @@ cover it. So does a 0.x minor whose changelog marks it breaking.
 | ------------ | ------- | ------------------------------------------------------------------------------ |
 | `typescript` | 6.x     | 7.x: `@typescript-eslint/parser` (latest, 8.72.1) declares `typescript <6.1.0` |
 
+### Types that lag their runtime
+
+`@types/pdfkit` 0.17.7 is DefinitelyTyped's latest, and pdfkit (0.20.2 here) ships no types
+of its own, so the declarations describe 0.17. Check pdfkit's changelog, not the types,
+before using an API the 0.18–0.20 releases changed.
+
 ### Exact pins
 
 Each `package.json` pins an exact version (`1.2.3`, no `^` or `~`), as Renovate's pinning
