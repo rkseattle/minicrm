@@ -35,6 +35,6 @@
     "pg": "8.23.1",
     "promptfoo": "0.125.1",
     "tsx": "4.23.15",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   }
 }

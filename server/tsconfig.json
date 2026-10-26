@@ -8,6 +8,9 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "outDir": "./dist",
+    // Repo root, so the build emits dist/server/src, which server/Dockerfile copies.
+    "rootDir": "..",
+    "types": ["node"],
     "paths": {
       "@minicrm/shared/schemas/*": ["../shared/schemas/*"],
       "@minicrm/shared/generated/*": ["../shared/generated/*"],
