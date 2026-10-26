@@ -6,8 +6,8 @@
     "node": ">=24",
     "npm": ">=11"
   },
-  "//engines": "DECLARATIVE, not enforced. npm honours engines only under engine-strict, and no .npmrc sets it \u2014 deliberately: 82 packages in the tree declare node >= 22 and would turn every npm ci into a hard failure. CI pins the real floor via .nvmrc + setup-node. (MINCRM-704)",
-  "//packageManager": "Also declarative \u2014 nothing here enables Corepack. Records the npm that ships with the node version .nvmrc pins (node:24-alpine -> npm 11.17.0), which is what CI actually runs. (MINCRM-704)",
+  "//engines": "DECLARATIVE, not enforced. npm honours engines only under engine-strict, and no .npmrc sets it — deliberately: 82 packages in the tree declare node >= 22 and would turn every npm ci into a hard failure. CI pins the real floor via .nvmrc + setup-node. (MINCRM-704)",
+  "//packageManager": "Also declarative — nothing here enables Corepack. Records the npm that ships with the node version .nvmrc pins (node:24-alpine -> npm 11.17.0), which is what CI actually runs. (MINCRM-704)",
   "packageManager": "npm@11.17.0",
   "workspaces": [
     "shared",
@@ -63,15 +63,10 @@
     ]
   },
   "//overrides.basic-ftp": "Crosses get-uri's declared ^5.3.1 because no 5.x fixes GHSA-c475-qrg2-pj4r; npm ls marks it invalid. Safe because get-uri imports only Client, and 6.0.0's sole break is refusing a separate FTP transfer host by default. Retire once get-uri declares ^6. See docs/dev/dependencies.md.",
-  "//overrides.undici": "Knowingly violates @connectrpc/connect-node's ^5.28.4; npm ls marks it invalid. Safe only because its sole undici use is a globalThis.Headers polyfill gated on node major < 18, dead at this repo's Node 24 floor \u2014 recheck if connect-node starts using undici for real. Held on 7.x because promptfoo declares >=7.28.0 <8, a range 8.x would break. See docs/dev/dependencies.md. (MINCRM-746)",
+  "//overrides.undici": "Knowingly violates @connectrpc/connect-node's ^5.28.4; npm ls marks it invalid. Safe only because its sole undici use is a globalThis.Headers polyfill gated on node major < 18, dead at this repo's Node 24 floor — recheck if connect-node starts using undici for real. Also violates @ai-sdk/provider-utils' ^6.28.0, safe because it uses only Agent connect.lookup and fetch, both unchanged in 7.x. Held on 7.x because promptfoo declares >=7.30.1 <8, a range 8.x would break. See docs/dev/dependencies.md.",
   "//overrides.@azure/identity": "Pins @azure/msal-node past the ^6.0.0 @azure/identity declares, because no 6.x fixes GHSA-xcx6-jx8p-x3h5; npm ls marks it invalid. Safe because 7.0.0's sole break removes responseMode from acquireTokenInteractive, which @azure/identity never passes (msal-node CHANGELOG.md). Dev only, via promptfoo. Retire once @azure/identity declares ^7. See docs/dev/dependencies.md.",
   "overrides": {
     "undici": "7.30.1",
-    "markdownlint-cli2": {
-      "js-yaml": "4.3.2",
-      "markdown-it": "14.3.3",
-      "smol-toml": "1.7.1"
-    },
     "sharp": "0.35.5",
     "@hono/node-server": "2.1.1",
     "promptfoo": {
@@ -89,25 +84,22 @@
     }
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.57.2",
-    "@typescript-eslint/parser": "^8.57.2",
-    "@typescript-eslint/typescript-estree": "^8.57.2",
-    "eslint": "^9.39.4",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-n": "^17.24.0",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
-    "markdownlint-cli2": "^0.23.1",
-    "prettier": "^3.8.1",
-    "typescript": "^5.9.3"
-  },
-  "optionalDependencies": {
-    "@rolldown/binding-linux-x64-gnu": "1.0.3"
+    "@typescript-eslint/eslint-plugin": "8.72.1",
+    "@typescript-eslint/parser": "8.72.1",
+    "@typescript-eslint/typescript-estree": "8.72.1",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-n": "17.24.0",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
+    "markdownlint-cli2": "0.24.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3"
   },
   "dependencies": {
-    "@node-saml/node-saml": "^5.1.0"
+    "@node-saml/node-saml": "5.2.0"
   }
 }

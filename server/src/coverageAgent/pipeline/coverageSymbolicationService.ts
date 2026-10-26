@@ -16,8 +16,6 @@
  * instruments against original TS/JSX via Babel + sourcemaps,
  *    so window.__coverage__ dumps are pre-resolved to original source
  *    positions with no separate source-map resolution step needed here.
- *    (The `source-map` dependency is retained for a future dump format that
- *    is NOT pre-resolved by its instrumenter; see resolveViaSourceMap below.)
  *
  * Resolution is always anchored to the dump's own tagged commitSha — never
  * the working tree's current HEAD — mirroring coverageConfig.ts's existing
