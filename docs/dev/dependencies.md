@@ -57,7 +57,30 @@ A pin is not automatically a problem to be removed. Some are held deliberately â
 
 ---
 
-## Exact pins
+## Version policy: current and pinned
+
+The rule: take every release of a direct dependency, and record a reason under **Held**
+for anything left behind â€” `npm outdated` lists what is. Staying behind is how a routine
+advisory becomes a forced, multi-major emergency.
+
+- **`.npmrc` sets `save-exact=true`**, so `npm install <pkg>` writes `1.2.3`, never `^1.2.3`.
+- **`node scripts/check-exact-pins.mjs`** fails on any range in a manifest's dependency
+  sections (root `overrides` pin transitive packages and are `check-pin-drift`'s). CI's
+  lint-and-typecheck job runs it, and its `--self-test`, whenever a manifest changes.
+- **What is behind** is `npm outdated --workspaces --include-workspace-root`. Nothing runs
+  it on a schedule or raises it to a person yet; that is an update bot's job (Renovate's
+  dependency dashboard is the usual one), and choosing one is open.
+
+A major moves in its own commit, after its vendor's migration guide, with the tests that
+cover it. So does a 0.x minor whose changelog marks it breaking.
+
+### Held
+
+| Package      | Held at | Why                                                                            |
+| ------------ | ------- | ------------------------------------------------------------------------------ |
+| `typescript` | 6.x     | 7.x: `@typescript-eslint/parser` (latest, 8.72.1) declares `typescript <6.1.0` |
+
+### Exact pins
 
 Each `package.json` pins an exact version (`1.2.3`, no `^` or `~`), as Renovate's pinning
 guide recommends for applications: the manifest says what is installed, and a bump is
@@ -66,14 +89,15 @@ reference, such as server's `"@minicrm/shared": "*"`, which names a sibling, not
 
 ---
 
-## Three tools, three different halves
+## The tools, and which half each covers
 
-| Tool                          | Covers                                       | Blocking? |
-| ----------------------------- | -------------------------------------------- | --------- |
-| `npm audit` gate              | High/critical advisories, less the allowlist | **Yes**   |
-| Dependabot (`github-actions`) | Action version upgrades                      | No        |
-| Dependabot (`npm`, security)  | Advisories against **declared** dependencies | No        |
-| `scripts/check-pin-drift.mjs` | Newer patches for **override** pins          | No        |
+| Tool                           | Covers                                       | Blocking? |
+| ------------------------------ | -------------------------------------------- | --------- |
+| `npm audit` gate               | High/critical advisories, less the allowlist | **Yes**   |
+| Dependabot (`github-actions`)  | Action version upgrades                      | No        |
+| Dependabot (`npm`, security)   | Advisories against **declared** dependencies | No        |
+| `scripts/check-pin-drift.mjs`  | Newer patches for **override** pins          | No        |
+| `scripts/check-exact-pins.mjs` | A range in any workspace manifest            | **Yes**   |
 
 The gate has one escape: `ALLOWLISTED_ADVISORIES` in `scripts/npm-audit-gate.sh`, for an
 advisory with **no patched release** that only dev tooling reaches. The gate enforces the

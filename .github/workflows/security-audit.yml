@@ -22,6 +22,9 @@ jobs:
   security-audit:
     name: Daily Dependency Audit
     runs-on: ubuntu-latest
+    # npm ci, one registry lookup per override and the audit take minutes; a hung registry must not
+    # hold a runner for GitHub's six-hour default.
+    timeout-minutes: 20
     # Stated on the job, not merely inherited from the workflow default. This job runs
     # `npm ci`, which executes arbitrary lifecycle scripts from the entire dependency
     # tree; the read-only token is the boundary that keeps a malicious postinstall from
@@ -51,8 +54,14 @@ jobs:
       # Covers what Dependabot cannot: an override pins a package nothing here declares,
       # so no PR is ever raised for it and the pin goes stale silently. (see
       # .github/dependabot.yml and docs/dev/dependencies.md)
+      # Fenced so the summary's Markdown keeps the report's columns.
       - name: Report override pin drift (advisory)
-        run: node scripts/check-pin-drift.mjs >> "$GITHUB_STEP_SUMMARY" || true
+        run: |
+          {
+            echo '```'
+            node scripts/check-pin-drift.mjs || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # The repo's single audit definition, shared with ci.yml's blocking gate. Extracted
       # rather than duplicated: these two had already drifted once, which is how the

@@ -41,6 +41,7 @@ bash scripts/check-gate-pointer-parity.sh
 node scripts/check-ci-filter-globs.mjs
 node scripts/check-guard-invocation.mjs
 node scripts/check-api-path-versioning.mjs
+node scripts/check-exact-pins.mjs
 ```
 
 **E2E does not gate individual commits** — see `.claude/gates/e2e-run.md`.

@@ -24,10 +24,9 @@ import { readFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+import { EXACT_VERSION } from './check-exact-pins.mjs';
 
-/** An exact version: no range operator, no wildcard, no tag. */
-const EXACT_VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
  * Flattens the `overrides` block into one entry per pinned package.

@@ -187,6 +187,9 @@ jobs:
               # stale build output, which makes them worth compiling.
               - '*/vitest.config.ts'
               - '*/vite.config.ts'
+              # A workspace manifest is a dependency change, and check-exact-pins.mjs
+              # (run by lint-and-typecheck) checks exactly the edit this entry admits.
+              - '*/package.json'
             # Single-purpose filter for the ESLint rule set. The `config` filter's
             # root-level '*.json'/'*.yml' globs do not match .mjs, so eslint.config.mjs
             # and eslint-plugins/** were covered by no filter at all: a PR adding a
@@ -650,9 +653,9 @@ jobs:
             # (MINCRM-696)
             #
             # That reasoning is per-OUTPUT, not per-job, and e2e-framework-specs
-            # now carries always() anyway — its playwright-version input matches
-            # `qa/package.json`, which is in NO filter lint-and-typecheck gates
-            # on. See that job's own comment. (MINCRM-699)
+            # carries always() anyway, so a future filter edit that leaves its
+            # playwright-version input outside lint-and-typecheck's gate cannot
+            # skip it. See that job's own comment.
             qa-e2e-scripts:
               - 'qa/e2e/scripts/**/*.ts'
 
@@ -757,6 +760,15 @@ jobs:
 
       - name: API paths are versioned
         run: node scripts/check-api-path-versioning.mjs
+
+      - name: Exact-pin guard self-test
+        run: node scripts/check-exact-pins.mjs --self-test
+
+      - name: Dependencies are pinned exactly
+        run: node scripts/check-exact-pins.mjs
+
+      - name: Dependency drift report self-test
+        run: node scripts/check-pin-drift.mjs --self-test
 
       # The hooks and their self-tests now live in the delivery-kit plugin
       # (rkseattle/claude-delivery-kit), whose own CI runs both on every push. A test
@@ -1592,15 +1604,13 @@ jobs:
     # already in the `qa` filter, so the invariant is bidirectional without a new
     # filter output.
     #
-    # always() is required here, and was not before. The other two inputs (qa,
-    # qa-e2e-scripts) are both in lint-and-typecheck's own gate, so that job could
-    # never be skipped out from under this one — the note above the `changes` job
-    # says as much. playwright-version breaks that: `qa/package.json` matches NO
-    # other filter (`config` is `*.json`, root-level only), so a lockfile-free
-    # version bump skips lint-and-typecheck, and GitHub auto-skips any job whose
-    # `needs` were skipped BEFORE evaluating `if:`. The explicit result check
-    # preserves the Phase 1 gate: a real lint/typecheck failure still blocks.
-    # Same form as attestation-docs on server-tests. (MINCRM-699)
+    # always() keeps this job from being skipped with lint-and-typecheck. Its
+    # playwright-version input (`qa/package.json`) is in that job's gate today,
+    # through `qa` and `config`'s '*/package.json', but GitHub auto-skips any job
+    # whose `needs` were skipped BEFORE evaluating `if:`, so one filter edit would
+    # silently drop it. The explicit result check preserves the Phase 1 gate: a
+    # real lint/typecheck failure still blocks. Same form as attestation-docs on
+    # server-tests.
     if: |
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
