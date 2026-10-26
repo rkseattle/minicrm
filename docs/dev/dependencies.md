@@ -24,11 +24,11 @@ The root `package.json` `overrides` block pins transitive dependencies. It is an
 hatch, not a version policy: every entry exists because a package we do not control
 declares a dependency on a version we cannot accept.
 
-`markdownlint-cli2` declares `smol-toml: "1.7.0"` — an exact pin — and 1.7.0 carries a
-high advisory. The options are override it, fork the package, or drop the tool. npm
-provides no fourth choice.
+`markdownlint-cli2` 0.23 declared `smol-toml: "1.7.0"` — an exact pin — and 1.7.0 carried a
+high advisory. The options were override it, fork the package, or drop the tool. npm
+provides no fourth choice. (0.24 moved its own pins forward, and that override was retired.)
 
-### Why not just take the latest of everything
+### Why the lockfile, not the range, decides what installs
 
 - **npm `overrides` has no floating syntax.** `"^4.13.5"` resolves once at install time
   and freezes in the lockfile. A caret override goes stale exactly like an exact one,
@@ -54,6 +54,15 @@ Nested entries scope a pin to one dependent:
 
 A pin is not automatically a problem to be removed. Some are held deliberately — the
 `adm-zip` and `undici` examples below show why.
+
+---
+
+## Exact pins
+
+Each `package.json` pins an exact version (`1.2.3`, no `^` or `~`), as Renovate's pinning
+guide recommends for applications: the manifest says what is installed, and a bump is
+always a visible diff rather than a lockfile-only change. The one exception is a workspace
+reference, such as server's `"@minicrm/shared": "*"`, which names a sibling, not a release.
 
 ---
 
@@ -122,7 +131,7 @@ bash scripts/npm-audit-gate.sh  # expect a pass; raw npm audit also counts the a
 ```
 
 Then verify the consumer still works. A pin change is a dependency change for whatever
-sits on top of it: after moving `smol-toml`, run `markdownlint-cli2`; after moving
+sits on top of it: after moving `basic-ftp`, run the promptfoo evals; after moving
 `sharp`, build the client.
 
 ---
@@ -155,29 +164,32 @@ pointless. A pin sitting inside one vulnerable range may be escaping a worse one
 
 ## Worked example: the `undici` pin violates a declared range
 
-`undici` is pinned to a version that satisfies none of its consumers cleanly:
+`undici` is pinned to a version that violates two of its five consumers' declared ranges:
 
-| Consumer                              | Declares      |
-| ------------------------------------- | ------------- |
-| `@connectrpc/connect-node`            | `^5.28.4`     |
-| `@ai-sdk/provider-utils`              | `^6.28.0`     |
-| `@apidevtools/json-schema-ref-parser` | `^6.28.0`     |
-| `jsdom`                               | `^7.25.0`     |
-| `promptfoo`                           | `>=7.28.0 <8` |
+| Consumer                   | Declares      |
+| -------------------------- | ------------- |
+| `@connectrpc/connect-node` | `^5.28.4`     |
+| `@ai-sdk/provider-utils`   | `^6.28.0`     |
+| `jsdom`                    | `^7.25.0`     |
+| `openai` (peer)            | `>=5 <9`      |
+| `promptfoo`                | `>=7.30.1 <8` |
 
-All five are served one hoisted copy. The `^5.28.4` violation is real and `npm ls` marks
-it `invalid`, but it is safe for a specific, verified reason: connect-node's only use of
-`undici` is `node-headers-polyfill.js`, which assigns `globalThis.Headers` behind a
-`major < 18` check. This repo's floor is Node 24, so the branch never executes. The
-module-level `require("undici")` still runs, so the package must resolve and load — only
-the `Headers` export is ever touched.
+All five are served one hoisted copy. Two violations are real and `npm ls` marks them
+`invalid`, each safe for a specific, verified reason:
+
+- connect-node's only use of `undici` is `node-headers-polyfill.js`, which assigns
+  `globalThis.Headers` behind a `major < 18` check. This repo's floor is Node 24, so the
+  branch never executes. The module-level `require("undici")` still runs, so the package
+  must resolve and load — only the `Headers` export is ever touched.
+- `@ai-sdk/provider-utils` (dev only, under promptfoo) calls `new Agent({ connect: { lookup } })`
+  and `fetch`. 7.x keeps both: its connector options still pass Node's `lookup` through.
 
 **This is the fragile shape**, and worth knowing about: a pin that contradicts a declared
 range is safe only as long as the consumer's usage stays what it was when someone checked.
 An upgrade to `@connectrpc/connect-node` that starts using `undici` for real would break
 silently. If that pin can ever be retired, it should be.
 
-Note the constraint on moving it: `promptfoo` declares `>=7.28.0 <8`, which 8.x would
+Note the constraint on moving it: `promptfoo` declares `>=7.30.1 <8`, which 8.x would
 break — and unlike connect-node's, that range is currently **satisfied**. Staying on the
 7.x line is deliberate, not neglect.
 

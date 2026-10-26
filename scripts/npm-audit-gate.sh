@@ -55,10 +55,6 @@ EVALUATOR="${SCRIPT_DIR}/npm-audit-evaluate.mjs"
 # entry names its package, why it is unreachable in production, and where the
 # fix is tracked upstream. Delete an entry the day its advisory goes away.
 ALLOWLISTED_ADVISORIES=(
-  # node-forge <=1.4.0 (lenient RSA PKCS#1 v1.5 verification). Optional dep of
-  # promptfoo's jks-js, a qa/ eval tool; absent from `npm ls --omit=dev`.
-  # Fix: digitalbazaar/forge#1159.
-  "GHSA-86w9-cpqp-85rv"
 )
 
 GITHUB_ANNOTATIONS=0
