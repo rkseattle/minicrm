@@ -18,12 +18,10 @@ import {
   GDPR_PLACEHOLDER_EMAIL_SQL,
   GDPR_REDACTED_SQL,
   GDPR_REDACTED_TEXT,
-  arrayHasAddress,
   erasedAddressDigest,
   erasedPlaceholderAddress,
   lockForErasure,
   redactMessages,
-  replaceInArray,
 } from './mail/gdprRedaction.js';
 import { normalizeAddress } from './mail/address.js';
 import type { AuditActor, AuditLogRow } from './auditService.js';
@@ -35,7 +33,10 @@ import type { ActivityRow } from './activityService.js';
 import type { DealRow } from './dealService.js';
 import type { CustomFieldValueWithDefinition } from './customFieldService.js';
 import { MASKED_AUDIT_VALUES, MASKING_JOIN } from './auditService.js';
-import { scrubActivities } from './activityService.js';
+import { activityIdsForPerson, scrubActivities } from './activityService.js';
+import { deleteLinksForDeletedEntity } from './emailMatchingService.js';
+import { redactIntentsForErasure } from './emailSendIntentService.js';
+import type { GdprDeletionLogEntry } from '@minicrm/shared/types/gdpr.js';
 
 // ── PII field lists ────────────────────────────────────────────────────────────
 
@@ -74,13 +75,22 @@ export interface GdprDeletionLogRow {
   erased_address_hmac: string | null;
 }
 
-/**
- * A log row as the API returns it: everything but the address digest, which only ingest
- * needs and which a client could test candidate addresses against if the key ever leaked.
- */
-export type GdprDeletionLogEntry = Omit<GdprDeletionLogRow, 'erased_address_hmac'>;
+/** A log row without the address digest, which only ingest needs, before wire conversion. */
+type GdprDeletionLogPublicRow = Omit<GdprDeletionLogRow, 'erased_address_hmac'>;
 
-/** The columns of GdprDeletionLogEntry, so no read path can return the digest by `*`. */
+/**
+ * The API's shape for a log row. The digest is never selected: a client could test candidate
+ * addresses against it if the key ever leaked.
+ */
+function toDeletionLogEntry(row: GdprDeletionLogPublicRow): GdprDeletionLogEntry {
+  return {
+    ...row,
+    requested_at: row.requested_at.toISOString(),
+    completed_at: row.completed_at?.toISOString() ?? null,
+  };
+}
+
+/** The public columns of a log row, so no read path can return the digest by `*`. */
 const DELETION_LOG_PUBLIC_COLUMNS = `id, record_type, record_id, requested_by, requested_at,
   completed_at, erasure_scope, notes, email_messages_redacted, email_links_deleted`;
 
@@ -242,18 +252,6 @@ export const EMAIL_SCOPE_FOR_SUBJECT_SQL = `SELECT m.id FROM email_messages m
     WHERE l.record_type = $1 AND l.record_id = $2`;
 
 /**
- * Selects the activities that carry the subject's mail text: those associated with them when
- * filed, and those filed from a message in their scope, whatever its links were then. Shares
- * EMAIL_SCOPE_FOR_SUBJECT_SQL's parameters, so erasure and export reach the same rows.
- */
-const SUBJECT_ACTIVITIES_SQL = `SELECT activity_id AS id FROM activity_participants
-    WHERE record_type = $1 AND record_id = $2
-   UNION
-   SELECT a.id FROM activities a
-    WHERE (a.metadata->>'email_message_id') IS NOT NULL
-      AND (a.metadata->>'email_message_id') IN (SELECT s.id::text FROM (${EMAIL_SCOPE_FOR_SUBJECT_SQL}) s)`;
-
-/**
  * Redacts the data subject from synced mail and send intents, and drops the record's links.
  * Runs inside the erasure's transaction, after lockForErasure.
  */
@@ -271,49 +269,16 @@ async function cascadeErasureToEmail(
     recordId,
     address,
   ]);
-  // Before redaction, which replaces the address the scope matches on.
-  const associated = await client.query<{ id: string }>(SUBJECT_ACTIVITIES_SQL, [
-    recordType,
-    recordId,
-    address,
-  ]);
-  const messagesRedacted = await redactMessages(
-    client,
-    scope.rows.map((r) => r.id),
-    address,
-    placeholder,
-  );
-
+  const scopeIds = scope.rows.map((r) => r.id);
   // A send's activity on a deal or account carries the mail's text.
-  await scrubActivities(
-    client,
-    associated.rows.map((row) => row.id),
-    GDPR_REDACTED_TEXT,
-    'gdpr_erasure',
-  );
+  const activityIds = await activityIdsForPerson(client, { recordType, recordId }, scopeIds);
+  const messagesRedacted = await redactMessages(client, scopeIds, address, placeholder);
+  await scrubActivities(client, activityIds, GDPR_REDACTED_TEXT, 'gdpr_erasure');
 
-  const links = await client.query(
-    'DELETE FROM email_message_links WHERE record_type = $1 AND record_id = $2',
-    [recordType, recordId],
-  );
-  await client.query(
-    'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = $2',
-    [recordType, recordId],
-  );
+  const linksDeleted = await deleteLinksForDeletedEntity(client, recordType, recordId);
+  await redactIntentsForErasure(client, { recordType, recordId }, address, placeholder);
 
-  // Every status: a settled intent still holds the recipients until its purge.
-  await client.query(
-    `UPDATE email_send_intents
-        SET to_addresses = ${replaceInArray('to_addresses', '$3', '$4')},
-            cc_addresses = ${replaceInArray('cc_addresses', '$3', '$4')},
-            activity_notes = NULL,
-            updated_at = now()
-      WHERE ${arrayHasAddress('to_addresses', '$3')} OR ${arrayHasAddress('cc_addresses', '$3')}
-         OR (record_type = $1 AND record_id = $2)`,
-    [recordType, recordId, address, placeholder],
-  );
-
-  return { messagesRedacted, linksDeleted: links.rowCount ?? 0 };
+  return { messagesRedacted, linksDeleted };
 }
 
 /**
@@ -655,30 +620,42 @@ export async function eraseLead(
 
 /**
  * The activities an export owes the subject: a contact's own, and every activity erasure would
- * scrub as theirs (SUBJECT_ACTIVITIES_SQL), so the two never disagree.
+ * scrub as theirs (activityIdsForPerson over the same scope), so the two never disagree.
  */
 async function getActivitiesForSubject(
   recordType: CascadeRecordType,
   recordId: string,
-  email: string,
+  scopeIds: readonly string[],
 ): Promise<ActivityRow[]> {
+  const theirs = await activityIdsForPerson(pool, { recordType, recordId }, scopeIds);
   const result = await pool.query<ActivityRow>(
     `SELECT a.*, u.name AS owner_name
        FROM activities a
        JOIN users u ON u.id = a.owner_id
-      WHERE ($1 = 'contact' AND a.contact_id = $2)
-         OR a.id IN (${SUBJECT_ACTIVITIES_SQL})
+      WHERE ($1 = 'contact' AND a.contact_id = $2) OR a.id = ANY($3::uuid[])
       ORDER BY a.created_at DESC`,
-    [recordType, recordId, normalizeAddress(email)],
+    [recordType, recordId, theirs],
   );
   return result.rows;
 }
 
-/** The synced mail a subject-access export includes; the same scope erasure redacts. */
-async function getEmailMessagesForSubject(
+/** The ids of the synced mail in the subject's scope, read once for a whole export. */
+async function emailScopeForSubject(
   recordType: CascadeRecordType,
   recordId: string,
   email: string,
+): Promise<string[]> {
+  const scope = await pool.query<{ id: string }>(EMAIL_SCOPE_FOR_SUBJECT_SQL, [
+    recordType,
+    recordId,
+    normalizeAddress(email),
+  ]);
+  return scope.rows.map((r) => r.id);
+}
+
+/** The synced mail a subject-access export includes; the same scope erasure redacts. */
+async function getEmailMessagesForSubject(
+  scopeIds: readonly string[],
 ): Promise<GdprEmailMessage[]> {
   const result = await pool.query<GdprEmailMessage>(
     `SELECT m.id, ca.email_address AS mailbox, m.direction, m.from_address, m.to_addresses,
@@ -693,9 +670,9 @@ async function getEmailMessagesForSubject(
               '[]'::json) AS links
        FROM email_messages m
        JOIN connected_accounts ca ON ca.id = m.connected_account_id
-      WHERE m.id IN (${EMAIL_SCOPE_FOR_SUBJECT_SQL})
+      WHERE m.id = ANY($1::uuid[])
       ORDER BY m.sent_at DESC NULLS LAST, m.id`,
-    [recordType, recordId, normalizeAddress(email)],
+    [scopeIds],
   );
   return result.rows;
 }
@@ -710,6 +687,7 @@ async function getEmailMessagesForSubject(
  *
  * @param id - UUID of the contact
  * @returns Full export payload
+ * @throws Error with code NOT_FOUND when no such contact exists
  */
 export async function getGdprExportForContact(id: string): Promise<ContactGdprExport> {
   const [contactResult, dealsResult, notesResult, cfResult, auditResult] = await Promise.all([
@@ -781,6 +759,11 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
   ]);
 
   const contact = contactResult.rows[0];
+  if (!contact) {
+    throw Object.assign(new Error('Contact not found'), { code: 'NOT_FOUND' });
+  }
+  // One scope for the whole export, so its activities and messages describe the same mail.
+  const scopeIds = await emailScopeForSubject('contact', id, contact.email);
 
   const customFields: CustomFieldValueWithDefinition[] = cfResult.rows.map((row) => ({
     id: row.id,
@@ -808,12 +791,12 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
     subject: id,
     exported_at: new Date().toISOString(),
     contact,
-    activities: await getActivitiesForSubject('contact', id, contact.email),
+    activities: await getActivitiesForSubject('contact', id, scopeIds),
     deals: dealsResult.rows,
     notes,
     custom_fields: customFields,
     audit_history: auditResult.rows,
-    email_messages: await getEmailMessagesForSubject('contact', id, contact.email),
+    email_messages: await getEmailMessagesForSubject(scopeIds),
   };
 }
 
@@ -823,6 +806,7 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
  *
  * @param id - UUID of the lead
  * @returns Full export payload
+ * @throws Error with code NOT_FOUND when no such lead exists
  */
 export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> {
   const [leadResult, notesResult, cfResult, auditResult] = await Promise.all([
@@ -884,6 +868,10 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
   ]);
 
   const lead = leadResult.rows[0];
+  if (!lead) {
+    throw Object.assign(new Error('Lead not found'), { code: 'NOT_FOUND' });
+  }
+  const scopeIds = await emailScopeForSubject('lead', id, lead.email);
 
   const customFields: CustomFieldValueWithDefinition[] = cfResult.rows.map((row) => ({
     id: row.id,
@@ -913,8 +901,8 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
     notes,
     custom_fields: customFields,
     audit_history: auditResult.rows,
-    activities: await getActivitiesForSubject('lead', id, lead.email),
-    email_messages: await getEmailMessagesForSubject('lead', id, lead.email),
+    activities: await getActivitiesForSubject('lead', id, scopeIds),
+    email_messages: await getEmailMessagesForSubject(scopeIds),
   };
 }
 
@@ -935,7 +923,7 @@ export async function listGdprDeletions(
 
   const [countResult, dataResult] = await Promise.all([
     pool.query<{ count: string }>('SELECT COUNT(*) AS count FROM gdpr_deletion_log'),
-    pool.query<GdprDeletionLogEntry>(
+    pool.query<GdprDeletionLogPublicRow>(
       `SELECT ${DELETION_LOG_PUBLIC_COLUMNS} FROM gdpr_deletion_log
         ORDER BY requested_at DESC LIMIT $1 OFFSET $2`,
       [limit, offset],
@@ -943,7 +931,7 @@ export async function listGdprDeletions(
   ]);
 
   return {
-    data: dataResult.rows,
+    data: dataResult.rows.map(toDeletionLogEntry),
     total: parseInt(countResult.rows[0].count, 10),
     page,
     limit,
@@ -962,12 +950,13 @@ export async function getGdprStatusForRecord(
   recordType: string,
   recordId: string,
 ): Promise<GdprDeletionLogEntry | null> {
-  const result = await pool.query<GdprDeletionLogEntry>(
+  const result = await pool.query<GdprDeletionLogPublicRow>(
     `SELECT ${DELETION_LOG_PUBLIC_COLUMNS} FROM gdpr_deletion_log
       WHERE record_type = $1 AND record_id = $2 LIMIT 1`,
     [recordType, recordId],
   );
-  return result.rows[0] ?? null;
+  const row = result.rows[0];
+  return row ? toDeletionLogEntry(row) : null;
 }
 
 // ── AI data cascade ────────────────────────────────────────────────────────────

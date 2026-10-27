@@ -79,6 +79,24 @@ describe('swaggerSpec — generated spec structure', () => {
     }
   });
 
+  it('keeps every email privacy and GDPR export block, which a YAML error drops silently', () => {
+    const spec = swaggerSpec as {
+      paths: Record<string, Record<string, { responses?: Record<string, unknown> }>>;
+    };
+    for (const [path, method] of [
+      ['/api/v1/connected-accounts/{id}', 'patch'],
+      ['/api/v1/email-messages/{id}/thread-privacy', 'patch'],
+      ['/api/v1/settings/email-sync-excluded-domains', 'get'],
+      ['/api/v1/settings/email-sync-backfill-days', 'get'],
+      ['/api/v1/contacts/{id}/gdpr-export', 'get'],
+      ['/api/v1/leads/{id}/gdpr-export', 'get'],
+    ] as const) {
+      expect(spec.paths[path]?.[method], `${method} ${path}`).toBeDefined();
+    }
+    expect(spec.paths['/api/v1/contacts/{id}/gdpr-export']?.get?.responses).toHaveProperty('404');
+    expect(spec.paths['/api/v1/leads/{id}/gdpr-export']?.get?.responses).toHaveProperty('404');
+  });
+
   it('documents all expected API paths', () => {
     const paths = Object.keys((swaggerSpec as { paths: Record<string, unknown> }).paths);
     const expectedPaths = [

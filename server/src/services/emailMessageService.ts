@@ -35,7 +35,7 @@ import { writeAuditEntries, writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { clearDerivedLinkSuppression, suppressDerivedLink } from './emailMatchingService.js';
 import { buildVisibilityFilter } from './visibilityService.js';
-import { scrubActivities } from './activityService.js';
+import { activityIdsFiledFromMessages, scrubActivities } from './activityService.js';
 import { lockForIngest } from './mail/gdprRedaction.js';
 
 /** A link row as the write endpoints return it. */
@@ -495,21 +495,19 @@ export async function setThreadPrivacy(
       return null;
     }
     const message = { ...owned, thread_id: threadRow.thread_id };
+    const threadMessages = await client.query<{ id: string }>(
+      'SELECT id FROM email_messages WHERE connected_account_id = $1 AND thread_id = $2',
+      [message.connected_account_id, message.thread_id],
+    );
+    const threadIds = threadMessages.rows.map((row) => row.id);
     const updated = await client.query(
-      `UPDATE email_messages SET is_private = $3
-        WHERE connected_account_id = $1 AND thread_id = $2 AND is_private <> $3`,
-      [message.connected_account_id, message.thread_id, isPrivate],
+      `UPDATE email_messages SET is_private = $2 WHERE id = ANY($1::uuid[]) AND is_private <> $2`,
+      [threadIds, isPrivate],
     );
     if (isPrivate) {
       // Activities already filed from the thread carry its text onto shared timelines,
       // whoever owns them now: the text is the mailbox owner's.
-      const filed = await client.query<{ id: string }>(
-        `SELECT a.id FROM activities a
-           JOIN email_messages m ON (a.metadata->>'email_message_id') = m.id::text
-          WHERE m.connected_account_id = $1 AND m.thread_id = $2`,
-        [message.connected_account_id, message.thread_id],
-      );
-      const filedIds = filed.rows.map((row) => row.id);
+      const filedIds = await activityIdsFiledFromMessages(client, threadIds);
       // A real change of setting moves every filed activity's cutoff, so text a user wrote and
       // removed meanwhile is masked too; a repeated request moves only what it scrubbed.
       const activityIds = await scrubActivities(

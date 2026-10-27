@@ -763,6 +763,10 @@ router.post('/:id/gdpr-erase', authenticate, requireRole('admin'), asyncHandler(
  *         description: Caller is not an admin
  *       404:
  *         description: Lead not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 /** Export all personal data held for a lead as a JSON download. */
 router.get(

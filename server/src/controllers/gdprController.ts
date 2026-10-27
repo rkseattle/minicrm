@@ -20,6 +20,7 @@ import {
   type CascadeRecordType,
 } from '../services/gdprService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { errorBody } from '../utils/errorBody.js';
 
 /** Schema for the optional notes field in erasure request bodies */
 const eraseBodySchema = z.object({
@@ -64,10 +65,7 @@ export async function eraseContactHandler(req: Request, res: Response): Promise<
       });
       return;
     }
-    if (domainErr.code === 'NOT_FOUND') {
-      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
-      return;
-    }
+    if (respondIfNotFound(err, res, 'Contact')) return;
     throw err;
   }
 }
@@ -107,12 +105,17 @@ export async function eraseLeadHandler(req: Request, res: Response): Promise<voi
       });
       return;
     }
-    if (domainErr.code === 'NOT_FOUND') {
-      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Lead not found' } });
-      return;
-    }
+    if (respondIfNotFound(err, res, 'Lead')) return;
     throw err;
   }
+}
+
+/** Answers 404 for a service's NOT_FOUND; true when it did. */
+function respondIfNotFound(err: unknown, res: Response, entity: 'Contact' | 'Lead'): boolean {
+  // Safe: a domain error carries an optional string code; null or a non-object has none.
+  if ((err as { code?: string } | null | undefined)?.code !== 'NOT_FOUND') return false;
+  res.status(404).json(errorBody('NOT_FOUND', `${entity} not found`));
+  return true;
 }
 
 /**
@@ -127,7 +130,13 @@ export async function gdprExportContactHandler(req: Request, res: Response): Pro
     return;
   }
 
-  const exportData = await getGdprExportForContact(id);
+  let exportData;
+  try {
+    exportData = await getGdprExportForContact(id);
+  } catch (err: unknown) {
+    if (respondIfNotFound(err, res, 'Contact')) return;
+    throw err;
+  }
 
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="gdpr-export-contact-${id}.json"`);
@@ -146,7 +155,13 @@ export async function gdprExportLeadHandler(req: Request, res: Response): Promis
     return;
   }
 
-  const exportData = await getGdprExportForLead(id);
+  let exportData;
+  try {
+    exportData = await getGdprExportForLead(id);
+  } catch (err: unknown) {
+    if (respondIfNotFound(err, res, 'Lead')) return;
+    throw err;
+  }
 
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="gdpr-export-lead-${id}.json"`);

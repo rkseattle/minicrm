@@ -99,13 +99,18 @@ with how the rest of the record is handled:
   associated with them when it was filed, which still reaches it after the mailbox is
   disconnected. Activities filed before this release were associated where
   their send record and message still existed (sends from the previous 30 days whose mailbox
-  is still connected); older ones are not reached.
+  is still connected); older ones are not reached. Erasure then drops the person's
+  association rows along with their links, so an export run afterwards lists those already
+  redacted activities only through the mail they were filed from.
 - **Sent-mail audit entries** — the audit log records the recipients of each email sent from
   MiniCRM and, being append-only, is never edited. The erased address is masked whenever the
   log is read instead, as other erased values are.
 
 One address, one person: if two records share an address, erasing either redacts the mail
-for that address everywhere.
+for that address everywhere. The redaction is permanent and has no override: mail to or from
+an erased address is redacted as it arrives in every mailbox, even if the person later
+returns and is created as a new record. Erase a shared role address such as `info@` only
+when no one else's mail goes through it.
 
 #### AI data cascade
 

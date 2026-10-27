@@ -2060,6 +2060,12 @@ router.post(
  *                 message: id must be a valid UUID
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: No such contact
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: Caller is not an admin
  *         content:
