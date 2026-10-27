@@ -50,7 +50,8 @@ allowed for dynamic IDs with a one-line comment explaining why.
   `{ tag: [...] }` options object is invisible to `gen-conflict-group-configs.ts`
   and to CI's `--grep`, so the file still runs in the parallel matrix.
 - Settings mutations call `ensureSystemDefaults()` for cleanup.
-- Feature flags via `withFlags()` only — never via API or DB mutation.
+- Feature flags via `withFlags()` only — never via API or DB mutation. An admin panel that
+  reads the org-level value from the admin flag list uses `withAdminFlagList()` instead.
 - No `loginAsAdmin` in `test.beforeAll` — call it at the start of the test body.
 - `test.describe.serial` is **not** isolation. It orders tests within one file and
   gives no cross-file protection; a file relying on it alone still runs beside

@@ -1047,3 +1047,39 @@ export async function withFlags(
     }
   });
 }
+
+/**
+ * Overrides flags' org-level `enabled` in the admin flag list the browser fetches, as
+ * withFlags() does for the caller's own resolved flags. Admin panels that are
+ * disabled-not-hidden read the org value from this list, which withFlags() does not touch.
+ *
+ * @param overrides - flag_key to the org-level value the browser should see.
+ */
+export async function withAdminFlagList(
+  pageOrContext: Page | BrowserContext,
+  overrides: Record<string, boolean>,
+): Promise<void> {
+  await pageOrContext.route('**/api/v1/admin/feature-flags', async (route) => {
+    try {
+      const response = await route.fetch();
+      // Safe: GET /api/v1/admin/feature-flags answers with this shape (ListFeatureFlagsResponse).
+      const body = (await response.json()) as {
+        flags: Array<{ flag_key: string; enabled: boolean }>;
+      };
+      await route.fulfill({
+        json: {
+          ...body,
+          flags: body.flags.map((flag) =>
+            flag.flag_key in overrides ? { ...flag, enabled: overrides[flag.flag_key] } : flag,
+          ),
+        },
+      });
+    } catch {
+      // Same reasoning as withFlags(): abort rather than leave the request pending forever.
+      // abort() itself throws only when the page closed between the check and the call.
+      if (!route.request().frame().page().isClosed()) {
+        await route.abort().catch(() => undefined);
+      }
+    }
+  });
+}

@@ -30,7 +30,8 @@ steps, `package.json` scripts, `index.html` entry points, and type-only imports.
 - `setState(updater)` with side effects — StrictMode double-fires
 - QA: `waitForTimeout` or `networkidle`; app-domain strings in `qa/e2e/framework/`;
   spec importing from `@pages/*`; settings-mutating test missing `@serial`;
-  `loginAsAdmin` in `beforeAll`; feature flags toggled outside `withFlags()`
+  `loginAsAdmin` in `beforeAll`; feature flags toggled outside `withFlags()` (or
+  `withAdminFlagList()` for the admin flag list)
 
 ## Deferral checks
 
