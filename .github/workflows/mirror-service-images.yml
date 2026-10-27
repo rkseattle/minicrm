@@ -37,7 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - source: public.ecr.aws/docker/library/postgres:16
+          - source: docker.io/library/postgres:16
             target: minicrm-ci-postgres:16
           - source: docker.io/greenmail/standalone:2.1.13
             target: minicrm-ci-greenmail:2.1.13
