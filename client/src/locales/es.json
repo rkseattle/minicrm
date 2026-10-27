@@ -1508,7 +1508,8 @@
       "email_linked": "Correo archivado en un registro",
       "email_unlinked": "Correo quitado de un registro",
       "email_sent": "Correo enviado",
-      "email_send_unconfirmed": "Envío de correo sin confirmar"
+      "email_send_unconfirmed": "Envío de correo sin confirmar",
+      "email_thread_privacy_changed": "Privacidad del hilo de correo cambiada"
     },
     "recordTypes": {
       "contact": "Contacto",

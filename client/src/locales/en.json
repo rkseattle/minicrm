@@ -1473,7 +1473,8 @@
       "email_linked": "Email filed on a record",
       "email_unlinked": "Email removed from a record",
       "email_sent": "Email sent",
-      "email_send_unconfirmed": "Email send unconfirmed"
+      "email_send_unconfirmed": "Email send unconfirmed",
+      "email_thread_privacy_changed": "Email thread privacy changed"
     },
     "recordTypes": {
       "contact": "Contact",

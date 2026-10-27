@@ -11252,6 +11252,13 @@
           "nullable": false,
           "default": "'{}'::text[]",
           "comment": "Template tags the first send could not resolve, so a replay answers exactly as it did."
+        },
+        {
+          "name": "thread_private",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "True when the message answered or forwarded was in a private thread at claim time. Its filing then stores the message private and files an activity without a body."
         }
       ],
       "indexes": [

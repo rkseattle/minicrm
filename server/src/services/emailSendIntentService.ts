@@ -74,6 +74,8 @@ export interface SendIntent {
   activityNotes: string | null;
   actorName: string;
   status: SendIntentStatus;
+  /** The answered or forwarded message's thread was private when the send was claimed. */
+  threadPrivate: boolean;
 }
 
 export interface NewSendIntent {
@@ -85,6 +87,8 @@ export interface NewSendIntent {
   recordType: EmailLinkRecordType | null;
   recordId: string | null;
   activityNotes: string | null;
+  /** Whether the answered or forwarded message's thread is private; false for a new one. */
+  threadPrivate: boolean;
   toAddresses: readonly string[];
   ccAddresses: readonly string[];
   /** The client's key for this compose; a repeat under it never sends again. */
@@ -110,6 +114,8 @@ export interface FilableMessage {
   bodyText: string | null;
   toAddresses: readonly string[];
   ccAddresses: readonly string[];
+  /** As it stands after the thread's privacy is inherited; a private send files no body. */
+  isPrivate: boolean;
 }
 
 interface SendIntentRow {
@@ -123,10 +129,11 @@ interface SendIntentRow {
   activity_notes: string | null;
   actor_name: string;
   status: SendIntentStatus;
+  thread_private: boolean;
 }
 
 const INTENT_COLUMNS = `id, user_id, connected_account_id, rfc_message_id, provider_message_id,
-  record_type, record_id, activity_notes, actor_name, status`;
+  record_type, record_id, activity_notes, actor_name, status, thread_private`;
 
 function toSendIntent(row: SendIntentRow): SendIntent {
   return {
@@ -140,6 +147,7 @@ function toSendIntent(row: SendIntentRow): SendIntent {
     activityNotes: row.activity_notes,
     actorName: row.actor_name,
     status: row.status,
+    threadPrivate: row.thread_private,
   };
 }
 
@@ -290,6 +298,7 @@ export async function claimSendIntent(
     input.idempotencyKey,
     input.requestHash,
     input.unresolvedMergeTags,
+    input.threadPrivate,
   ];
   const client = await pool.connect();
   try {
@@ -305,8 +314,8 @@ export async function claimSendIntent(
       `INSERT INTO email_send_intents
          (user_id, actor_name, connected_account_id, rfc_message_id, record_type, record_id,
           activity_notes, to_addresses, cc_addresses, idempotency_key, request_hash,
-          unresolved_merge_tags)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          unresolved_merge_tags, thread_private)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        ON CONFLICT (user_id, idempotency_key) DO NOTHING
        RETURNING id`,
       values,
@@ -319,7 +328,8 @@ export async function claimSendIntent(
               SET status = 'pending', actor_name = $2, connected_account_id = $3,
                   rfc_message_id = $4, provider_message_id = NULL, record_type = $5,
                   record_id = $6, activity_notes = $7, to_addresses = $8, cc_addresses = $9,
-                  unresolved_merge_tags = $12, created_at = now(), updated_at = now()
+                  unresolved_merge_tags = $12, thread_private = $13, created_at = now(),
+                  updated_at = now()
             WHERE user_id = $1 AND idempotency_key = $10 AND request_hash = $11
               AND status = 'not_sent'
             RETURNING id`,
@@ -559,6 +569,12 @@ export async function fileSentMessage(
     [message.id],
   );
 
+  // The claim knew the conversation; the stored row's thread may be one sync derived.
+  const isPrivate = intent.threadPrivate || message.isPrivate;
+  if (isPrivate && !message.isPrivate) {
+    await client.query('UPDATE email_messages SET is_private = true WHERE id = $1', [message.id]);
+  }
+
   const activityField =
     record && record.type !== 'lead' ? ACTIVITY_RECORD_FIELDS[record.type] : null;
   let activityId: string | null = null;
@@ -572,7 +588,8 @@ export async function fileSentMessage(
         type: 'Email',
         direction: 'Outbound',
         subject: truncate(message.subject?.trim() || UNTITLED_SUBJECT, ACTIVITY_SUBJECT_MAX),
-        notes: (intent.activityNotes ?? message.bodyText) || undefined,
+        // A private thread stays its owner's: the activity records the send, not the text.
+        notes: isPrivate ? undefined : (intent.activityNotes ?? message.bodyText) || undefined,
         [activityField]: record.id,
         owner_id: intent.userId,
       },
@@ -644,10 +661,11 @@ export async function fileReconciledIntents(
     message_body_text: string | null;
     to_addresses: string[];
     cc_addresses: string[];
+    is_private: boolean;
     email_address: string;
   }>(
     `SELECT m.id, m.provider_message_id, m.subject, m.message_body_text, m.to_addresses,
-            m.cc_addresses, ca.email_address
+            m.cc_addresses, m.is_private, ca.email_address
        FROM email_messages m
        JOIN connected_accounts ca ON ca.id = m.connected_account_id
       WHERE m.connected_account_id = $1 AND m.provider_message_id = ANY($2)`,
@@ -679,6 +697,7 @@ export async function fileReconciledIntents(
           bodyText: row.message_body_text,
           toAddresses: row.to_addresses,
           ccAddresses: row.cc_addresses,
+          isPrivate: row.is_private,
         },
         row.email_address,
       );

@@ -1508,7 +1508,8 @@
       "email_linked": "E-Mail einem Datensatz zugeordnet",
       "email_unlinked": "E-Mail von einem Datensatz entfernt",
       "email_sent": "E-Mail gesendet",
-      "email_send_unconfirmed": "E-Mail-Versand unbestätigt"
+      "email_send_unconfirmed": "E-Mail-Versand unbestätigt",
+      "email_thread_privacy_changed": "Datenschutz eines E-Mail-Verlaufs geändert"
     },
     "recordTypes": {
       "contact": "Kontakt",

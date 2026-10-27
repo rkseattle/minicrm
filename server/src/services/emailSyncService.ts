@@ -53,6 +53,7 @@ import {
 } from './emailSendIntentService.js';
 import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js';
 import { matchMessagesToRecords } from './emailMatchingService.js';
+import { inheritThreadPrivacy, lockMailboxThreads } from './emailMessageService.js';
 import type { MatchableMessage } from './emailMatchingService.js';
 import {
   getDealAutoLink,
@@ -331,11 +332,18 @@ async function commitPage(
       },
       exclusion,
     );
+    // After the intent locks, keeping the send path's intent → message order.
+    await lockMailboxThreads(client, accountId);
     const created = kept.length > 0 ? await storeMessages(client, accountId, kept) : [];
 
     // Same transaction as the insert: a message and the records it names become visible
     // together, and nothing re-reads a message once its provider id is stored.
     await matchMessagesToRecords(client, created, dealAutoLink);
+    await inheritThreadPrivacy(
+      client,
+      accountId,
+      kept.map((message) => message.providerMessageId),
+    );
 
     createdCount = created.length;
 

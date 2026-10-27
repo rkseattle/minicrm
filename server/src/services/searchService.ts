@@ -13,7 +13,7 @@
 
 import pool from '../db.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
-import { buildVisibleLinkPredicate } from './emailMessageService.js';
+import { buildVisibleLinkPredicate, messageAccessPredicate } from './emailMessageService.js';
 import { isFlagEnabledForUser } from './featureFlagService.js';
 import { userCapabilities } from './roleService.js';
 
@@ -86,7 +86,7 @@ async function searchEmails(pattern: string, options: SearchOptions): Promise<Em
           ORDER BY l.record_type, l.record_id
           LIMIT 1
        ) target
-      WHERE ca.user_id = $2
+      WHERE ${messageAccessPredicate('$2')}
         AND (m.subject ILIKE $1 ESCAPE '\\' OR m.message_snippet ILIKE $1 ESCAPE '\\')
       ORDER BY m.sent_at DESC NULLS LAST, m.id
       LIMIT $3`,

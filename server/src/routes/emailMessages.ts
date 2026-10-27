@@ -14,6 +14,7 @@ import {
   listRecordMessagesHandler,
   listUnmatchedMessagesHandler,
   sendEmailHandler,
+  setThreadPrivacyHandler,
 } from '../controllers/emailMessageController.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { authenticate } from '../middleware/auth.js';
@@ -269,6 +270,54 @@ router.post('/send', asyncHandler(sendEmailHandler));
  *         description: That record is already linked to the message
  */
 router.post('/:id/links', asyncHandler(createLinkHandler));
+
+/**
+ * @openapi
+ * /api/v1/email-messages/{id}/thread-privacy:
+ *   patch:
+ *     tags: [Email Messages]
+ *     operationId: setEmailThreadPrivacy
+ *     summary: Mark a thread in one of your mailboxes private, or visible again
+ *     description: >
+ *       Sets is_private on every message in the thread the given message belongs to, within
+ *       the caller's own mailbox. A private thread is readable only by its mailbox's owner,
+ *       administrators included, and mail arriving later in it inherits the setting. Other
+ *       users' copies of the same conversation, in their own mailboxes, are unaffected.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [is_private]
+ *             additionalProperties: false
+ *             properties:
+ *               is_private: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: The thread's new setting, and how many messages changed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 is_private: { type: boolean }
+ *                 updated: { type: integer }
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.patch('/:id/thread-privacy', asyncHandler(setThreadPrivacyHandler));
 
 /**
  * @openapi

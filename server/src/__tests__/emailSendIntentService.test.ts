@@ -408,6 +408,34 @@ describe('the intent each outcome leaves', () => {
   });
 });
 
+/** Stores a private message in this mailbox to answer, in a thread of its own. */
+async function privateParent(threadId: string): Promise<string> {
+  const result = await pool.query<{ id: string }>(
+    `INSERT INTO email_messages
+       (connected_account_id, provider_message_id, thread_id, direction, from_address,
+        rfc_message_id, is_private)
+     VALUES ($1, $2, $3, 'inbound', 'someone@example.net', $4, true)
+     RETURNING id`,
+    [accountId, `INBOX:${threadId}`, threadId, `${threadId}@x.test`],
+  );
+  return result.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+}
+
+async function filedRow(
+  contactId: string,
+): Promise<{ notes: string | null; isPrivate: boolean; threadId: string }> {
+  const result = await pool.query<{ notes: string | null; is_private: boolean; thread_id: string }>(
+    `SELECT a.notes, m.is_private, m.thread_id
+       FROM activities a
+       JOIN email_message_links l ON l.record_type = 'contact' AND l.record_id = a.contact_id
+       JOIN email_messages m ON m.id = l.email_message_id AND m.direction = 'outbound'
+      WHERE a.contact_id = $1`,
+    [contactId],
+  );
+  const row = result.rows[0]!; // Safe: each caller files exactly one send from this contact.
+  return { notes: row.notes, isPrivate: row.is_private, threadId: row.thread_id };
+}
+
 describe('the sync engine filing a send', () => {
   it('files a send whose own filing failed: its record, one activity, one audit', async () => {
     const contactId = await createContact('failed-filing');
@@ -435,6 +463,99 @@ describe('the sync engine filing a send', () => {
     expect(await manualLinksTo(contactId)).toBe(1);
     expect(await activitiesFor(contactId)).toBe(1);
     expect(await auditsOf('email_sent')).toBe(1);
+  });
+
+  it('files a recovered send into a private thread without its body', async () => {
+    const contactId = await createContact('private-recover');
+    // A thread that already holds private mail; the Sent copy is filed into it below.
+    await pool.query(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address,
+          is_private)
+       VALUES ($1, 'INBOX:private-root', 'thread-gm-private', 'inbound', 'x@example.net', true)`,
+      [accountId],
+    );
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-private',
+      threadId: null,
+    }));
+    failMessageInsert();
+    await expect(
+      sendEmail(
+        typed({ record_type: 'contact', record_id: contactId }),
+        userId,
+        actor,
+        freshKey(),
+        {
+          provider,
+        },
+      ),
+    ).rejects.toMatchObject({ code: SENT_NOT_RECORDED });
+    vi.restoreAllMocks();
+
+    await syncPage([
+      await sentCopy(onlyDocument(sent), 'gm-private', { threadId: 'thread-gm-private' }),
+    ]);
+
+    const activity = await pool.query<{ notes: string | null }>(
+      'SELECT notes FROM activities WHERE contact_id = $1',
+      [contactId],
+    );
+    expect((await intent()).status).toBe('filed');
+    expect(activity.rows).toEqual([{ notes: null }]);
+  });
+
+  it('keeps a recovered reply private when sync files its copy under a thread of its own', async () => {
+    const parent = await privateParent('private-convo');
+    const contactId = await createContact('recover-elsewhere');
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-elsewhere',
+      threadId: null,
+    }));
+    failMessageInsert();
+    await expect(
+      sendEmail(
+        typed({ in_reply_to_message_id: parent, record_type: 'contact', record_id: contactId }),
+        userId,
+        actor,
+        freshKey(),
+        { provider },
+      ),
+    ).rejects.toMatchObject({ code: SENT_NOT_RECORDED });
+    vi.restoreAllMocks();
+
+    // Sync derives a thread of its own, which holds nothing private.
+    await syncPage([
+      await sentCopy(onlyDocument(sent), 'gm-elsewhere', { threadId: 'synced-elsewhere' }),
+    ]);
+
+    expect(await filedRow(contactId)).toEqual({
+      notes: null,
+      isPrivate: true,
+      threadId: 'synced-elsewhere',
+    });
+  });
+
+  it('keeps a reply private when sync files it before the send path records it', async () => {
+    const parent = await privateParent('private-early');
+    const contactId = await createContact('sync-first');
+    const { provider } = sender(async (mime) => {
+      // The Sent copy reaches sync while the provider call is still returning.
+      await syncPage([await sentCopy(mime, 'gm-early', { threadId: 'synced-first' })]);
+      return { providerMessageId: 'gm-early', threadId: null };
+    });
+
+    await sendEmail(
+      typed({ in_reply_to_message_id: parent, record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+
+    const filed = await filedRow(contactId);
+    expect(filed.notes).toBeNull();
+    expect(filed.isPrivate).toBe(true);
   });
 
   it('files an unconfirmed Graph send by the draft id it recorded before submitting', async () => {
@@ -1144,6 +1265,7 @@ describe('the hourly send limit', () => {
       recordType: null,
       recordId: null,
       activityNotes: null,
+      threadPrivate: false,
       toAddresses: ['someone@example.net'],
       ccAddresses: [],
       idempotencyKey,
