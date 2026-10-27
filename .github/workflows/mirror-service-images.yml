@@ -1,0 +1,71 @@
+# Mirrors the third-party images CI runs as service containers into this repo's GHCR.
+#
+# Service images are pulled before any step runs, anonymously, from runner IPs shared
+# with every other GitHub customer — so a public registry's per-IP quota (ECR Public's
+# "toomanyrequests: Data limit exceeded", Docker Hub's pull limit) fails a job before a
+# line of this repo runs. Jobs pull these copies instead, authenticated with their own
+# GITHUB_TOKEN, which no third-party quota meters.
+#
+# Each source is pinned exactly; the mirror copies it unchanged. To move an image, edit
+# its source here, let this workflow publish it, then point the service at the new tag.
+
+name: Mirror service images
+
+on:
+  push:
+    paths:
+      - '.github/workflows/mirror-service-images.yml'
+  schedule:
+    # Weekly, so a mirror deleted or expired by retention is restored without a push.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: mirror-service-images
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Mirror ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: public.ecr.aws/docker/library/postgres:16
+            target: minicrm-ci-postgres:16
+          - source: docker.io/greenmail/standalone:2.1.13
+            target: minicrm-ci-greenmail:2.1.13
+          - source: docker.io/mailhog/mailhog@sha256:8d76a3d4ffa32a3661311944007a415332c4bb855657f4f6c57996405c009bea
+            target: minicrm-ci-mailhog:8d76a3d4
+          - source: cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
+            target: minicrm-ci-minio:dc455cdd
+    steps:
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The source pull is anonymous and can meet the same quota this mirror exists to
+      # avoid, so it retries with backoff; one copy a week stays well inside any limit.
+      - name: Copy ${{ matrix.source }}
+        env:
+          SOURCE: ${{ matrix.source }}
+          TARGET: ghcr.io/${{ github.repository_owner }}/${{ matrix.target }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if docker buildx imagetools create --tag "$TARGET" "$SOURCE"; then
+              docker buildx imagetools inspect "$TARGET"
+              exit 0
+            fi
+            echo "::warning::copy attempt $attempt failed; retrying"
+            sleep $((attempt * 30))
+          done
+          echo "::error::could not copy $SOURCE to $TARGET"
+          exit 1

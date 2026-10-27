@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  packages: read
 
 jobs:
   update-baselines:
@@ -21,7 +22,10 @@ jobs:
 
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-postgres:16
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: minicrm
           POSTGRES_PASSWORD: password
@@ -35,7 +39,10 @@ jobs:
           --health-retries 5
 
       minio:
-        image: cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-minio:dc455cdd
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         ports:
           - 9000:9000
         env:

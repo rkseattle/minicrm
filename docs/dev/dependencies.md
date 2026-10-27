@@ -79,6 +79,16 @@ tech lead's direction, to stop paying a full gate run per major on a branch alre
 carrying them. Its message lists every major and each migration step; reverting one means
 reverting within that commit. It is not a precedent: the next major goes in its own commit.
 
+### CI service images
+
+CI's service containers (postgres, greenmail, mailhog, minio) pull copies from this repo's
+GHCR, authenticated with each job's `GITHUB_TOKEN`, never from the public registries
+directly: those meter anonymous pulls per IP, GitHub-hosted runners share IPs, and a spent
+quota fails a job at "Initialize containers" before any of its steps run. The sources are
+pinned in `.github/workflows/mirror-service-images.yml`, which publishes the copies on its
+own change, weekly, and on demand. To move an image, change its source there first, then
+point the services at the new tag.
+
 ### Held
 
 | Package             | Held at | Why                                                                                                                                                                                                                                       |
