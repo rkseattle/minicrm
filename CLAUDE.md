@@ -97,12 +97,15 @@ shared/testing/  → pure rules that a SERVER-BUILT file and a qa/ file must run
                    rather than merely untidy. Today that is testStackDbPort.ts, the
                    dev-port refusal fronting `TRUNCATE ... CASCADE` and `CREATE DATABASE`
                    (MINCRM-699) — hand-synced copies had already drifted into a bypass
-                   where `05432` reached the dev database. server/src/scripts/ cannot
-                   import from qa/: server/Dockerfile copies only server/ and shared/, and
-                   an input outside those shifts tsc's inferred rootDir out from under the
-                   Dockerfile's hardcoded COPY/CMD paths — and CI never builds that image,
-                   so it would not be caught there. Keep these files dependency-free (no
-                   zod, no Node built-ins, no I/O) so every workspace can import them.
+                   where `05432` reached the dev database. testStackDbNames.ts names
+                   the test stack's databases once for the guard, the server and qa
+                   setup scripts and the root e2e-setup, which cannot import one another.
+                   server/src/scripts/ cannot import from qa/: server/Dockerfile copies
+                   only server/ and shared/, and an input outside those shifts tsc's
+                   inferred rootDir out from under the Dockerfile's hardcoded COPY/CMD
+                   paths — and CI never builds that image, so it would not be caught there.
+                   Keep these files dependency-free (no zod, no Node built-ins, no I/O) so
+                   every workspace can import them.
 
 db/migrations/   → sequential node-pg-migrate files (ls db/migrations/ | tail -1 to find last)
 

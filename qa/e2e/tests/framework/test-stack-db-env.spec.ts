@@ -143,14 +143,13 @@ test.describe('resolveTestStackDbEnv', () => {
     expect(env.COVERAGE_DB_NAME).toBe(TEST_COVERAGE_DB_NAME);
   });
 
-  // COVERAGE_DB_NAME must be the _e2e database, not _test: E2E runs deposit
+  // COVERAGE_DB_NAME must be the E2E database, not minicrm_coverage_test: E2E runs deposit
   // coverage there, so pointing TIA at the unit-test database would find zero
   // mappings and silently degrade every push to a full-suite run.
   test('points coverage at the e2e database, not the unit-test one', () => {
     const env = resolveTestStackDbEnv({});
 
-    expect(env.COVERAGE_DB_NAME).toBe('minicrm_coverage_e2e');
-    expect(env.COVERAGE_DB_NAME).not.toContain('_test');
+    expect(env.COVERAGE_DB_NAME).toBe('minicrm_coverage_e2e_test');
   });
 });
 
@@ -184,9 +183,9 @@ test.describe('applyFirstWriteWins', () => {
   test('reproduces root .env shadowing qa/e2e/.env for the DB coordinates', () => {
     const rootEnv = { DB_NAME: 'minicrm', DB_PORT: '5432', COVERAGE_DB_NAME: 'minicrm_coverage' };
     const qaEnv = {
-      DB_NAME: 'minicrm_e2e',
+      DB_NAME: 'minicrm_e2e_test',
       DB_PORT: '5433',
-      COVERAGE_DB_NAME: 'minicrm_coverage_e2e',
+      COVERAGE_DB_NAME: 'minicrm_coverage_e2e_test',
       E2E_ADMIN_EMAIL: 'admin@example.test',
     };
 
@@ -205,9 +204,9 @@ test.describe('applyFirstWriteWins', () => {
 // runs in the hook rather than a parallel implementation that could drift.
 test.describe('parseEnvFileContents', () => {
   test('parses KEY=value lines', () => {
-    expect(parseEnvFileContents('DB_PORT=5433\nDB_NAME=minicrm_e2e')).toEqual({
+    expect(parseEnvFileContents('DB_PORT=5433\nDB_NAME=minicrm_e2e_test')).toEqual({
       DB_PORT: '5433',
-      DB_NAME: 'minicrm_e2e',
+      DB_NAME: 'minicrm_e2e_test',
     });
   });
 

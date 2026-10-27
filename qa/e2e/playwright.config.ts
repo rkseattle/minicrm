@@ -78,7 +78,7 @@ export default defineConfig({
   // Playwright defaults to half the available logical CPUs when
   // workers is undefined (e.g. 6 on a 12-thread machine). With 2 Playwright projects
   // (desktop + mobile-web) that means up to 12 concurrent test contexts sharing the
-  // same minicrm_e2e database. LPT file partitioning prevents this in CI (one shard
+  // same minicrm_e2e_test database. LPT file partitioning prevents this in CI (one shard
   // owns each file), but locally all files are available to every worker —
   // global-settings-mutating specs race.
   workers: IS_CI ? parseInt(process.env['PW_WORKERS'] ?? '4', 10) : 2,

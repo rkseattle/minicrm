@@ -1,7 +1,7 @@
 /**
  * seed-e2e-admin.ts — Insert a single admin user into the E2E database.
  *
- * Used by CI to bootstrap the minicrm_e2e database before running the BVT
+ * Used by CI to bootstrap the minicrm_e2e_test database before running the BVT
  * test. The admin credentials are read from E2E_ADMIN_EMAIL and
  * E2E_ADMIN_PASSWORD environment variables.
  *

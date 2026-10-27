@@ -60,15 +60,15 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       # The E2E product database. minicrm_test, minicrm_coverage_test and
-      # minicrm_coverage_e2e are created on demand — by the server's own startup
+      # minicrm_coverage_e2e_test are created on demand — by the server's own startup
       # migrations, by scripts/e2e-setup.ts, and by vitest's globalSetup.ts.
-      POSTGRES_DB: minicrm_e2e
+      POSTGRES_DB: minicrm_e2e_test
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
       - '5433:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d minicrm_e2e']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d minicrm_e2e_test']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -94,9 +94,9 @@ services:
       DB_PORT: 5432
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: minicrm_e2e
+      DB_NAME: minicrm_e2e_test
       # Coverage/TIA tables live in their own database — see server/src/coverageDb.ts.
-      COVERAGE_DB_NAME: minicrm_coverage_e2e
+      COVERAGE_DB_NAME: minicrm_coverage_e2e_test
       # Coverage/TIA control API and session-management routes register only when these
       # are 'true' at process boot (MINCRM-663), so coverage-instrumentation.spec.ts and
       # coverage-sessions.spec.ts can reach them. Production must never set these.

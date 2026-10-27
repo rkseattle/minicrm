@@ -1,7 +1,7 @@
 # Migrations Reference
 
 This file covers `db/migrations/` — the **product database** schema
-(`minicrm`/`minicrm_test`/`minicrm_e2e`). Coverage/TIA data
+(`minicrm`/`minicrm_test`/`minicrm_e2e_test`). Coverage/TIA data
 (`coverage_units`, `coverage_sessions`, etc.) lives in a **separate**
 database with its own migration sequence under `qa/migrations/`, run via
 `npm run migrate:coverage --workspace=minicrm-qa` — see
@@ -135,7 +135,7 @@ MINCRM-658).
 **Why:** before this lock existed, two of these entry points could run concurrently against the
 same database — e.g. `docker compose -f docker-compose.test.yml up -d` boots the test server, which calls
 `runMigrations()` at startup, while a developer's `npm run e2e:setup` moments later runs
-`create-e2e-db.ts`'s own unlocked sequence against the same `minicrm_e2e` database. With no
+`create-e2e-db.ts`'s own unlocked sequence against the same `minicrm_e2e_test` database. With no
 coordination, one process's fake-mark step could interleave with another's real-run step,
 producing a `pgmigrations` row for a migration whose schema changes never actually landed.
 

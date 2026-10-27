@@ -134,7 +134,7 @@ fi
 # Both patterns are anchored, so they are mutually exclusive; order is not significant.
 for dev_db in 'minicrm' 'minicrm_coverage'; do
   if grep -qE "(DB_NAME|POSTGRES_DB):[[:space:]]*\"?${dev_db}\"?[[:space:]]*$" <<<"$test_config"; then
-    fail "test stack resolves a dev database name (${dev_db}). It must use the *_e2e/*_test databases."
+    fail "test stack resolves a dev database name (${dev_db}). It must use the *_test databases."
   fi
 done
 

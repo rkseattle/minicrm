@@ -27,14 +27,15 @@ import {
   normalizeDbPort,
   isDevDatabasePort,
 } from '@minicrm/shared/testing/testStackDbPort.js';
+import { COVERAGE_E2E_DB_NAME, E2E_DB_NAME } from '@minicrm/shared/testing/testStackDbNames.js';
 
 // Re-exported so this module stays the single import site for everything about
 // the test stack's coordinates; callers do not need to know the rule was hoisted.
 export { TEST_DB_PORT, DEV_DB_PORT, normalizeDbPort, isDevDatabasePort };
 
 /** Databases the hook's children must use. Hardcoded, never inherited: see resolveTestStackDbEnv. */
-export const TEST_DB_NAME = 'minicrm_e2e';
-export const TEST_COVERAGE_DB_NAME = 'minicrm_coverage_e2e';
+export const TEST_DB_NAME = E2E_DB_NAME;
+export const TEST_COVERAGE_DB_NAME = COVERAGE_E2E_DB_NAME;
 
 /**
  * One layer of the precedence chain: a partial set of coordinates from a single
@@ -106,8 +107,8 @@ export class DevDatabaseRefusedError extends Error {
  *
  * Database NAMES are hardcoded rather than resolved, so a stray DB_NAME in any
  * environment or file can never point a child at the dev database.
- * COVERAGE_DB_NAME must be minicrm_coverage_e2e (not _test): E2E runs deposit
- * coverage into the _e2e database, so pointing TIA at the unit-test database
+ * COVERAGE_DB_NAME must be minicrm_coverage_e2e_test (not minicrm_coverage_test): E2E runs
+ * deposit coverage into the E2E database, so pointing TIA at the unit-test database
  * would find zero mappings and silently degrade every push to a full-suite run.
  *
  * @throws DevDatabaseRefusedError when the resolved port is the dev port.

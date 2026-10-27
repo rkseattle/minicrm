@@ -65,7 +65,7 @@ const STATEMENT_TIMEOUT_MS = 30_000;
  * databases share a Postgres instance, credentials and port, differing only by
  * database name. There are now two such stacks locally — dev on
  * :5432 (minicrm / minicrm_coverage, docker-compose.yml) and test on :5433
- * (minicrm_e2e / minicrm_coverage_e2e, docker-compose.test.yml) — so the
+ * (minicrm_e2e_test / minicrm_coverage_e2e_test, docker-compose.test.yml) — so the
  * fallback is what keeps a test process's coverage pool on the same port as its
  * product pool. Splitting the two across different hosts or ports would break
  * that and require COVERAGE_DB_HOST/COVERAGE_DB_PORT to be set explicitly.

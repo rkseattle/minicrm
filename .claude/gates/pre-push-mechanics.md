@@ -88,7 +88,7 @@ This is the case `post_fix_verification_scope` grants, and its bounds are not ne
    whole set:
 
    ```bash
-   cd server && DB_PORT=5433 DB_NAME=minicrm_e2e COVERAGE_DB_NAME=minicrm_coverage_e2e \
+   cd server && DB_PORT=5433 DB_NAME=minicrm_e2e_test COVERAGE_DB_NAME=minicrm_coverage_e2e_test \
      LOG_DESTINATION=stderr npx tsx src/scripts/select-tests.ts \
      --base=origin/main --head=HEAD
    ```

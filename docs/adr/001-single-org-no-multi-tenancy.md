@@ -93,4 +93,4 @@ Reconsider and supersede this ADR when any of the following requirements arises:
   pipelines, custom fields, or user namespaces per workspace.
 
 Demo-data isolation or test-environment isolation are **not** valid triggers — the `is_demo`
-flag and the separate `minicrm_e2e` test database already address those cases.
+flag and the separate `minicrm_e2e_test` test database already address those cases.

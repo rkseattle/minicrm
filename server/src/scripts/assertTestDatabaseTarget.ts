@@ -18,7 +18,7 @@
  * cheap; a silent wrong default cost a database.
  *
  * CI-safe: every CI job that touches a database sets DB_PORT and DB_NAME explicitly,
- * and the databases CI uses (minicrm_e2e, minicrm_test) are on the allowlist, so this is
+ * and the databases CI uses (minicrm_e2e_test, minicrm_test) are on the allowlist, so this is
  * inert there.
  */
 
@@ -26,12 +26,17 @@
 // hand-synced copy. It lives in shared/ because this file is compiled into the
 // server image and cannot import from qa/ — see that module's docblock.
 import { normalizeDbPort, isDevDatabasePort } from '@minicrm/shared/testing/testStackDbPort.js';
+import {
+  COVERAGE_E2E_DB_NAME,
+  E2E_DB_NAME,
+  RETIRED_TEST_DATABASES,
+} from '@minicrm/shared/testing/testStackDbNames.js';
 
 /** Databases these scripts are permitted to touch. `minicrm` and `minicrm_coverage` are deliberately absent — those are the dev/production databases. */
 const ALLOWED_TEST_DATABASES = [
-  'minicrm_e2e',
+  E2E_DB_NAME,
   'minicrm_test',
-  'minicrm_coverage_e2e',
+  COVERAGE_E2E_DB_NAME,
   'minicrm_coverage_test',
 ] as const;
 
@@ -46,7 +51,7 @@ export interface TestDatabaseTarget {
  *
  * For scripts that hardcode their own test database name (the `CREATE DATABASE`
  * helpers) and so have no DB_NAME to validate. They are not destructive to existing
- * data, but creating `minicrm_e2e` on the dev instance silently undoes the separation
+ * data, but creating `minicrm_e2e_test` on the dev instance silently undoes the separation
  * this ticket establishes and restores the shared-instance failure mode.
  */
 export function assertTestDatabasePort(scriptName: string): string {
@@ -118,6 +123,14 @@ export function assertTestDatabaseTarget(
   }
 
   const allowed: readonly string[] = ALLOWED_TEST_DATABASES;
+  const replacement = RETIRED_TEST_DATABASES.get(database);
+  if (replacement) {
+    throw new Error(
+      `[${scriptName}] REFUSING TO RUN: ${databaseEnvVar}="${database}" was renamed to ` +
+        `"${replacement}".\n  Rename the database in place and update qa/e2e/.env and ` +
+        'qa/.env: docs/dev/troubleshooting.md, E2E.',
+    );
+  }
   if (!allowed.includes(database)) {
     throw new Error(
       `[${scriptName}] REFUSING TO RUN: ${databaseEnvVar}="${database}" is not a test database.\n` +
