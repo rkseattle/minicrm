@@ -22,7 +22,15 @@ import {
   getOnboardingStatus,
   setOnboardingCompleted,
   markPipelineStagesReviewed,
+  getEmailSyncBackfillDays,
+  getEmailSyncExcludedDomains,
+  parseEmailSyncBackfillDays,
+  parseEmailSyncExcludedDomains,
 } from '../services/settingsService.js';
+import {
+  EMAIL_SYNC_BACKFILL_DAYS_DEFAULT,
+  EMAIL_SYNC_BACKFILL_DAYS_MAX,
+} from '@minicrm/shared/schemas/settingsSchema.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 
@@ -617,5 +625,86 @@ describe('markPipelineStagesReviewed', () => {
     const status = await getOnboardingStatus({ id: markTestAdminId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'pipeline_stages_reviewed');
     expect(task?.completed).toBe(true);
+  });
+});
+
+// ── Email sync governance ────────────────────────────────────────
+
+describe('email sync settings', () => {
+  // Restored to the migration's seeds, which other suites' sync ticks read concurrently.
+  afterEach(async () => {
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ('email_sync_excluded_domains', '[]', now()),
+              ('email_sync_backfill_days', $1, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [String(EMAIL_SYNC_BACKFILL_DAYS_DEFAULT)],
+    );
+  });
+
+  it('are seeded to an empty list and the shared default window', async () => {
+    const rows = await pool.query<{ key: string; value: string }>(
+      `SELECT key, value FROM system_settings
+        WHERE key IN ('email_sync_excluded_domains', 'email_sync_backfill_days')
+        ORDER BY key`,
+    );
+    expect(rows.rows).toEqual([
+      { key: 'email_sync_backfill_days', value: String(EMAIL_SYNC_BACKFILL_DAYS_DEFAULT) },
+      { key: 'email_sync_excluded_domains', value: '[]' },
+    ]);
+  });
+
+  it('read back what is stored', async () => {
+    await pool.query(
+      `UPDATE system_settings SET value = '["hr.example"]' WHERE key = 'email_sync_excluded_domains'`,
+    );
+    await pool.query(
+      `UPDATE system_settings SET value = '30' WHERE key = 'email_sync_backfill_days'`,
+    );
+    expect(await getEmailSyncExcludedDomains()).toEqual(['hr.example']);
+    expect(await getEmailSyncBackfillDays()).toBe(30);
+  });
+});
+
+describe('parseEmailSyncExcludedDomains', () => {
+  it('returns an empty list for a missing row', () => {
+    expect(parseEmailSyncExcludedDomains(null)).toEqual([]);
+  });
+
+  it('normalizes a stored list', () => {
+    expect(parseEmailSyncExcludedDomains('["HR.example","hr.example"]')).toEqual(['hr.example']);
+  });
+
+  it.each([
+    ['text that is not JSON', 'hr.example'],
+    ['a JSON object', '{"domains":[]}'],
+    ['an invalid domain', '["not a domain"]'],
+  ])('throws on %s rather than excluding nothing', (_label, raw) => {
+    expect(() => parseEmailSyncExcludedDomains(raw)).toThrow(
+      expect.objectContaining({ code: 'MALFORMED_SETTING' }),
+    );
+  });
+});
+
+describe('parseEmailSyncBackfillDays', () => {
+  it('returns the shared default for a missing row', () => {
+    expect(parseEmailSyncBackfillDays(null)).toBe(EMAIL_SYNC_BACKFILL_DAYS_DEFAULT);
+  });
+
+  it('reads a whole number in range', () => {
+    expect(parseEmailSyncBackfillDays('45')).toBe(45);
+  });
+
+  it.each([
+    ['an empty string', ''],
+    ['padded digits', ' 9 '],
+    ['a fraction', '1.5'],
+    ['zero', '0'],
+    ['above the maximum', String(EMAIL_SYNC_BACKFILL_DAYS_MAX + 1)],
+    ['a word', 'ninety'],
+  ])('throws on %s', (_label, raw) => {
+    expect(() => parseEmailSyncBackfillDays(raw)).toThrow(
+      expect.objectContaining({ code: 'MALFORMED_SETTING' }),
+    );
   });
 });

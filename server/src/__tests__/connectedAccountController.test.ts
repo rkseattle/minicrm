@@ -699,3 +699,97 @@ describe('OAuth state is bound to the session that issued it', { concurrent: fal
     expect(rows.rows).toHaveLength(0);
   });
 });
+
+describe('PATCH /api/v1/connected-accounts/:id', () => {
+  const STORED = {
+    email_address: `${FILE_PREFIX}-patch@example.com`,
+    host: 'imap.example.com',
+    port: 993,
+    username: `${FILE_PREFIX}-patch@example.com`,
+    password: 'a-very-secret-password',
+    secure: true,
+  };
+
+  async function ownMailbox(): Promise<string> {
+    const account = await createImapAccount(repAId, STORED, { id: repAId, name: 'Contract Rep A' });
+    return account.id;
+  }
+
+  it('pauses the caller’s own mailbox and returns it', async () => {
+    const id = await ownMailbox();
+
+    const res = await request(app)
+      .patch(`/api/v1/connected-accounts/${id}`)
+      .set('Cookie', repACookie)
+      .send({ sync_paused: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.account).toMatchObject({ id, sync_paused: true, excluded_domains: [] });
+  });
+
+  it('normalizes the excluded domains it stores', async () => {
+    const id = await ownMailbox();
+
+    const res = await request(app)
+      .patch(`/api/v1/connected-accounts/${id}`)
+      .set('Cookie', repACookie)
+      .send({ excluded_domains: ['HR.example', 'hr.example', 'family.example'] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.account.excluded_domains).toEqual(['hr.example', 'family.example']);
+  });
+
+  it.each([
+    ['an empty body', {}],
+    ['an address instead of a domain', { excluded_domains: ['someone@hr.example'] }],
+    ['a non-boolean pause', { sync_paused: 'yes' }],
+    ['an unknown field', { sync_paused: true, user_id: 'x' }],
+  ])('returns 400 for %s', async (_label, body) => {
+    const id = await ownMailbox();
+
+    const res = await request(app)
+      .patch(`/api/v1/connected-accounts/${id}`)
+      .set('Cookie', repACookie)
+      .send(body);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 for an id that is not a UUID', async () => {
+    const res = await request(app)
+      .patch('/api/v1/connected-accounts/not-a-uuid')
+      .set('Cookie', repACookie)
+      .send({ sync_paused: true });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 404 for another user’s mailbox, admins included, and changes nothing', async () => {
+    const id = await ownMailbox();
+
+    for (const cookie of [repBCookie, adminCookie]) {
+      const res = await request(app)
+        .patch(`/api/v1/connected-accounts/${id}`)
+        .set('Cookie', cookie)
+        .send({ sync_paused: true });
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe('NOT_FOUND');
+    }
+    const row = await pool.query<{ sync_paused_at: Date | null }>(
+      'SELECT sync_paused_at FROM connected_accounts WHERE id = $1',
+      [id],
+    );
+    expect(row.rows[0]!.sync_paused_at).toBeNull();
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const id = await ownMailbox();
+
+    const res = await request(app)
+      .patch(`/api/v1/connected-accounts/${id}`)
+      .send({ sync_paused: true });
+
+    expect(res.status).toBe(401);
+  });
+});

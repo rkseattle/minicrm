@@ -14,6 +14,7 @@ import {
   oauthCallbackHandler,
   startOAuthFlowHandler,
   testConnectedAccountHandler,
+  updateConnectedAccountHandler,
 } from '../controllers/connectedAccountController.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
@@ -221,6 +222,15 @@ router.use(requireCapability(Capability.ConnectedAccountsManage));
  *                           PROVIDER_AUTH_EXPIRED, CONNECTION_FAILED, SYNC_FAILED.
  *                           Clients localize it; new codes may appear.
  *                       last_sync_at: { type: string, format: date-time, nullable: true }
+ *                       sync_paused:
+ *                         type: boolean
+ *                         description: True while the owner has paused syncing this mailbox.
+ *                       excluded_domains:
+ *                         type: array
+ *                         items: { type: string }
+ *                         description: >-
+ *                           Domains the owner never wants synced. A message is skipped when
+ *                           every counterparty is on these or on the org-wide list.
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  */
@@ -290,6 +300,68 @@ router.post('/', outboundDialLimiter, asyncHandler(createConnectedAccountHandler
  *         $ref: '#/components/responses/NotFound'
  */
 router.delete('/:id', asyncHandler(deleteConnectedAccountHandler));
+
+/**
+ * @openapi
+ * /api/v1/connected-accounts/{id}:
+ *   patch:
+ *     tags: [Connected Accounts]
+ *     operationId: updateConnectedAccount
+ *     summary: Pause, resume, or set excluded domains on one of your mailboxes
+ *     description: >
+ *       Changes the caller's own sync controls for one mailbox. A paused mailbox is not
+ *       synced until resumed. excluded_domains replaces the whole list; a message whose
+ *       counterparties are all on these or the org-wide list is never stored. Applies to
+ *       mail synced from now on, not mail already stored.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             minProperties: 1
+ *             additionalProperties: false
+ *             properties:
+ *               sync_paused: { type: boolean }
+ *               excluded_domains:
+ *                 type: array
+ *                 maxItems: 1000
+ *                 description: >-
+ *                   Lowercased and de-duplicated before storing; at most 500 distinct
+ *                   domains remain.
+ *                 items: { type: string, example: example.com }
+ *     responses:
+ *       200:
+ *         description: The updated mailbox
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 account:
+ *                   type: object
+ *                   description: The mailbox, in the same shape the list returns.
+ *                   properties:
+ *                     id: { type: string, format: uuid }
+ *                     email_address: { type: string }
+ *                     status: { type: string, enum: [active, error, disconnected] }
+ *                     sync_paused: { type: boolean }
+ *                     excluded_domains: { type: array, items: { type: string } }
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.patch('/:id', asyncHandler(updateConnectedAccountHandler));
 
 /**
  * @openapi

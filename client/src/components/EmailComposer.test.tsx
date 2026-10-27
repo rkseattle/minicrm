@@ -18,6 +18,8 @@ const MAILBOX: ConnectedAccountResponse = {
   status: 'active',
   status_detail: null,
   last_sync_at: null,
+  sync_paused: false,
+  excluded_domains: [],
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 };

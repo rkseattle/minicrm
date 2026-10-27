@@ -29,6 +29,8 @@ const ACCOUNT: ConnectedAccountResponse = {
   status: 'active',
   status_detail: null,
   last_sync_at: null,
+  sync_paused: false,
+  excluded_domains: [],
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 };

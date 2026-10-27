@@ -16,6 +16,8 @@
  *   - email_notifications_enabled → true
  *   - tags_restrict_creation → false
  *   - deal_auto_link → true
+ *   - email_sync_excluded_domains → [] (no org-wide exclusions)
+ *   - email_sync_backfill_days → the shared default window
  *
  * The surviving admin's own preferences (nav_layout, preferred_language) are cleared
  * too: that row outlives the user DELETE, so a preference a spec left on it would

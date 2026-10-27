@@ -31,7 +31,7 @@ import { canSendFrom } from './mail/sendGrants.js';
 import logger from '../logger.js';
 
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
+import { SYSTEM_ACTOR, diffFields, writeAuditEntries, writeAuditEntry } from './auditService.js';
 import { decryptVersioned, encryptVersioned } from './cryptoService.js';
 import { PROVIDER_AUTH_EXPIRED } from './imapConnectionService.js';
 import { isDeadGrantError } from './oauthProviderService.js';
@@ -52,6 +52,8 @@ interface ConnectedAccountRow {
   sync_cursor: string | null;
   sync_failure_count: number;
   sync_next_attempt_at: Date | null;
+  excluded_domains: string[];
+  sync_paused_at: Date | null;
   key_version: number;
   created_at: Date;
   updated_at: Date;
@@ -59,7 +61,7 @@ interface ConnectedAccountRow {
 
 /** Every column except the credential material, for queries that never decrypt. */
 const PUBLIC_COLUMNS =
-  'id, user_id, provider, email_address, granted_scopes, status, status_detail, last_sync_at, created_at, updated_at';
+  'id, user_id, provider, email_address, granted_scopes, status, status_detail, last_sync_at, excluded_domains, sync_paused_at, created_at, updated_at';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -133,6 +135,8 @@ export interface ClaimedSyncAccount {
    * read it from.
    */
   grantedScopes: string[];
+  /** The owner's own never-sync list; the sync engine merges it with the org list. */
+  excludedDomains: string[];
 }
 
 /** A connected account with its credentials decrypted, for internal use only. */
@@ -200,6 +204,8 @@ function toConnectedAccountResponse(
     status: row.status,
     status_detail: row.status_detail,
     last_sync_at: row.last_sync_at ? row.last_sync_at.toISOString() : null,
+    sync_paused: row.sync_paused_at !== null,
+    excluded_domains: row.excluded_domains,
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
   };
@@ -222,6 +228,109 @@ export async function listConnectedAccounts(userId: string): Promise<ConnectedAc
     [userId],
   );
   return result.rows.map(toConnectedAccountResponse);
+}
+
+/** Fields an owner may change on their own mailbox; absent fields are left as they are. */
+export interface ConnectedAccountSettingsPatch {
+  syncPaused?: boolean;
+  excludedDomains?: string[];
+}
+
+/**
+ * Applies the owner's own sync controls to one mailbox, audited in the same transaction.
+ *
+ * Pausing records when, and resuming clears it; re-sending the current state writes
+ * nothing and no audit entry. Resuming leaves `sync_next_attempt_at` alone: it is also the
+ * claim lease and the failure backoff, so a resume never shortens either, and a mailbox
+ * whose due time passed while paused is claimed oldest-due-first like any other.
+ *
+ * @returns null when no such account belongs to this user.
+ */
+export async function updateConnectedAccountSettings(
+  accountId: string,
+  userId: string,
+  patch: ConnectedAccountSettingsPatch,
+  actor: AuditActor,
+): Promise<ConnectedAccountResponse | null> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const current = await client.query<ConnectedAccountRow>(
+      `SELECT ${PUBLIC_COLUMNS} FROM connected_accounts
+        WHERE id = $1 AND user_id = $2
+          FOR UPDATE`,
+      [accountId, userId],
+    );
+    const before = current.rows[0];
+    if (!before) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const wasPaused = before.sync_paused_at !== null;
+    const pausedChanged = patch.syncPaused !== undefined && patch.syncPaused !== wasPaused;
+    const domainsChanged =
+      patch.excludedDomains !== undefined &&
+      [...patch.excludedDomains].sort().join(',') !== [...before.excluded_domains].sort().join(',');
+    if (!pausedChanged && !domainsChanged) {
+      await client.query('COMMIT');
+      return toConnectedAccountResponse(before);
+    }
+
+    const updated = await client.query<ConnectedAccountRow>(
+      `UPDATE connected_accounts
+          SET sync_paused_at = CASE WHEN $3::boolean THEN
+                                 CASE WHEN $4::boolean THEN NOW() ELSE NULL END
+                               ELSE sync_paused_at END,
+              excluded_domains = COALESCE($5::text[], excluded_domains),
+              updated_at = NOW()
+        WHERE id = $1 AND user_id = $2
+    RETURNING ${PUBLIC_COLUMNS}`,
+      [accountId, userId, pausedChanged, patch.syncPaused ?? false, patch.excludedDomains ?? null],
+    );
+    // The row was locked above and the WHERE is unchanged, so the update always matches.
+    const after = updated.rows[0]!;
+
+    const entries = diffFields(
+      { sync_paused: wasPaused, excluded_domains: before.excluded_domains.join(', ') },
+      {
+        sync_paused: after.sync_paused_at !== null,
+        excluded_domains: after.excluded_domains.join(', '),
+      },
+      {
+        recordType: 'connected_account',
+        recordId: after.id,
+        recordName: after.email_address,
+        changedById: actor.id,
+        changedByName: actor.name,
+      },
+    );
+    await writeAuditEntries(client, entries);
+
+    await client.query('COMMIT');
+    return toConnectedAccountResponse(after);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Whether the owner has paused this mailbox since it was claimed.
+ *
+ * The claim query skips paused mailboxes, but a backfill reads several pages per tick;
+ * checked between pages, a pause stops it at the next page instead of the next tick.
+ */
+export async function isSyncPaused(accountId: string): Promise<boolean> {
+  const result = await pool.query<{ paused: boolean }>(
+    `SELECT sync_paused_at IS NOT NULL AS paused FROM connected_accounts WHERE id = $1`,
+    [accountId],
+  );
+  // A mailbox deleted mid-backfill has nothing left to sync, which pausing also means.
+  return result.rows[0]?.paused ?? true;
 }
 
 /**
@@ -747,7 +856,8 @@ export async function updateAccountStatus(
  * A failing mailbox is marked `error` for the UI's benefit, but it is
  * `sync_next_attempt_at` that decides whether to retry, so excluding `error` here would
  * mean a single failure retired an account for good. `disconnected` is excluded: that is
- * a user's explicit decision, not a transient fault.
+ * a user's explicit decision, not a transient fault. A paused mailbox is excluded for the
+ * same reason, by its own column so pausing never touches the health `status` reports.
  *
  * The owner's role is joined rather than looked up per account, because the caller needs
  * it for the feature-flag check and a lookup per row would be an N+1 on every tick. Their
@@ -767,6 +877,7 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
           AND u.status = 'active'
           AND (ca2.sync_next_attempt_at IS NULL OR ca2.sync_next_attempt_at <= NOW())
           AND ca2.sync_failure_count < $4
+          AND ca2.sync_paused_at IS NULL
         ORDER BY ca2.sync_next_attempt_at ASC NULLS FIRST
         LIMIT $2
           FOR UPDATE OF ca2 SKIP LOCKED
@@ -776,7 +887,7 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
        FROM due
       WHERE ca.id = due.id
   RETURNING ca.id, ca.user_id, ca.provider, ca.email_address, ca.sync_cursor,
-            ca.sync_failure_count, ca.granted_scopes, due.user_role`,
+            ca.sync_failure_count, ca.granted_scopes, ca.excluded_domains, due.user_role`,
     [IMPLEMENTED_SYNC_PROVIDERS, limit, SYNC_CLAIM_LEASE_MS, MAX_SYNC_FAILURES],
   );
 
@@ -789,6 +900,7 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
     syncCursor: row.sync_cursor,
     syncFailureCount: row.sync_failure_count,
     grantedScopes: row.granted_scopes,
+    excludedDomains: row.excluded_domains,
   }));
 }
 

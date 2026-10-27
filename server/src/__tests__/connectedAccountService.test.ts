@@ -21,9 +21,11 @@ import {
   getConnectedAccountInternal,
   getUsableAccessToken,
   IMPLEMENTED_SYNC_PROVIDERS,
+  isSyncPaused,
   listConnectedAccounts,
   MAX_SYNC_FAILURES,
   updateAccountStatus,
+  updateConnectedAccountSettings,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
 import { GMAIL_READ_SCOPE, GRAPH_MAIL_READ_SCOPE } from '../services/oauthProviderService.js';
@@ -1117,5 +1119,187 @@ describe('getAccountAuthForSync', () => {
       await getAccountAuthForSync('11111111-2222-4333-8444-555555555555', refresh.fn),
     ).toBeNull();
     expect(refresh.calls).toBe(0);
+  });
+});
+
+describe('updateConnectedAccountSettings', () => {
+  async function auditFor(
+    accountId: string,
+  ): Promise<{ field_name: string; old_value: string | null; new_value: string | null }[]> {
+    const rows = await pool.query<{
+      field_name: string;
+      old_value: string | null;
+      new_value: string | null;
+    }>(
+      `SELECT field_name, old_value, new_value FROM audit_log
+        WHERE record_type = 'connected_account' AND record_id = $1 AND event_type = 'updated'
+        ORDER BY field_name`,
+      [accountId],
+    );
+    return rows.rows;
+  }
+
+  it('pauses and resumes, reporting the state and auditing each change', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    const paused = await updateConnectedAccountSettings(
+      account.id,
+      REP_A_ACTOR.id,
+      { syncPaused: true },
+      REP_A_ACTOR,
+    );
+    expect(paused?.sync_paused).toBe(true);
+    expect(await isSyncPaused(account.id)).toBe(true);
+
+    const resumed = await updateConnectedAccountSettings(
+      account.id,
+      REP_A_ACTOR.id,
+      { syncPaused: false },
+      REP_A_ACTOR,
+    );
+    expect(resumed?.sync_paused).toBe(false);
+    expect(await isSyncPaused(account.id)).toBe(false);
+
+    const entries = await auditFor(account.id);
+    expect(entries).toHaveLength(2);
+    expect(entries.map((e) => [e.old_value, e.new_value])).toEqual(
+      expect.arrayContaining([
+        ['false', 'true'],
+        ['true', 'false'],
+      ]),
+    );
+  });
+
+  it('replaces the excluded domains and audits the list it replaced', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    const updated = await updateConnectedAccountSettings(
+      account.id,
+      REP_A_ACTOR.id,
+      { excludedDomains: ['hr.example', 'family.example'] },
+      REP_A_ACTOR,
+    );
+
+    expect(updated?.excluded_domains).toEqual(['hr.example', 'family.example']);
+    expect(updated?.sync_paused).toBe(false);
+    expect(await auditFor(account.id)).toEqual([
+      { field_name: 'Excluded Domains', old_value: '', new_value: 'hr.example, family.example' },
+    ]);
+  });
+
+  it('writes nothing and no audit entry when the state does not change', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await updateConnectedAccountSettings(
+      account.id,
+      REP_A_ACTOR.id,
+      { syncPaused: true },
+      REP_A_ACTOR,
+    );
+    const firstPause = await pool.query<{ sync_paused_at: Date }>(
+      'SELECT sync_paused_at FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+
+    await updateConnectedAccountSettings(
+      account.id,
+      REP_A_ACTOR.id,
+      { syncPaused: true },
+      REP_A_ACTOR,
+    );
+
+    const again = await pool.query<{ sync_paused_at: Date }>(
+      'SELECT sync_paused_at FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+    // Re-pausing keeps the original moment rather than restarting it.
+    expect(again.rows[0]!.sync_paused_at).toEqual(firstPause.rows[0]!.sync_paused_at);
+    expect(await auditFor(account.id)).toHaveLength(1);
+  });
+
+  it('leaves updated_at alone when nothing changes', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    const result = await updateConnectedAccountSettings(
+      account.id,
+      REP_A_ACTOR.id,
+      { syncPaused: false, excludedDomains: [] },
+      REP_A_ACTOR,
+    );
+
+    expect(result?.updated_at).toBe(account.updated_at);
+    expect(await auditFor(account.id)).toHaveLength(0);
+  });
+
+  it('keeps a lease or backoff in force when the owner resumes', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await pool.query(
+      `UPDATE connected_accounts
+          SET sync_paused_at = NOW(), sync_next_attempt_at = NOW() + interval '3 hours'
+        WHERE id = $1`,
+      [account.id],
+    );
+    const before = await pool.query<{ sync_next_attempt_at: Date }>(
+      'SELECT sync_next_attempt_at FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+
+    await updateConnectedAccountSettings(
+      account.id,
+      REP_A_ACTOR.id,
+      { syncPaused: false },
+      REP_A_ACTOR,
+    );
+
+    const after = await pool.query<{ sync_next_attempt_at: Date }>(
+      'SELECT sync_next_attempt_at FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+    expect(after.rows[0]!.sync_next_attempt_at).toEqual(before.rows[0]!.sync_next_attempt_at);
+  });
+
+  it('treats the same domains in another order as no change', async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+    await updateConnectedAccountSettings(
+      account.id,
+      REP_A_ACTOR.id,
+      { excludedDomains: ['a.example', 'b.example'] },
+      REP_A_ACTOR,
+    );
+
+    await updateConnectedAccountSettings(
+      account.id,
+      REP_A_ACTOR.id,
+      { excludedDomains: ['b.example', 'a.example'] },
+      REP_A_ACTOR,
+    );
+
+    expect(await auditFor(account.id)).toHaveLength(1);
+  });
+
+  it("returns null for another user's mailbox and changes nothing", async () => {
+    const account = await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    const result = await updateConnectedAccountSettings(
+      account.id,
+      REP_B_ACTOR.id,
+      { syncPaused: true, excludedDomains: ['hr.example'] },
+      REP_B_ACTOR,
+    );
+
+    expect(result).toBeNull();
+    expect(await isSyncPaused(account.id)).toBe(false);
+    expect(await auditFor(account.id)).toHaveLength(0);
+  });
+
+  it('lists the new fields with every mailbox', async () => {
+    await createImapAccount(REP_A_ACTOR.id, IMAP_INPUT, REP_A_ACTOR);
+
+    const [listed] = await listConnectedAccounts(REP_A_ACTOR.id);
+
+    expect(listed).toMatchObject({ sync_paused: false, excluded_domains: [] });
+  });
+
+  it('treats a mailbox deleted mid-sync as paused', async () => {
+    expect(await isSyncPaused('00000000-0000-4000-8000-0000000000ff')).toBe(true);
   });
 });

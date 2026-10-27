@@ -201,7 +201,7 @@ the listing, so a message arriving while the listing ran is never seen again. A 
 profile returns no `historyId` pages under a placeholder anchor and **keeps** that cursor
 once the listing is exhausted. A null cursor there would be indistinguishable from
 never-synced, and the engine re-backfills the whole window on one — so the mailbox would
-re-read 90 days every tick forever, with each committed page resetting the failure count so
+re-read the whole window every tick forever, with each committed page resetting the failure count so
 the retirement ceiling never fired either. The placeholder bounds it to a single listing
 page per tick until the profile answers.
 
@@ -369,8 +369,9 @@ it. Duplicate ids within one page are collapsed before the insert, because `ON C
 UPDATE` refuses a statement that would touch one conflict row twice.
 
 **Backfill** is the path for a mailbox with no usable cursor — never synced, or one whose
-cursor was just invalidated. It runs as an `email_sync_jobs` row, bounded by a 90-day
-window and by a per-tick page budget. The budget is what keeps one large mailbox from
+cursor was just invalidated. It runs as an `email_sync_jobs` row, bounded by the backfill
+window (`system_settings.email_sync_backfill_days`, 1–365, default 90) and by a per-tick page
+budget. The budget is what keeps one large mailbox from
 starving the rest: without it a first backfill outlasts the sync interval, and
 `skipWhileRunning` then suppresses every other account's tick until it finishes. The cursor
 is persisted per page, so stopping mid-history is safe and the next tick resumes exactly
@@ -392,6 +393,43 @@ schedule.
 tick, then `isFlagEnabledForUser` per account. Both are needed — a per-user `force_enabled`
 override beats every downstream targeting rule, so only the org-wide check can stop a
 rollout wholesale.
+
+Because the per-account check is `isFlagEnabledForUser`, a **role override** on `email_sync`
+(Feature Flags → role toggles) stops sync for every mailbox owned by that role, the same
+way it hides the profile panel from them. No email-specific mechanism is involved.
+
+## Exclusion and pause
+
+**Excluded domains** come from two lists, merged at sync time: the org-wide
+`system_settings.email_sync_excluded_domains` (a JSON array) and each mailbox's own
+`connected_accounts.excluded_domains`. `commitPage` drops a message before `storeMessages`
+when it has at least one counterparty and every counterparty is on a merged domain —
+HubSpot's never-log rule. Counterparties are `from`, `to`, `cc` and `reply_to`, minus the
+mailbox's own address; a note to self has none and is kept. A domain matches exactly, never
+its subdomains, as Salesforce's excluded addresses and HubSpot's never-log list both do.
+The cursor still advances past a dropped message, so it is never stored, and exclusion is
+forward-only: mail already stored stays. A mixed message — one with any counterparty off the
+list — is stored whole and matched as usual, including to records at excluded domains;
+unlike HubSpot, which still logs it but skips the listed contacts, the list here only
+decides whether a message is stored.
+
+One exception: a Sent copy that an open send intent claims (by provider id or Message-ID)
+is kept whatever its recipients. The user sent it from MiniCRM on purpose, and
+`fileReconciledIntents` expects to find the copy it locked.
+
+**The org settings fail closed.** A missing row takes its default; a value that does not
+parse throws `MALFORMED_SETTING`, and `syncDueAccounts` then skips the whole tick before
+claiming anything. Defaulting a corrupt list to empty would store excluded mail and move
+the cursor past it for good. No mailbox's backoff is charged, since an admin's setting is
+not the mailbox's fault.
+
+**Pause** is `connected_accounts.sync_paused_at`, set and cleared by
+`PATCH /api/v1/connected-accounts/:id`. It is deliberately not a `status` value: `status`
+reports connection health and every committed page rewrites it to `active`. The claim query
+skips a paused mailbox, and the engine re-checks before every fetch — mailboxes in one tick
+sync in turn, so a pause can land after the claim — which stops a running backfill at the
+next page. Its job stays open, and resuming carries on from the
+cursor.
 
 ## Matching
 
@@ -792,8 +830,7 @@ the ambient value.
 - **Marking a message private** — `is_private` still ships defaulted to `false` with no
   writer, so the filter that honors it is exercised only by tests that set the column
   directly.
-- **GDPR erasure for synced mail, and the backfill window as an admin setting** — the
-  window is a module constant until that lands.
+- **GDPR erasure for synced mail.**
 - **Validation of Graph send against a real mailbox** — whether the Sent Items copy keeps
   the draft's immutable id, which Microsoft's own pages state both ways.
 - **Validation against a real IMAP server** — three behaviors here are reasoned from RFC

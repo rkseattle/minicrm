@@ -25,6 +25,7 @@ import {
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import pool from '../db.js';
+import { ONE_DAY_MS } from '../utils/utcDate.js';
 import logger from '../logger.js';
 import { captureException } from '../sentry.js';
 
@@ -32,6 +33,7 @@ import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import {
   claimAccountsDueForSync,
   getAccountAuthForSync,
+  isSyncPaused,
   MAX_SYNC_FAILURES,
   SYNC_CLAIM_LEASE_MS,
   type ClaimedSyncAccount,
@@ -52,7 +54,12 @@ import {
 import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js';
 import { matchMessagesToRecords } from './emailMatchingService.js';
 import type { MatchableMessage } from './emailMatchingService.js';
-import { getDealAutoLink } from './settingsService.js';
+import {
+  getDealAutoLink,
+  getEmailSyncBackfillDays,
+  getEmailSyncExcludedDomains,
+} from './settingsService.js';
+import { withoutExcludedMessages, type PageExclusion } from './mail/excludedDomains.js';
 import { refreshAccessToken } from './oauthProviderService.js';
 import type { RefreshedTokens } from './oauthProviderService.js';
 import { createGmailProvider } from './mail/gmailProvider.js';
@@ -61,7 +68,6 @@ import { driverFetch } from './mail/transport.js';
 import { createImapProvider } from './mail/imapProvider.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mail/mailProvider.js';
 import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
-import { EMAIL_SYNC_BACKFILL_DAYS_DEFAULT } from '@minicrm/shared/schemas/settingsSchema.js';
 
 /** The org-wide kill switch. Off means no mailbox syncs, whatever a user's own flag says. */
 const EMAIL_SYNC_FLAG = 'email_sync';
@@ -83,7 +89,7 @@ const MAX_BACKFILL_PAGES_PER_TICK = 5;
 const BACKOFF_BASE_MS = 5 * 60 * 1000;
 
 /** Ceiling on the doubling, so a long outage still retries daily rather than never. */
-const BACKOFF_MAX_MS = 24 * 60 * 60 * 1000;
+const BACKOFF_MAX_MS = ONE_DAY_MS;
 
 /**
  * Jitter applied to each delay, as a fraction.
@@ -276,6 +282,20 @@ export function backoffDelayMs(failureCount: number): number {
   return Math.max(BACKOFF_BASE_MS, Math.round(capped + jitter));
 }
 
+/** The org-wide email sync settings one tick applies to every mailbox it syncs. */
+export interface SyncGovernance {
+  orgExcludedDomains: readonly string[];
+  backfillDays: number;
+}
+
+async function readSyncGovernance(): Promise<SyncGovernance> {
+  const [orgExcludedDomains, backfillDays] = await Promise.all([
+    getEmailSyncExcludedDomains(),
+    getEmailSyncBackfillDays(),
+  ]);
+  return { orgExcludedDomains, backfillDays };
+}
+
 /**
  * Persists one page's messages and the cursor it produced, atomically.
  *
@@ -286,6 +306,7 @@ async function commitPage(
   accountId: string,
   page: ProviderPage,
   dealAutoLink: boolean,
+  exclusion: PageExclusion,
 ): Promise<number> {
   const client = await pool.connect();
   let activityIds: string[] = [];
@@ -302,8 +323,15 @@ async function commitPage(
       outbound.flatMap((message) => (message.rfcMessageId ? [message.rfcMessageId] : [])),
     );
 
-    const created =
-      page.messages.length > 0 ? await storeMessages(client, accountId, page.messages) : [];
+    const kept = withoutExcludedMessages(
+      page.messages,
+      {
+        providerMessageIds: intents.flatMap((intent) => intent.providerMessageId ?? []),
+        rfcMessageIds: intents.map((intent) => intent.rfcMessageId),
+      },
+      exclusion,
+    );
+    const created = kept.length > 0 ? await storeMessages(client, accountId, kept) : [];
 
     // Same transaction as the insert: a message and the records it names become visible
     // together, and nothing re-reads a message once its provider id is stored.
@@ -366,6 +394,7 @@ async function backfillAccount(
   provider: MailProvider,
   since: Date,
   dealAutoLink: boolean,
+  exclusion: PageExclusion,
 ): Promise<SyncOutcome> {
   const job = await createEmailSyncJob(account.id);
   let stored = job.messages_synced;
@@ -378,8 +407,11 @@ async function backfillAccount(
 
   try {
     for (let read = 0; read < MAX_BACKFILL_PAGES_PER_TICK; read += 1) {
+      // Mailboxes in a tick sync one after another, so a pause can land after the claim.
+      // The job stays open, so a resume carries on from this cursor.
+      if (await isSyncPaused(account.id)) break;
       const page = await provider.fetchSince(auth, cursor, since);
-      stored += await commitPage(account.id, page, dealAutoLink);
+      stored += await commitPage(account.id, page, dealAutoLink, exclusion);
       cursor = page.cursor;
       hasMore = page.hasMore;
       cursorInvalid = page.cursorInvalid;
@@ -419,12 +451,16 @@ async function backfillAccount(
  * @param provider - Injected so tests can drive a fake without a live IMAP server.
  * @param refresh - Injected for the same reason: the default reaches Google's OIDC
  *   discovery endpoint, which no unit test may depend on.
+ * @param dealAutoLink - The tick's reading of `deal_auto_link`; read here when omitted.
+ * @param governance - The tick's org settings; read here when omitted, which throws
+ *   `MALFORMED_SETTING` on a corrupt value rather than syncing without exclusions.
  */
 export async function syncOneAccount(
   account: ClaimedSyncAccount,
   provider?: MailProvider,
   refresh: TokenRefresh = refreshAccessToken,
   dealAutoLink?: boolean,
+  governance?: SyncGovernance,
 ): Promise<SyncOutcome> {
   // Built before the credentials are fetched: a driver that refuses the account outright
   // — no implementation, or scopes that cannot read mail — should not first spend a token
@@ -440,11 +476,16 @@ export async function syncOneAccount(
     });
   }
 
-  const since = new Date(Date.now() - EMAIL_SYNC_BACKFILL_DAYS_DEFAULT * 24 * 60 * 60 * 1000);
-
-  // One global row, so a tick reads it once and hands it down. Resolved here only when a
-  // caller synced a single account directly, which is a test and the recovery path.
+  // One global row each, so a tick reads them once and hands them down. Resolved here only
+  // when a caller synced a single account directly, which is a test and the recovery path.
   const linkDeals = dealAutoLink ?? (await getDealAutoLink());
+  const settings = governance ?? (await readSyncGovernance());
+
+  const since = new Date(Date.now() - settings.backfillDays * ONE_DAY_MS);
+  const exclusion: PageExclusion = {
+    mailboxAddress: account.emailAddress,
+    domains: new Set([...settings.orgExcludedDomains, ...account.excludedDomains]),
+  };
 
   // An unfinished job is what says a backfill is in progress — not the cursor, which
   // every committed page advances. Routing on the cursor alone sent tick 2 down the
@@ -452,11 +493,14 @@ export async function syncOneAccount(
   // its job left running forever; migration 173's partial unique index then blocks any
   // new job for that account, so even a later cursor invalidation could not recover.
   if (account.syncCursor === null || (await getActiveEmailSyncJob(account.id)) !== null) {
-    return backfillAccount(account, auth, resolved, since, linkDeals);
+    return backfillAccount(account, auth, resolved, since, linkDeals, exclusion);
   }
 
+  if (await isSyncPaused(account.id)) {
+    return { accountId: account.id, messagesStored: 0, hasMore: false, cursorInvalid: false };
+  }
   const page = await resolved.fetchSince(auth, account.syncCursor, since);
-  const stored = await commitPage(account.id, page, linkDeals);
+  const stored = await commitPage(account.id, page, linkDeals, exclusion);
 
   return {
     accountId: account.id,
@@ -566,11 +610,13 @@ async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Pro
  * Syncs every mailbox that is due.
  *
  * @param provider - Injected for tests; production resolves one per account's provider.
+ * @param readGovernance - Injected so a test can fail it without corrupting a global row.
  * @returns one outcome per account that synced successfully.
  */
 export async function syncDueAccounts(
   provider?: MailProvider,
   refresh: TokenRefresh = refreshAccessToken,
+  readGovernance: () => Promise<SyncGovernance> = readSyncGovernance,
 ): Promise<SyncOutcome[]> {
   // Before the flag: sends made while it was on must still be audited after it goes off.
   try {
@@ -581,6 +627,18 @@ export async function syncDueAccounts(
   }
 
   if (!(await isFeatureEnabled(EMAIL_SYNC_FLAG))) return [];
+
+  // Before claiming: a malformed org setting must leave every mailbox's cursor where it is
+  // rather than store mail it may exclude. Not a per-mailbox failure, so no mailbox's
+  // backoff pays for it; the next tick retries once an admin corrects the setting.
+  let governance: SyncGovernance;
+  try {
+    governance = await readGovernance();
+  } catch (err) {
+    logger.error({ err }, 'emailSyncService: email sync settings unreadable, tick skipped');
+    captureException(err);
+    return [];
+  }
 
   const claimed = await claimAccountsDueForSync(MAX_ACCOUNTS_PER_TICK);
   const outcomes: SyncOutcome[] = [];
@@ -596,7 +654,7 @@ export async function syncDueAccounts(
     }
 
     try {
-      outcomes.push(await syncOneAccount(account, provider, refresh, dealAutoLink));
+      outcomes.push(await syncOneAccount(account, provider, refresh, dealAutoLink, governance));
     } catch (err) {
       // Per account, so one dead server cannot end the tick for every other mailbox.
       logger.warn({ err, accountId: account.id }, 'emailSyncService: account sync failed');

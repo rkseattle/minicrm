@@ -102,9 +102,10 @@ async function claimedFor(accountId: string): Promise<ClaimedSyncAccount> {
     sync_cursor: string | null;
     sync_failure_count: number;
     granted_scopes: string[];
+    excluded_domains: string[];
   }>(
     `SELECT id, user_id, provider, email_address, sync_cursor, sync_failure_count,
-            granted_scopes
+            granted_scopes, excluded_domains
        FROM connected_accounts WHERE id = $1`,
     [accountId],
   );
@@ -118,6 +119,7 @@ async function claimedFor(accountId: string): Promise<ClaimedSyncAccount> {
     syncCursor: r.sync_cursor,
     syncFailureCount: r.sync_failure_count,
     grantedScopes: r.granted_scopes,
+    excludedDomains: r.excluded_domains,
   };
 }
 
@@ -1417,4 +1419,208 @@ it('records a revoked grant once through a whole tick, not once per writer', asy
     ),
   );
   expect(retirements).toHaveLength(1);
+});
+
+describe('privacy controls at sync time', () => {
+  const GOVERNANCE = { orgExcludedDomains: [] as string[], backfillDays: 90 };
+
+  async function cursorOf(accountId: string): Promise<string | null> {
+    const row = await pool.query<{ sync_cursor: string | null }>(
+      'SELECT sync_cursor FROM connected_accounts WHERE id = $1',
+      [accountId],
+    );
+    return row.rows[0].sync_cursor;
+  }
+
+  it('never stores a message whose every counterparty is excluded, and keeps a mixed one', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query(`UPDATE connected_accounts SET excluded_domains = $2 WHERE id = $1`, [
+      account.id,
+      ['hr.example'],
+    ]);
+    const excluded = message({ providerMessageId: 'INBOX:1', fromAddress: 'boss@hr.example' });
+    const mixed = message({
+      providerMessageId: 'INBOX:2',
+      fromAddress: 'boss@hr.example',
+      ccAddresses: ['buyer@customer.example'],
+    });
+    const nextCursor = '{"INBOX":{"uidValidity":"900","uidNext":3}}';
+
+    const outcome = await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [excluded, mixed], cursor: nextCursor })]),
+      undefined,
+      true,
+      GOVERNANCE,
+    );
+
+    expect(outcome.messagesStored).toBe(1);
+    expect((await storedMessages(account.id)).map((m) => m.provider_message_id)).toEqual([
+      'INBOX:2',
+    ]);
+    // The skipped message is behind the cursor for good: it is never re-read and stored.
+    expect(await cursorOf(account.id)).toBe(nextCursor);
+  });
+
+  it('merges the org list with the mailbox owner’s own list', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query(`UPDATE connected_accounts SET excluded_domains = $2 WHERE id = $1`, [
+      account.id,
+      ['hr.example'],
+    ]);
+    const fromPersonal = message({ providerMessageId: 'INBOX:1', fromAddress: 'a@hr.example' });
+    const fromOrg = message({ providerMessageId: 'INBOX:2', fromAddress: 'b@family.example' });
+    const kept = message({ providerMessageId: 'INBOX:3', fromAddress: 'c@customer.example' });
+
+    await syncOneAccount(
+      await claimedFor(account.id),
+      fakeProvider([page({ messages: [fromPersonal, fromOrg, kept] })]),
+      undefined,
+      true,
+      { ...GOVERNANCE, orgExcludedDomains: ['family.example'] },
+    );
+
+    expect((await storedMessages(account.id)).map((m) => m.provider_message_id)).toEqual([
+      'INBOX:3',
+    ]);
+  });
+
+  it('reads a never-synced mailbox back as far as the backfill window', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query('UPDATE connected_accounts SET sync_cursor = NULL WHERE id = $1', [
+      account.id,
+    ]);
+    const seen: Date[] = [];
+    const provider: MailProvider = {
+      async fetchSince(_auth, _cursor, since): Promise<ProviderPage> {
+        seen.push(since);
+        return page();
+      },
+    };
+
+    const before = Date.now();
+    await syncOneAccount(await claimedFor(account.id), provider, undefined, true, {
+      ...GOVERNANCE,
+      backfillDays: 7,
+    });
+
+    const expected = before - 7 * 24 * 60 * 60 * 1000;
+    expect(seen).toHaveLength(1);
+    expect(Math.abs(seen[0]!.getTime() - expected)).toBeLessThan(60_000);
+  });
+
+  it('stops a running backfill at the next page once the owner pauses', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query('UPDATE connected_accounts SET sync_cursor = NULL WHERE id = $1', [
+      account.id,
+    ]);
+    let reads = 0;
+    const provider: MailProvider = {
+      async fetchSince(): Promise<ProviderPage> {
+        reads += 1;
+        // The owner pauses while the first page is being read.
+        await pool.query('UPDATE connected_accounts SET sync_paused_at = NOW() WHERE id = $1', [
+          account.id,
+        ]);
+        return page({
+          messages: [message({ providerMessageId: `INBOX:${reads}` })],
+          hasMore: true,
+        });
+      },
+    };
+
+    const outcome = await syncOneAccount(
+      await claimedFor(account.id),
+      provider,
+      undefined,
+      true,
+      GOVERNANCE,
+    );
+
+    expect(reads).toBe(1);
+    expect(outcome.hasMore).toBe(true);
+    // Left open, so resuming carries on from this cursor instead of starting over.
+    expect(await getActiveEmailSyncJob(account.id)).not.toBeNull();
+  });
+
+  it.each([
+    ['a backfill', null],
+    ['an incremental read', '{"INBOX":{"uidValidity":"900","uidNext":2}}'],
+  ])('reads nothing for %s when paused after the claim', async (_label, cursor) => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query(
+      'UPDATE connected_accounts SET sync_cursor = $2, sync_paused_at = NOW() WHERE id = $1',
+      [account.id, cursor],
+    );
+    const provider = fakeProvider([page({ messages: [message()] })]);
+
+    const outcome = await syncOneAccount(
+      await claimedFor(account.id),
+      provider,
+      undefined,
+      true,
+      GOVERNANCE,
+    );
+
+    expect(provider.calls).toBe(0);
+    expect(outcome.messagesStored).toBe(0);
+    expect(await storedMessages(account.id)).toHaveLength(0);
+  });
+
+  it('does not claim a paused mailbox', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query('UPDATE connected_accounts SET sync_paused_at = NOW() WHERE id = $1', [
+      account.id,
+    ]);
+    await deferMailboxesOfOtherSuites([ACTOR.id]);
+
+    const claimed = await claimAccountsDueForSync(25);
+
+    expect(claimed.map((c) => c.id)).not.toContain(account.id);
+  });
+
+  it('skips the whole tick, storing nothing, when the org settings cannot be read', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    const cursorBefore = await cursorOf(account.id);
+    const provider = fakeProvider([page({ messages: [message()] })]);
+
+    const outcomes = await syncDueAccounts(provider, undefined, async () => {
+      throw Object.assign(new Error('malformed'), { code: 'MALFORMED_SETTING' });
+    });
+
+    expect(outcomes).toEqual([]);
+    expect(provider.calls).toBe(0);
+    expect(await storedMessages(account.id)).toHaveLength(0);
+    expect(await cursorOf(account.id)).toBe(cursorBefore);
+    // Not the mailbox's fault, so its backoff is untouched.
+    const row = await pool.query<{ sync_failure_count: number }>(
+      'SELECT sync_failure_count FROM connected_accounts WHERE id = $1',
+      [account.id],
+    );
+    expect(row.rows[0].sync_failure_count).toBe(0);
+  });
+
+  it('skips a mailbox whose owner’s role has email sync switched off', async () => {
+    // Flag rows are global; manager is the role no parallel email suite authenticates as.
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query(`UPDATE users SET role = 'manager' WHERE id = $1`, [ACTOR.id]);
+    await pool.query(
+      `UPDATE feature_flags SET role_overrides = '{"manager": false}' WHERE flag_key = 'email_sync'`,
+    );
+    invalidateFeatureFlagCache();
+    await deferMailboxesOfOtherSuites([ACTOR.id]);
+
+    try {
+      const outcomes = await syncDueAccounts(fakeProvider([page({ messages: [message()] })]));
+
+      expect(outcomes).toHaveLength(0);
+      expect(await storedMessages(account.id)).toHaveLength(0);
+    } finally {
+      await pool.query(
+        `UPDATE feature_flags SET role_overrides = NULL WHERE flag_key = 'email_sync'`,
+      );
+      await pool.query(`UPDATE users SET role = 'rep' WHERE id = $1`, [ACTOR.id]);
+      invalidateFeatureFlagCache();
+    }
+  });
 });

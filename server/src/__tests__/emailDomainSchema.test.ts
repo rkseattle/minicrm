@@ -47,6 +47,7 @@ describe('excludedDomainSchema', () => {
     ['a bare TLD', 'com'],
     ['a leading hyphen', '-bad.example.com'],
     ['a trailing hyphen', 'bad-.example.com'],
+    ['a punycode TLD ending in a hyphen', 'example.xn---'],
     ['a numeric TLD', 'example.123'],
     ['an empty string', ''],
     ['a scheme', 'https://example.com'],
@@ -99,6 +100,11 @@ describe('excludedDomainListSchema', () => {
     expect(excludedDomainListSchema.safeParse(domains(MAX_EXCLUDED_DOMAINS + 1)).success).toBe(
       false,
     );
+  });
+
+  it('refuses a raw list more than twice the limit, before removing duplicates', () => {
+    const list = Array.from({ length: MAX_EXCLUDED_DOMAINS * 2 + 1 }, () => 'a.com');
+    expect(excludedDomainListSchema.safeParse(list).success).toBe(false);
   });
 
   it('counts the limit after duplicates are removed', () => {
@@ -187,18 +193,6 @@ describe('connected_accounts.excluded_domains in the database', () => {
     await pool.query(`UPDATE connected_accounts SET excluded_domains = $2 WHERE id = $1`, [
       accountId,
       domains(MAX_EXCLUDED_DOMAINS),
-    ]);
-  });
-
-  it('seeds both org settings', async () => {
-    const rows = await pool.query<{ key: string; value: string }>(
-      `SELECT key, value FROM system_settings
-        WHERE key IN ('email_sync_excluded_domains', 'email_sync_backfill_days')
-        ORDER BY key`,
-    );
-    expect(rows.rows).toEqual([
-      { key: 'email_sync_backfill_days', value: '90' },
-      { key: 'email_sync_excluded_domains', value: '[]' },
     ]);
   });
 });

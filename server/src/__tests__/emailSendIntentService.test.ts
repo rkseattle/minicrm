@@ -149,6 +149,7 @@ async function syncPage(messages: NormalizedMessage[]): Promise<void> {
     syncCursor: 'already-backfilled',
     syncFailureCount: 0,
     grantedScopes: [],
+    excludedDomains: [],
   };
   await syncOneAccount(account, provider);
 }
