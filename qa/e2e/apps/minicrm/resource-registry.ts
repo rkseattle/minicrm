@@ -54,14 +54,14 @@ export type ResourceKey =
   | 'settings.pipeline_stages_reviewed'
   // The system_settings row gating automatic deal linking on synced mail.
   | 'settings.deal_auto_link'
-  // Every row ensureSystemDefaults() resets, as ONE key. That helper writes
-  // ELEVEN shared settings — default_language, nav_layout, email_notifications,
-  // tags_restrict_creation, currencies, branding, pipeline_stages_reviewed, sso,
-  // mfa_required, visibility and deal_auto_link — so any two files that call it
-  // conflict on all eleven, and a file that calls it conflicts with anyone
-  // touching any of them.
+  // The org-wide domains email sync never stores, and how far back a new mailbox reads.
+  | 'settings.email_sync_excluded_domains'
+  | 'settings.email_sync_backfill_days'
+  // Every row ensureSystemDefaults() resets, as ONE key: the rows listed in
+  // ENSURE_SYSTEM_DEFAULTS_KEYS below. Any two files that call it conflict on all
+  // of them, and a file that calls it conflicts with anyone touching any of them.
   //
-  // A composite key rather than eleven entries per caller, deliberately. Listing
+  // A composite key rather than an entry per row per caller, deliberately. Listing
   // them individually means nine hand-maintained lists that drift the
   // moment ensureSystemDefaults gains or loses a write — which is exactly how
   // this was first modeled (pipeline_stages_reviewed only), and it put
@@ -159,6 +159,20 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // The Emails section's list query hits the same flag-gated router, so the row is written.
     reads: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
     writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+  },
+  {
+    // Writes both org email sync governance settings; the flag is set in the browser only.
+    file: 'qa/e2e/tests/apps/minicrm/functional/email-sync/email-sync-settings.spec.ts',
+    reads: [
+      'settings.email_sync_excluded_domains',
+      'settings.email_sync_backfill_days',
+      'settings.ensure_system_defaults',
+    ],
+    writes: [
+      'settings.email_sync_excluded_domains',
+      'settings.email_sync_backfill_days',
+      'settings.ensure_system_defaults',
+    ],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/visibility/visibility.spec.ts',
@@ -533,6 +547,8 @@ export const ENSURE_SYSTEM_DEFAULTS_KEYS: readonly ResourceKey[] = [
   'settings.mfa_required',
   'settings.visibility_policy',
   'settings.deal_auto_link',
+  'settings.email_sync_excluded_domains',
+  'settings.email_sync_backfill_days',
 ];
 
 /**

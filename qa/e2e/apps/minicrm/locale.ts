@@ -120,6 +120,9 @@ const MINICRM_EN: LocaleMap = {
 
   // Admin settings — email notifications
   'settings.emailNotifications.sectionTitle': 'Email Notifications',
+  'settings.emailSync.sectionTitle': 'Email Sync',
+  'settings.emailSync.domainsLabel': 'Excluded domains',
+  'settings.emailSync.daysLabel': 'Backfill window (days)',
 
   // Tags
   'tags.pageTitle': 'Tag Management',
@@ -237,6 +240,9 @@ const MINICRM_ES: LocaleMap = {
 
   // Admin settings — email notifications
   'settings.emailNotifications.sectionTitle': 'Notificaciones de correo electrónico',
+  'settings.emailSync.sectionTitle': 'Sincronización de correo',
+  'settings.emailSync.domainsLabel': 'Dominios excluidos',
+  'settings.emailSync.daysLabel': 'Periodo de recuperación (días)',
 
   // Tags
   'tags.pageTitle': 'Gestión de etiquetas',
@@ -354,6 +360,9 @@ const MINICRM_FR: LocaleMap = {
 
   // Admin settings — email notifications
   'settings.emailNotifications.sectionTitle': 'Notifications par e-mail',
+  'settings.emailSync.sectionTitle': 'Synchronisation des e-mails',
+  'settings.emailSync.domainsLabel': 'Domaines exclus',
+  'settings.emailSync.daysLabel': 'Période d’historique (jours)',
 
   // Tags
   'tags.pageTitle': 'Gestion des étiquettes',
@@ -471,6 +480,9 @@ const MINICRM_DE: LocaleMap = {
 
   // Admin settings — email notifications
   'settings.emailNotifications.sectionTitle': 'E-Mail-Benachrichtigungen',
+  'settings.emailSync.sectionTitle': 'E-Mail-Synchronisierung',
+  'settings.emailSync.domainsLabel': 'Ausgeschlossene Domains',
+  'settings.emailSync.daysLabel': 'Rückblickzeitraum (Tage)',
 
   // Tags
   'tags.pageTitle': 'Tag-Verwaltung',
@@ -588,6 +600,9 @@ const MINICRM_ZH_HANS: LocaleMap = {
 
   // Admin settings — email notifications
   'settings.emailNotifications.sectionTitle': '电子邮件通知',
+  'settings.emailSync.sectionTitle': '邮件同步',
+  'settings.emailSync.domainsLabel': '排除的域名',
+  'settings.emailSync.daysLabel': '回溯天数',
 
   // Tags
   'tags.pageTitle': '标签管理',

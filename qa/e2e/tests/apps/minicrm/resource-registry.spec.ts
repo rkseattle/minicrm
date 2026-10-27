@@ -230,6 +230,8 @@ test.describe('resource-registry — pipeline_stages_reviewed (MINCRM-705)', () 
       'mfa-required': 'settings.mfa_required',
       visibility: 'settings.visibility_policy',
       'deal-auto-link': 'settings.deal_auto_link',
+      'email-sync-excluded-domains': 'settings.email_sync_excluded_domains',
+      'email-sync-backfill-days': 'settings.email_sync_backfill_days',
     };
 
     const unmapped = [...new Set(endpoints)].filter((e) => !KEY_FOR_ENDPOINT[e as string]);
