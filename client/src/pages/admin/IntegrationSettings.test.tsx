@@ -18,6 +18,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
 import IntegrationSettings from './IntegrationSettings.js';
+import { FEATURE_FLAGS_FIXTURE } from '../../test/msw/handlers.js';
 
 describe('IntegrationSettings', () => {
   it('renders the storage section and webhooks section as separate panels', async () => {
@@ -194,6 +195,50 @@ describe('IntegrationSettings', () => {
 
     await waitFor(() => {
       expect(deleteCalled).toBe(true);
+    });
+  });
+
+  describe('email sync governance panel', () => {
+    function serveOrgFlag(enabled: boolean): void {
+      // Safe: the fixture always holds rows; only flag_key and enabled matter here.
+      const emailSync = { ...FEATURE_FLAGS_FIXTURE[0]!, flag_key: 'email_sync', enabled };
+      server.use(
+        http.get('/api/v1/admin/feature-flags', () =>
+          HttpResponse.json({ flags: [...FEATURE_FLAGS_FIXTURE, emailSync] }),
+        ),
+      );
+    }
+
+    it('waits for the flag before showing the panel, rather than flashing it disabled', () => {
+      server.use(http.get('/api/v1/admin/feature-flags', () => new Promise(() => {})));
+      renderWithProviders(<IntegrationSettings />);
+      expect(screen.getByTestId('email-sync-flag-loading')).toBeInTheDocument();
+      expect(screen.queryByTestId('email-sync-settings')).not.toBeInTheDocument();
+    });
+
+    it('says the flag could not be read instead of claiming the feature is off', async () => {
+      server.use(
+        http.get('/api/v1/admin/feature-flags', () =>
+          HttpResponse.json({ error: { code: 'X', message: 'x' } }, { status: 500 }),
+        ),
+      );
+      renderWithProviders(<IntegrationSettings />);
+      expect(await screen.findByTestId('email-sync-flag-error')).toBeInTheDocument();
+      expect(screen.queryByTestId('email-sync-settings-disabled-banner')).not.toBeInTheDocument();
+    });
+
+    it('is shown disabled when email sync is off org-wide', async () => {
+      serveOrgFlag(false);
+      renderWithProviders(<IntegrationSettings />);
+      expect(await screen.findByTestId('email-sync-settings-disabled-banner')).toBeInTheDocument();
+    });
+
+    it("is enabled when email sync is on org-wide, whatever the admin's own role resolves to", async () => {
+      serveOrgFlag(true);
+      // The caller's own resolved flags still report email_sync off.
+      renderWithProviders(<IntegrationSettings />);
+      expect(await screen.findByTestId('email-sync-excluded-domains-input')).not.toBeDisabled();
+      expect(screen.queryByTestId('email-sync-settings-disabled-banner')).not.toBeInTheDocument();
     });
   });
 });

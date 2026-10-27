@@ -974,6 +974,19 @@
       "mappingRoleLabel": "CRM 角色",
       "noMappings": "未配置群组到角色映射。",
       "tokenMutationError": "更新 SCIM 令牌失败，请重试。"
+    },
+    "emailSync": {
+      "sectionTitle": "邮件同步",
+      "sectionHint": "适用于所有用户已连接的邮箱。",
+      "domainsLabel": "排除的域名",
+      "domainsHint": "每行一个域名，例如 example.com。若邮件的其他地址全部属于这些域名或邮箱所有者自己的列表，则不会同步。仅适用于此后同步的邮件。",
+      "domainsPlaceholder": "example.com",
+      "domainsInvalid": "请每行输入一个域名，例如 example.com，不含 @ 或通配符（最多 {{max}} 个）。",
+      "daysLabel": "回溯天数",
+      "daysHint": "新连接的邮箱同步历史邮件的时间范围。",
+      "daysInvalid": "请输入 {{min}} 到 {{max}} 之间的整数天数。",
+      "saved": "已保存。",
+      "saveError": "保存失败，请重试。"
     }
   },
   "import": {

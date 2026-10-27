@@ -974,6 +974,19 @@
       "mappingRoleLabel": "[ĈRM Rölë~~~]",
       "noMappings": "[Ñö gröüp-tö-rölë mäppïñgŝ ĉöñfïgürëd.~~~~~~~~~~~~]",
       "tokenMutationError": "[Fäïlëd tö üpdätë ŜĈÏM tökëñ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~]"
+    },
+    "emailSync": {
+      "sectionTitle": "[Ëmäïl ŝyñĉ~~~]",
+      "sectionHint": "[Äpplïëŝ tö ëvëry üŝër'ŝ ĉöññëĉtëd mäïlböx.~~~~~~~~~~~~~]",
+      "domainsLabel": "[Ëxĉlüdëd dömäïñŝ~~~~~]",
+      "domainsHint": "[Öñë dömäïñ për lïñë, ŝüĉh äŝ ëxämplë.ĉöm. Mäïl whöŝë ëvëry öthër äddrëŝŝ ïŝ öñ thëŝë dömäïñŝ, ör öñ thë mäïlböx öwñër'ŝ öwñ lïŝt, ïŝ ñëvër ŝyñĉëd. Äpplïëŝ tö mäïl ŝyñĉëd fröm ñöw öñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "domainsPlaceholder": "[ëxämplë.ĉöm~~~~]",
+      "domainsInvalid": "[Ëñtër öñë dömäïñ për lïñë, ŝüĉh äŝ ëxämplë.ĉöm, wïthöüt @ ör wïldĉärdŝ ({{max}} ät möŝt).~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "daysLabel": "[Bäĉkfïll wïñdöw (däyŝ)~~~~~~~]",
+      "daysHint": "[Höw fär bäĉk ä ñëwly ĉöññëĉtëd mäïlböx ŝyñĉŝ ïtŝ hïŝtöry.~~~~~~~~~~~~~~~~~~]",
+      "daysInvalid": "[Ëñtër ä whölë ñümbër öf däyŝ fröm {{min}} tö {{max}}.~~~~~~~~~~~~~~~~]",
+      "saved": "[Ŝävëd.~~]",
+      "saveError": "[Ĉöüld ñöt ŝävë. Plëäŝë try ägäïñ.~~~~~~~~~~]"
     }
   },
   "profileSettings": {

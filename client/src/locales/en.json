@@ -974,6 +974,19 @@
       "mappingRoleLabel": "CRM Role",
       "noMappings": "No group-to-role mappings configured.",
       "tokenMutationError": "Failed to update SCIM token. Please try again."
+    },
+    "emailSync": {
+      "sectionTitle": "Email sync",
+      "sectionHint": "Applies to every user's connected mailbox.",
+      "domainsLabel": "Excluded domains",
+      "domainsHint": "One domain per line, such as example.com. Mail whose every other address is on these domains, or on the mailbox owner's own list, is never synced. Applies to mail synced from now on.",
+      "domainsPlaceholder": "example.com",
+      "domainsInvalid": "Enter one domain per line, such as example.com, without @ or wildcards ({{max}} at most).",
+      "daysLabel": "Backfill window (days)",
+      "daysHint": "How far back a newly connected mailbox syncs its history.",
+      "daysInvalid": "Enter a whole number of days from {{min}} to {{max}}.",
+      "saved": "Saved.",
+      "saveError": "Could not save. Please try again."
     }
   },
   "profileSettings": {

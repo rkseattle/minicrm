@@ -1,12 +1,12 @@
 # data-testid Audit Report
 
-Generated: 2026-10-26T22:13:57.167Z
+Generated: 2026-10-27T16:57:20.962Z
 
 ## Summary
 
 - Matched: 601
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1048
+- Unexercised (in app, not in tests): 1062
 - Dynamic (manual review required): 702
 
 ## Stale testids (action required)
@@ -46,10 +46,10 @@ _None — all test-referenced testids are present in the application source._
 | `email-draft-generate-error` | client/src/components/ActivityTimeline.tsx | 726 |
 | `meeting-brief-generate-error` | client/src/components/ActivityTimeline.tsx | 745 |
 | `attachments-not-configured` | client/src/components/AttachmentsSection.tsx | 188 |
-| `attachments-upload-zone` | client/src/components/AttachmentsSection.tsx | 201 |
-| `attachments-loading` | client/src/components/AttachmentsSection.tsx | 248 |
-| `attachments-list-error` | client/src/components/AttachmentsSection.tsx | 254 |
-| `attachments-empty-state` | client/src/components/AttachmentsSection.tsx | 261 |
+| `attachments-upload-zone` | client/src/components/AttachmentsSection.tsx | 202 |
+| `attachments-loading` | client/src/components/AttachmentsSection.tsx | 255 |
+| `attachments-list-error` | client/src/components/AttachmentsSection.tsx | 261 |
+| `attachments-empty-state` | client/src/components/AttachmentsSection.tsx | 268 |
 | `bulk-action-count` | client/src/components/BulkActionBar.tsx | 60 |
 | `bulk-see-details` | client/src/components/BulkActionBar.tsx | 73 |
 | `bulk-clear-selection` | client/src/components/BulkActionBar.tsx | 124 |
@@ -66,9 +66,9 @@ _None — all test-referenced testids are present in the application source._
 | `change-history-loading` | client/src/components/ChangeHistory.tsx | 147 |
 | `change-history-toggle` | client/src/components/ChangeHistory.tsx | 185 |
 | `change-history-section` | client/src/components/ChangeHistory.tsx | 135 |
-| `close-deal-loss-reason-input` | client/src/components/CloseDealModal.tsx | 136 |
-| `close-deal-error` | client/src/components/CloseDealModal.tsx | 151 |
-| `close-deal-modal-overlay` | client/src/components/CloseDealModal.tsx | 96 |
+| `close-deal-loss-reason-input` | client/src/components/CloseDealModal.tsx | 146 |
+| `close-deal-error` | client/src/components/CloseDealModal.tsx | 161 |
+| `close-deal-modal-overlay` | client/src/components/CloseDealModal.tsx | 99 |
 | `confirm-delete-title` | client/src/components/ConfirmDeleteModal.tsx | 107 |
 | `confirm-delete-message` | client/src/components/ConfirmDeleteModal.tsx | 112 |
 | `confirm-delete-modal-overlay` | client/src/components/ConfirmDeleteModal.tsx | 86 |
@@ -127,19 +127,19 @@ _None — all test-referenced testids are present in the application source._
 | `email-composer-body` | client/src/components/EmailComposer.tsx | 241 |
 | `email-composer-success` | client/src/components/EmailComposer.tsx | 248 |
 | `email-composer-error` | client/src/components/EmailComposer.tsx | 258 |
-| `email-composer-send` | client/src/components/EmailComposer.tsx | 271 |
-| `email-composer-cancel` | client/src/components/EmailComposer.tsx | 283 |
+| `email-composer-send` | client/src/components/EmailComposer.tsx | 269 |
+| `email-composer-cancel` | client/src/components/EmailComposer.tsx | 281 |
 | `email-composer` | client/src/components/EmailComposer.tsx | 148 |
 | `email-draft-error` | client/src/components/EmailDraftPanel.tsx | 142 |
 | `email-draft-copy-error` | client/src/components/EmailDraftPanel.tsx | 192 |
-| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 254 |
-| `emails-loading` | client/src/components/EmailsSection.tsx | 260 |
-| `emails-error` | client/src/components/EmailsSection.tsx | 267 |
-| `email-thread-participants` | client/src/components/EmailsSection.tsx | 317 |
-| `email-thread-date` | client/src/components/EmailsSection.tsx | 325 |
-| `email-thread-subject` | client/src/components/EmailsSection.tsx | 332 |
-| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 339 |
-| `emails-thread-list` | client/src/components/EmailsSection.tsx | 289 |
+| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 262 |
+| `emails-loading` | client/src/components/EmailsSection.tsx | 268 |
+| `emails-error` | client/src/components/EmailsSection.tsx | 275 |
+| `email-thread-participants` | client/src/components/EmailsSection.tsx | 325 |
+| `email-thread-date` | client/src/components/EmailsSection.tsx | 333 |
+| `email-thread-subject` | client/src/components/EmailsSection.tsx | 340 |
+| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 347 |
+| `emails-thread-list` | client/src/components/EmailsSection.tsx | 297 |
 | `error-boundary-reload` | client/src/components/ErrorBoundary.tsx | 29 |
 | `error-boundary-dashboard-link` | client/src/components/ErrorBoundary.tsx | 37 |
 | `error-boundary-fallback` | client/src/components/ErrorBoundary.tsx | 20 |
@@ -149,16 +149,16 @@ _None — all test-referenced testids are present in the application source._
 | `gdpr-erase-field-list` | client/src/components/GdprEraseModal.tsx | 130 |
 | `gdpr-erase-notes-input` | client/src/components/GdprEraseModal.tsx | 170 |
 | `gdpr-erase-cancel-button` | client/src/components/GdprEraseModal.tsx | 211 |
-| `gdpr-privacy-heading` | client/src/components/GdprPrivacySection.tsx | 98 |
-| `gdpr-erase-error` | client/src/components/GdprPrivacySection.tsx | 137 |
-| `gdpr-erased-banner` | client/src/components/GdprPrivacySection.tsx | 112 |
-| `gdpr-status-loading` | client/src/components/GdprPrivacySection.tsx | 105 |
-| `gdpr-export-button` | client/src/components/GdprPrivacySection.tsx | 152 |
-| `gdpr-download-error` | client/src/components/GdprPrivacySection.tsx | 157 |
-| `lead-routing-suggestion-loading` | client/src/components/LeadForm.tsx | 144 |
-| `lead-source-select` | client/src/components/LeadForm.tsx | 322 |
-| `lead-notes` | client/src/components/LeadForm.tsx | 409 |
-| `lead-form-cancel` | client/src/components/LeadForm.tsx | 428 |
+| `gdpr-privacy-heading` | client/src/components/GdprPrivacySection.tsx | 100 |
+| `gdpr-erase-error` | client/src/components/GdprPrivacySection.tsx | 139 |
+| `gdpr-erased-banner` | client/src/components/GdprPrivacySection.tsx | 114 |
+| `gdpr-status-loading` | client/src/components/GdprPrivacySection.tsx | 107 |
+| `gdpr-export-button` | client/src/components/GdprPrivacySection.tsx | 154 |
+| `gdpr-download-error` | client/src/components/GdprPrivacySection.tsx | 159 |
+| `lead-routing-suggestion-loading` | client/src/components/LeadForm.tsx | 145 |
+| `lead-source-select` | client/src/components/LeadForm.tsx | 321 |
+| `lead-notes` | client/src/components/LeadForm.tsx | 408 |
+| `lead-form-cancel` | client/src/components/LeadForm.tsx | 427 |
 | `lead-score-narrative-error` | client/src/components/LeadScoreBadge.tsx | 81 |
 | `lead-score-container` | client/src/components/LeadScoreBadge.tsx | 56 |
 | `meeting-brief-dismiss` | client/src/components/MeetingBriefPanel.tsx | 104 |
@@ -212,17 +212,17 @@ _None — all test-referenced testids are present in the application source._
 | `nav-left-automation` | client/src/components/NavLeft.tsx | 139 |
 | `nav-left-sequences` | client/src/components/NavLeft.tsx | 139 |
 | `nav-left-settings` | client/src/components/NavLeft.tsx | 139 |
-| `note-image` | client/src/components/NotesSection.tsx | 138 |
-| `toolbar-image` | client/src/components/NotesSection.tsx | 407 |
-| `notes-editor-toolbar` | client/src/components/NotesSection.tsx | 348 |
-| `notes-composer-content` | client/src/components/NotesSection.tsx | 652 |
-| `notes-image-input` | client/src/components/NotesSection.tsx | 673 |
-| `notes-image-upload-error` | client/src/components/NotesSection.tsx | 680 |
-| `notes-save-error` | client/src/components/NotesSection.tsx | 739 |
-| `notes-section-heading` | client/src/components/NotesSection.tsx | 956 |
-| `notes-loading` | client/src/components/NotesSection.tsx | 987 |
-| `notes-load-error` | client/src/components/NotesSection.tsx | 1001 |
-| `notes-delete-error` | client/src/components/NotesSection.tsx | 1070 |
+| `note-image` | client/src/components/NotesSection.tsx | 143 |
+| `toolbar-image` | client/src/components/NotesSection.tsx | 418 |
+| `notes-editor-toolbar` | client/src/components/NotesSection.tsx | 359 |
+| `notes-composer-content` | client/src/components/NotesSection.tsx | 663 |
+| `notes-image-input` | client/src/components/NotesSection.tsx | 684 |
+| `notes-image-upload-error` | client/src/components/NotesSection.tsx | 691 |
+| `notes-save-error` | client/src/components/NotesSection.tsx | 750 |
+| `notes-section-heading` | client/src/components/NotesSection.tsx | 967 |
+| `notes-loading` | client/src/components/NotesSection.tsx | 998 |
+| `notes-load-error` | client/src/components/NotesSection.tsx | 1012 |
+| `notes-delete-error` | client/src/components/NotesSection.tsx | 1081 |
 | `notification-mark-all-read` | client/src/components/NotificationBell.tsx | 101 |
 | `notification-dropdown` | client/src/components/NotificationBell.tsx | 91 |
 | `powered-by-badge` | client/src/components/PoweredByBadge.tsx | 16 |
@@ -261,8 +261,8 @@ _None — all test-referenced testids are present in the application source._
 | `send-email-templates-truncated` | client/src/components/SendEmailModal.tsx | 358 |
 | `send-email-to` | client/src/components/SendEmailModal.tsx | 378 |
 | `send-email-template-preview` | client/src/components/SendEmailModal.tsx | 384 |
-| `send-email-error` | client/src/components/SendEmailModal.tsx | 442 |
-| `send-email-cancel` | client/src/components/SendEmailModal.tsx | 466 |
+| `send-email-error` | client/src/components/SendEmailModal.tsx | 444 |
+| `send-email-cancel` | client/src/components/SendEmailModal.tsx | 468 |
 | `setup-checklist-expand-button` | client/src/components/SetupChecklistWidget.tsx | 223 |
 | `setup-checklist-complete` | client/src/components/SetupChecklistWidget.tsx | 307 |
 | `settings-tab-list-select` | client/src/components/SubPageNav.tsx | 71 |
@@ -391,15 +391,15 @@ _None — all test-referenced testids are present in the application source._
 | `ai-delete-cancel-button` | client/src/pages/AiPage.tsx | 768 |
 | `ai-retention-window-notice` | client/src/pages/AiPage.tsx | 876 |
 | `ai-thinking-indicator` | client/src/pages/AiPage.tsx | 952 |
-| `filter-from` | client/src/pages/AuditLogPage.tsx | 363 |
-| `filter-to` | client/src/pages/AuditLogPage.tsx | 381 |
-| `filter-user` | client/src/pages/AuditLogPage.tsx | 397 |
-| `filter-event-type` | client/src/pages/AuditLogPage.tsx | 443 |
-| `filter-source` | client/src/pages/AuditLogPage.tsx | 466 |
-| `clear-filters-button` | client/src/pages/AuditLogPage.tsx | 490 |
-| `audit-log-loading` | client/src/pages/AuditLogPage.tsx | 503 |
-| `audit-log-error` | client/src/pages/AuditLogPage.tsx | 514 |
-| `audit-log-empty-state` | client/src/pages/AuditLogPage.tsx | 526 |
+| `filter-from` | client/src/pages/AuditLogPage.tsx | 366 |
+| `filter-to` | client/src/pages/AuditLogPage.tsx | 384 |
+| `filter-user` | client/src/pages/AuditLogPage.tsx | 400 |
+| `filter-event-type` | client/src/pages/AuditLogPage.tsx | 446 |
+| `filter-source` | client/src/pages/AuditLogPage.tsx | 469 |
+| `clear-filters-button` | client/src/pages/AuditLogPage.tsx | 493 |
+| `audit-log-loading` | client/src/pages/AuditLogPage.tsx | 506 |
+| `audit-log-error` | client/src/pages/AuditLogPage.tsx | 517 |
+| `audit-log-empty-state` | client/src/pages/AuditLogPage.tsx | 529 |
 | `logs-drawer-title` | client/src/pages/AutomationRulesPage.tsx | 177 |
 | `logs-drawer-rule-name` | client/src/pages/AutomationRulesPage.tsx | 181 |
 | `logs-drawer-close` | client/src/pages/AutomationRulesPage.tsx | 190 |
@@ -821,6 +821,18 @@ _None — all test-referenced testids are present in the application source._
 | `audit-log-section-title` | client/src/pages/admin/DataSettings.tsx | 391 |
 | `audit-log-link` | client/src/pages/admin/DataSettings.tsx | 399 |
 | `audit-log-section` | client/src/pages/admin/DataSettings.tsx | 387 |
+| `email-sync-settings-disabled-banner` | client/src/pages/admin/EmailSyncSettings.tsx | 142 |
+| `email-sync-settings-loading` | client/src/pages/admin/EmailSyncSettings.tsx | 149 |
+| `email-sync-settings-error` | client/src/pages/admin/EmailSyncSettings.tsx | 155 |
+| `email-sync-excluded-domains-input` | client/src/pages/admin/EmailSyncSettings.tsx | 184 |
+| `email-sync-domains-error` | client/src/pages/admin/EmailSyncSettings.tsx | 190 |
+| `email-sync-domains-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 199 |
+| `email-sync-domains-save` | client/src/pages/admin/EmailSyncSettings.tsx | 207 |
+| `email-sync-backfill-days-input` | client/src/pages/admin/EmailSyncSettings.tsx | 237 |
+| `email-sync-days-error` | client/src/pages/admin/EmailSyncSettings.tsx | 240 |
+| `email-sync-days-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 248 |
+| `email-sync-days-save` | client/src/pages/admin/EmailSyncSettings.tsx | 256 |
+| `email-sync-settings` | client/src/pages/admin/EmailSyncSettings.tsx | 130 |
 | `feature-flag-confirm-cancel` | client/src/pages/admin/FeatureFlagsSettings.tsx | 131 |
 | `group-create-open` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1042 |
 | `group-create-label` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1075 |
@@ -844,23 +856,25 @@ _None — all test-referenced testids are present in the application source._
 | `nav-layout-success` | client/src/pages/admin/GeneralSettings.tsx | 191 |
 | `nav-layout-error` | client/src/pages/admin/GeneralSettings.tsx | 196 |
 | `nav-layout-section` | client/src/pages/admin/GeneralSettings.tsx | 153 |
-| `storage-section-title` | client/src/pages/admin/IntegrationSettings.tsx | 113 |
-| `storage-loading` | client/src/pages/admin/IntegrationSettings.tsx | 120 |
-| `storage-load-error` | client/src/pages/admin/IntegrationSettings.tsx | 126 |
-| `storage-endpoint-input` | client/src/pages/admin/IntegrationSettings.tsx | 143 |
-| `storage-bucket-input` | client/src/pages/admin/IntegrationSettings.tsx | 161 |
-| `storage-access-key-id-input` | client/src/pages/admin/IntegrationSettings.tsx | 178 |
-| `storage-secret-masked` | client/src/pages/admin/IntegrationSettings.tsx | 195 |
-| `storage-secret-access-key-input` | client/src/pages/admin/IntegrationSettings.tsx | 202 |
-| `storage-test-ok` | client/src/pages/admin/IntegrationSettings.tsx | 213 |
-| `storage-test-fail` | client/src/pages/admin/IntegrationSettings.tsx | 218 |
-| `storage-save-success` | client/src/pages/admin/IntegrationSettings.tsx | 227 |
-| `storage-save-error` | client/src/pages/admin/IntegrationSettings.tsx | 233 |
-| `storage-clear-button` | client/src/pages/admin/IntegrationSettings.tsx | 244 |
-| `storage-test-button` | client/src/pages/admin/IntegrationSettings.tsx | 257 |
-| `storage-save-button` | client/src/pages/admin/IntegrationSettings.tsx | 276 |
-| `storage-section` | client/src/pages/admin/IntegrationSettings.tsx | 109 |
-| `webhooks-section` | client/src/pages/admin/IntegrationSettings.tsx | 296 |
+| `storage-section-title` | client/src/pages/admin/IntegrationSettings.tsx | 124 |
+| `storage-loading` | client/src/pages/admin/IntegrationSettings.tsx | 131 |
+| `storage-load-error` | client/src/pages/admin/IntegrationSettings.tsx | 137 |
+| `storage-endpoint-input` | client/src/pages/admin/IntegrationSettings.tsx | 154 |
+| `storage-bucket-input` | client/src/pages/admin/IntegrationSettings.tsx | 172 |
+| `storage-access-key-id-input` | client/src/pages/admin/IntegrationSettings.tsx | 189 |
+| `storage-secret-masked` | client/src/pages/admin/IntegrationSettings.tsx | 206 |
+| `storage-secret-access-key-input` | client/src/pages/admin/IntegrationSettings.tsx | 213 |
+| `storage-test-ok` | client/src/pages/admin/IntegrationSettings.tsx | 224 |
+| `storage-test-fail` | client/src/pages/admin/IntegrationSettings.tsx | 229 |
+| `storage-save-success` | client/src/pages/admin/IntegrationSettings.tsx | 238 |
+| `storage-save-error` | client/src/pages/admin/IntegrationSettings.tsx | 244 |
+| `storage-clear-button` | client/src/pages/admin/IntegrationSettings.tsx | 255 |
+| `storage-test-button` | client/src/pages/admin/IntegrationSettings.tsx | 268 |
+| `storage-save-button` | client/src/pages/admin/IntegrationSettings.tsx | 287 |
+| `storage-section` | client/src/pages/admin/IntegrationSettings.tsx | 120 |
+| `email-sync-flag-loading` | client/src/pages/admin/IntegrationSettings.tsx | 307 |
+| `email-sync-flag-error` | client/src/pages/admin/IntegrationSettings.tsx | 313 |
+| `webhooks-section` | client/src/pages/admin/IntegrationSettings.tsx | 322 |
 | `mfa-required-toggle-label` | client/src/pages/admin/MfaSettings.tsx | 57 |
 | `mfa-required-error` | client/src/pages/admin/MfaSettings.tsx | 80 |
 | `mfa-required-section` | client/src/pages/admin/MfaSettings.tsx | 50 |
@@ -1093,10 +1107,10 @@ _None — all test-referenced testids are present in the application source._
 | `edit-activity-*` | client/src/components/ActivityTimeline.tsx | 672 | app |
 | `delete-activity-*` | client/src/components/ActivityTimeline.tsx | 681 | app |
 | `activity-item-*` | client/src/components/ActivityTimeline.tsx | 433 | app |
-| `attachment-filename-*` | client/src/components/AttachmentsSection.tsx | 298 | app |
-| `attachment-download-*` | client/src/components/AttachmentsSection.tsx | 312 | app |
-| `attachment-delete-*` | client/src/components/AttachmentsSection.tsx | 320 | app |
-| `attachment-row-*` | client/src/components/AttachmentsSection.tsx | 293 | app |
+| `attachment-filename-*` | client/src/components/AttachmentsSection.tsx | 305 | app |
+| `attachment-download-*` | client/src/components/AttachmentsSection.tsx | 319 | app |
+| `attachment-delete-*` | client/src/components/AttachmentsSection.tsx | 327 | app |
+| `attachment-row-*` | client/src/components/AttachmentsSection.tsx | 300 | app |
 | `bulk-failed-details-row-*` | client/src/components/BulkFailedDetailsModal.tsx | 64 | app |
 | `champion-blocker-badge-*` | client/src/components/ChampionBlockerBadge.tsx | 54 | app |
 | `champion-blocker-why-*` | client/src/components/ChampionBlockerBadge.tsx | 61 | app |
@@ -1169,13 +1183,13 @@ _None — all test-referenced testids are present in the application source._
 | `email-body-loading-*` | client/src/components/EmailsSection.tsx | 120 | app |
 | `email-body-error-*` | client/src/components/EmailsSection.tsx | 127 | app |
 | `email-body-text-*` | client/src/components/EmailsSection.tsx | 144 | app |
-| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 310 | app |
-| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 353 | app |
-| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 378 | app |
-| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 424 | app |
-| `email-reply-*` | client/src/components/EmailsSection.tsx | 406 | app |
-| `email-message-*` | client/src/components/EmailsSection.tsx | 367 | app |
-| `email-thread-*` | client/src/components/EmailsSection.tsx | 302 | app |
+| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 318 | app |
+| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 361 | app |
+| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 386 | app |
+| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 433 | app |
+| `email-reply-*` | client/src/components/EmailsSection.tsx | 405 | app |
+| `email-message-*` | client/src/components/EmailsSection.tsx | 375 | app |
+| `email-thread-*` | client/src/components/EmailsSection.tsx | 310 | app |
 | `**-tags-heading` | client/src/components/EntityDetailSidebar.tsx | 108 | app |
 | `**-tags-section` | client/src/components/EntityDetailSidebar.tsx | 103 | app |
 | `field-merge-auto-*` | client/src/components/FieldMergeModal.tsx | 332 | app |
@@ -1191,18 +1205,18 @@ _None — all test-referenced testids are present in the application source._
 | `search-result-deal-*` | client/src/components/GlobalSearch.tsx | 169 | app |
 | `search-result-lead-*` | client/src/components/GlobalSearch.tsx | 195 | app |
 | `search-result-email-*` | client/src/components/GlobalSearch.tsx | 223 | app |
-| `lead-routing-factor-*` | client/src/components/LeadForm.tsx | 165 | app |
+| `lead-routing-factor-*` | client/src/components/LeadForm.tsx | 166 | app |
 | `meeting-brief-news-item-*` | client/src/components/MeetingBriefPanel.tsx | 223 | app |
-| `note-tag-remove-*` | client/src/components/NotesSection.tsx | 717 | app |
-| `note-tag-*` | client/src/components/NotesSection.tsx | 710 | app |
-| `note-card-masked-*` | client/src/components/NotesSection.tsx | 812 | app |
-| `note-tag-display-*` | client/src/components/NotesSection.tsx | 837 | app |
-| `note-edit-*` | client/src/components/NotesSection.tsx | 849 | app |
-| `note-delete-*` | client/src/components/NotesSection.tsx | 857 | app |
-| `note-title-*` | client/src/components/NotesSection.tsx | 869 | app |
-| `note-body-*` | client/src/components/NotesSection.tsx | 884 | app |
-| `note-body-*` | client/src/components/NotesSection.tsx | 878 | app |
-| `note-card-*` | client/src/components/NotesSection.tsx | 823 | app |
+| `note-tag-remove-*` | client/src/components/NotesSection.tsx | 728 | app |
+| `note-tag-*` | client/src/components/NotesSection.tsx | 721 | app |
+| `note-card-masked-*` | client/src/components/NotesSection.tsx | 823 | app |
+| `note-tag-display-*` | client/src/components/NotesSection.tsx | 848 | app |
+| `note-edit-*` | client/src/components/NotesSection.tsx | 860 | app |
+| `note-delete-*` | client/src/components/NotesSection.tsx | 868 | app |
+| `note-title-*` | client/src/components/NotesSection.tsx | 880 | app |
+| `note-body-*` | client/src/components/NotesSection.tsx | 895 | app |
+| `note-body-*` | client/src/components/NotesSection.tsx | 889 | app |
+| `note-card-*` | client/src/components/NotesSection.tsx | 834 | app |
 | `notification-item-*` | client/src/components/NotificationBell.tsx | 123 | app |
 | `objection-classification-error-*` | client/src/components/ObjectionInsights.tsx | 63 | app |
 | `objection-category-badge-*` | client/src/components/ObjectionInsights.tsx | 79 | app |
@@ -1279,18 +1293,18 @@ _None — all test-referenced testids are present in the application source._
 | `reactivate-*` | client/src/components/ui/UserActionsMenu.tsx | 171 | app |
 | `linked-contact-*` | client/src/pages/AccountDetailPage.tsx | 502 | app |
 | `subsidiary-account-*` | client/src/pages/AccountDetailPage.tsx | 536 | app |
-| `bulk-select-*` | client/src/pages/AccountsPage.tsx | 906 | app |
-| `account-card-link-*` | client/src/pages/AccountsPage.tsx | 916 | app |
-| `account-card-owner-*` | client/src/pages/AccountsPage.tsx | 929 | app |
-| `account-card-tags-*` | client/src/pages/AccountsPage.tsx | 941 | app |
-| `account-card-health-*` | client/src/pages/AccountsPage.tsx | 949 | app |
-| `account-card-*` | client/src/pages/AccountsPage.tsx | 901 | app |
+| `bulk-select-*` | client/src/pages/AccountsPage.tsx | 904 | app |
+| `account-card-link-*` | client/src/pages/AccountsPage.tsx | 914 | app |
+| `account-card-owner-*` | client/src/pages/AccountsPage.tsx | 927 | app |
+| `account-card-tags-*` | client/src/pages/AccountsPage.tsx | 939 | app |
+| `account-card-health-*` | client/src/pages/AccountsPage.tsx | 947 | app |
+| `account-card-*` | client/src/pages/AccountsPage.tsx | 899 | app |
 | `bulk-select-*` | client/src/pages/AccountsPage.tsx | 803 | app |
 | `account-link-*` | client/src/pages/AccountsPage.tsx | 814 | app |
 | `account-type-*` | client/src/pages/AccountsPage.tsx | 820 | app |
-| `account-owner-*` | client/src/pages/AccountsPage.tsx | 845 | app |
-| `account-tags-*` | client/src/pages/AccountsPage.tsx | 853 | app |
-| `account-health-*` | client/src/pages/AccountsPage.tsx | 861 | app |
+| `account-owner-*` | client/src/pages/AccountsPage.tsx | 843 | app |
+| `account-tags-*` | client/src/pages/AccountsPage.tsx | 851 | app |
+| `account-health-*` | client/src/pages/AccountsPage.tsx | 859 | app |
 | `bulk-select-*` | client/src/pages/ActivitiesPage.tsx | 439 | app |
 | `activity-type-*` | client/src/pages/ActivitiesPage.tsx | 451 | app |
 | `activity-subject-*` | client/src/pages/ActivitiesPage.tsx | 460 | app |
@@ -1316,14 +1330,14 @@ _None — all test-referenced testids are present in the application source._
 | `ai-message-*` | client/src/pages/AiPage.tsx | 88 | app |
 | `ai-session-delete-*` | client/src/pages/AiPage.tsx | 201 | app |
 | `ai-session-item-*` | client/src/pages/AiPage.tsx | 184 | app |
-| `audit-log-time-*` | client/src/pages/AuditLogPage.tsx | 598 | app |
-| `audit-log-actor-*` | client/src/pages/AuditLogPage.tsx | 604 | app |
-| `audit-log-event-*` | client/src/pages/AuditLogPage.tsx | 617 | app |
-| `audit-log-record-type-*` | client/src/pages/AuditLogPage.tsx | 623 | app |
-| `audit-log-summary-*` | client/src/pages/AuditLogPage.tsx | 629 | app |
-| `audit-log-row-button-*` | client/src/pages/AuditLogPage.tsx | 592 | app |
-| `audit-log-detail-*` | client/src/pages/AuditLogPage.tsx | 645 | app |
-| `audit-log-row-*` | client/src/pages/AuditLogPage.tsx | 584 | app |
+| `audit-log-time-*` | client/src/pages/AuditLogPage.tsx | 601 | app |
+| `audit-log-actor-*` | client/src/pages/AuditLogPage.tsx | 607 | app |
+| `audit-log-event-*` | client/src/pages/AuditLogPage.tsx | 620 | app |
+| `audit-log-record-type-*` | client/src/pages/AuditLogPage.tsx | 626 | app |
+| `audit-log-summary-*` | client/src/pages/AuditLogPage.tsx | 632 | app |
+| `audit-log-row-button-*` | client/src/pages/AuditLogPage.tsx | 595 | app |
+| `audit-log-detail-*` | client/src/pages/AuditLogPage.tsx | 648 | app |
+| `audit-log-row-*` | client/src/pages/AuditLogPage.tsx | 587 | app |
 | `log-outcome-*` | client/src/pages/AutomationRulesPage.tsx | 226 | app |
 | `log-timestamp-*` | client/src/pages/AutomationRulesPage.tsx | 232 | app |
 | `log-record-*` | client/src/pages/AutomationRulesPage.tsx | 236 | app |

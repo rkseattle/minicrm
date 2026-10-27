@@ -24,6 +24,10 @@ import {
   resetPipelineStagesReviewed,
   getMfaRequired,
   setMfaRequired,
+  getEmailSyncExcludedDomains,
+  setEmailSyncExcludedDomains,
+  getEmailSyncBackfillDays,
+  setEmailSyncBackfillDays,
 } from '../services/settingsService.js';
 import { getCurrencies, updateCurrencies } from '../services/currencyService.js';
 import {
@@ -34,6 +38,8 @@ import {
   updateCurrenciesSchema,
   SUPPORTED_CURRENCY_LIST,
   dealAutoLinkSchema,
+  emailSyncBackfillDaysSchema,
+  emailSyncExcludedDomainsSchema,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import { getAllVisibilityPolicies, updateVisibilityConfig } from '../services/visibilityService.js';
@@ -227,6 +233,62 @@ export async function setDealAutoLinkHandler(req: Request, res: Response): Promi
     changedById: req.user!.id,
     changedByName: req.user!.name,
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
+}
+
+// ── Email sync governance ────────────────────────────────────────
+
+/**
+ * GET /api/v1/settings/email-sync-excluded-domains
+ * Returns the org-wide domains email sync never stores.
+ */
+export async function getEmailSyncExcludedDomainsHandler(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  res.status(200).json({ domains: await getEmailSyncExcludedDomains() });
+}
+
+/**
+ * PATCH /api/v1/settings/email-sync-excluded-domains
+ * Replaces the org-wide excluded domains. Admin only; audited with the write.
+ */
+export async function setEmailSyncExcludedDomainsHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const parsed = emailSyncExcludedDomainsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    respondValidationError(res, parsed.error);
+    return;
+  }
+  // Safe: authenticate runs first on this route and always sets req.user.
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const domains = await setEmailSyncExcludedDomains(parsed.data.domains, actor);
+  res.status(200).json({ domains });
+}
+
+/**
+ * GET /api/v1/settings/email-sync-backfill-days
+ * Returns how far back a never-synced mailbox reads, in days.
+ */
+export async function getEmailSyncBackfillDaysHandler(_req: Request, res: Response): Promise<void> {
+  res.status(200).json({ days: await getEmailSyncBackfillDays() });
+}
+
+/**
+ * PATCH /api/v1/settings/email-sync-backfill-days
+ * Sets the backfill window. Admin only; audited with the write.
+ */
+export async function setEmailSyncBackfillDaysHandler(req: Request, res: Response): Promise<void> {
+  const parsed = emailSyncBackfillDaysSchema.safeParse(req.body);
+  if (!parsed.success) {
+    respondValidationError(res, parsed.error);
+    return;
+  }
+  // Safe: authenticate runs first on this route and always sets req.user.
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const days = await setEmailSyncBackfillDays(parsed.data.days, actor);
+  res.status(200).json({ days });
 }
 
 // ── Default currency ─────────────────────────────────────────────
