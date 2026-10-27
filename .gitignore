@@ -24,6 +24,9 @@ client/dist/
 client/.vite/
 client/build/
 
+# ─── React / Vite (coverage-dashboard) ────────────────────────────────────────
+coverage-dashboard/dist/
+
 # ─── Server build output ──────────────────────────────────────────────────────
 server/dist/
 # tsc side-emits compiled shared schemas when building from server/ (MINCRM-288)
