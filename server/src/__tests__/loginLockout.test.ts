@@ -18,6 +18,7 @@ import request from 'supertest';
 import app from '../app.js';
 import pool from '../db.js';
 import { _resetStoreForTesting, LOCKOUT_MAX_ATTEMPTS } from '../services/loginLockoutService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const LOCKOUT_EMAIL = 'lockout-test@example.com';
 const WRONG_PASSWORD = 'WrongPass99!';
@@ -26,7 +27,7 @@ const CORRECT_PASSWORD = 'CorrectP@ss12';
 let userId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email = $1', [LOCKOUT_EMAIL]);
+  await purgeFixtureUsers({ emails: [LOCKOUT_EMAIL] });
 
   const bcrypt = await import('bcryptjs');
   const hash = await bcrypt.default.hash(CORRECT_PASSWORD, 12);
@@ -39,7 +40,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+  await purgeFixtureUsers({ ids: [userId] });
 });
 
 beforeEach(() => {

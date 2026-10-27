@@ -33,6 +33,7 @@ import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { generateMeetingBrief, getMeetingBrief } from '../services/meetingBriefService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'meeting-brief-svc';
 
@@ -73,7 +74,7 @@ async function cleanup(): Promise<void> {
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -103,7 +104,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
   // Restore the flags disabled in beforeEach — feature_flags is a shared global table and
   // this file runs serially alongside every other test file, so leaving them disabled would

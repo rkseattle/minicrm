@@ -21,7 +21,7 @@ import {
   emailSyncBackfillDaysSchema,
   emailSyncExcludedDomainsSchema,
 } from '@minicrm/shared/schemas/settingsSchema.js';
-import { insertParkedMailbox } from './testUtils.js';
+import { insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'emdomschema';
 
@@ -173,7 +173,7 @@ describe('connected_accounts.excluded_domains in the database', () => {
   let accountId: string;
 
   beforeAll(async () => {
-    await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+    await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
     const rep = await createUser({
       email: `${FILE_PREFIX}-owner@example.com`,
       name: 'Domain Schema Rep',
@@ -185,7 +185,7 @@ describe('connected_accounts.excluded_domains in the database', () => {
   });
 
   afterAll(async () => {
-    await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+    await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
     await pool.end();
   });
 

@@ -29,6 +29,7 @@ import { createUser } from '../services/userService.js';
 import { createSession, sendMessage } from '../services/aiSessionService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import type * as AiE2eStubModule from '@minicrm/shared/schemas/aiE2eStub.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'ai-session-svc';
 const ACTOR = { id: '', name: 'AI Session Owner' };
@@ -36,7 +37,7 @@ const ACTOR = { id: '', name: 'AI Session Owner' };
 let userId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
     name: 'AI Session Owner',
@@ -66,7 +67,7 @@ afterAll(async () => {
     [userId],
   );
   await pool.query('DELETE FROM ai_sessions WHERE user_id = $1', [userId]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
 });
 

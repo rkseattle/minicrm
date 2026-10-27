@@ -22,7 +22,7 @@ import {
   bulkDeleteActivities,
 } from '../services/bulkV2Service.js';
 import pool from '../db.js';
-import { uid } from './testUtils.js';
+import { uid, purgeFixtureUsers } from './testUtils.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
 import type * as NotificationService from '../services/notificationService.js';
 
@@ -62,7 +62,7 @@ beforeAll(async () => {
     `DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const actorUser = await createUser({
     email: `${FILE_PREFIX}-actor@example.com`,
@@ -104,7 +104,7 @@ afterAll(async () => {
     `DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── bulkPatchUsers ────────────────────────────────────────────────────────────

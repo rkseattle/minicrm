@@ -26,6 +26,7 @@ import {
   recordTokenUsage,
   getOrgConsumptionSummary,
 } from '../services/aiTokenBudgetService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'atb-svc';
 const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test Admin' };
@@ -35,7 +36,7 @@ let adminId: string;
 let repId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const adminResult = await pool.query<{ id: string }>(
     `INSERT INTO users (email, name, role, password_hash, status)
@@ -64,7 +65,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── getOrgTokenBudget ─────────────────────────────────────────────────────────

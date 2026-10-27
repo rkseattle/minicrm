@@ -20,7 +20,7 @@ import { createAccount } from '../services/accountService.js';
 import { createDeal } from '../services/dealService.js';
 import { createActivity } from '../services/activityService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'viewer-wb';
 
@@ -50,7 +50,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const viewer = await createUser({
     email: `${FILE_PREFIX}-viewer@example.com`,
@@ -104,7 +104,7 @@ afterAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── Contacts ──────────────────────────────────────────────────────────────────

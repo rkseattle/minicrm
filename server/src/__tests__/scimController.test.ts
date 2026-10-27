@@ -15,7 +15,7 @@ import app from '../app.js';
 import pool from '../db.js';
 import { generateScimToken } from '../services/scimTokenService.js';
 import { createUser } from '../services/userService.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'scim-ctrl';
 
@@ -41,7 +41,7 @@ async function cleanup(): Promise<void> {
     `${FILE_PREFIX}-%`,
   ]);
   await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
-  await pool.query(`DELETE FROM users WHERE email LIKE $1`, [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`DELETE FROM scim_tokens`);
   await pool.query(`DELETE FROM custom_roles WHERE name LIKE $1 AND is_builtin = false`, [
     `${FILE_PREFIX}-%`,
@@ -89,10 +89,10 @@ beforeEach(async () => {
     `${FILE_PREFIX}-%`,
   ]);
   await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
-  await pool.query(`DELETE FROM users WHERE email LIKE $1 AND email != $2`, [
-    `${FILE_PREFIX}-%`,
-    `${FILE_PREFIX}-admin@example.com`,
-  ]);
+  await purgeFixtureUsers({
+    emailLike: `${FILE_PREFIX}-%`,
+    exceptEmails: [`${FILE_PREFIX}-admin@example.com`],
+  });
   await pool.query(`DELETE FROM custom_roles WHERE name LIKE $1 AND is_builtin = false`, [
     `${FILE_PREFIX}-%`,
   ]);

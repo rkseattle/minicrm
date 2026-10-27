@@ -11,11 +11,16 @@ import {
   seedDemo,
   removeDemo,
   resetDemo,
-  deleteDemoHygieneFindings,
   runPostSeedProducers,
+  DEMO_CURRENCY_CODES,
+  DEMO_CUSTOM_FIELD_DEFINITION_NAMES,
+  DEMO_PIPELINE_NAME,
+  DEMO_SEEDED_USER_EMAILS,
+  DEMO_WEBHOOK_URLS,
 } from '../services/demoService.js';
 import pool from '../db.js';
-import { claimAdminResolution } from './testUtils.js';
+import { claimAdminResolution, purgeFixtureUsers } from './testUtils.js';
+import { clearDemoRecords } from './demoFixtures.js';
 import {
   gatherOfflineHygieneSignals,
   getHygieneConfig,
@@ -43,22 +48,7 @@ const ADMIN_USER = {
  */
 let adminUserId: string;
 
-// Derived from DEMO_WEBHOOK_SUBSCRIPTIONS in demoService.ts
-const DEMO_WEBHOOK_URLS = [
-  'https://hooks.example.com/slack/minicrm-deals',
-  'https://hooks.zapier.com/example/minicrm',
-];
-// Derived from DEMO_CUSTOM_FIELD_DEFINITIONS in demoService.ts
-const DEMO_CUSTOM_FIELD_NAMES = [
-  'LinkedIn URL',
-  'Lead Source Detail',
-  'Contract Signed Date',
-  'Estimated ARR',
-];
-// Derived from DEMO_CURRENCIES in demoService.ts (JPY added in a later change for i18n demo)
-const DEMO_CURRENCY_CODES = ['GBP', 'EUR', 'CAD', 'JPY'];
-// Derived from DEMO_PIPELINE_NAME / DEMO_PIPELINE_STAGES in demoService.ts
-const DEMO_PIPELINE_NAME = 'Enterprise B2B';
+// Derived from DEMO_PIPELINE_STAGES in demoService.ts
 const DEMO_PIPELINE_STAGE_NAMES = [
   'Discovery',
   'Technical Scoping',
@@ -70,84 +60,11 @@ const DEMO_PIPELINE_STAGE_NAMES = [
 ];
 
 async function cleanDemoData(): Promise<void> {
-  // Delete notes created by demo rep first (no is_demo column on notes)
-  await pool.query(`DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`, [
-    'alex.rivera@demo.minicrm.app',
-  ]);
-  // Delete notes linked to demo entities
-  await pool.query(
-    `DELETE FROM notes WHERE entity_id IN (
-       SELECT id FROM contacts WHERE is_demo = true
-       UNION SELECT id FROM accounts WHERE is_demo = true
-       UNION SELECT id FROM deals WHERE is_demo = true
-       UNION SELECT id FROM leads WHERE is_demo = true
-     )`,
-  );
-  await pool.query(
-    `DELETE FROM custom_field_values WHERE record_id IN (
-       SELECT id FROM contacts WHERE is_demo = true
-       UNION SELECT id FROM deals WHERE is_demo = true
-     )`,
-  );
-  // Same predicate the production path uses, so the two cannot drift.
-  await deleteDemoHygieneFindings(pool);
   // The coaching generator this file invokes writes for every eligible rep in the shared
   // database, so its rows outlive the demo users unless cleared here.
   await pool.query(`DELETE FROM rep_coaching_insight_history`);
   await pool.query(`DELETE FROM rep_coaching_insights`);
-  await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
-    DEMO_CUSTOM_FIELD_NAMES,
-  ]);
-  await pool.query(`DELETE FROM webhook_subscriptions WHERE url = ANY($1::text[])`, [
-    DEMO_WEBHOOK_URLS,
-  ]);
-  await pool.query(`DELETE FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`, [
-    DEMO_CURRENCY_CODES,
-  ]);
-  await pool.query(`DELETE FROM leads WHERE is_demo = true`);
-  await pool.query(
-    `DELETE FROM contact_addresses
-     WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
-  );
-  await pool.query(
-    `DELETE FROM contact_tags
-     WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
-  );
-  await pool.query(
-    `DELETE FROM account_tags
-     WHERE account_id IN (SELECT id FROM accounts WHERE is_demo = true)`,
-  );
-  await pool.query(
-    `DELETE FROM deal_tags
-     WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)`,
-  );
-  await pool.query(
-    `DELETE FROM tags
-     WHERE id NOT IN (SELECT tag_id FROM contact_tags)
-       AND id NOT IN (SELECT tag_id FROM account_tags)
-       AND id NOT IN (SELECT tag_id FROM deal_tags)`,
-  );
-  await pool.query('DELETE FROM automation_rules WHERE is_demo = true');
-  await pool.query(`DELETE FROM activities WHERE is_demo = true`);
-  await pool.query(
-    `DELETE FROM deal_contacts
-     WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)
-        OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
-  );
-  await pool.query(`DELETE FROM deals WHERE is_demo = true`);
-  // Remove the demo pipeline — stages cascade via ON DELETE CASCADE
-  await pool.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
-    DEMO_PIPELINE_NAME,
-  ]);
-  await pool.query(`DELETE FROM contacts WHERE is_demo = true`);
-  await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
-  // Remove demo rep user — created by insertDemoData, not covered by is_demo flag
-  await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
-  // The demo IAM users are also created by insertDemoData and also carry no
-  // is_demo flag. admin@demo.minicrm.dev is an ACTIVE ADMIN, so leaving it resident makes
-  // it a candidate for getAdminUserId()'s ORDER BY created_at — the same leftover-fixture
-  // residue this file's other cleanup exists to prevent.
-  await pool.query(`DELETE FROM users WHERE email LIKE '%@demo.minicrm.dev'`);
+  await clearDemoRecords();
 }
 
 /**
@@ -182,112 +99,8 @@ beforeEach(async () => {
  * fail on their owner FKs.
  */
 async function removeFileFixtures(): Promise<void> {
-  // Live lookup: a sibling spec may already have deleted a fixture user.
-  const fixtures = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email LIKE $1`, [
-    `${FILE_PREFIX}-%`,
-  ]);
-  const fixtureIds = fixtures.rows.map((row) => row.id);
-
-  // With no fixture left, ANY of the empty array matches nothing and the demo half still runs.
-  // Notes the fixtures and the demo rep wrote, before the entities and users go.
-  await pool.query(`DELETE FROM notes WHERE created_by = ANY($1::uuid[])`, [fixtureIds]);
-  await pool.query(`DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`, [
-    'alex.rivera@demo.minicrm.app',
-  ]);
-  // Notes on entities the fixtures own
-  await pool.query(
-    `DELETE FROM notes WHERE entity_id IN (
-       SELECT id FROM contacts WHERE owner_id = ANY($1::uuid[])
-       UNION SELECT id FROM accounts WHERE owner_id = ANY($1::uuid[])
-       UNION SELECT id FROM deals WHERE owner_id = ANY($1::uuid[])
-     )`,
-    [fixtureIds],
-  );
-  await pool.query(
-    `DELETE FROM custom_field_values WHERE record_id IN (
-     SELECT id FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[])
-     UNION SELECT id FROM deals WHERE is_demo = true OR owner_id = ANY($1::uuid[])
-  )`,
-    [fixtureIds],
-  );
-  // Shared predicate for the demo-flagged half, then this file's own fixtures, which
-  // are demo-shaped without carrying the flag.
-  await deleteDemoHygieneFindings(pool);
-  await pool.query(
-    `DELETE FROM data_hygiene_findings WHERE entity_id IN (
-       SELECT id FROM contacts WHERE owner_id = ANY($1::uuid[])
-       UNION SELECT id FROM accounts WHERE owner_id = ANY($1::uuid[])
-       UNION SELECT id FROM deals WHERE owner_id = ANY($1::uuid[])
-     )`,
-    [fixtureIds],
-  );
-  await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
-    DEMO_CUSTOM_FIELD_NAMES,
-  ]);
-  await pool.query(`DELETE FROM webhook_subscriptions WHERE url = ANY($1::text[])`, [
-    DEMO_WEBHOOK_URLS,
-  ]);
-  await pool.query(`DELETE FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`, [
-    DEMO_CURRENCY_CODES,
-  ]);
-  await pool.query(`DELETE FROM leads WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
-    fixtureIds,
-  ]);
-  await pool.query(
-    `DELETE FROM contact_addresses
-     WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
-    [fixtureIds],
-  );
-  await pool.query(
-    `DELETE FROM contact_tags
-     WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
-    [fixtureIds],
-  );
-  await pool.query(
-    `DELETE FROM account_tags
-     WHERE account_id IN (SELECT id FROM accounts WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
-    [fixtureIds],
-  );
-  await pool.query(
-    `DELETE FROM deal_tags
-     WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
-    [fixtureIds],
-  );
-  await pool.query(
-    `DELETE FROM tags
-     WHERE id NOT IN (SELECT tag_id FROM contact_tags)
-       AND id NOT IN (SELECT tag_id FROM account_tags)
-       AND id NOT IN (SELECT tag_id FROM deal_tags)`,
-  );
-  await pool.query(
-    `DELETE FROM automation_rules WHERE is_demo = true OR created_by = ANY($1::uuid[])`,
-    [fixtureIds],
-  );
-  await pool.query(`DELETE FROM activities WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
-    fixtureIds,
-  ]);
-  await pool.query(
-    `DELETE FROM deal_contacts
-     WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true OR owner_id = ANY($1::uuid[]))
-        OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
-    [fixtureIds],
-  );
-  await pool.query(`DELETE FROM deals WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
-    fixtureIds,
-  ]);
-  // Remove the demo pipeline — stages cascade via ON DELETE CASCADE
-  await pool.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
-    DEMO_PIPELINE_NAME,
-  ]);
-  await pool.query(`DELETE FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
-    fixtureIds,
-  ]);
-  await pool.query(`DELETE FROM accounts WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
-    fixtureIds,
-  ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
-  // Outside the demo-svc prefix, so the widened delete above does not cover it.
-  await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
+  await clearDemoRecords();
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 }
 
 afterAll(removeFileFixtures);
@@ -312,9 +125,9 @@ describe('resetFixtures', () => {
 
     await resetFixtures();
 
-    const rep = await pool.query(
-      `SELECT 1 FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`,
-    );
+    const rep = await pool.query('SELECT 1 FROM users WHERE email = ANY($1::text[])', [
+      DEMO_SEEDED_USER_EMAILS,
+    ]);
     const demo = await pool.query('SELECT 1 FROM accounts WHERE is_demo = true');
     expect(rep.rowCount).toBe(0);
     expect(demo.rowCount).toBe(0);
@@ -912,7 +725,7 @@ describe('seedDemo — custom fields', () => {
       `SELECT name, entity_type, field_type FROM custom_field_definitions
        WHERE name = ANY($1::text[])
        ORDER BY name`,
-      [DEMO_CUSTOM_FIELD_NAMES],
+      [DEMO_CUSTOM_FIELD_DEFINITION_NAMES],
     );
     expect(defs.rowCount).toBe(4);
   });
@@ -923,7 +736,7 @@ describe('seedDemo — custom fields', () => {
     const defs = await pool.query<{ name: string; field_type: string }>(
       `SELECT name, field_type FROM custom_field_definitions
        WHERE name = ANY($1::text[])`,
-      [DEMO_CUSTOM_FIELD_NAMES],
+      [DEMO_CUSTOM_FIELD_DEFINITION_NAMES],
     );
     const byName = Object.fromEntries(defs.rows.map((r) => [r.name, r.field_type]));
     expect(byName['LinkedIn URL']).toBe('text');
@@ -964,7 +777,7 @@ describe('seedDemo — custom fields', () => {
 
     const defs = await pool.query<{ count: string }>(
       `SELECT COUNT(*) AS count FROM custom_field_definitions WHERE name = ANY($1::text[])`,
-      [DEMO_CUSTOM_FIELD_NAMES],
+      [DEMO_CUSTOM_FIELD_DEFINITION_NAMES],
     );
     expect(parseInt(defs.rows[0].count, 10)).toBe(4);
   });
@@ -979,7 +792,7 @@ describe('removeDemo — custom fields', () => {
 
     const defs = await pool.query(
       `SELECT id FROM custom_field_definitions WHERE name = ANY($1::text[])`,
-      [DEMO_CUSTOM_FIELD_NAMES],
+      [DEMO_CUSTOM_FIELD_DEFINITION_NAMES],
     );
     expect(defs.rowCount).toBe(0);
   });
@@ -1429,8 +1242,9 @@ describe('seedDemo — rep coaching fixtures', () => {
        FROM users u
        LEFT JOIN deals d ON d.owner_id = u.id
        WHERE u.role IN ('rep', 'manager') AND u.status = 'active'
-         AND (u.email LIKE '%@demo.minicrm.dev' OR u.email = 'alex.rivera@demo.minicrm.app')
+         AND u.email = ANY($1::text[])
        GROUP BY u.id, u.name`,
+      [DEMO_SEEDED_USER_EMAILS],
     );
     expect(perRep.rowCount).toBeGreaterThan(0);
     for (const row of perRep.rows) {
@@ -1462,8 +1276,9 @@ describe('seedDemo — rep coaching fixtures', () => {
        FROM users u
        LEFT JOIN durations ON durations.owner_id = u.id AND durations.days IS NOT NULL
        WHERE u.role IN ('rep', 'manager') AND u.status = 'active'
-         AND (u.email LIKE '%@demo.minicrm.dev' OR u.email = 'alex.rivera@demo.minicrm.app')
+         AND u.email = ANY($1::text[])
        GROUP BY u.id, u.name`,
+      [DEMO_SEEDED_USER_EMAILS],
     );
     expect(perRep.rowCount).toBeGreaterThan(0);
     for (const row of perRep.rows) {
@@ -1482,8 +1297,9 @@ describe('seedDemo — rep coaching fixtures', () => {
        FROM users u
        LEFT JOIN rep_coaching_insights i ON i.rep_id = u.id
        WHERE u.role IN ('rep', 'manager') AND u.status = 'active'
-         AND (u.email LIKE '%@demo.minicrm.dev' OR u.email = 'alex.rivera@demo.minicrm.app')
+         AND u.email = ANY($1::text[])
        GROUP BY u.id, u.name`,
+      [DEMO_SEEDED_USER_EMAILS],
     );
     expect(perRep.rowCount).toBeGreaterThan(0);
     for (const row of perRep.rows) {
@@ -1497,7 +1313,8 @@ describe('seedDemo — rep coaching fixtures', () => {
        FROM rep_coaching_insights i
        JOIN users u ON u.id = i.rep_id
        WHERE i.metric_type = 'stage_conversion_rate' AND i.rep_value <> 1
-         AND (u.email LIKE '%@demo.minicrm.dev' OR u.email = 'alex.rivera@demo.minicrm.app')`,
+         AND u.email = ANY($1::text[])`,
+      [DEMO_SEEDED_USER_EMAILS],
     );
     expect(Number(varied.rows[0]!.n)).toBeGreaterThan(0);
   });

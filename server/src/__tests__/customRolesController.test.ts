@@ -21,7 +21,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createCustomRole } from '../services/roleService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
 const FILE_PREFIX = 'custom-roles-ctrl';
@@ -36,7 +36,7 @@ beforeAll(async () => {
   await pool.query(`DELETE FROM custom_roles WHERE name LIKE $1 AND is_builtin = false`, [
     `${FILE_PREFIX}-%`,
   ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
@@ -68,7 +68,7 @@ afterAll(async () => {
   await pool.query(`DELETE FROM custom_roles WHERE name LIKE $1 AND is_builtin = false`, [
     `${FILE_PREFIX}-%`,
   ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── GET /api/v1/custom-roles ──────────────────────────────────────────────────

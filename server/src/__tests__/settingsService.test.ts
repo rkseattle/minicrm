@@ -33,6 +33,7 @@ import {
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 beforeEach(async () => {
   // Reset to seeded defaults before each test
@@ -330,7 +331,7 @@ describe('getOnboardingStatus — admin caller', () => {
   });
 
   afterAll(async () => {
-    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-admin@test.com'`);
+    await purgeFixtureUsers({ emails: [`settings-svc-admin@test.com`] });
   });
 
   beforeEach(async () => {
@@ -383,7 +384,7 @@ describe('getOnboardingStatus — admin caller', () => {
       const task = status.tasks.find((t) => t.id === 'team_member_invited');
       expect(task?.completed).toBe(true);
     } finally {
-      await pool.query(`DELETE FROM users WHERE email = 'settings-svc-extra@test.com'`);
+      await purgeFixtureUsers({ emails: [`settings-svc-extra@test.com`] });
     }
   });
 
@@ -401,7 +402,7 @@ describe('getOnboardingStatus — admin caller', () => {
       // Inactive users must not count toward team_member_invited
       expect(task?.completed).toBe(false);
     } finally {
-      await pool.query(`DELETE FROM users WHERE email = 'settings-svc-inactive@test.com'`);
+      await purgeFixtureUsers({ emails: [`settings-svc-inactive@test.com`] });
       // Restore any non-admin users to active
       await pool.query(`UPDATE users SET status = 'active' WHERE role != 'admin'`);
     }
@@ -453,7 +454,7 @@ describe('getOnboardingStatus — admin caller', () => {
 describe('getOnboardingStatus — rep caller', () => {
   beforeAll(async () => {
     await pool.query('TRUNCATE contacts, accounts, deals, activities RESTART IDENTITY CASCADE');
-    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-rep@test.com'`);
+    await purgeFixtureUsers({ emails: [`settings-svc-rep@test.com`] });
     const repResult = await pool.query<{ id: string }>(
       `INSERT INTO users (email, name, role, status, password_hash)
        VALUES ('settings-svc-rep@test.com', 'Settings Rep', 'rep', 'active', 'x')
@@ -464,7 +465,7 @@ describe('getOnboardingStatus — rep caller', () => {
 
   afterAll(async () => {
     await pool.query('TRUNCATE contacts, accounts, deals, activities RESTART IDENTITY CASCADE');
-    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-rep@test.com'`);
+    await purgeFixtureUsers({ emails: [`settings-svc-rep@test.com`] });
   });
 
   beforeEach(async () => {
@@ -569,7 +570,7 @@ describe('setOnboardingCompleted', () => {
   });
 
   afterAll(async () => {
-    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-onboarding@test.com'`);
+    await purgeFixtureUsers({ emails: [`settings-svc-onboarding@test.com`] });
   });
 
   beforeEach(async () => {
@@ -605,7 +606,7 @@ describe('markPipelineStagesReviewed', () => {
   });
 
   afterAll(async () => {
-    await pool.query(`DELETE FROM users WHERE email = 'settings-svc-mark-admin@test.com'`);
+    await purgeFixtureUsers({ emails: [`settings-svc-mark-admin@test.com`] });
   });
 
   beforeEach(async () => {

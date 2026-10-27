@@ -28,6 +28,7 @@ import { createUser } from '../services/userService.js';
 import { createLead } from '../services/leadsService.js';
 import { generateLeadScoreNarrative } from '../services/leadScoreNarrativeService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'lead-score-narrative-svc';
 
@@ -38,7 +39,7 @@ beforeAll(async () => {
     'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
@@ -64,7 +65,7 @@ afterAll(async () => {
     'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
 });
 

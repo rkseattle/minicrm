@@ -9,7 +9,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'auto-ctrl';
 const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
@@ -43,7 +43,7 @@ beforeAll(async () => {
     'DELETE FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -90,7 +90,7 @@ afterAll(async () => {
     'DELETE FROM automation_rules WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── POST /api/v1/automation/rules ────────────────────────────────────────────────

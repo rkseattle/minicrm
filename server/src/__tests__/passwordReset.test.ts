@@ -23,7 +23,7 @@ import {
   findUserByResetToken,
   resetPasswordWithToken,
 } from '../services/userService.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -52,11 +52,11 @@ async function createTestUser(suffix: string) {
 // ---------------------------------------------------------------------------
 
 beforeAll(async () => {
-  await pool.query(`DELETE FROM users WHERE email LIKE '${TEST_EMAIL_PREFIX}%'`);
+  await purgeFixtureUsers({ emailLike: `${TEST_EMAIL_PREFIX}%` });
 });
 
 afterAll(async () => {
-  await pool.query(`DELETE FROM users WHERE email LIKE '${TEST_EMAIL_PREFIX}%'`);
+  await purgeFixtureUsers({ emailLike: `${TEST_EMAIL_PREFIX}%` });
 });
 
 // ---------------------------------------------------------------------------

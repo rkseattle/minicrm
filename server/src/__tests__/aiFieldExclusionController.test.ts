@@ -12,7 +12,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 import { invalidateFieldExclusionCache } from '../ai/piiFilter.js';
 
 const FILE_PREFIX = 'ai-field-excl-ctrl';
@@ -23,7 +23,7 @@ let adminCookie: string;
 let repCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -50,7 +50,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 beforeEach(async () => {

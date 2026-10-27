@@ -36,6 +36,7 @@ import {
   getDealStakeholderMap,
 } from '../services/championBlockerService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'champ-block-svc';
 
@@ -91,7 +92,7 @@ async function insertTestActivity(
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -110,7 +111,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
 });
 

@@ -13,7 +13,12 @@ import app from '../app.js';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
-import { clearAuditLogFor, insertParkedMailbox, makeAuthCookie } from './testUtils.js';
+import {
+  clearAuditLogFor,
+  insertParkedMailbox,
+  makeAuthCookie,
+  purgeFixtureUsers,
+} from './testUtils.js';
 
 const FILE_PREFIX = 'emailmsgctl';
 
@@ -41,7 +46,7 @@ async function deleteFixtures(): Promise<void> {
   // behind blocks the user delete and strands every later run of this file.
   await pool.query(`DELETE FROM leads WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
   await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

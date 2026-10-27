@@ -19,7 +19,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createUser, updateUserStatus } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 /** 30-minute idle expiry in milliseconds — must match authController constant */
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
@@ -42,7 +42,7 @@ let _mustChangeUserId: string;
 let mustChangeCookie: string;
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'auth-test-%'");
+  await purgeFixtureUsers({ emailLike: 'auth-test-%' });
 
   const activeUser = await createUser({
     ...BASE_USER,
@@ -87,7 +87,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'auth-test-%'");
+  await purgeFixtureUsers({ emailLike: 'auth-test-%' });
 });
 
 // ── deactivated user rejection ───────────────────────────────────
@@ -152,7 +152,7 @@ describe('must_change_password enforcement', () => {
 describe('JWT cookie security flags', () => {
   beforeAll(async () => {
     // Seed the login test user; each test will set a fresh bcrypt hash before logging in
-    await pool.query("DELETE FROM users WHERE email = 'auth-test-login@example.com'");
+    await purgeFixtureUsers({ emails: ['auth-test-login@example.com'] });
     await pool.query(
       `INSERT INTO users (email, name, role, password_hash, status)
        VALUES ('auth-test-login@example.com', 'Login Test', 'rep',

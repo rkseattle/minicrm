@@ -19,6 +19,7 @@ import {
   extractBodyText,
 } from '../services/noteService.js';
 import { listEntityTags } from '../services/tagService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'note-svc';
 
@@ -82,7 +83,7 @@ beforeAll(async () => {
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
@@ -124,7 +125,7 @@ afterAll(async () => {
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.end();
 });
 

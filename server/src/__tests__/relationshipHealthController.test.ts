@@ -7,7 +7,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'rel-health-ctrl';
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
@@ -24,7 +24,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const rep = await createUser({
     email: REP_EMAIL,
     name: 'Relationship Health Rep',
@@ -67,7 +67,7 @@ afterAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('GET /api/v1/accounts/:id/health-score', () => {

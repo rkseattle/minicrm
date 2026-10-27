@@ -11,7 +11,7 @@ import { createLead } from '../services/leadsService.js';
 import { createTeam, addTeamMember } from '../services/teamService.js';
 import { createNote } from '../services/noteService.js';
 import pool from '../db.js';
-import { makeAuthCookie, uid, restoreLeadRoutingFlag } from './testUtils.js';
+import { makeAuthCookie, uid, restoreLeadRoutingFlag, purgeFixtureUsers } from './testUtils.js';
 
 function makeNoteDoc(text: string): string {
   return JSON.stringify({
@@ -52,7 +52,7 @@ beforeAll(async () => {
     'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const rep = await createUser({
     email: REP_EMAIL,
@@ -142,7 +142,7 @@ afterAll(async () => {
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── POST /api/v1/leads ───────────────────────────────────────────────────────────
@@ -775,7 +775,7 @@ describe('GET /api/v1/leads — ?owner=my_team filter', () => {
     await pool.query('DELETE FROM leads WHERE id = ANY($1::uuid[])', [[leadA.id, leadB.id]]);
     await pool.query('DELETE FROM team_memberships WHERE team_id = $1', [team.id]);
     await pool.query('DELETE FROM teams WHERE id = $1', [team.id]);
-    await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[userA.id, userB.id]]);
+    await purgeFixtureUsers({ ids: [userA.id, userB.id] });
   });
 
   it('falls back to the requesting user only when they belong to no teams', async () => {
@@ -814,7 +814,7 @@ describe('GET /api/v1/leads — ?owner=my_team filter', () => {
       [myLead.id, otherLead.id],
     ]);
     await pool.query('DELETE FROM leads WHERE id = ANY($1::uuid[])', [[myLead.id, otherLead.id]]);
-    await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[solo.id, other.id]]);
+    await purgeFixtureUsers({ ids: [solo.id, other.id] });
   });
 });
 

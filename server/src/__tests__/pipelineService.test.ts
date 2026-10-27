@@ -20,7 +20,7 @@ import {
   getDefaultPipelineId,
 } from '../services/pipelineService.js';
 import pool from '../db.js';
-import { ensureUser } from './testUtils.js';
+import { ensureUser, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'pipeline-svc';
 
@@ -105,7 +105,7 @@ beforeEach(async () => {
 afterAll(async () => {
   await cleanupTestPipelines();
   await clearPipelineAuditLog();
-  await pool.query('DELETE FROM users WHERE email = $1', [ACTOR_EMAIL]);
+  await purgeFixtureUsers({ emails: [ACTOR_EMAIL] });
   await pool.end();
 });
 
@@ -347,7 +347,7 @@ describe('deletePipeline', () => {
     } finally {
       await pool.query('DELETE FROM deals WHERE pipeline_id = $1', [created.id]);
       await pool.query('DELETE FROM pipeline_stages WHERE pipeline_id = $1', [created.id]);
-      await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+      await purgeFixtureUsers({ ids: [userId] });
       await pool.query('DELETE FROM pipelines WHERE id = $1', [created.id]);
     }
   });

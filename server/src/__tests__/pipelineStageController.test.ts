@@ -15,7 +15,7 @@ import app from '../app.js';
 import { createDeal } from '../services/dealService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie, uid } from './testUtils.js';
+import { makeAuthCookie, uid, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'ps-ctrl';
 
@@ -24,7 +24,7 @@ let repCookie: string;
 let adminCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const rep = await createUser({
     email: `${FILE_PREFIX}-rep@example.com`,
@@ -60,7 +60,7 @@ afterAll(async () => {
   await pool.query(`DELETE FROM pipeline_stages WHERE is_fixed = false AND name LIKE $1`, [
     `${FILE_PREFIX}-%`,
   ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // Remove custom stages after each test so sort_order conflicts don't bleed across tests

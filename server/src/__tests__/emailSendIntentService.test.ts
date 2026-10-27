@@ -67,6 +67,7 @@ import {
   failMessageInsert,
   insertParkedMailbox,
   stubClientQueries,
+  purgeFixtureUsers,
 } from './testUtils.js';
 
 // The email feature is off for the whole file: a sweep must run without it, and with it off
@@ -220,7 +221,7 @@ async function deleteFixtures(): Promise<void> {
        (SELECT id FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com')`,
   );
   await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

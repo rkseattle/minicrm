@@ -12,6 +12,7 @@ import { createContact } from '../services/contactService.js';
 import { createActivity } from '../services/activityService.js';
 import { scoreLead } from '../services/leadScoreService.js';
 import type { LeadRow } from '../services/leadsService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'lead-score-svc';
 
@@ -30,7 +31,7 @@ beforeAll(async () => {
     'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
@@ -55,7 +56,7 @@ afterAll(async () => {
     'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('scoreLead', () => {

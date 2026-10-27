@@ -23,7 +23,7 @@ import {
 } from '../services/leadRoutingService.js';
 import type { CandidateRep } from '../services/leadRoutingService.js';
 import { isFlagEnabledForUser } from '../services/featureFlagService.js';
-import { uid, restoreLeadRoutingFlag } from './testUtils.js';
+import { uid, restoreLeadRoutingFlag, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'lead-routing-svc';
 const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -76,7 +76,7 @@ async function resetConfig(): Promise<void> {
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const repA = await createUser({
     email: `${FILE_PREFIX}-repa@example.com`,
     name: 'Routing Rep A',
@@ -102,7 +102,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // Pure unit tests against a fixed, hand-built candidate list — no DB query, so

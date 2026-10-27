@@ -13,7 +13,7 @@ import request from 'supertest';
 import type { Express } from 'express';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 import { UNRECOGNIZED_ENVS } from './nodeEnvCorpus.js';
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
@@ -26,7 +26,7 @@ const FILE_PREFIX = 'app-env-gating';
 let adminCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
     name: 'Env Gating Admin',
@@ -43,7 +43,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.end();
 });
 

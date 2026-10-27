@@ -813,6 +813,12 @@ const DEMO_REP_ACCOUNTS = [
   },
 ];
 
+/** Email of every user the demo seed creates: the rep, then the IAM users. */
+export const DEMO_SEEDED_USER_EMAILS: readonly string[] = [
+  DEMO_REP.email,
+  ...DEMO_IAM_USERS.map((user) => user.email),
+];
+
 // Rep contacts span Japanese, English, and German locales.
 const DEMO_REP_CONTACTS = [
   // ── シナプス・テクノロジーズ株式会社 contacts (indices 0–2) ────────────────
@@ -1294,7 +1300,8 @@ const DEMO_WEBHOOK_SUBSCRIPTIONS: Array<{
 ];
 
 // Demo webhook URLs — used for teardown matching
-const DEMO_WEBHOOK_URLS = DEMO_WEBHOOK_SUBSCRIPTIONS.map((s) => s.url);
+/** URLs of the webhook subscriptions the demo seed creates. */
+export const DEMO_WEBHOOK_URLS = DEMO_WEBHOOK_SUBSCRIPTIONS.map((s) => s.url);
 
 // Currency exchange rates
 const DEMO_CURRENCIES: Array<{
@@ -1309,10 +1316,12 @@ const DEMO_CURRENCIES: Array<{
   { code: 'JPY', name: 'Japanese Yen', symbol: '¥', rate_to_home: 0.0067 },
 ];
 
-const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
+/** Codes of the non-home currencies the demo seed adds. */
+export const DEMO_CURRENCY_CODES = DEMO_CURRENCIES.map((c) => c.code);
 
 // Names used for teardown — extracted so removeDemoData doesn't depend on the definitions array shape
-const DEMO_CUSTOM_FIELD_DEFINITION_NAMES = DEMO_CUSTOM_FIELD_DEFINITIONS.map((d) => d.name);
+/** Names of the custom field definitions the demo seed creates. */
+export const DEMO_CUSTOM_FIELD_DEFINITION_NAMES = DEMO_CUSTOM_FIELD_DEFINITIONS.map((d) => d.name);
 
 // Demo sales sequence — showcases a 3-step new-customer cadence
 const DEMO_SEQUENCE_STEPS = [
@@ -1593,7 +1602,8 @@ const DEMO_COACHING_STAGE_DAYS: Record<string, number[]> = {
 // Demo pipeline added by seed to demonstrate multi-pipeline support.
 // This is a second, non-default pipeline so evaluators can see that pipelines are
 // configurable beyond the built-in "Default" one.
-const DEMO_PIPELINE_NAME = 'Enterprise B2B';
+/** Name of the pipeline the demo seed creates. */
+export const DEMO_PIPELINE_NAME = 'Enterprise B2B';
 
 // Stages for the Enterprise B2B pipeline.  A complete set including terminal
 // stages is required because deals.stage must resolve to a stage in the deal's
@@ -1671,7 +1681,7 @@ export async function getDemoStatus(): Promise<{ active: boolean }> {
  *
  * @param client - Active DB client (must already be inside a transaction).
  */
-async function removeDemoData(client: pg.PoolClient): Promise<void> {
+export async function removeDemoData(client: pg.PoolClient): Promise<void> {
   // Notes have no is_demo flag — identify by parent entity
   await client.query(`
     DELETE FROM notes

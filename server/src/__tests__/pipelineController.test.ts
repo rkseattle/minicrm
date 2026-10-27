@@ -14,7 +14,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
-import { makeAuthCookie, uid } from './testUtils.js';
+import { makeAuthCookie, uid, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'pipe-ctrl';
 
@@ -22,7 +22,7 @@ let repCookie: string;
 let adminCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const rep = await createUser({
     email: `${FILE_PREFIX}-rep@example.com`,
@@ -52,7 +52,7 @@ afterAll(async () => {
   await pool.query(`DELETE FROM pipelines WHERE is_default = false AND name LIKE $1`, [
     `${FILE_PREFIX}-%`,
   ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.end();
 });
 
@@ -342,7 +342,7 @@ describe('DELETE /api/v1/pipelines/:id — admin only', () => {
     } finally {
       await pool.query('DELETE FROM deals WHERE pipeline_id = $1', [pipelineId]);
       await pool.query('DELETE FROM pipeline_stages WHERE pipeline_id = $1', [pipelineId]);
-      await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+      await purgeFixtureUsers({ ids: [userId] });
       await pool.query('DELETE FROM pipelines WHERE id = $1', [pipelineId]);
     }
   });

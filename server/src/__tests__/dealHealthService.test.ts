@@ -33,6 +33,7 @@ import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { generateDealHealthCheck } from '../services/dealHealthService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'deal-health-svc';
 
@@ -56,7 +57,7 @@ beforeAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -91,7 +92,7 @@ afterAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
   // Restore the flag disabled in beforeEach — feature_flags is a shared global table and
   // this file runs serially alongside every other test file, so leaving it disabled would

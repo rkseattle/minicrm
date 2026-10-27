@@ -24,7 +24,7 @@ import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 import { listPipelineStages, updatePipelineStage } from '../services/pipelineStageService.js';
 import type { QueryResult } from 'pg';
-import { waitUntil, clearAuditLogFor } from './testUtils.js';
+import { waitUntil, clearAuditLogFor, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'auto-svc';
 
@@ -93,7 +93,7 @@ beforeAll(async () => {
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser(ADMIN_USER);
   adminId = admin.id;
@@ -164,7 +164,7 @@ afterAll(async () => {
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── createAutomationRule ────────────────────────────────────────────────────────

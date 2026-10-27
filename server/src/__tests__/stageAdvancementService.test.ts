@@ -33,6 +33,7 @@ import { createPipelineStage } from '../services/pipelineStageService.js';
 import { checkStageAdvancement } from '../services/stageAdvancementService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'stage-adv-svc';
 
@@ -62,7 +63,7 @@ beforeAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -119,7 +120,7 @@ afterAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query('DELETE FROM pipeline_stages WHERE pipeline_id = $1', [pipelineId]);
   await pool.query('DELETE FROM pipelines WHERE id = $1', [pipelineId]);
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);

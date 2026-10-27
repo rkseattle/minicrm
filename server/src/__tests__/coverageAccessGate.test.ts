@@ -16,6 +16,7 @@ import { createUser } from '../services/userService.js';
 import { assignRoleToUser, createCustomRole } from '../services/roleService.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'coverage-access-gate';
 const SYSTEM_ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -41,7 +42,7 @@ function mockReqResNext(user: unknown): {
 }
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
@@ -114,7 +115,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query('DELETE FROM custom_roles WHERE name LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 

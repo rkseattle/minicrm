@@ -13,7 +13,7 @@ import 'dotenv/config';
 
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
-import { insertParkedMailbox } from './testUtils.js';
+import { insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'emliknkschema';
 
@@ -22,7 +22,7 @@ let messageId: string;
 let contactId: string;
 
 async function deleteFixtureUsers(): Promise<void> {
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 /** Inserts a message directly: no service writes this table outside the sync engine. */

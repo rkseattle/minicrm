@@ -22,7 +22,7 @@ import {
 } from '../services/pipelineStageService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
-import { clearAuditLogFor, countAuditRowsFor } from './testUtils.js';
+import { clearAuditLogFor, countAuditRowsFor, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'pipeline-stage-svc';
 
@@ -116,11 +116,13 @@ beforeEach(async () => {
       'delete-block@example.com',
     ],
   );
-  await pool.query('DELETE FROM users WHERE email IN ($1, $2, $3)', [
-    `${FILE_PREFIX}-rename@example.com`,
-    'pipeline-stage-svc-rename@example.com',
-    'delete-block@example.com',
-  ]);
+  await purgeFixtureUsers({
+    emails: [
+      `${FILE_PREFIX}-rename@example.com`,
+      'pipeline-stage-svc-rename@example.com',
+      'delete-block@example.com',
+    ],
+  });
   await clearPipelineStageAuditLog();
   await resetStages();
 });
@@ -296,7 +298,7 @@ describe('updatePipelineStage', () => {
 
     // Clean up
     await pool.query(`DELETE FROM deals WHERE owner_id = $1`, [ownerId]);
-    await pool.query(`DELETE FROM users WHERE id = $1`, [ownerId]);
+    await purgeFixtureUsers({ ids: [ownerId] });
   });
 
   it('carries a rename into deal_stage_history, which stores the stage by name', async () => {
@@ -339,7 +341,7 @@ describe('updatePipelineStage', () => {
         dealResult.rows[0].id,
       ]);
       await pool.query(`DELETE FROM deals WHERE owner_id = $1`, [ownerId]);
-      await pool.query(`DELETE FROM users WHERE id = $1`, [ownerId]);
+      await purgeFixtureUsers({ ids: [ownerId] });
     }
   });
 
@@ -549,7 +551,7 @@ describe('deletePipelineStage', () => {
 
     // Clean up
     await pool.query(`DELETE FROM deals WHERE owner_id = $1`, [ownerId]);
-    await pool.query(`DELETE FROM users WHERE id = $1`, [ownerId]);
+    await purgeFixtureUsers({ ids: [ownerId] });
   });
 
   it('throws STAGE_HAS_OPEN_DEALS when deleting a terminal stage that has open deals', async () => {
@@ -590,7 +592,7 @@ describe('deletePipelineStage', () => {
 
     // Clean up
     await pool.query(`DELETE FROM deals WHERE owner_id = $1`, [ownerId]);
-    await pool.query(`DELETE FROM users WHERE id = $1`, [ownerId]);
+    await purgeFixtureUsers({ ids: [ownerId] });
     await pool.query(`DELETE FROM pipeline_stages WHERE id = $1`, [terminalStageId]);
   });
 

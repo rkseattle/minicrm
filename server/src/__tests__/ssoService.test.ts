@@ -26,6 +26,7 @@ import {
 } from '../services/ssoService.js';
 import type { SsoIdentityClaims } from '../services/ssoService.js';
 import { setSsoConfig } from '../services/ssoSettingsService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test Actor' };
 
@@ -37,11 +38,11 @@ const CLAIMS: SsoIdentityClaims = {
 
 beforeEach(async () => {
   // audit_log is append-only (trigger prevents DELETE) — skip deleting it in tests.
-  await pool.query("DELETE FROM users WHERE email LIKE 'sso-test%'");
+  await purgeFixtureUsers({ emailLike: 'sso-test%' });
 });
 
 afterAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'sso-test%'");
+  await purgeFixtureUsers({ emailLike: 'sso-test%' });
   await pool.end();
 });
 
@@ -348,7 +349,7 @@ describe('findOrProvisionSsoUser — binding overwrite protection', () => {
     expect(originalRow.rows[0].sso_subject).toBe('saml-original-subject');
 
     // Cleanup
-    await pool.query("DELETE FROM users WHERE email = 'sso-test-bind-guard@example.com'");
+    await purgeFixtureUsers({ emails: ['sso-test-bind-guard@example.com'] });
   });
 });
 

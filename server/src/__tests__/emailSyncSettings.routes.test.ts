@@ -10,7 +10,7 @@ import app from '../app.js';
 import pool from '../db.js';
 import { EMAIL_SYNC_BACKFILL_DAYS_DEFAULT } from '@minicrm/shared/schemas/settingsSchema.js';
 import { createUser } from '../services/userService.js';
-import { clearAuditLogFor, makeAuthCookie } from './testUtils.js';
+import { clearAuditLogFor, makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'emailsyncsettings';
 
@@ -52,7 +52,7 @@ async function settingsAudits(): Promise<{ field_name: string; new_value: string
 }
 
 beforeAll(async () => {
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
   const admin = await person('admin', 'admin');
   adminId = admin.id;
   adminCookie = admin.cookie;
@@ -67,7 +67,7 @@ beforeEach(async () => {
 afterAll(async () => {
   await restoreDefaults();
   await clearAuditLogFor(adminId);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
   await pool.end();
 });
 

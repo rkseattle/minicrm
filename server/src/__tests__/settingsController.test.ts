@@ -9,7 +9,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const ADMIN_EMAIL = 'admin-settings-ctrl@example.com';
 const REP_EMAIL = 'rep-settings-ctrl@example.com';
@@ -18,7 +18,7 @@ let adminCookie: string;
 let repCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+  await purgeFixtureUsers({ emails: [ADMIN_EMAIL, REP_EMAIL] });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -45,7 +45,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+  await purgeFixtureUsers({ emails: [ADMIN_EMAIL, REP_EMAIL] });
 });
 
 // ── GET /api/v1/settings/default-language ───────────────────────────────────────

@@ -27,7 +27,7 @@ import { createAccount } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
-import { uid } from './testUtils.js';
+import { uid, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'contact-svc';
 /** Custom field definitions this file creates, namespaced so cleanup cannot touch others' rows */
@@ -77,7 +77,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
   const account = await createAccount({ name: 'Test Account', owner_id: ownerId });
@@ -123,7 +123,7 @@ afterAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── createContact ───────────────────────────────────────────────────────────────
@@ -781,7 +781,7 @@ describe('exportContactsForCsv', () => {
     await pool.query(
       `DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email = 'contact-svc-export-other@example.com')`,
     );
-    await pool.query(`DELETE FROM users WHERE email = 'contact-svc-export-other@example.com'`);
+    await purgeFixtureUsers({ emails: ['contact-svc-export-other@example.com'] });
 
     const otherUser = await pool.query<{ id: string }>(
       `INSERT INTO users (email, name, role, password_hash, status)
@@ -797,9 +797,7 @@ describe('exportContactsForCsv', () => {
 
     // Must delete contacts before user due to FK constraint
     await pool.query('DELETE FROM contacts WHERE owner_id = $1', [otherOwnerId]);
-    await pool.query('DELETE FROM users WHERE email = $1', [
-      'contact-svc-export-other@example.com',
-    ]);
+    await purgeFixtureUsers({ emails: ['contact-svc-export-other@example.com'] });
   });
 
   it('filters by search', async () => {

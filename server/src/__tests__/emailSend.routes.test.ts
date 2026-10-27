@@ -21,7 +21,7 @@ import type * as EmailMatchingModule from '../services/emailMatchingService.js';
 import type * as GmailProviderModule from '../services/mail/gmailProvider.js';
 import { createUser } from '../services/userService.js';
 
-import { clearAuditLogFor, makeAuthCookie } from './testUtils.js';
+import { clearAuditLogFor, makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 let sentCount = 0;
 const matchFailure = vi.hoisted(() => ({ next: null as Error | null }));
@@ -120,7 +120,7 @@ async function sendStatuses(
 }
 
 beforeAll(async () => {
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
   await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'email_sync'`);
   invalidateFeatureFlagCache();
 });
@@ -135,7 +135,7 @@ afterAll(async () => {
   await pool.query('DELETE FROM connected_accounts WHERE user_id = ANY($1::uuid[])', [
     createdUserIds,
   ]);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
   await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
   await pool.end();
 });

@@ -21,7 +21,7 @@ import {
   messageAccessPredicate,
   setThreadPrivacy,
 } from '../services/emailMessageService.js';
-import { clearAuditLogFor, insertParkedMailbox } from './testUtils.js';
+import { clearAuditLogFor, insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'emailmsgsvc';
 
@@ -64,7 +64,7 @@ async function link(messageId: string, recordId: string = contactId): Promise<vo
 
 async function deleteFixtures(): Promise<void> {
   await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

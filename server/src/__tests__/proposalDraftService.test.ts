@@ -30,6 +30,7 @@ import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { generateProposalDraft } from '../services/proposalDraftService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import { createNote } from '../services/noteService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'proposal-draft-svc';
 
@@ -56,7 +57,7 @@ async function cleanup(): Promise<void> {
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
     name: 'Proposal Owner',
@@ -96,7 +97,7 @@ beforeEach(async () => {
 afterAll(async () => {
   await cleanup();
   await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
 });
 

@@ -15,7 +15,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { getTagsRestrictCreation, setTagsRestrictCreation } from '../services/settingsService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const ADMIN_EMAIL = 'admin-tag-restrict@example.com';
 const REP_EMAIL = 'rep-tag-restrict@example.com';
@@ -24,7 +24,7 @@ let adminCookie: string;
 let repCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+  await purgeFixtureUsers({ emails: [ADMIN_EMAIL, REP_EMAIL] });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -60,7 +60,7 @@ beforeEach(async () => {
 afterAll(async () => {
   await setTagsRestrictCreation(false);
   await pool.query('DELETE FROM tags WHERE name LIKE $1', ['test-restrict-%']);
-  await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+  await purgeFixtureUsers({ emails: [ADMIN_EMAIL, REP_EMAIL] });
 });
 
 // ── GET /api/v1/settings/tags-restrict-creation ─────────────────────────────────

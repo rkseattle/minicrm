@@ -17,7 +17,7 @@ import { createTeam, addTeamMember } from '../services/teamService.js';
 import { createDeal, linkContactToDeal } from '../services/dealService.js';
 import { createNote } from '../services/noteService.js';
 import pool from '../db.js';
-import { makeAuthCookie, uid } from './testUtils.js';
+import { makeAuthCookie, uid, purgeFixtureUsers } from './testUtils.js';
 
 function makeNoteDoc(text: string): string {
   return JSON.stringify({
@@ -53,7 +53,7 @@ beforeAll(async () => {
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const rep = await createUser({
     email: `${FILE_PREFIX}-rep@example.com`,
@@ -115,7 +115,7 @@ afterAll(async () => {
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── PATCH /api/v1/contacts/:id ──────────────────────────────────────────────────
@@ -519,7 +519,7 @@ describe('GET /api/v1/contacts — ?owner=my_team filter', () => {
     ]);
     await pool.query('DELETE FROM team_memberships WHERE team_id = $1', [team.id]);
     await pool.query('DELETE FROM teams WHERE id = $1', [team.id]);
-    await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[userA.id, userB.id]]);
+    await purgeFixtureUsers({ ids: [userA.id, userB.id] });
   });
 
   it('falls back to the requesting user only when they belong to no teams', async () => {
@@ -557,7 +557,7 @@ describe('GET /api/v1/contacts — ?owner=my_team filter', () => {
     await pool.query('DELETE FROM contacts WHERE id = ANY($1::uuid[])', [
       [myContact.id, otherContact.id],
     ]);
-    await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[solo.id, other.id]]);
+    await purgeFixtureUsers({ ids: [solo.id, other.id] });
   });
 });
 

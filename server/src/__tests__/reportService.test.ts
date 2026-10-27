@@ -27,6 +27,7 @@ import {
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'report-svc';
 
@@ -85,7 +86,7 @@ beforeAll(async () => {
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const rep = await createUser(REP_USER);
   repId = rep.id;
@@ -150,7 +151,7 @@ afterAll(async () => {
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 /** Default date range used across tests: all of 2025 */

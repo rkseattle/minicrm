@@ -24,6 +24,7 @@ import {
 } from '../services/sequenceService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'seq-svc';
 
@@ -71,7 +72,7 @@ async function cleanup() {
      WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 }
 
 beforeAll(async () => {

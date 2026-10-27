@@ -15,7 +15,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import { NAV_LAYOUTS } from '@minicrm/shared/schemas/settingsSchema.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const BASE_USER = {
   name: 'Base User',
@@ -30,7 +30,7 @@ let repId: string;
 let repCookie: string;
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'user-ctrl%'");
+  await purgeFixtureUsers({ emailLike: 'user-ctrl%' });
 
   const admin = await createUser({
     ...BASE_USER,
@@ -60,7 +60,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'user-ctrl%'");
+  await purgeFixtureUsers({ emailLike: 'user-ctrl%' });
 });
 
 // ── GET /api/v1/users ──────────────────────────────────────────────────────────────

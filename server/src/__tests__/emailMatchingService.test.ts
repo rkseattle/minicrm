@@ -27,7 +27,7 @@ import {
   relinkLinksToMergedContact,
   type MatchableMessage,
 } from '../services/emailMatchingService.js';
-import { insertParkedMailbox } from './testUtils.js';
+import { insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'emailmatch';
 
@@ -144,7 +144,7 @@ async function deleteFixtures(): Promise<void> {
   await pool.query(`DELETE FROM accounts WHERE name LIKE '${FILE_PREFIX}-%'`);
   // Stages cascade with the pipeline; both go after the deals that reference them.
   await pool.query(`DELETE FROM pipelines WHERE name = '${FILE_PREFIX}-pipeline'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

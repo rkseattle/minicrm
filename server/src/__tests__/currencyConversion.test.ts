@@ -15,6 +15,7 @@ import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { getDashboardSummary } from '../services/dashboardService.js';
 import { getWinLossReport } from '../services/reportService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'currency-conv';
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
@@ -34,7 +35,7 @@ beforeAll(async () => {
     REP_EMAIL,
   ]);
   await pool.query('DELETE FROM contacts WHERE email = $1', [CONTACT_EMAIL]);
-  await pool.query('DELETE FROM users WHERE email = $1', [REP_EMAIL]);
+  await purgeFixtureUsers({ emails: [REP_EMAIL] });
 
   const rep = await createUser({
     email: REP_EMAIL,
@@ -58,7 +59,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await pool.query('DELETE FROM deals WHERE owner_id = $1', [repId]);
   await pool.query('DELETE FROM contacts WHERE email = $1', [CONTACT_EMAIL]);
-  await pool.query('DELETE FROM users WHERE email = $1', [REP_EMAIL]);
+  await purgeFixtureUsers({ emails: [REP_EMAIL] });
   // Restore baseline currencies state (USD home, no non-home rows)
   await pool.query('DELETE FROM currencies');
   await pool.query(

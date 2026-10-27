@@ -10,7 +10,7 @@
 import 'dotenv/config';
 
 import pool from '../db.js';
-import { insertParkedMailbox } from './testUtils.js';
+import { insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
 import { createUser } from '../services/userService.js';
 import {
   completeEmailSyncJob,
@@ -27,7 +27,7 @@ const ACTOR = { id: '', name: 'Email Sync Job Rep' };
 let accountId: string;
 
 async function deleteFixtureUsers(): Promise<void> {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%@example.com`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

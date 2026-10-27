@@ -12,7 +12,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
 
 // group endpoint tests added at bottom of file.
@@ -25,7 +25,7 @@ let adminCookie: string;
 let repCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -79,7 +79,7 @@ afterAll(async () => {
   await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
   // DELETE cascades to feature_flag_group_beta_users and sets feature_flags.group_key = null.
   await pool.query('DELETE FROM feature_flag_groups');
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   // Restore flags.
   await pool.query(
     `UPDATE feature_flags
@@ -343,7 +343,7 @@ describe('POST /api/v1/admin/feature-flags/:key/beta-users', () => {
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = $1', [`${FILE_PREFIX}-target@example.com`]);
+    await purgeFixtureUsers({ emails: [`${FILE_PREFIX}-target@example.com`] });
   });
 
   it('returns 401 with no auth cookie', async () => {
@@ -429,9 +429,7 @@ describe('DELETE /api/v1/admin/feature-flags/:key/beta-users/:userId', () => {
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = $1', [
-      `${FILE_PREFIX}-del-target@example.com`,
-    ]);
+    await purgeFixtureUsers({ emails: [`${FILE_PREFIX}-del-target@example.com`] });
   });
 
   it('returns 401 with no auth cookie', async () => {
@@ -508,7 +506,7 @@ describe('GET /api/v1/feature-flags/me reflects beta enrollment', () => {
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = $1', [`${FILE_PREFIX}-betame@example.com`]);
+    await purgeFixtureUsers({ emails: [`${FILE_PREFIX}-betame@example.com`] });
   });
 
   it('/me shows mobile_access as disabled before enrollment', async () => {
@@ -612,7 +610,7 @@ describe('User overrides API', () => {
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = $1', [OVERRIDE_USER_EMAIL]);
+    await purgeFixtureUsers({ emails: [OVERRIDE_USER_EMAIL] });
   });
 
   it('GET /overrides — 401 when unauthenticated', async () => {
@@ -1074,9 +1072,7 @@ describe('POST /api/v1/admin/feature-flags/groups/:key/beta-users', () => {
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = $1', [
-      `${FILE_PREFIX}-gbeta-target@example.com`,
-    ]);
+    await purgeFixtureUsers({ emails: [`${FILE_PREFIX}-gbeta-target@example.com`] });
   });
 
   it('enrolls a user in the group beta and returns 201', async () => {
@@ -1150,9 +1146,7 @@ describe('DELETE /api/v1/admin/feature-flags/groups/:key/beta-users/:userId', ()
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = $1', [
-      `${FILE_PREFIX}-gbeta-remove@example.com`,
-    ]);
+    await purgeFixtureUsers({ emails: [`${FILE_PREFIX}-gbeta-remove@example.com`] });
   });
 
   it('returns 401 with no auth cookie', async () => {

@@ -44,8 +44,7 @@
 import request from 'supertest';
 import type { Application } from 'express';
 import { createUser } from '../services/userService.js';
-import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 // Imported, NOT restated: this is the same list registerRoutesIfEnabled gates
 // on, so a sixth coverage router is covered by this test the moment it is
 // added rather than whenever someone remembers to update a copy here.
@@ -126,7 +125,7 @@ async function bootAppWithoutCoverageGates(): Promise<Application> {
 }
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
     name: 'Coverage Route Gating Admin',
@@ -145,7 +144,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('coverage control API — routes absent when COVERAGE_INSTRUMENTATION is unset', () => {

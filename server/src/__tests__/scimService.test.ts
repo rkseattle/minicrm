@@ -38,6 +38,7 @@ import {
   toScimGroup,
 } from '../services/scimGroupService.js';
 import { createUser } from '../services/userService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'scim-svc';
 const BASE_URL = 'http://localhost:3001';
@@ -65,10 +66,10 @@ async function cleanupTestRows(): Promise<void> {
     `${FILE_PREFIX}-%`,
   ]);
   await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
-  await pool.query(`DELETE FROM users WHERE email LIKE $1 AND email != $2`, [
-    `${FILE_PREFIX}-%`,
-    `${FILE_PREFIX}-actor@example.com`,
-  ]);
+  await purgeFixtureUsers({
+    emailLike: `${FILE_PREFIX}-%`,
+    exceptEmails: [`${FILE_PREFIX}-actor@example.com`],
+  });
   await pool.query(`DELETE FROM scim_tokens`);
   await pool.query(`DELETE FROM custom_roles WHERE name LIKE $1 AND is_builtin = false`, [
     `${FILE_PREFIX}-%`,
@@ -93,7 +94,7 @@ beforeAll(async () => {
     `${FILE_PREFIX}-%`,
   ]);
   await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
-  await pool.query(`DELETE FROM users WHERE email LIKE $1`, [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`DELETE FROM scim_tokens`);
   await pool.query(`DELETE FROM custom_roles WHERE name LIKE $1 AND is_builtin = false`, [
     `${FILE_PREFIX}-%`,
@@ -132,7 +133,7 @@ afterAll(async () => {
     `${FILE_PREFIX}-%`,
   ]);
   await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
-  await pool.query(`DELETE FROM users WHERE email LIKE $1`, [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`DELETE FROM scim_tokens`);
   await pool.query(`DELETE FROM custom_roles WHERE name LIKE $1 AND is_builtin = false`, [
     `${FILE_PREFIX}-%`,

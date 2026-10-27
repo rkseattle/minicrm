@@ -18,6 +18,7 @@ import { createNote } from '../services/noteService.js';
 import { attachTag } from '../services/tagService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'search-svc';
 
@@ -88,7 +89,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser(ADMIN_USER);
   adminId = admin.id;
@@ -193,7 +194,7 @@ afterAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('SEARCH_MIN_LENGTH', () => {

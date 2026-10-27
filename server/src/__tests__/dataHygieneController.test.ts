@@ -9,7 +9,7 @@ import { createUser } from '../services/userService.js';
 import { createContact, findContactById } from '../services/contactService.js';
 import { createAccount } from '../services/accountService.js';
 import pool from '../db.js';
-import { makeAuthCookie, uid } from './testUtils.js';
+import { makeAuthCookie, uid, purgeFixtureUsers } from './testUtils.js';
 import { runDataHygieneScan, listHygieneFindings } from '../services/dataHygieneService.js';
 
 const FILE_PREFIX = 'hygiene-ctrl';
@@ -36,7 +36,7 @@ async function cleanup(): Promise<void> {
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const rep = await createUser({
     email: `${FILE_PREFIX}-rep@example.com`,
@@ -74,7 +74,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('GET /api/v1/data-hygiene/findings', () => {

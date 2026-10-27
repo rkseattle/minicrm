@@ -41,7 +41,7 @@ import { createImapAccount } from '../services/connectedAccountService.js';
 import type { ClaimedSyncAccount } from '../services/connectedAccountService.js';
 import type { MailProvider, NormalizedMessage } from '../services/mail/mailProvider.js';
 import { erasedAddressDigest, lockForIngest } from '../services/mail/gdprRedaction.js';
-import { uid, clearAuditLogFor, insertParkedMailbox } from './testUtils.js';
+import { uid, clearAuditLogFor, insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'gdpr-svc';
 
@@ -58,7 +58,7 @@ beforeAll(async () => {
     'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
@@ -90,7 +90,7 @@ afterAll(async () => {
   await pool.query('DELETE FROM leads WHERE owner_id = $1', [adminId]);
   await pool.query('DELETE FROM contacts WHERE owner_id = $1', [adminId]);
   await clearAuditLogFor(adminId);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.end();
 });
 

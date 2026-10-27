@@ -8,7 +8,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createTeam, addTeamMember } from '../services/teamService.js';
 import pool from '../db.js';
-import { makeAuthCookie, uid } from './testUtils.js';
+import { makeAuthCookie, uid, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'rep-coaching-ctrl';
 const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -26,7 +26,7 @@ beforeAll(async () => {
     [`${FILE_PREFIX}-%`],
   );
   await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const rep = await createUser({
     email: `${FILE_PREFIX}-rep@example.com`,
@@ -90,7 +90,7 @@ afterAll(async () => {
     [`${FILE_PREFIX}-%`],
   );
   await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('GET /api/v1/insights/coaching/me', () => {

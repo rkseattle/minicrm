@@ -11,7 +11,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const ADMIN_EMAIL = 'smtp-admin@example.com';
 const REP_EMAIL = 'smtp-rep@example.com';
@@ -31,7 +31,7 @@ async function resetSmtpSettings(): Promise<void> {
 }
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'smtp-%@example.com'");
+  await purgeFixtureUsers({ emailLike: 'smtp-%@example.com' });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -63,7 +63,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await resetSmtpSettings();
-  await pool.query("DELETE FROM users WHERE email LIKE 'smtp-%@example.com'");
+  await purgeFixtureUsers({ emailLike: 'smtp-%@example.com' });
   await pool.end();
 });
 

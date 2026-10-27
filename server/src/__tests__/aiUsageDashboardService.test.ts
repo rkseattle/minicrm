@@ -16,13 +16,14 @@ import {
   getDailyUsageSeries,
   resolveDateRange,
 } from '../services/aiUsageDashboardService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'usage-dash-svc';
 
 let userId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const result = await pool.query<{ id: string }>(
     `INSERT INTO users (email, name, role, password_hash, status)
      VALUES ($1, 'Usage Dash User', 'rep', '$2b$12$placeholder', 'active')
@@ -33,7 +34,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 beforeEach(async () => {

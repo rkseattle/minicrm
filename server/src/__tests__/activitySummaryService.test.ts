@@ -27,13 +27,14 @@ import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { summarizeActivityText } from '../services/activitySummaryService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'activity-summary-svc';
 
 let ownerId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
     name: 'Activity Summary Owner',
@@ -54,7 +55,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
 });
 

@@ -29,6 +29,7 @@ import { createDeal } from '../services/dealService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { analyzeWinLossPatterns, getWinLossInsights } from '../services/winLossAnalysisService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'win-loss-svc';
 
@@ -53,7 +54,7 @@ async function cleanupDeals(): Promise<void> {
 
 beforeAll(async () => {
   await cleanupDeals();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -74,7 +75,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanupDeals();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(
     `UPDATE ai_configuration SET enabled = false, api_key_encrypted = '', win_loss_min_closed_deals = 20, win_loss_min_sample_size = 5`,
   );

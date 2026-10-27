@@ -18,8 +18,7 @@
 import request from 'supertest';
 import type { Application } from 'express';
 import { createUser } from '../services/userService.js';
-import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 import { COVERAGE_ROUTE_GATE_ENV_VARS } from '../coverageAgent/coverageBootGate.js';
 
 const FILE_PREFIX = 'coverage-health-route-gating';
@@ -30,7 +29,7 @@ let appWithInstrumentationDisabled: Application;
 let gatesAtBootForDisabledApp: Readonly<Record<string, boolean>>;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
@@ -100,7 +99,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('GET /api/v1/admin/coverage/health — reachable when COVERAGE_INSTRUMENTATION is unset', () => {

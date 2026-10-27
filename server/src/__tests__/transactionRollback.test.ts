@@ -16,7 +16,7 @@ import { convertLead, createLead } from '../services/leadsService.js';
 import * as auditService from '../services/auditService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { uid } from './testUtils.js';
+import { uid, purgeFixtureUsers } from './testUtils.js';
 
 const OWNER_USER = {
   email: 'rollback-owner@example.com',
@@ -48,7 +48,7 @@ beforeAll(async () => {
   await pool.query('DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email = $1)', [
     OWNER_USER.email,
   ]);
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await purgeFixtureUsers({ emails: [OWNER_USER.email] });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -79,7 +79,7 @@ afterAll(async () => {
   await pool.query('DELETE FROM deals WHERE owner_id = $1', [ownerId]);
   await pool.query('DELETE FROM contacts WHERE owner_id = $1', [ownerId]);
   await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await purgeFixtureUsers({ emails: [OWNER_USER.email] });
 });
 
 // ── Contact creation rollback ──────────────────────────────────────────────────

@@ -9,7 +9,11 @@
 import 'dotenv/config';
 import pool from '../db.js';
 import { randomUUID } from 'node:crypto';
-import { countAuditRowsFor, expectActorScopingIsolatesForeignRows } from './testUtils.js';
+import {
+  countAuditRowsFor,
+  expectActorScopingIsolatesForeignRows,
+  purgeFixtureUsers,
+} from './testUtils.js';
 import { createUser } from '../services/userService.js';
 import { createAccount } from '../services/accountService.js';
 import { createDeal, updateDeal } from '../services/dealService.js';
@@ -114,7 +118,7 @@ async function createClosedDeals(
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const repA = await createUser({
     email: `${FILE_PREFIX}-repa@example.com`,
     name: 'Rep A',
@@ -140,7 +144,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('generateRepCoachingInsights', () => {

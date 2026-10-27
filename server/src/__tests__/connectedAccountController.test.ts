@@ -19,7 +19,7 @@ import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 import { GMAIL_READ_SCOPE } from '../services/oauthProviderService.js';
 import { createUser } from '../services/userService.js';
 
-import { makeAuthCookie, parkFromScheduler } from './testUtils.js';
+import { makeAuthCookie, parkFromScheduler, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'connacctctl';
 
@@ -47,7 +47,7 @@ const VALID_BODY = {
 };
 
 async function deleteFixtureUsers(): Promise<void> {
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

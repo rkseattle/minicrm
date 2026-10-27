@@ -15,7 +15,7 @@
 
 import 'dotenv/config';
 import pool from '../db.js';
-import { parkFromScheduler } from './testUtils.js';
+import { parkFromScheduler, purgeFixtureUsers } from './testUtils.js';
 import { createUser } from '../services/userService.js';
 import { createSession } from '../services/aiSessionService.js';
 import { createImapAccount } from '../services/connectedAccountService.js';
@@ -31,7 +31,7 @@ const USER_EMAIL = `${FILE_PREFIX}-user@example.com`;
 let userId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const user = await createUser({
     email: USER_EMAIL,
     name: 'Retention Svc User',
@@ -43,7 +43,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 beforeEach(async () => {

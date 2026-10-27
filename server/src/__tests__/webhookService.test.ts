@@ -27,6 +27,7 @@ import {
 } from '../services/webhookService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'wh-svc';
 
@@ -51,7 +52,7 @@ beforeAll(async () => {
      WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`%${FILE_PREFIX}%`],
   );
-  await pool.query(`DELETE FROM users WHERE email LIKE $1`, [`%${FILE_PREFIX}%`]);
+  await purgeFixtureUsers({ emailLike: `%${FILE_PREFIX}%` });
 
   const admin = await createUser(ADMIN_USER);
   adminId = admin.id;
@@ -80,7 +81,7 @@ afterAll(async () => {
      WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`%${FILE_PREFIX}%`],
   );
-  await pool.query(`DELETE FROM users WHERE email LIKE $1`, [`%${FILE_PREFIX}%`]);
+  await purgeFixtureUsers({ emailLike: `%${FILE_PREFIX}%` });
   await pool.end();
 });
 

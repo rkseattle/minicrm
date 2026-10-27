@@ -23,6 +23,7 @@ import {
   isAiEnabled,
 } from '../services/aiConfigService.js';
 import { isFlagEnabledForUser, __clearCacheForTest } from '../services/featureFlagService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 // ACTOR must reference a real users row because dpa_acknowledged_by is a UUID FK.
 // We create the user in beforeAll and record its generated id at runtime.
@@ -31,7 +32,7 @@ const ACTOR_NAME = 'Test Admin';
 let ACTOR: { id: string; name: string };
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email = $1', [ACTOR_EMAIL]);
+  await purgeFixtureUsers({ emails: [ACTOR_EMAIL] });
   const user = await createUser({
     email: ACTOR_EMAIL,
     name: ACTOR_NAME,
@@ -80,7 +81,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await resetAiConfig();
-  await pool.query('DELETE FROM users WHERE email = $1', [ACTOR_EMAIL]);
+  await purgeFixtureUsers({ emails: [ACTOR_EMAIL] });
   // Do NOT call pool.end() — this file runs in the parallel Vitest project
   // and pool is a shared singleton. Calling end() here terminates it for all
   // other concurrent test files and causes "Cannot use a pool after calling end".
