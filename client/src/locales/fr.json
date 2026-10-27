@@ -1279,7 +1279,6 @@
   "attachments": {
     "sectionTitle": "Pièces jointes",
     "notConfigured": "Les pièces jointes ne sont pas configurées — contactez votre administrateur.",
-    "uploadZoneLabel": "Téléverser un fichier",
     "uploadZoneHint": "Cliquez ou glissez-déposez un fichier ici",
     "uploadZoneTypes": "PDF, .docx, .xlsx, .png, .jpg, .txt — max. 25 Mo",
     "uploading": "Téléversement…",

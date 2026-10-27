@@ -1244,7 +1244,6 @@
   "attachments": {
     "sectionTitle": "Attachments",
     "notConfigured": "File attachments are not configured — contact your admin.",
-    "uploadZoneLabel": "Upload file",
     "uploadZoneHint": "Click or drag and drop a file here",
     "uploadZoneTypes": "PDF, .docx, .xlsx, .png, .jpg, .txt — up to 25 MB",
     "uploading": "Uploading…",

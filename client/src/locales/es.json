@@ -1279,7 +1279,6 @@
   "attachments": {
     "sectionTitle": "Adjuntos",
     "notConfigured": "Los adjuntos no están configurados — contacta con tu administrador.",
-    "uploadZoneLabel": "Subir archivo",
     "uploadZoneHint": "Haz clic o arrastra un archivo aquí",
     "uploadZoneTypes": "PDF, .docx, .xlsx, .png, .jpg, .txt — máx. 25 MB",
     "uploading": "Subiendo…",
