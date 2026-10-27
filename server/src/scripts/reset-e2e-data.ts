@@ -46,6 +46,8 @@ import pg from 'pg';
 import { assertTestDatabaseTarget } from './assertTestDatabaseTarget.js';
 import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import { EMAIL_SYNC_BACKFILL_DAYS_DEFAULT } from '@minicrm/shared/schemas/settingsSchema.js';
+import { SYSTEM_ACTOR } from '../services/auditActor.js';
+import { upsertSystemSetting } from '../services/systemSettingsWrite.js';
 
 const { Pool } = pg;
 
@@ -263,7 +265,7 @@ async function main(adminEmail: string): Promise<void> {
       ['email_sync_backfill_days', String(EMAIL_SYNC_BACKFILL_DAYS_DEFAULT)],
     ];
     for (const [key, value] of settingResets) {
-      await client.query(`UPDATE system_settings SET value = $2 WHERE key = $1`, [key, value]);
+      await upsertSystemSetting(client, key, value, SYSTEM_ACTOR);
     }
 
     // Scoped to the preserved row rather than relying on the DELETE above.

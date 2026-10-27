@@ -13,7 +13,7 @@ import logger from '../logger.js';
 import { decrypt, encrypt } from './cryptoService.js';
 import type { AuditActor } from './auditService.js';
 import { SYSTEM_ACTOR } from './auditService.js';
-import { upsertSystemSetting } from './settingsService.js';
+import { upsertSystemSetting } from './systemSettingsWrite.js';
 
 // ── system_settings keys ──────────────────────────────────────────────────────
 
