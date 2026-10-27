@@ -72,13 +72,18 @@ describe('ErrorBoundary', () => {
     expect(dashboardLink).toHaveAttribute('href', '/');
   });
 
-  it('logs the error to the console', () => {
+  it('logs the error to the console with the component stack', () => {
     render(
       <ErrorBoundary>
         <ThrowingChild />
       </ErrorBoundary>,
     );
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    // React logs caught errors itself, so assert the boundary's own line.
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[ErrorBoundary] Uncaught render error:',
+      expect.any(Error),
+      expect.stringContaining('ThrowingChild'),
+    );
   });
 
   it('calls captureException when a child throws', () => {
