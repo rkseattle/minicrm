@@ -974,6 +974,19 @@
       "mappingRoleLabel": "Rol en CRM",
       "noMappings": "No hay asignaciones de grupo a rol configuradas.",
       "tokenMutationError": "Error al actualizar el token SCIM. Por favor, inténtalo de nuevo."
+    },
+    "emailSync": {
+      "sectionTitle": "Sincronización de correo",
+      "sectionHint": "Se aplica al buzón conectado de cada usuario.",
+      "domainsLabel": "Dominios excluidos",
+      "domainsHint": "Un dominio por línea, como example.com. El correo cuyas demás direcciones estén todas en estos dominios, o en la lista propia del titular del buzón, nunca se sincroniza. Se aplica al correo sincronizado a partir de ahora.",
+      "domainsPlaceholder": "example.com",
+      "domainsInvalid": "Introduce un dominio por línea, como example.com, sin @ ni comodines ({{max}} como máximo).",
+      "daysLabel": "Periodo de recuperación (días)",
+      "daysHint": "Hasta qué fecha un buzón recién conectado sincroniza su historial.",
+      "daysInvalid": "Introduce un número entero de días entre {{min}} y {{max}}.",
+      "saved": "Guardado.",
+      "saveError": "No se pudo guardar. Inténtalo de nuevo."
     }
   },
   "import": {

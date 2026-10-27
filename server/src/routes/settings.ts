@@ -18,6 +18,10 @@ import {
   setEmailNotificationsEnabledHandler,
   getDealAutoLinkHandler,
   setDealAutoLinkHandler,
+  getEmailSyncExcludedDomainsHandler,
+  setEmailSyncExcludedDomainsHandler,
+  getEmailSyncBackfillDaysHandler,
+  setEmailSyncBackfillDaysHandler,
   getDefaultCurrencyHandler,
   setDefaultCurrencyHandler,
   getCurrenciesHandler,
@@ -340,6 +344,164 @@ router.patch(
   authenticate,
   requireRole('admin'),
   asyncHandler(setDealAutoLinkHandler),
+);
+
+// ── Email sync governance ───────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/v1/settings/email-sync-excluded-domains:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getEmailSyncExcludedDomains
+ *     summary: Get the org-wide domains email sync never stores (admin only)
+ *     description: Admin only, since the list may name HR, legal or personal domains.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: >
+ *           The org list. A synced message whose every counterparty is on this list or the
+ *           mailbox owner's own list is skipped and never stored.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 domains: { type: array, items: { type: string } }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: >-
+ *           The stored value is unreadable (only after a direct database edit); replace it
+ *           with the PATCH, which validates.
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get(
+  '/email-sync-excluded-domains',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getEmailSyncExcludedDomainsHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/settings/email-sync-excluded-domains:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setEmailSyncExcludedDomains
+ *     summary: Replace the org-wide excluded domains (admin only)
+ *     description: >
+ *       Replaces the whole list, lowercased and de-duplicated (at most 500 distinct domains).
+ *       Applies to mail synced from now on. The change is audited.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [domains]
+ *             properties:
+ *               domains: { type: array, maxItems: 1000, items: { type: string } }
+ *     responses:
+ *       200:
+ *         description: The list as stored
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 domains: { type: array, items: { type: string } }
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/email-sync-excluded-domains',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setEmailSyncExcludedDomainsHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/settings/email-sync-backfill-days:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getEmailSyncBackfillDays
+ *     summary: Get how far back a newly connected mailbox syncs, in days
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: The backfill window
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 days: { type: integer, minimum: 1, maximum: 365 }
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: >-
+ *           The stored value is unreadable (only after a direct database edit); replace it
+ *           with the PATCH, which validates.
+ */
+router.get(
+  '/email-sync-backfill-days',
+  authenticate,
+  asyncHandler(getEmailSyncBackfillDaysHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/settings/email-sync-backfill-days:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setEmailSyncBackfillDays
+ *     summary: Set the email sync backfill window (admin only)
+ *     description: >
+ *       Applies to every backfill from now on: a newly connected mailbox's first sync, and the
+ *       re-read after a provider invalidates a mailbox's sync position. The change is audited.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [days]
+ *             properties:
+ *               days: { type: integer, minimum: 1, maximum: 365 }
+ *     responses:
+ *       200:
+ *         description: The window as stored
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 days: { type: integer }
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/email-sync-backfill-days',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setEmailSyncBackfillDaysHandler),
 );
 
 // ── Tag creation restriction ────────────────────────────────────

@@ -1422,6 +1422,30 @@ export const handlers = [
     return HttpResponse.json({ enabled: body.enabled });
   }),
 
+  /** Settings: GET /api/v1/settings/email-sync-excluded-domains */
+  http.get('/api/v1/settings/email-sync-excluded-domains', () => {
+    return HttpResponse.json({ domains: [] });
+  }),
+
+  /** Settings: PATCH /api/v1/settings/email-sync-excluded-domains */
+  http.patch('/api/v1/settings/email-sync-excluded-domains', async ({ request }) => {
+    // Safe: a test fixture echoing what the client under test just sent.
+    const body = (await request.json()) as { domains: string[] };
+    return HttpResponse.json({ domains: body.domains });
+  }),
+
+  /** Settings: GET /api/v1/settings/email-sync-backfill-days */
+  http.get('/api/v1/settings/email-sync-backfill-days', () => {
+    return HttpResponse.json({ days: 90 });
+  }),
+
+  /** Settings: PATCH /api/v1/settings/email-sync-backfill-days */
+  http.patch('/api/v1/settings/email-sync-backfill-days', async ({ request }) => {
+    // Safe: as above.
+    const body = (await request.json()) as { days: number };
+    return HttpResponse.json({ days: body.days });
+  }),
+
   /** Settings: GET /api/v1/settings/default-currency */
   http.get('/api/v1/settings/default-currency', () => {
     return HttpResponse.json({ currency: 'USD' });

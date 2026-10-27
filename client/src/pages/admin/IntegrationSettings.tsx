@@ -1,5 +1,5 @@
 /**
- * IntegrationSettings — File storage and webhooks.
+ * IntegrationSettings — File storage, email sync governance, and webhooks.
  * SSO and SCIM moved to SecuritySettings.
  * Extracted from AdminSettingsPage.tsx.
  */
@@ -16,10 +16,21 @@ import {
 } from '@/api/attachments.js';
 import { Button } from '@/components/ui/Button.js';
 import WebhookSettings from '@/pages/admin/WebhookSettings.js';
+import EmailSyncSettings from '@/pages/admin/EmailSyncSettings.js';
+import { FEATURE_FLAGS_QUERY_KEY, listFeatureFlags } from '@/api/featureFlags.js';
 
 export default function IntegrationSettings() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  // The org-level value, not useFeatureFlag: that resolves the flag for this admin's own
+  // role, and an admin overridden off must still be able to govern sync for everyone else.
+  const flagList = useQuery({
+    queryKey: FEATURE_FLAGS_QUERY_KEY,
+    queryFn: listFeatureFlags,
+  });
+  const emailSyncOrgEnabled =
+    flagList.data?.flags.find((flag) => flag.flag_key === 'email_sync')?.enabled ?? false;
 
   const {
     data: storageData,
@@ -289,6 +300,21 @@ export default function IntegrationSettings() {
             </div>
           </form>
         )}
+      </div>
+
+      <div className="mt-8">
+        {flagList.isLoading && (
+          <p className="text-sm text-gray-500" data-testid="email-sync-flag-loading">
+            {t('common.loading')}
+          </p>
+        )}
+        {flagList.isError && (
+          // Not the disabled banner: that would claim the feature is off when nothing was read.
+          <p role="alert" className="text-sm text-red-600" data-testid="email-sync-flag-error">
+            {t('settings.loadError')}
+          </p>
+        )}
+        {flagList.isSuccess && <EmailSyncSettings disabled={!emailSyncOrgEnabled} />}
       </div>
 
       <div

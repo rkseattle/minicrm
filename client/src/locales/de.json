@@ -974,6 +974,19 @@
       "mappingRoleLabel": "CRM-Rolle",
       "noMappings": "Keine Gruppen-zu-Rollen-Zuordnungen konfiguriert.",
       "tokenMutationError": "SCIM-Token konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+    },
+    "emailSync": {
+      "sectionTitle": "E-Mail-Synchronisierung",
+      "sectionHint": "Gilt für die verbundenen Postfächer aller Benutzer.",
+      "domainsLabel": "Ausgeschlossene Domains",
+      "domainsHint": "Eine Domain pro Zeile, z. B. example.com. E-Mails, deren übrige Adressen alle zu diesen Domains oder zur eigenen Liste des Postfachinhabers gehören, werden nie synchronisiert. Gilt für ab jetzt synchronisierte E-Mails.",
+      "domainsPlaceholder": "example.com",
+      "domainsInvalid": "Geben Sie eine Domain pro Zeile ein, z. B. example.com, ohne @ oder Platzhalter (höchstens {{max}}).",
+      "daysLabel": "Rückblickzeitraum (Tage)",
+      "daysHint": "Wie weit ein neu verbundenes Postfach seinen Verlauf zurück synchronisiert.",
+      "daysInvalid": "Geben Sie eine ganze Zahl von Tagen zwischen {{min}} und {{max}} ein.",
+      "saved": "Gespeichert.",
+      "saveError": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut."
     }
   },
   "import": {

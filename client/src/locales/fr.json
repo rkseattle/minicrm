@@ -974,6 +974,19 @@
       "mappingRoleLabel": "Rôle CRM",
       "noMappings": "Aucune correspondance groupe-rôle configurée.",
       "tokenMutationError": "Échec de la mise à jour du jeton SCIM. Veuillez réessayer."
+    },
+    "emailSync": {
+      "sectionTitle": "Synchronisation des e-mails",
+      "sectionHint": "S’applique à la boîte connectée de chaque utilisateur.",
+      "domainsLabel": "Domaines exclus",
+      "domainsHint": "Un domaine par ligne, par exemple example.com. Un e-mail dont toutes les autres adresses appartiennent à ces domaines, ou à la liste propre du titulaire de la boîte, n’est jamais synchronisé. S’applique aux e-mails synchronisés à partir de maintenant.",
+      "domainsPlaceholder": "example.com",
+      "domainsInvalid": "Saisissez un domaine par ligne, par exemple example.com, sans @ ni caractère générique ({{max}} au maximum).",
+      "daysLabel": "Période d’historique (jours)",
+      "daysHint": "Jusqu’à quand une boîte nouvellement connectée synchronise son historique.",
+      "daysInvalid": "Saisissez un nombre entier de jours entre {{min}} et {{max}}.",
+      "saved": "Enregistré.",
+      "saveError": "Échec de l’enregistrement. Veuillez réessayer."
     }
   },
   "import": {

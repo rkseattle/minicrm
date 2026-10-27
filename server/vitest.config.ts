@@ -400,6 +400,8 @@ const SERIAL_FILES = [
   'src/__tests__/emailMessageService.test.ts',
   // Toggles the global email_sync flag and reads through every email endpoint.
   'src/__tests__/emailPrivacy.test.ts',
+  // Writes the org email sync settings, global rows settingsService's seed test reads.
+  'src/__tests__/emailSyncSettings.routes.test.ts',
   // Both flip the global email_sync flag, and the controller file also the contact
   // visibility policy; in parallel, one file's afterAll turns the other's 201s into 403s.
   'src/__tests__/emailSendController.test.ts',

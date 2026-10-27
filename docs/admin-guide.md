@@ -2547,8 +2547,30 @@ shown only to the lead's owner and admins.
 
 | Setting                   | Where                                                | Default |
 | ------------------------- | ---------------------------------------------------- | ------- |
+| Excluded domains (org)    | **Admin Settings → Integrations → Email sync**       | None    |
+| Backfill window           | **Admin Settings → Integrations → Email sync**       | 90 days |
 | Deal auto-link            | API only — see [System Settings](#3-system-settings) | On      |
 | Messages per user, hourly | `EMAIL_SEND_MAX_PER_HOUR` server variable            | 100     |
 
+**Excluded domains** keep whole correspondents out of MiniCRM: a message whose every other
+address is on the org list, or on the mailbox owner's own list, is never stored. Use it for
+internal domains, HR, legal counsel or personal mail. It applies to mail synced from the
+moment you save; mail already stored stays. The **backfill window** sets how far back a
+backfill reads (1–365 days): a newly connected mailbox's first sync, and the re-read after a
+provider resets a mailbox's sync position. Both changes are recorded in the audit log. The
+panel stays visible, but disabled, while the `email_sync` flag is off.
+
+If either stored value is ever unreadable — only possible after a direct database edit —
+sync pauses for every mailbox until it is fixed, and this panel shows a load error rather
+than offering to overwrite a value it could not read. Replace it through the API
+(`PATCH /api/v1/settings/email-sync-excluded-domains` or `.../email-sync-backfill-days`),
+which validates what it stores.
+
+**Turning email sync off for one role** uses the flag's role toggles under **Feature Flags**:
+mailboxes owned by users in that role stop syncing at the next tick, and the profile panel is
+hidden from them, as for any flag.
+
 Turning the flag off hides the section, the search group and mailbox sending at once;
 nothing synced is deleted. Disconnecting a mailbox deletes everything synced from it.
+GDPR erasure of a contact or lead also redacts their synced mail — see
+[docs/gdpr.md](gdpr.md#synced-email).

@@ -292,3 +292,47 @@ export async function putVisibilityConfig(
   const response = await apiClient.put<VisibilityConfigResponse>('/settings/visibility', updates);
   return response.data;
 }
+
+// ── Email sync governance ───────────────────────────────────────
+
+/** React Query cache key for the org-wide email sync excluded domains */
+export const EMAIL_SYNC_EXCLUDED_DOMAINS_QUERY_KEY = [
+  'settings',
+  'emailSyncExcludedDomains',
+] as const;
+
+/** React Query cache key for the email sync backfill window */
+export const EMAIL_SYNC_BACKFILL_DAYS_QUERY_KEY = ['settings', 'emailSyncBackfillDays'] as const;
+
+/** Returns the org-wide domains email sync never stores. Admin only. */
+export async function getEmailSyncExcludedDomains(): Promise<{ domains: string[] }> {
+  const response = await apiClient.get<{ domains: string[] }>(
+    '/settings/email-sync-excluded-domains',
+  );
+  return response.data;
+}
+
+/** Replaces the org-wide excluded domains. Admin only. */
+export async function setEmailSyncExcludedDomains(
+  domains: string[],
+): Promise<{ domains: string[] }> {
+  const response = await apiClient.patch<{ domains: string[] }>(
+    '/settings/email-sync-excluded-domains',
+    { domains },
+  );
+  return response.data;
+}
+
+/** Returns how far back a newly connected mailbox syncs, in days. */
+export async function getEmailSyncBackfillDays(): Promise<{ days: number }> {
+  const response = await apiClient.get<{ days: number }>('/settings/email-sync-backfill-days');
+  return response.data;
+}
+
+/** Sets the email sync backfill window. Admin only. */
+export async function setEmailSyncBackfillDays(days: number): Promise<{ days: number }> {
+  const response = await apiClient.patch<{ days: number }>('/settings/email-sync-backfill-days', {
+    days,
+  });
+  return response.data;
+}

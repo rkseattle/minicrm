@@ -3,6 +3,7 @@
  * Business logic belongs here. Controllers must not query the database directly.
  */
 
+import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
 import {
@@ -19,7 +20,7 @@ import type {
   SupportedCurrency,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR, actorIdOrNull } from './auditService.js';
+import { SYSTEM_ACTOR, actorIdOrNull, writeAuditEntry } from './auditService.js';
 import { withRlsQuery } from './rlsContextService.js';
 
 /** A row from the system_settings table */
@@ -57,6 +58,25 @@ const EMAIL_SYNC_EXCLUDED_DOMAINS_KEY = 'email_sync_excluded_domains';
 const EMAIL_SYNC_BACKFILL_DAYS_KEY = 'email_sync_backfill_days';
 
 /**
+ * Writes one setting, recording who changed it. Takes the pool or a transaction's client, so a
+ * setter that audits can write the value on the same client as its audit entry.
+ */
+async function upsertSystemSetting(
+  queryable: Pick<PoolClient, 'query'>,
+  key: string,
+  value: string,
+  actor: AuditActor,
+): Promise<void> {
+  await queryable.query(
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE
+       SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [key, value, actorIdOrNull(actor)],
+  );
+}
+
+/**
  * Retrieves the current system-wide default language.
  * Falls back to 'en' if the row is somehow missing.
  *
@@ -89,12 +109,7 @@ export async function setDefaultLanguage(
   language: SupportedLocale,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<SupportedLocale> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [DEFAULT_LANGUAGE_KEY, language, actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, DEFAULT_LANGUAGE_KEY, language, actor);
   return language;
 }
 
@@ -131,12 +146,7 @@ export async function setNavLayout(
   layout: NavLayout,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<NavLayout> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [NAV_LAYOUT_KEY, layout, actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, NAV_LAYOUT_KEY, layout, actor);
   return layout;
 }
 
@@ -188,12 +198,7 @@ export async function setEmailNotificationsEnabled(
   enabled: boolean,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<boolean> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [EMAIL_NOTIFICATIONS_ENABLED_KEY, String(enabled), actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, EMAIL_NOTIFICATIONS_ENABLED_KEY, String(enabled), actor);
   return enabled;
 }
 
@@ -222,12 +227,7 @@ export async function setDealAutoLink(
   enabled: boolean,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<boolean> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [DEAL_AUTO_LINK_KEY, String(enabled), actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, DEAL_AUTO_LINK_KEY, String(enabled), actor);
   return enabled;
 }
 
@@ -300,6 +300,83 @@ export async function getEmailSyncBackfillDays(): Promise<number> {
   return parseEmailSyncBackfillDays(await getEmailSyncSettingValue(EMAIL_SYNC_BACKFILL_DAYS_KEY));
 }
 
+/**
+ * Writes one email sync setting and its audit entry in a single transaction, so a change is
+ * never stored unaudited. Writing the value already stored changes nothing.
+ */
+async function writeEmailSyncSetting(
+  key: string,
+  label: string,
+  storedValue: string,
+  actor: AuditActor,
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const previous = await client.query<{ value: string }>(
+      'SELECT value FROM system_settings WHERE key = $1 FOR UPDATE',
+      [key],
+    );
+    const oldValue = previous.rows[0]?.value ?? null;
+    if (oldValue === storedValue) {
+      await client.query('COMMIT');
+      return;
+    }
+    await upsertSystemSetting(client, key, storedValue, actor);
+    await writeAuditEntry(client, {
+      recordType: 'system_settings',
+      recordName: label,
+      eventType: 'updated',
+      fieldName: label,
+      oldValue,
+      newValue: storedValue,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Replaces the org-wide domains email sync never stores. Admin only.
+ *
+ * @param domains - Already normalized by excludedDomainListSchema.
+ * @returns The list as stored.
+ */
+export async function setEmailSyncExcludedDomains(
+  domains: readonly string[],
+  actor: AuditActor,
+): Promise<string[]> {
+  await writeEmailSyncSetting(
+    EMAIL_SYNC_EXCLUDED_DOMAINS_KEY,
+    'Email Sync Excluded Domains',
+    JSON.stringify(domains),
+    actor,
+  );
+  return [...domains];
+}
+
+/**
+ * Sets how far back a never-synced mailbox reads, in days. Admin only.
+ *
+ * @param days - Already bounded by emailSyncBackfillDaysSchema.
+ * @returns The window as stored.
+ */
+export async function setEmailSyncBackfillDays(days: number, actor: AuditActor): Promise<number> {
+  await writeEmailSyncSetting(
+    EMAIL_SYNC_BACKFILL_DAYS_KEY,
+    'Email Sync Backfill Window (days)',
+    String(days),
+    actor,
+  );
+  return days;
+}
+
 // ── Default currency ─────────────────────────────────────────────
 
 /**
@@ -334,12 +411,7 @@ export async function setDefaultCurrency(
   currency: SupportedCurrency,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<SupportedCurrency> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [DEFAULT_CURRENCY_KEY, currency, actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, DEFAULT_CURRENCY_KEY, currency, actor);
   return currency;
 }
 
@@ -366,12 +438,7 @@ export async function setTagsRestrictCreation(
   restricted: boolean,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<boolean> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [TAGS_RESTRICT_CREATION_KEY, String(restricted), actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, TAGS_RESTRICT_CREATION_KEY, String(restricted), actor);
   return restricted;
 }
 
@@ -408,12 +475,7 @@ export async function setDefaultTimezone(
   timezone: string,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<string> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [DEFAULT_TIMEZONE_KEY, timezone, actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, DEFAULT_TIMEZONE_KEY, timezone, actor);
   return timezone;
 }
 
@@ -612,12 +674,7 @@ export async function setOnboardingCompleted(
  * Called after the admin saves a pipeline stage change.
  */
 export async function markPipelineStagesReviewed(actor: AuditActor = SYSTEM_ACTOR): Promise<void> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, 'true', now(), $2)
-     ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [PIPELINE_STAGES_REVIEWED_KEY, actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, PIPELINE_STAGES_REVIEWED_KEY, 'true', actor);
 }
 
 export async function resetPipelineStagesReviewed(): Promise<void> {
@@ -644,11 +701,6 @@ export async function setMfaRequired(
   required: boolean,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<boolean> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [REQUIRE_MFA_KEY, String(required), actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, REQUIRE_MFA_KEY, String(required), actor);
   return required;
 }
