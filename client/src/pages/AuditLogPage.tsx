@@ -21,7 +21,11 @@ import { Select } from '@/components/ui/Select.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { PagedListLayout } from '@/components/PagedListLayout.js';
 import { auditClient } from '@/grpc/auditClient.js';
-import { listAuditLogActors, AUDIT_LOG_ACTORS_QUERY_KEY } from '@/api/auditLog.js';
+import {
+  listAuditLogActors,
+  AUDIT_LOG_ACTORS_QUERY_KEY,
+  AUDIT_LOG_QUERY_KEY,
+} from '@/api/auditLog.js';
 import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
 import { AUDIT_RECORD_TYPES, AUDIT_EVENT_TYPES } from '@shared/schemas/auditSchema.js';
 import type { AuditEvent } from '@shared/generated/audit_pb.js';
@@ -129,7 +133,7 @@ export default function AuditLogPage() {
   const [liveEvents, setLiveEvents] = useState<AuditLogEntry[]>([]);
 
   // ── Data queries ──────────────────────────────────────────────────────────────
-  const queryKey = ['audit-log', 'list', appliedFilters, page] as const;
+  const queryKey = [...AUDIT_LOG_QUERY_KEY, 'list', appliedFilters, page] as const;
 
   const isUnfilteredFirstPage =
     page === 1 &&

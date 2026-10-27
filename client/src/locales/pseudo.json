@@ -2986,6 +2986,7 @@
       "sent": "[Ëmäïl ŝëñt fröm {{mailbox}}~~~~~~~~~]",
       "recipientsInvalid": "[Thëŝë äddrëŝŝëŝ ĉäñ't bë rëäd. Ŝëpärätë thëm wïth ĉömmäŝ.~~~~~~~~~~~~~~~~~~]"
     },
-    "accountsLoadError": "[Yöür mäïlböxëŝ ĉöüldñ't bë löädëd, ŝö ŝëñdïñg fröm hërë ïŝ üñäväïläblë för ñöw.~~~~~~~~~~~~~~~~~~~~~~~~]"
+    "accountsLoadError": "[Yöür mäïlböxëŝ ĉöüldñ't bë löädëd, ŝö ŝëñdïñg fröm hërë ïŝ üñäväïläblë för ñöw.~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "composeFrozen": "[Thïŝ mëŝŝägë mäy älrëädy bë öñ ïtŝ wäy, ŝö ït ĉäñ ñö löñgër bë ëdïtëd. Ŝëñd rëtrïëŝ thë ŝämë mëŝŝägë äñd wïll ñöt ĉrëätë ä ŝëĉöñd ĉöpy; tö ĉhäñgë ït, ĉlöŝë thïŝ wïñdöw äñd ĉhëĉk yöür Ŝëñt földër fïrŝt.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]"
   }
 }

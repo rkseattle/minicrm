@@ -17,11 +17,14 @@ const router = Router();
  *     operationId: globalSearch
  *     summary: Cross-entity search
  *     description: >
- *       Searches contacts, accounts, deals, and leads in parallel for the given query string.
+ *       Searches contacts, accounts, deals, leads, and email in parallel for the given query string.
  *       Activity matches are surfaced via their parent entity (contact, account, or deal).
  *       Tag matches are merged into the contacts, accounts, and deals arrays.
  *       Returns up to 10 results per entity type. Case-insensitive, partial-word matching.
  *       Admins see all records; reps see only records they own.
+ *       Email results match message subject and snippet, and are limited to messages in
+ *       the caller's own connected mailboxes, each with the record it is linked to; they are
+ *       empty when the email_sync feature is off for the caller.
  *       Minimum query length: 2 characters.
  *     security:
  *       - cookieAuth: []
@@ -75,6 +78,18 @@ const router = Router();
  *                       last_name: { type: string, nullable: true }
  *                       email: { type: string }
  *                       company_name: { type: string, nullable: true }
+ *                 emails:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       subject: { type: string, nullable: true }
+ *                       snippet: { type: string, nullable: true }
+ *                       from_address: { type: string }
+ *                       sent_at: { type: string, format: date-time, nullable: true }
+ *                       record_type: { type: string, enum: [contact, lead, account, deal] }
+ *                       record_id: { type: string, format: uuid }
  *       400:
  *         description: Query too short
  *         content:

@@ -5,11 +5,12 @@
  * an optional loss reason before the deal update is submitted.
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Button } from '@/components/ui/Button.js';
 import type { PipelineStage } from '@shared/schemas/dealSchema.js';
+import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 
 /** The two terminal stages that trigger this modal */
 export const CLOSED_STAGES: PipelineStage[] = ['Closed Won', 'Closed Lost'];
@@ -60,6 +61,8 @@ export default function CloseDealModal({
   const { t } = useTranslation();
   const [closeDate, setCloseDate] = useState(initialCloseDate);
   const [lossReason, setLossReason] = useState('');
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useFocusTrap(dialogRef, isOpen);
 
   /**
    * Keeps closeDate in sync if initialCloseDate changes (e.g. day rolls over
@@ -99,14 +102,21 @@ export default function CloseDealModal({
         if (e.key === 'Escape' && !isSubmitting) onCancel();
       }}
     >
-      <dialog open data-testid="close-deal-modal" className="relative w-full max-w-md mx-4 p-0">
+      <dialog
+        ref={dialogRef}
+        open
+        aria-modal="true"
+        aria-labelledby="close-deal-title"
+        data-testid="close-deal-modal"
+        className="relative w-full max-w-md mx-4 p-0"
+      >
         {/* Inner wrapper stops backdrop clicks from propagating through the dialog */}
         <div
           role="presentation"
           className="rounded-lg bg-white p-6 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <h2 className="text-base font-semibold text-gray-900 mb-4">
+          <h2 id="close-deal-title" className="text-base font-semibold text-gray-900 mb-4">
             {t('pipeline.closeDeal.title', { stage: targetStage })}
           </h2>
 

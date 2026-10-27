@@ -13,7 +13,7 @@
  * does not gate substitution: a token the author forgot to declare still renders.
  */
 
-import { escapeHtml } from './emailService.js';
+import { escapeHtml } from '@minicrm/shared/text/html.js';
 
 /** Values a template may reference, keyed by dotted path: `contact.first_name`. */
 export type MergeContext = Readonly<Record<string, string | null | undefined>>;

@@ -14,7 +14,9 @@
  * need a DOM and a bundler, and a copied corpus would let the two runs drift apart
  * unnoticed — the failure this spec exists to catch. Both files are import-safe:
  * sanitizeEmailHtml.ts pulls in only dompurify, and the corpus is dependency-free.
- * Both match ci.yml's `client` filter, which gates e2e-functional.
+ * Both match ci.yml's `client` filter, which gates e2e-functional, but that only runs the
+ * job: app coverage never sees this spec's own bundle, so the `impacts` annotations below
+ * are what make the selector pick it when either file changes.
  *
  * Framework conventions:
  *   - All tests tagged @functional
@@ -60,21 +62,28 @@ async function bundleSanitizerProbe(): Promise<string> {
   return bundle.text;
 }
 
-test('F-ES1 — no hostile inline style survives the sanitizer in a real browser @functional', async ({
-  page,
-}) => {
-  const bundleSource = await bundleSanitizerProbe();
+test(
+  'F-ES1 — no hostile inline style survives the sanitizer in a real browser @functional',
+  {
+    annotation: [
+      { type: 'impacts', description: 'client/src/utils/sanitizeEmailHtml.ts' },
+      { type: 'impacts', description: 'client/src/utils/__fixtures__/hostileEmailStyles.ts' },
+    ],
+  },
+  async ({ page }) => {
+    const bundleSource = await bundleSanitizerProbe();
 
-  const corpus = await sanitizeStyleCorpusInBrowser({ page }, bundleSource, PROBE_GLOBAL);
+    const corpus = await sanitizeStyleCorpusInBrowser({ page }, bundleSource, PROBE_GLOBAL);
 
-  // An empty corpus would pass every check below, so its presence is asserted first.
-  expect(corpus.hostile.length).toBeGreaterThan(0);
-  expect(corpus.disallowedFunction.length).toBeGreaterThan(0);
-  for (const { style, html } of corpus.hostile) {
-    expect.soft(html, `kept a remote host from: ${style}`).not.toContain('evil.test');
-    expect.soft(html, `kept loading CSS from: ${style}`).not.toMatch(LOADING_CSS);
-  }
-  for (const { style, keptStyle } of corpus.disallowedFunction) {
-    expect.soft(keptStyle, `kept a style calling a disallowed function: ${style}`).toBeNull();
-  }
-});
+    // An empty corpus would pass every check below, so its presence is asserted first.
+    expect(corpus.hostile.length).toBeGreaterThan(0);
+    expect(corpus.disallowedFunction.length).toBeGreaterThan(0);
+    for (const { style, html } of corpus.hostile) {
+      expect.soft(html, `kept a remote host from: ${style}`).not.toContain('evil.test');
+      expect.soft(html, `kept loading CSS from: ${style}`).not.toMatch(LOADING_CSS);
+    }
+    for (const { style, keptStyle } of corpus.disallowedFunction) {
+      expect.soft(keptStyle, `kept a style calling a disallowed function: ${style}`).toBeNull();
+    }
+  },
+);

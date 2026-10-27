@@ -15,6 +15,7 @@
       "@minicrm/shared/schemas/*": ["../shared/schemas/*"],
       "@minicrm/shared/generated/*": ["../shared/generated/*"],
       "@minicrm/shared/testing/*": ["../shared/testing/*"],
+      "@minicrm/shared/text/*": ["../shared/text/*"],
       "@minicrm/shared/types/*": ["../shared/types/*"]
     }
   },

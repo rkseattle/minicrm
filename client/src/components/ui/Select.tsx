@@ -2,8 +2,8 @@
  * Shared select component styled to match the Input component.
  */
 
-import { forwardRef, useId } from 'react';
-import type { SelectHTMLAttributes } from 'react';
+import { useId } from 'react';
+import type { Ref, SelectHTMLAttributes } from 'react';
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   /** Rendered as a <label> above the select */
@@ -27,19 +27,17 @@ const SELECT_ERROR_CLASSES = 'border-red-500 focus:border-transparent focus:ring
  * @param label - Label text rendered above the select
  * @param error - Error message rendered below the select; also applies red-border styling
  */
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  {
-    label,
-    error,
-    id,
-    className = '',
-    children,
-    'aria-describedby': describedBy,
-    'aria-invalid': ariaInvalid,
-    ...props
-  },
+export function Select({
   ref,
-) {
+  label,
+  error,
+  id,
+  className = '',
+  children,
+  'aria-describedby': describedBy,
+  'aria-invalid': ariaInvalid,
+  ...props
+}: SelectProps & { ref?: Ref<HTMLSelectElement> }) {
   const generatedId = useId();
   const selectId = id ?? generatedId;
   // The message is announced with the field, not found later by browsing past it.
@@ -72,4 +70,4 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       )}
     </div>
   );
-});
+}

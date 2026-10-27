@@ -146,7 +146,7 @@ export default function ContactDetailPage() {
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [unenrollError, setUnenrollError] = useState<string | null>(null);
 
-  const contactQueryKey = ['contacts', id] as const;
+  const contactQueryKey = [...CONTACTS_QUERY_KEY, id] as const;
 
   // Three-way merge conflict state
   const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
@@ -223,7 +223,7 @@ export default function ContactDetailPage() {
     enabled: Boolean(id),
   });
 
-  const addressesQueryKey = ['contacts', id, 'addresses'] as const;
+  const addressesQueryKey = [...CONTACTS_QUERY_KEY, id, 'addresses'] as const;
   const { data: addressesData } = useQuery({
     queryKey: addressesQueryKey,
     queryFn: () => listContactAddresses(id!),

@@ -6,6 +6,7 @@ import { screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import CloseDealModal from './CloseDealModal.js';
+import { expectTabWrapsInside } from '@/test/expectTabWrapsInside.js';
 
 const TODAY = '2026-03-31';
 const noop = () => {};
@@ -200,5 +201,22 @@ describe('CloseDealModal', () => {
     });
     fireEvent.click(screen.getByTestId('close-deal-confirm'));
     expect(onConfirm).toHaveBeenCalledWith('2026-03-15', '');
+  });
+
+  it('is a labelled modal dialog that keeps Tab inside it', () => {
+    renderWithProviders(
+      <CloseDealModal
+        isOpen={true}
+        targetStage="Closed Won"
+        initialCloseDate={TODAY}
+        isSubmitting={false}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    const dialog = screen.getByRole('dialog', { name: /Closed Won/ });
+
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expectTabWrapsInside(dialog);
   });
 });

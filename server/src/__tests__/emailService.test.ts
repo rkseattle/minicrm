@@ -19,7 +19,6 @@ import {
   sendAssignmentNotification,
   sendContactEmail,
   sendInviteEmail,
-  escapeHtml,
 } from '../services/emailService.js';
 import type { OverdueTaskItem, AssignmentItem } from '../services/emailService.js';
 
@@ -161,16 +160,6 @@ describe('sendAssignmentNotification', () => {
     await expect(
       sendAssignmentNotification('user@example.com', '&Name', items),
     ).resolves.toBeUndefined();
-  });
-});
-
-describe('escapeHtml', () => {
-  it('escapes all five HTML special characters', () => {
-    expect(escapeHtml('&<>"\'')).toBe('&amp;&lt;&gt;&quot;&#x27;');
-  });
-
-  it('leaves safe strings unchanged', () => {
-    expect(escapeHtml('Hello, World!')).toBe('Hello, World!');
   });
 });
 

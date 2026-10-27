@@ -142,7 +142,7 @@ export default function DealDetailPage() {
   } | null>(null);
   const [closeError, setCloseError] = useState<string | null>(null);
 
-  const dealQueryKey = ['deals', id] as const;
+  const dealQueryKey = [...DEALS_QUERY_KEY, id] as const;
 
   // Three-way merge conflict state
   const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =

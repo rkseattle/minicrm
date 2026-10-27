@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { plainTextToHtml } from './plainTextToHtml.js';
+import { escapeHtml, plainTextToHtml } from '@minicrm/shared/text/html.js';
 
 describe('plainTextToHtml', () => {
   it('escapes everything typed, so nothing is read as markup', () => {
@@ -23,5 +23,15 @@ describe('plainTextToHtml', () => {
   it('drops trailing blank lines and treats a line of spaces as a paragraph break', () => {
     expect(plainTextToHtml('Hi\n\n')).toBe('<p>Hi</p>');
     expect(plainTextToHtml('a\n \nb')).toBe('<p>a</p><p>b</p>');
+  });
+});
+
+describe('escapeHtml', () => {
+  it('escapes all five HTML special characters', () => {
+    expect(escapeHtml(`&<>"'`)).toBe('&amp;&lt;&gt;&quot;&#39;');
+  });
+
+  it('leaves safe strings unchanged', () => {
+    expect(escapeHtml('Hello, World!')).toBe('Hello, World!');
   });
 });

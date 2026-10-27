@@ -4,7 +4,8 @@
  * Used by LeadsPage (create) and LeadDetailPage (edit).
  */
 
-import { useState, useEffect, useRef, forwardRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/Input.js';
@@ -194,19 +195,17 @@ function RoutingSuggestionPanel({
  * Form for creating or editing a lead.
  * Forwards its ref to the underlying <form> element for programmatic submit.
  */
-const LeadForm = forwardRef<HTMLFormElement, LeadFormProps>(function LeadForm(
-  {
-    initialValues,
-    activeUsers,
-    isAdmin,
-    onSubmit,
-    onCancel,
-    isSubmitting = false,
-    submitLabel,
-    isCreate = false,
-  },
+function LeadForm({
   ref,
-) {
+  initialValues,
+  activeUsers,
+  isAdmin,
+  onSubmit,
+  onCancel,
+  isSubmitting = false,
+  submitLabel,
+  isCreate = false,
+}: LeadFormProps & { ref?: Ref<HTMLFormElement> }) {
   const { t } = useTranslation();
   const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -435,6 +434,6 @@ const LeadForm = forwardRef<HTMLFormElement, LeadFormProps>(function LeadForm(
       </div>
     </form>
   );
-});
+}
 
 export default LeadForm;

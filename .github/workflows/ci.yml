@@ -401,6 +401,8 @@ jobs:
             # guard and could be renamed away.
             record-paths:
               - 'shared/types/**'
+              # Same reach for shared/text: server tests pin it and client code imports it.
+              - 'shared/text/**'
               - 'client/src/App.tsx'
               - '.github/workflows/ci.yml'
             # Single-purpose output for impactManifest.test.ts, which reads the locale

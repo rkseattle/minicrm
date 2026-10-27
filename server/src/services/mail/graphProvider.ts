@@ -662,8 +662,8 @@ async function deleteDraft(
     if (!deleted.ok && deleted.status !== 404) {
       logger.warn({ status: deleted.status }, 'graphProvider: could not delete a refused draft');
     }
-  } catch {
-    logger.warn('graphProvider: could not reach Outlook to delete a refused draft');
+  } catch (err) {
+    logger.warn({ err }, 'graphProvider: could not reach Outlook to delete a refused draft');
   }
 }
 

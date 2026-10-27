@@ -82,8 +82,13 @@ shared/types/    → shared TypeScript contracts that are neither Zod schemas no
                    schemas/ exception, per coverageHarnessAdapterSchema.ts's own
                    instruction. Today that is recordPath.ts, the record-type →
                    client-route mapping (MINCRM-726), pinned to App.tsx's route table by
-                   server/src/__tests__/recordPath.test.ts. Keep these dependency-free so
-                   every workspace can import them.
+                   server/src/__tests__/recordPath.test.ts. search.ts is the search
+                   response, built by the server and rendered by the client. Keep these
+                   dependency-free so every workspace can import them.
+
+shared/text/     → pure string rules every workspace that writes an email body must
+                   apply identically: html.ts's escapeHtml and plainTextToHtml, used by
+                   the composer, forward quoting and the org-SMTP path. Dependency-free.
 
 shared/testing/  → pure rules that a SERVER-BUILT file and a qa/ file must run identically.
                    Not Zod, not client-facing — a documented exception to the line above,

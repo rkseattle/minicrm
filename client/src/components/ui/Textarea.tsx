@@ -2,8 +2,8 @@
  * Shared multi-line text input, styled and labelled to match the Input component.
  */
 
-import { forwardRef, useId } from 'react';
-import type { TextareaHTMLAttributes } from 'react';
+import { useId } from 'react';
+import type { Ref, TextareaHTMLAttributes } from 'react';
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   /** Rendered as a <label> above the textarea */
@@ -23,18 +23,16 @@ const BASE_TEXTAREA_CLASSES =
  * @param label - Label text rendered above the textarea
  * @param error - Error message rendered below the textarea
  */
-export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
-  {
-    label,
-    error,
-    id,
-    className = '',
-    'aria-describedby': describedBy,
-    'aria-invalid': ariaInvalid,
-    ...props
-  },
+export function Textarea({
   ref,
-) {
+  label,
+  error,
+  id,
+  className = '',
+  'aria-describedby': describedBy,
+  'aria-invalid': ariaInvalid,
+  ...props
+}: TextareaProps & { ref?: Ref<HTMLTextAreaElement> }) {
   const generatedId = useId();
   const textareaId = id ?? generatedId;
   // The message is announced with the field, not found later by browsing past it.
@@ -69,4 +67,4 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
       )}
     </div>
   );
-});
+}

@@ -2,8 +2,8 @@
  * Shared text input component with label and error state support.
  */
 
-import { forwardRef, useId } from 'react';
-import type { InputHTMLAttributes } from 'react';
+import { useId } from 'react';
+import type { Ref, InputHTMLAttributes } from 'react';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Rendered as a <label> above the input */
@@ -26,19 +26,17 @@ const BASE_INPUT_CLASSES =
  * @param label - Label text rendered above the input
  * @param error - Error message rendered below the input
  */
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  {
-    label,
-    error,
-    warning,
-    id,
-    className = '',
-    'aria-describedby': describedBy,
-    'aria-invalid': ariaInvalid,
-    ...props
-  },
+export function Input({
   ref,
-) {
+  label,
+  error,
+  warning,
+  id,
+  className = '',
+  'aria-describedby': describedBy,
+  'aria-invalid': ariaInvalid,
+  ...props
+}: InputProps & { ref?: Ref<HTMLInputElement> }) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
   // The message is announced with the field, not found later by browsing past it.
@@ -77,4 +75,4 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       )}
     </div>
   );
-});
+}

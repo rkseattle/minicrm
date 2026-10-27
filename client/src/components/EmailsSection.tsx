@@ -222,6 +222,14 @@ export default function EmailsSection({
       ? t('emails.noMailboxTooltip')
       : null;
 
+  /** Why a thread's Reply is disabled, or undefined when it is enabled or still loading. */
+  const replyBlockedReason = (canReply: boolean): string | undefined =>
+    !maySendHere
+      ? t('emails.noPermissionTooltip')
+      : canReply || !accounts.isSuccess
+        ? undefined
+        : t('emails.replyUnavailable');
+
   return (
     <section
       className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6"
@@ -389,22 +397,18 @@ export default function EmailsSection({
                             {messageOpen ? (
                               <div id={`email-message-body-${message.id}`} className="mt-2">
                                 <MessageBody message={message} allowImages={imagesShown.has(key)} />
-                                <div
-                                  className="mt-2"
-                                  title={
-                                    !maySendHere
-                                      ? t('emails.noPermissionTooltip')
-                                      : canReply || !accounts.isSuccess
-                                        ? undefined
-                                        : t('emails.replyUnavailable')
-                                  }
-                                >
+                                <div className="mt-2" title={replyBlockedReason(canReply)}>
                                   <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     data-testid={`email-reply-${message.id}`}
                                     disabled={!canReply}
+                                    aria-describedby={
+                                      replyBlockedReason(canReply)
+                                        ? `email-reply-blocked-${message.id}`
+                                        : undefined
+                                    }
                                     onClick={() =>
                                       setCompose({
                                         kind: 'reply',
@@ -415,6 +419,11 @@ export default function EmailsSection({
                                   >
                                     {t('emails.reply')}
                                   </Button>
+                                  {replyBlockedReason(canReply) && (
+                                    <p id={`email-reply-blocked-${message.id}`} className="sr-only">
+                                      {replyBlockedReason(canReply)}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             ) : (

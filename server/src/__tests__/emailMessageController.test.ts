@@ -146,10 +146,17 @@ describe('authentication boundary', () => {
     const res = await request(app).get('/api/v1/email-messages/unmatched');
     expect(res.status).toBe(401);
   });
+
+  it('returns 401 on a message body when unauthenticated', async () => {
+    const res = await request(app).get(
+      '/api/v1/email-messages/00000000-0000-4000-8000-000000000001',
+    );
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('feature flag boundary', () => {
-  it('returns 403 on both routes when email_sync is off', async () => {
+  it('returns 403 on every route, the message body included, when email_sync is off', async () => {
     await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
     invalidateFeatureFlagCache();
 
@@ -159,10 +166,14 @@ describe('feature flag boundary', () => {
     const byRecord = await request(app)
       .get(`/api/v1/email-messages?record_type=contact&record_id=${contactAId}`)
       .set('Cookie', repACookie);
+    const body = await request(app)
+      .get('/api/v1/email-messages/00000000-0000-4000-8000-000000000001')
+      .set('Cookie', repACookie);
 
-    // The gate is router-level, so both routes answer the same way.
+    // The gate is router-level, so every route answers the same way.
     expect(unmatched.status).toBe(403);
     expect(byRecord.status).toBe(403);
+    expect(body.status).toBe(403);
   });
 });
 

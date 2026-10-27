@@ -7,12 +7,13 @@
 
 import { fireEvent } from '@testing-library/react';
 import { expect } from 'vitest';
-import { tabbableElements } from '@/utils/focusTrap.js';
+import { tabbable } from 'tabbable';
 
 export function expectTabWrapsInside(dialog: HTMLElement): void {
-  const tabbable = tabbableElements(dialog);
-  const firstControl = tabbable[0];
-  const lastControl = tabbable[tabbable.length - 1];
+  // jsdom lays nothing out, so skip the visibility check, as useFocusTrap does under test.
+  const stops = tabbable(dialog, { displayCheck: 'none' });
+  const firstControl = stops[0];
+  const lastControl = stops[stops.length - 1];
   if (!firstControl || !lastControl) throw new Error('The dialog has nothing tabbable.');
   lastControl.focus();
 

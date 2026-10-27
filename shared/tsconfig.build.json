@@ -11,6 +11,6 @@
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["schemas/**/*", "generated/**/*", "testing/**/*", "types/**/*"],
+  "include": ["schemas/**/*", "generated/**/*", "testing/**/*", "text/**/*", "types/**/*"],
   "exclude": ["node_modules"]
 }

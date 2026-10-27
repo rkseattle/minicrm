@@ -13,6 +13,6 @@
     "outDir": "./dist",
     "rootDir": "."
   },
-  "include": ["schemas/**/*", "testing/**/*", "types/**/*"],
+  "include": ["schemas/**/*", "testing/**/*", "text/**/*", "types/**/*"],
   "exclude": ["node_modules", "dist"]
 }

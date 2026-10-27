@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { useFocusTrap } from './useFocusTrap.js';
 
 function Dialog({ active }: { active?: boolean }) {
@@ -36,13 +36,22 @@ describe('useFocusTrap', () => {
     expect(screen.getByTestId('last')).toHaveFocus();
   });
 
-  it('wraps Shift+Tab from the focused dialog itself to the last control', () => {
-    render(<Dialog />);
+  it('pulls focus back inside when Shift+Tab leaves the dialog itself', () => {
+    render(
+      <>
+        <button type="button" data-testid="outside">
+          outside
+        </button>
+        <Dialog />
+      </>,
+    );
     screen.getByTestId('dialog').focus();
 
+    // A browser moves focus out natively on Shift+Tab; jsdom does not, so move it by hand.
     fireEvent.keyDown(screen.getByTestId('dialog'), { key: 'Tab', shiftKey: true });
+    screen.getByTestId('outside').focus();
 
-    expect(screen.getByTestId('last')).toHaveFocus();
+    expect(screen.getByTestId('dialog').contains(document.activeElement)).toBe(true);
   });
 
   it('does nothing while inactive', () => {
@@ -65,13 +74,25 @@ describe('useFocusTrap', () => {
     expect(screen.getByTestId('first')).toHaveFocus();
   });
 
-  it('removes its listener on unmount', () => {
-    const { unmount } = render(<Dialog />);
-    const dialog = screen.getByTestId('dialog');
-    const removeListener = vi.spyOn(dialog, 'removeEventListener');
-
+  it('stops trapping on unmount', () => {
+    const { unmount } = render(
+      <>
+        <Dialog />
+        <button type="button" data-testid="outside">
+          outside
+        </button>
+      </>,
+    );
     unmount();
+    render(
+      <button type="button" data-testid="after">
+        after
+      </button>,
+    );
+    screen.getByTestId('after').focus();
 
-    expect(removeListener).toHaveBeenCalledWith('keydown', expect.any(Function));
+    const notCancelled = fireEvent.keyDown(screen.getByTestId('after'), { key: 'Tab' });
+
+    expect(notCancelled).toBe(true);
   });
 });
