@@ -15,6 +15,7 @@ import {
   type OAuthProvider,
   oauthProviderSchema,
   UNTESTABLE_PROVIDER,
+  updateConnectedAccountSchema,
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import logger from '../logger.js';
@@ -30,6 +31,7 @@ import {
   getUsableAccessToken,
   listConnectedAccounts,
   updateAccountStatus,
+  updateConnectedAccountSettings,
   upsertOAuthAccount,
 } from '../services/connectedAccountService.js';
 import { PROVIDER_AUTH_EXPIRED, testImapConnection } from '../services/imapConnectionService.js';
@@ -126,6 +128,37 @@ export async function deleteConnectedAccountHandler(req: Request, res: Response)
   }
 
   res.status(204).send();
+}
+
+/**
+ * PATCH /api/v1/connected-accounts/:id
+ * Pauses or resumes one of the caller's own mailboxes, or replaces its excluded domains.
+ */
+export async function updateConnectedAccountHandler(req: Request, res: Response): Promise<void> {
+  const idParse = accountIdSchema.safeParse(req.params.id);
+  if (!idParse.success) {
+    respondValidationMessage(res, 'Invalid connected account ID');
+    return;
+  }
+  const parsed = updateConnectedAccountSchema.safeParse(req.body);
+  if (!parsed.success) {
+    respondValidationError(res, parsed.error);
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const account = await updateConnectedAccountSettings(
+    idParse.data,
+    req.user!.id,
+    { syncPaused: parsed.data.sync_paused, excludedDomains: parsed.data.excluded_domains },
+    actor,
+  );
+
+  if (!account) {
+    res.status(404).json(errorBody('NOT_FOUND', 'No such connected account'));
+    return;
+  }
+  res.status(200).json({ account });
 }
 
 /**

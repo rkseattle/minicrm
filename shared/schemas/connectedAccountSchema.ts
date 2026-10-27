@@ -125,6 +125,10 @@ export const connectedAccountResponseSchema = z.object({
   status: z.enum(CONNECTED_ACCOUNT_STATUSES),
   status_detail: z.string().nullable(),
   last_sync_at: z.string().nullable(),
+  /** True while the owner has paused syncing this mailbox. */
+  sync_paused: z.boolean(),
+  /** The owner's never-sync domains; merged with the org list at sync time. */
+  excluded_domains: z.array(z.string()),
   created_at: z.string(),
   updated_at: z.string(),
 });

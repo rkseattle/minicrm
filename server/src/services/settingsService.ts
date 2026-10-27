@@ -9,7 +9,10 @@ import {
   SUPPORTED_LOCALES,
   NAV_LAYOUTS,
   SUPPORTED_CURRENCIES,
+  EMAIL_SYNC_BACKFILL_DAYS_DEFAULT,
+  emailSyncBackfillDaysSchema,
 } from '@minicrm/shared/schemas/settingsSchema.js';
+import { excludedDomainListSchema } from '@minicrm/shared/schemas/emailDomainSchema.js';
 import type {
   SupportedLocale,
   NavLayout,
@@ -46,6 +49,12 @@ const PIPELINE_STAGES_REVIEWED_KEY = 'pipeline_stages_reviewed';
 
 /** The key used to store whether synced email auto-links to a contact's open deals */
 const DEAL_AUTO_LINK_KEY = 'deal_auto_link';
+
+/** The key used to store the org-wide list of domains email sync never stores */
+const EMAIL_SYNC_EXCLUDED_DOMAINS_KEY = 'email_sync_excluded_domains';
+
+/** The key used to store how far back a never-synced mailbox reads, in days */
+const EMAIL_SYNC_BACKFILL_DAYS_KEY = 'email_sync_backfill_days';
 
 /**
  * Retrieves the current system-wide default language.
@@ -220,6 +229,75 @@ export async function setDealAutoLink(
     [DEAL_AUTO_LINK_KEY, String(enabled), actorIdOrNull(actor)],
   );
   return enabled;
+}
+
+// ── Email sync governance ────────────────────────────────────────
+
+/**
+ * Reads one email sync setting's raw value, or null when its row is missing.
+ *
+ * The parsers below take no fallback for a value that is present but wrong.
+ * The sync engine reads them to decide what never to store, and exclusion only works
+ * forward: defaulting a corrupt list to empty would store excluded mail and advance the
+ * cursor past it, with no way back. Throwing instead makes the engine skip the tick.
+ */
+async function getEmailSyncSettingValue(key: string): Promise<string | null> {
+  const result = await pool.query<SystemSettingRow>(
+    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+    [key],
+  );
+  return result.rows[0]?.value ?? null;
+}
+
+/** Thrown when a stored email sync setting cannot be read as its schema says. */
+function malformedSetting(key: string): Error {
+  return Object.assign(new Error(`system_settings.${key} holds a malformed value`), {
+    code: 'MALFORMED_SETTING',
+  });
+}
+
+/**
+ * Parses the stored org-wide domain list. Empty when the row is missing.
+ *
+ * @throws MALFORMED_SETTING when the value is not a valid domain list.
+ */
+export function parseEmailSyncExcludedDomains(raw: string | null): string[] {
+  if (raw === null) return [];
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(raw);
+  } catch {
+    throw malformedSetting(EMAIL_SYNC_EXCLUDED_DOMAINS_KEY);
+  }
+  const parsed = excludedDomainListSchema.safeParse(parsedJson);
+  if (!parsed.success) throw malformedSetting(EMAIL_SYNC_EXCLUDED_DOMAINS_KEY);
+  return parsed.data;
+}
+
+/**
+ * Parses the stored backfill window in days. The shared default when the row is missing.
+ *
+ * @throws MALFORMED_SETTING when the value is not a whole number in range.
+ */
+export function parseEmailSyncBackfillDays(raw: string | null): number {
+  if (raw === null) return EMAIL_SYNC_BACKFILL_DAYS_DEFAULT;
+  // Number() accepts '' and padded text, so require bare digits first.
+  if (!/^\d+$/.test(raw)) throw malformedSetting(EMAIL_SYNC_BACKFILL_DAYS_KEY);
+  const parsed = emailSyncBackfillDaysSchema.safeParse({ days: Number(raw) });
+  if (!parsed.success) throw malformedSetting(EMAIL_SYNC_BACKFILL_DAYS_KEY);
+  return parsed.data.days;
+}
+
+/** Returns the org-wide domains email sync never stores; see parseEmailSyncExcludedDomains. */
+export async function getEmailSyncExcludedDomains(): Promise<string[]> {
+  return parseEmailSyncExcludedDomains(
+    await getEmailSyncSettingValue(EMAIL_SYNC_EXCLUDED_DOMAINS_KEY),
+  );
+}
+
+/** Returns how far back a never-synced mailbox reads; see parseEmailSyncBackfillDays. */
+export async function getEmailSyncBackfillDays(): Promise<number> {
+  return parseEmailSyncBackfillDays(await getEmailSyncSettingValue(EMAIL_SYNC_BACKFILL_DAYS_KEY));
 }
 
 // ── Default currency ─────────────────────────────────────────────

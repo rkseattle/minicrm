@@ -176,6 +176,9 @@ const FIELD_DISPLAY_NAMES: Record<string, string> = {
   default_language: 'Default Language',
   nav_layout: 'Navigation Layout',
   email_notifications_enabled: 'Email Notifications',
+  // Connected mailboxes
+  sync_paused: 'Sync Paused',
+  excluded_domains: 'Excluded Domains',
 };
 
 /**

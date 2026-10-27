@@ -352,6 +352,8 @@ describe('SendEmailModal — sending through a connected mailbox', () => {
       status: 'active',
       status_detail: null,
       last_sync_at: null,
+      sync_paused: false,
+      excluded_domains: [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       ...overrides,
