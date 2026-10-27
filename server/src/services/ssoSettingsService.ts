@@ -9,7 +9,8 @@ import { encrypt, decrypt } from './cryptoService.js';
 import type { SsoProtocol, SsoConfigPublic } from '@minicrm/shared/schemas/settingsSchema.js';
 import { SSO_PROTOCOLS } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR, actorIdOrNull } from './auditService.js';
+import { SYSTEM_ACTOR } from './auditService.js';
+import { upsertSystemSetting } from './settingsService.js';
 
 // ── system_settings keys ──────────────────────────────────────────────────────
 
@@ -168,13 +169,6 @@ export async function getSsoConfigInternal(): Promise<SsoConfigInternal> {
   };
 }
 
-// $3 = updated_by uuid
-const UPSERT_SQL = `
-  INSERT INTO system_settings (key, value, updated_at, updated_by)
-  VALUES ($1, $2, now(), $3)
-  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by
-`;
-
 /**
  * Persists SSO configuration and enables SSO.
  * When idp_certificate is omitted the stored encrypted certificate is left unchanged.
@@ -190,22 +184,14 @@ export async function setSsoConfig(
   try {
     await client.query('BEGIN');
 
-    await client.query(UPSERT_SQL, [SSO_ENABLED_KEY, 'true', actorIdOrNull(actor)]);
-    await client.query(UPSERT_SQL, [SSO_PROTOCOL_KEY, input.protocol, actorIdOrNull(actor)]);
-    await client.query(UPSERT_SQL, [
-      SSO_IDP_METADATA_URL_KEY,
-      input.idp_metadata_url,
-      actorIdOrNull(actor),
-    ]);
-    await client.query(UPSERT_SQL, [SSO_ENTITY_ID_KEY, input.entity_id, actorIdOrNull(actor)]);
+    await upsertSystemSetting(client, SSO_ENABLED_KEY, 'true', actor);
+    await upsertSystemSetting(client, SSO_PROTOCOL_KEY, input.protocol, actor);
+    await upsertSystemSetting(client, SSO_IDP_METADATA_URL_KEY, input.idp_metadata_url, actor);
+    await upsertSystemSetting(client, SSO_ENTITY_ID_KEY, input.entity_id, actor);
 
     if (input.idp_certificate !== undefined) {
       const encrypted = encrypt(input.idp_certificate);
-      await client.query(UPSERT_SQL, [
-        SSO_IDP_CERTIFICATE_ENCRYPTED_KEY,
-        encrypted,
-        actorIdOrNull(actor),
-      ]);
+      await upsertSystemSetting(client, SSO_IDP_CERTIFICATE_ENCRYPTED_KEY, encrypted, actor);
     }
 
     // When jit_default_role_id is explicitly provided (even null), persist the change.
@@ -234,12 +220,13 @@ export async function setSsoConfig(
         await client.query('DELETE FROM system_settings WHERE key = $1', [
           SSO_JIT_DEFAULT_ROLE_ID_KEY,
         ]);
-      } else {
-        await client.query(UPSERT_SQL, [
+      } else if (input.jit_default_role_id !== undefined) {
+        await upsertSystemSetting(
+          client,
           SSO_JIT_DEFAULT_ROLE_ID_KEY,
           input.jit_default_role_id,
-          actorIdOrNull(actor),
-        ]);
+          actor,
+        );
       }
     }
 

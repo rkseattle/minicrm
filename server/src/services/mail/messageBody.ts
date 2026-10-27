@@ -26,6 +26,7 @@ import {
   singleMessageId,
   type ThreadingHeaders,
 } from './threading.js';
+import { normalizeAddress } from './address.js';
 
 /** Characters of body text kept for a list view that must not load a whole body. */
 const SNIPPET_LENGTH = 200;
@@ -157,7 +158,7 @@ export function subjectOf(subject: string | undefined): string | null {
  * @param fromAddress - Sender, already lowercased by the caller that parsed it.
  */
 export function directionOf(fromAddress: string, accountAddress: string): 'inbound' | 'outbound' {
-  return fromAddress === accountAddress.trim().toLowerCase() ? 'outbound' : 'inbound';
+  return fromAddress === normalizeAddress(accountAddress) ? 'outbound' : 'inbound';
 }
 
 /**
@@ -381,7 +382,7 @@ function addressesOf(value: AddressObject | AddressObject[] | undefined): string
   const groups = value === undefined ? [] : Array.isArray(value) ? value : [value];
   return groups
     .flatMap((group) => group.value)
-    .map((entry) => (entry.address ? stripNul(entry.address).trim().toLowerCase() : ''))
+    .map((entry) => (entry.address ? normalizeAddress(stripNul(entry.address)) : ''))
     .filter((address) => address !== '');
 }
 

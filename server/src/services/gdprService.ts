@@ -17,6 +17,7 @@ import { setRlsUserId } from './rlsContextService.js';
 import {
   GDPR_PLACEHOLDER_EMAIL_SQL,
   GDPR_REDACTED_SQL,
+  GDPR_REDACTED_TEXT,
   arrayHasAddress,
   erasedAddressDigest,
   erasedPlaceholderAddress,
@@ -33,6 +34,8 @@ import type { LeadRow } from './leadsService.js';
 import type { ActivityRow } from './activityService.js';
 import type { DealRow } from './dealService.js';
 import type { CustomFieldValueWithDefinition } from './customFieldService.js';
+import { MASKED_AUDIT_VALUES, MASKING_JOIN } from './auditService.js';
+import { scrubActivities } from './activityService.js';
 
 // ── PII field lists ────────────────────────────────────────────────────────────
 
@@ -263,11 +266,15 @@ async function cascadeErasureToEmail(
   );
 
   // A send's activity on a deal or account carries the mail's text; reach it by association.
-  await client.query(
-    `UPDATE activities SET subject = ${GDPR_REDACTED_SQL}, notes = NULL
-      WHERE id IN (SELECT activity_id FROM activity_participants
-                    WHERE record_type = $1 AND record_id = $2)`,
+  const associated = await client.query<{ id: string }>(
+    `SELECT activity_id AS id FROM activity_participants WHERE record_type = $1 AND record_id = $2`,
     [recordType, recordId],
+  );
+  await scrubActivities(
+    client,
+    associated.rows.map((row) => row.id),
+    GDPR_REDACTED_TEXT,
+    'gdpr_erasure',
   );
 
   const links = await client.query(
@@ -386,10 +393,18 @@ export async function eraseContact(
     await client.query(`DELETE FROM contact_addresses WHERE contact_id = $1`, [id]);
 
     // Step 6 — scrub subject and notes on linked activities
-    await client.query(
-      `UPDATE activities SET subject = ${GDPR_REDACTED_SQL}, notes = NULL WHERE contact_id = $1`,
+    const own = await client.query<{ id: string }>(
+      'SELECT id FROM activities WHERE contact_id = $1',
       [id],
     );
+    await scrubActivities(
+      client,
+      own.rows.map((row) => row.id),
+      GDPR_REDACTED_TEXT,
+      'gdpr_erasure',
+    );
+    // The AI's inference about the person, with quotes from their mail and notes.
+    await client.query('DELETE FROM contact_champion_blocker_signals WHERE contact_id = $1', [id]);
 
     // Step 7 — scrub linked notes. Soft-deleted rows are included: the row still holds
     // the subject's personal data, and nothing else ever purges it.
@@ -728,13 +743,11 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
       // Audit history with GDPR masking applied
       pool.query<AuditLogRow>(
         `SELECT
-           a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-           CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
-           CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
+           a.id, a.record_type, a.record_id, a.event_type, a.field_name,
+           ${MASKED_AUDIT_VALUES},
            a.changed_by_id, a.changed_by_name, a.created_at
          FROM audit_log a
-         LEFT JOIN gdpr_deletion_log g
-           ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
+         ${MASKING_JOIN}
          WHERE a.record_type = 'contact' AND a.record_id = $1
          ORDER BY a.created_at DESC`,
         [id],
@@ -833,13 +846,11 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
     // Audit history with GDPR masking applied
     pool.query<AuditLogRow>(
       `SELECT
-         a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
-         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
+         a.id, a.record_type, a.record_id, a.event_type, a.field_name,
+           ${MASKED_AUDIT_VALUES},
          a.changed_by_id, a.changed_by_name, a.created_at
        FROM audit_log a
-       LEFT JOIN gdpr_deletion_log g
-         ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
+       ${MASKING_JOIN}
        WHERE a.record_type = 'lead' AND a.record_id = $1
        ORDER BY a.created_at DESC`,
       [id],

@@ -372,6 +372,21 @@ export async function maskErasedAddresses<
 }
 
 /**
+ * Joins what masks an audit row's name and values: a completed erasure of its record, or a
+ * record in redacted_records (an activity scrubbed by erasure or a private thread). The
+ * append-only log still holds what was removed, so reads hide it. Expects audit_log as `a`.
+ */
+export const MASKING_JOIN = `LEFT JOIN gdpr_deletion_log g
+         ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
+       LEFT JOIN redacted_records r
+         ON r.record_type = a.record_type AND r.record_id = a.record_id`;
+const MASKED_SQL = '(g.record_id IS NOT NULL OR r.record_id IS NOT NULL)';
+/** record_name, old_value and new_value, masked; for a select over MASKING_JOIN. */
+export const MASKED_AUDIT_VALUES = `CASE WHEN ${MASKED_SQL} THEN ${GDPR_REDACTED_SQL} ELSE a.record_name END AS record_name,
+         CASE WHEN ${MASKED_SQL} THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
+         CASE WHEN ${MASKED_SQL} THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value`;
+
+/**
  * Returns audit log entries for a single record, newest first.
  * Used by the Change History section on detail pages.
  *
@@ -381,28 +396,23 @@ export async function maskErasedAddresses<
 export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Promise<AuditLogRow[]> {
   const { recordType, recordId, limit = 20, all = false } = options;
 
-  // Apply read-time GDPR masking via LEFT JOIN on gdpr_deletion_log.
-  // When a record has a completed erasure, old_value/new_value are replaced with
-  // '[GDPR deleted]' so audit history does not leak PII that was erased.
+  // Read-time masking: an erased record's values, or a scrubbed activity's, display
+  // '[GDPR deleted]' so audit history does not keep what was removed.
   const query = all
     ? `SELECT
-         a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
-         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
+         a.id, a.record_type, a.record_id, a.event_type, a.field_name,
+         ${MASKED_AUDIT_VALUES},
          a.changed_by_id, a.changed_by_name, a.source, a.created_at
        FROM audit_log a
-       LEFT JOIN gdpr_deletion_log g
-         ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
+       ${MASKING_JOIN}
        WHERE a.record_type = $1 AND a.record_id = $2
        ORDER BY a.created_at DESC`
     : `SELECT
-         a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
-         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
+         a.id, a.record_type, a.record_id, a.event_type, a.field_name,
+         ${MASKED_AUDIT_VALUES},
          a.changed_by_id, a.changed_by_name, a.source, a.created_at
        FROM audit_log a
-       LEFT JOIN gdpr_deletion_log g
-         ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
+       ${MASKING_JOIN}
        WHERE a.record_type = $1 AND a.record_id = $2
        ORDER BY a.created_at DESC LIMIT $3`;
 
@@ -477,23 +487,20 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const offset = (page - 1) * limit;
 
-  // Apply read-time GDPR masking via LEFT JOIN on gdpr_deletion_log.
-  // When a record has a completed erasure, old_value/new_value display '[GDPR deleted]'.
-  // WHERE conditions are prefixed with `a.` to avoid ambiguity after the join.
-  const gdprJoin = `LEFT JOIN gdpr_deletion_log g ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL`;
+  // Read-time masking, as getRecordAuditLog applies it. WHERE conditions are prefixed with
+  // `a.` to avoid ambiguity after the join.
 
   const [countResult, dataResult] = await Promise.all([
     pool.query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM audit_log a ${gdprJoin} ${where}`,
+      `SELECT COUNT(*) AS count FROM audit_log a ${MASKING_JOIN} ${where}`,
       values,
     ),
     pool.query<AuditLogRow>(
       `SELECT
-         a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
-         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
+         a.id, a.record_type, a.record_id, a.event_type, a.field_name,
+         ${MASKED_AUDIT_VALUES},
          a.changed_by_id, a.changed_by_name, a.source, a.created_at
-       FROM audit_log a ${gdprJoin}
+       FROM audit_log a ${MASKING_JOIN}
        ${where}
        ORDER BY a.created_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, limit, offset],
@@ -558,7 +565,7 @@ export async function maskAuditEvent(event: AuditNotification): Promise<AuditNot
   return maskErasedRecord(addressMasked!);
 }
 
-/** Masks a live event whose own record has been erased, as the read queries' join does. */
+/** Masks a live event whose own record is erased or scrubbed, as MASKING_JOIN does. */
 async function maskErasedRecord(event: AuditNotification): Promise<AuditNotification> {
   if (!event.record_id) return event;
 
@@ -566,6 +573,8 @@ async function maskErasedRecord(event: AuditNotification): Promise<AuditNotifica
     `SELECT EXISTS (
        SELECT 1 FROM gdpr_deletion_log
        WHERE record_id = $1 AND record_type = $2 AND completed_at IS NOT NULL
+     ) OR EXISTS (
+       SELECT 1 FROM redacted_records WHERE record_id = $1 AND record_type = $2
      ) AS erased`,
     [event.record_id, event.record_type],
   );
@@ -574,6 +583,7 @@ async function maskErasedRecord(event: AuditNotification): Promise<AuditNotifica
 
   return {
     ...event,
+    record_name: event.record_name !== null ? GDPR_REDACTED_TEXT : null,
     old_value: event.old_value !== null ? GDPR_REDACTED_TEXT : null,
     new_value: event.new_value !== null ? GDPR_REDACTED_TEXT : null,
   };

@@ -2029,6 +2029,14 @@
           "columns": [
             "is_demo"
           ]
+        },
+        {
+          "name": "activities_email_message_id_idx",
+          "def": "CREATE INDEX activities_email_message_id_idx ON public.activities USING btree (((metadata -\u003e\u003e 'email_message_id'::text))) WHERE ((metadata -\u003e\u003e 'email_message_id'::text) IS NOT NULL)",
+          "table": "public.activities",
+          "columns": [
+            "expr"
+          ]
         }
       ],
       "constraints": [
@@ -11595,6 +11603,78 @@
           "referenced_table": "",
           "columns": [
             "activity_id",
+            "record_type",
+            "record_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.redacted_records",
+      "type": "BASE TABLE",
+      "comment": "Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask their entries; kept after the record is deleted.",
+      "columns": [
+        {
+          "name": "record_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "record_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "redacted_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "redacted_records_pkey",
+          "def": "CREATE UNIQUE INDEX redacted_records_pkey ON public.redacted_records USING btree (record_type, record_id)",
+          "table": "public.redacted_records",
+          "columns": [
+            "record_type",
+            "record_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "redacted_records_reason_check",
+          "type": "CHECK",
+          "def": "CHECK ((reason = ANY (ARRAY['gdpr_erasure'::text, 'private_thread'::text])))",
+          "table": "public.redacted_records",
+          "referenced_table": "",
+          "columns": [
+            "reason"
+          ]
+        },
+        {
+          "name": "redacted_records_record_type_check",
+          "type": "CHECK",
+          "def": "CHECK ((record_type = 'activity'::text))",
+          "table": "public.redacted_records",
+          "referenced_table": "",
+          "columns": [
+            "record_type"
+          ]
+        },
+        {
+          "name": "redacted_records_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (record_type, record_id)",
+          "table": "public.redacted_records",
+          "referenced_table": "",
+          "columns": [
             "record_type",
             "record_id"
           ]

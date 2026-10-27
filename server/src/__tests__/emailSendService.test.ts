@@ -40,6 +40,7 @@ import {
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 import { clearAuditLogFor, failMessageInsert, insertParkedMailbox } from './testUtils.js';
+import { PRIVATE_EMAIL_SUBJECT } from '../services/emailMessageService.js';
 
 const FILE_PREFIX = 'emailsend';
 const MAILBOX = `${FILE_PREFIX}-Mailbox@Example.com`;
@@ -1216,7 +1217,7 @@ describe('sendEmail — private threads', () => {
     );
 
     expect(sent.message.is_private).toBe(true);
-    expect(await activityFor(contactId)).toEqual({ subject: 'Hello', notes: null });
+    expect(await activityFor(contactId)).toEqual({ subject: PRIVATE_EMAIL_SUBJECT, notes: null });
   });
 
   it('keeps the body on the activity for a reply into a visible thread', async () => {

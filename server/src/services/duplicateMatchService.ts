@@ -12,6 +12,7 @@ import type {
   DuplicateMatchResult,
   DuplicateMatchSignal,
 } from '@minicrm/shared/schemas/duplicateMatchSchema.js';
+import { domainOfAddress } from './mail/address.js';
 
 /** Points contributed by each signal toward the 0-100 composite score. */
 const SIGNAL_WEIGHTS: Record<DuplicateMatchSignal, number> = {
@@ -42,9 +43,9 @@ function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, '');
 }
 
-/** Extracts the domain portion of an email address, lowercased. */
+/** The domain portion of an email address, lowercased; empty when it has none. */
 function emailDomain(email: string): string {
-  return email.toLowerCase().split('@')[1] ?? '';
+  return domainOfAddress(email) ?? '';
 }
 
 /**

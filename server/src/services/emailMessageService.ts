@@ -31,10 +31,11 @@ import type {
 import type { PoolClient } from 'pg';
 
 import pool from '../db.js';
-import { writeAuditEntry } from './auditService.js';
+import { writeAuditEntries, writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { clearDerivedLinkSuppression, suppressDerivedLink } from './emailMatchingService.js';
 import { buildVisibilityFilter } from './visibilityService.js';
+import { scrubActivities } from './activityService.js';
 
 /** A link row as the write endpoints return it. */
 export interface EmailMessageLinkRow {
@@ -443,6 +444,9 @@ export async function inheritThreadPrivacy(
   return new Map(result.rows.map((row) => [row.id, row.is_private]));
 }
 
+/** Subject of an Email activity filed from a private thread, which records the send only. */
+export const PRIVATE_EMAIL_SUBJECT = 'Private email';
+
 /**
  * Marks or unmarks the whole thread a message belongs to as private, in its owner's mailbox.
  *
@@ -489,6 +493,37 @@ export async function setThreadPrivacy(
         WHERE connected_account_id = $1 AND thread_id = $2 AND is_private <> $3`,
       [message.connected_account_id, message.thread_id, isPrivate],
     );
+    if (isPrivate) {
+      // Activities already filed from the thread carry its text onto shared timelines,
+      // whoever owns them now: the text is the mailbox owner's.
+      const filed = await client.query<{ id: string }>(
+        `SELECT a.id FROM activities a
+           JOIN email_messages m ON (a.metadata->>'email_message_id') = m.id::text
+          WHERE m.connected_account_id = $1 AND m.thread_id = $2`,
+        [message.connected_account_id, message.thread_id],
+      );
+      const activityIds = await scrubActivities(
+        client,
+        filed.rows.map((row) => row.id),
+        PRIVATE_EMAIL_SUBJECT,
+        'private_thread',
+      );
+      // The removed text is not logged again; redacted_records masks earlier entries.
+      await writeAuditEntries(
+        client,
+        activityIds.map((id) => ({
+          recordType: 'activity',
+          recordId: id,
+          recordName: PRIVATE_EMAIL_SUBJECT,
+          eventType: 'updated',
+          fieldName: 'subject',
+          oldValue: null,
+          newValue: PRIVATE_EMAIL_SUBJECT,
+          changedById: actor.id,
+          changedByName: actor.name,
+        })),
+      );
+    }
 
     if ((updated.rowCount ?? 0) > 0) {
       await writeAuditEntry(client, {

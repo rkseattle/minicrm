@@ -45,6 +45,11 @@ describe('resolveMailDomainStatus', () => {
     await expect(resolveMailDomainStatus('someone@example.net')).resolves.toBe('accepts-mail');
   });
 
+  it('reads an address with no local part as no mailbox, without a lookup', async () => {
+    await expect(resolveMailDomainStatus('@example.net')).resolves.toBe('no-mail');
+    expect(resolveMx).not.toHaveBeenCalled();
+  });
+
   it('treats an RFC 7505 null MX as accepting no mail', async () => {
     resolveMx.mockResolvedValue([{ exchange: '', priority: 0 }]);
     await expect(resolveMailDomainStatus('someone@defunct-domain.co')).resolves.toBe('no-mail');

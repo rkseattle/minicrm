@@ -11,7 +11,8 @@ import type {
   SupportedFontId,
 } from '@minicrm/shared/schemas/brandingSchema.js';
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR, actorIdOrNull } from './auditService.js';
+import { SYSTEM_ACTOR } from './auditService.js';
+import { upsertSystemSetting } from './settingsService.js';
 
 const BRANDING_KEY = 'branding';
 
@@ -162,12 +163,7 @@ export async function setBranding(
     merged.primaryColorText = null;
   }
 
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [BRANDING_KEY, JSON.stringify(merged), actorIdOrNull(actor)],
-  );
+  await upsertSystemSetting(pool, BRANDING_KEY, JSON.stringify(merged), actor);
   invalidateCache();
 
   return merged;

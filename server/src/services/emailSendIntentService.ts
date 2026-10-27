@@ -29,12 +29,13 @@ import type { PoolClient } from 'pg';
 
 import pool from '../db.js';
 import logger from '../logger.js';
-import { insertActivity } from './activityService.js';
+import { insertActivity, markActivitiesRedacted } from './activityService.js';
 import { writeAuditEntry, type AuditActor } from './auditService.js';
 import { clearDerivedLinkSuppression } from './emailMatchingService.js';
 import {
   findLinkedRecordOwner,
   MESSAGE_SELECT,
+  PRIVATE_EMAIL_SUBJECT,
   toEmailMessage,
   type EmailMessageRow,
 } from './emailMessageService.js';
@@ -590,10 +591,12 @@ export async function fileSentMessage(
       {
         type: 'Email',
         direction: 'Outbound',
+        // A private thread stays its owner's: the activity records the send, not the text.
         subject: message.redacted
           ? GDPR_REDACTED_TEXT
-          : truncate(message.subject?.trim() || UNTITLED_SUBJECT, ACTIVITY_SUBJECT_MAX),
-        // A private thread stays its owner's: the activity records the send, not the text.
+          : isPrivate
+            ? PRIVATE_EMAIL_SUBJECT
+            : truncate(message.subject?.trim() || UNTITLED_SUBJECT, ACTIVITY_SUBJECT_MAX),
         notes:
           isPrivate || message.redacted
             ? undefined
@@ -602,6 +605,20 @@ export async function fileSentMessage(
         owner_id: intent.userId,
       },
       actor,
+    );
+    if (message.redacted || isPrivate) {
+      await markActivitiesRedacted(
+        client,
+        [activityId],
+        message.redacted ? 'gdpr_erasure' : 'private_thread',
+      );
+    }
+    // Marking the thread private later finds the activity through its message.
+    await client.query(
+      `UPDATE activities
+          SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('email_message_id', $2::text)
+        WHERE id = $1`,
+      [activityId, message.id],
     );
     // Erasure reaches the activity from each person it concerns, even once the mailbox is gone.
     await client.query(

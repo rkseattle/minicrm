@@ -433,3 +433,21 @@ export async function getDealStakeholderMap(dealId: string): Promise<Stakeholder
     single_threaded_risk: singleThreadedRisk,
   };
 }
+
+/**
+ * Drops the quoted signals of every contact the given activities were filed on. A signal does
+ * not record its activity, so one quote cannot be removed alone; the status label stays.
+ */
+export async function clearSignalQuotesForActivities(
+  client: PoolClient,
+  activityIds: readonly string[],
+): Promise<void> {
+  if (activityIds.length === 0) return;
+  await client.query(
+    `UPDATE contact_champion_blocker_signals
+        SET contributing_signals = '[]'::jsonb, updated_at = now()
+      WHERE contact_id IN (SELECT contact_id FROM activities WHERE id = ANY($1::uuid[]))
+        AND contributing_signals <> '[]'::jsonb`,
+    [activityIds],
+  );
+}

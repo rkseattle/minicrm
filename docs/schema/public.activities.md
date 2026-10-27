@@ -43,6 +43,7 @@
 | activities_account_id_index | CREATE INDEX activities_account_id_index ON public.activities USING btree (account_id) |
 | activities_deal_id_index | CREATE INDEX activities_deal_id_index ON public.activities USING btree (deal_id) |
 | activities_is_demo_index | CREATE INDEX activities_is_demo_index ON public.activities USING btree (is_demo) |
+| activities_email_message_id_idx | CREATE INDEX activities_email_message_id_idx ON public.activities USING btree (((metadata ->> 'email_message_id'::text))) WHERE ((metadata ->> 'email_message_id'::text) IS NOT NULL) |
 
 ## Triggers
 

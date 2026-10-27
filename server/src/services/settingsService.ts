@@ -61,7 +61,7 @@ const EMAIL_SYNC_BACKFILL_DAYS_KEY = 'email_sync_backfill_days';
  * Writes one setting, recording who changed it. Takes the pool or a transaction's client, so a
  * setter that audits can write the value on the same client as its audit entry.
  */
-async function upsertSystemSetting(
+export async function upsertSystemSetting(
   queryable: Pick<PoolClient, 'query'>,
   key: string,
   value: string,
