@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useFocusTrap } from './useFocusTrap.js';
 
@@ -17,6 +17,12 @@ function Dialog({ active }: { active?: boolean }) {
 }
 
 describe('useFocusTrap', () => {
+  it('moves focus to the first control when the dialog opens', async () => {
+    render(<Dialog />);
+
+    await waitFor(() => expect(screen.getByTestId('first')).toHaveFocus());
+  });
+
   it('wraps Tab from the last control to the first', () => {
     render(<Dialog />);
     screen.getByTestId('last').focus();

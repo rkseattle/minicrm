@@ -17,9 +17,9 @@ const TABBABLE_OPTIONS: FocusTrapTabbableOptions = {
 /**
  * Traps Tab and Shift+Tab inside the dialog container while active.
  *
- * Initial focus stays with each dialog (its own autofocus), and so does Escape. On close,
- * focus returns to whatever held it when the dialog opened, as the APG modal pattern
- * requires. Traps stack: a dialog opened over another pauses the one below.
+ * On open, focus stays where a dialog's own autofocus put it, or else moves to its first
+ * control; on close it returns to whatever held it before, as the APG modal pattern
+ * requires. Escape stays with each dialog. Traps stack: one opened over another pauses it.
  *
  * @param containerRef - Ref to the element with `aria-modal="true"`.
  * @param active - Pass the dialog's open condition when the component outlives the dialog.
@@ -32,7 +32,6 @@ export function useFocusTrap(
     const container = containerRef.current;
     if (!active || !container) return;
     const trap = createFocusTrap(container, {
-      initialFocus: false,
       fallbackFocus: container,
       escapeDeactivates: false,
       allowOutsideClick: true,
