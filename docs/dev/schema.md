@@ -198,8 +198,9 @@ email_messages
   thread_id  provider_message_id  ← both indexed, so both are length-bounded at the
     writer. Postgres refuses a btree entry over ~2704 bytes, and a Message-ID may
     legally run to 998 octets.
-  is_private  ← defaulted false, no writer yet. Excluded from the sync upsert's
-    update list: a user's own decision, which nothing upstream may overwrite.
+  is_private  ← set per thread by its mailbox's owner (PATCH .../thread-privacy) and
+    inherited by mail arriving in that thread. Excluded from the sync upsert's update
+    list: a user's own decision, which nothing upstream may overwrite.
   message_body_text  message_body_html  message_snippet  ← prefixed because the AI PII
     filter matches bare column names at every depth, and notes.body_text is a live
     column the note tools deliberately surface. message_body_html is stored exactly as

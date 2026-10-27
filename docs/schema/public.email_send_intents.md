@@ -27,6 +27,7 @@ A send recorded before it reaches the provider. Holds what only this application
 | idempotency_key | uuid |  | false |  |  | The client's Idempotency-Key, one per compose. A repeat answers from this row instead of sending again. |
 | request_hash | text |  | false |  |  | SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed. |
 | unresolved_merge_tags | text[] | '{}'::text[] | false |  |  | Template tags the first send could not resolve, so a replay answers exactly as it did. |
+| thread_private | boolean | false | false |  |  | True when the message answered or forwarded was in a private thread at claim time. Its filing then stores the message private and files an activity without a body. |
 
 ## Constraints
 
@@ -84,6 +85,7 @@ erDiagram
   uuid idempotency_key "The client's Idempotency-Key, one per compose. A repeat answers from this row instead of sending again."
   text request_hash "SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed."
   text__ unresolved_merge_tags "Template tags the first send could not resolve, so a replay answers exactly as it did."
+  boolean thread_private "True when the message answered or forwarded was in a private thread at claim time. Its filing then stores the message private and files an activity without a body."
 }
 "public.email_send_ledger" {
   uuid id ""

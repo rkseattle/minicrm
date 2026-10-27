@@ -1158,3 +1158,78 @@ describe('requestHashOf', () => {
     ).not.toBe(hashOf({ ...fromTemplate, template_id: '00000000-0000-4000-8000-0000000000b2' }));
   });
 });
+
+describe('sendEmail — private threads', () => {
+  async function privateParent(threadId: string): Promise<string> {
+    const parent = await storeParent({ threadId, rfcMessageId: `${threadId}@x.test` });
+    await pool.query('UPDATE email_messages SET is_private = true WHERE id = $1', [parent]);
+    return parent;
+  }
+
+  async function activityFor(
+    contactId: string,
+  ): Promise<{ subject: string; notes: string | null }> {
+    const result = await pool.query<{ subject: string; notes: string | null }>(
+      'SELECT subject, notes FROM activities WHERE contact_id = $1',
+      [contactId],
+    );
+    return result.rows[0]!; // Safe: each test sends exactly once from this contact.
+  }
+
+  it('stores a reply into a private thread as private and files its activity without a body', async () => {
+    const parent = await privateParent('private-thread');
+    const contactId = await createContact('private-reply');
+    const { provider } = fakeSender();
+
+    const sent = await sendEmail(
+      typed({ in_reply_to_message_id: parent, record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+
+    expect(sent.message.is_private).toBe(true);
+    expect(await activityFor(contactId)).toEqual({ subject: 'Hello', notes: null });
+  });
+
+  it('keeps the body on the activity for a reply into a visible thread', async () => {
+    const parent = await storeParent({ threadId: 'open-thread', rfcMessageId: 'open@x.test' });
+    const contactId = await createContact('open-reply');
+    const { provider } = fakeSender();
+
+    await sendEmail(
+      typed({ in_reply_to_message_id: parent, record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+
+    expect((await activityFor(contactId)).notes).toContain('A typed body.');
+  });
+
+  it('makes private a Sent copy the sync stored first, once the send moves it into a private thread', async () => {
+    await pool.query(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'sent-1', 'rfc-root-thread', 'outbound', $2)`,
+      [accountId, MAILBOX.toLowerCase()],
+    );
+    const parent = await privateParent('private-parent');
+    const contactId = await createContact('moved-copy');
+    const { provider } = fakeSender();
+
+    const sent = await sendEmail(
+      typed({ in_reply_to_message_id: parent, record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+
+    expect(sent.message.thread_id).toBe('private-parent');
+    expect(sent.message.is_private).toBe(true);
+    expect((await activityFor(contactId)).notes).toBeNull();
+  });
+});

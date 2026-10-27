@@ -14,10 +14,14 @@ import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import {
   findMessageForUser,
+  inheritThreadPrivacy,
   listMessagesForRecord,
   listUnmatchedMessages,
+  lockMailboxThreads,
+  messageAccessPredicate,
+  setThreadPrivacy,
 } from '../services/emailMessageService.js';
-import { insertParkedMailbox } from './testUtils.js';
+import { clearAuditLogFor, insertParkedMailbox } from './testUtils.js';
 
 const FILE_PREFIX = 'emailmsgsvc';
 
@@ -195,20 +199,26 @@ describe('listMessagesForRecord', () => {
     expect(forB.data.flatMap((t) => t.messages.map((m) => m.id))).toEqual([theirs]);
   });
 
-  it('names no is_private predicate, because mailbox ownership already subsumes it', async () => {
-    // Not a behavior test: is_private restricts a message to its mailbox owner, and every
-    // query here is already scoped to the caller's own mailboxes, so a predicate would be
-    // unreachable. This fails the day a cross-mailbox read path is added without one —
-    // which is the only way the column can start mattering.
+  it('scopes every read path through messageAccessPredicate, never a bare owner check', async () => {
+    // Not a behavior test: today the owner term alone decides every read. This fails the
+    // day a read path writes its own mailbox scope and so drops the privacy term with it.
     const source = await readFile(
       new URL('../services/emailMessageService.ts', import.meta.url),
       'utf8',
     );
-    const sql = source.slice(source.indexOf('async function listThreadPage'));
-
-    // Every SQL string here is a template literal, so a bound that stops at a backtick
-    // would leave most of the function unchecked. The identifier must not appear at all.
-    expect(sql).not.toMatch(/is_private/);
+    const search = await readFile(new URL('../services/searchService.ts', import.meta.url), 'utf8');
+    for (const [name, text] of [
+      ['listMessagesForRecord', source],
+      ['listUnmatchedMessages', source],
+      ['findMessageForUser', source],
+      ['searchEmails', search],
+    ] as const) {
+      const start = text.search(new RegExp(`async function ${name}\\(`));
+      expect(start, name).toBeGreaterThan(-1);
+      const body = text.slice(start, text.indexOf('\n}\n', start));
+      expect(body, name).toContain('messageAccessPredicate(');
+      expect(body, name).not.toMatch(/ca\.user_id\s*=/);
+    }
   });
 
   it('sorts a null sent_at last rather than dropping the message', async () => {
@@ -382,5 +392,187 @@ describe('findMessageForUser', () => {
 
   it('returns nothing for an id that names no message', async () => {
     expect(await findMessageForUser('00000000-0000-4000-8000-0000000000d1', repAId)).toBeNull();
+  });
+});
+
+describe('thread privacy', () => {
+  const ACTOR = { id: '', name: 'Msg Rep A' };
+
+  beforeEach(() => {
+    ACTOR.id = repAId;
+  });
+
+  async function privacyOf(ids: string[]): Promise<boolean[]> {
+    const rows = await pool.query<{ id: string; is_private: boolean }>(
+      'SELECT id, is_private FROM email_messages WHERE id = ANY($1::uuid[])',
+      [ids],
+    );
+    const byId = new Map(rows.rows.map((r) => [r.id, r.is_private]));
+    return ids.map((id) => byId.get(id) ?? false);
+  }
+
+  async function privacyAudits(): Promise<{ old_value: string; new_value: string }[]> {
+    const rows = await pool.query<{ old_value: string; new_value: string }>(
+      `SELECT old_value, new_value FROM audit_log
+        WHERE record_id = $1 AND event_type = 'email_thread_privacy_changed'
+        ORDER BY created_at`,
+      [accountAId],
+    );
+    return rows.rows;
+  }
+
+  beforeEach(async () => {
+    await clearAuditLogFor(repAId);
+  });
+
+  /** Waits until a backend is blocked on the mailbox-thread lock, so a race is really staged. */
+  async function untilAdvisoryLockWaiter(): Promise<void> {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const waiting = await pool.query<{ n: string }>(
+        `SELECT count(*)::text AS n FROM pg_locks
+          WHERE locktype = 'advisory' AND NOT granted
+            AND classid::bigint = (hashtext('email_thread_privacy')::bigint + 4294967296) % 4294967296`,
+      );
+      if (Number(waiting.rows[0]!.n) > 0) return; // Safe: count(*) always yields a row.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    throw new Error('the toggle never waited on the mailbox lock');
+  }
+
+  it("hides another user's private mail on its own when the mailbox scope is widened", async () => {
+    // Owner scoping alone hides everything today, so widen it to every mailbox to prove
+    // the privacy term, not the owner term, is what keeps rep A's private thread hidden.
+    const privateA = await insertMessage(accountAId, '1', { threadId: 'p', isPrivate: true });
+    const publicA = await insertMessage(accountAId, '2', { threadId: 'q' });
+    const privateB = await insertMessage(accountBId, '3', { threadId: 'r', isPrivate: true });
+
+    const visibleToRepB = await pool.query<{ id: string }>(
+      `SELECT m.id FROM email_messages m
+         JOIN connected_accounts ca ON ca.id = m.connected_account_id
+        WHERE ${messageAccessPredicate('$1', 'TRUE')}
+          AND m.connected_account_id = ANY($2::uuid[])`,
+      [repBId, [accountAId, accountBId]],
+    );
+
+    const ids = visibleToRepB.rows.map((r) => r.id);
+    expect(ids).toEqual(expect.arrayContaining([publicA, privateB]));
+    expect(ids).not.toContain(privateA);
+  });
+
+  it('marks every message in the thread, and only that thread in that mailbox', async () => {
+    const first = await insertMessage(accountAId, '1', { threadId: 'conv' });
+    const second = await insertMessage(accountAId, '2', { threadId: 'conv' });
+    const otherThread = await insertMessage(accountAId, '3', { threadId: 'elsewhere' });
+    const otherMailbox = await insertMessage(accountBId, '4', { threadId: 'conv' });
+
+    const result = await setThreadPrivacy(first, repAId, true, ACTOR);
+
+    expect(result).toEqual({ isPrivate: true, updated: 2 });
+    expect(await privacyOf([first, second, otherThread, otherMailbox])).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  it('makes the thread visible again, auditing each real change once', async () => {
+    const first = await insertMessage(accountAId, '1', { threadId: 'conv' });
+
+    await setThreadPrivacy(first, repAId, true, ACTOR);
+    await setThreadPrivacy(first, repAId, true, ACTOR);
+    await setThreadPrivacy(first, repAId, false, ACTOR);
+
+    expect(await privacyOf([first])).toEqual([false]);
+    expect(await privacyAudits()).toEqual([
+      { old_value: 'visible', new_value: 'private (1 messages)' },
+      { old_value: 'private', new_value: 'visible (1 messages)' },
+    ]);
+  });
+
+  it("returns null for another user's message and changes nothing", async () => {
+    const message = await insertMessage(accountAId, '1', { threadId: 'conv' });
+
+    expect(await setThreadPrivacy(message, repBId, true, ACTOR)).toBeNull();
+    expect(await privacyOf([message])).toEqual([false]);
+  });
+
+  it("gives a new message its private thread's setting, and leaves public threads alone", async () => {
+    const existing = await insertMessage(accountAId, '1', { threadId: 'conv', isPrivate: true });
+    const arrived = await insertMessage(accountAId, '2', { threadId: 'conv' });
+    const publicThread = await insertMessage(accountAId, '3', { threadId: 'open' });
+
+    const client = await pool.connect();
+    try {
+      const flags = await inheritThreadPrivacy(client, accountAId, ['INBOX:2', 'INBOX:3']);
+      expect(flags.get(arrived)).toBe(true);
+      expect(flags.get(publicThread)).toBe(false);
+    } finally {
+      client.release();
+    }
+    expect(await privacyOf([existing, arrived, publicThread])).toEqual([true, true, false]);
+  });
+
+  it("gives a message moved into a private thread that thread's setting", async () => {
+    await insertMessage(accountAId, '1', { threadId: 'conv', isPrivate: true });
+    const moved = await insertMessage(accountAId, '2', { threadId: 'was-elsewhere' });
+    await pool.query(`UPDATE email_messages SET thread_id = 'conv' WHERE id = $1`, [moved]);
+
+    const client = await pool.connect();
+    try {
+      await inheritThreadPrivacy(client, accountAId, ['INBOX:2']);
+    } finally {
+      client.release();
+    }
+    expect(await privacyOf([moved])).toEqual([true]);
+  });
+
+  it('marks the thread a message is in when the toggle runs, not when it was requested', async () => {
+    const message = await insertMessage(accountAId, '1', { threadId: 'before' });
+    const syncing = await pool.connect();
+    try {
+      // A sync page holds the mailbox and moves the message into another thread.
+      await syncing.query('BEGIN');
+      await lockMailboxThreads(syncing, accountAId);
+      await syncing.query(`UPDATE email_messages SET thread_id = 'after' WHERE id = $1`, [message]);
+
+      const toggle = setThreadPrivacy(message, repAId, true, ACTOR);
+      await untilAdvisoryLockWaiter();
+      await syncing.query('COMMIT');
+      expect(await toggle).toEqual({ isPrivate: true, updated: 1 });
+    } finally {
+      syncing.release();
+    }
+
+    expect(await privacyOf([message])).toEqual([true]);
+  });
+
+  it('leaves no public row when a toggle races an insert still in flight', async () => {
+    const first = await insertMessage(accountAId, '1', { threadId: 'conv' });
+    const inserting = await pool.connect();
+    let arrived = '';
+    try {
+      await inserting.query('BEGIN');
+      await lockMailboxThreads(inserting, accountAId);
+      const row = await inserting.query<{ id: string }>(
+        `INSERT INTO email_messages
+           (connected_account_id, provider_message_id, thread_id, direction, from_address)
+         VALUES ($1, 'INBOX:2', 'conv', 'inbound', 'someone@example.net') RETURNING id`,
+        [accountAId],
+      );
+      arrived = row.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+      // No private sibling exists yet, so this inherits nothing.
+      await inheritThreadPrivacy(inserting, accountAId, ['INBOX:2']);
+
+      // Waits on the mailbox lock instead of updating around the uncommitted row.
+      const toggle = setThreadPrivacy(first, repAId, true, ACTOR);
+      await untilAdvisoryLockWaiter();
+      await inserting.query('COMMIT');
+      await toggle;
+    } finally {
+      inserting.release();
+    }
+
+    expect(await privacyOf([first, arrived])).toEqual([true, true]);
   });
 });

@@ -1508,7 +1508,8 @@
       "email_linked": "邮件已归档到记录",
       "email_unlinked": "邮件已从记录移除",
       "email_sent": "邮件已发送",
-      "email_send_unconfirmed": "邮件发送未确认"
+      "email_send_unconfirmed": "邮件发送未确认",
+      "email_thread_privacy_changed": "邮件会话隐私已更改"
     },
     "recordTypes": {
       "contact": "联系人",

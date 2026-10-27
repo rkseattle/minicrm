@@ -117,6 +117,8 @@ export const AUDIT_EVENT_TYPES = [
   'email_sent',
   /** A send that may have gone out but was not filed, recorded so it is never unaudited. */
   'email_send_unconfirmed',
+  /** A thread marked private or visible by its mailbox's owner. Filed against the mailbox. */
+  'email_thread_privacy_changed',
 ] as const;
 
 /** The events that land on a contact, account or deal and render in its Change History. */

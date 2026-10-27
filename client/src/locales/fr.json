@@ -1508,7 +1508,8 @@
       "email_linked": "E-mail classé sur une fiche",
       "email_unlinked": "E-mail retiré d’une fiche",
       "email_sent": "E-mail envoyé",
-      "email_send_unconfirmed": "Envoi d’e-mail non confirmé"
+      "email_send_unconfirmed": "Envoi d’e-mail non confirmé",
+      "email_thread_privacy_changed": "Confidentialité du fil d’e-mails modifiée"
     },
     "recordTypes": {
       "contact": "Contact",

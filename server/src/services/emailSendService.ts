@@ -39,7 +39,13 @@ import {
   type ConnectedAccountInternal,
 } from './connectedAccountService.js';
 import { matchMessagesToRecords } from './emailMatchingService.js';
-import { MESSAGE_SELECT, toEmailMessage, type EmailMessageRow } from './emailMessageService.js';
+import {
+  inheritThreadPrivacy,
+  lockMailboxThreads,
+  MESSAGE_SELECT,
+  toEmailMessage,
+  type EmailMessageRow,
+} from './emailMessageService.js';
 import {
   claimSendIntent,
   fileSentMessage,
@@ -187,6 +193,8 @@ interface OriginalMessage {
   sentAt: Date | null;
   bodyHtml: string | null;
   bodyText: string | null;
+  /** Whether its thread is private, which the reply or forward then belongs to. */
+  isPrivate: boolean;
 }
 
 /** The message being answered or forwarded, read only through the sending mailbox. */
@@ -205,9 +213,10 @@ async function findOriginal(
     sent_at: Date | null;
     message_body_html: string | null;
     message_body_text: string | null;
+    is_private: boolean;
   }>(
     `SELECT thread_id, rfc_message_id, references_header, from_address, to_addresses,
-            subject, sent_at, message_body_html, message_body_text
+            subject, sent_at, message_body_html, message_body_text, is_private
        FROM email_messages WHERE id = $1 AND connected_account_id = $2`,
     [messageId, accountId],
   );
@@ -230,6 +239,7 @@ async function findOriginal(
     sentAt: row.sent_at,
     bodyHtml: row.message_body_html,
     bodyText: row.message_body_text,
+    isPrivate: row.is_private,
   };
 }
 
@@ -507,6 +517,7 @@ export async function sendEmail(
       recordId: input.record_id ?? null,
       // Only an override: a filing otherwise takes the stored body, so no second copy waits here.
       activityNotes,
+      threadPrivate: original?.isPrivate ?? false,
       toAddresses: parsed.toAddresses,
       ccAddresses: parsed.ccAddresses,
       idempotencyKey: idempotency.key,
@@ -619,6 +630,7 @@ async function recordSent(
 
     const intent = await lockIntent(client, intentId);
     if (!intent) throw new Error(`emailSendService: intent ${intentId} vanished`);
+    await lockMailboxThreads(client, account.id);
 
     const upserted = await client.query<EmailMessageRow & { inserted: boolean }>(
       `INSERT INTO email_messages AS m
@@ -670,6 +682,11 @@ async function recordSent(
       );
     }
 
+    // The upsert can file this row under a private thread; RETURNING predates that.
+    const privacy = await inheritThreadPrivacy(client, account.id, [stored.providerMessageId]);
+    const isPrivate = privacy.get(row.id) ?? row.is_private;
+    storedRow = { ...row, is_private: isPrivate };
+
     // Already filed means the sync engine stored the Sent copy and filed it first.
     if (intent.status !== 'filed') {
       activityId = await fileSentMessage(
@@ -682,6 +699,7 @@ async function recordSent(
           bodyText: parsed.bodyText,
           toAddresses: row.to_addresses,
           ccAddresses: row.cc_addresses,
+          isPrivate,
         },
         account.emailAddress,
       );

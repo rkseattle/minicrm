@@ -9,9 +9,9 @@
  *    `connected_accounts:manage`, so scoping by `is_private` alone would let one rep read
  *    another's mail with a shared contact — including bodies.
  *
- *    It also subsumes `is_private`, which restricts a message to that same owner — so no
- *    query here names that column, and a cross-mailbox read path would have to carry the
- *    predicate itself.
+ *    `is_private` restricts a message to that same owner. Every read path builds its
+ *    WHERE from `messageAccessPredicate`, which names both terms, so a future
+ *    cross-mailbox read widens the owner term in plain sight and keeps the privacy one.
  * 2. Whether the caller may see the linked RECORD is the controller's question, because it
  *    differs by type: contact, account and deal have visibility policies, leads do not.
  *
@@ -209,7 +209,7 @@ export async function listMessagesForRecord(
     `FROM email_message_links l
        JOIN email_messages m ON m.id = l.email_message_id
        JOIN connected_accounts ca ON ca.id = m.connected_account_id
-      WHERE l.record_type = $1 AND l.record_id = $2 AND ca.user_id = $3`,
+      WHERE l.record_type = $1 AND l.record_id = $2 AND ${messageAccessPredicate('$3')}`,
     `EXISTS (
        SELECT 1 FROM email_message_links l
         WHERE l.email_message_id = m.id AND l.record_type = $1 AND l.record_id = $2
@@ -322,7 +322,7 @@ export async function listUnmatchedMessages(
   return listThreadPage(
     `FROM email_messages m
        JOIN connected_accounts ca ON ca.id = m.connected_account_id
-      WHERE ca.user_id = $1
+      WHERE ${messageAccessPredicate('$1')}
         AND NOT ${visible.sql}`,
     `NOT ${visible.sql}`,
     [userId, ...visible.params],
@@ -347,9 +347,6 @@ const OWNER_TABLES: Readonly<Record<EmailLinkRecordType, string>> = {
 /**
  * Reads one message with its bodies, only through the caller's own mailboxes.
  *
- * The mailbox predicate is written out here rather than inherited: it is the whole of the
- * privacy rule, and a body is the most sensitive thing this table holds.
- *
  * @returns null when no such message is in the caller's mailboxes.
  */
 export async function findMessageForUser(
@@ -362,7 +359,7 @@ export async function findMessageForUser(
     `SELECT ${MESSAGE_SELECT}, m.message_body_text, m.message_body_html
        FROM email_messages m
        JOIN connected_accounts ca ON ca.id = m.connected_account_id
-      WHERE m.id = $1 AND ca.user_id = $2`,
+      WHERE m.id = $1 AND ${messageAccessPredicate('$2')}`,
     [messageId, userId],
   );
   const row = result.rows[0];
@@ -372,6 +369,149 @@ export async function findMessageForUser(
     body_text: row.message_body_text,
     body_html: row.message_body_html,
   };
+}
+
+/**
+ * Builds who may read a message, as SQL over a message aliased `m` joined to its mailbox
+ * aliased `ca`.
+ *
+ * Today both terms reduce to the owner, since no path reads across mailboxes. The privacy
+ * term is still written out so a future cross-mailbox read widens the owner term in plain
+ * sight and inherits the rule that a private thread stays its owner's alone.
+ *
+ * @param userParam - The placeholder bound to the caller's id, e.g. `$3`.
+ * @param mailboxScope - Which mailboxes the read spans; the caller's own unless widened.
+ */
+export function messageAccessPredicate(
+  userParam: string,
+  mailboxScope = `ca.user_id = ${userParam}`,
+): string {
+  return `(${mailboxScope}) AND (NOT m.is_private OR ca.user_id = ${userParam})`;
+}
+
+/** Namespace for the per-mailbox advisory lock, so it cannot collide with another feature's. */
+const THREAD_PRIVACY_LOCK_NAMESPACE = 'email_thread_privacy';
+
+/**
+ * Serializes privacy writes against message inserts on one mailbox, for this transaction.
+ *
+ * Under READ COMMITTED a privacy toggle cannot see a page a sync is still inserting, and
+ * that page's inheritance cannot see the toggle; whichever commits second would leave a
+ * public row in a private thread. Taken after any intent lock, keeping intent → message.
+ */
+export async function lockMailboxThreads(client: PoolClient, accountId: string): Promise<void> {
+  await client.query(`SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))`, [
+    THREAD_PRIVACY_LOCK_NAMESPACE,
+    accountId,
+  ]);
+}
+
+/**
+ * Makes every touched row private when its thread already holds a private message.
+ *
+ * Over every row the statement touched, not only inserts: both upserts can move an existing
+ * row into another thread on conflict. It only ever sets true: a private row moved into a
+ * public thread stays private, since the owner chose that for the row.
+ *
+ * @returns each touched row's resulting `is_private`, by message id.
+ */
+export async function inheritThreadPrivacy(
+  client: PoolClient,
+  accountId: string,
+  providerMessageIds: readonly string[],
+): Promise<Map<string, boolean>> {
+  if (providerMessageIds.length === 0) return new Map();
+  await client.query(
+    `UPDATE email_messages m
+        SET is_private = true
+      WHERE m.connected_account_id = $1
+        AND m.provider_message_id = ANY($2)
+        AND NOT m.is_private
+        AND EXISTS (
+          SELECT 1 FROM email_messages sibling
+           WHERE sibling.connected_account_id = m.connected_account_id
+             AND sibling.thread_id = m.thread_id
+             AND sibling.is_private
+        )`,
+    [accountId, providerMessageIds],
+  );
+  const result = await client.query<{ id: string; is_private: boolean }>(
+    `SELECT id, is_private FROM email_messages
+      WHERE connected_account_id = $1 AND provider_message_id = ANY($2)`,
+    [accountId, providerMessageIds],
+  );
+  return new Map(result.rows.map((row) => [row.id, row.is_private]));
+}
+
+/**
+ * Marks or unmarks the whole thread a message belongs to as private, in its owner's mailbox.
+ *
+ * @returns the thread's new setting and how many messages changed, or null when the message
+ *   is not in one of the caller's mailboxes.
+ */
+export async function setThreadPrivacy(
+  messageId: string,
+  userId: string,
+  isPrivate: boolean,
+  actor: AuditActor,
+): Promise<{ isPrivate: boolean; updated: number } | null> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const mailbox = await client.query<{ connected_account_id: string; email_address: string }>(
+      `SELECT m.connected_account_id, ca.email_address
+         FROM email_messages m
+         JOIN connected_accounts ca ON ca.id = m.connected_account_id
+        WHERE m.id = $1 AND ca.user_id = $2`,
+      [messageId, userId],
+    );
+    const owned = mailbox.rows[0];
+    if (!owned) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    // Read under the lock: until then a sync page may move the message.
+    await lockMailboxThreads(client, owned.connected_account_id);
+    const thread = await client.query<{ thread_id: string }>(
+      'SELECT thread_id FROM email_messages WHERE id = $1',
+      [messageId],
+    );
+    const threadRow = thread.rows[0];
+    if (!threadRow) {
+      // Disconnected meanwhile: the mailbox's messages went with it.
+      await client.query('ROLLBACK');
+      return null;
+    }
+    const message = { ...owned, thread_id: threadRow.thread_id };
+    const updated = await client.query(
+      `UPDATE email_messages SET is_private = $3
+        WHERE connected_account_id = $1 AND thread_id = $2 AND is_private <> $3`,
+      [message.connected_account_id, message.thread_id, isPrivate],
+    );
+
+    if ((updated.rowCount ?? 0) > 0) {
+      await writeAuditEntry(client, {
+        recordType: 'connected_account',
+        recordId: message.connected_account_id,
+        recordName: message.email_address,
+        eventType: 'email_thread_privacy_changed',
+        // A count, not the thread id: an RFC-derived id can name the correspondent's host.
+        fieldName: 'thread_privacy',
+        oldValue: isPrivate ? 'visible' : 'private',
+        newValue: `${isPrivate ? 'private' : 'visible'} (${updated.rowCount ?? 0} messages)`,
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+    await client.query('COMMIT');
+    return { isPrivate, updated: updated.rowCount ?? 0 };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**

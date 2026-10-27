@@ -12,6 +12,7 @@ import {
   recordMessagesParamsSchema,
   EMAIL_LINK_EDIT_CAPABILITY,
   sendEmailSchema,
+  threadPrivacySchema,
   capabilitiesToSendFrom,
   type EmailLinkRecordType,
   type SendErrorCode,
@@ -28,6 +29,7 @@ import {
   findLinkForUser,
   listMessagesForRecord,
   listUnmatchedMessages,
+  setThreadPrivacy,
 } from '../services/emailMessageService.js';
 import {
   EMAIL_ACCOUNT_NOT_FOUND,
@@ -144,6 +146,33 @@ export async function getMessageHandler(req: Request, res: Response): Promise<vo
     return;
   }
   res.status(200).json({ message });
+}
+
+/**
+ * PATCH /api/v1/email-messages/:id/thread-privacy
+ * Marks or unmarks the whole thread a message belongs to as private, in the caller's own
+ * mailbox. Another user's message answers 404, so a message id never confirms it exists.
+ */
+export async function setThreadPrivacyHandler(req: Request, res: Response): Promise<void> {
+  const [messageId] = uuidParams(req, res, ['id'], 'Message id must be a UUID') ?? [];
+  if (!messageId) return;
+  const parsed = threadPrivacySchema.safeParse(req.body);
+  if (!parsed.success) {
+    respondValidationError(res, parsed.error);
+    return;
+  }
+
+  // Safe: authenticate runs first on this router and always sets req.user.
+  const user = req.user!;
+  const result = await setThreadPrivacy(messageId, user.id, parsed.data.is_private, {
+    id: user.id,
+    name: user.name,
+  });
+  if (!result) {
+    res.status(404).json(errorBody('NOT_FOUND', 'No such message'));
+    return;
+  }
+  res.status(200).json({ is_private: result.isPrivate, updated: result.updated });
 }
 
 /**

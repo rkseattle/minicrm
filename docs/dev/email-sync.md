@@ -558,10 +558,41 @@ audited at all — `match_type` already records how a link was made. Removing an
 link is permanent, because only newly synced messages are ever matched.
 
 `GET /api/v1/email-messages/:id` returns one message with `body_text` and `body_html`, read
-only through the caller's own mailboxes — the predicate `ca.user_id = $2` is written out in
-the query rather than inherited, since a body is the most sensitive thing this table holds.
-A message outside them answers 404, as the link endpoints do. The lists still stop at the
+only through the caller's own mailboxes, by the same `messageAccessPredicate` every read
+path uses (see Private threads). A message outside them answers 404, as the link endpoints do. The lists still stop at the
 snippet.
+
+### Private threads
+
+`PATCH /api/v1/email-messages/:id/thread-privacy` sets `is_private` on every message in that
+message's thread, within its owner's mailbox — Pipedrive's model, where visibility is the
+owner's choice and an admin gets no bypass. Another user's copy of the same conversation, in
+their own mailbox, is theirs and unaffected.
+
+Every user-facing read path — record list, unmatched inbox, detail, global search — chooses its messages
+with `messageAccessPredicate`, which names the owner term and the privacy term together. (The
+list's second statement re-joins whole threads inside the mailboxes the first one chose; a
+team view widening the scope would need the privacy term there too.) Today
+the owner term alone decides, since nothing reads across mailboxes; the privacy term is there
+so a future team view widens the owner term in plain sight and keeps the rule. Two tests in
+`emailMessageService.test.ts` hold this: one widens the scope to every mailbox and proves
+the privacy term alone hides another user's private thread, and a source test fails if a
+named read path writes its own `ca.user_id =` instead.
+
+Mail that arrives later inherits the thread's setting, on both insert paths. Inheritance is
+set-based over every row an upsert touched, not only inserts, because both upserts can move
+an existing row into another thread on conflict. A toggle and an insert serialize on a
+per-mailbox `pg_advisory_xact_lock` (`lockMailboxThreads`), taken after any intent lock:
+under READ COMMITTED each would otherwise miss the other's uncommitted rows.
+
+Internal readers that load one row by mailbox (reply and forward lookup, send replay, link
+lookup) stay scoped by `connected_account_id` and serve only the owner.
+
+A send into a private thread still files its `Email` activity, with the subject and no
+body. Privacy is taken from the answered or forwarded message when the send is claimed and
+stored as `email_send_intents.thread_private`, because sync may file the Sent copy under a
+thread of its own deriving; the filing then stores the message private as well: the activity records that mail was sent, the text stays in the owner's mailbox. An
+activity filed before the thread was marked private keeps what it was filed with.
 
 ### Rendering a body
 
@@ -827,9 +858,6 @@ the ambient value.
 
 ## Not covered here
 
-- **Marking a message private** — `is_private` still ships defaulted to `false` with no
-  writer, so the filter that honors it is exercised only by tests that set the column
-  directly.
 - **GDPR erasure for synced mail.**
 - **Validation of Graph send against a real mailbox** — whether the Sent Items copy keeps
   the draft's immutable id, which Microsoft's own pages state both ways.

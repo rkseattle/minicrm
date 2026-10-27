@@ -1473,7 +1473,8 @@
       "email_linked": "[Ëmäïl fïlëd öñ ä rëĉörd~~~~~~~]",
       "email_unlinked": "[Ëmäïl rëmövëd fröm ä rëĉörd~~~~~~~~~]",
       "email_sent": "[Ëmäïl ŝëñt~~~]",
-      "email_send_unconfirmed": "[Ëmäïl ŝëñd üñĉöñfïrmëd~~~~~~~]"
+      "email_send_unconfirmed": "[Ëmäïl ŝëñd üñĉöñfïrmëd~~~~~~~]",
+      "email_thread_privacy_changed": "[Ëmäïl thrëäd prïväĉy ĉhäñgëd~~~~~~~~~]"
     },
     "recordTypes": {
       "contact": "[Ĉöñtäĉt~~~]",
