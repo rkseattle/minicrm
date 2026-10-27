@@ -416,12 +416,16 @@ async function backfillAccount(
   let cursor: string | null = account.syncCursor;
   let hasMore = false;
   let cursorInvalid = false;
+  let paused = false;
 
   try {
     for (let read = 0; read < MAX_BACKFILL_PAGES_PER_TICK; read += 1) {
       // Mailboxes in a tick sync one after another, so a pause can land after the claim.
       // The job stays open, so a resume carries on from this cursor.
-      if (await isSyncPaused(account.id)) break;
+      if (await isSyncPaused(account.id)) {
+        paused = true;
+        break;
+      }
       const page = await provider.fetchSince(auth, cursor, since);
       stored += await commitPage(account.id, page, dealAutoLink, exclusion);
       cursor = page.cursor;
@@ -437,7 +441,8 @@ async function backfillAccount(
       if (!page.hasMore || page.cursorInvalid) break;
     }
 
-    if (!hasMore && !cursorInvalid) {
+    // A pause stops reading, it does not finish the window.
+    if (!paused && !hasMore && !cursorInvalid) {
       await completeEmailSyncJob(job.id, stored);
     }
   } catch (err) {

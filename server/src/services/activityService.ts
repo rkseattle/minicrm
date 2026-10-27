@@ -512,6 +512,7 @@ export type ActivityRedactionReason = 'gdpr_erasure' | 'private_thread';
  * Champion/blocker quotes on their contacts go too. Decided by content, not by an earlier
  * redaction: text written since is scrubbed again, and an activity already clean is untouched.
  *
+ * @param cutoffIds - Activities whose masking cutoff moves to now; defaults to those scrubbed.
  * @returns The ids actually scrubbed.
  */
 export async function scrubActivities(
@@ -519,6 +520,7 @@ export async function scrubActivities(
   activityIds: readonly string[],
   subject: string,
   reason: ActivityRedactionReason,
+  cutoffIds?: readonly string[],
 ): Promise<string[]> {
   if (activityIds.length === 0) return [];
   const scrubbed = await client.query<{ id: string }>(
@@ -530,23 +532,36 @@ export async function scrubActivities(
     [activityIds, subject],
   );
   const ids = scrubbed.rows.map((row) => row.id);
-  await markActivitiesRedacted(client, activityIds, reason);
+  await markActivitiesRedacted(client, activityIds, reason, cutoffIds ?? ids);
   await clearSignalQuotesForActivities(client, ids);
   return ids;
 }
 
-/** Records activities whose text was removed or never filed, so audit reads mask them. */
+/**
+ * Records activities whose text was removed or never filed, so audit reads mask them. An
+ * erasure supersedes a private-thread scrub, masking the record's whole history; a scrub
+ * that changed an activity moves redacted_at, so text written back meanwhile is masked too.
+ *
+ * @param changedIds - The activities this call actually changed; defaults to all of them.
+ */
 export async function markActivitiesRedacted(
   client: PoolClient,
   activityIds: readonly string[],
   reason: ActivityRedactionReason,
+  changedIds: readonly string[] = activityIds,
 ): Promise<void> {
   if (activityIds.length === 0) return;
   await client.query(
     `INSERT INTO redacted_records (record_type, record_id, reason)
      SELECT 'activity', id, $2 FROM unnest($1::uuid[]) AS id
-     ON CONFLICT DO NOTHING`,
-    [activityIds, reason],
+     ON CONFLICT (record_type, record_id) DO UPDATE
+       SET reason = CASE WHEN redacted_records.reason = 'gdpr_erasure'
+                         THEN 'gdpr_erasure' ELSE EXCLUDED.reason END,
+           redacted_at = CASE
+             WHEN redacted_records.record_id = ANY($3::uuid[])
+               OR (EXCLUDED.reason = 'gdpr_erasure' AND redacted_records.reason <> 'gdpr_erasure')
+             THEN now() ELSE redacted_records.redacted_at END`,
+    [activityIds, reason, changedIds],
   );
 }
 

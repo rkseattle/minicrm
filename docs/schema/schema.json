@@ -10722,6 +10722,14 @@
           "columns": [
             "message_snippet"
           ]
+        },
+        {
+          "name": "email_messages_addresses_idx",
+          "def": "CREATE INDEX email_messages_addresses_idx ON public.email_messages USING gin (email_message_addresses(from_address, to_addresses, cc_addresses, reply_to_addresses))",
+          "table": "public.email_messages",
+          "columns": [
+            "email_message_addresses"
+          ]
         }
       ],
       "constraints": [
@@ -11612,7 +11620,7 @@
     {
       "name": "public.redacted_records",
       "type": "BASE TABLE",
-      "comment": "Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask their entries; kept after the record is deleted.",
+      "comment": "Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask an erased record's entries, and a scrubbed one's written before redacted_at; kept after the record is deleted.",
       "columns": [
         {
           "name": "record_type",
@@ -13636,6 +13644,12 @@
       "name": "public.set_updated_at",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.email_message_addresses",
+      "return_type": "_text",
+      "arguments": "from_address text, to_addresses text[], cc_addresses text[], reply_to_addresses text[]",
       "type": "FUNCTION"
     }
   ],

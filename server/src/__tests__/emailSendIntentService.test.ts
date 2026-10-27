@@ -10,7 +10,8 @@ import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 
 import pool from '../db.js';
-import { erasedAddressDigest, GDPR_REDACTED_TEXT } from '../services/mail/gdprRedaction.js';
+import { erasedAddressDigest, lockForErasure } from '../services/mail/gdprRedaction.js';
+import { updateActivity } from '../services/activityService.js';
 import logger from '../logger.js';
 import {
   upsertOAuthAccount,
@@ -29,7 +30,11 @@ import {
 } from '../services/emailSendIntentService.js';
 import { setRlsUserIdTo } from '../services/rlsContextService.js';
 import { PRIVATE_EMAIL_SUBJECT, setThreadPrivacy } from '../services/emailMessageService.js';
-import { getRecordAuditLog, maskAuditEvent } from '../services/auditService.js';
+import {
+  getRecordAuditLog,
+  maskAuditEvent,
+  PRIVATE_REDACTED_TEXT,
+} from '../services/auditService.js';
 import {
   IDEMPOTENCY_KEY_REUSED,
   replaySend,
@@ -918,19 +923,43 @@ async function waitForLockWaiter(): Promise<void> {
   throw new Error('no session ever waited on the intent lock');
 }
 
-/** Waits until another session is blocked on a user's send-limit lock, and no other lock. */
-async function waitForSendLimitLockWaiter(): Promise<void> {
+/**
+ * Waits until some session is blocked on one advisory lock, named by a `pg_locks` predicate
+ * over `classid`, `objid` and `objsubid`.
+ */
+async function waitForAdvisoryLockWaiter(
+  lockPredicate: string,
+  params: unknown[],
+  label: string,
+): Promise<void> {
   const deadline = Date.now() + 5_000;
   while (Date.now() < deadline) {
     const waiting = await pool.query(
-      `SELECT 1 FROM pg_locks
-        WHERE locktype = 'advisory' AND NOT granted AND classid = $1`,
-      [SEND_LIMIT_LOCK_NAMESPACE],
+      `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted AND ${lockPredicate}`,
+      params,
     );
     if ((waiting.rowCount ?? 0) > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  throw new Error('no session ever waited on the send-limit lock');
+  throw new Error(`no session ever waited on the ${label}`);
+}
+
+/** Waits until another session is blocked on a user's send-limit lock, and no other lock. */
+function waitForSendLimitLockWaiter(): Promise<void> {
+  return waitForAdvisoryLockWaiter('classid = $1', [SEND_LIMIT_LOCK_NAMESPACE], 'send-limit lock');
+}
+
+/**
+ * Waits until a session is blocked on the GDPR ingest lock: a two-key advisory lock shows its
+ * keys as classid (the first, as an unsigned 32-bit value) and objid, with objsubid 2.
+ */
+function waitForIngestLockWaiter(): Promise<void> {
+  return waitForAdvisoryLockWaiter(
+    `classid::bigint = (hashtext('gdpr-email-ingest')::bigint + 4294967296) % 4294967296
+       AND objid = 0 AND objsubid = 2`,
+    [],
+    'GDPR ingest lock',
+  );
 }
 
 /** Fails every `pool.query` whose text contains `fragment`; undo with `vi.restoreAllMocks()`. */
@@ -1654,11 +1683,18 @@ describe('marking a thread private after its sends were filed', () => {
     await setThreadPrivacy(messageId, userId, true, actor);
 
     const history = await getRecordAuditLog({ recordType: 'activity', recordId: id, all: true });
-    expect(history.length).toBeGreaterThan(0);
-    expect(history.every((row) => row.record_name === GDPR_REDACTED_TEXT)).toBe(true);
-    // Safe: the creation entry was asserted above, before the thread was marked private.
-    const live = await maskAuditEvent({ ...created!, source: null, created_at: '' });
-    expect(live.record_name).toBe(GDPR_REDACTED_TEXT);
+    const creation = history.find((row) => row.event_type === 'created');
+    expect(creation?.record_name).toBe(PRIVATE_REDACTED_TEXT);
+    // The scrub's own entry, written with it, stays readable.
+    expect(history.find((row) => row.event_type === 'updated')?.new_value).toBe(
+      PRIVATE_EMAIL_SUBJECT,
+    );
+    const live = await maskAuditEvent({
+      ...created!, // Safe: the creation entry was asserted above, before the scrub.
+      source: null,
+      created_at: new Date(created!.created_at).toISOString(), // Safe: as above.
+    });
+    expect(live.record_name).toBe(PRIVATE_REDACTED_TEXT);
   });
 
   it('scrubs again text written back while the thread was visible', async () => {
@@ -1673,6 +1709,88 @@ describe('marking a thread private after its sends were filed', () => {
     await setThreadPrivacy(messageId, userId, true, actor);
 
     expect(await filedActivity(contactId)).toMatchObject({ notes: null });
+  });
+
+  it('masks text written back while visible once the thread is private again', async () => {
+    const contactId = await createContact('retro-reaudit');
+    const messageId = await sendTo(contactId, 'gm-retro-reaudit');
+    await setThreadPrivacy(messageId, userId, true, actor);
+    await setThreadPrivacy(messageId, userId, false, actor);
+    const { id } = await filedActivity(contactId);
+    const { version } = (
+      await pool.query<{ version: number }>('SELECT version FROM activities WHERE id = $1', [id])
+    ).rows[0]!; // Safe: the activity was just read.
+    await updateActivity(id, { notes: 'pasted back: the numbers', version }, actor);
+
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    const history = await getRecordAuditLog({ recordType: 'activity', recordId: id, all: true });
+    const edit = history.find((row) => row.field_name === 'notes');
+    expect(edit?.new_value).toBe(PRIVATE_REDACTED_TEXT);
+  });
+
+  it('masks text written and removed while visible, once the thread is private again', async () => {
+    const contactId = await createContact('retro-removed');
+    const messageId = await sendTo(contactId, 'gm-retro-removed');
+    await setThreadPrivacy(messageId, userId, true, actor);
+    await setThreadPrivacy(messageId, userId, false, actor);
+    const { id } = await filedActivity(contactId);
+    const versionOf = async (): Promise<number> =>
+      (await pool.query<{ version: number }>('SELECT version FROM activities WHERE id = $1', [id]))
+        .rows[0]!.version; // Safe: the activity was just read.
+    await updateActivity(
+      id,
+      { notes: 'pasted back: the numbers', version: await versionOf() },
+      actor,
+    );
+    await updateActivity(id, { notes: null, version: await versionOf() }, actor);
+
+    // Nothing left to scrub, but the setting changes: the cutoff still moves.
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    const history = await getRecordAuditLog({ recordType: 'activity', recordId: id, all: true });
+    const notes = history.filter((row) => row.field_name === 'notes');
+    expect(notes.length).toBeGreaterThan(0);
+    expect(notes.every((row) => row.new_value !== 'pasted back: the numbers')).toBe(true);
+    expect(notes.every((row) => row.old_value !== 'pasted back: the numbers')).toBe(true);
+  });
+
+  it('keeps later history readable when the thread is marked private again with no change', async () => {
+    const contactId = await createContact('retro-noop');
+    const messageId = await sendTo(contactId, 'gm-retro-noop');
+    await setThreadPrivacy(messageId, userId, true, actor);
+    const { id } = await filedActivity(contactId);
+    const { version } = (
+      await pool.query<{ version: number }>('SELECT version FROM activities WHERE id = $1', [id])
+    ).rows[0]!; // Safe: the activity was just read.
+    await updateActivity(id, { due_date: '2030-01-01', version }, actor);
+
+    // A double-click, or a second tab: nothing is left to scrub.
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    const history = await getRecordAuditLog({ recordType: 'activity', recordId: id, all: true });
+    expect(history.find((row) => row.field_name === 'due_date')?.new_value).toContain('2030');
+  });
+
+  it("waits for an erasure in progress before changing a thread's privacy", async () => {
+    const contactId = await createContact('retro-locked');
+    const messageId = await sendTo(contactId, 'gm-retro-locked');
+    const erasure = await pool.connect();
+    try {
+      await erasure.query('BEGIN');
+      await lockForErasure(erasure);
+      let settled = false;
+      const pending = setThreadPrivacy(messageId, userId, true, actor).finally(() => {
+        settled = true;
+      });
+      await waitForIngestLockWaiter();
+      // The decisive check: blocked while the erasure holds the lock, whoever else waits on it.
+      expect(settled).toBe(false);
+      await erasure.query('COMMIT');
+      await expect(pending).resolves.toMatchObject({ isPrivate: true });
+    } finally {
+      erasure.release();
+    }
   });
 
   it('leaves an activity already clean untouched, so open edit forms stay valid', async () => {

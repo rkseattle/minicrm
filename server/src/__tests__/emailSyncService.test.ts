@@ -1572,6 +1572,19 @@ describe('privacy controls at sync time', () => {
     expect(await storedMessages(account.id)).toHaveLength(0);
   });
 
+  it('leaves a backfill paused after the claim open, to resume where it stopped', async () => {
+    const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
+    await pool.query('UPDATE connected_accounts SET sync_paused_at = NOW() WHERE id = $1', [
+      account.id,
+    ]);
+    const provider = fakeProvider([page({ messages: [message()] })]);
+
+    await syncOneAccount(await claimedFor(account.id), provider, undefined, true, GOVERNANCE);
+
+    expect(provider.calls).toBe(0);
+    expect(await getActiveEmailSyncJob(account.id)).not.toBeNull();
+  });
+
   it('does not claim a paused mailbox', async () => {
     const account = await createImapAccount(ACTOR.id, imapInput('a'), ACTOR);
     await pool.query('UPDATE connected_accounts SET sync_paused_at = NOW() WHERE id = $1', [

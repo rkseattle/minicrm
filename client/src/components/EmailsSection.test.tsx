@@ -749,7 +749,8 @@ describe('EmailsSection — private threads', () => {
         return HttpResponse.json({ is_private: true, updated: 2 });
       }),
     );
-    renderSection();
+    const queryClient = renderSection();
+    const invalidated = vi.spyOn(queryClient, 'invalidateQueries');
 
     fireEvent.click(await screen.findByTestId(`email-thread-row-${T1}`));
     expect(screen.getByTestId(`email-thread-privacy-hint-${T1}`)).toBeInTheDocument();
@@ -757,6 +758,8 @@ describe('EmailsSection — private threads', () => {
 
     await waitFor(() => expect(sent).toEqual([{ id: SECOND.id, body: { is_private: true } }]));
     expect(await screen.findByTestId(`email-thread-private-${T1}`)).toBeInTheDocument();
+    // The record's timeline refetches the Email activities the toggle scrubbed.
+    expect(invalidated).toHaveBeenCalledWith({ queryKey: ACTIVITIES_QUERY_KEY });
   });
 
   it('offers to make a private thread visible again', async () => {

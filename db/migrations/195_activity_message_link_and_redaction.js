@@ -7,9 +7,10 @@
  * id that no longer matches simply stops matching.
  *
  * redacted_records lists records whose text was removed, by GDPR erasure or a private thread.
- * Audit reads mask those records' entries, since the append-only log still holds what was
- * removed. It is a log of its own, with no FK and no row security, so masking survives the
- * record's deletion and holds under any role.
+ * Audit reads mask by reason, since the append-only log still holds what was removed: an
+ * erasure masks every entry, a private-thread scrub only those written before redacted_at.
+ * It is a log of its own, with no FK and no row security, so masking survives the record's
+ * deletion and holds under any role.
  */
 
 'use strict';
@@ -28,7 +29,7 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`
     COMMENT ON TABLE public.redacted_records IS
-      'Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask their entries; kept after the record is deleted.'
+      'Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask an erased record''s entries, and a scrubbed one''s written before redacted_at; kept after the record is deleted.'
   `);
   pgm.sql(`
     CREATE INDEX IF NOT EXISTS activities_email_message_id_idx

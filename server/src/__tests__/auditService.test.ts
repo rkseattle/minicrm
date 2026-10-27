@@ -26,7 +26,9 @@ import {
   listAuditLog,
   listAuditLogActors,
   maskAuditEvent,
+  PRIVATE_REDACTED_TEXT,
 } from '../services/auditService.js';
+import { markActivitiesRedacted } from '../services/activityService.js';
 import { createUser } from '../services/userService.js';
 import { erasedAddressDigest } from '../services/mail/gdprRedaction.js';
 import { purgeFixtureUsers } from './testUtils.js';
@@ -949,6 +951,10 @@ describe('masking an erased record, and a scrubbed activity, by name too', () =>
   afterAll(async () => {
     await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [ERASED_RECORD]);
     await pool.query('DELETE FROM redacted_records WHERE record_id = $1', [activityId]);
+    await pool.query(
+      `DELETE FROM redacted_records WHERE record_id IN (SELECT id FROM activities WHERE owner_id = $1)`,
+      [ownerId],
+    );
     await pool.query('DELETE FROM activities WHERE owner_id = $1', [ownerId]);
     await pool.query('DELETE FROM accounts WHERE owner_id = $1', [ownerId]);
     await purgeFixtureUsers({ ids: [ownerId] });
@@ -989,10 +995,10 @@ describe('masking an erased record, and a scrubbed activity, by name too', () =>
     // Safe: the entry written above is this record's only one.
     expect(entry!.record_name).toBe('[GDPR deleted]');
     const live = await maskAuditEvent({
-      ...entry!,
+      ...entry!, // Safe: asserted above.
       record_name: 'Alice Erased',
       source: null,
-      created_at: '',
+      created_at: new Date(entry!.created_at).toISOString(), // Safe: as above.
     });
     expect(live.record_name).toBe('[GDPR deleted]');
   });
@@ -1018,10 +1024,11 @@ describe('masking an erased record, and a scrubbed activity, by name too', () =>
     const page = await listAuditLog({ recordType: 'activity', recordId: activityId });
 
     expect(page.total).toBe(1);
+    // A private-thread scrub hides what came before it, and says so without claiming erasure.
     expect(page.data[0]).toMatchObject({
-      record_name: '[GDPR deleted]',
-      old_value: '[GDPR deleted]',
-      new_value: '[GDPR deleted]',
+      record_name: PRIVATE_REDACTED_TEXT,
+      old_value: PRIVATE_REDACTED_TEXT,
+      new_value: PRIVATE_REDACTED_TEXT,
     });
 
     // The redaction log outlives the activity, so masking does too.
@@ -1031,6 +1038,125 @@ describe('masking an erased record, and a scrubbed activity, by name too', () =>
       recordId: activityId,
       all: true,
     });
-    expect(afterDelete?.record_name).toBe('[GDPR deleted]');
+    expect(afterDelete?.record_name).toBe(PRIVATE_REDACTED_TEXT);
+  });
+
+  describe('live events', () => {
+    async function redactedActivity(reason: 'private_thread' | 'gdpr_erasure'): Promise<string> {
+      const account = await pool.query<{ id: string }>(
+        `INSERT INTO accounts (name, owner_id) VALUES ('auditsvc-live', $1) RETURNING id`,
+        [ownerId],
+      );
+      const activity = await pool.query<{ id: string }>(
+        `INSERT INTO activities (type, subject, account_id, owner_id)
+         VALUES ('Email', 'Private email', $1, $2) RETURNING id`,
+        [account.rows[0]!.id, ownerId], // Safe: INSERT ... RETURNING yields one row.
+      );
+      const id = activity.rows[0]!.id; // Safe: as above.
+      const client = await pool.connect();
+      try {
+        await markActivitiesRedacted(client, [id], reason);
+      } finally {
+        client.release();
+      }
+      return id;
+    }
+
+    function liveEvent(recordId: string, createdAt: string) {
+      return {
+        id: '00000000-0000-4000-8000-00000000e001',
+        record_type: 'activity',
+        record_id: recordId,
+        record_name: 'Quarterly numbers',
+        event_type: 'updated',
+        field_name: 'subject',
+        old_value: 'Quarterly numbers',
+        new_value: 'Q3 numbers',
+        changed_by_id: ACTOR.id,
+        changed_by_name: ACTOR.name,
+        source: null,
+        created_at: createdAt,
+      };
+    }
+
+    it('masks a live event from before a private-thread scrub', async () => {
+      const id = await redactedActivity('private_thread');
+      const masked = await maskAuditEvent(liveEvent(id, '2000-01-01T00:00:00Z'));
+      expect(masked.new_value).toBe(PRIVATE_REDACTED_TEXT);
+    });
+
+    it('passes a live event written after the scrub through unmasked', async () => {
+      const id = await redactedActivity('private_thread');
+      const later = new Date(Date.now() + 60_000).toISOString();
+      const event = await maskAuditEvent(liveEvent(id, later));
+      expect(event.new_value).toBe('Q3 numbers');
+    });
+
+    it('masks a live event with no timestamp, failing closed', async () => {
+      const id = await redactedActivity('private_thread');
+      const masked = await maskAuditEvent(liveEvent(id, ''));
+      expect(masked.record_name).toBe(PRIVATE_REDACTED_TEXT);
+    });
+
+    it('masks any live event once an erasure follows the scrub', async () => {
+      const id = await redactedActivity('private_thread');
+      const client = await pool.connect();
+      try {
+        await markActivitiesRedacted(client, [id], 'gdpr_erasure');
+      } finally {
+        client.release();
+      }
+      const later = new Date(Date.now() + 60_000).toISOString();
+      const masked = await maskAuditEvent(liveEvent(id, later));
+      expect(masked.new_value).toBe('[GDPR deleted]');
+    });
+  });
+
+  it('leaves entries written after a private-thread scrub readable', async () => {
+    const account = await pool.query<{ id: string }>(
+      `INSERT INTO accounts (name, owner_id) VALUES ('auditsvc-after', $1) RETURNING id`,
+      [ownerId],
+    );
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, account_id, owner_id)
+       VALUES ('Email', 'Private email', $1, $2) RETURNING id`,
+      [account.rows[0]!.id, ownerId], // Safe: INSERT ... RETURNING yields one row.
+    );
+    const id = activity.rows[0]!.id; // Safe: as above.
+    await pool.query(
+      `INSERT INTO redacted_records (record_type, record_id, reason, redacted_at)
+       VALUES ('activity', $1, 'private_thread', now() - interval '1 minute')`,
+      [id],
+    );
+    await writeNamed('activity', id, 'Follow-up call');
+
+    const [entry] = await getRecordAuditLog({ recordType: 'activity', recordId: id, all: true });
+
+    expect(entry?.record_name).toBe('Follow-up call');
+  });
+
+  it('masks a whole history once an erasure follows a private-thread scrub', async () => {
+    const account = await pool.query<{ id: string }>(
+      `INSERT INTO accounts (name, owner_id) VALUES ('auditsvc-erased', $1) RETURNING id`,
+      [ownerId],
+    );
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, account_id, owner_id)
+       VALUES ('Email', 'Private email', $1, $2) RETURNING id`,
+      [account.rows[0]!.id, ownerId], // Safe: INSERT ... RETURNING yields one row.
+    );
+    const id = activity.rows[0]!.id; // Safe: as above.
+    const client = await pool.connect();
+    try {
+      await markActivitiesRedacted(client, [id], 'private_thread');
+      await writeNamed('activity', id, 'Called Alice on her cell');
+      await markActivitiesRedacted(client, [id], 'gdpr_erasure');
+    } finally {
+      client.release();
+    }
+
+    const [entry] = await getRecordAuditLog({ recordType: 'activity', recordId: id, all: true });
+
+    expect(entry?.record_name).toBe('[GDPR deleted]');
   });
 });

@@ -47,7 +47,7 @@ export function erasedPlaceholderAddress(recordId: string): string {
   return `${PLACEHOLDER_PREFIX}${recordId}${PLACEHOLDER_DOMAIN}`;
 }
 
-/** Taken by every ingest path before any intent or message row. */
+/** Taken by every ingest path, and thread privacy changes, before any intent or message row. */
 export async function lockForIngest(client: PoolClient): Promise<void> {
   await client.query(`SELECT pg_advisory_xact_lock_shared(${GDPR_INGEST_LOCK_SQL})`);
 }
@@ -128,8 +128,8 @@ export async function redactErasedOnIngest(
   if (providerMessageIds.length === 0) return redacted;
   const stored = await client.query<{ id: string; addresses: string[] }>(
     `SELECT id,
-            ARRAY[from_address] || to_addresses || cc_addresses || reply_to_addresses
-              AS addresses
+            public.email_message_addresses(from_address, to_addresses, cc_addresses,
+                                           reply_to_addresses) AS addresses
        FROM email_messages
       WHERE connected_account_id = $1 AND provider_message_id = ANY($2)`,
     [accountId, providerMessageIds],

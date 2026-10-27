@@ -207,16 +207,17 @@ describe('listMessagesForRecord', () => {
       'utf8',
     );
     const search = await readFile(new URL('../services/searchService.ts', import.meta.url), 'utf8');
-    for (const [name, text] of [
-      ['listMessagesForRecord', source],
-      ['listUnmatchedMessages', source],
-      ['findMessageForUser', source],
-      ['searchEmails', search],
+    // The two list paths pass the predicate twice: to pick threads, and to re-join their messages.
+    for (const [name, text, uses] of [
+      ['listMessagesForRecord', source, 2],
+      ['listUnmatchedMessages', source, 2],
+      ['findMessageForUser', source, 1],
+      ['searchEmails', search, 1],
     ] as const) {
       const start = text.search(new RegExp(`async function ${name}\\(`));
       expect(start, name).toBeGreaterThan(-1);
       const body = text.slice(start, text.indexOf('\n}\n', start));
-      expect(body, name).toContain('messageAccessPredicate(');
+      expect(body.split('messageAccessPredicate(').length - 1, name).toBe(uses);
       expect(body, name).not.toMatch(/ca\.user_id\s*=/);
     }
   });
@@ -485,8 +486,8 @@ describe('thread privacy', () => {
 
     expect(await privacyOf([first])).toEqual([false]);
     expect(await privacyAudits()).toEqual([
-      { old_value: 'visible', new_value: 'private (1 messages)' },
-      { old_value: 'private', new_value: 'visible (1 messages)' },
+      { old_value: null, new_value: 'private (1 messages)' },
+      { old_value: null, new_value: 'visible (1 messages)' },
     ]);
   });
 

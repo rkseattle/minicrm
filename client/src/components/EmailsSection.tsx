@@ -33,6 +33,7 @@ import { Pagination } from '@/components/ui/Pagination.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
 import { formatLocalDate, formatLocalDateTime } from '@/utils/formatLocalDate.js';
+import { ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
 
 /** Threads per page in a sidebar section. */
 const THREADS_PER_PAGE = 10;
@@ -181,7 +182,12 @@ export default function EmailsSection({
     }) => setThreadPrivacy(messageId, isPrivate),
     onMutate: () => setPrivacyFailedKey(null),
     onError: (_err, { key }) => setPrivacyFailedKey(key),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: EMAIL_MESSAGES_QUERY_KEY }),
+    // The record's timeline shows Email activities the toggle scrubs.
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: EMAIL_MESSAGES_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY }),
+      ]),
   });
   const { enabled: emailSyncEnabled } = useFeatureFlag('email_sync');
   const { can } = usePermissions();

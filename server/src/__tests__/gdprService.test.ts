@@ -35,6 +35,7 @@ import {
   getAiCascadeLogForRecord,
   getOriginalPiiFromCascadeLog,
   hasGdprErasureForRecord,
+  EMAIL_SCOPE_FOR_SUBJECT_SQL,
 } from '../services/gdprService.js';
 import { syncOneAccount } from '../services/emailSyncService.js';
 import { createImapAccount } from '../services/connectedAccountService.js';
@@ -1262,6 +1263,116 @@ describe('GDPR erasure and export of synced email', () => {
       [other.id],
     );
     expect(signals.rows).toEqual([{ status: 'champion', quotes: [] }]);
+  });
+
+  it('scrubs an activity filed before the address became a contact, by its message', async () => {
+    const address = `${uid()}@later-contact.example`;
+    const messageId = await storeMessage(mailboxOne, `later-${uid()}`, { to: [address] });
+    const account = await pool.query<{ id: string }>(
+      `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-acct-${uid()}`, adminId],
+    );
+    const accountId = account.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    // Filed when the address matched no contact: no participant row ties it to anyone.
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, notes, account_id, owner_id, metadata)
+       VALUES ('Email', 'Contract renewal', 'Hi, call me', $1, $2,
+               jsonb_build_object('email_message_id', $3::text))
+       RETURNING id`,
+      [accountId, adminId, messageId],
+    );
+    const contact = await createContact(
+      { ...makeContact(), email: address, owner_id: adminId },
+      adminActor,
+    );
+
+    try {
+      await eraseContact(contact.id, adminActor);
+
+      const after = await pool.query<{ subject: string; notes: string | null }>(
+        'SELECT subject, notes FROM activities WHERE id = $1',
+        [activity.rows[0]!.id], // Safe: INSERT ... RETURNING yields one row.
+      );
+      expect(after.rows).toEqual([{ subject: '[GDPR deleted]', notes: null }]);
+    } finally {
+      await pool.query('DELETE FROM activities WHERE account_id = $1', [accountId]);
+      await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);
+    }
+  });
+
+  it('exports every activity erasure would redact, on whatever record it was filed', async () => {
+    const address = `${uid()}@export-scope.example`;
+    const messageId = await storeMessage(mailboxOne, `export-${uid()}`, { to: [address] });
+    const account = await pool.query<{ id: string }>(
+      `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-acct-${uid()}`, adminId],
+    );
+    const accountId = account.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, account_id, owner_id, metadata)
+       VALUES ('Email', 'Renewal terms', $1, $2, jsonb_build_object('email_message_id', $3::text))
+       RETURNING id`,
+      [accountId, adminId, messageId],
+    );
+    const contact = await createContact(
+      { ...makeContact(), email: address, owner_id: adminId },
+      adminActor,
+    );
+
+    try {
+      const exported = await getGdprExportForContact(contact.id);
+
+      expect(exported.activities.map((a) => a.id)).toContain(activity.rows[0]!.id); // Safe: as above.
+    } finally {
+      await pool.query('DELETE FROM activities WHERE account_id = $1', [accountId]);
+      await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);
+    }
+  });
+
+  it("exports a lead's associated activities, which its erasure would redact", async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: adminId }, adminActor);
+    const account = await pool.query<{ id: string }>(
+      `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-acct-${uid()}`, adminId],
+    );
+    const accountId = account.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, account_id, owner_id)
+       VALUES ('Email', 'Intro', $1, $2) RETURNING id`,
+      [accountId, adminId],
+    );
+    const activityId = activity.rows[0]!.id; // Safe: as above.
+    await pool.query(
+      `INSERT INTO activity_participants (activity_id, record_type, record_id) VALUES ($1, 'lead', $2)`,
+      [activityId, lead.id],
+    );
+
+    try {
+      const exported = await getGdprExportForLead(lead.id);
+
+      expect(exported.activities.map((a) => a.id)).toEqual([activityId]);
+    } finally {
+      await pool.query('DELETE FROM activities WHERE account_id = $1', [accountId]);
+      await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);
+    }
+  });
+
+  it("finds the subject's mail through the address index", async () => {
+    const client = await pool.connect();
+    try {
+      // A near-empty table plans a seq scan; disabling it proves the index can serve the lookup.
+      await client.query('SET enable_seqscan = off');
+      const plan = await client.query<{ 'QUERY PLAN': string }>(
+        `EXPLAIN ${EMAIL_SCOPE_FOR_SUBJECT_SQL}`,
+        ['contact', randomUUID(), 'x@example.net'],
+      );
+      expect(plan.rows.map((r) => r['QUERY PLAN']).join('\n')).toContain(
+        'email_messages_addresses_idx',
+      );
+    } finally {
+      await client.query('RESET enable_seqscan');
+      client.release();
+    }
   });
 
   it("redacts a send's activity on another record, even after its mailbox is gone", async () => {
