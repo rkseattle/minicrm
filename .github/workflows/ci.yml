@@ -10,6 +10,7 @@ permissions:
   checks: write
   pull-requests: write
   contents: write
+  packages: read
 
 jobs:
   # MINCRM-662: Single source of truth for shard/worker count, computed from a
@@ -950,7 +951,10 @@ jobs:
 
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-postgres:16
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: minicrm
           POSTGRES_PASSWORD: password
@@ -1150,8 +1154,12 @@ jobs:
 
     services:
       postgres:
-        # Using ECR Public mirror to avoid Docker Hub unauthenticated pull rate limits
-        image: public.ecr.aws/docker/library/postgres:16
+        # GHCR copies, pulled with this job's token: anonymous public pulls hit per-IP quotas.
+        # mirror-service-images.yml publishes them.
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-postgres:16
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: minicrm
           POSTGRES_PASSWORD: password
@@ -1171,7 +1179,10 @@ jobs:
       # greenmail.users reads as login `rep`, password `secret-pass-12`, domain
       # example.com — the IMAP login is `rep`, not the address.
       greenmail:
-        image: greenmail/standalone:2.1.13
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-greenmail:2.1.13
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           GREENMAIL_OPTS: >-
             -Dgreenmail.setup.test.smtp
@@ -1727,7 +1738,10 @@ jobs:
 
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-postgres:16
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: minicrm
           POSTGRES_PASSWORD: password
@@ -1743,7 +1757,10 @@ jobs:
       # MINCRM-278: MinIO provides an S3-compatible storage backend so attachment
       # E2E tests run unconditionally instead of skipping.
       minio:
-        image: cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-minio:dc455cdd
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         ports:
           - 9000:9000
         env:
@@ -1759,7 +1776,10 @@ jobs:
       # MINCRM-306: Mailhog captures transactional emails sent by the app server.
       # SMTP port 1025 receives messages; HTTP port 8025 exposes the assertion API.
       mailhog:
-        image: mailhog/mailhog:latest@sha256:8d76a3d4ffa32a3661311944007a415332c4bb855657f4f6c57996405c009bea
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-mailhog:8d76a3d4
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         ports:
           - 1025:1025
           - 8025:8025
@@ -2130,7 +2150,10 @@ jobs:
 
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-postgres:16
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: minicrm
           POSTGRES_PASSWORD: password
@@ -2144,7 +2167,10 @@ jobs:
           --health-retries 5
 
       minio:
-        image: cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-minio:dc455cdd
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         ports:
           - 9000:9000
         env:
@@ -2158,7 +2184,10 @@ jobs:
         command: server /data --console-address :9001
 
       mailhog:
-        image: mailhog/mailhog:latest@sha256:8d76a3d4ffa32a3661311944007a415332c4bb855657f4f6c57996405c009bea
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-mailhog:8d76a3d4
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         ports:
           - 1025:1025
           - 8025:8025
@@ -3177,7 +3206,10 @@ jobs:
 
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-postgres:16
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: minicrm
           POSTGRES_PASSWORD: password
@@ -3191,7 +3223,10 @@ jobs:
           --health-retries 5
 
       minio:
-        image: cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-minio:dc455cdd
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         ports:
           - 9000:9000
         env:
