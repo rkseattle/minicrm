@@ -10,7 +10,7 @@ import type { SsoProtocol, SsoConfigPublic } from '@minicrm/shared/schemas/setti
 import { SSO_PROTOCOLS } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { AuditActor } from './auditService.js';
 import { SYSTEM_ACTOR } from './auditService.js';
-import { upsertSystemSetting } from './settingsService.js';
+import { upsertSystemSetting } from './systemSettingsWrite.js';
 
 // ── system_settings keys ──────────────────────────────────────────────────────
 

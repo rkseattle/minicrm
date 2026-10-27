@@ -24,6 +24,8 @@ import 'dotenv/config';
 import crypto from 'crypto';
 import pg from 'pg';
 import { assertTestDatabaseTarget } from './assertTestDatabaseTarget.js';
+import { SYSTEM_ACTOR } from '../services/auditActor.js';
+import { upsertSystemSetting } from '../services/systemSettingsWrite.js';
 
 const { Pool } = pg;
 
@@ -89,12 +91,7 @@ async function main(): Promise<void> {
   const client = await pool.connect();
   try {
     for (const [key, value] of upserts) {
-      await client.query(
-        `INSERT INTO system_settings (key, value, updated_at)
-         VALUES ($1, $2, now())
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-        [key, value],
-      );
+      await upsertSystemSetting(client, key, value, SYSTEM_ACTOR);
     }
     console.log(`[seed-e2e-storage] Storage config written: endpoint=${endpoint} bucket=${bucket}`);
   } finally {

@@ -21,6 +21,7 @@ import pool from '../db.js';
 import logger from '../logger.js';
 import { getSsoConfigInternal, SSO_JIT_DEFAULT_ROLE_ID_KEY } from './ssoSettingsService.js';
 import { encrypt, decrypt } from './cryptoService.js';
+import { upsertSystemSetting } from './systemSettingsWrite.js';
 import { isX509Certificate, issueSelfSignedCertificate } from './selfSignedCertificate.js';
 import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
@@ -106,10 +107,7 @@ async function loadSamlSpKeyPair(): Promise<SamlSpKeyPair> {
       // same key keeps every IdP that registered it verifying our signatures.
       if (!isX509Certificate(keyPair.signingCert)) {
         keyPair.signingCert = await issueSelfSignedCertificate(keyPair.privateKey, SP_CERT_SUBJECT);
-        await client.query(
-          `UPDATE system_settings SET value = $2, updated_at = now() WHERE key = $1`,
-          [SP_SIGNING_CERT_KEY, keyPair.signingCert],
-        );
+        await upsertSystemSetting(client, SP_SIGNING_CERT_KEY, keyPair.signingCert, SYSTEM_ACTOR);
         await writeSpKeyPairAudit(client, 'updated', 'reissued as an X.509 certificate');
         logger.info('Reissued the SAML SP signing certificate for its existing key');
       }
@@ -123,12 +121,8 @@ async function loadSamlSpKeyPair(): Promise<SamlSpKeyPair> {
         privateKey,
         signingCert: await issueSelfSignedCertificate(privateKey, SP_CERT_SUBJECT),
       };
-      await client.query(
-        `INSERT INTO system_settings (key, value, updated_at)
-         VALUES ($1, $2, now()), ($3, $4, now())
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-        [SP_PRIVATE_KEY_KEY, encrypt(privateKey), SP_SIGNING_CERT_KEY, keyPair.signingCert],
-      );
+      await upsertSystemSetting(client, SP_PRIVATE_KEY_KEY, encrypt(privateKey), SYSTEM_ACTOR);
+      await upsertSystemSetting(client, SP_SIGNING_CERT_KEY, keyPair.signingCert, SYSTEM_ACTOR);
       await writeSpKeyPairAudit(client, 'created', 'generated');
     }
 

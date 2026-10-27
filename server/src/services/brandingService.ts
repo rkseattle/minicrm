@@ -12,7 +12,7 @@ import type {
 } from '@minicrm/shared/schemas/brandingSchema.js';
 import type { AuditActor } from './auditService.js';
 import { SYSTEM_ACTOR } from './auditService.js';
-import { upsertSystemSetting } from './settingsService.js';
+import { upsertSystemSetting } from './systemSettingsWrite.js';
 
 const BRANDING_KEY = 'branding';
 

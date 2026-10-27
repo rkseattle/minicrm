@@ -10,6 +10,7 @@ import { vi } from 'vitest';
 import crypto from 'crypto';
 import pool from '../db.js';
 import { encrypt } from '../services/cryptoService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 import type * as SsoServiceModule from '../services/ssoService.js';
 import { buildSamlSpMetadata, _resetSamlSpKeyPairCacheForTesting } from '../services/ssoService.js';
 
@@ -40,9 +41,31 @@ async function keyPairAuditEvents(since: Date): Promise<string[]> {
   return rows.map((r) => r.event_type);
 }
 
+/** Who last wrote each key-pair row; the system is recorded as no user. */
+async function storedKeyPairRows(): Promise<{ key: string; updated_by: string | null }[]> {
+  const { rows } = await pool.query<{ key: string; updated_by: string | null }>(
+    'SELECT key, updated_by FROM system_settings WHERE key = ANY($1) ORDER BY key',
+    [[SP_PRIVATE_KEY_KEY, SP_SIGNING_CERT_KEY]],
+  );
+  return rows;
+}
+
 function certificateBody(pem: string): string {
   return pem.replace(/-----(BEGIN|END) CERTIFICATE-----/g, '').replace(/\s/g, '');
 }
+
+const FIXTURE_EMAIL = 'sso-sp-cert-editor@example.com';
+let editorId: string;
+
+beforeAll(async () => {
+  await purgeFixtureUsers({ emails: [FIXTURE_EMAIL] });
+  const editor = await pool.query<{ id: string }>(
+    `INSERT INTO users (email, name, role, password_hash, status)
+     VALUES ($1, 'SP Cert Editor', 'admin', '$2b$12$placeholder', 'active') RETURNING id`,
+    [FIXTURE_EMAIL],
+  );
+  editorId = editor.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+});
 
 beforeEach(async () => {
   await pool.query('DELETE FROM system_settings WHERE key = ANY($1)', [
@@ -55,11 +78,17 @@ afterAll(async () => {
   await pool.query('DELETE FROM system_settings WHERE key = ANY($1)', [
     [SP_PRIVATE_KEY_KEY, SP_SIGNING_CERT_KEY],
   ]);
+  await purgeFixtureUsers({ emails: [FIXTURE_EMAIL] });
   await pool.end();
 });
 
 describe('SAML SP signing certificate', () => {
   it('publishes a parseable X.509 certificate in fresh metadata, and audits the generation', async () => {
+    // A half-written pair a user last touched: generation replaces it as the system.
+    await pool.query(
+      `INSERT INTO system_settings (key, value, updated_at, updated_by) VALUES ($1, 'stale', now(), $2)`,
+      [SP_PRIVATE_KEY_KEY, editorId],
+    );
     const since = await databaseNow();
     const xml = await buildSamlSpMetadata();
     const stored = await storedCertificate();
@@ -67,6 +96,10 @@ describe('SAML SP signing certificate', () => {
     expect(() => new crypto.X509Certificate(stored)).not.toThrow();
     expect(xml.replace(/\s/g, '')).toContain(certificateBody(stored));
     expect(await keyPairAuditEvents(since)).toEqual(['created']);
+    expect(await storedKeyPairRows()).toEqual([
+      { key: SP_PRIVATE_KEY_KEY, updated_by: null },
+      { key: SP_SIGNING_CERT_KEY, updated_by: null },
+    ]);
   });
 
   it('generates one key pair when two processes race for it', async () => {
@@ -94,8 +127,9 @@ describe('SAML SP signing certificate', () => {
       .replace('-----BEGIN PUBLIC KEY-----', '-----BEGIN CERTIFICATE-----')
       .replace('-----END PUBLIC KEY-----', '-----END CERTIFICATE-----');
     await pool.query(
-      `INSERT INTO system_settings (key, value, updated_at) VALUES ($1, $2, now()), ($3, $4, now())`,
-      [SP_PRIVATE_KEY_KEY, encrypt(privateKey), SP_SIGNING_CERT_KEY, legacy],
+      `INSERT INTO system_settings (key, value, updated_at, updated_by)
+       VALUES ($1, $2, now(), $5), ($3, $4, now(), $5)`,
+      [SP_PRIVATE_KEY_KEY, encrypt(privateKey), SP_SIGNING_CERT_KEY, legacy, editorId],
     );
 
     const since = await databaseNow();
@@ -106,6 +140,11 @@ describe('SAML SP signing certificate', () => {
     expect(certificate.checkPrivateKey(crypto.createPrivateKey(privateKey))).toBe(true);
     expect(xml.replace(/\s/g, '')).toContain(certificateBody(stored));
     expect(await keyPairAuditEvents(since)).toEqual(['updated']);
+    // Only the certificate was rewritten, by the system; the key keeps its last writer.
+    expect(await storedKeyPairRows()).toEqual([
+      { key: SP_PRIVATE_KEY_KEY, updated_by: editorId },
+      { key: SP_SIGNING_CERT_KEY, updated_by: null },
+    ]);
   });
 
   it('keeps a valid stored certificate as it is', async () => {

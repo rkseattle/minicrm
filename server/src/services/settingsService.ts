@@ -3,8 +3,8 @@
  * Business logic belongs here. Controllers must not query the database directly.
  */
 
-import type { PoolClient } from 'pg';
 import pool from '../db.js';
+import { upsertSystemSetting } from './systemSettingsWrite.js';
 import logger from '../logger.js';
 import {
   SUPPORTED_LOCALES,
@@ -20,7 +20,7 @@ import type {
   SupportedCurrency,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR, actorIdOrNull, writeAuditEntry } from './auditService.js';
+import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import { withRlsQuery } from './rlsContextService.js';
 
 /** A row from the system_settings table */
@@ -56,25 +56,6 @@ const EMAIL_SYNC_EXCLUDED_DOMAINS_KEY = 'email_sync_excluded_domains';
 
 /** The key used to store how far back a never-synced mailbox reads, in days */
 const EMAIL_SYNC_BACKFILL_DAYS_KEY = 'email_sync_backfill_days';
-
-/**
- * Writes one setting, recording who changed it. Takes the pool or a transaction's client, so a
- * setter that audits can write the value on the same client as its audit entry.
- */
-export async function upsertSystemSetting(
-  queryable: Pick<PoolClient, 'query'>,
-  key: string,
-  value: string,
-  actor: AuditActor,
-): Promise<void> {
-  await queryable.query(
-    `INSERT INTO system_settings (key, value, updated_at, updated_by)
-     VALUES ($1, $2, now(), $3)
-     ON CONFLICT (key) DO UPDATE
-       SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [key, value, actorIdOrNull(actor)],
-  );
-}
 
 /**
  * Retrieves the current system-wide default language.

@@ -20,6 +20,8 @@
 
 import pg from 'pg';
 import { assertTestDatabaseTarget } from './assertTestDatabaseTarget.js';
+import { SYSTEM_ACTOR } from '../services/auditActor.js';
+import { upsertSystemSetting } from '../services/systemSettingsWrite.js';
 
 const { Pool } = pg;
 
@@ -53,11 +55,7 @@ async function main(): Promise<void> {
     );
 
     // email_notifications_enabled remains in system_settings (not moved to smtp_configuration).
-    await client.query(
-      `INSERT INTO system_settings (key, value, updated_at)
-       VALUES ('email_notifications_enabled', 'true', now())
-       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    );
+    await upsertSystemSetting(client, 'email_notifications_enabled', 'true', SYSTEM_ACTOR);
 
     console.log(
       `[seed-e2e-smtp] SMTP config written to smtp_configuration: host=${smtpHost} port=${smtpPort} enabled=true`,

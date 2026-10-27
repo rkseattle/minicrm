@@ -18,31 +18,7 @@ import type { AUDIT_EVENT_TYPES, AUDIT_RECORD_TYPES } from '@minicrm/shared/sche
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-/**
- * Identity of the user performing a write operation.
- * Shared across all write services — import from auditService, not from individual services.
- */
-export interface AuditActor {
-  id: string;
-  name: string;
-  /** If set, audit entries written on behalf of this actor carry this source tag */
-  source?: 'AI (NLI)' | 'AI (context)';
-}
-
-/** System actor used as default for seeding, migrations, and automation triggers. */
-export const SYSTEM_ACTOR: AuditActor = {
-  id: '00000000-0000-0000-0000-000000000000',
-  name: 'System',
-};
-
-/**
- * Returns the actor's UUID for use as system_settings.updated_by.
- * SYSTEM_ACTOR writes are not attributable to a real user row, so NULL is stored
- * rather than the synthetic all-zeros UUID (which would violate the FK constraint).
- */
-export function actorIdOrNull(actor: AuditActor): string | null {
-  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
-}
+export { SYSTEM_ACTOR, actorIdOrNull, type AuditActor } from './auditActor.js';
 
 /** Record types that can appear in the audit log; the list lives in the shared schema. */
 export type AuditRecordType = (typeof AUDIT_RECORD_TYPES)[number];
