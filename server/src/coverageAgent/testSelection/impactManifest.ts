@@ -68,6 +68,7 @@ export const COVERED_PATHS: readonly ImpactManifestEntry[] = [
   // reaches every workspace the suite exercises.
   { glob: '**/package.json', scopes: [ALL_FUNCTIONAL_SCOPE] },
   { glob: '**/package-lock.json', scopes: [ALL_FUNCTIONAL_SCOPE] },
+  { glob: '.npmrc', scopes: [ALL_FUNCTIONAL_SCOPE] },
   { glob: '**/tsconfig*.json', scopes: [ALL_FUNCTIONAL_SCOPE] },
   { glob: 'client/vite.config.ts', scopes: [ALL_FUNCTIONAL_SCOPE] },
   { glob: '**/postcss.config.cjs', scopes: [ALL_FUNCTIONAL_SCOPE] },
