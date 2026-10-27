@@ -1955,7 +1955,15 @@
       "TEST_REQUEST_FAILED": "MiniCRM 无法执行该测试，请重试。"
     },
     "secureLabel": "连接时使用 TLS（若服务器在 143 端口使用 STARTTLS，请取消勾选）",
-    "testButton": "测试"
+    "testButton": "测试",
+    "pause": "暂停",
+    "resume": "恢复",
+    "paused": "已暂停",
+    "excludedDomainsButton_one": "排除的域名（{{count}}）",
+    "excludedDomainsButton_other": "排除的域名（{{count}}）",
+    "excludedDomainsLabel": "永不同步的域名",
+    "excludedDomainsHint": "每行一个，例如 example.com。若邮件的其他地址全部属于这些域名或您所在组织的列表，则不会从此邮箱同步。从现在起生效。",
+    "updateError": "无法更新此邮箱，请重试。"
   },
   "mfa": {
     "sectionTitle": "双重身份验证",
@@ -3000,6 +3008,12 @@
       "recipientsInvalid": "无法识别这些地址。请用逗号分隔。"
     },
     "accountsLoadError": "无法加载你的邮箱，因此暂时无法从此处发送邮件。",
-    "composeFrozen": "此邮件可能已在发送中，因此无法再编辑。“发送”会重试同一封邮件，不会产生第二份副本；如需修改，请关闭此窗口，并先检查“已发送”文件夹。"
+    "composeFrozen": "此邮件可能已在发送中，因此无法再编辑。“发送”会重试同一封邮件，不会产生第二份副本；如需修改，请关闭此窗口，并先检查“已发送”文件夹。",
+    "private": "私密",
+    "markPrivate": "标为私密",
+    "makeVisible": "设为可见",
+    "markPrivateHint": "您在此会话中发送的邮件将记录到记录上但不含主题和正文，已记录的也会移除，后续邮件同样保持私密。",
+    "makeVisibleHint": "您在此会话中发送的邮件将重新连同主题和正文记录到记录上。",
+    "privacyError": "无法更改此会话的隐私设置，请重试。"
   }
 }

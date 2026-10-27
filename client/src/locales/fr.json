@@ -1955,7 +1955,15 @@
       "TEST_REQUEST_FAILED": "MiniCRM n'a pas pu exécuter ce test. Veuillez réessayer."
     },
     "secureLabel": "Utiliser TLS à la connexion (décochez pour les serveurs utilisant STARTTLS sur le port 143)",
-    "testButton": "Tester"
+    "testButton": "Tester",
+    "pause": "Suspendre",
+    "resume": "Reprendre",
+    "paused": "Suspendue",
+    "excludedDomainsButton_one": "Domaines exclus ({{count}})",
+    "excludedDomainsButton_other": "Domaines exclus ({{count}})",
+    "excludedDomainsLabel": "Domaines à ne jamais synchroniser",
+    "excludedDomainsHint": "Un par ligne, par exemple example.com. Un e-mail dont toutes les autres adresses appartiennent à ces domaines, ou à la liste de votre organisation, n’est jamais synchronisé depuis cette boîte. S’applique à partir de maintenant.",
+    "updateError": "Impossible de mettre à jour cette boîte. Veuillez réessayer."
   },
   "mfa": {
     "sectionTitle": "Authentification à deux facteurs",
@@ -3000,6 +3008,12 @@
       "recipientsInvalid": "Ces adresses sont illisibles. Séparez-les par des virgules."
     },
     "accountsLoadError": "Vos boîtes aux lettres n'ont pas pu être chargées ; l'envoi depuis ici est indisponible pour le moment.",
-    "composeFrozen": "Ce message est peut-être déjà en route : il ne peut plus être modifié. Envoyer réessaie le même message et n'en créera pas de deuxième copie ; pour le modifier, fermez cette fenêtre et vérifiez d'abord votre dossier Envoyés."
+    "composeFrozen": "Ce message est peut-être déjà en route : il ne peut plus être modifié. Envoyer réessaie le même message et n'en créera pas de deuxième copie ; pour le modifier, fermez cette fenêtre et vérifiez d'abord votre dossier Envoyés.",
+    "private": "Privé",
+    "markPrivate": "Marquer comme privé",
+    "makeVisible": "Rendre visible",
+    "markPrivateHint": "Les e-mails que vous envoyez dans cette conversation sont consignés sur la fiche sans objet ni texte, ceux déjà consignés perdent les leurs, et les e-mails suivants restent privés.",
+    "makeVisibleHint": "Les e-mails que vous envoyez dans cette conversation sont de nouveau consignés sur la fiche avec leur objet et leur texte.",
+    "privacyError": "Impossible de modifier la confidentialité de cette conversation. Veuillez réessayer."
   }
 }

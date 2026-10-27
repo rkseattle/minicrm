@@ -450,3 +450,218 @@ describe('ConnectedAccountsPanel', () => {
     ).toHaveTextContent('did not grant permission');
   });
 });
+
+describe('ConnectedAccountsPanel — sync controls', () => {
+  function capturePatches(response: (body: unknown) => Response | Promise<Response>): unknown[] {
+    const bodies: unknown[] = [];
+    server.use(
+      http.patch('/api/v1/connected-accounts/:id', async ({ request }) => {
+        const body: unknown = await request.json();
+        bodies.push(body);
+        return response(body);
+      }),
+    );
+    return bodies;
+  }
+
+  it('pauses a running mailbox and shows it paused once the list refreshes', async () => {
+    enableEmailSync();
+    let stored: ConnectedAccountResponse = ACCOUNT;
+    server.use(
+      http.get('/api/v1/connected-accounts', () => HttpResponse.json({ accounts: [stored] })),
+    );
+    const bodies = capturePatches(() => {
+      stored = { ...ACCOUNT, sync_paused: true };
+      return HttpResponse.json({ account: stored });
+    });
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await userEvent.click(
+      await screen.findByTestId(`connected-account-pause-button-${ACCOUNT_ID}`),
+    );
+
+    await waitFor(() => expect(bodies).toEqual([{ sync_paused: true }]));
+    expect(await screen.findByTestId(`connected-account-paused-${ACCOUNT_ID}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`connected-account-pause-button-${ACCOUNT_ID}`)).toHaveTextContent(
+      'Resume',
+    );
+  });
+
+  it('closes the domains editor when its button is clicked again', async () => {
+    enableEmailSync();
+    respondWithAccounts([ACCOUNT]);
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    const toggle = await screen.findByTestId(`connected-account-domains-button-${ACCOUNT_ID}`);
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByTestId(`connected-account-domains-editor-${ACCOUNT_ID}`),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a paused mailbox as paused, with a resume button', async () => {
+    enableEmailSync();
+    respondWithAccounts([{ ...ACCOUNT, sync_paused: true }]);
+    const bodies = capturePatches(() => HttpResponse.json({ account: ACCOUNT }));
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    expect(await screen.findByTestId(`connected-account-paused-${ACCOUNT_ID}`)).toBeInTheDocument();
+    const resume = screen.getByTestId(`connected-account-pause-button-${ACCOUNT_ID}`);
+    expect(resume).toHaveTextContent('Resume');
+    await userEvent.click(resume);
+
+    await waitFor(() => expect(bodies).toEqual([{ sync_paused: false }]));
+  });
+
+  it('edits the excluded domains, saving them normalized', async () => {
+    enableEmailSync();
+    respondWithAccounts([{ ...ACCOUNT, excluded_domains: ['old.example'] }]);
+    const bodies = capturePatches(() =>
+      HttpResponse.json({ account: { ...ACCOUNT, excluded_domains: ['hr.example'] } }),
+    );
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await userEvent.click(
+      await screen.findByTestId(`connected-account-domains-button-${ACCOUNT_ID}`),
+    );
+    const input = screen.getByTestId(`connected-account-domains-input-${ACCOUNT_ID}`);
+    expect(input).toHaveValue('old.example');
+    await userEvent.clear(input);
+    await userEvent.type(input, ' HR.example {enter}{enter}hr.example');
+    await userEvent.click(screen.getByTestId(`connected-account-domains-save-${ACCOUNT_ID}`));
+
+    await waitFor(() => expect(bodies).toEqual([{ excluded_domains: ['hr.example'] }]));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId(`connected-account-domains-editor-${ACCOUNT_ID}`),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('refuses an address as a domain without saving', async () => {
+    enableEmailSync();
+    respondWithAccounts([ACCOUNT]);
+    const bodies = capturePatches(() => HttpResponse.json({ account: ACCOUNT }));
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await userEvent.click(
+      await screen.findByTestId(`connected-account-domains-button-${ACCOUNT_ID}`),
+    );
+    await userEvent.type(
+      screen.getByTestId(`connected-account-domains-input-${ACCOUNT_ID}`),
+      'someone@hr.example',
+    );
+    await userEvent.click(screen.getByTestId(`connected-account-domains-save-${ACCOUNT_ID}`));
+
+    expect(
+      await screen.findByTestId(`connected-account-domains-error-${ACCOUNT_ID}`),
+    ).toBeInTheDocument();
+    expect(bodies).toEqual([]);
+  });
+
+  it('closes the editor on cancel without saving', async () => {
+    enableEmailSync();
+    respondWithAccounts([ACCOUNT]);
+    const bodies = capturePatches(() => HttpResponse.json({ account: ACCOUNT }));
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await userEvent.click(
+      await screen.findByTestId(`connected-account-domains-button-${ACCOUNT_ID}`),
+    );
+    await userEvent.click(screen.getByTestId(`connected-account-domains-cancel-${ACCOUNT_ID}`));
+
+    expect(
+      screen.queryByTestId(`connected-account-domains-editor-${ACCOUNT_ID}`),
+    ).not.toBeInTheDocument();
+    expect(bodies).toEqual([]);
+  });
+
+  it('reports a failed update on that mailbox', async () => {
+    enableEmailSync();
+    respondWithAccounts([ACCOUNT]);
+    capturePatches(() => new HttpResponse(null, { status: 500 }));
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await userEvent.click(
+      await screen.findByTestId(`connected-account-pause-button-${ACCOUNT_ID}`),
+    );
+
+    expect(
+      await screen.findByTestId(`connected-account-update-error-${ACCOUNT_ID}`),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves an open domains editor alone when the mailbox is paused', async () => {
+    enableEmailSync();
+    respondWithAccounts([ACCOUNT]);
+    capturePatches(() => HttpResponse.json({ account: { ...ACCOUNT, sync_paused: true } }));
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await userEvent.click(
+      await screen.findByTestId(`connected-account-domains-button-${ACCOUNT_ID}`),
+    );
+    await userEvent.click(screen.getByTestId(`connected-account-pause-button-${ACCOUNT_ID}`));
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`connected-account-pause-button-${ACCOUNT_ID}`)).not.toBeDisabled(),
+    );
+    expect(
+      screen.getByTestId(`connected-account-domains-editor-${ACCOUNT_ID}`),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps another mailbox's editor open when one mailbox's save completes", async () => {
+    const OTHER_ID = '00000000-0000-4000-8000-0000000000c2';
+    const other = { ...ACCOUNT, id: OTHER_ID, email_address: 'other@example.com' };
+    enableEmailSync();
+    respondWithAccounts([ACCOUNT, other]);
+    let release: () => void = () => {};
+    server.use(
+      http.patch('/api/v1/connected-accounts/:id', async () => {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return HttpResponse.json({ account: ACCOUNT });
+      }),
+    );
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await userEvent.click(
+      await screen.findByTestId(`connected-account-domains-button-${ACCOUNT_ID}`),
+    );
+    await userEvent.type(
+      screen.getByTestId(`connected-account-domains-input-${ACCOUNT_ID}`),
+      'hr.example',
+    );
+    await userEvent.click(screen.getByTestId(`connected-account-domains-save-${ACCOUNT_ID}`));
+    await userEvent.click(screen.getByTestId(`connected-account-domains-button-${OTHER_ID}`));
+    release();
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`connected-account-domains-button-${OTHER_ID}`)).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      ),
+    );
+    expect(screen.getByTestId(`connected-account-domains-editor-${OTHER_ID}`)).toBeInTheDocument();
+  });
+
+  it('closes the domains editor when the mailbox is about to be disconnected', async () => {
+    enableEmailSync();
+    respondWithAccounts([ACCOUNT]);
+    renderWithProviders(<ConnectedAccountsPanel />);
+
+    await userEvent.click(
+      await screen.findByTestId(`connected-account-domains-button-${ACCOUNT_ID}`),
+    );
+    await userEvent.click(screen.getByTestId(`connected-account-disconnect-button-${ACCOUNT_ID}`));
+
+    expect(
+      screen.queryByTestId(`connected-account-domains-editor-${ACCOUNT_ID}`),
+    ).not.toBeInTheDocument();
+  });
+});

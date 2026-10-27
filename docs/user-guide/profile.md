@@ -164,6 +164,22 @@ retrying. For the reasons a test can clear, a successful test resets the failure
 puts the mailbox straight back into the sync schedule; for the two that need reconnecting,
 that is what puts it back.
 
+### Pause a mailbox
+
+Click **Pause** to stop syncing a mailbox without disconnecting it: nothing new is read
+until you click **Resume**, and everything already synced stays. A paused mailbox shows a
+**Paused** badge. Pausing takes effect at the next page of a sync already running.
+
+### Keep some correspondents out
+
+Click **Excluded domains** and enter one domain per line, such as `example.com`. A message is
+never synced from this mailbox when every address on it, other than yours, belongs to one of
+these domains or to your organization's own list. Use it for personal mail, your bank, or
+anyone whose correspondence does not belong in the CRM. A domain matches exactly: excluding
+`example.com` still syncs `mail.example.com`. It applies to mail synced from now on; mail
+already in MiniCRM stays — mark it private instead (see
+[Emails](contacts.md#emails)).
+
 ### Disconnect a mailbox
 
 Click **Disconnect** and confirm. The stored credentials are deleted, and for providers

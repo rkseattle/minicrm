@@ -8,6 +8,7 @@ import type {
   ConnectionTestResult,
   ImapCredentialsInput,
   OAuthProvider,
+  UpdateConnectedAccountInput,
 } from '@shared/schemas/connectedAccountSchema.js';
 
 import apiClient from './axiosInstance.js';
@@ -61,4 +62,21 @@ export async function testConnectedAccount(id: string): Promise<ConnectionTestRe
  */
 export function oauthStartUrl(provider: OAuthProvider): string {
   return `/api/v1/connected-accounts/oauth/${provider}/start`;
+}
+
+/**
+ * Pauses or resumes one of the caller's own mailboxes, or replaces its excluded domains.
+ *
+ * @param id - The mailbox.
+ * @param patch - At least one of sync_paused and excluded_domains.
+ */
+export async function updateConnectedAccount(
+  id: string,
+  patch: UpdateConnectedAccountInput,
+): Promise<ConnectedAccountResponse> {
+  const response = await apiClient.patch<{ account: ConnectedAccountResponse }>(
+    `/connected-accounts/${id}`,
+    patch,
+  );
+  return response.data.account;
 }

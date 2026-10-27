@@ -40,3 +40,15 @@ export const excludedDomainListSchema = z
   .pipe(z.array(z.string()).max(MAX_EXCLUDED_DOMAINS));
 
 export type ExcludedDomainList = z.infer<typeof excludedDomainListSchema>;
+
+/**
+ * Splits an editor's text into candidate domains, one per line, blank lines dropped; validate
+ * the result with excludedDomainListSchema. Shared so the personal and org editors, whose
+ * lists merge at sync time, read input identically.
+ */
+export function parseExcludedDomainLines(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+}

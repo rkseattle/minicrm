@@ -14,7 +14,13 @@ import { useSearchParams } from 'react-router-dom';
 import type {
   ConnectedAccountResponse,
   ConnectedAccountStatus,
+  UpdateConnectedAccountInput,
 } from '@shared/schemas/connectedAccountSchema.js';
+import {
+  MAX_EXCLUDED_DOMAINS,
+  excludedDomainListSchema,
+  parseExcludedDomainLines,
+} from '@shared/schemas/emailDomainSchema.js';
 import {
   SYNC_FAILED_DETAIL,
   TEST_REQUEST_FAILED,
@@ -28,6 +34,7 @@ import {
   getConnectedAccounts,
   oauthStartUrl,
   testConnectedAccount,
+  updateConnectedAccount,
 } from '@/api/connectedAccounts.js';
 import { Capability } from '@shared/schemas/capabilitySchema.js';
 
@@ -127,6 +134,41 @@ export default function ConnectedAccountsPanel() {
     // The row's status is what the server just recorded, so re-read rather than guess.
     onSettled: () => queryClient.invalidateQueries({ queryKey: CONNECTED_ACCOUNTS_QUERY_KEY }),
   });
+
+  const [editingDomainsId, setEditingDomainsId] = useState<string | null>(null);
+  const [domainsDraft, setDomainsDraft] = useState('');
+  const [domainsError, setDomainsError] = useState<string | null>(null);
+  const [updateFailedId, setUpdateFailedId] = useState<string | null>(null);
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: UpdateConnectedAccountInput }) =>
+      updateConnectedAccount(id, patch),
+    onMutate: ({ id }) => setUpdateFailedId((current) => (current === id ? null : current)),
+    onSuccess: (_account, { id, patch }) => {
+      // Only the saved mailbox's editor: another may have been opened while this one saved.
+      if (patch.excluded_domains !== undefined) {
+        setEditingDomainsId((current) => (current === id ? null : current));
+      }
+    },
+    onError: (_err, { id }) => setUpdateFailedId(id),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: CONNECTED_ACCOUNTS_QUERY_KEY }),
+  });
+
+  function startEditingDomains(account: ConnectedAccountResponse): void {
+    setEditingDomainsId(account.id);
+    setDomainsDraft(account.excluded_domains.join('\n'));
+    setDomainsError(null);
+  }
+
+  function saveDomains(accountId: string): void {
+    const parsed = excludedDomainListSchema.safeParse(parseExcludedDomainLines(domainsDraft));
+    if (!parsed.success) {
+      setDomainsError(t('settings.emailSync.domainsInvalid', { max: MAX_EXCLUDED_DOMAINS }));
+      return;
+    }
+    setDomainsError(null);
+    updateMutation.mutate({ id: accountId, patch: { excluded_domains: parsed.data } });
+  }
 
   /**
    * Turns a server-recorded code into a sentence in the viewer's language.
@@ -251,12 +293,19 @@ export default function ConnectedAccountsPanel() {
               </div>
 
               <div className="flex flex-col items-start gap-1 min-w-0">
-                <Badge
-                  variant={STATUS_VARIANT[account.status]}
-                  data-testid={`connected-account-status-${account.id}`}
-                >
-                  {t(`connectedAccounts.statuses.${account.status}`)}
-                </Badge>
+                <div className="flex flex-wrap items-center gap-1">
+                  <Badge
+                    variant={STATUS_VARIANT[account.status]}
+                    data-testid={`connected-account-status-${account.id}`}
+                  >
+                    {t(`connectedAccounts.statuses.${account.status}`)}
+                  </Badge>
+                  {account.sync_paused && (
+                    <Badge variant="neutral" data-testid={`connected-account-paused-${account.id}`}>
+                      {t('connectedAccounts.paused')}
+                    </Badge>
+                  )}
+                </div>
                 {reasonFor(account) !== null ? (
                   <p
                     className="text-xs text-red-600 wrap-break-word"
@@ -304,6 +353,44 @@ export default function ConnectedAccountsPanel() {
                     type="button"
                     variant="secondary"
                     size="sm"
+                    data-testid={`connected-account-pause-button-${account.id}`}
+                    disabled={updateMutation.isPending}
+                    onClick={() =>
+                      updateMutation.mutate({
+                        id: account.id,
+                        patch: { sync_paused: !account.sync_paused },
+                      })
+                    }
+                  >
+                    {t(
+                      account.sync_paused ? 'connectedAccounts.resume' : 'connectedAccounts.pause',
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    aria-expanded={editingDomainsId === account.id}
+                    aria-controls={
+                      editingDomainsId === account.id
+                        ? `connected-account-domains-editor-${account.id}`
+                        : undefined
+                    }
+                    data-testid={`connected-account-domains-button-${account.id}`}
+                    onClick={() =>
+                      editingDomainsId === account.id
+                        ? setEditingDomainsId(null)
+                        : startEditingDomains(account)
+                    }
+                  >
+                    {t('connectedAccounts.excludedDomainsButton', {
+                      count: account.excluded_domains.length,
+                    })}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
                     data-testid={`connected-account-test-button-${account.id}`}
                     disabled={testMutation.isPending}
                     onClick={() => testMutation.mutate(account.id)}
@@ -315,11 +402,86 @@ export default function ConnectedAccountsPanel() {
                     variant="danger"
                     size="sm"
                     data-testid={`connected-account-disconnect-button-${account.id}`}
-                    onClick={() => setConfirmingDisconnectId(account.id)}
+                    onClick={() => {
+                      // A mailbox about to be removed is not one to keep editing.
+                      setEditingDomainsId(null);
+                      setConfirmingDisconnectId(account.id);
+                    }}
                   >
                     {t('connectedAccounts.disconnectButton')}
                   </Button>
                 </>
+              )}
+
+              {updateFailedId === account.id && (
+                <p
+                  role="alert"
+                  className="w-full text-xs text-red-600"
+                  data-testid={`connected-account-update-error-${account.id}`}
+                >
+                  {t('connectedAccounts.updateError')}
+                </p>
+              )}
+
+              {editingDomainsId === account.id && (
+                <div
+                  id={`connected-account-domains-editor-${account.id}`}
+                  className="w-full space-y-2"
+                  data-testid={`connected-account-domains-editor-${account.id}`}
+                >
+                  <label
+                    htmlFor={`connected-account-domains-${account.id}`}
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    {t('connectedAccounts.excludedDomainsLabel')}
+                  </label>
+                  <p
+                    className="text-xs text-gray-500"
+                    id={`connected-account-domains-hint-${account.id}`}
+                  >
+                    {t('connectedAccounts.excludedDomainsHint')}
+                  </p>
+                  <textarea
+                    id={`connected-account-domains-${account.id}`}
+                    rows={4}
+                    value={domainsDraft}
+                    onChange={(e) => setDomainsDraft(e.target.value)}
+                    placeholder="example.com"
+                    aria-describedby={`connected-account-domains-hint-${account.id}`}
+                    aria-invalid={domainsError !== null}
+                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
+                    data-testid={`connected-account-domains-input-${account.id}`}
+                  />
+                  {domainsError && (
+                    <p
+                      role="alert"
+                      className="text-xs text-red-600"
+                      data-testid={`connected-account-domains-error-${account.id}`}
+                    >
+                      {domainsError}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={updateMutation.isPending}
+                      data-testid={`connected-account-domains-save-${account.id}`}
+                      onClick={() => saveDomains(account.id)}
+                    >
+                      {t('common.save')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`connected-account-domains-cancel-${account.id}`}
+                      onClick={() => setEditingDomainsId(null)}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                </div>
               )}
             </li>
           ))}

@@ -1955,7 +1955,15 @@
       "TEST_REQUEST_FAILED": "MiniCRM no pudo ejecutar esa comprobación. Inténtalo de nuevo."
     },
     "secureLabel": "Usar TLS al conectar (desmarque para servidores que usan STARTTLS en el puerto 143)",
-    "testButton": "Probar"
+    "testButton": "Probar",
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "paused": "En pausa",
+    "excludedDomainsButton_one": "Dominios excluidos ({{count}})",
+    "excludedDomainsButton_other": "Dominios excluidos ({{count}})",
+    "excludedDomainsLabel": "Dominios que nunca se sincronizan",
+    "excludedDomainsHint": "Uno por línea, como example.com. El correo cuyas demás direcciones estén todas en estos dominios, o en la lista de tu organización, nunca se sincroniza desde este buzón. Se aplica a partir de ahora.",
+    "updateError": "No se pudo actualizar este buzón. Inténtalo de nuevo."
   },
   "mfa": {
     "sectionTitle": "Autenticación en dos pasos",
@@ -3000,6 +3008,12 @@
       "recipientsInvalid": "No se pueden leer estas direcciones. Sepáralas con comas."
     },
     "accountsLoadError": "No se pudieron cargar tus buzones, así que por ahora no se puede enviar desde aquí.",
-    "composeFrozen": "Es posible que este mensaje ya esté en camino, así que ya no se puede editar. Enviar reintenta el mismo mensaje y no creará una segunda copia; para cambiarlo, cierra esta ventana y revisa primero tu carpeta de enviados."
+    "composeFrozen": "Es posible que este mensaje ya esté en camino, así que ya no se puede editar. Enviar reintenta el mismo mensaje y no creará una segunda copia; para cambiarlo, cierra esta ventana y revisa primero tu carpeta de enviados.",
+    "private": "Privado",
+    "markPrivate": "Marcar como privado",
+    "makeVisible": "Hacer visible",
+    "markPrivateHint": "Los correos que envíes en esta conversación se registran en la ficha sin asunto ni texto, los ya registrados pierden los suyos y el correo posterior sigue siendo privado.",
+    "makeVisibleHint": "Los correos que envíes en esta conversación vuelven a registrarse en la ficha con su asunto y su texto.",
+    "privacyError": "No se pudo cambiar la privacidad de esta conversación. Inténtalo de nuevo."
   }
 }

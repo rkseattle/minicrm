@@ -2545,6 +2545,11 @@ With the flag on, each user can connect their own Google, Microsoft or IMAP mail
 the mailbox it was synced from, even on a record several people share. A lead's mail is
 shown only to the lead's owner and admins.
 
+Users can **pause** a mailbox, keep their own **excluded domains**, and mark a conversation
+**private**, which keeps its subject and text out of the Email activities logged on records —
+see
+[Profile](user-guide/profile.md#pause-a-mailbox) and [Emails](user-guide/contacts.md#emails).
+
 | Setting                   | Where                                                | Default |
 | ------------------------- | ---------------------------------------------------- | ------- |
 | Excluded domains (org)    | **Admin Settings → Integrations → Email sync**       | None    |

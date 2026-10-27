@@ -11,6 +11,7 @@ import {
   MAX_EXCLUDED_DOMAINS,
   excludedDomainListSchema,
   excludedDomainSchema,
+  parseExcludedDomainLines,
 } from '@minicrm/shared/schemas/emailDomainSchema.js';
 import { updateConnectedAccountSchema } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 import { threadPrivacySchema } from '@minicrm/shared/schemas/emailMessageSchema.js';
@@ -87,6 +88,20 @@ describe('excludedDomainSchema length and IDN limits', () => {
 
   it('rejects a fully qualified trailing dot, which no address carries', () => {
     expect(excludedDomainSchema.safeParse('example.com.').success).toBe(false);
+  });
+});
+
+describe('parseExcludedDomainLines', () => {
+  it('splits on any line ending, trims, and drops blank lines', () => {
+    expect(parseExcludedDomainLines(' a.com \r\n\nb.com\n   \nc.com')).toEqual([
+      'a.com',
+      'b.com',
+      'c.com',
+    ]);
+  });
+
+  it('reads empty text as an empty list', () => {
+    expect(parseExcludedDomainLines('')).toEqual([]);
   });
 });
 

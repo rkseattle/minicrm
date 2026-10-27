@@ -1,13 +1,13 @@
 # data-testid Audit Report
 
-Generated: 2026-10-27T16:57:20.962Z
+Generated: 2026-10-27T17:18:13.952Z
 
 ## Summary
 
 - Matched: 601
 - Stale (broken locators): 0
 - Unexercised (in app, not in tests): 1062
-- Dynamic (manual review required): 702
+- Dynamic (manual review required): 715
 
 ## Stale testids (action required)
 
@@ -72,20 +72,20 @@ _None — all test-referenced testids are present in the application source._
 | `confirm-delete-title` | client/src/components/ConfirmDeleteModal.tsx | 107 |
 | `confirm-delete-message` | client/src/components/ConfirmDeleteModal.tsx | 112 |
 | `confirm-delete-modal-overlay` | client/src/components/ConfirmDeleteModal.tsx | 86 |
-| `connected-accounts-title` | client/src/components/ConnectedAccountsPanel.tsx | 186 |
-| `connected-accounts-dismiss-result` | client/src/components/ConnectedAccountsPanel.tsx | 204 |
-| `connected-accounts-loading` | client/src/components/ConnectedAccountsPanel.tsx | 217 |
-| `connected-accounts-load-error` | client/src/components/ConnectedAccountsPanel.tsx | 226 |
-| `connected-accounts-empty` | client/src/components/ConnectedAccountsPanel.tsx | 233 |
-| `connected-accounts-show-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 349 |
-| `connected-accounts-imap-email` | client/src/components/ConnectedAccountsPanel.tsx | 381 |
-| `connected-accounts-imap-host` | client/src/components/ConnectedAccountsPanel.tsx | 399 |
-| `connected-accounts-imap-port` | client/src/components/ConnectedAccountsPanel.tsx | 413 |
-| `connected-accounts-imap-username` | client/src/components/ConnectedAccountsPanel.tsx | 429 |
-| `connected-accounts-imap-password` | client/src/components/ConnectedAccountsPanel.tsx | 446 |
-| `connected-accounts-imap-secure` | client/src/components/ConnectedAccountsPanel.tsx | 458 |
-| `connected-accounts-imap-submit` | client/src/components/ConnectedAccountsPanel.tsx | 481 |
-| `connected-accounts-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 359 |
+| `connected-accounts-title` | client/src/components/ConnectedAccountsPanel.tsx | 228 |
+| `connected-accounts-dismiss-result` | client/src/components/ConnectedAccountsPanel.tsx | 246 |
+| `connected-accounts-loading` | client/src/components/ConnectedAccountsPanel.tsx | 259 |
+| `connected-accounts-load-error` | client/src/components/ConnectedAccountsPanel.tsx | 268 |
+| `connected-accounts-empty` | client/src/components/ConnectedAccountsPanel.tsx | 275 |
+| `connected-accounts-show-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 511 |
+| `connected-accounts-imap-email` | client/src/components/ConnectedAccountsPanel.tsx | 543 |
+| `connected-accounts-imap-host` | client/src/components/ConnectedAccountsPanel.tsx | 561 |
+| `connected-accounts-imap-port` | client/src/components/ConnectedAccountsPanel.tsx | 575 |
+| `connected-accounts-imap-username` | client/src/components/ConnectedAccountsPanel.tsx | 591 |
+| `connected-accounts-imap-password` | client/src/components/ConnectedAccountsPanel.tsx | 608 |
+| `connected-accounts-imap-secure` | client/src/components/ConnectedAccountsPanel.tsx | 620 |
+| `connected-accounts-imap-submit` | client/src/components/ConnectedAccountsPanel.tsx | 643 |
+| `connected-accounts-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 521 |
 | `contact-enrichment-error` | client/src/components/ContactEnrichmentModal.tsx | 125 |
 | `contact-enrichment-insufficient` | client/src/components/ContactEnrichmentModal.tsx | 135 |
 | `contact-enrichment-cancel` | client/src/components/ContactEnrichmentModal.tsx | 168 |
@@ -132,14 +132,14 @@ _None — all test-referenced testids are present in the application source._
 | `email-composer` | client/src/components/EmailComposer.tsx | 148 |
 | `email-draft-error` | client/src/components/EmailDraftPanel.tsx | 142 |
 | `email-draft-copy-error` | client/src/components/EmailDraftPanel.tsx | 192 |
-| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 262 |
-| `emails-loading` | client/src/components/EmailsSection.tsx | 268 |
-| `emails-error` | client/src/components/EmailsSection.tsx | 275 |
-| `email-thread-participants` | client/src/components/EmailsSection.tsx | 325 |
-| `email-thread-date` | client/src/components/EmailsSection.tsx | 333 |
-| `email-thread-subject` | client/src/components/EmailsSection.tsx | 340 |
-| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 347 |
-| `emails-thread-list` | client/src/components/EmailsSection.tsx | 297 |
+| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 291 |
+| `emails-loading` | client/src/components/EmailsSection.tsx | 297 |
+| `emails-error` | client/src/components/EmailsSection.tsx | 304 |
+| `email-thread-participants` | client/src/components/EmailsSection.tsx | 356 |
+| `email-thread-date` | client/src/components/EmailsSection.tsx | 364 |
+| `email-thread-subject` | client/src/components/EmailsSection.tsx | 371 |
+| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 378 |
+| `emails-thread-list` | client/src/components/EmailsSection.tsx | 326 |
 | `error-boundary-reload` | client/src/components/ErrorBoundary.tsx | 29 |
 | `error-boundary-dashboard-link` | client/src/components/ErrorBoundary.tsx | 37 |
 | `error-boundary-fallback` | client/src/components/ErrorBoundary.tsx | 20 |
@@ -821,18 +821,18 @@ _None — all test-referenced testids are present in the application source._
 | `audit-log-section-title` | client/src/pages/admin/DataSettings.tsx | 391 |
 | `audit-log-link` | client/src/pages/admin/DataSettings.tsx | 399 |
 | `audit-log-section` | client/src/pages/admin/DataSettings.tsx | 387 |
-| `email-sync-settings-disabled-banner` | client/src/pages/admin/EmailSyncSettings.tsx | 142 |
-| `email-sync-settings-loading` | client/src/pages/admin/EmailSyncSettings.tsx | 149 |
-| `email-sync-settings-error` | client/src/pages/admin/EmailSyncSettings.tsx | 155 |
-| `email-sync-excluded-domains-input` | client/src/pages/admin/EmailSyncSettings.tsx | 184 |
-| `email-sync-domains-error` | client/src/pages/admin/EmailSyncSettings.tsx | 190 |
-| `email-sync-domains-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 199 |
-| `email-sync-domains-save` | client/src/pages/admin/EmailSyncSettings.tsx | 207 |
-| `email-sync-backfill-days-input` | client/src/pages/admin/EmailSyncSettings.tsx | 237 |
-| `email-sync-days-error` | client/src/pages/admin/EmailSyncSettings.tsx | 240 |
-| `email-sync-days-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 248 |
-| `email-sync-days-save` | client/src/pages/admin/EmailSyncSettings.tsx | 256 |
-| `email-sync-settings` | client/src/pages/admin/EmailSyncSettings.tsx | 130 |
+| `email-sync-settings-disabled-banner` | client/src/pages/admin/EmailSyncSettings.tsx | 135 |
+| `email-sync-settings-loading` | client/src/pages/admin/EmailSyncSettings.tsx | 142 |
+| `email-sync-settings-error` | client/src/pages/admin/EmailSyncSettings.tsx | 148 |
+| `email-sync-excluded-domains-input` | client/src/pages/admin/EmailSyncSettings.tsx | 177 |
+| `email-sync-domains-error` | client/src/pages/admin/EmailSyncSettings.tsx | 183 |
+| `email-sync-domains-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 192 |
+| `email-sync-domains-save` | client/src/pages/admin/EmailSyncSettings.tsx | 200 |
+| `email-sync-backfill-days-input` | client/src/pages/admin/EmailSyncSettings.tsx | 230 |
+| `email-sync-days-error` | client/src/pages/admin/EmailSyncSettings.tsx | 233 |
+| `email-sync-days-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 241 |
+| `email-sync-days-save` | client/src/pages/admin/EmailSyncSettings.tsx | 249 |
+| `email-sync-settings` | client/src/pages/admin/EmailSyncSettings.tsx | 123 |
 | `feature-flag-confirm-cancel` | client/src/pages/admin/FeatureFlagsSettings.tsx | 131 |
 | `group-create-open` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1042 |
 | `group-create-label` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1075 |
@@ -1118,14 +1118,23 @@ _None — all test-referenced testids are present in the application source._
 | `champion-blocker-dismiss-*` | client/src/components/ChampionBlockerBadge.tsx | 87 | app |
 | `change-history-time-*` | client/src/components/ChangeHistory.tsx | 168 | app |
 | `change-history-entry-*` | client/src/components/ChangeHistory.tsx | 160 | app |
-| `connected-account-status-*` | client/src/components/ConnectedAccountsPanel.tsx | 256 | app |
-| `connected-account-status-detail-*` | client/src/components/ConnectedAccountsPanel.tsx | 266 | app |
-| `connected-account-test-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 307 | app |
-| `connected-account-disconnect-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 317 | app |
-| `connected-account-disconnect-confirm-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 285 | app |
-| `connected-account-disconnect-cancel-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 295 | app |
-| `connected-account-disconnect-confirm-*` | client/src/components/ConnectedAccountsPanel.tsx | 276 | app |
-| `connected-account-row-*` | client/src/components/ConnectedAccountsPanel.tsx | 244 | app |
+| `connected-account-status-*` | client/src/components/ConnectedAccountsPanel.tsx | 299 | app |
+| `connected-account-paused-*` | client/src/components/ConnectedAccountsPanel.tsx | 304 | app |
+| `connected-account-status-detail-*` | client/src/components/ConnectedAccountsPanel.tsx | 315 | app |
+| `connected-account-pause-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 356 | app |
+| `connected-account-domains-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 379 | app |
+| `connected-account-test-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 394 | app |
+| `connected-account-disconnect-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 404 | app |
+| `connected-account-disconnect-confirm-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 334 | app |
+| `connected-account-disconnect-cancel-button-*` | client/src/components/ConnectedAccountsPanel.tsx | 344 | app |
+| `connected-account-disconnect-confirm-*` | client/src/components/ConnectedAccountsPanel.tsx | 325 | app |
+| `connected-account-update-error-*` | client/src/components/ConnectedAccountsPanel.tsx | 420 | app |
+| `connected-account-domains-input-*` | client/src/components/ConnectedAccountsPanel.tsx | 453 | app |
+| `connected-account-domains-error-*` | client/src/components/ConnectedAccountsPanel.tsx | 459 | app |
+| `connected-account-domains-save-*` | client/src/components/ConnectedAccountsPanel.tsx | 469 | app |
+| `connected-account-domains-cancel-*` | client/src/components/ConnectedAccountsPanel.tsx | 478 | app |
+| `connected-account-domains-editor-*` | client/src/components/ConnectedAccountsPanel.tsx | 430 | app |
+| `connected-account-row-*` | client/src/components/ConnectedAccountsPanel.tsx | 286 | app |
 | `**-remove-*` | client/src/components/ContactSelector.tsx | 125 | app |
 | `**-chip-*` | client/src/components/ContactSelector.tsx | 116 | app |
 | `**-selected-list` | client/src/components/ContactSelector.tsx | 109 | app |
@@ -1179,17 +1188,21 @@ _None — all test-referenced testids are present in the application source._
 | `deal-card-probability-*` | client/src/components/DealCard.tsx | 108 | app |
 | `deal-card-stage-select-*` | client/src/components/DealCard.tsx | 127 | app |
 | `deal-card-*` | client/src/components/DealCard.tsx | 68 | app |
-| `email-direction-*` | client/src/components/EmailsSection.tsx | 100 | app |
-| `email-body-loading-*` | client/src/components/EmailsSection.tsx | 120 | app |
-| `email-body-error-*` | client/src/components/EmailsSection.tsx | 127 | app |
-| `email-body-text-*` | client/src/components/EmailsSection.tsx | 144 | app |
-| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 318 | app |
-| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 361 | app |
-| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 386 | app |
-| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 433 | app |
-| `email-reply-*` | client/src/components/EmailsSection.tsx | 405 | app |
-| `email-message-*` | client/src/components/EmailsSection.tsx | 375 | app |
-| `email-thread-*` | client/src/components/EmailsSection.tsx | 310 | app |
+| `email-direction-*` | client/src/components/EmailsSection.tsx | 101 | app |
+| `email-thread-private-*` | client/src/components/EmailsSection.tsx | 116 | app |
+| `email-body-loading-*` | client/src/components/EmailsSection.tsx | 134 | app |
+| `email-body-error-*` | client/src/components/EmailsSection.tsx | 141 | app |
+| `email-body-text-*` | client/src/components/EmailsSection.tsx | 158 | app |
+| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 348 | app |
+| `email-thread-privacy-hint-*` | client/src/components/EmailsSection.tsx | 391 | app |
+| `email-thread-privacy-error-*` | client/src/components/EmailsSection.tsx | 399 | app |
+| `email-thread-privacy-*` | client/src/components/EmailsSection.tsx | 410 | app |
+| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 425 | app |
+| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 450 | app |
+| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 497 | app |
+| `email-reply-*` | client/src/components/EmailsSection.tsx | 469 | app |
+| `email-message-*` | client/src/components/EmailsSection.tsx | 439 | app |
+| `email-thread-*` | client/src/components/EmailsSection.tsx | 340 | app |
 | `**-tags-heading` | client/src/components/EntityDetailSidebar.tsx | 108 | app |
 | `**-tags-section` | client/src/components/EntityDetailSidebar.tsx | 103 | app |
 | `field-merge-auto-*` | client/src/components/FieldMergeModal.tsx | 332 | app |
