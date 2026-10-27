@@ -18,26 +18,7 @@ import logger from '../logger.js';
 import { getSmtpConfigInternal } from './smtpSettingsService.js';
 import { isAuthBypassEnv } from '../utils/nodeEnv.js';
 import type { RecordLinkType } from '@minicrm/shared/types/recordPath.js';
-
-/** HTML-escape map for the five characters that can break HTML contexts */
-const HTML_ESCAPE_MAP: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#x27;',
-};
-
-/**
- * Escapes a string for safe interpolation into HTML.
- * All user-supplied data must pass through this before being placed in email templates.
- *
- * @param str - Raw string value from user or DB.
- * @returns HTML-safe string.
- */
-export function escapeHtml(str: string): string {
-  return str.replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch] ?? ch);
-}
+import { escapeHtml, plainTextToHtml } from '@minicrm/shared/text/html.js';
 
 /** The From address used in all outbound emails (display-name format for the header). */
 function getFromAddress(): string {
@@ -375,7 +356,7 @@ export async function sendContactEmail(
   }
 
   const html = `
-    <p>${escapeHtml(body).replace(/\n/g, '<br>')}</p>
+    ${plainTextToHtml(body)}
     <p style="color:#888;font-size:12px;margin-top:24px">
       Sent by ${escapeHtml(sentByName)} via MiniCRM
     </p>

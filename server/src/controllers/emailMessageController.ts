@@ -12,12 +12,12 @@ import {
   recordMessagesParamsSchema,
   EMAIL_LINK_EDIT_CAPABILITY,
   sendEmailSchema,
-  sendLogsActivity,
+  capabilitiesToSendFrom,
   type EmailLinkRecordType,
   type SendErrorCode,
   type SendRequestErrorCode,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
-import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
+import type { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
 import {
@@ -353,29 +353,18 @@ export async function sendEmailHandler(req: Request, res: Response): Promise<voi
       res.status(404).json(errorBody('NOT_FOUND', 'No such record'));
       return;
     }
-    const allowed = await canWriteLinkToRecord(
-      input.record_type,
-      ownerId,
-      { id: req.user!.id, role: req.user!.role },
-      res.locals.capabilities,
-    );
+    // One rule for client and server: the capabilities the composer checks before it opens.
+    const held: ReadonlySet<Capability> =
+      res.locals.capabilities ?? (await userCapabilities(req.user!.id));
+    const allowed =
+      capabilitiesToSendFrom(input.record_type).every((capability) => held.has(capability)) &&
+      (await canReadLinkedRecord(input.record_type, ownerId, {
+        id: req.user!.id,
+        role: req.user!.role,
+      }));
     if (!allowed) {
       res.status(403).json(errorBody('FORBIDDEN', 'You may not send mail from this record.'));
       return;
-    }
-    // Sending from a contact, account, or deal files an activity there, so it needs the
-    // capability POST /activities does. A lead takes no activity.
-    if (sendLogsActivity(input.record_type)) {
-      const held: ReadonlySet<Capability> =
-        res.locals.capabilities ?? (await userCapabilities(req.user!.id));
-      if (!held.has(Capability.ActivitiesCreate)) {
-        res
-          .status(403)
-          .json(
-            errorBody('FORBIDDEN', 'You may not log activities, which sending from a record does.'),
-          );
-        return;
-      }
     }
   }
 

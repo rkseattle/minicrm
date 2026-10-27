@@ -27,7 +27,7 @@ import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { CLOSE_AFTER_SENT_MS, useMailboxSend } from '@/hooks/useMailboxSend.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
-import { plainTextToHtml } from '@/utils/plainTextToHtml.js';
+import { plainTextToHtml } from '@shared/text/html.js';
 import { sanitizeEmailHtml } from '@/utils/sanitizeEmailHtml.js';
 
 /** The selector value for the org's own SMTP, which every user has. */

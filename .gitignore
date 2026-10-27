@@ -39,6 +39,8 @@ shared/generated/*.d.ts
 # Same for shared/types — build artifacts, not sources.
 shared/types/*.js
 shared/types/*.d.ts
+shared/text/*.js
+shared/text/*.d.ts
 # And shared/testing. These were tracked by accident, which split behavior:
 # vitest aliases @minicrm/shared/*.js to the .ts, while every plain-tsx consumer
 # (verify-test-attestation, assertTestDatabaseTarget, targeted-run-plan,

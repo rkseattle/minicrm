@@ -24,7 +24,7 @@ import {
   exportAccountPdf,
   ACCOUNTS_QUERY_KEY,
 } from '@/api/accounts.js';
-import { listContacts } from '@/api/contacts.js';
+import { listContacts, CONTACTS_QUERY_KEY } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import type { ActiveUser } from '@/api/users.js';
@@ -65,7 +65,7 @@ export default function AccountDetailPage() {
   const { enabled: sentimentTrackingEnabled } = useFeatureFlag('ai_sentiment_tracking');
   const { enabled: relationshipHealthEnabled } = useFeatureFlag('ai_relationship_health_score');
 
-  const accountQueryKey = ['accounts', id] as const;
+  const accountQueryKey = [...ACCOUNTS_QUERY_KEY, id] as const;
 
   // Three-way merge conflict state
   const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =
@@ -73,8 +73,8 @@ export default function AccountDetailPage() {
       entityCacheKey: 'account',
       entityQueryKey: accountQueryKey,
     });
-  const linkedContactsQueryKey = ['contacts', 'byAccount', id] as const;
-  const childAccountsQueryKey = ['accounts', id, 'children'] as const;
+  const linkedContactsQueryKey = [...CONTACTS_QUERY_KEY, 'byAccount', id] as const;
+  const childAccountsQueryKey = [...ACCOUNTS_QUERY_KEY, id, 'children'] as const;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: accountQueryKey,
@@ -95,7 +95,7 @@ export default function AccountDetailPage() {
   });
 
   // Fetch parent account name so the edit form can display it
-  const parentAccountQueryKey = ['accounts', data?.account?.parent_account_id] as const;
+  const parentAccountQueryKey = [...ACCOUNTS_QUERY_KEY, data?.account?.parent_account_id] as const;
   const { data: parentAccountData } = useQuery({
     queryKey: parentAccountQueryKey,
     queryFn: () => getAccount(data!.account.parent_account_id!),

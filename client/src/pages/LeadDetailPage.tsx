@@ -62,7 +62,7 @@ export default function LeadDetailPage() {
   const [exportPdfError, setExportPdfError] = useState<string | null>(null);
   const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
 
-  const leadQueryKey = ['leads', id] as const;
+  const leadQueryKey = [...LEADS_QUERY_KEY, id] as const;
 
   // Three-way merge conflict state
   const { conflictBase, conflictTheirs, conflictPendingValues, handleConflict, clearConflict } =

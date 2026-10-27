@@ -26,7 +26,7 @@ export function emailFrameDocument(sanitizedBody: string, allowImages: boolean):
     '<!doctype html><html><head><meta charset="utf-8">' +
     `<meta http-equiv="Content-Security-Policy" content="${emailFramePolicy(allowImages)}">` +
     '<base target="_blank">' +
-    '<style>body{margin:8px;font:14px/1.5 system-ui,sans-serif;color:#111827;' +
+    '<style>body{margin:8px;font:0.875rem/1.5 system-ui,sans-serif;color:#111827;' +
     'overflow-wrap:anywhere}img{max-width:100%;height:auto}</style>' +
     `</head><body>${sanitizedBody}</body></html>`
   );
@@ -44,7 +44,7 @@ interface EmailBodyFrameProps {
 export default function EmailBodyFrame({ html, allowImages, title }: EmailBodyFrameProps) {
   const { t } = useTranslation();
   return (
-    <div className="h-64 resize-y overflow-hidden rounded-sm border border-gray-200 bg-white">
+    <div className="h-64 min-h-32 resize-y overflow-auto rounded-sm border border-gray-200 bg-white">
       <iframe
         title={t('emails.bodyFrameTitle', { subject: title })}
         sandbox={EMAIL_FRAME_SANDBOX}

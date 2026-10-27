@@ -2986,6 +2986,7 @@
       "sent": "Correo enviado desde {{mailbox}}",
       "recipientsInvalid": "No se pueden leer estas direcciones. Sepáralas con comas."
     },
-    "accountsLoadError": "No se pudieron cargar tus buzones, así que por ahora no se puede enviar desde aquí."
+    "accountsLoadError": "No se pudieron cargar tus buzones, así que por ahora no se puede enviar desde aquí.",
+    "composeFrozen": "Es posible que este mensaje ya esté en camino, así que ya no se puede editar. Enviar reintenta el mismo mensaje y no creará una segunda copia; para cambiarlo, cierra esta ventana y revisa primero tu carpeta de enviados."
   }
 }

@@ -52,7 +52,7 @@ import {
   recordPreparedMessageId,
   type IntentUnderKey,
 } from './emailSendIntentService.js';
-import { escapeHtml } from './emailService.js';
+import { escapeHtml, plainTextToHtml } from '@minicrm/shared/text/html.js';
 import { findEmailTemplateById } from './emailTemplateService.js';
 import { createGmailProvider } from './mail/gmailProvider.js';
 import { createGraphProvider } from './mail/graphProvider.js';
@@ -288,11 +288,6 @@ async function mergeContextFor(
     client.query<Record<string, string | null>>(queries[recordType], [recordId]),
   );
   return result.rows[0] ?? {};
-}
-
-/** A typed plain-text body as the HTML a message carries, line breaks kept. */
-function plainTextToHtml(body: string): string {
-  return `<p>${escapeHtml(body).replace(/\r?\n/g, '<br>')}</p>`;
 }
 
 /** The subject and HTML body to send, and the merge tags a template left empty. */

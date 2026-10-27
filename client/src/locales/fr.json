@@ -2986,6 +2986,7 @@
       "sent": "E-mail envoyé depuis {{mailbox}}",
       "recipientsInvalid": "Ces adresses sont illisibles. Séparez-les par des virgules."
     },
-    "accountsLoadError": "Vos boîtes aux lettres n'ont pas pu être chargées ; l'envoi depuis ici est indisponible pour le moment."
+    "accountsLoadError": "Vos boîtes aux lettres n'ont pas pu être chargées ; l'envoi depuis ici est indisponible pour le moment.",
+    "composeFrozen": "Ce message est peut-être déjà en route : il ne peut plus être modifié. Envoyer réessaie le même message et n'en créera pas de deuxième copie ; pour le modifier, fermez cette fenêtre et vérifiez d'abord votre dossier Envoyés."
   }
 }

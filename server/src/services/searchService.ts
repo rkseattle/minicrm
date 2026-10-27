@@ -8,12 +8,11 @@
  * accounts.name, and deals.name were added in migration 041 and
  * allow PostgreSQL to use index scans for leading-wildcard ILIKE patterns.
  * Migration 049 adds a GIN index on notes.body_text to support
- * the notes join added below, and 187 indexes email subjects and snippets.
+ * the notes join added below, and 188 indexes email subjects and snippets.
  */
 
 import pool from '../db.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
-import type { EmailLinkRecordType } from '@minicrm/shared/schemas/emailMessageSchema.js';
 import { buildVisibleLinkPredicate } from './emailMessageService.js';
 import { isFlagEnabledForUser } from './featureFlagService.js';
 import { userCapabilities } from './roleService.js';
@@ -24,55 +23,23 @@ export const SEARCH_MIN_LENGTH = 2;
 /** Maximum results returned per entity type */
 const SEARCH_RESULT_LIMIT = 10;
 
-/** Shape of a contact search result */
-export interface ContactSearchResult {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-}
+import type {
+  ContactSearchResult,
+  AccountSearchResult,
+  DealSearchResult,
+  LeadSearchResult,
+  EmailSearchResult,
+  SearchResults,
+} from '@minicrm/shared/types/search.js';
 
-/** Shape of an account search result */
-export interface AccountSearchResult {
-  id: string;
-  name: string;
-}
-
-/** Shape of a deal search result */
-export interface DealSearchResult {
-  id: string;
-  name: string;
-  stage: string;
-}
-
-/** Shape of a lead search result */
-export interface LeadSearchResult {
-  id: string;
-  first_name: string;
-  last_name: string | null;
-  email: string;
-  company_name: string | null;
-}
-
-/** Shape of an email search result, with the linked record it opens */
-export interface EmailSearchResult {
-  id: string;
-  subject: string | null;
-  snippet: string | null;
-  from_address: string;
-  sent_at: string | null;
-  record_type: EmailLinkRecordType;
-  record_id: string;
-}
-
-/** Aggregated search response returned by globalSearch */
-export interface SearchResults {
-  contacts: ContactSearchResult[];
-  accounts: AccountSearchResult[];
-  deals: DealSearchResult[];
-  leads: LeadSearchResult[];
-  emails: EmailSearchResult[];
-}
+export type {
+  ContactSearchResult,
+  AccountSearchResult,
+  DealSearchResult,
+  LeadSearchResult,
+  EmailSearchResult,
+  SearchResults,
+};
 
 /** Options controlling ownership scoping */
 interface SearchOptions {

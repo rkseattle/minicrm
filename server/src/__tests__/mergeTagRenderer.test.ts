@@ -83,7 +83,7 @@ describe('renderTemplate', () => {
     );
 
     expect(rendered.bodyHtml).toBe(
-      '<p>&lt;img src=x onerror=&quot;alert(1)&quot;&gt; &amp; &#x27;quoted&#x27;</p>',
+      '<p>&lt;img src=x onerror=&quot;alert(1)&quot;&gt; &amp; &#39;quoted&#39;</p>',
     );
     expect(rendered.subject).toBe('<img src=x onerror="alert(1)"> & \'quoted\'');
   });

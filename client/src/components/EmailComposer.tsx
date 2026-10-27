@@ -24,7 +24,7 @@ import { useFocusTrap } from '@/hooks/useFocusTrap.js';
 import { CLOSE_AFTER_SENT_MS, useMailboxSend } from '@/hooks/useMailboxSend.js';
 import { parseRecipients, replyRecipients, replySubject } from '@/utils/emailCompose.js';
 import { resolveApiError } from '@/utils/apiError.js';
-import { plainTextToHtml } from '@/utils/plainTextToHtml.js';
+import { plainTextToHtml } from '@shared/text/html.js';
 
 /** What the composer was opened to do. */
 export type ComposeMode =
@@ -259,9 +259,7 @@ export default function EmailComposer({
               className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2"
             >
               {errorMessage}
-              {frozen && (
-                <span className="block mt-1">{t('contacts.sendEmail.composeFrozen')}</span>
-              )}
+              {frozen && <span className="block mt-1">{t('emails.composeFrozen')}</span>}
             </p>
           )}
 

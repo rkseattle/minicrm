@@ -221,25 +221,6 @@ export async function listMessagesForRecord(
 }
 
 /**
- * Returns the caller's synced messages that no record claims, newest conversation first.
- *
- * Scoped to the caller's own mailboxes, which is the whole of "own accounts only": a
- * message another rep synced is not this rep's to triage.
- */
-/**
- * A link the caller can actually follow, as a SQL predicate over `m`.
- *
- * Matching runs in a system context and sees every record, so a message can end up linked
- * only to records the mailbox owner cannot read. Treating those as "matched" would drop
- * the message out of the unmatched inbox while the record endpoint answers 403 — the
- * owner's own mail, reachable through nothing. So the inbox asks whether a link is
- * VISIBLE to them, not whether one exists.
- *
- * `$2` is true when the caller reads org-wide (admin and viewer always; a rep or manager
- * never, since neither an org policy nor a team can be settled per row here — they fall
- * back to records they own, which is the conservative half of the rule).
- */
-/**
  * Builds "the caller can follow at least one of this message's links", as SQL.
  *
  * Matching runs in a system context and sees every record, so a message can end up linked
@@ -319,6 +300,18 @@ export async function buildVisibleLinkPredicate(
   };
 }
 
+/**
+ * Returns the caller's synced messages that no record claims, newest conversation first.
+ *
+ * Scoped to the caller's own mailboxes, which is the whole of "own accounts only": a
+ * message another rep synced is not this rep's to triage.
+ *
+ * @param userId - The caller, whose mailboxes are searched
+ * @param userRole - The caller's role, which decides which links count as visible
+ * @param page - 1-based page number
+ * @param limit - Page size
+ * @returns the caller's unmatched threads, one page
+ */
 export async function listUnmatchedMessages(
   userId: string,
   userRole: string,

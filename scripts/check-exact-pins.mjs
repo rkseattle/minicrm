@@ -22,6 +22,9 @@ const DEPENDENCY_SECTIONS = ['dependencies', 'devDependencies', 'optionalDepende
 export const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const LOCAL_PATH = /^(workspace:|file:|link:)/;
 const NPM_ALIAS = /^npm:(?:@[^/@]+\/)?[^@]+@(.+)$/;
+// A git source pinned to a full 40-hex commit, the git form of an exact version.
+const GIT_COMMIT_PIN =
+  /^(?:git\+[a-z]+:\/\/|git:\/\/|github:|gitlab:|bitbucket:)[^#]+#[0-9a-f]{40}$/i;
 
 /**
  * Every ranged dependency in one manifest.
@@ -40,6 +43,7 @@ export function rangedDependencies(manifest, file, workspaceNames = new Set()) {
       if (spec === '*' && workspaceNames.has(name)) continue;
       const alias = spec.match(NPM_ALIAS);
       if (alias && EXACT_VERSION.test(alias[1])) continue;
+      if (GIT_COMMIT_PIN.test(spec)) continue;
       found.push({ file, section, name, spec });
     }
   }
@@ -84,6 +88,9 @@ function selfTest() {
       prereleaseBuild: '1.2.3-rc.1+b',
       gitSpec: 'git+https://github.com/o/r.git#v1',
       githubShorthand: 'github:o/r',
+      gitCommit: 'git+https://github.com/o/r.git#0123456789abcdef0123456789abcdef01234567',
+      githubCommit: 'github:o/r#0123456789abcdef0123456789abcdef01234567',
+      gitShortSha: 'github:o/r#0123456',
       tarball: 'https://example.test/pkg.tgz',
       '@minicrm/shared': '*',
       '//note': 'comment keys are prose',
@@ -108,6 +115,7 @@ function selfTest() {
     'rangedAlias',
     'gitSpec',
     'githubShorthand',
+    'gitShortSha',
     'tarball',
     'tag',
     'optionalRange',
@@ -118,8 +126,9 @@ function selfTest() {
   }
   console.log(
     `SELF-TEST PASS: ${want.length} non-exact specs flagged, including a non-workspace "*", ` +
-      'git/github/tarball sources and an optional; exact, prerelease, build metadata, exact ' +
-      'alias, workspace sibling "*", workspace:, file:, link: and comment entries ignored.',
+      'git/github sources by branch, tag or short SHA, a tarball and an optional; exact, ' +
+      'prerelease, build metadata, exact alias, full-SHA git pins, workspace sibling "*", ' +
+      'workspace:, file:, link: and comment entries ignored.',
   );
 }
 

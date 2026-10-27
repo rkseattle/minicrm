@@ -9,12 +9,15 @@
 import apiClient from './axiosInstance.js';
 import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
 
+/** Root React Query key for every audit-log query */
+export const AUDIT_LOG_QUERY_KEY = ['audit-log'] as const;
+
 /** React Query key for per-record audit log */
 export const RECORD_AUDIT_LOG_QUERY_KEY = (recordType: string, recordId: string) =>
-  ['audit-log', 'record', recordType, recordId] as const;
+  [...AUDIT_LOG_QUERY_KEY, 'record', recordType, recordId] as const;
 
 /** React Query key for audit log actors */
-export const AUDIT_LOG_ACTORS_QUERY_KEY = ['audit-log', 'actors'] as const;
+export const AUDIT_LOG_ACTORS_QUERY_KEY = [...AUDIT_LOG_QUERY_KEY, 'actors'] as const;
 
 /** Response shape for the per-record audit log endpoint */
 export interface RecordAuditLogResponse {

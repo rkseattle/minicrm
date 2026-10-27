@@ -4,60 +4,21 @@
  */
 
 import apiClient from './axiosInstance.js';
-import type { EmailLinkRecordType } from '@shared/schemas/emailMessageSchema.js';
+import type { SearchResults } from '@shared/types/search.js';
 
 /** React Query cache key for global search results. */
 export const GLOBAL_SEARCH_QUERY_KEY = ['global-search'] as const;
 
-/** A contact result returned by the search endpoint */
-export interface ContactSearchResult {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-}
-
-/** An account result returned by the search endpoint */
-export interface AccountSearchResult {
-  id: string;
-  name: string;
-}
-
-/** A deal result returned by the search endpoint */
-export interface DealSearchResult {
-  id: string;
-  name: string;
-  stage: string;
-}
-
-/** A lead result returned by the search endpoint */
-export interface LeadSearchResult {
-  id: string;
-  first_name: string;
-  last_name: string | null;
-  email: string;
-  company_name: string | null;
-}
-
-/** One of the caller's own messages, with the linked record it opens */
-export interface EmailSearchResult {
-  id: string;
-  subject: string | null;
-  snippet: string | null;
-  from_address: string;
-  sent_at: string | null;
-  record_type: EmailLinkRecordType;
-  record_id: string;
-}
+export type {
+  ContactSearchResult,
+  AccountSearchResult,
+  DealSearchResult,
+  LeadSearchResult,
+  EmailSearchResult,
+} from '@shared/types/search.js';
 
 /** Full response from GET /api/v1/search */
-export interface SearchResponse {
-  contacts: ContactSearchResult[];
-  accounts: AccountSearchResult[];
-  deals: DealSearchResult[];
-  leads: LeadSearchResult[];
-  emails: EmailSearchResult[];
-}
+export type { SearchResults as SearchResponse } from '@shared/types/search.js';
 
 /**
  * Performs a global cross-entity search.
@@ -65,7 +26,7 @@ export interface SearchResponse {
  * @param query - The search term (minimum 2 characters)
  * @returns Grouped search results for contacts, accounts, deals, leads, and email
  */
-export async function globalSearch(query: string): Promise<SearchResponse> {
-  const response = await apiClient.get<SearchResponse>('/search', { params: { q: query } });
+export async function globalSearch(query: string): Promise<SearchResults> {
+  const response = await apiClient.get<SearchResults>('/search', { params: { q: query } });
   return response.data;
 }

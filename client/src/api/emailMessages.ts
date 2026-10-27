@@ -1,6 +1,7 @@
 /**
  * Email messages API module.
- * Wraps sending through a connected mailbox.
+ * Wraps listing a record's threads, reading message bodies, and sending through a
+ * connected mailbox.
  */
 
 import {

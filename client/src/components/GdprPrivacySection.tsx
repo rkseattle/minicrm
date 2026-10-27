@@ -19,6 +19,8 @@ import {
 } from '@/api/gdpr.js';
 import { resolveApiError } from '@/utils/apiError.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
+import { CONTACTS_QUERY_KEY } from '@/api/contacts.js';
+import { LEADS_QUERY_KEY } from '@/api/leads.js';
 
 interface GdprPrivacySectionProps {
   /** 'contact' or 'lead' */
@@ -59,7 +61,7 @@ export default function GdprPrivacySection({
       setEraseError(null);
       void queryClient.invalidateQueries({ queryKey: statusQueryKey });
       void queryClient.invalidateQueries({
-        queryKey: [recordType === 'contact' ? 'contacts' : 'leads', recordId],
+        queryKey: [...(recordType === 'contact' ? CONTACTS_QUERY_KEY : LEADS_QUERY_KEY), recordId],
       });
       onErased();
     },

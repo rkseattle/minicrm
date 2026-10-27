@@ -2986,6 +2986,7 @@
       "sent": "Email sent from {{mailbox}}",
       "recipientsInvalid": "These addresses can't be read. Separate them with commas."
     },
-    "accountsLoadError": "Your mailboxes couldn't be loaded, so sending from here is unavailable for now."
+    "accountsLoadError": "Your mailboxes couldn't be loaded, so sending from here is unavailable for now.",
+    "composeFrozen": "This message may already be on its way, so it can no longer be edited. Send retries the same message and will not create a second copy; to change it, close this window and check your Sent folder first."
   }
 }

@@ -2986,6 +2986,7 @@
       "sent": "E-Mail gesendet von {{mailbox}}",
       "recipientsInvalid": "Diese Adressen können nicht gelesen werden. Trennen Sie sie durch Kommas."
     },
-    "accountsLoadError": "Ihre Postfächer konnten nicht geladen werden, daher ist das Senden von hier aus vorerst nicht möglich."
+    "accountsLoadError": "Ihre Postfächer konnten nicht geladen werden, daher ist das Senden von hier aus vorerst nicht möglich.",
+    "composeFrozen": "Diese Nachricht ist möglicherweise schon unterwegs und kann daher nicht mehr bearbeitet werden. Senden wiederholt dieselbe Nachricht und erzeugt keine zweite Kopie; um sie zu ändern, schließen Sie dieses Fenster und prüfen Sie zuerst Ihren Ordner „Gesendet“."
   }
 }

@@ -6,7 +6,8 @@
     "./schemas/*": "./schemas/*",
     "./generated/*": "./generated/*",
     "./testing/*": "./testing/*",
-    "./types/*": "./types/*"
+    "./types/*": "./types/*",
+    "./text/*": "./text/*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json"

@@ -74,6 +74,11 @@ advisory becomes a forced, multi-major emergency.
 A major moves in its own commit, after its vendor's migration guide, with the tests that
 cover it. So does a 0.x minor whose changelog marks it breaking.
 
+One recorded exception: commit 549b0b4e (MINCRM-580) moved fourteen majors together, at the
+tech lead's direction, to stop paying a full gate run per major on a branch already
+carrying them. Its message lists every major and each migration step; reverting one means
+reverting within that commit. It is not a precedent: the next major goes in its own commit.
+
 ### Held
 
 | Package             | Held at | Why                                                                                                                                                                                                                                       |
