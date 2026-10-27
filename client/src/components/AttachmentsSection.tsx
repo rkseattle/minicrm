@@ -197,8 +197,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
           <div
             role="button"
             tabIndex={0}
-            // Named by its visible hint, so a speech user can say what they see.
-            aria-labelledby="attachments-upload-zone-hint"
+            // Named by its own text, so a speech user can say what they see.
             aria-describedby="attachments-upload-zone-types"
             data-testid="attachments-upload-zone"
             onDrop={handleDrop}
@@ -216,15 +215,19 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
               uploadMutation.isPending ? 'opacity-50 pointer-events-none' : '',
             ].join(' ')}
           >
-            <p id="attachments-upload-zone-hint" className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600">
               {uploadMutation.isPending
                 ? t('attachments.uploading')
                 : t('attachments.uploadZoneHint')}
             </p>
-            <p id="attachments-upload-zone-types" className="text-xs text-gray-500 mt-1">
-              {t('attachments.uploadZoneTypes')}
-            </p>
           </div>
+          {/* Outside the button: every word inside it must be part of its name. */}
+          <p
+            id="attachments-upload-zone-types"
+            className="-mt-3 mb-4 text-center text-xs text-gray-500"
+          >
+            {t('attachments.uploadZoneTypes')}
+          </p>
 
           <input
             ref={fileInputRef}
