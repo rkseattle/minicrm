@@ -32,6 +32,7 @@ import type {
   DataHygieneConfigResponse,
 } from '@minicrm/shared/schemas/dataHygieneSchema.js';
 import type { SetDataHygieneConfigInput } from '@minicrm/shared/schemas/dataHygieneSchema.js';
+import { domainOfAddress } from './mail/address.js';
 
 export interface HygieneConfig {
   contact_inactivity_days: number;
@@ -158,7 +159,7 @@ function isReservedDomain(domain: string): boolean {
 }
 
 export async function resolveMailDomainStatus(email: string): Promise<MailDomainStatus> {
-  const domain = email.split('@')[1]?.trim().toLowerCase();
+  const domain = domainOfAddress(email);
   if (!domain) return 'no-mail';
   if (isReservedDomain(domain)) return 'accepts-mail';
   try {
@@ -198,7 +199,7 @@ async function gatherContactUnresolvableEmailDomain(): Promise<RawFinding[]> {
   // One lookup per domain, not per contact — cost tracks domains, not rows.
   const statusByDomain = new Map<string, Promise<MailDomainStatus>>();
   const lookup = (email: string): Promise<MailDomainStatus> => {
-    const domain = email.split('@')[1]?.trim().toLowerCase() ?? '';
+    const domain = domainOfAddress(email) ?? '';
     const cached = statusByDomain.get(domain);
     if (cached) return cached;
     const pending = resolveMailDomainStatus(email);

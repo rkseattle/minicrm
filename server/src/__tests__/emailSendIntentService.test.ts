@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 
 import pool from '../db.js';
-import { erasedAddressDigest } from '../services/mail/gdprRedaction.js';
+import { erasedAddressDigest, GDPR_REDACTED_TEXT } from '../services/mail/gdprRedaction.js';
 import logger from '../logger.js';
 import {
   upsertOAuthAccount,
@@ -28,6 +28,8 @@ import {
   type NewSendIntent,
 } from '../services/emailSendIntentService.js';
 import { setRlsUserIdTo } from '../services/rlsContextService.js';
+import { PRIVATE_EMAIL_SUBJECT, setThreadPrivacy } from '../services/emailMessageService.js';
+import { getRecordAuditLog, maskAuditEvent } from '../services/auditService.js';
 import {
   IDEMPOTENCY_KEY_REUSED,
   replaySend,
@@ -498,12 +500,13 @@ describe('the sync engine filing a send', () => {
       await sentCopy(onlyDocument(sent), 'gm-private', { threadId: 'thread-gm-private' }),
     ]);
 
-    const activity = await pool.query<{ notes: string | null }>(
-      'SELECT notes FROM activities WHERE contact_id = $1',
+    const activity = await pool.query<{ subject: string; notes: string | null; linked: boolean }>(
+      `SELECT subject, notes, metadata->>'email_message_id' IS NOT NULL AS linked
+         FROM activities WHERE contact_id = $1`,
       [contactId],
     );
     expect((await intent()).status).toBe('filed');
-    expect(activity.rows).toEqual([{ notes: null }]);
+    expect(activity.rows).toEqual([{ subject: PRIVATE_EMAIL_SUBJECT, notes: null, linked: true }]);
   });
 
   it('keeps a recovered reply private when sync files its copy under a thread of its own', async () => {
@@ -1559,5 +1562,171 @@ describe('emailSendMaxPerHour', () => {
 
   it('uses the default when unset', () => {
     expect(emailSendMaxPerHour()).toBe(DEFAULT_EMAIL_SEND_MAX_PER_HOUR);
+  });
+});
+
+describe('marking a thread private after its sends were filed', () => {
+  async function filedActivity(contactId: string): Promise<{
+    id: string;
+    subject: string;
+    notes: string | null;
+    scrubbed: boolean;
+  }> {
+    const result = await pool.query<{
+      id: string;
+      subject: string;
+      notes: string | null;
+      scrubbed: boolean;
+    }>(
+      `SELECT id, subject, notes, EXISTS (SELECT 1 FROM redacted_records r WHERE r.record_type = 'activity' AND r.record_id = activities.id) AS scrubbed
+         FROM activities WHERE contact_id = $1`,
+      [contactId],
+    );
+    return result.rows[0]!; // Safe: each test files exactly one send to its contact.
+  }
+
+  async function sendTo(contactId: string, providerMessageId: string): Promise<string> {
+    const { provider } = sender(async () => ({ providerMessageId, threadId: null }));
+    const response = await sendEmail(
+      typed({ record_type: 'contact', record_id: contactId, subject: 'Quarterly numbers' }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+    return response.message.id;
+  }
+
+  it('scrubs the activity already filed, and making it visible does not restore it', async () => {
+    const contactId = await createContact('retro-scrub');
+    const messageId = await sendTo(contactId, 'gm-retro');
+    expect(await filedActivity(contactId)).toMatchObject({
+      subject: 'Quarterly numbers',
+      scrubbed: false,
+    });
+
+    await pool.query(
+      `INSERT INTO contact_champion_blocker_signals (contact_id, status, contributing_signals)
+       VALUES ($1, 'champion', '[{"description": "Quarterly numbers look great", "detected_at": "2026-01-01"}]')`,
+      [contactId],
+    );
+    const { version } = await pool
+      .query<{ version: number }>('SELECT version FROM activities WHERE contact_id = $1', [
+        contactId,
+      ])
+      .then((result) => result.rows[0]!); // Safe: one send was filed to this contact.
+
+    await setThreadPrivacy(messageId, userId, true, actor);
+    expect(await filedActivity(contactId)).toMatchObject({
+      subject: PRIVATE_EMAIL_SUBJECT,
+      notes: null,
+      scrubbed: true,
+    });
+    const after = await pool.query<{ version: number; quotes: unknown; status: string }>(
+      `SELECT a.version, s.contributing_signals AS quotes, s.status
+         FROM activities a JOIN contact_champion_blocker_signals s ON s.contact_id = a.contact_id
+        WHERE a.contact_id = $1`,
+      [contactId],
+    );
+    // A stale edit form fails on the bumped version; the label stays, its quotes go.
+    expect(after.rows).toEqual([{ version: version + 1, quotes: [], status: 'champion' }]);
+    expect(
+      await countRows(
+        `SELECT 1 FROM audit_log a JOIN activities t ON t.id = a.record_id
+          WHERE t.contact_id = $1 AND a.event_type = 'updated' AND a.field_name = 'subject'`,
+        [contactId],
+      ),
+    ).toBe(1);
+
+    await setThreadPrivacy(messageId, userId, false, actor);
+    expect(await filedActivity(contactId)).toMatchObject({ subject: PRIVATE_EMAIL_SUBJECT });
+  });
+
+  it('masks the scrubbed activity in its audit history and in live events', async () => {
+    const contactId = await createContact('retro-audit');
+    const messageId = await sendTo(contactId, 'gm-retro-audit');
+    const { id } = await filedActivity(contactId);
+    const [created] = await getRecordAuditLog({ recordType: 'activity', recordId: id, all: true });
+    // The creation entry names the activity by its subject.
+    expect(created?.record_name).toBe('Quarterly numbers');
+
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    const history = await getRecordAuditLog({ recordType: 'activity', recordId: id, all: true });
+    expect(history.length).toBeGreaterThan(0);
+    expect(history.every((row) => row.record_name === GDPR_REDACTED_TEXT)).toBe(true);
+    // Safe: the creation entry was asserted above, before the thread was marked private.
+    const live = await maskAuditEvent({ ...created!, source: null, created_at: '' });
+    expect(live.record_name).toBe(GDPR_REDACTED_TEXT);
+  });
+
+  it('scrubs again text written back while the thread was visible', async () => {
+    const contactId = await createContact('retro-rewritten');
+    const messageId = await sendTo(contactId, 'gm-retro-rewritten');
+    await setThreadPrivacy(messageId, userId, true, actor);
+    await setThreadPrivacy(messageId, userId, false, actor);
+    await pool.query(`UPDATE activities SET notes = 'pasted back' WHERE contact_id = $1`, [
+      contactId,
+    ]);
+
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    expect(await filedActivity(contactId)).toMatchObject({ notes: null });
+  });
+
+  it('leaves an activity already clean untouched, so open edit forms stay valid', async () => {
+    const contactId = await createContact('retro-idempotent');
+    const messageId = await sendTo(contactId, 'gm-retro-idempotent');
+    await setThreadPrivacy(messageId, userId, true, actor);
+    const versionOf = async (): Promise<number> =>
+      (
+        await pool.query<{ version: number }>(
+          'SELECT version FROM activities WHERE contact_id = $1',
+          [contactId],
+        )
+      ).rows[0]!.version; // Safe: one send was filed to this contact.
+    const before = await versionOf();
+    await setThreadPrivacy(messageId, userId, false, actor);
+
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    expect(await versionOf()).toBe(before);
+  });
+
+  it("leaves another thread's activity alone", async () => {
+    const privateContact = await createContact('retro-private');
+    const otherContact = await createContact('retro-other');
+    const messageId = await sendTo(privateContact, 'gm-retro-a');
+    await sendTo(otherContact, 'gm-retro-b');
+
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    expect(await filedActivity(otherContact)).toMatchObject({
+      subject: 'Quarterly numbers',
+      scrubbed: false,
+    });
+  });
+
+  it("scrubs an activity reassigned to a colleague: the text is the mailbox owner's", async () => {
+    const colleague = await createUser({
+      email: `${FILE_PREFIX}-colleague@example.com`,
+      name: 'Colleague',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const contactId = await createContact('retro-reassigned');
+    const messageId = await sendTo(contactId, 'gm-retro-reassigned');
+    await pool.query('UPDATE activities SET owner_id = $1 WHERE contact_id = $2', [
+      colleague.id,
+      contactId,
+    ]);
+
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    expect(await filedActivity(contactId)).toMatchObject({
+      subject: PRIVATE_EMAIL_SUBJECT,
+      scrubbed: true,
+    });
   });
 });

@@ -598,11 +598,18 @@ under READ COMMITTED each would otherwise miss the other's uncommitted rows.
 Internal readers that load one row by mailbox (reply and forward lookup, send replay, link
 lookup) stay scoped by `connected_account_id` and serve only the owner.
 
-A send into a private thread still files its `Email` activity, with the subject and no
-body. Privacy is taken from the answered or forwarded message when the send is claimed and
-stored as `email_send_intents.thread_private`, because sync may file the Sent copy under a
-thread of its own deriving; the filing then stores the message private as well: the activity records that mail was sent, the text stays in the owner's mailbox. An
-activity filed before the thread was marked private keeps what it was filed with.
+A send into a private thread still files its `Email` activity, as **Private email** with no
+body: the activity records that mail was sent, and the text stays in the owner's mailbox.
+Privacy is taken from the answered or forwarded message when the send is claimed and stored
+as `email_send_intents.thread_private`, because sync may file the Sent copy under a thread of
+its own deriving; the filing then stores the message private as well.
+
+Each filed activity records its message as `metadata.email_message_id`. Marking a thread
+private scrubs activities already filed from it the same way and records them in
+`redacted_records`, which masks their audit entries on read, and bumps their `version`, so
+an edit form opened before cannot write the text back. Champion/blocker quotes on those
+activities' contacts are cleared, since a signal does not record its activity. Making the
+thread visible again does not restore any of it.
 
 ### Rendering a body
 

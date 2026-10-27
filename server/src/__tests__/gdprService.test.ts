@@ -1181,6 +1181,89 @@ describe('GDPR erasure and export of synced email', () => {
     ]);
   });
 
+  it("scrubs the contact's own activities and drops the AI's signals about them", async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, notes, contact_id, owner_id)
+       VALUES ('Call', 'Pricing call', 'Alice says yes', $1, $2) RETURNING id`,
+      [contact.id, adminId],
+    );
+    const activityId = activity.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    await pool.query(
+      `INSERT INTO contact_champion_blocker_signals (contact_id, status, contributing_signals)
+       VALUES ($1, 'champion', '[{"description": "Alice: we will sign", "detected_at": "2026-01-01"}]')`,
+      [contact.id],
+    );
+
+    await eraseContact(contact.id, adminActor);
+
+    const after = await pool.query<{ subject: string; version: number; scrubbed: boolean }>(
+      `SELECT subject, version, EXISTS (SELECT 1 FROM redacted_records r WHERE r.record_type = 'activity' AND r.record_id = activities.id) AS scrubbed
+         FROM activities WHERE id = $1`,
+      [activityId],
+    );
+    // The version bump fails an edit form opened before the erasure.
+    expect(after.rows).toEqual([{ subject: '[GDPR deleted]', version: 2, scrubbed: true }]);
+    const signals = await pool.query(
+      'SELECT 1 FROM contact_champion_blocker_signals WHERE contact_id = $1',
+      [contact.id],
+    );
+    expect(signals.rowCount).toBe(0);
+  });
+
+  it('scrubs text written onto an activity after an earlier redaction', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, notes, contact_id, owner_id)
+       VALUES ('Email', 'Private email', 'Added later: call her cell', $1, $2) RETURNING id`,
+      [contact.id, adminId],
+    );
+    const activityId = activity.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    // Filed from a private thread, then annotated by hand.
+    await pool.query(
+      `INSERT INTO redacted_records (record_type, record_id, reason)
+       VALUES ('activity', $1, 'private_thread')`,
+      [activityId],
+    );
+
+    await eraseContact(contact.id, adminActor);
+
+    const after = await pool.query<{ subject: string; notes: string | null }>(
+      'SELECT subject, notes FROM activities WHERE id = $1',
+      [activityId],
+    );
+    expect(after.rows).toEqual([{ subject: '[GDPR deleted]', notes: null }]);
+  });
+
+  it('clears the quotes of a contact whose activity named the erased person', async () => {
+    const erased = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const other = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, contact_id, owner_id)
+       VALUES ('Email', 'Intro', $1, $2) RETURNING id`,
+      [other.id, adminId],
+    );
+    await pool.query(
+      `INSERT INTO activity_participants (activity_id, record_type, record_id)
+       VALUES ($1, 'contact', $2)`,
+      [activity.rows[0]!.id, erased.id], // Safe: INSERT ... RETURNING yields one row.
+    );
+    await pool.query(
+      `INSERT INTO contact_champion_blocker_signals (contact_id, status, contributing_signals)
+       VALUES ($1, 'champion', '[{"description": "copied colleague agrees", "detected_at": "2026-01-01"}]')`,
+      [other.id],
+    );
+
+    await eraseContact(erased.id, adminActor);
+
+    const signals = await pool.query<{ status: string; quotes: unknown }>(
+      `SELECT status, contributing_signals AS quotes FROM contact_champion_blocker_signals
+        WHERE contact_id = $1`,
+      [other.id],
+    );
+    expect(signals.rows).toEqual([{ status: 'champion', quotes: [] }]);
+  });
+
   it("redacts a send's activity on another record, even after its mailbox is gone", async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
     const account = await pool.query<{ id: string }>(
@@ -1205,11 +1288,13 @@ describe('GDPR erasure and export of synced email', () => {
     try {
       await eraseContact(contact.id, adminActor);
 
-      const after = await pool.query<{ subject: string; notes: string | null }>(
-        'SELECT subject, notes FROM activities WHERE id = $1',
+      const after = await pool.query<{ subject: string; notes: string | null; scrubbed: boolean }>(
+        `SELECT subject, notes, EXISTS (SELECT 1 FROM redacted_records r WHERE r.record_type = 'activity' AND r.record_id = activities.id) AS scrubbed
+           FROM activities WHERE id = $1`,
         [activityId],
       );
-      expect(after.rows).toEqual([{ subject: '[GDPR deleted]', notes: null }]);
+      // Stamped, so audit reads mask what the activity's own entries logged.
+      expect(after.rows).toEqual([{ subject: '[GDPR deleted]', notes: null, scrubbed: true }]);
     } finally {
       await pool.query('DELETE FROM activities WHERE account_id = $1', [accountId]);
       await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);

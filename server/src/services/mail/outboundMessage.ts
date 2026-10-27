@@ -22,6 +22,7 @@ import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 
 import { boundIndexedId, subjectOf } from './messageBody.js';
 import { extractMessageIds, normalizeMessageId } from './threading.js';
+import { domainOfAddress } from './address.js';
 
 /** What a caller asks to be sent. */
 export interface OutboundMessage {
@@ -104,8 +105,7 @@ function bracketed(messageId: string): string {
  * internal hostname leaks it to every recipient.
  */
 function defaultMessageId(fromAddress: string): string {
-  const domain = fromAddress.split('@')[1]?.trim().toLowerCase();
-  return `${randomUUID()}@${domain && domain !== '' ? domain : 'localhost'}`;
+  return `${randomUUID()}@${domainOfAddress(fromAddress) ?? 'localhost'}`;
 }
 
 /**

@@ -95,6 +95,7 @@
 | [public.email_send_intents](public.email_send_intents.md) | 20 | A send recorded before it reaches the provider. Holds what only this application knows about the send so the message can be filed to its record even when storing it after the send failed. | BASE TABLE |
 | [public.email_send_ledger](public.email_send_ledger.md) | 4 | One row per send that may have gone out, counted against the user's hourly ceiling. Outlives the mailbox and the send intent, so disconnecting a mailbox cannot reset the count. | BASE TABLE |
 | [public.activity_participants](public.activity_participants.md) | 3 | The contacts and leads an Email activity concerns, from its message's links at filing. GDPR erasure redacts every activity associated with the erased record. record_type + record_id is polymorphic with no FK: hard deletes clear their rows, lead conversion and contact merge move them. | BASE TABLE |
+| [public.redacted_records](public.redacted_records.md) | 4 | Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask their entries; kept after the record is deleted. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -1246,6 +1247,12 @@ erDiagram
   uuid activity_id FK ""
   varchar_16_ record_type ""
   uuid record_id ""
+}
+"public.redacted_records" {
+  text record_type ""
+  uuid record_id ""
+  text reason ""
+  timestamp_with_time_zone redacted_at ""
 }
 ```
 

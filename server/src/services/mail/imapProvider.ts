@@ -49,6 +49,7 @@ import {
   type ParsedMessageBody,
 } from './messageBody.js';
 import { extractHeaderField, resolveThreadId } from './threading.js';
+import { normalizeAddress } from './address.js';
 
 /** The mailbox every IMAP server has, under this exact name. */
 const INBOX_PATH = 'INBOX';
@@ -154,7 +155,7 @@ function addressesOf(list: MessageAddressObject[] | undefined): string[] {
     (list ?? [])
       // Stripped before the emptiness test, not after: trim() leaves NUL in place, so a
       // NUL-only address would survive the filter and land as an empty array element.
-      .map((entry) => (entry.address ? stripNul(entry.address).trim().toLowerCase() : undefined))
+      .map((entry) => (entry.address ? normalizeAddress(stripNul(entry.address)) : undefined))
       .filter((address): address is string => Boolean(address))
   );
 }

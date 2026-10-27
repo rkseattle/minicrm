@@ -67,7 +67,7 @@ After erasure:
   their address becomes the synthetic address, and the message's subject and body are removed.
   Email linked to the record is redacted the same way even where it never names them. See
   [Synced email](#synced-email) below.
-- The audit log continues to show that events occurred, but old_value and new_value are masked with `[GDPR deleted]`.
+- The audit log continues to show that events occurred, but record_name, old_value and new_value are masked with `[GDPR deleted]`. Each activity the erasure scrubs is recorded in `redacted_records`, so its own entries, which name it by its subject, are masked the same way, even after the activity is deleted. The AI's champion/blocker inference about the person, which quotes their mail and notes, is deleted; contacts whose signals could quote an activity scrubbed by association lose those quotes and keep their status.
 - A `gdpr_erasure` entry is added to the audit log recording that the erasure was performed, by whom, and when.
 - The record itself (ID, timestamps, owner, stage, deal associations) is preserved so that business data integrity is maintained.
 

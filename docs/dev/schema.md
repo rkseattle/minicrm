@@ -257,7 +257,7 @@ Decision: JSONB `metadata` overflow column (not new nullable typed columns).
 **Column boundary:**
 
 - Shared typed columns (all types): `subject`, `due_date`, `status`, `direction`, `outcome`, `owner_id`, `contact_id`, `account_id`, `deal_id`
-- `metadata jsonb`: type-specific fields only (e.g. `thread_id`/`connection_degree` for LinkedIn, `phone_number`/`message_sid` for WhatsApp)
+- `metadata jsonb`: type-specific fields only (e.g. `thread_id`/`connection_degree` for LinkedIn, `phone_number`/`message_sid` for WhatsApp, `email_message_id` for an Email activity filed from a send)
 
 **Adding a new activity type:**
 
@@ -293,6 +293,7 @@ Seven tables use `(type, id)` discriminator pairs instead of typed FK columns. R
 | `ai_gdpr_cascade_log`   | `record_type`                      | `contact`, `lead`                    | No — retained by design |
 | `email_message_links`   | `record_type`                      | `contact`, `lead`, `account`, `deal` | Yes — required          |
 | `activity_participants` | `record_type`                      | `contact`, `lead`                    | Yes — required          |
+| `redacted_records`      | `record_type`                      | `activity`                           | No — retained by design |
 
 When hard-deleting a parent entity, clean up polymorphic dependents in the same transaction:
 

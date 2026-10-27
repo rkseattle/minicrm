@@ -12,7 +12,8 @@ import pool from '../db.js';
 import logger from '../logger.js';
 import { decrypt, encrypt } from './cryptoService.js';
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR, actorIdOrNull } from './auditService.js';
+import { SYSTEM_ACTOR } from './auditService.js';
+import { upsertSystemSetting } from './settingsService.js';
 
 // ── system_settings keys ──────────────────────────────────────────────────────
 
@@ -132,12 +133,7 @@ export async function setStorageConfig(
   ];
 
   for (const [key, value] of upserts) {
-    await pool.query(
-      `INSERT INTO system_settings (key, value, updated_at, updated_by)
-       VALUES ($1, $2, now(), $3)
-       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
-      [key, value, actorIdOrNull(actor)],
-    );
+    await upsertSystemSetting(pool, key, value, actor);
   }
 
   return {

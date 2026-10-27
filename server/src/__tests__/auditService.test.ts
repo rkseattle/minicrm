@@ -925,3 +925,111 @@ describe('masking erased addresses in email_sent values', () => {
     expect(entry!.new_value).toContain(ERASED);
   });
 });
+
+// ── Masking names and scrubbed activities ──────────────────────────────────────
+
+describe('masking an erased record, and a scrubbed activity, by name too', () => {
+  const ERASED_RECORD = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+  let ownerId: string;
+  let activityId: string;
+
+  beforeAll(async () => {
+    await pool.query(`DELETE FROM users WHERE email = 'auditsvc-names@example.com'`);
+    const owner = await createUser({
+      email: 'auditsvc-names@example.com',
+      name: 'Audit Names Owner',
+      role: 'admin',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    ownerId = owner.id;
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [ERASED_RECORD]);
+    await pool.query('DELETE FROM redacted_records WHERE record_id = $1', [activityId]);
+    await pool.query('DELETE FROM activities WHERE owner_id = $1', [ownerId]);
+    await pool.query('DELETE FROM accounts WHERE owner_id = $1', [ownerId]);
+    await pool.query('DELETE FROM users WHERE id = $1', [ownerId]);
+  });
+
+  async function writeNamed(recordType: 'contact' | 'activity', recordId: string, name: string) {
+    const client = await pool.connect();
+    try {
+      await writeAuditEntry(client, {
+        recordType,
+        recordId,
+        recordName: name,
+        eventType: 'updated',
+        fieldName: 'subject',
+        oldValue: name,
+        newValue: 'later',
+        changedById: ACTOR.id,
+        changedByName: ACTOR.name,
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  it("masks an erased record's name in its history and in live events", async () => {
+    await writeNamed('contact', ERASED_RECORD, 'Alice Erased');
+    await pool.query(
+      `INSERT INTO gdpr_deletion_log (record_type, record_id, requested_by, erasure_scope, completed_at)
+       VALUES ('contact', $1, $2, '{}', now())`,
+      [ERASED_RECORD, ownerId],
+    );
+
+    const [entry] = await getRecordAuditLog({
+      recordType: 'contact',
+      recordId: ERASED_RECORD,
+      all: true,
+    });
+    // Safe: the entry written above is this record's only one.
+    expect(entry!.record_name).toBe('[GDPR deleted]');
+    const live = await maskAuditEvent({
+      ...entry!,
+      record_name: 'Alice Erased',
+      source: null,
+      created_at: '',
+    });
+    expect(live.record_name).toBe('[GDPR deleted]');
+  });
+
+  it('masks a scrubbed activity in the admin audit log, counted once, even once deleted', async () => {
+    const account = await pool.query<{ id: string }>(
+      `INSERT INTO accounts (name, owner_id) VALUES ('auditsvc-names', $1) RETURNING id`,
+      [ownerId],
+    );
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, account_id, owner_id)
+       VALUES ('Email', 'Private email', $1, $2) RETURNING id`,
+      [account.rows[0]!.id, ownerId], // Safe: INSERT ... RETURNING yields one row.
+    );
+    activityId = activity.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    await writeNamed('activity', activityId, 'Secret subject');
+    await pool.query(
+      `INSERT INTO redacted_records (record_type, record_id, reason)
+       VALUES ('activity', $1, 'private_thread')`,
+      [activityId],
+    );
+
+    const page = await listAuditLog({ recordType: 'activity', recordId: activityId });
+
+    expect(page.total).toBe(1);
+    expect(page.data[0]).toMatchObject({
+      record_name: '[GDPR deleted]',
+      old_value: '[GDPR deleted]',
+      new_value: '[GDPR deleted]',
+    });
+
+    // The redaction log outlives the activity, so masking does too.
+    await pool.query('DELETE FROM activities WHERE id = $1', [activityId]);
+    const [afterDelete] = await getRecordAuditLog({
+      recordType: 'activity',
+      recordId: activityId,
+      all: true,
+    });
+    expect(afterDelete?.record_name).toBe('[GDPR deleted]');
+  });
+});
