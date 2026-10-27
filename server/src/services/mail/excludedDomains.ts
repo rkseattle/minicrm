@@ -7,7 +7,7 @@
  * mailbox's own address is never a counterparty; a note-to-self has none and is kept.
  */
 
-import { domainOfAddress } from './address.js';
+import { domainOfAddress, normalizeAddress } from './address.js';
 import type { NormalizedMessage } from './mailProvider.js';
 
 type AddressedMessage = Pick<
@@ -29,13 +29,13 @@ export function isExcludedMessage(
 ): boolean {
   if (excludedDomains.size === 0) return false;
 
-  const own = mailboxAddress.toLowerCase();
+  const own = normalizeAddress(mailboxAddress);
   const counterparties = [
     message.fromAddress,
     ...message.toAddresses,
     ...message.ccAddresses,
     ...message.replyToAddresses,
-  ].filter((address) => address.toLowerCase() !== own);
+  ].filter((address) => normalizeAddress(address) !== own);
 
   if (counterparties.length === 0) return false;
 

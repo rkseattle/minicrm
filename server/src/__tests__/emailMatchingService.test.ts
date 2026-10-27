@@ -1111,3 +1111,79 @@ describe('a link the user removed', () => {
     expect(await linksFor(messageId)).toContain(`account:${accountFk}`);
   });
 });
+
+describe('activity associations follow their record', () => {
+  async function emailActivity(): Promise<string> {
+    const account = await createAccountRecord(`${FILE_PREFIX}-assoc-${Date.now()}`);
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, account_id, owner_id)
+       VALUES ('Email', 'Renewal', $1, $2) RETURNING id`,
+      [account, ownerId],
+    );
+    return result.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+  }
+
+  async function associate(activityId: string, recordType: string, recordId: string) {
+    await pool.query(
+      `INSERT INTO activity_participants (activity_id, record_type, record_id)
+       VALUES ($1, $2, $3)`,
+      [activityId, recordType, recordId],
+    );
+  }
+
+  async function participants(activityId: string): Promise<string[]> {
+    const result = await pool.query<{ record_type: string; record_id: string }>(
+      `SELECT record_type, record_id FROM activity_participants
+        WHERE activity_id = $1 ORDER BY record_type, record_id`,
+      [activityId],
+    );
+    return result.rows.map((row) => `${row.record_type}:${row.record_id}`);
+  }
+
+  async function inTransaction(work: (client: PoolClient) => Promise<void>): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await work(client);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  it('drops the association when the record is hard-deleted', async () => {
+    const activity = await emailActivity();
+    const contact = await createContact('assoc-deleted');
+    await associate(activity, 'contact', contact);
+
+    await inTransaction((client) => deleteLinksForDeletedEntity(client, 'contact', contact));
+
+    expect(await participants(activity)).toEqual([]);
+  });
+
+  it('moves the association to the contact a lead becomes', async () => {
+    const activity = await emailActivity();
+    const lead = await createLead('assoc-converted');
+    const contact = await createContact('assoc-converted-to');
+    await associate(activity, 'lead', lead);
+
+    await inTransaction((client) => relinkLinksToConvertedLead(client, lead, contact));
+
+    expect(await participants(activity)).toEqual([`contact:${contact}`]);
+  });
+
+  it("moves the loser's association to the winner, once, on a merge", async () => {
+    const activity = await emailActivity();
+    const winner = await createContact('assoc-winner');
+    const loser = await createContact('assoc-loser');
+    await associate(activity, 'contact', winner);
+    await associate(activity, 'contact', loser);
+
+    await inTransaction((client) => relinkLinksToMergedContact(client, winner, loser));
+
+    expect(await participants(activity)).toEqual([`contact:${winner}`]);
+  });
+});

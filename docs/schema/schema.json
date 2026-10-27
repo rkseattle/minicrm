@@ -3574,7 +3574,7 @@
           "name": "erased_address_hmac",
           "type": "text",
           "nullable": true,
-          "comment": "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL when it had none. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
+          "comment": "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL only on rows written before the column existed. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
         }
       ],
       "indexes": [
@@ -11520,6 +11520,86 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.activity_participants",
+      "type": "BASE TABLE",
+      "comment": "The contacts and leads an Email activity concerns, from its message's links at filing. GDPR erasure redacts every activity associated with the erased record. record_type + record_id is polymorphic with no FK: hard deletes clear their rows, lead conversion and contact merge move them.",
+      "columns": [
+        {
+          "name": "activity_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "record_type",
+          "type": "varchar(16)",
+          "nullable": false
+        },
+        {
+          "name": "record_id",
+          "type": "uuid",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "activity_participants_pkey",
+          "def": "CREATE UNIQUE INDEX activity_participants_pkey ON public.activity_participants USING btree (activity_id, record_type, record_id)",
+          "table": "public.activity_participants",
+          "columns": [
+            "activity_id",
+            "record_type",
+            "record_id"
+          ]
+        },
+        {
+          "name": "activity_participants_record_idx",
+          "def": "CREATE INDEX activity_participants_record_idx ON public.activity_participants USING btree (record_type, record_id)",
+          "table": "public.activity_participants",
+          "columns": [
+            "record_type",
+            "record_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "activity_participants_record_type_check",
+          "type": "CHECK",
+          "def": "CHECK (((record_type)::text = ANY ((ARRAY['contact'::character varying, 'lead'::character varying])::text[])))",
+          "table": "public.activity_participants",
+          "referenced_table": "",
+          "columns": [
+            "record_type"
+          ]
+        },
+        {
+          "name": "activity_participants_activity_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE",
+          "table": "public.activity_participants",
+          "referenced_table": "public.activities",
+          "columns": [
+            "activity_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_participants_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (activity_id, record_type, record_id)",
+          "table": "public.activity_participants",
+          "referenced_table": "",
+          "columns": [
+            "activity_id",
+            "record_type",
+            "record_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -13186,6 +13266,19 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (intent_id) REFERENCES email_send_intents(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.activity_participants",
+      "columns": [
+        "activity_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.activities",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

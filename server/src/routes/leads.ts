@@ -727,7 +727,9 @@ router.post('/:id/gdpr-erase', authenticate, requireRole('admin'), asyncHandler(
  *     summary: Export a lead's personal data
  *     description: >
  *       Returns every piece of personal data held for the lead as a JSON file
- *       download. Admin only.
+ *       download: the lead, its notes, custom fields, audit history, and every synced or
+ *       sent email that names the lead or is linked to it, private threads included.
+ *       Admin only.
  *     security:
  *       - cookieAuth: []
  *     parameters:

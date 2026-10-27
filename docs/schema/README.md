@@ -94,6 +94,7 @@
 | [public.email_message_link_suppressions](public.email_message_link_suppressions.md) | 5 | Automatic email-to-record links a user removed. Re-derivation consults this table so an unlink is not undone by a later relationship change. | BASE TABLE |
 | [public.email_send_intents](public.email_send_intents.md) | 20 | A send recorded before it reaches the provider. Holds what only this application knows about the send so the message can be filed to its record even when storing it after the send failed. | BASE TABLE |
 | [public.email_send_ledger](public.email_send_ledger.md) | 4 | One row per send that may have gone out, counted against the user's hourly ceiling. Outlives the mailbox and the send intent, so disconnecting a mailbox cannot reset the count. | BASE TABLE |
+| [public.activity_participants](public.activity_participants.md) | 3 | The contacts and leads an Email activity concerns, from its message's links at filing. GDPR erasure redacts every activity associated with the erased record. record_type + record_id is polymorphic with no FK: hard deletes clear their rows, lead conversion and contact merge move them. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -290,6 +291,7 @@ erDiagram
 "public.email_send_intents" }o--o| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
 "public.email_send_ledger" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.email_send_ledger" }o--o| "public.email_send_intents" : "FOREIGN KEY (intent_id) REFERENCES email_send_intents(id) ON DELETE SET NULL"
+"public.activity_participants" }o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -616,7 +618,7 @@ erDiagram
   text notes ""
   integer email_messages_redacted "Synced messages the erasure redacted, across every mailbox."
   integer email_links_deleted "Links from synced messages to the erased record that the erasure deleted."
-  text erased_address_hmac "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL when it had none. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
+  text erased_address_hmac "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL only on rows written before the column existed. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
 }
 "public.lead_status_history" {
   uuid id ""
@@ -1239,6 +1241,11 @@ erDiagram
   uuid user_id FK ""
   uuid intent_id FK ""
   timestamp_with_time_zone created_at ""
+}
+"public.activity_participants" {
+  uuid activity_id FK ""
+  varchar_16_ record_type ""
+  uuid record_id ""
 }
 ```
 

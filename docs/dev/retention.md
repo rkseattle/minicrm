@@ -16,25 +16,24 @@ In-progress import jobs are never purged. `sequence_enrollment_logs` is retained
 
 `email_messages` is **not** time-purged: a mailbox's conversation history is the feature, not a
 log of it. Rows are deleted when their `connected_accounts` row is, via `ON DELETE CASCADE`, so
-disconnecting a mailbox removes everything synced from it. Erasing a message because a _data
-subject_ appears in its addresses is a separate question — the messages hold contact personal
-data while belonging to the connected user — and is decided by the email privacy story, which
-owns whether that is address redaction or row deletion and extends `gdpr_deletion_log` to match.
+disconnecting a mailbox removes everything synced from it. A _data subject's_ mail is a separate
+question — the messages hold contact personal data while belonging to the connected user — and
+GDPR erasure answers it by **redaction in place**, never deletion: see
+[docs/gdpr.md](../gdpr.md#synced-email) and `gdprService`'s email cascade.
 
 Mail a user **sends** from a record is stored the same way, with `direction = 'outbound'`, and
 follows the same rules: no time purge, deleted with its mailbox's `connected_accounts` row, and
-covered by the same email privacy decision. Its body holds the contact's personal data just as
+redacted by GDPR erasure the same way. Its body holds the contact's personal data just as
 a synced message's does; that it was written here rather than synced changes nothing about how
 long it is kept.
 
-That question is wider than addresses: the table stores message **bodies**, so a data subject's
-personal data can appear anywhere in free text rather than only in an indexed address column,
-and address redaction alone would not erase it. Note that `docs/gdpr.md`'s `body_text` scrub
-covers **notes**, a different column on a different table, and does not reach these.
+Redaction is wider than addresses: the table stores message **bodies**, so a data subject's
+personal data can appear anywhere in free text, and erasure removes the subject line, body and
+snippet along with the address.
 
 `email_message_links` is not time-purged either. A row carries no free text — a message id, a
-record type, a record id — so there is nothing in it to scrub; what it asserts about a data
-subject lives at its two ends, and both are already covered. It rides the `email_messages`
+record type, a record id — so there is nothing in it to scrub; GDPR erasure deletes the erased
+record's links outright. It rides the `email_messages`
 cascade when a mailbox is disconnected, and never outlives the record at its other end
 either: [Matching](email-sync.md#matching) says what each delete and each consolidating path
 does.

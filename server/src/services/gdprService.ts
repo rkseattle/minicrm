@@ -14,6 +14,17 @@ import logger from '../logger.js';
 import { captureException } from '../sentry.js';
 import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
 import { setRlsUserId } from './rlsContextService.js';
+import {
+  GDPR_PLACEHOLDER_EMAIL_SQL,
+  GDPR_REDACTED_SQL,
+  arrayHasAddress,
+  erasedAddressDigest,
+  erasedPlaceholderAddress,
+  lockForErasure,
+  redactMessages,
+  replaceInArray,
+} from './mail/gdprRedaction.js';
+import { normalizeAddress } from './mail/address.js';
 import type { AuditActor, AuditLogRow } from './auditService.js';
 import type { NoteResponse } from '@minicrm/shared/schemas/noteSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
@@ -54,13 +65,21 @@ export interface GdprDeletionLogRow {
   completed_at: Date | null;
   erasure_scope: string[];
   notes: string | null;
+  email_messages_redacted: number;
+  email_links_deleted: number;
+  /** Keyed digest of the erased address, so later mail to it is redacted on ingest. */
+  erased_address_hmac: string | null;
 }
 
 /**
- * Placeholder email written over an erased record's real one, shared by the
- * contact and lead erasure UPDATEs. `id` is a UUID, so it is unique per record.
+ * A log row as the API returns it: everything but the address digest, which only ingest
+ * needs and which a client could test candidate addresses against if the key ever leaked.
  */
-const GDPR_PLACEHOLDER_EMAIL_SQL = `'gdpr-deleted-' || id || '@gdpr.invalid'`;
+export type GdprDeletionLogEntry = Omit<GdprDeletionLogRow, 'erased_address_hmac'>;
+
+/** The columns of GdprDeletionLogEntry, so no read path can return the digest by `*`. */
+const DELETION_LOG_PUBLIC_COLUMNS = `id, record_type, record_id, requested_by, requested_at,
+  completed_at, erasure_scope, notes, email_messages_redacted, email_links_deleted`;
 
 /**
  * Shortest free-text value the cascade will search for.
@@ -112,6 +131,27 @@ export interface AiGdprCascadeLogRow extends AiGdprCascadeLogEntry {
   original_email: string | null;
 }
 
+/**
+ * One synced message as a subject-access export carries it: the message as stored, the
+ * mailbox that synced it, and the records it is linked to. Private threads are included,
+ * as private notes are: Art. 15 binds the operator whatever its internal sharing.
+ */
+export interface GdprEmailMessage {
+  id: string;
+  mailbox: string;
+  direction: 'inbound' | 'outbound';
+  from_address: string;
+  to_addresses: string[];
+  cc_addresses: string[];
+  reply_to_addresses: string[];
+  subject: string | null;
+  sent_at: Date | null;
+  has_attachments: boolean;
+  body_text: string | null;
+  is_private: boolean;
+  links: { record_type: string; record_id: string }[];
+}
+
 /** Full GDPR export payload for a contact */
 export interface ContactGdprExport {
   subject: string;
@@ -122,6 +162,7 @@ export interface ContactGdprExport {
   notes: NoteResponse[];
   custom_fields: CustomFieldValueWithDefinition[];
   audit_history: AuditLogRow[];
+  email_messages: GdprEmailMessage[];
 }
 
 /** Full GDPR export payload for a lead */
@@ -132,6 +173,7 @@ export interface LeadGdprExport {
   notes: NoteResponse[];
   custom_fields: CustomFieldValueWithDefinition[];
   audit_history: AuditLogRow[];
+  email_messages: GdprEmailMessage[];
 }
 
 // ── Internal row types for queries ────────────────────────────────────────────
@@ -174,19 +216,100 @@ interface CustomFieldValueRaw {
 
 // ── Erasure ────────────────────────────────────────────────────────────────────
 
+/** The tables the email cascade touches, appended to erasure_scope beside the record's fields. */
+const EMAIL_ERASURE_SCOPE = ['email_messages', 'email_message_links'] as const;
+
+/** What the email part of an erasure touched, for gdpr_deletion_log. */
+interface EmailCascadeCounts {
+  messagesRedacted: number;
+  linksDeleted: number;
+}
+
+/**
+ * Selects the synced mail one erased record's data subject appears in: any message carrying
+ * their address in any address field, in any mailbox, plus any message linked to the record.
+ * Used by both erasure and export, so the two can never disagree about what is theirs.
+ */
+const EMAIL_SCOPE_FOR_SUBJECT_SQL = `SELECT m.id FROM email_messages m
+   WHERE lower(m.from_address) = $3
+      OR ${arrayHasAddress('m.to_addresses || m.cc_addresses || m.reply_to_addresses', '$3')}
+      OR EXISTS (SELECT 1 FROM email_message_links l
+                  WHERE l.email_message_id = m.id
+                    AND l.record_type = $1 AND l.record_id = $2)`;
+
+/**
+ * Redacts the data subject from synced mail and send intents, and drops the record's links.
+ * Runs inside the erasure's transaction, after lockForErasure.
+ */
+async function cascadeErasureToEmail(
+  client: PoolClient,
+  recordType: CascadeRecordType,
+  recordId: string,
+  originalEmail: string,
+): Promise<EmailCascadeCounts> {
+  const address = normalizeAddress(originalEmail);
+  const placeholder = erasedPlaceholderAddress(recordId);
+
+  const scope = await client.query<{ id: string }>(EMAIL_SCOPE_FOR_SUBJECT_SQL, [
+    recordType,
+    recordId,
+    address,
+  ]);
+  const messagesRedacted = await redactMessages(
+    client,
+    scope.rows.map((r) => r.id),
+    address,
+    placeholder,
+  );
+
+  // A send's activity on a deal or account carries the mail's text; reach it by association.
+  await client.query(
+    `UPDATE activities SET subject = ${GDPR_REDACTED_SQL}, notes = NULL
+      WHERE id IN (SELECT activity_id FROM activity_participants
+                    WHERE record_type = $1 AND record_id = $2)`,
+    [recordType, recordId],
+  );
+
+  const links = await client.query(
+    'DELETE FROM email_message_links WHERE record_type = $1 AND record_id = $2',
+    [recordType, recordId],
+  );
+  await client.query(
+    'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = $2',
+    [recordType, recordId],
+  );
+
+  // Every status: a settled intent still holds the recipients until its purge.
+  await client.query(
+    `UPDATE email_send_intents
+        SET to_addresses = ${replaceInArray('to_addresses', '$3', '$4')},
+            cc_addresses = ${replaceInArray('cc_addresses', '$3', '$4')},
+            activity_notes = NULL,
+            updated_at = now()
+      WHERE ${arrayHasAddress('to_addresses', '$3')} OR ${arrayHasAddress('cc_addresses', '$3')}
+         OR (record_type = $1 AND record_id = $2)`,
+    [recordType, recordId, address, placeholder],
+  );
+
+  return { messagesRedacted, linksDeleted: links.rowCount ?? 0 };
+}
+
 /**
  * Erases personal data for a contact per GDPR Art. 17.
  *
- * Single transaction:
+ * Single transaction, taking the exclusive GDPR ingest lock first so mail being stored
+ * concurrently is committed, and then redacted, before the cascade reads it:
  * 1. Verify the contact exists.
  * 2. Check that erasure has not already been performed.
  * 3. Insert a pending gdpr_deletion_log row.
  * 4. Overwrite PII fields on the contacts row.
- * 5. Scrub subject/notes on linked activities.
- * 6. Scrub linked notes (soft-delete–aware).
- * 7. Delete custom field values.
- * 8. Mark the gdpr_deletion_log row as completed.
- * 9. Write an audit entry.
+ * 5. Delete the contact's addresses.
+ * 6. Scrub subject/notes on linked activities.
+ * 7. Scrub linked notes (soft-delete–aware).
+ * 8. Delete custom field values.
+ * 9. Redact the subject from synced mail and send intents; delete the record's links.
+ * 10. Mark the log row completed, with the email counts and the address digest.
+ * 11. Write an audit entry.
  *
  * @param id - UUID of the contact to erase
  * @param actor - Admin user performing the erasure
@@ -204,6 +327,8 @@ export async function eraseContact(
   try {
     await client.query('BEGIN');
     await setRlsUserId(client);
+    // First, before any intent or message row: ingest holds this shared until it commits.
+    await lockForErasure(client);
 
     // Step 1 — verify the contact exists and capture PII before overwrite.
     // Name and email are captured here so the AI cascade (fired after COMMIT)
@@ -244,8 +369,8 @@ export async function eraseContact(
     // to avoid breaking NOT NULL or format constraints.
     await client.query(
       `UPDATE contacts SET
-         first_name = '[GDPR deleted]',
-         last_name = '[GDPR deleted]',
+         first_name = ${GDPR_REDACTED_SQL},
+         last_name = ${GDPR_REDACTED_SQL},
          email = ${GDPR_PLACEHOLDER_EMAIL_SQL},
          phone = NULL,
          title = NULL,
@@ -262,14 +387,14 @@ export async function eraseContact(
 
     // Step 6 — scrub subject and notes on linked activities
     await client.query(
-      `UPDATE activities SET subject = '[GDPR deleted]', notes = NULL WHERE contact_id = $1`,
+      `UPDATE activities SET subject = ${GDPR_REDACTED_SQL}, notes = NULL WHERE contact_id = $1`,
       [id],
     );
 
     // Step 7 — scrub linked notes. Soft-deleted rows are included: the row still holds
     // the subject's personal data, and nothing else ever purges it.
     await client.query(
-      `UPDATE notes SET title = NULL, body = '[GDPR deleted]', body_text = '[GDPR deleted]'
+      `UPDATE notes SET title = NULL, body = ${GDPR_REDACTED_SQL}, body_text = ${GDPR_REDACTED_SQL}
        WHERE entity_type = 'contact' AND entity_id = $1`,
       [id],
     );
@@ -286,16 +411,30 @@ export async function eraseContact(
       [id],
     );
 
-    // Step 9 — mark the log row as completed
+    // Step 9 — redact the subject from synced mail and drop the record's links
+    const email = await cascadeErasureToEmail(client, 'contact', id, contactEmail);
+
+    // Step 10 — mark the log row as completed, with what the email cascade touched
     const logResult = await client.query<GdprDeletionLogRow>(
-      `UPDATE gdpr_deletion_log SET completed_at = now()
-       WHERE record_type = 'contact' AND record_id = $1
-       RETURNING *`,
-      [id],
+      `UPDATE gdpr_deletion_log
+          SET completed_at = now(),
+              email_messages_redacted = $2,
+              email_links_deleted = $3,
+              erased_address_hmac = $4,
+              erasure_scope = erasure_scope || $5::text[]
+        WHERE record_type = 'contact' AND record_id = $1
+        RETURNING *`,
+      [
+        id,
+        email.messagesRedacted,
+        email.linksDeleted,
+        erasedAddressDigest(contactEmail),
+        EMAIL_ERASURE_SCOPE,
+      ],
     );
     const logRow = logResult.rows[0];
 
-    // Step 10 — audit entry in the same transaction
+    // Step 11 — audit entry in the same transaction
     await writeAuditEntry(client, {
       recordType: 'contact',
       recordId: id,
@@ -324,15 +463,16 @@ export async function eraseContact(
 /**
  * Erases personal data for a lead per GDPR Art. 17.
  *
- * Single transaction:
+ * Single transaction, taking the exclusive GDPR ingest lock first, as eraseContact does:
  * 1. Verify the lead exists.
  * 2. Check that erasure has not already been performed.
  * 3. Insert a pending gdpr_deletion_log row.
  * 4. Overwrite PII fields on the leads row.
  * 5. Scrub linked notes (soft-delete–aware).
  * 6. Delete custom field values.
- * 7. Mark the gdpr_deletion_log row as completed.
- * 8. Write an audit entry.
+ * 7. Redact the subject from synced mail and send intents; delete the record's links.
+ * 8. Mark the log row completed, with the email counts and the address digest.
+ * 9. Write an audit entry.
  *
  * Note: leads do not link directly to activities (activities reference contact_id,
  * account_id, or deal_id — there is no lead_id column on activities).
@@ -353,6 +493,8 @@ export async function eraseLead(
   try {
     await client.query('BEGIN');
     await setRlsUserId(client);
+    // First, before any intent or message row: ingest holds this shared until it commits.
+    await lockForErasure(client);
 
     // Step 1 — verify the lead exists and capture PII before overwrite.
     // Name and email are captured here so the AI cascade (fired after COMMIT)
@@ -396,7 +538,7 @@ export async function eraseLead(
     // Step 4 — overwrite PII fields on the leads row
     await client.query(
       `UPDATE leads SET
-         first_name = '[GDPR deleted]',
+         first_name = ${GDPR_REDACTED_SQL},
          last_name = NULL,
          email = ${GDPR_PLACEHOLDER_EMAIL_SQL},
          phone = NULL,
@@ -406,9 +548,9 @@ export async function eraseLead(
       [id],
     );
 
-    // Step 5 — scrub linked notes (only non-deleted rows)
+    // Step 5 — scrub linked notes, soft-deleted rows included
     await client.query(
-      `UPDATE notes SET title = NULL, body = '[GDPR deleted]', body_text = '[GDPR deleted]'
+      `UPDATE notes SET title = NULL, body = ${GDPR_REDACTED_SQL}, body_text = ${GDPR_REDACTED_SQL}
        WHERE entity_type = 'lead' AND entity_id = $1`,
       [id],
     );
@@ -425,16 +567,30 @@ export async function eraseLead(
       [id],
     );
 
-    // Step 7 — mark the log row as completed
+    // Step 7 — redact the subject from synced mail and drop the record's links
+    const email = await cascadeErasureToEmail(client, 'lead', id, leadEmail);
+
+    // Step 8 — mark the log row as completed, with what the email cascade touched
     const logResult = await client.query<GdprDeletionLogRow>(
-      `UPDATE gdpr_deletion_log SET completed_at = now()
-       WHERE record_type = 'lead' AND record_id = $1
-       RETURNING *`,
-      [id],
+      `UPDATE gdpr_deletion_log
+          SET completed_at = now(),
+              email_messages_redacted = $2,
+              email_links_deleted = $3,
+              erased_address_hmac = $4,
+              erasure_scope = erasure_scope || $5::text[]
+        WHERE record_type = 'lead' AND record_id = $1
+        RETURNING *`,
+      [
+        id,
+        email.messagesRedacted,
+        email.linksDeleted,
+        erasedAddressDigest(leadEmail),
+        EMAIL_ERASURE_SCOPE,
+      ],
     );
     const logRow = logResult.rows[0];
 
-    // Step 8 — audit entry in the same transaction
+    // Step 9 — audit entry in the same transaction
     await writeAuditEntry(client, {
       recordType: 'lead',
       recordId: id,
@@ -466,6 +622,32 @@ export async function eraseLead(
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────────
+
+/** The synced mail a subject-access export includes; the same scope erasure redacts. */
+async function getEmailMessagesForSubject(
+  recordType: CascadeRecordType,
+  recordId: string,
+  email: string,
+): Promise<GdprEmailMessage[]> {
+  const result = await pool.query<GdprEmailMessage>(
+    `SELECT m.id, ca.email_address AS mailbox, m.direction, m.from_address, m.to_addresses,
+            m.cc_addresses, m.reply_to_addresses, m.subject, m.sent_at, m.has_attachments,
+            m.message_body_text AS body_text,
+            m.is_private,
+            COALESCE(
+              (SELECT json_agg(json_build_object('record_type', l.record_type,
+                                                 'record_id', l.record_id)
+                               ORDER BY l.record_type, l.record_id)
+                 FROM email_message_links l WHERE l.email_message_id = m.id),
+              '[]'::json) AS links
+       FROM email_messages m
+       JOIN connected_accounts ca ON ca.id = m.connected_account_id
+      WHERE m.id IN (${EMAIL_SCOPE_FOR_SUBJECT_SQL})
+      ORDER BY m.sent_at DESC NULLS LAST, m.id`,
+    [recordType, recordId, normalizeAddress(email)],
+  );
+  return result.rows;
+}
 
 /**
  * Assembles a full GDPR subject-access export for a contact.
@@ -547,8 +729,8 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
       pool.query<AuditLogRow>(
         `SELECT
            a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-           CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
-           CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
+           CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
+           CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
            a.changed_by_id, a.changed_by_name, a.created_at
          FROM audit_log a
          LEFT JOIN gdpr_deletion_log g
@@ -592,6 +774,7 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
     notes,
     custom_fields: customFields,
     audit_history: auditResult.rows,
+    email_messages: await getEmailMessagesForSubject('contact', id, contact.email),
   };
 }
 
@@ -651,8 +834,8 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
     pool.query<AuditLogRow>(
       `SELECT
          a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
-         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
+         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
+         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
          a.changed_by_id, a.changed_by_name, a.created_at
        FROM audit_log a
        LEFT JOIN gdpr_deletion_log g
@@ -693,6 +876,7 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
     notes,
     custom_fields: customFields,
     audit_history: auditResult.rows,
+    email_messages: await getEmailMessagesForSubject('lead', id, lead.email),
   };
 }
 
@@ -708,13 +892,14 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
 export async function listGdprDeletions(
   page: number,
   limit: number,
-): Promise<PaginatedResponse<GdprDeletionLogRow>> {
+): Promise<PaginatedResponse<GdprDeletionLogEntry>> {
   const offset = (page - 1) * limit;
 
   const [countResult, dataResult] = await Promise.all([
     pool.query<{ count: string }>('SELECT COUNT(*) AS count FROM gdpr_deletion_log'),
-    pool.query<GdprDeletionLogRow>(
-      'SELECT * FROM gdpr_deletion_log ORDER BY requested_at DESC LIMIT $1 OFFSET $2',
+    pool.query<GdprDeletionLogEntry>(
+      `SELECT ${DELETION_LOG_PUBLIC_COLUMNS} FROM gdpr_deletion_log
+        ORDER BY requested_at DESC LIMIT $1 OFFSET $2`,
       [limit, offset],
     ),
   ]);
@@ -738,9 +923,10 @@ export async function listGdprDeletions(
 export async function getGdprStatusForRecord(
   recordType: string,
   recordId: string,
-): Promise<GdprDeletionLogRow | null> {
-  const result = await pool.query<GdprDeletionLogRow>(
-    'SELECT * FROM gdpr_deletion_log WHERE record_type = $1 AND record_id = $2 LIMIT 1',
+): Promise<GdprDeletionLogEntry | null> {
+  const result = await pool.query<GdprDeletionLogEntry>(
+    `SELECT ${DELETION_LOG_PUBLIC_COLUMNS} FROM gdpr_deletion_log
+      WHERE record_type = $1 AND record_id = $2 LIMIT 1`,
     [recordType, recordId],
   );
   return result.rows[0] ?? null;
@@ -900,7 +1086,7 @@ export async function cascadeGdprErasureToAiData(
     // Session names may be auto-generated from message content that referenced it.
     await client.query(
       `UPDATE ai_sessions
-       SET name = '[GDPR deleted]'
+       SET name = ${GDPR_REDACTED_SQL}
        WHERE name IS NOT NULL AND name ~* $1`,
       queryParams,
     );

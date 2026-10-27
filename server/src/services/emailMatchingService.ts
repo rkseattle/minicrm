@@ -241,6 +241,10 @@ export async function deleteLinksForDeletedEntity(
     'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = $2',
     [recordType, recordId],
   );
+  await client.query(
+    'DELETE FROM activity_participants WHERE record_type = $1 AND record_id = $2',
+    [recordType, recordId],
+  );
 }
 
 /** Set-based counterpart for bulk deletes, which remove many rows in one statement. */
@@ -256,6 +260,10 @@ export async function deleteLinksForDeletedEntities(
   );
   await client.query(
     'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
+    [recordType, recordIds],
+  );
+  await client.query(
+    'DELETE FROM activity_participants WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
     [recordType, recordIds],
   );
 }
@@ -294,6 +302,7 @@ export async function relinkLinksToConvertedLead(
     `DELETE FROM email_message_links WHERE record_type = 'lead' AND record_id = $1`,
     [leadId],
   );
+  await moveActivityParticipants(client, 'lead', leadId, contactId);
 }
 
 /**
@@ -506,5 +515,29 @@ export async function relinkLinksToMergedContact(
   await client.query(
     `DELETE FROM email_message_links WHERE record_type = 'contact' AND record_id = $1`,
     [loserId],
+  );
+  await moveActivityParticipants(client, 'contact', loserId, winnerId);
+}
+
+/**
+ * Moves activity associations from a record that is going away to the contact it becomes,
+ * guarded like the link moves: the activity may already name that contact.
+ */
+async function moveActivityParticipants(
+  client: PoolClient,
+  fromType: 'contact' | 'lead',
+  fromId: string,
+  toContactId: string,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO activity_participants (activity_id, record_type, record_id)
+     SELECT activity_id, 'contact', $3 FROM activity_participants
+      WHERE record_type = $1 AND record_id = $2
+     ON CONFLICT DO NOTHING`,
+    [fromType, fromId, toContactId],
+  );
+  await client.query(
+    'DELETE FROM activity_participants WHERE record_type = $1 AND record_id = $2',
+    [fromType, fromId],
   );
 }

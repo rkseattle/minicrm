@@ -106,6 +106,7 @@ async function main(adminEmail: string): Promise<void> {
 
     // Activity-related
     await client.query(`DELETE FROM overdue_task_notifications`);
+    await client.query(`DELETE FROM activity_participants`);
     await client.query(`DELETE FROM activities`);
 
     // Notes (including note_tags junction)

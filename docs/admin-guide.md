@@ -1568,6 +1568,13 @@ themselves out.
 
 ### Encryption key rotation
 
+> **Replacing the value of `NODE_ENCRYPTION_KEY` also disables GDPR protection for people
+> already erased.** MiniCRM keeps a keyed digest of each erased person's address so their
+> mail is redacted if it arrives again; under a new key no digest matches, and that mail
+> would be stored in full. Keep the key.
+
+The same applies to MFA:
+
 > **Replacing the value of `NODE_ENCRYPTION_KEY` locks every enrolled user out of their
 > authenticator app.** TOTP secrets use the legacy unversioned encryption path, the same one
 > as the SSO certificate, and there is no tooling to re-encrypt them. MiniCRM then cannot

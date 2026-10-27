@@ -17,6 +17,7 @@ import pool from '../db.js';
 import { vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import logger from '../logger.js';
 import * as sentry from '../sentry.js';
 import { createUser } from '../services/userService.js';
@@ -27,6 +28,7 @@ import {
   eraseContact,
   eraseLead,
   getGdprExportForContact,
+  getGdprExportForLead,
   listGdprDeletions,
   getGdprStatusForRecord,
   cascadeGdprErasureToAiData,
@@ -34,7 +36,12 @@ import {
   getOriginalPiiFromCascadeLog,
   hasGdprErasureForRecord,
 } from '../services/gdprService.js';
-import { uid, clearAuditLogFor } from './testUtils.js';
+import { syncOneAccount } from '../services/emailSyncService.js';
+import { createImapAccount } from '../services/connectedAccountService.js';
+import type { ClaimedSyncAccount } from '../services/connectedAccountService.js';
+import type { MailProvider, NormalizedMessage } from '../services/mail/mailProvider.js';
+import { erasedAddressDigest, lockForIngest } from '../services/mail/gdprRedaction.js';
+import { uid, clearAuditLogFor, insertParkedMailbox } from './testUtils.js';
 
 const FILE_PREFIX = 'gdpr-svc';
 
@@ -971,5 +978,485 @@ describe('cascadeGdprErasureToAiData empty-name guard', () => {
       [adminId],
     );
     expect(remaining.rows).toHaveLength(1);
+  });
+});
+
+// ── Email cascade ──────────────────────────────────────────────────────────────
+
+describe('GDPR erasure and export of synced email', () => {
+  let mailboxOne: string;
+  let mailboxTwo: string;
+
+  beforeEach(async () => {
+    await pool.query('DELETE FROM connected_accounts WHERE user_id = $1', [adminId]);
+    // Real, decryptable credentials: the re-sync tests run the sync engine against this one.
+    const syncable = await createImapAccount(
+      adminId,
+      {
+        email_address: `${FILE_PREFIX}-box-one@example.com`,
+        host: 'imap.example.com',
+        port: 993,
+        username: `${FILE_PREFIX}-box-one@example.com`,
+        password: 'a-very-secret-password',
+        secure: true,
+      },
+      adminActor,
+    );
+    mailboxOne = syncable.id;
+    mailboxTwo = await insertParkedMailbox(adminId, `${FILE_PREFIX}-box-two@example.com`);
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM connected_accounts WHERE user_id = $1', [adminId]);
+  });
+
+  async function storeMessage(
+    mailboxId: string,
+    suffix: string,
+    fields: { from?: string; to?: string[]; isPrivate?: boolean } = {},
+  ): Promise<string> {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address,
+          to_addresses, subject, message_body_text, message_body_html, message_snippet,
+          is_private)
+       VALUES ($1, $2, $3, 'inbound', $4, $5, 'Contract renewal', 'Hi Alice, call me',
+               '<p>Hi Alice</p>', 'Hi Alice', $6)
+       RETURNING id`,
+      [
+        mailboxId,
+        `INBOX:${suffix}`,
+        `thread-${suffix}`,
+        fields.from ?? 'colleague@example.net',
+        fields.to ?? ['someone@example.net'],
+        fields.isPrivate ?? false,
+      ],
+    );
+    return result.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+  }
+
+  async function message(id: string) {
+    const result = await pool.query<{
+      from_address: string;
+      to_addresses: string[];
+      subject: string | null;
+      message_body_text: string | null;
+      message_body_html: string | null;
+      message_snippet: string | null;
+      redacted: boolean;
+    }>(
+      `SELECT from_address, to_addresses, subject, message_body_text, message_body_html,
+              message_snippet, gdpr_redacted_at IS NOT NULL AS redacted
+         FROM email_messages WHERE id = $1`,
+      [id],
+    );
+    return result.rows[0]!; // Safe: every id here names a stored row.
+  }
+
+  const placeholder = (recordId: string): string => `gdpr-deleted-${recordId}@gdpr.invalid`;
+
+  it("redacts the subject's address and the text of their mail in every mailbox", async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const fromThem = await storeMessage(mailboxOne, 'from', { from: contact.email });
+    const toThem = await storeMessage(mailboxTwo, 'to', {
+      to: [contact.email, 'other@example.net'],
+      isPrivate: true,
+    });
+    const unrelated = await storeMessage(mailboxOne, 'unrelated');
+
+    const log = await eraseContact(contact.id, adminActor);
+
+    expect(await message(fromThem)).toMatchObject({
+      from_address: placeholder(contact.id),
+      subject: '[GDPR deleted]',
+      message_body_text: null,
+      message_body_html: null,
+      message_snippet: null,
+      redacted: true,
+    });
+    expect((await message(toThem)).to_addresses).toEqual([
+      placeholder(contact.id),
+      'other@example.net',
+    ]);
+    expect(await message(unrelated)).toMatchObject({
+      subject: 'Contract renewal',
+      redacted: false,
+    });
+    expect(log).toMatchObject({ email_messages_redacted: 2, email_links_deleted: 0 });
+    expect(log.erasure_scope).toEqual(
+      expect.arrayContaining(['email_messages', 'email_message_links']),
+    );
+  });
+
+  it('redacts mail linked to the record that never names its address, and drops the links', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const linked = await storeMessage(mailboxOne, 'linked');
+    await pool.query(
+      `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
+       VALUES ($1, 'contact', $2, 'manual')`,
+      [linked, contact.id],
+    );
+    await pool.query(
+      `INSERT INTO email_message_link_suppressions (email_message_id, record_type, record_id)
+       VALUES ($1, 'contact', $2)`,
+      [linked, contact.id],
+    );
+
+    const log = await eraseContact(contact.id, adminActor);
+
+    expect(await message(linked)).toMatchObject({ subject: '[GDPR deleted]', redacted: true });
+    expect(log).toMatchObject({ email_messages_redacted: 1, email_links_deleted: 1 });
+    const left = await pool.query(
+      `SELECT 1 FROM email_message_links WHERE record_id = $1
+        UNION ALL SELECT 1 FROM email_message_link_suppressions WHERE record_id = $1`,
+      [contact.id],
+    );
+    expect(left.rowCount).toBe(0);
+  });
+
+  it.each([
+    ['CC', 'cc_addresses'],
+    ['Reply-To', 'reply_to_addresses'],
+  ])('finds the subject by their %s address too', async (_label, column) => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const id = await storeMessage(mailboxOne, `arm-${column}`);
+    // column is one of the two literals above, never caller input.
+    await pool.query(`UPDATE email_messages SET ${column} = $2 WHERE id = $1`, [
+      id,
+      ['First@Other.example', contact.email.toUpperCase()],
+    ]);
+
+    await eraseContact(contact.id, adminActor);
+
+    const row = await pool.query<{ addresses: string[]; redacted: boolean }>(
+      `SELECT ${column} AS addresses, gdpr_redacted_at IS NOT NULL AS redacted
+         FROM email_messages WHERE id = $1`,
+      [id],
+    );
+    expect(row.rows[0]).toEqual({
+      addresses: ['First@Other.example', placeholder(contact.id)],
+      redacted: true,
+    });
+  });
+
+  it('clears the activity text of a send intent filed from the record, whoever it went to', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    await pool.query(
+      `INSERT INTO email_send_intents
+         (user_id, connected_account_id, rfc_message_id, actor_name, to_addresses,
+          activity_notes, status, idempotency_key, request_hash, record_type, record_id)
+       VALUES ($1, $2, $3, 'GDPR Admin', '{someone@example.net}', 'About Alice', 'pending',
+               $4, 'gdpr-test', 'contact', $5)`,
+      [adminId, mailboxOne, `${uid()}@x.test`, randomUUID(), contact.id],
+    );
+
+    await eraseContact(contact.id, adminActor);
+
+    const intent = await pool.query<{ to_addresses: string[]; activity_notes: string | null }>(
+      'SELECT to_addresses, activity_notes FROM email_send_intents WHERE record_id = $1',
+      [contact.id],
+    );
+    expect(intent.rows).toEqual([{ to_addresses: ['someone@example.net'], activity_notes: null }]);
+  });
+
+  it('redacts a send intent addressed to the subject in another case', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const mixedCase = contact.email.toUpperCase();
+    await pool.query(
+      `INSERT INTO email_send_intents
+         (user_id, connected_account_id, rfc_message_id, actor_name, to_addresses, cc_addresses,
+          status, idempotency_key, request_hash)
+       VALUES ($1, $2, $3, 'GDPR Admin', $4, $4, 'sent', $5, 'gdpr-test')`,
+      [adminId, mailboxOne, `${uid()}@x.test`, [mixedCase], randomUUID()],
+    );
+
+    await eraseContact(contact.id, adminActor);
+
+    const intent = await pool.query<{ to_addresses: string[]; cc_addresses: string[] }>(
+      'SELECT to_addresses, cc_addresses FROM email_send_intents WHERE connected_account_id = $1',
+      [mailboxOne],
+    );
+    expect(intent.rows).toEqual([
+      { to_addresses: [placeholder(contact.id)], cc_addresses: [placeholder(contact.id)] },
+    ]);
+  });
+
+  it("redacts a send's activity on another record, even after its mailbox is gone", async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const account = await pool.query<{ id: string }>(
+      `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-acct-${uid()}`, adminId],
+    );
+    const accountId = account.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, notes, account_id, owner_id)
+       VALUES ('Email', 'Contract renewal', 'Hi Alice, call me', $1, $2) RETURNING id`,
+      [accountId, adminId],
+    );
+    const activityId = activity.rows[0]!.id; // Safe: as above.
+    await pool.query(
+      `INSERT INTO activity_participants (activity_id, record_type, record_id)
+       VALUES ($1, 'contact', $2)`,
+      [activityId, contact.id],
+    );
+    // Disconnecting deletes every message synced from the mailbox.
+    await pool.query('DELETE FROM connected_accounts WHERE id = $1', [mailboxOne]);
+
+    try {
+      await eraseContact(contact.id, adminActor);
+
+      const after = await pool.query<{ subject: string; notes: string | null }>(
+        'SELECT subject, notes FROM activities WHERE id = $1',
+        [activityId],
+      );
+      expect(after.rows).toEqual([{ subject: '[GDPR deleted]', notes: null }]);
+    } finally {
+      await pool.query('DELETE FROM activities WHERE account_id = $1', [accountId]);
+      await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);
+    }
+  });
+
+  it('keeps a digest of the erased address, never the address', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+
+    await eraseContact(contact.id, adminActor);
+
+    const row = await pool.query<Record<string, unknown>>(
+      'SELECT * FROM gdpr_deletion_log WHERE record_id = $1',
+      [contact.id],
+    );
+    // Safe: the erasure above wrote this record's one log row.
+    expect(row.rows[0]!.erased_address_hmac).toBe(erasedAddressDigest(contact.email));
+    expect(JSON.stringify(row.rows[0])).not.toContain(contact.email);
+  });
+
+  it('redacts send intents that named the subject, whatever their status', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    await pool.query(
+      `INSERT INTO email_send_intents
+         (user_id, connected_account_id, rfc_message_id, actor_name, to_addresses,
+          activity_notes, status, idempotency_key, request_hash)
+       VALUES ($1, $2, $3, 'GDPR Admin', $4, 'Notes about Alice', 'filed', $5, 'gdpr-test')`,
+      [adminId, mailboxOne, `${uid()}@x.test`, [contact.email], randomUUID()],
+    );
+
+    await eraseContact(contact.id, adminActor);
+
+    const intent = await pool.query<{ to_addresses: string[]; activity_notes: string | null }>(
+      'SELECT to_addresses, activity_notes FROM email_send_intents WHERE connected_account_id = $1',
+      [mailboxOne],
+    );
+    expect(intent.rows).toEqual([
+      { to_addresses: [placeholder(contact.id)], activity_notes: null },
+    ]);
+  });
+
+  function claimed(accountId: string, emailAddress: string): ClaimedSyncAccount {
+    return {
+      id: accountId,
+      userId: adminId,
+      userRole: 'admin',
+      provider: 'imap',
+      emailAddress,
+      syncCursor: 'already-backfilled',
+      syncFailureCount: 0,
+      grantedScopes: [],
+      excludedDomains: [],
+    };
+  }
+
+  function providerOf(messages: NormalizedMessage[]): MailProvider {
+    // Safe: sync only reads; nothing here sends.
+    return {
+      async fetchSince() {
+        return { messages, cursor: `c-${uid()}`, cursorInvalid: false, hasMore: false };
+      },
+    } as MailProvider;
+  }
+
+  function synced(providerMessageId: string, from: string): NormalizedMessage {
+    return {
+      providerMessageId,
+      threadId: `thread-${providerMessageId}`,
+      direction: 'inbound',
+      fromAddress: from,
+      toAddresses: [`${FILE_PREFIX}-box-one@example.com`],
+      ccAddresses: [],
+      subject: 'Contract renewal',
+      hasAttachments: false,
+      sentAt: new Date('2026-09-01T12:00:00Z'),
+      bodyText: 'Hi, it is Alice',
+      bodyHtml: null,
+      snippet: 'Hi, it is Alice',
+      rfcMessageId: null,
+      references: null,
+      replyToAddresses: [],
+    };
+  }
+
+  const governance = { orgExcludedDomains: [], backfillDays: 90 };
+
+  it('does not let a re-sync restore a redacted message', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const stored = await storeMessage(mailboxOne, 'resync', { from: contact.email });
+    await eraseContact(contact.id, adminActor);
+
+    await syncOneAccount(
+      claimed(mailboxOne, `${FILE_PREFIX}-box-one@example.com`),
+      providerOf([synced('INBOX:resync', contact.email)]),
+      undefined,
+      false,
+      governance,
+    );
+
+    expect(await message(stored)).toMatchObject({
+      from_address: placeholder(contact.id),
+      subject: '[GDPR deleted]',
+      message_body_text: null,
+    });
+  });
+
+  it('redacts, as it arrives, mail a mailbox connected after the erasure brings in', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    await eraseContact(contact.id, adminActor);
+
+    await syncOneAccount(
+      claimed(mailboxOne, `${FILE_PREFIX}-box-one@example.com`),
+      providerOf([synced('INBOX:late', contact.email.toUpperCase())]),
+      undefined,
+      false,
+      governance,
+    );
+
+    const arrived = await pool.query<{ id: string }>(
+      `SELECT id FROM email_messages WHERE connected_account_id = $1 AND provider_message_id = 'INBOX:late'`,
+      [mailboxOne],
+    );
+    // Safe: the sync above stored this row.
+    expect(await message(arrived.rows[0]!.id)).toMatchObject({
+      from_address: placeholder(contact.id),
+      message_body_text: null,
+      redacted: true,
+    });
+  });
+
+  it('redacts once per message when two erasures share an address', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const lead = await createLead(
+      { ...makeLead(), email: contact.email, owner_id: adminId },
+      adminActor,
+    );
+    await eraseContact(contact.id, adminActor);
+    await eraseLead(lead.id, adminActor);
+
+    await syncOneAccount(
+      claimed(mailboxOne, `${FILE_PREFIX}-box-one@example.com`),
+      providerOf([synced('INBOX:shared', contact.email)]),
+      undefined,
+      false,
+      governance,
+    );
+
+    const arrived = await pool.query<{ from_address: string; redacted: boolean }>(
+      `SELECT from_address, gdpr_redacted_at IS NOT NULL AS redacted FROM email_messages
+        WHERE connected_account_id = $1 AND provider_message_id = 'INBOX:shared'`,
+      [mailboxOne],
+    );
+    expect(arrived.rows[0]!.redacted).toBe(true); // Safe: the sync above stored this row.
+    expect([placeholder(contact.id), placeholder(lead.id)]).toContain(
+      arrived.rows[0]!.from_address, // Safe: as above.
+    );
+  });
+
+  it('waits for a page already being stored, then redacts it too', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const ingesting = await pool.connect();
+    let inFlight = '';
+    try {
+      await ingesting.query('BEGIN');
+      await lockForIngest(ingesting);
+      const row = await ingesting.query<{ id: string }>(
+        `INSERT INTO email_messages
+           (connected_account_id, provider_message_id, thread_id, direction, from_address,
+            subject)
+         VALUES ($1, 'INBOX:inflight', 'thread-inflight', 'inbound', $2, 'Hello')
+         RETURNING id`,
+        [mailboxOne, contact.email],
+      );
+      inFlight = row.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+
+      const erasing = eraseContact(contact.id, adminActor);
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const waiting = await pool.query(
+          `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted
+              AND classid::bigint = (hashtext('gdpr-email-ingest')::bigint + 4294967296) % 4294967296`,
+        );
+        if ((waiting.rowCount ?? 0) > 0) break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      await ingesting.query('COMMIT');
+      await erasing;
+    } finally {
+      ingesting.release();
+    }
+
+    expect(await message(inFlight)).toMatchObject({ subject: '[GDPR deleted]', redacted: true });
+  });
+
+  it("exports the subject's mail, private threads included, each with its links", async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const privateOne = await storeMessage(mailboxTwo, 'private', {
+      from: contact.email,
+      isPrivate: true,
+    });
+    await pool.query(
+      `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
+       VALUES ($1, 'contact', $2, 'auto')`,
+      [privateOne, contact.id],
+    );
+    await storeMessage(mailboxOne, 'not-theirs');
+
+    const exported = await getGdprExportForContact(contact.id);
+
+    expect(exported.email_messages).toHaveLength(1);
+    expect(exported.email_messages[0]).toMatchObject({
+      id: privateOne,
+      mailbox: `${FILE_PREFIX}-box-two@example.com`,
+      from_address: contact.email,
+      body_text: 'Hi Alice, call me',
+      is_private: true,
+      links: [{ record_type: 'contact', record_id: contact.id }],
+    });
+  });
+
+  it('exports a lead with every section, including its mail', async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: adminId }, adminActor);
+    // Safe: leads.email is NOT NULL, whatever LeadRow's type allows.
+    await storeMessage(mailboxOne, 'lead-mail', { to: [lead.email!] });
+
+    const exported = await getGdprExportForLead(lead.id);
+
+    expect(exported.lead.id).toBe(lead.id);
+    for (const key of ['notes', 'custom_fields', 'audit_history', 'email_messages'] as const) {
+      expect(Array.isArray(exported[key])).toBe(true);
+    }
+    expect(exported.email_messages).toHaveLength(1);
+  });
+
+  it("erases a lead's linked mail that never names its address", async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: adminId }, adminActor);
+    const linked = await storeMessage(mailboxOne, 'lead-linked');
+    await pool.query(
+      `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type)
+       VALUES ($1, 'lead', $2, 'manual')`,
+      [linked, lead.id],
+    );
+
+    const log = await eraseLead(lead.id, adminActor);
+
+    expect(await message(linked)).toMatchObject({ subject: '[GDPR deleted]', redacted: true });
+    expect(log).toMatchObject({ email_messages_redacted: 1, email_links_deleted: 1 });
+    // Safe: leads.email is NOT NULL, whatever LeadRow's type allows.
+    expect(log.erased_address_hmac).toBe(erasedAddressDigest(lead.email!));
   });
 });

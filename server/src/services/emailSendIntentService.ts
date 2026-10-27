@@ -38,6 +38,7 @@ import {
   toEmailMessage,
   type EmailMessageRow,
 } from './emailMessageService.js';
+import { GDPR_REDACTED_TEXT } from './mail/gdprRedaction.js';
 import type { NormalizedMessage } from './mail/mailProvider.js';
 import { truncate } from './mail/messageBody.js';
 import { setRlsUserIdTo } from './rlsContextService.js';
@@ -116,6 +117,8 @@ export interface FilableMessage {
   ccAddresses: readonly string[];
   /** As it stands after the thread's privacy is inherited; a private send files no body. */
   isPrivate: boolean;
+  /** GDPR-redacted on ingest: it files with the redacted subject and no text at all. */
+  redacted: boolean;
 }
 
 interface SendIntentRow {
@@ -587,13 +590,26 @@ export async function fileSentMessage(
       {
         type: 'Email',
         direction: 'Outbound',
-        subject: truncate(message.subject?.trim() || UNTITLED_SUBJECT, ACTIVITY_SUBJECT_MAX),
+        subject: message.redacted
+          ? GDPR_REDACTED_TEXT
+          : truncate(message.subject?.trim() || UNTITLED_SUBJECT, ACTIVITY_SUBJECT_MAX),
         // A private thread stays its owner's: the activity records the send, not the text.
-        notes: isPrivate ? undefined : (intent.activityNotes ?? message.bodyText) || undefined,
+        notes:
+          isPrivate || message.redacted
+            ? undefined
+            : (intent.activityNotes ?? message.bodyText) || undefined,
         [activityField]: record.id,
         owner_id: intent.userId,
       },
       actor,
+    );
+    // Erasure reaches the activity from each person it concerns, even once the mailbox is gone.
+    await client.query(
+      `INSERT INTO activity_participants (activity_id, record_type, record_id)
+       SELECT $1, l.record_type, l.record_id FROM email_message_links l
+        WHERE l.email_message_id = $2 AND l.record_type IN ('contact', 'lead')
+       ON CONFLICT DO NOTHING`,
+      [activityId, message.id],
     );
   }
 
@@ -662,10 +678,12 @@ export async function fileReconciledIntents(
     to_addresses: string[];
     cc_addresses: string[];
     is_private: boolean;
+    redacted: boolean;
     email_address: string;
   }>(
     `SELECT m.id, m.provider_message_id, m.subject, m.message_body_text, m.to_addresses,
-            m.cc_addresses, m.is_private, ca.email_address
+            m.cc_addresses, m.is_private, m.gdpr_redacted_at IS NOT NULL AS redacted,
+            ca.email_address
        FROM email_messages m
        JOIN connected_accounts ca ON ca.id = m.connected_account_id
       WHERE m.connected_account_id = $1 AND m.provider_message_id = ANY($2)`,
@@ -698,6 +716,7 @@ export async function fileReconciledIntents(
           toAddresses: row.to_addresses,
           ccAddresses: row.cc_addresses,
           isPrivate: row.is_private,
+          redacted: row.redacted,
         },
         row.email_address,
       );

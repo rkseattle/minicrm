@@ -56,17 +56,55 @@ An admin user can erase all personal data fields for a contact or lead while pre
 
 After erasure:
 
-- All personal data fields on the record are replaced with `[GDPR deleted]`.
+- Names are replaced with `[GDPR deleted]`; the record's other personal fields (phone, title,
+  addresses, links, and for a lead its company and notes) are cleared.
 - The email address is replaced with a synthetic non-exposing address (`gdpr-deleted-<id>@gdpr.invalid`).
 - Subject and notes on all linked activities are scrubbed.
 - Title, body, and body_text on all linked notes are scrubbed, including notes that were
   already deleted — the row still holds the data until it is scrubbed.
 - All custom field values for the record are deleted.
+- Synced and sent email that names the person, in any user's mailbox, is redacted in place:
+  their address becomes the synthetic address, and the message's subject and body are removed.
+  Email linked to the record is redacted the same way even where it never names them. See
+  [Synced email](#synced-email) below.
 - The audit log continues to show that events occurred, but old_value and new_value are masked with `[GDPR deleted]`.
 - A `gdpr_erasure` entry is added to the audit log recording that the erasure was performed, by whom, and when.
 - The record itself (ID, timestamps, owner, stage, deal associations) is preserved so that business data integrity is maintained.
 
 A second erasure request on an already-erased record returns a 409 error.
+
+#### Synced email
+
+MiniCRM syncs each user's own mailbox, so a data subject's personal data sits in mail that
+belongs to someone else. Erasure **redacts** that mail rather than deleting it, consistent
+with how the rest of the record is handled:
+
+- **What is in scope** — every message carrying the person's address as sender, recipient,
+  CC or Reply-To, in every mailbox, private threads included, plus every message linked to
+  the erased record.
+- **What changes** — the person's address is replaced by `gdpr-deleted-<id>@gdpr.invalid`
+  wherever it appears, and the subject line, body and preview are removed. Other people's
+  addresses on the same message are left alone: they are not the subject of the request.
+  The message's links to the erased record are deleted, and any pending send that named the
+  person has its recipients redacted and its activity text cleared.
+- **Why redact, not delete** — a deleted message would simply sync back in on the next
+  backfill or reconnect. A redacted message is kept as a marker the sync never overwrites.
+- **Mail that arrives later** — the erasure log keeps a keyed, one-way digest of the
+  address (never the address). Mail synced or sent to that address afterwards — a mailbox
+  connected later, or one reconnected — is redacted as it is stored. The digest is
+  pseudonymised data, not anonymised: reversing it needs the server's encryption key.
+- **Activities filed from that mail** — a send from a contact, deal or account files an Email
+  activity carrying its subject and text, associated with every contact and lead the message
+  names. Erasure redacts every activity associated with the person, even after the mailbox
+  it came from is disconnected. Activities filed before this release were associated where
+  their send record and message still existed (sends from the previous 30 days whose mailbox
+  is still connected); older ones are not reached.
+- **Sent-mail audit entries** — the audit log records the recipients of each email sent from
+  MiniCRM and, being append-only, is never edited. The erased address is masked whenever the
+  log is read instead, as other erased values are.
+
+One address, one person: if two records share an address, erasing either redacts the mail
+for that address everywhere.
 
 #### AI data cascade
 
@@ -165,7 +203,7 @@ An admin user can download a complete JSON export of all personal data held for 
 1. Navigate to the contact or lead record.
 2. Scroll to the **GDPR & Privacy** section.
 3. Click **Download data export**.
-4. The browser downloads a JSON file containing: the contact/lead record, all linked activities, all linked deals, all linked notes (private ones included — see below), all custom field values, and the full audit history for the record (with GDPR masking applied if erasure has occurred).
+4. The browser downloads a JSON file containing: the contact/lead record, all linked activities, all linked deals, all linked notes (private ones included — see below), all custom field values, the full audit history for the record (with GDPR masking applied if erasure has occurred), and every synced or sent email that names the person or is linked to the record — with the mailbox it came from and its links. Private email threads are included, as private notes are: Art. 15 covers all data held about the subject, whatever its internal sharing.
 5. Provide this file to the data subject.
 
 #### Art. 20 — Right to Data Portability
@@ -200,12 +238,16 @@ is the record that the request was honored.
 > — "request from jane.doe@example.com" — leaves their personal data in a table the
 > erasure was performed to clear. Reference the request by ticket number.
 
-Two columns matter when auditing one:
+These columns matter when auditing one:
 
 - **`erasure_scope`** — the fields the erasure overwrote, recorded at the time it ran, so
-  a later change to what counts as personal data does not rewrite history. Note it lists
+  a later change to what counts as personal data does not rewrite history, followed by the
+  tables the email cascade touched (`email_messages`, `email_message_links`). Note it lists
   the fields cleared by name and omits `email`, which is always replaced with the
   synthetic address whatever the scope says.
+- **`email_messages_redacted`**, **`email_links_deleted`** — what the email part of the
+  erasure touched, so you can show the cascade ran without keeping any of the data.
+- **`erased_address_hmac`** — the keyed digest that redacts later mail to the same address.
 - **`completed_at`** — `NULL` until every write in the erasure has succeeded. Because the
   whole erasure is one transaction, a row visible with `completed_at` still `NULL` means
   the erasure did not commit. It also drives the audit-log masking: only records with a

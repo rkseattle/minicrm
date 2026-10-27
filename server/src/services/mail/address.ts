@@ -15,3 +15,8 @@ export function domainOfAddress(address: string): string | null {
     .toLowerCase();
   return domain === '' ? null : domain;
 }
+
+/** An address as stored and compared: trimmed and lowercased, as every provider writes it. */
+export function normalizeAddress(address: string): string {
+  return address.trim().toLowerCase();
+}

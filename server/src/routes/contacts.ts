@@ -2043,7 +2043,10 @@ router.post(
  *           application/json:
  *             schema:
  *               type: object
- *               description: Contact record plus its related activities, notes, and audit history
+ *               description: >-
+ *                 Contact record plus its related activities, deals, notes, custom fields,
+ *                 audit history, and email_messages — every synced or sent email that names
+ *                 the contact or is linked to it, private threads included, with its links
  *       400:
  *         description: Validation error
  *         content:
