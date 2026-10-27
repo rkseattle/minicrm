@@ -1279,7 +1279,6 @@
   "attachments": {
     "sectionTitle": "Anhänge",
     "notConfigured": "Dateianhänge sind nicht konfiguriert — wenden Sie sich an Ihren Administrator.",
-    "uploadZoneLabel": "Datei hochladen",
     "uploadZoneHint": "Klicken Sie hier oder ziehen Sie eine Datei hierher",
     "uploadZoneTypes": "PDF, .docx, .xlsx, .png, .jpg, .txt — max. 25 MB",
     "uploading": "Hochladen…",

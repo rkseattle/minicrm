@@ -79,6 +79,9 @@ describe('AttachmentsSection — storage configured', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('attachments-upload-zone')).toBeInTheDocument();
+      expect(screen.getByTestId('attachments-upload-zone')).toHaveAccessibleName(
+        'Click or drag and drop a file here',
+      );
     });
   });
 
