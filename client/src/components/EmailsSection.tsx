@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { Capability } from '@shared/schemas/capabilitySchema.js';
 import {
@@ -24,6 +24,7 @@ import {
   EMAIL_MESSAGES_QUERY_KEY,
   getEmailMessage,
   listRecordEmailThreads,
+  setThreadPrivacy,
 } from '@/api/emailMessages.js';
 import EmailBodyFrame from '@/components/EmailBodyFrame.js';
 import EmailComposer, { type ComposeMode } from '@/components/EmailComposer.js';
@@ -107,6 +108,19 @@ function DirectionBadge({ direction }: { direction: EmailMessage['direction'] })
   );
 }
 
+/** Marks a thread only its mailbox's owner can read; text, not color alone, carries it. */
+function PrivateBadge({ domId }: { domId: string }) {
+  const { t } = useTranslation();
+  return (
+    <span
+      data-testid={`email-thread-private-${domId}`}
+      className="inline-flex shrink-0 items-center rounded-sm bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-800"
+    >
+      {t('emails.private')}
+    </span>
+  );
+}
+
 /** One message's body, read only once the reader opens that message. */
 function MessageBody({ message, allowImages }: { message: EmailMessage; allowImages: boolean }) {
   const { t } = useTranslation();
@@ -154,6 +168,21 @@ export default function EmailsSection({
   defaultRecipient,
 }: EmailsSectionProps) {
   const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
+  const [privacyFailedKey, setPrivacyFailedKey] = useState<string | null>(null);
+  const privacyMutation = useMutation({
+    mutationFn: ({
+      messageId,
+      isPrivate,
+    }: {
+      messageId: string;
+      isPrivate: boolean;
+      key: string;
+    }) => setThreadPrivacy(messageId, isPrivate),
+    onMutate: () => setPrivacyFailedKey(null),
+    onError: (_err, { key }) => setPrivacyFailedKey(key),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: EMAIL_MESSAGES_QUERY_KEY }),
+  });
   const { enabled: emailSyncEnabled } = useFeatureFlag('email_sync');
   const { can } = usePermissions();
   const visible = emailSyncEnabled && can(Capability.ConnectedAccountsManage);
@@ -303,6 +332,7 @@ export default function EmailsSection({
               const latest = messages[messages.length - 1]!;
               const participants = participantsOf(messages);
               const isOpen = expanded.has(key);
+              const threadPrivate = messages.some((message) => message.is_private);
               const canReply =
                 maySendHere &&
                 sendable.some((account) => account.id === thread.connected_account_id);
@@ -320,6 +350,7 @@ export default function EmailsSection({
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <DirectionBadge direction={latest.direction} />
+                      {threadPrivate && <PrivateBadge domId={domId} />}
                       <span
                         className="text-sm text-gray-600 truncate min-w-0"
                         data-testid="email-thread-participants"
@@ -353,7 +384,40 @@ export default function EmailsSection({
 
                   {isOpen && (
                     <div id={`email-thread-body-${domId}`} className="pb-4 space-y-4">
-                      <div className="flex justify-end">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <p
+                          id={`email-thread-privacy-hint-${domId}`}
+                          className="me-auto text-xs text-gray-500"
+                          data-testid={`email-thread-privacy-hint-${domId}`}
+                        >
+                          {t(threadPrivate ? 'emails.makeVisibleHint' : 'emails.markPrivateHint')}
+                        </p>
+                        {privacyFailedKey === key && (
+                          <p
+                            role="alert"
+                            className="me-auto text-xs text-red-600"
+                            data-testid={`email-thread-privacy-error-${domId}`}
+                          >
+                            {t('emails.privacyError')}
+                          </p>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          aria-describedby={`email-thread-privacy-hint-${domId}`}
+                          disabled={privacyMutation.isPending}
+                          data-testid={`email-thread-privacy-${domId}`}
+                          onClick={() =>
+                            privacyMutation.mutate({
+                              messageId: latest.id,
+                              isPrivate: !threadPrivate,
+                              key,
+                            })
+                          }
+                        >
+                          {t(threadPrivate ? 'emails.makeVisible' : 'emails.markPrivate')}
+                        </Button>
                         <Button
                           type="button"
                           variant="ghost"

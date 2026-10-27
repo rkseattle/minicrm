@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import {
   MAX_EXCLUDED_DOMAINS,
   excludedDomainListSchema,
+  parseExcludedDomainLines,
 } from '@shared/schemas/emailDomainSchema.js';
 import {
   EMAIL_SYNC_BACKFILL_DAYS_DEFAULT,
@@ -32,14 +33,6 @@ import { Button } from '@/components/ui/Button.js';
 interface EmailSyncSettingsProps {
   /** True when email_sync is off org-wide: shown, but nothing can be changed. */
   disabled?: boolean;
-}
-
-/** One domain per line, blank lines ignored. */
-function parseDomainLines(text: string): string[] {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line !== '');
 }
 
 export default function EmailSyncSettings({ disabled = false }: EmailSyncSettingsProps) {
@@ -93,7 +86,7 @@ export default function EmailSyncSettings({ disabled = false }: EmailSyncSetting
   function saveDomains(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
     setSaved(null);
-    const parsed = excludedDomainListSchema.safeParse(parseDomainLines(domainsText));
+    const parsed = excludedDomainListSchema.safeParse(parseExcludedDomainLines(domainsText));
     if (!parsed.success) {
       setDomainsError(t('settings.emailSync.domainsInvalid', { max: MAX_EXCLUDED_DOMAINS }));
       return;

@@ -307,6 +307,7 @@ router.post('/:id/links', asyncHandler(createLinkHandler));
  *           application/json:
  *             schema:
  *               type: object
+ *               required: [is_private, updated]
  *               properties:
  *                 is_private: { type: boolean }
  *                 updated: { type: integer }

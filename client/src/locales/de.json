@@ -1955,7 +1955,15 @@
       "TEST_REQUEST_FAILED": "MiniCRM konnte diesen Test nicht ausführen. Bitte versuchen Sie es erneut."
     },
     "secureLabel": "TLS beim Verbinden verwenden (abwählen für Server mit STARTTLS auf Port 143)",
-    "testButton": "Testen"
+    "testButton": "Testen",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "paused": "Pausiert",
+    "excludedDomainsButton_one": "Ausgeschlossene Domains ({{count}})",
+    "excludedDomainsButton_other": "Ausgeschlossene Domains ({{count}})",
+    "excludedDomainsLabel": "Nie zu synchronisierende Domains",
+    "excludedDomainsHint": "Eine pro Zeile, z. B. example.com. E-Mails, deren übrige Adressen alle zu diesen Domains oder zur Liste Ihrer Organisation gehören, werden aus diesem Postfach nie synchronisiert. Gilt ab jetzt.",
+    "updateError": "Das Postfach konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
   },
   "mfa": {
     "sectionTitle": "Zwei-Faktor-Authentifizierung",
@@ -3000,6 +3008,12 @@
       "recipientsInvalid": "Diese Adressen können nicht gelesen werden. Trennen Sie sie durch Kommas."
     },
     "accountsLoadError": "Ihre Postfächer konnten nicht geladen werden, daher ist das Senden von hier aus vorerst nicht möglich.",
-    "composeFrozen": "Diese Nachricht ist möglicherweise schon unterwegs und kann daher nicht mehr bearbeitet werden. Senden wiederholt dieselbe Nachricht und erzeugt keine zweite Kopie; um sie zu ändern, schließen Sie dieses Fenster und prüfen Sie zuerst Ihren Ordner „Gesendet“."
+    "composeFrozen": "Diese Nachricht ist möglicherweise schon unterwegs und kann daher nicht mehr bearbeitet werden. Senden wiederholt dieselbe Nachricht und erzeugt keine zweite Kopie; um sie zu ändern, schließen Sie dieses Fenster und prüfen Sie zuerst Ihren Ordner „Gesendet“.",
+    "private": "Privat",
+    "markPrivate": "Als privat markieren",
+    "makeVisible": "Sichtbar machen",
+    "markPrivateHint": "In dieser Unterhaltung gesendete E-Mails werden ohne Betreff und Text am Datensatz protokolliert, bereits protokollierte verlieren ihre, und spätere E-Mails darin bleiben privat.",
+    "makeVisibleHint": "In dieser Unterhaltung gesendete E-Mails werden wieder mit Betreff und Text am Datensatz protokolliert.",
+    "privacyError": "Die Sichtbarkeit dieser Unterhaltung konnte nicht geändert werden. Bitte versuchen Sie es erneut."
   }
 }

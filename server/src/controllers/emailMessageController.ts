@@ -13,6 +13,7 @@ import {
   EMAIL_LINK_EDIT_CAPABILITY,
   sendEmailSchema,
   threadPrivacySchema,
+  type ThreadPrivacyResponse,
   capabilitiesToSendFrom,
   type EmailLinkRecordType,
   type SendErrorCode,
@@ -172,7 +173,8 @@ export async function setThreadPrivacyHandler(req: Request, res: Response): Prom
     res.status(404).json(errorBody('NOT_FOUND', 'No such message'));
     return;
   }
-  res.status(200).json({ is_private: result.isPrivate, updated: result.updated });
+  const body: ThreadPrivacyResponse = { is_private: result.isPrivate, updated: result.updated };
+  res.status(200).json(body);
 }
 
 /**

@@ -706,3 +706,90 @@ describe('EmailsSection — identity and paging edges', () => {
     expect(screen.queryByTestId('emails-empty')).not.toBeInTheDocument();
   });
 });
+
+describe('EmailsSection — private threads', () => {
+  const T1_PRIVATE: EmailThread[] = [
+    {
+      thread_id: 't-1',
+      connected_account_id: MAILBOX_ID,
+      messages: [
+        { ...SECOND, is_private: true },
+        { ...FIRST, is_private: true },
+      ],
+    },
+  ];
+
+  it('marks a private thread on its row', async () => {
+    serve({ threads: T1_PRIVATE });
+    renderSection();
+    expect(await screen.findByTestId(`email-thread-private-${T1}`)).toHaveTextContent('Private');
+  });
+
+  it('shows no badge on a thread that is not private', async () => {
+    serve();
+    const queryClient = renderSection();
+    await settled(queryClient, EMAIL_MESSAGES_QUERY_KEY);
+    expect(screen.queryByTestId(`email-thread-private-${T1}`)).not.toBeInTheDocument();
+  });
+
+  it('marks an open thread private, and shows it private once the list refreshes', async () => {
+    let threads = THREADS;
+    serve();
+    server.use(
+      http.get('/api/v1/email-messages', () =>
+        HttpResponse.json({ data: threads, total: threads.length, page: 1, limit: 10 }),
+      ),
+    );
+    const sent: { id: string; body: unknown }[] = [];
+    server.use(
+      http.patch('/api/v1/email-messages/:id/thread-privacy', async ({ params, request }) => {
+        // Safe: the route's one path parameter is always a string.
+        sent.push({ id: params['id'] as string, body: await request.json() });
+        threads = T1_PRIVATE;
+        return HttpResponse.json({ is_private: true, updated: 2 });
+      }),
+    );
+    renderSection();
+
+    fireEvent.click(await screen.findByTestId(`email-thread-row-${T1}`));
+    expect(screen.getByTestId(`email-thread-privacy-hint-${T1}`)).toBeInTheDocument();
+    fireEvent.click(await screen.findByTestId(`email-thread-privacy-${T1}`));
+
+    await waitFor(() => expect(sent).toEqual([{ id: SECOND.id, body: { is_private: true } }]));
+    expect(await screen.findByTestId(`email-thread-private-${T1}`)).toBeInTheDocument();
+  });
+
+  it('offers to make a private thread visible again', async () => {
+    serve({ threads: T1_PRIVATE });
+    const sent: unknown[] = [];
+    server.use(
+      http.patch('/api/v1/email-messages/:id/thread-privacy', async ({ request }) => {
+        sent.push(await request.json());
+        return HttpResponse.json({ is_private: false, updated: 2 });
+      }),
+    );
+    renderSection();
+
+    fireEvent.click(await screen.findByTestId(`email-thread-row-${T1}`));
+    const toggle = await screen.findByTestId(`email-thread-privacy-${T1}`);
+    expect(toggle).toHaveTextContent('Make visible');
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(sent).toEqual([{ is_private: false }]));
+  });
+
+  it('reports a failed change on that thread', async () => {
+    serve();
+    server.use(
+      http.patch('/api/v1/email-messages/:id/thread-privacy', () =>
+        HttpResponse.json({ error: { code: 'X', message: 'x' } }, { status: 500 }),
+      ),
+    );
+    renderSection();
+
+    fireEvent.click(await screen.findByTestId(`email-thread-row-${T1}`));
+    fireEvent.click(await screen.findByTestId(`email-thread-privacy-${T1}`));
+
+    expect(await screen.findByTestId(`email-thread-privacy-error-${T1}`)).toBeInTheDocument();
+  });
+});

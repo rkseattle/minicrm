@@ -11,6 +11,7 @@ import {
   type EmailThread,
   type SendEmailInput,
   type SendEmailResponse,
+  type ThreadPrivacyResponse,
 } from '@shared/schemas/emailMessageSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
@@ -63,4 +64,19 @@ export async function listRecordEmailThreads(params: {
 export async function getEmailMessage(id: string): Promise<EmailMessageDetail> {
   const response = await apiClient.get<{ message: EmailMessageDetail }>(`/email-messages/${id}`);
   return response.data.message;
+}
+
+/**
+ * Marks the whole thread a message belongs to private, or visible again, in the caller's
+ * own mailbox.
+ */
+export async function setThreadPrivacy(
+  messageId: string,
+  isPrivate: boolean,
+): Promise<ThreadPrivacyResponse> {
+  const response = await apiClient.patch<ThreadPrivacyResponse>(
+    `/email-messages/${messageId}/thread-privacy`,
+    { is_private: isPrivate },
+  );
+  return response.data;
 }

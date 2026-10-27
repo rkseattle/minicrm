@@ -138,6 +138,13 @@ export const threadPrivacySchema = z
 
 export type ThreadPrivacyInput = z.infer<typeof threadPrivacySchema>;
 
+/** Response of PATCH /api/v1/email-messages/:id/thread-privacy; a type, since nothing parses it. */
+export interface ThreadPrivacyResponse {
+  is_private: boolean;
+  /** Messages whose setting changed; 0 when the thread already had it. */
+  updated: number;
+}
+
 /** Longest subject a send accepts, matching the org-SMTP compose path. */
 export const EMAIL_SEND_SUBJECT_MAX = 255;
 

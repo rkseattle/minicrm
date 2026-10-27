@@ -1955,7 +1955,15 @@
       "TEST_REQUEST_FAILED": "[MïñïĈRM ĉöüld ñöt rüñ thät tëŝt. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~]"
     },
     "secureLabel": "[Üŝë TLŜ öñ ĉöññëĉt (üñĉhëĉk för ŝërvërŝ thät üŝë ŜTÄRTTLŜ öñ pört 143)~~~~~~~~~~~~~~~~~~~~~]",
-    "testButton": "[Tëŝt~~]"
+    "testButton": "[Tëŝt~~]",
+    "pause": "[Päüŝë~~]",
+    "resume": "[Rëŝümë~~]",
+    "paused": "[Päüŝëd~~]",
+    "excludedDomainsButton_one": "[Ëxĉlüdëd dömäïñŝ ({{count}})~~~~~~~~~]",
+    "excludedDomainsButton_other": "[Ëxĉlüdëd dömäïñŝ ({{count}})~~~~~~~~~]",
+    "excludedDomainsLabel": "[Dömäïñŝ ñëvër tö ŝyñĉ~~~~~~~]",
+    "excludedDomainsHint": "[Öñë për lïñë, ŝüĉh äŝ ëxämplë.ĉöm. Mäïl whöŝë ëvëry öthër äddrëŝŝ ïŝ öñ thëŝë dömäïñŝ, ör öñ yöür örgäñïzätïöñ'ŝ lïŝt, ïŝ ñëvër ŝyñĉëd fröm thïŝ mäïlböx. Äpplïëŝ fröm ñöw öñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "updateError": "[Ĉöüld ñöt üpdätë thïŝ mäïlböx. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~]"
   },
   "mfa": {
     "sectionTitle": "[Twö-Fäĉtör Äüthëñtïĉätïöñ~~~~~~~~]",
@@ -3000,6 +3008,12 @@
       "recipientsInvalid": "[Thëŝë äddrëŝŝëŝ ĉäñ't bë rëäd. Ŝëpärätë thëm wïth ĉömmäŝ.~~~~~~~~~~~~~~~~~~]"
     },
     "accountsLoadError": "[Yöür mäïlböxëŝ ĉöüldñ't bë löädëd, ŝö ŝëñdïñg fröm hërë ïŝ üñäväïläblë för ñöw.~~~~~~~~~~~~~~~~~~~~~~~~]",
-    "composeFrozen": "[Thïŝ mëŝŝägë mäy älrëädy bë öñ ïtŝ wäy, ŝö ït ĉäñ ñö löñgër bë ëdïtëd. Ŝëñd rëtrïëŝ thë ŝämë mëŝŝägë äñd wïll ñöt ĉrëätë ä ŝëĉöñd ĉöpy; tö ĉhäñgë ït, ĉlöŝë thïŝ wïñdöw äñd ĉhëĉk yöür Ŝëñt földër fïrŝt.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]"
+    "composeFrozen": "[Thïŝ mëŝŝägë mäy älrëädy bë öñ ïtŝ wäy, ŝö ït ĉäñ ñö löñgër bë ëdïtëd. Ŝëñd rëtrïëŝ thë ŝämë mëŝŝägë äñd wïll ñöt ĉrëätë ä ŝëĉöñd ĉöpy; tö ĉhäñgë ït, ĉlöŝë thïŝ wïñdöw äñd ĉhëĉk yöür Ŝëñt földër fïrŝt.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "private": "[Prïvätë~~~]",
+    "markPrivate": "[Märk prïvätë~~~~]",
+    "makeVisible": "[Mäkë vïŝïblë~~~~]",
+    "markPrivateHint": "[Ëmäïlŝ yöü ŝëñd ïñ thïŝ ĉöñvërŝätïöñ ärë löggëd öñ thë rëĉörd wïthöüt thëïr ŝübjëĉt ör tëxt, thöŝë älrëädy löggëd löŝë thëïrŝ, äñd lätër mäïl ïñ ït ŝtäyŝ prïvätë.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "makeVisibleHint": "[Ëmäïlŝ yöü ŝëñd ïñ thïŝ ĉöñvërŝätïöñ ärë löggëd öñ thë rëĉörd wïth thëïr ŝübjëĉt äñd tëxt ägäïñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "privacyError": "[Ĉöüld ñöt ĉhäñgë thïŝ ĉöñvërŝätïöñ'ŝ prïväĉy. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~~~]"
   }
 }

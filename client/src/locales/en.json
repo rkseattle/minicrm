@@ -1955,7 +1955,15 @@
       "TEST_REQUEST_FAILED": "MiniCRM could not run that test. Please try again."
     },
     "secureLabel": "Use TLS on connect (uncheck for servers that use STARTTLS on port 143)",
-    "testButton": "Test"
+    "testButton": "Test",
+    "pause": "Pause",
+    "resume": "Resume",
+    "paused": "Paused",
+    "excludedDomainsButton_one": "Excluded domains ({{count}})",
+    "excludedDomainsButton_other": "Excluded domains ({{count}})",
+    "excludedDomainsLabel": "Domains never to sync",
+    "excludedDomainsHint": "One per line, such as example.com. Mail whose every other address is on these domains, or on your organization's list, is never synced from this mailbox. Applies from now on.",
+    "updateError": "Could not update this mailbox. Please try again."
   },
   "mfa": {
     "sectionTitle": "Two-Factor Authentication",
@@ -3000,6 +3008,12 @@
       "recipientsInvalid": "These addresses can't be read. Separate them with commas."
     },
     "accountsLoadError": "Your mailboxes couldn't be loaded, so sending from here is unavailable for now.",
-    "composeFrozen": "This message may already be on its way, so it can no longer be edited. Send retries the same message and will not create a second copy; to change it, close this window and check your Sent folder first."
+    "composeFrozen": "This message may already be on its way, so it can no longer be edited. Send retries the same message and will not create a second copy; to change it, close this window and check your Sent folder first.",
+    "private": "Private",
+    "markPrivate": "Mark private",
+    "makeVisible": "Make visible",
+    "markPrivateHint": "Emails you send in this conversation are logged on the record without their subject or text, those already logged lose theirs, and later mail in it stays private.",
+    "makeVisibleHint": "Emails you send in this conversation are logged on the record with their subject and text again.",
+    "privacyError": "Could not change this conversation's privacy. Please try again."
   }
 }

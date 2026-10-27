@@ -242,6 +242,13 @@ asked replies to go to (their Reply-To), when they named one, as other mail prog
 You see only your own mail, never a colleague's, even on a record you share. The section is
 not shown on a lead you cannot edit.
 
+**Mark private** (in an open conversation) keeps what you write in it off the record's
+timeline: emails you send in that conversation are logged as an Email activity with neither
+their subject nor their text, activities already logged from it lose theirs, and later mail in
+the conversation stays private too. A **Private** badge marks it in the list; **Make visible**
+undoes it for future sends. The conversation itself was already yours alone — colleagues on
+it have their own copies in their own mailboxes.
+
 ### AI Champion/Blocker badge
 
 > **Feature flag:** `ai_champion_blocker_detection`.
