@@ -50,6 +50,7 @@ function applyBrandingStyles(config: BrandingConfig | null): void {
     lines.push(`  --color-primary-50:  color-mix(in srgb, ${c}  8%, white);`);
     lines.push(`  --color-primary-100: color-mix(in srgb, ${c} 15%, white);`);
     lines.push(`  --color-primary-200: color-mix(in srgb, ${c} 30%, white);`);
+    lines.push(`  --color-primary-300: color-mix(in srgb, ${c} 50%, white);`);
     lines.push(`  --color-primary-400: color-mix(in srgb, ${c} 70%, white);`);
     lines.push(`  --color-primary-500: color-mix(in srgb, ${c} 85%, white);`);
     lines.push(`  --color-primary-600: ${c};`);

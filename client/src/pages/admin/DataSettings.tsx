@@ -128,13 +128,13 @@ export default function DataSettings() {
       )}
       {!csvImportLoading && (
         <div
-          className={`bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl${!csvImportEnabled ? ' opacity-60' : ''}`}
+          className={`bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl${!csvImportEnabled ? ' opacity-60' : ''}`}
           data-testid="import-section"
           aria-disabled={!csvImportEnabled || undefined}
         >
           {!csvImportEnabled && (
             <p
-              className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4"
+              className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-4"
               data-testid="import-section-disabled-banner"
             >
               {t('settings.featureDisabledBanner')}
@@ -168,7 +168,7 @@ export default function DataSettings() {
                     if (importTab !== tab) setImportTab(tab);
                   }}
                   className={[
-                    'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500',
+                    'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-primary-500',
                     importTab === tab
                       ? 'border-primary-600 text-primary-700'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
@@ -245,13 +245,13 @@ export default function DataSettings() {
       )}
       {!demoDataLoading && (
         <div
-          className={`mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl${!demoDataEnabled ? ' opacity-60' : ''}`}
+          className={`mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl${!demoDataEnabled ? ' opacity-60' : ''}`}
           data-testid="demo-section"
           aria-disabled={!demoDataEnabled || undefined}
         >
           {!demoDataEnabled && (
             <p
-              className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4"
+              className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-4"
               data-testid="demo-section-disabled-banner"
             >
               {t('settings.featureDisabledBanner')}
@@ -383,7 +383,7 @@ export default function DataSettings() {
 
       {/* ── Audit Log section ───────────────────────────────── */}
       <div
-        className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+        className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="audit-log-section"
       >
         <h2

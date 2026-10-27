@@ -47,7 +47,7 @@ export default function TagBadge({ tag, onRemove, removing = false }: TagBadgePr
           data-testid={`remove-tag-${tag.id}`}
           disabled={removing}
           onClick={() => onRemove(tag.id)}
-          className="ms-0.5 rounded-full p-0.5 text-primary-500 hover:bg-primary-100 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="ms-0.5 rounded-full p-0.5 text-primary-500 hover:bg-primary-100 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
         >
           ×
         </button>

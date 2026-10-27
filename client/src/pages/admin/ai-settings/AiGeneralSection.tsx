@@ -240,7 +240,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
               id="ai-provider-select"
               value={provider}
               onChange={(e) => handleProviderChange(e.target.value as AiProvider)}
-              className="block w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="block w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
               data-testid="ai-provider-select"
             >
               {AI_PROVIDERS.map((p) => (
@@ -263,7 +263,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
               id="ai-model-select"
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="block w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="block w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
               data-testid="ai-model-select"
             >
               {availableModels.map((m) => (
@@ -324,7 +324,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
                 onChange={(e) => setBaseUrl(e.target.value)}
                 placeholder="https://your-endpoint.example.com"
                 required={requiresBaseUrl}
-                className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                 data-testid="ai-base-url-input"
               />
             </div>
@@ -340,7 +340,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
                 <span className="text-sm text-gray-500 font-mono" data-testid="ai-api-key-masked">
                   {t('aiSettings.provider.apiKeyMasked')}
                 </span>
-                <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+                <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-sm px-2 py-0.5">
                   {t('aiSettings.provider.apiKeySet')}
                 </span>
                 <button
@@ -365,7 +365,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
                       ? t('aiSettings.provider.apiKeyPlaceholderChange')
                       : t('aiSettings.provider.apiKeyPlaceholder')
                   }
-                  className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm font-mono shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm font-mono shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                   data-testid="ai-api-key-input"
                 />
                 {apiKeyEditing && data.api_key_set && (
@@ -392,7 +392,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
               type="button"
               onClick={() => void handleTestConnection()}
               disabled={testStatus === 'testing'}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               data-testid="ai-test-connection-button"
             >
               {testStatus === 'testing'
@@ -475,7 +475,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
               value={customDpaUrl}
               onChange={(e) => setCustomDpaUrl(e.target.value)}
               placeholder="https://your-sharepoint.example.com/signed-dpa.pdf"
-              className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
               data-testid="ai-custom-dpa-url-input"
             />
             <p className="mt-1 text-xs text-gray-400">{t('aiSettings.dpa.customDpaUrlHint')}</p>
@@ -505,7 +505,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
                   id="ai-dpa-checkbox"
                   type="checkbox"
                   checked={false}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  className="mt-0.5 h-4 w-4 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   onChange={() => {
                     handleDpaAcknowledge();
                   }}
@@ -530,7 +530,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
 
           {data.deployment_mode === 'self_hosted' && (
             <p
-              className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2"
+              className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2"
               data-testid="ai-dpa-self-hosted-notice"
             >
               {t('aiSettings.dpa.selfHostedNotice')}

@@ -66,7 +66,7 @@ export default function SubPageNav({
           onChange={(e) => {
             if (e.target.value !== activeKey) onChange(e.target.value);
           }}
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-primary-500"
           aria-label={ariaLabel}
           data-testid={listTestId ? `${listTestId}-select` : undefined}
         >
@@ -108,7 +108,7 @@ export default function SubPageNav({
               if (item.key !== activeKey && !item.disabled) onChange(item.key);
             }}
             className={[
-              'px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500',
+              'px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-primary-500',
               item.disabled
                 ? 'border-transparent text-gray-300 cursor-not-allowed'
                 : activeKey === item.key
@@ -126,7 +126,7 @@ export default function SubPageNav({
   if (useVerticalTabs) {
     return (
       <div
-        className="w-48 flex-shrink-0"
+        className="w-48 shrink-0"
         role="tablist"
         aria-label={ariaLabel}
         aria-orientation="vertical"
@@ -147,7 +147,7 @@ export default function SubPageNav({
               if (item.key !== activeKey && !item.disabled) onChange(item.key);
             }}
             className={[
-              'w-full text-start px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 mb-0.5',
+              'w-full text-start px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-hidden focus:ring-2 focus:ring-primary-500 mb-0.5',
               item.disabled
                 ? 'text-gray-300 cursor-not-allowed'
                 : activeKey === item.key

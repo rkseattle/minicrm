@@ -81,7 +81,7 @@ if (!i18n.isInitialized) {
 /** MSW server — exported so individual tests can call server.use() to override handlers */
 export const server = setupServer(...handlers);
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 

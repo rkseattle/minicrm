@@ -1,18 +1,41 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-/* Default primary color palette — mirrors Tailwind indigo.
-   BrandingContext overrides these at runtime when a custom brand color is set.
-   (MINCRM-356) */
-:root {
+/* Default primary palette, mirroring Tailwind indigo. BrandingContext's unlayered :root
+   style overrides it at runtime, and always wins over this layered theme. `static` emits
+   every shade, used or not, so plain var() references resolve too. */
+@theme static {
   --color-primary-50: #eef2ff;
   --color-primary-100: #e0e7ff;
   --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
   --color-primary-400: #818cf8;
   --color-primary-500: #6366f1;
   --color-primary-600: #4f46e5;
   --color-primary-700: #4338ca;
   --color-primary-800: #3730a3;
   --color-primary-900: #312e81;
+}
+
+/* Tailwind 4 defaults borders to currentcolor; keep v3's gray-200 for unstyled borders. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+/* Tailwind 4 preflight dropped v3's pointer cursor on buttons and gray-400 placeholders. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
 }

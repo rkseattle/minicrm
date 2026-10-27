@@ -63,7 +63,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
   const hamburgerToggleEl = hamburger?.toggleEl;
   const hamburgerButtonClass = [
     'flex items-center justify-center w-11 h-11 rounded-md text-gray-600',
-    'hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500',
+    'hover:text-gray-900 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-primary-500',
     hamburger?.mobileOnly ? 'lg:hidden' : '',
   ]
     .join(' ')
@@ -76,12 +76,12 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
         <img
           src={branding.logoUrl}
           alt={branding.logoAltText ?? branding.companyName ?? 'Logo'}
-          className="h-8 w-auto flex-shrink-0 object-contain"
+          className="h-8 w-auto shrink-0 object-contain"
           data-testid="nav-brand-logo"
         />
       ) : (
         <span
-          className="text-primary-600 font-bold text-lg tracking-tight select-none flex-shrink-0"
+          className="text-primary-600 font-bold text-lg tracking-tight select-none shrink-0"
           data-testid="nav-brand-wordmark"
         >
           {branding?.companyName ?? t('nav.appName')}

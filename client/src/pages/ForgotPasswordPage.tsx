@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
           <p className="text-gray-500 mt-1 text-sm">{t('login.tagline')}</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-8">
           <h2 className="text-base font-semibold text-gray-900 mb-2">
             {t('forgotPassword.title')}
           </h2>

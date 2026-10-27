@@ -66,7 +66,7 @@ function ToolbarPlugin() {
       data-testid={testId}
       aria-label={label}
       title={label}
-      className="rounded px-1.5 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+      className="rounded-sm px-1.5 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors"
     >
       {symbol}
     </button>
@@ -123,7 +123,7 @@ export default function RichTextField({
   onChange,
   testId,
   ariaLabel,
-  minHeightClassName = 'min-h-[6rem]',
+  minHeightClassName = 'min-h-24',
 }: RichTextFieldProps) {
   const initialConfig = {
     namespace: `proposal-field-${testId}`,
@@ -155,7 +155,7 @@ export default function RichTextField({
               <ContentEditable
                 aria-label={ariaLabel}
                 data-testid={`${testId}-content`}
-                className="outline-none text-sm text-gray-800"
+                className="outline-hidden text-sm text-gray-800"
               />
             }
             placeholder={null}

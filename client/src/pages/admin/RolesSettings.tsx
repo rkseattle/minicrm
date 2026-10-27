@@ -197,7 +197,7 @@ function CapabilityPicker({ selected, onChange, disabled, readOnly }: Capability
                     ? `readonly-capability-group-${group.groupKey}`
                     : `capability-group-${group.groupKey}`
                 }
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
               <span className="text-sm font-semibold text-gray-800">{groupLabel}</span>
             </label>
@@ -207,7 +207,7 @@ function CapabilityPicker({ selected, onChange, disabled, readOnly }: Capability
                 return (
                   <label
                     key={cap}
-                    className={`flex items-center gap-2 rounded px-2 py-1 ${
+                    className={`flex items-center gap-2 rounded-sm px-2 py-1 ${
                       isChecked
                         ? 'bg-indigo-50 ring-1 ring-indigo-200'
                         : readOnly
@@ -225,7 +225,7 @@ function CapabilityPicker({ selected, onChange, disabled, readOnly }: Capability
                           ? `readonly-capability-checkbox-${cap}`
                           : `capability-checkbox-${cap}`
                       }
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+                      className="h-4 w-4 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
                     />
                     <span className="text-sm text-gray-700 select-none">
                       {capabilityLabel(cap, t)}
@@ -287,7 +287,7 @@ function RoleForm({ initial, onSave, onCancel, isPending }: RoleFormProps) {
           maxLength={100}
           disabled={isPending}
           data-testid="role-form-name"
-          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
         />
       </div>
 
@@ -303,7 +303,7 @@ function RoleForm({ initial, onSave, onCancel, isPending }: RoleFormProps) {
           maxLength={500}
           disabled={isPending}
           data-testid="role-form-description"
-          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
         />
       </div>
 

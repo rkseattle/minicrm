@@ -163,8 +163,8 @@ export default function SequenceDetailPage() {
   if (flagLoading) {
     return (
       <div className="p-8">
-        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
-        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+        <div className="h-8 w-48 bg-gray-200 rounded-sm animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
       </div>
     );
   }
@@ -262,12 +262,12 @@ export default function SequenceDetailPage() {
                   : t('sequences.enableSequence', { name: sequence.name })
               }
               onClick={() => toggleMutation.mutate(!sequence.enabled)}
-              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                 sequence.enabled ? 'bg-blue-600' : 'bg-gray-200'
               }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
                   sequence.enabled ? 'translate-x-4' : 'translate-x-0'
                 }`}
               />
@@ -301,7 +301,7 @@ export default function SequenceDetailPage() {
           <div
             key={step.id}
             data-testid={`step-row-${step.id}`}
-            className="mb-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+            className="mb-3 rounded-lg border border-gray-200 bg-white p-4 shadow-xs"
           >
             {editingStepId === step.id ? (
               <form onSubmit={handleEditStep}>
@@ -438,7 +438,7 @@ function StepFormFields({
             min={1}
             value={form.sort_order}
             onChange={set('sort_order')}
-            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-hidden"
             required
           />
         </div>
@@ -450,7 +450,7 @@ function StepFormFields({
             data-testid="step-action-type-select"
             value={form.action_type}
             onChange={set('action_type')}
-            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-hidden"
           >
             {SEQUENCE_STEP_ACTION_TYPES.map((type) => (
               <option key={type} value={type}>
@@ -469,7 +469,7 @@ function StepFormFields({
             min={0}
             value={form.delay_days}
             onChange={set('delay_days')}
-            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-hidden"
             required
           />
         </div>
@@ -495,7 +495,7 @@ function StepFormFields({
                 ? t('sequences.callSubjectPlaceholder')
                 : t('sequences.taskSubjectPlaceholder')
           }
-          className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+          className="w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-hidden"
           required
         />
       </div>
@@ -511,7 +511,7 @@ function StepFormFields({
             onChange={set('body')}
             placeholder={t('sequences.emailBodyPlaceholder')}
             rows={3}
-            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-hidden"
             required
           />
         </div>
@@ -527,7 +527,7 @@ function StepFormFields({
             value={form.notes}
             onChange={set('notes')}
             rows={2}
-            className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-hidden"
           />
         </div>
       )}

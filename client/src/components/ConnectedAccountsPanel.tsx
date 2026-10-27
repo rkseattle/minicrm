@@ -178,7 +178,7 @@ export default function ConnectedAccountsPanel() {
 
   return (
     <div
-      className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+      className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
       data-testid="connected-accounts-section"
     >
       <h2
@@ -192,7 +192,7 @@ export default function ConnectedAccountsPanel() {
       {connectResult && (
         <p
           role={connectResult === 'connected' ? 'status' : 'alert'}
-          className={`mb-4 text-sm break-words ${
+          className={`mb-4 text-sm wrap-break-word ${
             connectResult === 'connected' ? 'text-green-700' : 'text-red-600'
           }`}
           data-testid="connected-accounts-connect-result"
@@ -244,7 +244,7 @@ export default function ConnectedAccountsPanel() {
               data-testid={`connected-account-row-${account.id}`}
             >
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-900 break-words">{account.email_address}</p>
+                <p className="text-sm text-gray-900 wrap-break-word">{account.email_address}</p>
                 <p className="text-xs text-gray-500">
                   {t(`connectedAccounts.providers.${account.provider}`)}
                 </p>
@@ -259,7 +259,7 @@ export default function ConnectedAccountsPanel() {
                 </Badge>
                 {reasonFor(account) !== null ? (
                   <p
-                    className="text-xs text-red-600 break-words"
+                    className="text-xs text-red-600 wrap-break-word"
                     // status, not alert: this renders from a stored row, so on page load
                     // every errored mailbox would interrupt a screen reader at once.
                     role="status"
@@ -467,7 +467,7 @@ export default function ConnectedAccountsPanel() {
           {formError && (
             <p
               role="alert"
-              className="text-sm text-red-600 break-words"
+              className="text-sm text-red-600 wrap-break-word"
               data-testid="connected-accounts-connect-error"
             >
               {formError}

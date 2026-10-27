@@ -146,8 +146,8 @@ export default function EmailDraftPanel({
 
           {regenerateMutation.isPending ? (
             <div className="space-y-2" aria-hidden="true">
-              <div className="h-4 w-1/2 bg-gray-100 rounded animate-pulse" />
-              <div className="h-24 w-full bg-gray-100 rounded animate-pulse" />
+              <div className="h-4 w-1/2 bg-gray-100 rounded-sm animate-pulse" />
+              <div className="h-24 w-full bg-gray-100 rounded-sm animate-pulse" />
             </div>
           ) : (
             <>
@@ -164,7 +164,7 @@ export default function EmailDraftPanel({
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900
-                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mb-4"
+                         focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mb-4"
               />
 
               <label
@@ -180,7 +180,7 @@ export default function EmailDraftPanel({
                 onChange={(e) => setBody(e.target.value)}
                 rows={14}
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900
-                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                         focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
               />
             </>
           )}

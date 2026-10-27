@@ -93,8 +93,8 @@ export default function SequencesPage() {
   if (flagLoading) {
     return (
       <div className="p-8">
-        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
-        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+        <div className="h-8 w-48 bg-gray-200 rounded-sm animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
       </div>
     );
   }
@@ -131,7 +131,7 @@ export default function SequencesPage() {
           <form
             data-testid="create-sequence-form"
             onSubmit={handleCreate}
-            className="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+            className="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-xs"
           >
             <h2 className="mb-4 text-lg font-semibold text-gray-900">
               {t('sequences.createFormTitle')}
@@ -151,7 +151,7 @@ export default function SequencesPage() {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={t('sequences.fieldNamePlaceholder')}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-sm border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-hidden"
                 required
               />
             </div>
@@ -165,7 +165,7 @@ export default function SequencesPage() {
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder={t('sequences.fieldDescriptionPlaceholder')}
                 rows={2}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-sm border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-hidden"
               />
             </div>
             <div className="flex gap-2">
@@ -232,7 +232,7 @@ export default function SequencesPage() {
         )}
 
         {!isLoading && !isError && sequences.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -281,12 +281,12 @@ export default function SequencesPage() {
                             : t('sequences.enableSequence', { name: seq.name })
                         }
                         onClick={() => toggleMutation.mutate({ id: seq.id, enabled: !seq.enabled })}
-                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                           seq.enabled ? 'bg-blue-600' : 'bg-gray-200'
                         }`}
                       >
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
                             seq.enabled ? 'translate-x-4' : 'translate-x-0'
                           }`}
                         />

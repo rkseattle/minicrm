@@ -53,7 +53,7 @@ function AddForm({ onSave, onCancel, isSaving }: AddFormProps) {
         onChange={(e) => setKey(e.target.value)}
         placeholder={t('ai.context.keyPlaceholder')}
         maxLength={100}
-        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
         data-testid="ai-context-add-key"
         aria-label={t('ai.context.keyPlaceholder')}
         disabled={isSaving}
@@ -64,7 +64,7 @@ function AddForm({ onSave, onCancel, isSaving }: AddFormProps) {
         onChange={(e) => setValue(e.target.value)}
         placeholder={t('ai.context.valuePlaceholder')}
         maxLength={500}
-        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
         data-testid="ai-context-add-value"
         aria-label={t('ai.context.valuePlaceholder')}
         disabled={isSaving}
@@ -132,7 +132,7 @@ function EditForm({ entry, onSave, onCancel, isSaving }: EditFormProps) {
         onChange={(e) => setKey(e.target.value)}
         placeholder={t('ai.context.keyPlaceholder')}
         maxLength={100}
-        className="w-full text-xs border border-primary-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="w-full text-xs border border-primary-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
         data-testid={`ai-context-edit-key-${entry.id}`}
         aria-label={t('ai.context.keyPlaceholder')}
         disabled={isSaving}
@@ -143,7 +143,7 @@ function EditForm({ entry, onSave, onCancel, isSaving }: EditFormProps) {
         onChange={(e) => setValue(e.target.value)}
         placeholder={t('ai.context.valuePlaceholder')}
         maxLength={500}
-        className="w-full text-xs border border-primary-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="w-full text-xs border border-primary-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
         data-testid={`ai-context-edit-value-${entry.id}`}
         aria-label={t('ai.context.valuePlaceholder')}
         disabled={isSaving}
@@ -211,21 +211,21 @@ function EntryRow({
     >
       <div className="flex items-start gap-1 min-w-0">
         <div className="flex-1 min-w-0">
-          <span className="text-xs font-medium text-gray-800 break-words">{entry.key}</span>
+          <span className="text-xs font-medium text-gray-800 wrap-break-word">{entry.key}</span>
           {/* Decorative separator — not translated */}
           {/* eslint-disable-next-line i18next/no-literal-string */}
           <span className="text-xs text-gray-400 mx-1" aria-hidden="true">
             →
           </span>
-          <span className="text-xs text-gray-600 break-words">{entry.value}</span>
+          <span className="text-xs text-gray-600 wrap-break-word">{entry.value}</span>
         </div>
-        <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        <div className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
           <button
             type="button"
             onClick={onStartEdit}
             aria-label={t('ai.context.editEntry')}
             data-testid={`ai-context-edit-button-${entry.id}`}
-            className="p-1 text-gray-400 hover:text-primary-600 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="p-1 text-gray-400 hover:text-primary-600 rounded-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -249,7 +249,7 @@ function EntryRow({
             disabled={isDeleting}
             aria-label={t('ai.context.deleteEntry')}
             data-testid={`ai-context-delete-button-${entry.id}`}
-            className="p-1 text-gray-400 hover:text-red-500 rounded focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-40"
+            className="p-1 text-gray-400 hover:text-red-500 rounded-sm focus:outline-hidden focus:ring-2 focus:ring-red-400 disabled:opacity-40"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -322,7 +322,7 @@ export default function ContextPanel() {
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-64 flex-shrink-0 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+      className="hidden lg:flex flex-col w-64 shrink-0 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden"
       aria-label={t('ai.context.panelLabel')}
       data-testid="ai-context-panel"
     >
@@ -356,7 +356,7 @@ export default function ContextPanel() {
         {isLoading ? (
           <div className="space-y-2 mt-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />
+              <div key={i} className="h-8 bg-gray-100 rounded-sm animate-pulse" />
             ))}
           </div>
         ) : entries.length === 0 && !isAdding ? (

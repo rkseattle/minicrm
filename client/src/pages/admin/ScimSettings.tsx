@@ -104,7 +104,7 @@ export default function ScimSettings() {
 
   return (
     <div
-      className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+      className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
       data-testid="scim-section"
     >
       <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="scim-section-title">
@@ -160,7 +160,7 @@ export default function ScimSettings() {
               </p>
               <div className="flex items-center gap-2">
                 <code
-                  className="flex-1 min-w-0 break-all text-xs bg-white border border-amber-200 rounded px-2 py-1 font-mono select-all"
+                  className="flex-1 min-w-0 break-all text-xs bg-white border border-amber-200 rounded-sm px-2 py-1 font-mono select-all"
                   data-testid="scim-raw-token"
                 >
                   {newRawToken}

@@ -226,7 +226,7 @@ export default function SessionRecorderPage() {
             id="coverage-session-label"
             type="text"
             data-testid="coverage-session-label-input"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />
@@ -242,7 +242,7 @@ export default function SessionRecorderPage() {
             id="coverage-session-issue-key"
             type="text"
             data-testid="coverage-session-issue-key-input"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs"
             value={issueKey}
             onChange={(e) => setIssueKey(e.target.value)}
           />
@@ -262,8 +262,8 @@ export default function SessionRecorderPage() {
 
       {isLoading && (
         <div className="space-y-2" aria-hidden="true">
-          <div className="h-4 w-48 animate-pulse rounded bg-gray-100" />
-          <div className="h-16 w-full animate-pulse rounded bg-gray-100" />
+          <div className="h-4 w-48 animate-pulse rounded-sm bg-gray-100" />
+          <div className="h-16 w-full animate-pulse rounded-sm bg-gray-100" />
         </div>
       )}
 

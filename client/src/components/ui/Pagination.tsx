@@ -55,7 +55,7 @@ export function Pagination({ page, limit, total, onPageChange, onLimitChange }: 
             value={limit}
             onChange={(e) => onLimitChange(Number(e.target.value))}
             data-testid="pagination-limit-select"
-            className="text-xs border border-gray-300 rounded px-1 py-0.5"
+            className="text-xs border border-gray-300 rounded-sm px-1 py-0.5"
             aria-label={t('pagination.rowsPerPage')}
           >
             {PAGE_SIZE_OPTIONS.map((n) => (

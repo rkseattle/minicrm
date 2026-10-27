@@ -14,7 +14,7 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 const SELECT_BASE_CLASSES =
   'block w-full rounded-md border bg-white px-3 py-2 text-sm text-gray-900 ' +
-  'shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 ' +
+  'shadow-xs transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-0 ' +
   'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 ' +
   'min-h-[44px] sm:min-h-0';
 

@@ -4,13 +4,13 @@ ConnectRPC service mounted on the same port as REST via `expressConnectMiddlewar
 
 ## Files
 
-| Path                                                | Purpose                                                                                        |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `server/src/grpc/proto/audit.proto`                 | Proto definition — `ListAuditEvents` (unary) + `StreamAuditEvents` (server-streaming)          |
-| `shared/generated/audit_pb.ts` + `audit_connect.ts` | Generated — committed; regenerate with `npm run generate:proto`                                |
-| `server/src/grpc/auditConnectService.ts`            | Service handler — auth reads JWT from httpOnly cookie or `Authorization: Bearer`               |
-| `client/src/grpc/auditClient.ts`                    | Browser client — `@connectrpc/connect-web`; cookie auth forwarded automatically on same-origin |
-| `qa/e2e/apps/minicrm/grpc/auditGrpcClient.ts`       | E2E client — Connect JSON POST to `E2E_API_URL` with `Authorization: Bearer <jwt>`             |
+| Path                                          | Purpose                                                                                              |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `server/src/grpc/proto/audit.proto`           | Proto definition — `ListAuditEvents` (unary) + `StreamAuditEvents` (server-streaming)                |
+| `shared/generated/audit_pb.ts`                | Generated — committed; regenerate with `npm run generate:proto`                                      |
+| `server/src/grpc/auditConnectService.ts`      | Service handler — auth reads JWT from httpOnly cookie or `Authorization: Bearer`                     |
+| `client/src/grpc/auditClient.ts`              | Browser client — `@connectrpc/connect-web`; session cookie sent via a `credentials: 'include'` fetch |
+| `qa/e2e/apps/minicrm/grpc/auditGrpcClient.ts` | E2E client — Connect JSON POST to `E2E_API_URL` with `Authorization: Bearer <jwt>`                   |
 
 ## Mounting
 

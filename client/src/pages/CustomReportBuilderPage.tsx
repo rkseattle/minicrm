@@ -262,7 +262,7 @@ function FilterRow({ filter, index, fields, onChange, onRemove }: FilterRowProps
   return (
     <div className="flex flex-wrap gap-2 items-center" data-testid={`filter-row-${index}`}>
       <select
-        className="border border-gray-300 rounded px-2 py-1 text-sm"
+        className="border border-gray-300 rounded-sm px-2 py-1 text-sm"
         value={filter.field}
         onChange={(e) => onChange({ ...filter, field: e.target.value })}
         data-testid={`filter-field-${index}`}
@@ -276,7 +276,7 @@ function FilterRow({ filter, index, fields, onChange, onRemove }: FilterRowProps
       </select>
 
       <select
-        className="border border-gray-300 rounded px-2 py-1 text-sm"
+        className="border border-gray-300 rounded-sm px-2 py-1 text-sm"
         value={filter.operator}
         onChange={(e) =>
           onChange({ ...filter, operator: e.target.value as FilterOperator, value: undefined })
@@ -296,7 +296,7 @@ function FilterRow({ filter, index, fields, onChange, onRemove }: FilterRowProps
       {!noValue && (
         <input
           type="text"
-          className="border border-gray-300 rounded px-2 py-1 text-sm w-36"
+          className="border border-gray-300 rounded-sm px-2 py-1 text-sm w-36"
           value={filter.value ?? ''}
           onChange={(e) => onChange({ ...filter, value: e.target.value || undefined })}
           placeholder={t('reports.customReports.filterValue')}
@@ -364,7 +364,7 @@ function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogPr
           <input
             ref={inputRef}
             type="text"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('reports.customReports.saveDialog.namePlaceholder')}
@@ -376,7 +376,7 @@ function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogPr
             {t('reports.customReports.saveDialog.visibilityLabel')}
           </label>
           <select
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as ReportVisibility)}
             data-testid="save-report-visibility-select"
@@ -399,7 +399,7 @@ function SaveDialog({ initialName, onConfirm, onCancel, isSaving }: SaveDialogPr
             <button
               type="submit"
               disabled={!name.trim() || isSaving}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50"
+              className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-sm hover:bg-indigo-700 disabled:opacity-50"
               data-testid="save-report-confirm"
             >
               {t('reports.customReports.saveDialog.confirm')}
@@ -645,7 +645,7 @@ export function CustomReportBuilderContent() {
               <li key={report.id} className="group flex items-center gap-1 min-w-0">
                 <button
                   type="button"
-                  className={`flex-1 min-w-0 text-start text-sm px-2 py-1 rounded truncate ${
+                  className={`flex-1 min-w-0 text-start text-sm px-2 py-1 rounded-sm truncate ${
                     activeReportId === report.id
                       ? 'bg-indigo-50 text-indigo-700 font-medium'
                       : 'text-gray-700 hover:bg-gray-100'
@@ -656,7 +656,7 @@ export function CustomReportBuilderContent() {
                   <span className="truncate">{report.name}</span>
                 </button>
                 <span
-                  className={`shrink-0 text-xs px-1 py-0.5 rounded ${
+                  className={`shrink-0 text-xs px-1 py-0.5 rounded-sm ${
                     report.visibility === 'private'
                       ? 'bg-gray-100 text-gray-500'
                       : report.visibility === 'public_read_only'
@@ -697,14 +697,14 @@ export function CustomReportBuilderContent() {
         {/* Inline delete confirm */}
         {pendingDeleteId && (
           <div
-            className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-sm"
+            className="mt-3 p-3 bg-red-50 border border-red-200 rounded-sm text-sm"
             data-testid="delete-confirm-panel"
           >
             <p className="text-red-700 mb-2">{t('reports.customReports.deleteConfirm')}</p>
             <div className="flex gap-2">
               <button
                 type="button"
-                className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                className="px-2 py-1 bg-red-600 text-white rounded-sm text-xs hover:bg-red-700"
                 onClick={() => deleteMutation.mutate(pendingDeleteId)}
                 data-testid="delete-confirm-yes"
               >
@@ -736,7 +736,7 @@ export function CustomReportBuilderContent() {
               {t('reports.customReports.entityTypeLabel')}
             </label>
             <select
-              className="border border-gray-300 rounded px-3 py-2 text-sm"
+              className="border border-gray-300 rounded-sm px-3 py-2 text-sm"
               value={entityType}
               onChange={(e) => changeEntityType(e.target.value as ReportEntityType)}
               data-testid="entity-type-select"
@@ -772,7 +772,7 @@ export function CustomReportBuilderContent() {
                         onChange={() => toggleField(field)}
                         disabled={disabled}
                         data-testid={`field-checkbox-${field}`}
-                        className="rounded border-gray-300"
+                        className="rounded-sm border-gray-300"
                       />
                       {field}
                     </label>
@@ -818,7 +818,7 @@ export function CustomReportBuilderContent() {
                 {t('reports.customReports.groupByLabel')}
               </label>
               <select
-                className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                className="border border-gray-300 rounded-sm px-2 py-1 text-sm w-full"
                 value={config.group_by ?? ''}
                 onChange={(e) => {
                   const groupBy = e.target.value || undefined;
@@ -847,7 +847,7 @@ export function CustomReportBuilderContent() {
                 {t('reports.customReports.aggregateLabel')}
               </label>
               <select
-                className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                className="border border-gray-300 rounded-sm px-2 py-1 text-sm w-full"
                 value={config.aggregate?.type ?? ''}
                 onChange={(e) => {
                   const val = e.target.value as AggregateType | '';
@@ -877,7 +877,7 @@ export function CustomReportBuilderContent() {
                 {t('reports.customReports.aggregateSumField')}
               </label>
               <select
-                className="border border-gray-300 rounded px-2 py-1 text-sm"
+                className="border border-gray-300 rounded-sm px-2 py-1 text-sm"
                 value={config.aggregate.field ?? ''}
                 onChange={(e) =>
                   setConfig((prev) => ({
@@ -904,7 +904,7 @@ export function CustomReportBuilderContent() {
                 {t('reports.customReports.sortByLabel')}
               </label>
               <select
-                className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                className="border border-gray-300 rounded-sm px-2 py-1 text-sm w-full"
                 value={config.sort_field ?? ''}
                 onChange={(e) =>
                   setConfig((prev) => ({
@@ -927,7 +927,7 @@ export function CustomReportBuilderContent() {
                 {t('reports.customReports.sortDirectionLabel')}
               </label>
               <select
-                className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                className="border border-gray-300 rounded-sm px-2 py-1 text-sm w-full"
                 value={config.sort_direction ?? 'asc'}
                 onChange={(e) =>
                   setConfig((prev) => ({
@@ -949,7 +949,7 @@ export function CustomReportBuilderContent() {
               {t('reports.customReports.chartTypeLabel')}
             </label>
             <select
-              className="border border-gray-300 rounded px-2 py-1 text-sm"
+              className="border border-gray-300 rounded-sm px-2 py-1 text-sm"
               value={config.chart_type ?? ''}
               onChange={(e) =>
                 setConfig((prev) => ({
@@ -969,7 +969,7 @@ export function CustomReportBuilderContent() {
           <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100 items-center">
             <button
               type="button"
-              className="px-4 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50"
+              className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-sm hover:bg-indigo-700 disabled:opacity-50"
               onClick={() => runMutation.mutate()}
               disabled={runMutation.isPending || config.selected_fields.length === 0}
               data-testid="run-report-button"
@@ -989,7 +989,7 @@ export function CustomReportBuilderContent() {
                 </label>
                 <select
                   id="active-report-visibility-select"
-                  className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  className="border border-gray-300 rounded-sm px-2 py-1.5 text-sm"
                   value={activeReportVisibility}
                   onChange={(e) => setActiveReportVisibility(e.target.value as ReportVisibility)}
                   data-testid="active-report-visibility-select"
@@ -1007,7 +1007,7 @@ export function CustomReportBuilderContent() {
               <>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50 disabled:opacity-50"
+                  className="px-4 py-2 bg-white border border-gray-300 text-sm rounded-sm hover:bg-gray-50 disabled:opacity-50"
                   onClick={handleUpdate}
                   disabled={isSaving}
                   data-testid="update-report-button"
@@ -1016,7 +1016,7 @@ export function CustomReportBuilderContent() {
                 </button>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50"
+                  className="px-4 py-2 bg-white border border-gray-300 text-sm rounded-sm hover:bg-gray-50"
                   onClick={() => setShowSaveDialog(true)}
                   data-testid="save-as-new-button"
                 >
@@ -1026,7 +1026,7 @@ export function CustomReportBuilderContent() {
             ) : canAuthorReports ? (
               <button
                 type="button"
-                className="px-4 py-2 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50"
+                className="px-4 py-2 bg-white border border-gray-300 text-sm rounded-sm hover:bg-gray-50"
                 onClick={() => setShowSaveDialog(true)}
                 data-testid="save-report-button"
               >
@@ -1066,7 +1066,7 @@ export function CustomReportBuilderContent() {
         {/* Results */}
         {runError && (
           <div
-            className="mt-4 p-4 bg-red-50 border border-red-200 rounded text-sm text-red-700"
+            className="mt-4 p-4 bg-red-50 border border-red-200 rounded-sm text-sm text-red-700"
             data-testid="run-report-error"
           >
             {runError}
@@ -1123,7 +1123,7 @@ export function CustomReportBuilderContent() {
                     {result.rows.map((row, ri) => (
                       <tr key={ri} data-testid={`result-row-${ri}`}>
                         {result.columns.map((col) => (
-                          <td key={col} className="px-4 py-2 text-gray-900 break-words">
+                          <td key={col} className="px-4 py-2 text-gray-900 wrap-break-word">
                             {row[col] === null ? '—' : String(row[col])}
                           </td>
                         ))}

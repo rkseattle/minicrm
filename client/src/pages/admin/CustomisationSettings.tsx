@@ -551,7 +551,7 @@ export default function CustomisationSettings() {
     <>
       {/* ── Pipelines section ───────────────────────────────── */}
       <div
-        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl mb-6"
+        className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl mb-6"
         data-testid="pipelines-section"
       >
         <h2
@@ -567,7 +567,7 @@ export default function CustomisationSettings() {
             tabIndex={-1}
             role="status"
             data-testid="pipelines-feedback"
-            className={`mb-3 text-sm rounded px-3 py-2 ${pipelinesFeedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
+            className={`mb-3 text-sm rounded-sm px-3 py-2 ${pipelinesFeedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
           >
             {t(pipelinesFeedback.key)}
           </p>
@@ -585,7 +585,7 @@ export default function CustomisationSettings() {
                   <>
                     <input
                       type="text"
-                      className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="flex-1 rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
                       value={editPipelineName}
                       onChange={(e) => setEditPipelineName(e.target.value)}
                       data-testid={`pipeline-edit-input-${pipeline.id}`}
@@ -637,7 +637,7 @@ export default function CustomisationSettings() {
                     </span>
                     {pipeline.is_default && (
                       <span
-                        className="text-xs text-gray-500 bg-gray-100 rounded px-2 py-0.5"
+                        className="text-xs text-gray-500 bg-gray-100 rounded-sm px-2 py-0.5"
                         data-testid={`pipeline-default-badge-${pipeline.id}`}
                       >
                         {t('settings.pipelines.defaultBadge')}
@@ -682,7 +682,7 @@ export default function CustomisationSettings() {
             <input
               ref={addPipelineInputRef}
               type="text"
-              className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="flex-1 rounded-sm border border-gray-300 px-2 py-1 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               placeholder={t('settings.pipelines.namePlaceholder')}
               value={newPipelineName}
               onChange={(e) => setNewPipelineName(e.target.value)}
@@ -782,7 +782,7 @@ export default function CustomisationSettings() {
 
       {/* ── Pipeline Stages section ─────────────────────────── */}
       <div
-        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+        className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="pipeline-stages-section"
       >
         <div className="flex items-center gap-3 mb-1">
@@ -799,7 +799,7 @@ export default function CustomisationSettings() {
               data-testid="pipeline-stages-pipeline-selector"
               value={activePipelineId ?? ''}
               onChange={(e) => setSelectedPipelineId(e.target.value)}
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
             >
               {pipelines.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -817,7 +817,7 @@ export default function CustomisationSettings() {
             tabIndex={-1}
             role="status"
             data-testid="pipeline-stages-feedback"
-            className={`mb-3 text-sm rounded px-3 py-2 ${stagesSectionFeedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
+            className={`mb-3 text-sm rounded-sm px-3 py-2 ${stagesSectionFeedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
           >
             {t(stagesSectionFeedback.key)}
           </p>
@@ -867,7 +867,7 @@ export default function CustomisationSettings() {
                             data-testid={`pipeline-stage-move-up-${stage.id}`}
                             disabled={index === 0 || reorderStageMutation.isPending}
                             onClick={() => handleMoveUp(index)}
-                            className="p-0.5 rounded text-gray-500 hover:text-gray-600 disabled:opacity-30"
+                            className="p-0.5 rounded-sm text-gray-500 hover:text-gray-600 disabled:opacity-30"
                           >
                             <svg
                               className="w-3 h-3"
@@ -890,7 +890,7 @@ export default function CustomisationSettings() {
                             data-testid={`pipeline-stage-move-down-${stage.id}`}
                             disabled={index === stages.length - 1 || reorderStageMutation.isPending}
                             onClick={() => handleMoveDown(index)}
-                            className="p-0.5 rounded text-gray-500 hover:text-gray-600 disabled:opacity-30"
+                            className="p-0.5 rounded-sm text-gray-500 hover:text-gray-600 disabled:opacity-30"
                           >
                             <svg
                               className="w-3 h-3"
@@ -918,7 +918,7 @@ export default function CustomisationSettings() {
                             value={editDraft.name}
                             disabled={stage.is_fixed || updateStageMutation.isPending}
                             onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
+                            className="w-full border border-gray-300 rounded-sm px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
                             maxLength={100}
                           />
                         ) : (
@@ -945,7 +945,7 @@ export default function CustomisationSettings() {
                               setEditDraft((d) => ({ ...d, probability: e.target.value }))
                             }
                             disabled={updateStageMutation.isPending}
-                            className="w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-20 border border-gray-300 rounded-sm px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                           />
                         ) : (
                           <span className="text-gray-600">
@@ -1015,7 +1015,7 @@ export default function CustomisationSettings() {
                       <tr data-testid={`pipeline-stage-exit-requirements-${stage.id}`}>
                         <td />
                         <td colSpan={3} className="pb-3 pt-1">
-                          <div className="rounded border border-gray-200 bg-gray-50 p-3 text-xs space-y-3">
+                          <div className="rounded-sm border border-gray-200 bg-gray-50 p-3 text-xs space-y-3">
                             <p className="font-medium text-gray-700">
                               {t('settings.pipelineStages.exitRequirementsLabel')}
                             </p>
@@ -1042,7 +1042,7 @@ export default function CustomisationSettings() {
                                 }
                                 disabled={updateStageMutation.isPending}
                                 placeholder={t('settings.pipelineStages.exitFieldsPlaceholder')}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full border border-gray-300 rounded-sm px-2 py-1 text-xs focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                               />
                             </div>
                             <div className="space-y-2">
@@ -1065,7 +1065,7 @@ export default function CustomisationSettings() {
                                 }
                                 disabled={updateStageMutation.isPending}
                                 placeholder={t('settings.pipelineStages.exitFieldsPlaceholder')}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                className="w-full border border-gray-300 rounded-sm px-2 py-1 text-xs focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                               />
                             </div>
                           </div>
@@ -1109,7 +1109,7 @@ export default function CustomisationSettings() {
                       onChange={(e) => setAddStageName(e.target.value)}
                       placeholder={t('settings.pipelineStages.namePlaceholder')}
                       maxLength={100}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full border border-gray-300 rounded-sm px-2 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div className="w-28">
@@ -1127,7 +1127,7 @@ export default function CustomisationSettings() {
                       min="0"
                       max="100"
                       onChange={(e) => setAddStageProbability(e.target.value)}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full border border-gray-300 rounded-sm px-2 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 </div>
@@ -1184,7 +1184,7 @@ export default function CustomisationSettings() {
 
       {/* ── Custom Fields section ──────────────────────────── */}
       <div
-        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl mt-6"
+        className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl mt-6"
         data-testid="custom-fields-section"
       >
         <h2
@@ -1208,7 +1208,7 @@ export default function CustomisationSettings() {
             data-testid="custom-fields-entity-select"
             value={selectedEntityType}
             onChange={(e) => setSelectedEntityType(e.target.value as EntityType)}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="border border-gray-300 rounded-sm px-2 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
           >
             <option value="contact">{t('settings.customFields.entityContact')}</option>
             <option value="account">{t('settings.customFields.entityAccount')}</option>
@@ -1222,7 +1222,7 @@ export default function CustomisationSettings() {
             tabIndex={-1}
             role="status"
             data-testid="custom-fields-feedback"
-            className={`mb-3 text-sm rounded px-3 py-2 ${fieldsSectionFeedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
+            className={`mb-3 text-sm rounded-sm px-3 py-2 ${fieldsSectionFeedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
           >
             {t(fieldsSectionFeedback.key)}
           </p>
@@ -1273,7 +1273,7 @@ export default function CustomisationSettings() {
                             onChange={(e) =>
                               setEditFieldDraft((d) => ({ ...d, name: e.target.value }))
                             }
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
+                            className="w-full border border-gray-300 rounded-sm px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
                             maxLength={100}
                           />
                         ) : (
@@ -1289,7 +1289,7 @@ export default function CustomisationSettings() {
                             }
                             placeholder={t('settings.customFields.optionsPlaceholder')}
                             rows={2}
-                            className="mt-1 w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
+                            className="mt-1 w-full border border-gray-300 rounded-sm px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
                           />
                         )}
                       </td>
@@ -1414,7 +1414,7 @@ export default function CustomisationSettings() {
                       onChange={(e) => setAddFieldName(e.target.value)}
                       placeholder={t('settings.customFields.namePlaceholder')}
                       maxLength={100}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full border border-gray-300 rounded-sm px-2 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div className="w-36">
@@ -1429,7 +1429,7 @@ export default function CustomisationSettings() {
                       data-testid="add-field-type-select"
                       value={addFieldType}
                       onChange={(e) => setAddFieldType(e.target.value as FieldType)}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full border border-gray-300 rounded-sm px-2 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="text">{t('settings.customFields.fieldTypeText')}</option>
                       <option value="number">{t('settings.customFields.fieldTypeNumber')}</option>
@@ -1454,7 +1454,7 @@ export default function CustomisationSettings() {
                       onChange={(e) => setAddFieldOptions(e.target.value)}
                       placeholder={t('settings.customFields.optionsPlaceholder')}
                       rows={2}
-                      className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full border border-gray-300 rounded-sm px-2 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 )}

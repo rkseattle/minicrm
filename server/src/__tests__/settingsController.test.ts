@@ -217,6 +217,15 @@ describe('PATCH /api/v1/settings/email-notifications', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
+  it('returns 400, not 500, when the request has no body', async () => {
+    const res = await request(app)
+      .patch('/api/v1/settings/email-notifications')
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   it('returns 403 when a rep attempts to update', async () => {
     const res = await request(app)
       .patch('/api/v1/settings/email-notifications')

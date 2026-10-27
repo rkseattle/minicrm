@@ -12,9 +12,9 @@
 
 import { ConnectError, Code } from '@connectrpc/connect';
 import type { ConnectRouter, HandlerContext } from '@connectrpc/connect';
-import type { PartialMessage } from '@bufbuild/protobuf';
+import { create, type MessageInitShape } from '@bufbuild/protobuf';
 import jwt from 'jsonwebtoken';
-import cookieLib from 'cookie';
+import { parseCookie } from 'cookie';
 import logger from '../logger.js';
 import { findUserById } from '../services/userService.js';
 import { listAuditLog, maskAuditEvent } from '../services/auditService.js';
@@ -22,8 +22,11 @@ import type { AuditLogRow, AuditRecordType, AuditEventType } from '../services/a
 import { auditEventBus } from '../services/auditEventBus.js';
 import type { AuditNotification } from '../services/auditEventBus.js';
 import type { JwtTokenPayload } from '../types/express.js';
-import { AuditService } from '@minicrm/shared/generated/audit_connect.js';
-import { AuditEvent, AuditResponse } from '@minicrm/shared/generated/audit_pb.js';
+import {
+  AuditEventSchema,
+  AuditResponseSchema,
+  AuditService,
+} from '@minicrm/shared/generated/audit_pb.js';
 import type { AuditRequest } from '@minicrm/shared/generated/audit_pb.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 
@@ -42,7 +45,7 @@ const DEFAULT_LIMIT = 25;
  */
 async function requireAdminFromCookie(ctx: HandlerContext): Promise<JwtTokenPayload> {
   const cookieHeader = ctx.requestHeader.get('cookie') ?? '';
-  const cookies = cookieLib.parse(cookieHeader);
+  const cookies = parseCookie(cookieHeader);
   const rawToken = cookies[AUTH_COOKIE_NAME];
 
   // Also accept Authorization: Bearer <token> for non-browser clients (E2E tests via grpcClient).
@@ -82,7 +85,7 @@ async function requireAdminFromCookie(ctx: HandlerContext): Promise<JwtTokenPayl
 
 // ── Mapping helpers ───────────────────────────────────────────────────────────
 
-function rowToEvent(row: AuditLogRow): PartialMessage<AuditEvent> {
+function rowToEvent(row: AuditLogRow): MessageInitShape<typeof AuditEventSchema> {
   return {
     id: row.id,
     recordType: row.record_type,
@@ -98,7 +101,7 @@ function rowToEvent(row: AuditLogRow): PartialMessage<AuditEvent> {
   };
 }
 
-function notificationToEvent(n: AuditNotification): PartialMessage<AuditEvent> {
+function notificationToEvent(n: AuditNotification): MessageInitShape<typeof AuditEventSchema> {
   return {
     id: n.id,
     recordType: n.record_type,
@@ -157,7 +160,7 @@ export function registerAuditService(router: ConnectRouter): void {
         throw new ConnectError('Internal error', Code.Internal);
       }
 
-      return new AuditResponse({
+      return create(AuditResponseSchema, {
         events: result.data.map(rowToEvent),
         total: result.total,
         page: result.page,
@@ -187,7 +190,7 @@ export function registerAuditService(router: ConnectRouter): void {
 
       // Sentinel: signals to the client that the stream is ready to receive
       // NOTIFYs. The client identifies and discards this by action value.
-      yield new AuditEvent({ action: '__stream_ready__' });
+      yield create(AuditEventSchema, { action: '__stream_ready__' });
 
       for await (const notification of events) {
         if (!matchesStreamFilter(notification, req)) continue;
@@ -200,7 +203,7 @@ export function registerAuditService(router: ConnectRouter): void {
           continue;
         }
 
-        yield new AuditEvent(notificationToEvent(masked));
+        yield create(AuditEventSchema, notificationToEvent(masked));
       }
     },
   });

@@ -182,7 +182,7 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
                 <strong>{t('users.inviteTokenLabel')}:</strong>
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 rounded bg-white border border-emerald-200 px-3 py-1.5 text-xs text-gray-700 break-all">
+                <code className="flex-1 rounded-sm bg-white border border-emerald-200 px-3 py-1.5 text-xs text-gray-700 break-all">
                   {window.location.origin}
                   {lastInviteResult.setPasswordPath}
                 </code>
@@ -684,7 +684,7 @@ export default function UsersPage() {
                             checked={allVisibleSelected}
                             onChange={toggleSelectAll}
                             aria-label={t('bulk.selectAll')}
-                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                         </th>
                       )}
@@ -727,7 +727,7 @@ export default function UsersPage() {
                                   )
                                 }
                                 aria-label={t('bulk.selectAll')}
-                                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                               />
                             </td>
                           )}
@@ -1190,13 +1190,13 @@ export default function UsersPage() {
                 >
                   {t('users.apiTokenIssuedTitle')}
                 </h2>
-                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-4">
                   {t('users.apiTokenCopyLabel')}
                 </p>
                 <div className="flex items-center gap-2 mb-4">
                   <code
                     data-testid="api-token-value"
-                    className="flex-1 rounded bg-gray-50 border border-gray-200 px-3 py-1.5 text-xs text-gray-700 break-all font-mono"
+                    className="flex-1 rounded-sm bg-gray-50 border border-gray-200 px-3 py-1.5 text-xs text-gray-700 break-all font-mono"
                   >
                     {issuedTokenResult.token}
                   </code>

@@ -391,9 +391,8 @@ const scriptsConfig = {
 // this one must overlap.
 //
 // The glob list is deliberately wider than every other entry here: this is the only
-// rule that must reach .mjs/.cjs/.js, because eslint-plugins/, qa/scripts/, the
-// workspace vite/vitest configs, and tailwind.config.cjs all carry comments and are
-// otherwise unlinted. db/migrations/** stays excluded via IGNORED — its catalog
+// rule that must reach .mjs/.cjs/.js, because eslint-plugins/, qa/scripts/ and the
+// workspace vite/vitest configs all carry comments and are otherwise unlinted. db/migrations/** stays excluded via IGNORED — its catalog
 // comments are live database metadata, covered by strip-work-item-ids.ts --verify.
 const commentConventionConfig = {
   files: ['**/*.ts', '**/*.tsx', '**/*.mjs', '**/*.cjs', '**/*.js'],

@@ -84,13 +84,13 @@ export default function GlobalSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
-        className="w-full lg:w-64 text-sm text-gray-700 bg-gray-50 border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-colors placeholder:text-gray-400"
+        className="w-full lg:w-64 text-sm text-gray-700 bg-gray-50 border border-gray-300 rounded-md px-3 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:bg-white transition-colors placeholder:text-gray-400"
       />
 
       {showDropdown && (
         <div
           data-testid="search-results-panel"
-          className="absolute start-0 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-x-hidden overflow-y-auto max-h-[min(32rem,calc(100dvh-6rem))]"
+          className="absolute inset-s-0 top-full mt-1 w-80 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-x-hidden overflow-y-auto max-h-[min(32rem,calc(100dvh-6rem))]"
         >
           {/* Minimum-length hint */}
           {!isQueryLong && (

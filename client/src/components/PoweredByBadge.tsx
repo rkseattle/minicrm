@@ -14,7 +14,7 @@ export default function PoweredByBadge() {
       rel="noopener noreferrer"
       aria-label={t('nav.poweredByMiniCRM')}
       data-testid="powered-by-badge"
-      className="hidden lg:flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 select-none"
+      className="hidden lg:flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors shrink-0 select-none"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

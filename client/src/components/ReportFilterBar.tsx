@@ -62,7 +62,7 @@ export default function ReportFilterBar({
           <button
             type="button"
             onClick={() => setViewMode('team')}
-            className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
+            className={`px-4 py-2 text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
               viewMode === 'team'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -74,7 +74,7 @@ export default function ReportFilterBar({
           <button
             type="button"
             onClick={() => setViewMode('my')}
-            className={`px-4 py-2 text-sm font-medium border-s border-gray-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
+            className={`px-4 py-2 text-sm font-medium border-s border-gray-300 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
               viewMode === 'my'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -107,7 +107,7 @@ export default function ReportFilterBar({
               const next = e.target.value as DatePreset;
               if (next !== preset) setPreset(next);
             }}
-            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
           >
             {availablePresets.map((p) => (
               <option key={p} value={p}>
@@ -133,7 +133,7 @@ export default function ReportFilterBar({
                 data-testid="custom-start-input"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -149,7 +149,7 @@ export default function ReportFilterBar({
                 data-testid="custom-end-input"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
               />
             </div>
           </>
@@ -169,7 +169,7 @@ export default function ReportFilterBar({
               data-testid="owner-filter-select"
               value={selectedOwnerId}
               onChange={(e) => setSelectedOwnerId(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
             >
               <option value="">{t(`${i18nPrefix}.ownerFilterAll`)}</option>
               {activeUsers.map((u) => (

@@ -48,7 +48,7 @@ function PurgeConfirmDialog({ onConfirm, onCancel, isPending }: PurgeConfirmDial
         <div className="flex justify-end gap-3">
           <button
             type="button"
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             onClick={onCancel}
             disabled={isPending}
             data-testid="ai-purge-cancel-button"
@@ -57,7 +57,7 @@ function PurgeConfirmDialog({ onConfirm, onCancel, isPending }: PurgeConfirmDial
           </button>
           <button
             type="button"
-            className="px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 focus:ring-red-500"
+            className="px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 focus:ring-red-500"
             onClick={onConfirm}
             disabled={isPending}
             data-testid="ai-purge-confirm-button"
@@ -220,7 +220,7 @@ export function AiDataRetentionSection({ retentionDays }: { retentionDays: numbe
               setInputValue(e.target.value);
               setValidationError('');
             }}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="ai-session-retention-days-input"
           />
           {validationError && (
@@ -260,7 +260,7 @@ export function AiDataRetentionSection({ retentionDays }: { retentionDays: numbe
       <div className="mt-6 border-t border-gray-100 pt-4">
         {statsLoading && (
           <div
-            className="animate-pulse h-4 bg-gray-200 rounded w-1/2"
+            className="animate-pulse h-4 bg-gray-200 rounded-sm w-1/2"
             data-testid="ai-retention-stats-loading"
           />
         )}

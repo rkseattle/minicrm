@@ -493,7 +493,7 @@ export default function DealDetailPage() {
         {/* Converted from lead banner */}
         {!isEditing && deal.source_lead_id && (
           <div
-            className="mb-4 rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800"
+            className="mb-4 rounded-sm border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800"
             data-testid="converted-from-lead-banner"
           >
             <Link to={recordPath('lead', deal.source_lead_id)} className="font-medium underline">
@@ -513,7 +513,7 @@ export default function DealDetailPage() {
               setSuggestedStage(stageAdvancement.next_stage_name);
               setIsEditing(true);
             }}
-            className="mb-4 w-full text-start rounded border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-800 hover:bg-primary-100"
+            className="mb-4 w-full text-start rounded-sm border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-800 hover:bg-primary-100"
           >
             <span className="font-medium">
               {t('deals.stageAdvancementReadyLabel', { stage: stageAdvancement.next_stage_name })}
@@ -676,9 +676,9 @@ export default function DealDetailPage() {
 
                   {dealHealthMutation.isPending && (
                     <div className="mt-4 space-y-2" aria-hidden="true">
-                      <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
-                      <div className="h-3 w-full bg-gray-100 rounded animate-pulse" />
-                      <div className="h-3 w-5/6 bg-gray-100 rounded animate-pulse" />
+                      <div className="h-4 w-24 bg-gray-100 rounded-sm animate-pulse" />
+                      <div className="h-3 w-full bg-gray-100 rounded-sm animate-pulse" />
+                      <div className="h-3 w-5/6 bg-gray-100 rounded-sm animate-pulse" />
                     </div>
                   )}
 
@@ -789,7 +789,7 @@ export default function DealDetailPage() {
                       {stakeholderMap.single_threaded_risk && (
                         <p
                           role="alert"
-                          className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+                          className="mb-3 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
                           data-testid="single-threaded-risk-warning"
                         >
                           {t('championBlocker.singleThreadedRiskWarning')}
@@ -1003,9 +1003,9 @@ function DetailRow({
       <span className="w-full md:w-36 md:shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 md:mb-0 md:pt-0.5">
         {label}
       </span>
-      {/* break-words: long currency strings (e.g. ¥1,234,567,890) have no natural break point */}
+      {/* wrap-break-word: long currency strings (e.g. ¥1,234,567,890) have no natural break point */}
       <span
-        className={`text-sm text-gray-900 break-words${nowrap ? ' whitespace-nowrap' : ''}`}
+        className={`text-sm text-gray-900 wrap-break-word${nowrap ? ' whitespace-nowrap' : ''}`}
         data-testid={testId}
       >
         {value}

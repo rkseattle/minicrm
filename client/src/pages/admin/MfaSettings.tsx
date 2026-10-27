@@ -46,7 +46,7 @@ export default function MfaSettings() {
 
   return (
     <div
-      className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+      className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
       data-testid="mfa-required-section"
     >
       <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('mfa.sectionTitle')}</h2>
@@ -65,7 +65,7 @@ export default function MfaSettings() {
             setMfaRequiredError(false);
             mfaRequiredMutation.mutate(e.target.checked);
           }}
-          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
           data-testid="mfa-required-checkbox"
         />
         <span className="text-sm text-gray-700">{t('mfa.adminSetting.label')}</span>

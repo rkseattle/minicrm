@@ -152,7 +152,7 @@ export function WinLossReportContent() {
                 {t('reports.winLoss.wonValueLabel')}
               </p>
               <p
-                className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 break-words"
+                className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 wrap-break-word"
                 data-testid="stat-won-value-value"
               >
                 {report.mixedCurrencies
@@ -186,7 +186,7 @@ export function WinLossReportContent() {
                 {t('reports.winLoss.lostValueLabel')}
               </p>
               <p
-                className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 break-words"
+                className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 wrap-break-word"
                 data-testid="stat-lost-value-value"
               >
                 {report.mixedCurrencies
@@ -227,7 +227,7 @@ export function WinLossReportContent() {
                     {')'}
                   </p>
                   <p
-                    className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 break-words"
+                    className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-green-600 wrap-break-word"
                     data-testid="stat-converted-won-value"
                   >
                     {report.convertedWonValue !== null
@@ -247,7 +247,7 @@ export function WinLossReportContent() {
                     {')'}
                   </p>
                   <p
-                    className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 break-words"
+                    className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-red-600 wrap-break-word"
                     data-testid="stat-converted-lost-value"
                   >
                     {report.convertedLostValue !== null
@@ -409,7 +409,7 @@ export function WinLossReportContent() {
                             {row.wonCount}
                           </td>
                           <td
-                            className="px-4 py-3 text-sm text-end text-gray-900 break-words"
+                            className="px-4 py-3 text-sm text-end text-gray-900 wrap-break-word"
                             data-testid={`rep-breakdown-won-value-${row.ownerId}`}
                           >
                             {formatCurrency(row.wonValue, i18n.language, report.currency ?? 'USD')}
@@ -421,7 +421,7 @@ export function WinLossReportContent() {
                             {row.lostCount}
                           </td>
                           <td
-                            className="px-4 py-3 text-sm text-end text-gray-900 break-words"
+                            className="px-4 py-3 text-sm text-end text-gray-900 wrap-break-word"
                             data-testid={`rep-breakdown-lost-value-${row.ownerId}`}
                           >
                             {formatCurrency(row.lostValue, i18n.language, report.currency ?? 'USD')}

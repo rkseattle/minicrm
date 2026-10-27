@@ -630,7 +630,7 @@ export default function ContactDetailPage() {
         {/* Converted from lead banner */}
         {!isEditing && contact.source_lead_id && (
           <div
-            className="mb-4 rounded border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800"
+            className="mb-4 rounded-sm border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800"
             data-testid="converted-from-lead-banner"
           >
             <Link to={recordPath('lead', contact.source_lead_id)} className="font-medium underline">
@@ -715,7 +715,7 @@ export default function ContactDetailPage() {
                       {addr.country && <p>{addr.country}</p>}
                       {addr.is_default && (
                         <span
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 mt-1"
+                          className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-primary-100 text-primary-800 mt-1"
                           data-testid={`address-default-badge-${addr.id}`}
                         >
                           {t('contacts.addressDefault')}
@@ -759,7 +759,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-label"
                       placeholder={t('contacts.addressLabelPlaceholder')}
-                      className="col-span-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="col-span-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.label ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -772,7 +772,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-line1"
                       placeholder={t('contacts.addressLine1Placeholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.address_line1 ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -785,7 +785,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-line2"
                       placeholder={t('contacts.addressLine2Placeholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.address_line2 ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -798,7 +798,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-city"
                       placeholder={t('contacts.cityPlaceholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.city ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -811,7 +811,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-state-region"
                       placeholder={t('contacts.stateRegionPlaceholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.state_region ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -824,7 +824,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-postal-code"
                       placeholder={t('contacts.postalCodePlaceholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.postal_code ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -837,7 +837,7 @@ export default function ContactDetailPage() {
                       type="text"
                       data-testid="new-address-country"
                       placeholder={t('contacts.countryPlaceholder')}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                       value={newAddressFields.country ?? ''}
                       onChange={(e) =>
                         setNewAddressFields((prev) => ({
@@ -1179,7 +1179,7 @@ export default function ContactDetailPage() {
                   {addr.country && <p>{addr.country}</p>}
                   {addr.is_default && (
                     <span
-                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 mt-1"
+                      className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-primary-100 text-primary-800 mt-1"
                       data-testid={`address-default-badge-${addr.id}`}
                     >
                       {t('contacts.addressDefault')}
@@ -1324,7 +1324,7 @@ export default function ContactDetailPage() {
                                   {isDifferent ? (
                                     <select
                                       data-testid={`merge-choice-${field}`}
-                                      className="border border-gray-300 rounded text-sm px-2 py-1"
+                                      className="border border-gray-300 rounded-sm text-sm px-2 py-1"
                                       value={mergeFieldChoices[field] ?? 'winner'}
                                       onChange={(e) =>
                                         setMergeFieldChoices((prev) => ({
@@ -1455,7 +1455,7 @@ export default function ContactDetailPage() {
                         {/* Probability badge — consistent with DealCard display */}
                         <span
                           data-testid={`linked-deal-probability-${deal.id}`}
-                          className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
+                          className={`text-xs px-1.5 py-0.5 rounded-sm whitespace-nowrap shrink-0 ${
                             deal.probability_is_overridden
                               ? 'bg-primary-100 text-primary-700 font-medium'
                               : 'bg-gray-100 text-gray-500 italic'
@@ -1509,14 +1509,14 @@ export default function ContactDetailPage() {
 
             {/* Sequence enrollments — gated by sequencing feature flag */}
             {sequencingLoading ? (
-              <div className="mt-8 h-24 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+              <div className="mt-8 h-24 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
             ) : sequencingEnabled && canWrite ? (
               <section
                 className="mt-8"
                 aria-labelledby="sequence-enrollments-heading"
                 data-testid="sequence-enrollments-section"
               >
-                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs">
                   <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                     <h2
                       id="sequence-enrollments-heading"
@@ -1604,7 +1604,7 @@ export default function ContactDetailPage() {
                                   unenrollMutation.mutate(enrollment.id);
                                 }
                               }}
-                              className="ms-4 flex-shrink-0 text-sm text-red-600 hover:underline"
+                              className="ms-4 shrink-0 text-sm text-red-600 hover:underline"
                             >
                               {t('sequences.unenrollButton')}
                             </button>

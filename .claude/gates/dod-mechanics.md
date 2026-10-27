@@ -122,7 +122,7 @@ Work down this list and stop at the first that applies:
 
 - **i18n** — every string via `t()`, all five locales at matching positions, then
   `npm run pseudoloc`. `locale-completeness.test.ts` is bidirectional. RTL needs logical
-  CSS (`ps-`/`pe-`, `ms-`/`me-`, `start-`/`end-`).
+  CSS (`ps-`/`pe-`, `ms-`/`me-`, `inset-s-`/`inset-e-`).
 - **GDPR and retention** — a new table holding contact or lead data needs a cascade or an
   explicit note in `docs/dev/retention.md`.
 - **Feature flags** — gated or explicitly always-on. `useFeatureFlag` fails closed, so an

@@ -128,7 +128,7 @@ function TeamForm({
           maxLength={200}
           disabled={isPending}
           data-testid="team-form-name"
-          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
         />
         {nameError && (
           <p className="mt-1 text-xs text-red-600" role="alert" data-testid="team-form-name-error">
@@ -147,7 +147,7 @@ function TeamForm({
           onChange={(e) => setManagerId(e.target.value)}
           disabled={isPending}
           data-testid="team-form-manager"
-          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
         >
           <option value="">{t('teamsSettings.form.managerPlaceholder')}</option>
           {users.map((user) => (
@@ -168,7 +168,7 @@ function TeamForm({
           onChange={(e) => setParentTeamId(e.target.value)}
           disabled={isPending}
           data-testid="team-form-parent"
-          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
+          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
         >
           <option value="">{t('teamsSettings.form.parentPlaceholder')}</option>
           {eligibleParents.map((team) => (
@@ -357,7 +357,7 @@ function MemberList({ teamId, users }: MemberListProps) {
               onChange={(e) => setNewUserId(e.target.value)}
               disabled={addMutation.isPending}
               data-testid={`team-add-member-user-${teamId}`}
-              className="block w-full rounded border border-gray-300 px-2 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
+              className="block w-full rounded-sm border border-gray-300 px-2 py-1.5 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
             >
               <option value="">{t('teamsSettings.members.userPlaceholder')}</option>
               {availableUsers.map((user) => (
@@ -380,7 +380,7 @@ function MemberList({ teamId, users }: MemberListProps) {
               onChange={(e) => setNewRole(e.target.value as TeamMemberRole)}
               disabled={addMutation.isPending}
               data-testid={`team-add-member-role-${teamId}`}
-              className="rounded border border-gray-300 px-2 py-1.5 text-xs shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
+              className="rounded-sm border border-gray-300 px-2 py-1.5 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-50"
             >
               {TEAM_MEMBER_ROLES.map((role) => (
                 <option key={role} value={role}>

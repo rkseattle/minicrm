@@ -114,7 +114,7 @@ export default function ContactEnrichmentModal({
             disabled={enrichMutation.isPending}
             placeholder={t('contactEnrichment.inputPlaceholder')}
             className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900
-                       placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500
+                       placeholder:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500
                        focus:border-primary-500 resize-none mb-4"
           />
 

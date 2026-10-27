@@ -675,7 +675,7 @@ export default function ContactsPage() {
                         setPage(1);
                       }
                     }}
-                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
                   >
                     <option value="">{t('tags.sectionTitle')}</option>
                     {tagsData.tags.map((tag) => (
@@ -772,7 +772,7 @@ export default function ContactsPage() {
                           checked={allVisibleSelected}
                           onChange={toggleSelectAll}
                           aria-label={t('bulk.selectAll')}
-                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                       </th>
                     )}
@@ -863,7 +863,7 @@ export default function ContactsPage() {
                             checked={selectedIds.has(contact.id)}
                             onChange={() => toggleRow(contact.id)}
                             aria-label={`${contact.first_name} ${contact.last_name}`}
-                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                         </td>
                       )}
@@ -876,7 +876,7 @@ export default function ContactsPage() {
                           {contact.first_name} {contact.last_name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                      <td className="px-4 py-3 text-gray-500 group-data-selected:text-gray-600">
                         <span
                           data-testid={`contact-email-${contact.id}`}
                           className="block truncate max-w-[200px]"
@@ -885,17 +885,17 @@ export default function ContactsPage() {
                           {contact.email}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap group-data-[selected]:text-gray-600">
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap group-data-selected:text-gray-600">
                         {contact.phone ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                      <td className="px-4 py-3 text-gray-500 group-data-selected:text-gray-600">
                         {contact.title ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                      <td className="px-4 py-3 text-gray-500 group-data-selected:text-gray-600">
                         {contact.department ?? '—'}
                       </td>
                       <td
-                        className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600"
+                        className="px-4 py-3 text-gray-500 group-data-selected:text-gray-600"
                         data-testid={`contact-owner-${contact.id}`}
                       >
                         {resolveOwnerName(
@@ -927,7 +927,7 @@ export default function ContactsPage() {
                       checked={allVisibleSelected}
                       onChange={toggleSelectAll}
                       aria-label={t('bulk.selectAll')}
-                      className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      className="h-5 w-5 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-xs text-gray-500">
                       {t('bulk.selectedCount', { count: selectedIds.size })}
@@ -950,7 +950,7 @@ export default function ContactsPage() {
                           checked={selectedIds.has(contact.id)}
                           onChange={() => toggleRow(contact.id)}
                           aria-label={`${contact.first_name} ${contact.last_name}`}
-                          className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          className="mt-1 h-5 w-5 shrink-0 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                       )}
                       <div className="min-w-0 flex-1">
@@ -961,16 +961,16 @@ export default function ContactsPage() {
                         >
                           {contact.first_name} {contact.last_name}
                         </Link>
-                        <p className="text-sm text-gray-500 group-data-[selected]:text-gray-600">
+                        <p className="text-sm text-gray-500 group-data-selected:text-gray-600">
                           {contact.email}
                         </p>
                         {contact.title && (
-                          <p className="text-sm text-gray-500 group-data-[selected]:text-gray-600">
+                          <p className="text-sm text-gray-500 group-data-selected:text-gray-600">
                             {contact.title}
                           </p>
                         )}
                         <p
-                          className="text-xs text-gray-500 mt-1 group-data-[selected]:text-gray-600"
+                          className="text-xs text-gray-500 mt-1 group-data-selected:text-gray-600"
                           data-testid={`contact-card-owner-${contact.id}`}
                         >
                           {t('contacts.columnOwner')}:{' '}

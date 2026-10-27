@@ -74,7 +74,7 @@ export default function BulkFailedDetailsModal({
               type="button"
               data-testid="bulk-failed-details-close"
               onClick={onClose}
-              className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
             >
               {t('common.dismiss')}
             </button>

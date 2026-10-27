@@ -167,7 +167,7 @@ export default function TagInput({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder={t('tags.inputPlaceholder')}
-          className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:opacity-60"
+          className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:opacity-60"
         />
 
         {/* Suggestion dropdown */}

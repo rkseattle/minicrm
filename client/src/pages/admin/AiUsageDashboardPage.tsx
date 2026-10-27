@@ -205,7 +205,7 @@ export default function AiUsageDashboardPage() {
 
         {/* Disclaimer about self-reported cost estimation */}
         <p
-          className="mb-6 text-xs text-gray-500 bg-gray-100 border border-gray-200 rounded px-3 py-2"
+          className="mb-6 text-xs text-gray-500 bg-gray-100 border border-gray-200 rounded-sm px-3 py-2"
           data-testid="ai-usage-disclaimer"
         >
           {t('aiUsageDashboard.disclaimer')}{' '}
@@ -227,7 +227,7 @@ export default function AiUsageDashboardPage() {
               key={p}
               type="button"
               onClick={() => setPreset(p)}
-              className={`px-4 py-2 text-sm font-medium border-e border-gray-300 last:border-e-0 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
+              className={`px-4 py-2 text-sm font-medium border-e border-gray-300 last:border-e-0 focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
                 preset === p
                   ? 'bg-primary-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -248,7 +248,7 @@ export default function AiUsageDashboardPage() {
               setCustomEnd((current) => current ?? todayIso(now));
               setPreset('custom');
             }}
-            className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
+            className={`px-4 py-2 text-sm font-medium focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
               preset === 'custom'
                 ? 'bg-primary-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -292,8 +292,8 @@ export default function AiUsageDashboardPage() {
 
         {summaryLoading && (
           <div className="animate-pulse space-y-2 py-4" data-testid="ai-usage-summary-loading">
-            <div className="h-6 bg-gray-200 rounded w-1/4" />
-            <div className="h-24 bg-gray-200 rounded" />
+            <div className="h-6 bg-gray-200 rounded-sm w-1/4" />
+            <div className="h-24 bg-gray-200 rounded-sm" />
           </div>
         )}
 
@@ -360,7 +360,7 @@ export default function AiUsageDashboardPage() {
               </h2>
               {dailyLoading && (
                 <div
-                  className="h-32 animate-pulse bg-gray-100 rounded"
+                  className="h-32 animate-pulse bg-gray-100 rounded-sm"
                   data-testid="ai-usage-daily-loading"
                 />
               )}

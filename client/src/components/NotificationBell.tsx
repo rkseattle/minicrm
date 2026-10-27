@@ -59,7 +59,7 @@ export default function NotificationBell() {
         aria-label={t('notifications.bellLabel', { count: unreadCount })}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative flex items-center justify-center w-9 h-9 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="relative flex items-center justify-center w-9 h-9 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
       >
         <svg
           aria-hidden="true"
@@ -78,7 +78,7 @@ export default function NotificationBell() {
         {unreadCount > 0 && (
           <span
             data-testid="notification-unread-badge"
-            className="absolute -top-0.5 -end-0.5 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-600 text-white text-[10px] font-medium"
+            className="absolute -top-0.5 -inset-e-0.5 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-600 text-white text-[10px] font-medium"
           >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
@@ -89,7 +89,7 @@ export default function NotificationBell() {
         <div
           role="menu"
           data-testid="notification-dropdown"
-          className="absolute end-0 z-40 mt-2 w-80 rounded-md border border-gray-200 bg-white shadow-lg"
+          className="absolute inset-e-0 z-40 mt-2 w-80 rounded-md border border-gray-200 bg-white shadow-lg"
         >
           <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
             <span className="text-sm font-semibold text-gray-900">

@@ -76,7 +76,7 @@ function FieldTable({ fields, valueLabel }: FieldTableProps) {
         {entries.map(([key, value]) => (
           <tr key={key} className="border-t border-gray-200">
             <td className="py-1 pe-3 font-mono text-gray-600 align-top whitespace-nowrap">{key}</td>
-            <td className="py-1 text-gray-800 break-words">
+            <td className="py-1 text-gray-800 wrap-break-word">
               {value === null || value === undefined ? (
                 <span className="text-gray-400 italic">—</span>
               ) : typeof value === 'object' ? (
@@ -169,7 +169,7 @@ export default function MutationConfirmationBlock({
       {/* Single-record delete: show entity name/id prominently */}
       {operation === 'delete' && !isBulk && (entityName ?? entityId) && (
         <div
-          className="mb-2 p-2 bg-red-100 rounded-md text-xs text-red-800 break-words"
+          className="mb-2 p-2 bg-red-100 rounded-md text-xs text-red-800 wrap-break-word"
           data-testid="nli-entity-name"
         >
           <span className="font-semibold">{entityName ?? entityId}</span>

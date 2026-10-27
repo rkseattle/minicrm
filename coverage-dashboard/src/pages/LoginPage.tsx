@@ -70,7 +70,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-8 shadow-sm"
+        className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-8 shadow-xs"
         data-testid="login-form"
       >
         <h1 className="mb-6 text-xl font-semibold text-gray-900">Coverage/TIA Dashboard</h1>

@@ -391,7 +391,7 @@ export default function ActivitiesPage() {
                         checked={allVisibleSelected}
                         onChange={toggleSelectAll}
                         aria-label={t('bulk.selectAll')}
-                        className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                       />
                     </th>
                   )}
@@ -440,14 +440,14 @@ export default function ActivitiesPage() {
                             checked={selectedIds.has(activity.id)}
                             onChange={() => toggleRow(activity.id)}
                             aria-label={activity.subject}
-                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                         </td>
                       )}
                       {/* Type badge */}
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${badge.className}`}
+                          className={`inline-flex items-center justify-center rounded-sm px-2 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${badge.className}`}
                           data-testid={`activity-type-${activity.id}`}
                         >
                           {activity.type}

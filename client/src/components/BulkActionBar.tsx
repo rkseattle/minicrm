@@ -139,9 +139,9 @@ export default function BulkActionBar({
       data-testid="bulk-action-bar"
       className={[
         'min-w-0',
-        // Mobile: fixed bottom sheet — z-[60] beats SetupChecklistWidget's z-50 so
+        // Mobile: fixed bottom sheet — z-60 beats SetupChecklistWidget's z-50 so
         // bulk action buttons remain clickable when the widget is open.
-        'fixed bottom-0 start-0 end-0 z-[60]',
+        'fixed bottom-0 inset-s-0 inset-e-0 z-60',
         'bg-white border-t border-gray-200 shadow-lg px-4 py-3',
         // Desktop: inline bar
         'md:static md:flex md:items-center',

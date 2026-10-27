@@ -71,7 +71,7 @@ export default function ChampionBlockerBadge({
         <div
           role="tooltip"
           data-testid={`champion-blocker-why-panel-${contactId}`}
-          className="absolute z-10 top-full mt-1 start-0 w-64 rounded-md border border-gray-200 bg-white p-3 text-xs text-gray-700 shadow-lg"
+          className="absolute z-10 top-full mt-1 inset-s-0 w-64 rounded-md border border-gray-200 bg-white p-3 text-xs text-gray-700 shadow-lg"
         >
           <p className="font-medium text-gray-500 mb-1">{t('championBlocker.aiInferredLabel')}</p>
           <ul className="space-y-1">

@@ -110,5 +110,5 @@ jobs:
             - User-facing string hardcoded in JSX instead of `t('key')`
             - Physical Tailwind directional class (`pl-`, `pr-`, `ml-`, `mr-`, `left-`, `right-`,
               `text-left`, `text-right`) instead of logical utility (`ps-`, `pe-`, `ms-`, `me-`,
-              `start-`, `end-`, `text-start`, `text-end`)
+              `inset-s-`, `inset-e-`, `text-start`, `text-end`)
             - New service function missing JSDoc

@@ -621,7 +621,7 @@ export default function AccountsPage() {
                         setAtRiskOrDormantOnly(e.target.checked);
                         setPage(1);
                       }}
-                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                     {t('relationshipHealth.listFilterLabel')}
                   </label>
@@ -639,7 +639,7 @@ export default function AccountsPage() {
                         setPage(1);
                       }
                     }}
-                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
                   >
                     <option value="">{t('tags.sectionTitle')}</option>
                     {tagsData.tags.map((tag) => (
@@ -731,7 +731,7 @@ export default function AccountsPage() {
                           checked={allVisibleSelected}
                           onChange={toggleSelectAll}
                           aria-label={t('bulk.selectAll')}
-                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                       </th>
                     )}
@@ -804,7 +804,7 @@ export default function AccountsPage() {
                             checked={selectedIds.has(account.id)}
                             onChange={() => toggleRow(account.id)}
                             aria-label={account.name}
-                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                         </td>
                       )}
@@ -819,29 +819,27 @@ export default function AccountsPage() {
                       </td>
                       <td className="px-4 py-3" data-testid={`account-type-${account.id}`}>
                         {account.account_type ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 whitespace-nowrap shrink-0">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-primary-100 text-primary-800 whitespace-nowrap shrink-0">
                             {t(`accounts.accountType.${account.account_type}`)}
                           </span>
                         ) : (
-                          <span className="text-gray-500 group-data-[selected]:text-gray-600">
-                            —
-                          </span>
+                          <span className="text-gray-500 group-data-selected:text-gray-600">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                      <td className="px-4 py-3 text-gray-500 group-data-selected:text-gray-600">
                         {account.industry ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                      <td className="px-4 py-3 text-gray-500 group-data-selected:text-gray-600">
                         {account.website ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                      <td className="px-4 py-3 text-gray-500 group-data-selected:text-gray-600">
                         {account.employee_range ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
+                      <td className="px-4 py-3 text-gray-500 group-data-selected:text-gray-600">
                         {account.revenue_range ?? '—'}
                       </td>
                       <td
-                        className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600"
+                        className="px-4 py-3 text-gray-500 group-data-selected:text-gray-600"
                         data-testid={`account-owner-${account.id}`}
                       >
                         {resolveOwnerName(
@@ -886,7 +884,7 @@ export default function AccountsPage() {
                       checked={allVisibleSelected}
                       onChange={toggleSelectAll}
                       aria-label={t('bulk.selectAll')}
-                      className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      className="h-5 w-5 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-xs text-gray-500">
                       {t('bulk.selectedCount', { count: selectedIds.size })}
@@ -907,7 +905,7 @@ export default function AccountsPage() {
                           checked={selectedIds.has(account.id)}
                           onChange={() => toggleRow(account.id)}
                           aria-label={account.name}
-                          className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          className="mt-1 h-5 w-5 shrink-0 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                       )}
                       <div className="min-w-0 flex-1">

@@ -218,7 +218,7 @@ export default function ProfilePage() {
         {!langLoading && !langError && (
           <form
             onSubmit={handleLangSubmit}
-            className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 space-y-4 max-w-2xl"
+            className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 space-y-4 max-w-2xl"
             data-testid="profile-lang-section"
           >
             <div>
@@ -296,7 +296,7 @@ export default function ProfilePage() {
         {!navLayoutLoading && !navLayoutError && (
           <form
             onSubmit={handleNavLayoutSubmit}
-            className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 space-y-4 max-w-2xl"
+            className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6 space-y-4 max-w-2xl"
             data-testid="profile-navlayout-section"
           >
             <div>
@@ -360,7 +360,7 @@ export default function ProfilePage() {
 
         {/* ── Email notifications section ──────────────────────────────────── */}
         <div
-          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
           data-testid="profile-notifications-section"
         >
           <h2
@@ -408,7 +408,7 @@ export default function ProfilePage() {
                       type="checkbox"
                       checked={prefs[key]}
                       onChange={() => togglePref(key)}
-                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      className="h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                       data-testid={`notif-checkbox-${key}`}
                     />
                     <span className="text-sm text-gray-700">{t(labelKey)}</span>
@@ -454,7 +454,7 @@ export default function ProfilePage() {
         </div>
         {/* ── Two-factor authentication section ───────────────────────────── */}
         <div
-          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
           data-testid="profile-mfa-section"
         >
           <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="profile-mfa-title">

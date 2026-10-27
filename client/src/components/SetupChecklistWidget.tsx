@@ -53,7 +53,7 @@ function TaskRow({ task, title, description, href }: TaskRowProps) {
   return (
     <li className="flex items-start gap-3 py-2">
       <span
-        className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+        className={`mt-0.5 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
           task.completed ? 'border-green-500 bg-green-500' : 'border-gray-300 bg-white'
         }`}
         aria-hidden="true"
@@ -80,7 +80,7 @@ function TaskRow({ task, title, description, href }: TaskRowProps) {
           {!task.completed && (
             <Link
               to={href}
-              className="flex-shrink-0 text-xs text-primary-600 hover:text-primary-800 underline underline-offset-2"
+              className="shrink-0 text-xs text-primary-600 hover:text-primary-800 underline underline-offset-2"
               aria-label={t('setupChecklist.goTo', { task: title })}
             >
               {t('setupChecklist.go')}
@@ -213,7 +213,7 @@ export default function SetupChecklistWidget() {
   if (!expanded) {
     return (
       <div
-        className="fixed bottom-4 end-4 z-50"
+        className="fixed bottom-4 inset-e-4 z-50"
         data-testid="setup-checklist-pill"
         aria-label={t('setupChecklist.pillLabel')}
       >
@@ -221,7 +221,7 @@ export default function SetupChecklistWidget() {
           type="button"
           onClick={handleToggleExpanded}
           data-testid="setup-checklist-expand-button"
-          className="flex items-center gap-2 bg-white border border-gray-200 shadow-lg rounded-full px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+          className="flex items-center gap-2 bg-white border border-gray-200 shadow-lg rounded-full px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-primary-500 transition-colors"
           aria-expanded={false}
           aria-label={t('setupChecklist.expand')}
         >
@@ -252,7 +252,7 @@ export default function SetupChecklistWidget() {
 
   return (
     <div
-      className={`fixed bottom-4 end-4 z-50 w-80 bg-white border border-gray-200 shadow-xl rounded-xl transition-opacity duration-500 ${fadingOut ? 'opacity-0' : 'opacity-100'}`}
+      className={`fixed bottom-4 inset-e-4 z-50 w-80 bg-white border border-gray-200 shadow-xl rounded-xl transition-opacity duration-500 ${fadingOut ? 'opacity-0' : 'opacity-100'}`}
       data-testid="setup-checklist-widget"
       role="region"
       aria-label={t('setupChecklist.widgetLabel')}
@@ -264,7 +264,7 @@ export default function SetupChecklistWidget() {
           <button
             type="button"
             onClick={handleToggleExpanded}
-            className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+            className="p-1 rounded-sm text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-hidden focus:ring-2 focus:ring-primary-500 transition-colors"
             aria-expanded={true}
             aria-label={t('setupChecklist.collapse')}
             data-testid="setup-checklist-collapse-button"
@@ -284,7 +284,7 @@ export default function SetupChecklistWidget() {
             type="button"
             onClick={handleDismiss}
             disabled={dismissMutation.isPending}
-            className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+            className="p-1 rounded-sm text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-hidden focus:ring-2 focus:ring-primary-500 transition-colors"
             aria-label={t('setupChecklist.dismiss')}
             data-testid="setup-checklist-dismiss-button"
           >

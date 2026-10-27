@@ -118,7 +118,7 @@ export default function SsoSettings() {
 
   return (
     <div
-      className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+      className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
       data-testid="sso-section"
     >
       <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="sso-section-title">
@@ -168,7 +168,7 @@ export default function SsoSettings() {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, protocol: e.target.value as SsoProtocol }))
                 }
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               >
                 {PROTOCOLS.map((p) => (
                   <option key={p.value} value={p.value}>
@@ -198,7 +198,7 @@ export default function SsoSettings() {
                 value={form.idp_metadata_url}
                 onChange={(e) => setForm((prev) => ({ ...prev, idp_metadata_url: e.target.value }))}
                 required
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
@@ -220,7 +220,7 @@ export default function SsoSettings() {
                 value={form.entity_id}
                 onChange={(e) => setForm((prev) => ({ ...prev, entity_id: e.target.value }))}
                 required
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
@@ -239,7 +239,7 @@ export default function SsoSettings() {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, jit_default_role_id: e.target.value }))
                 }
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               >
                 <option value="">—</option>
                 {rolesData
@@ -276,7 +276,7 @@ export default function SsoSettings() {
                     setForm((prev) => ({ ...prev, idp_certificate: e.target.value }))
                   }
                   rows={5}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
                 />
                 <p className="mt-1 text-xs text-gray-500">{t('settings.sso.idpCertificateHint')}</p>
               </div>

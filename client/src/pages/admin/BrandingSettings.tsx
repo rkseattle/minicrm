@@ -87,7 +87,7 @@ function BrandingPreview({ form }: BrandingPreviewProps) {
   return (
     <div
       data-testid="branding-preview"
-      className="border border-gray-200 rounded-lg overflow-hidden w-36 flex-shrink-0"
+      className="border border-gray-200 rounded-lg overflow-hidden w-36 shrink-0"
       style={{ fontFamily }}
       aria-label={t('settings.branding.previewLabel')}
     >
@@ -104,7 +104,7 @@ function BrandingPreview({ form }: BrandingPreviewProps) {
       {/* Mini sidebar */}
       <div className="bg-gray-50 px-2 py-2 space-y-1">
         <div
-          className="text-xs px-1.5 py-0.5 rounded"
+          className="text-xs px-1.5 py-0.5 rounded-sm"
           style={{ backgroundColor: `${color}20`, color }}
         >
           {t('settings.branding.previewActiveLink')}
@@ -119,7 +119,7 @@ function BrandingPreview({ form }: BrandingPreviewProps) {
       {/* Mini button */}
       <div className="bg-white px-2 py-2">
         <div
-          className="text-xs text-white px-2 py-0.5 rounded text-center"
+          className="text-xs text-white px-2 py-0.5 rounded-sm text-center"
           style={{ backgroundColor: color }}
         >
           {t('settings.branding.previewButton')}
@@ -203,7 +203,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
     <>
       <form
         onSubmit={handleSubmit}
-        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+        className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="branding-form"
       >
         <h2
@@ -230,7 +230,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 onChange={(e) => setField('companyName', e.target.value)}
                 maxLength={100}
                 placeholder="MiniCRM"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
               />
               <p className="text-xs text-gray-500 mt-1">{t('settings.branding.companyNameHint')}</p>
             </div>
@@ -247,13 +247,13 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 value={form.logoUrl}
                 onChange={(e) => setField('logoUrl', e.target.value)}
                 placeholder="https://example.com/logo.png"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
               />
               {form.logoUrl && (
                 <img
                   src={form.logoUrl}
                   alt={t('settings.branding.logoPreviewAlt')}
-                  className="mt-2 h-8 w-auto object-contain border border-gray-100 rounded"
+                  className="mt-2 h-8 w-auto object-contain border border-gray-100 rounded-sm"
                   data-testid="branding-logo-preview"
                 />
               )}
@@ -272,7 +272,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 onChange={(e) => setField('logoAltText', e.target.value)}
                 maxLength={200}
                 placeholder={t('settings.branding.logoAltTextPlaceholder')}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -291,7 +291,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 value={form.faviconUrl}
                 onChange={(e) => setField('faviconUrl', e.target.value)}
                 placeholder="https://example.com/favicon.ico"
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -307,7 +307,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                   data-testid="branding-color-picker"
                   value={HEX_RE.test(form.primaryColor) ? form.primaryColor : '#4f46e5'}
                   onChange={(e) => setField('primaryColor', e.target.value)}
-                  className="h-9 w-12 cursor-pointer rounded border border-gray-300 p-0.5"
+                  className="h-9 w-12 cursor-pointer rounded-sm border border-gray-300 p-0.5"
                   aria-label={t('settings.branding.primaryColorLabel')}
                 />
                 <input
@@ -319,7 +319,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                   maxLength={7}
                   placeholder="#4f46e5"
                   aria-label={t('settings.branding.primaryColorHexLabel')}
-                  className="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                 />
               </div>
               <ContrastIndicator hex={form.primaryColor} />
@@ -335,7 +335,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
                 data-testid="branding-font-select"
                 value={form.fontFamily}
                 onChange={(e) => setField('fontFamily', e.target.value)}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
               >
                 {SUPPORTED_FONTS.map((font) => (
                   <option key={font.id} value={font.id}>
@@ -381,7 +381,7 @@ function BrandingForm({ initialBranding }: { initialBranding: BrandingConfig | n
 
       {/* Reset to defaults */}
       <div
-        className="mt-8 bg-white shadow-sm rounded-lg border border-red-100 p-6 max-w-2xl"
+        className="mt-8 bg-white shadow-xs rounded-lg border border-red-100 p-6 max-w-2xl"
         data-testid="branding-reset-section"
       >
         <h2 className="text-lg font-semibold text-gray-900 mb-1">

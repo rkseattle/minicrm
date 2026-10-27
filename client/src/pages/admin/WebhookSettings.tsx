@@ -39,7 +39,7 @@ function StatusBadge({ status }: { status: 'active' | 'failed' | 'disabled' }) {
   };
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${classes[status]}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${classes[status]}`}
     >
       {t(`settings.webhooks.status${status.charAt(0).toUpperCase() + status.slice(1)}`)}
     </span>
@@ -74,7 +74,7 @@ function DeliveryLogsPanel({ subscription, onClose }: DeliveryLogsProps) {
             <h3 className="text-base font-semibold text-gray-900">
               {t('settings.webhooks.logsTitle')}
             </h3>
-            <p className="text-sm text-gray-500 mt-0.5 break-words">{subscription.url}</p>
+            <p className="text-sm text-gray-500 mt-0.5 wrap-break-word">{subscription.url}</p>
           </div>
           <Button variant="ghost" onClick={onClose} data-testid="webhook-logs-close-button">
             {t('settings.webhooks.logsCloseButton')}
@@ -132,7 +132,7 @@ function DeliveryLogsPanel({ subscription, onClose }: DeliveryLogsProps) {
                     <td className="px-4 py-3 text-gray-700">
                       {formatLocalDateTime(log.delivered_at, i18n.language)}
                     </td>
-                    <td className="px-4 py-3 text-red-600 break-words max-w-xs">
+                    <td className="px-4 py-3 text-red-600 wrap-break-word max-w-xs">
                       {log.error ?? '—'}
                     </td>
                   </tr>
@@ -193,7 +193,7 @@ function SecretRevealModal({ secret, onDone }: SecretRevealModalProps) {
         <h3 className="text-base font-semibold text-gray-900 mb-1">
           {t('settings.webhooks.secretTitle')}
         </h3>
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-4">
           {t('settings.webhooks.secretHint')}
         </p>
         <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ function SecretRevealModal({ secret, onDone }: SecretRevealModalProps) {
             type="text"
             readOnly
             value={secret}
-            className="flex-1 font-mono text-sm border border-gray-300 rounded px-3 py-2 bg-gray-50 min-w-0"
+            className="flex-1 font-mono text-sm border border-gray-300 rounded-sm px-3 py-2 bg-gray-50 min-w-0"
             data-testid="webhook-secret-value"
           />
           <Button variant="secondary" onClick={handleCopy} data-testid="webhook-secret-copy-button">
@@ -326,7 +326,7 @@ export default function WebhookSettings() {
       {/* Feedback messages */}
       {successMsg && (
         <p
-          className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2"
+          className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2"
           data-testid="webhook-success-msg"
         >
           {successMsg}
@@ -334,7 +334,7 @@ export default function WebhookSettings() {
       )}
       {errorMsg && (
         <p
-          className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2"
+          className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-sm px-3 py-2"
           data-testid="webhook-error-msg"
         >
           {errorMsg}
@@ -359,8 +359,8 @@ export default function WebhookSettings() {
               {subscriptions.map((sub) => (
                 <tr key={sub.id} data-testid={`webhook-row-${sub.id}`} className="hover:bg-gray-50">
                   <td className="px-4 py-3 min-w-0">
-                    <p className="font-medium text-gray-900 break-words">{sub.url}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 break-words">
+                    <p className="font-medium text-gray-900 wrap-break-word">{sub.url}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 wrap-break-word">
                       {sub.events.join(', ')}
                     </p>
                     {sub.status === 'failed' && (
@@ -424,7 +424,7 @@ export default function WebhookSettings() {
             value={form.url}
             onChange={(e) => setForm((prev) => ({ ...prev, url: e.target.value }))}
             placeholder={t('settings.webhooks.urlPlaceholder')}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             data-testid="webhook-url-input"
           />
         </div>

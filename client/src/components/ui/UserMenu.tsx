@@ -91,11 +91,11 @@ export function UserMenu({ userName }: UserMenuProps) {
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={toggle}
-        className="max-w-[7rem] sm:max-w-[12rem]"
+        className="max-w-28 sm:max-w-48"
       >
         <span className="truncate">{userName}</span>
         <svg
-          className="h-4 w-4 flex-shrink-0"
+          className="h-4 w-4 shrink-0"
           fill="none"
           stroke="currentColor"
           strokeWidth={2}
@@ -110,7 +110,7 @@ export function UserMenu({ userName }: UserMenuProps) {
         <div
           role="group"
           aria-label={t('nav.userMenuLabel')}
-          className="absolute end-0 z-40 mt-1 w-56 rounded-md border border-gray-200 bg-white shadow-md"
+          className="absolute inset-e-0 z-40 mt-1 w-56 rounded-md border border-gray-200 bg-white shadow-md"
         >
           <div
             role="menu"

@@ -148,7 +148,7 @@ export default function NavHamburger() {
               aria-label={t('nav.close')}
               data-testid="nav-hamburger-close"
               onClick={closeMenu}
-              className="flex items-center justify-center w-9 h-9 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="flex items-center justify-center w-9 h-9 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -182,7 +182,7 @@ export default function NavHamburger() {
                 )}
                 {flagsLoading && link.featureFlag ? (
                   <div
-                    className="h-8 bg-gray-200 rounded animate-pulse mx-2 my-1"
+                    className="h-8 bg-gray-200 rounded-sm animate-pulse mx-2 my-1"
                     aria-hidden="true"
                   />
                 ) : (

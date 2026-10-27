@@ -107,8 +107,8 @@ export function InlineRoleSelect({
           data-testid={`role-select-${user.id}`}
           title={isSelf ? t('users.selfRoleChangeBlocked') : undefined}
           className={[
-            'rounded border text-sm bg-white px-2 py-1 leading-tight',
-            'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+            'rounded-sm border text-sm bg-white px-2 py-1 leading-tight',
+            'focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent',
             'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500',
             isDisabled ? 'border-transparent' : 'border-gray-300',
           ].join(' ')}

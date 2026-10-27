@@ -294,7 +294,7 @@ export function StageTrendReportContent() {
             data-testid="days-select"
             value={days}
             onChange={(e) => setDays(parseInt(e.target.value, 10) as StageTrendDays)}
-            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
           >
             {DAYS_OPTIONS.map((d) => (
               <option key={d} value={d}>

@@ -218,7 +218,7 @@ function RuleLogsDrawer({ rule, onClose, triggerRef }: RuleLogsDrawerProps) {
                 <li key={log.id} className="py-3" data-testid={`log-row-${log.id}`}>
                   <div className="flex items-center justify-between gap-2">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${
                         log.outcome === 'success'
                           ? 'bg-green-100 text-green-700'
                           : 'bg-red-100 text-red-700'
@@ -410,8 +410,8 @@ export default function AutomationRulesPage() {
   if (flagLoading) {
     return (
       <div className="p-8">
-        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
-        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+        <div className="h-8 w-48 bg-gray-200 rounded-sm animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
       </div>
     );
   }
@@ -439,7 +439,7 @@ export default function AutomationRulesPage() {
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="inline-flex items-center gap-2 bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
               data-testid="new-rule-button"
             >
               {t('automation.newRuleButton')}
@@ -469,7 +469,7 @@ export default function AutomationRulesPage() {
                 value={form.name}
                 onChange={(e) => setField('name', e.target.value)}
                 placeholder={t('automation.fieldNamePlaceholder')}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                 data-testid="rule-name-input"
               />
             </div>
@@ -486,7 +486,7 @@ export default function AutomationRulesPage() {
                 id="trigger-type"
                 value={form.trigger_type}
                 onChange={(e) => setField('trigger_type', e.target.value as AutomationTriggerType)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                 data-testid="trigger-type-select"
               >
                 {AUTOMATION_TRIGGER_TYPES.map((tt) => (
@@ -510,7 +510,7 @@ export default function AutomationRulesPage() {
                   id="trigger-stage"
                   value={form.trigger_stage}
                   onChange={(e) => setField('trigger_stage', e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                   data-testid="trigger-stage-select"
                 >
                   {stageNames.map((s) => (
@@ -531,7 +531,7 @@ export default function AutomationRulesPage() {
                 id="action-type"
                 value={form.action_type}
                 onChange={(e) => setField('action_type', e.target.value as AutomationActionType)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                 data-testid="action-type-select"
               >
                 {AUTOMATION_ACTION_TYPES.map((at) => (
@@ -559,7 +559,7 @@ export default function AutomationRulesPage() {
                     value={form.task_subject}
                     onChange={(e) => setField('task_subject', e.target.value)}
                     placeholder={t('automation.fieldTaskSubjectPlaceholder')}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                     data-testid="task-subject-input"
                   />
                 </div>
@@ -576,7 +576,7 @@ export default function AutomationRulesPage() {
                     id="task-type"
                     value={form.task_type}
                     onChange={(e) => setField('task_type', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                     data-testid="task-type-select"
                   >
                     {ACTIVITY_TYPES.map((at) => (
@@ -601,7 +601,7 @@ export default function AutomationRulesPage() {
                     onChange={(e) =>
                       setField('assignee_type', e.target.value as 'owner' | 'specific')
                     }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                     data-testid="assignee-type-select"
                   >
                     {AUTOMATION_ASSIGNEE_TYPES.map((a) => (
@@ -625,7 +625,7 @@ export default function AutomationRulesPage() {
                       id="assignee-user"
                       value={form.assignee_id}
                       onChange={(e) => setField('assignee_id', e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                       data-testid="assignee-user-select"
                     >
                       <option value="">{t('automation.assigneeUserPlaceholder')}</option>
@@ -652,7 +652,7 @@ export default function AutomationRulesPage() {
                     min={0}
                     value={form.due_date_offset_days}
                     onChange={(e) => setField('due_date_offset_days', e.target.value)}
-                    className="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                    className="w-32 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                     data-testid="due-date-offset-input"
                   />
                   <span className="ms-2 text-sm text-gray-500">
@@ -687,7 +687,7 @@ export default function AutomationRulesPage() {
                   value={form.notification_message}
                   onChange={(e) => setField('notification_message', e.target.value)}
                   placeholder={t('automation.fieldNotificationMessagePlaceholder')}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
                   data-testid="notification-message-input"
                 />
               </div>
@@ -705,7 +705,7 @@ export default function AutomationRulesPage() {
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                 data-testid="create-rule-submit"
               >
                 {createMutation.isPending
@@ -791,13 +791,13 @@ export default function AutomationRulesPage() {
                       }
                       onClick={() => toggleMutation.mutate({ id: rule.id, enabled: !rule.enabled })}
                       disabled={toggleMutation.isPending}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 mt-0.5 ${
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-primary-500 mt-0.5 ${
                         rule.enabled ? 'bg-primary-600' : 'bg-gray-200'
                       }`}
                       data-testid={`rule-toggle-${rule.id}`}
                     >
                       <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
                           rule.enabled ? 'translate-x-5' : 'translate-x-0'
                         }`}
                       />
@@ -823,7 +823,7 @@ export default function AutomationRulesPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-shrink-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={(e) => {

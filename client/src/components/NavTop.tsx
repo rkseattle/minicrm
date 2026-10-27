@@ -131,7 +131,7 @@ export default function NavTop() {
               )}
               {flagsLoading && link.featureFlag ? (
                 <div
-                  className="h-8 bg-gray-200 rounded animate-pulse mx-2 my-1"
+                  className="h-8 bg-gray-200 rounded-sm animate-pulse mx-2 my-1"
                   aria-hidden="true"
                 />
               ) : (
@@ -175,7 +175,7 @@ export default function NavTop() {
               )}
               {flagsLoading && link.featureFlag ? (
                 <div
-                  className="h-8 bg-gray-200 rounded animate-pulse mx-2 my-1"
+                  className="h-8 bg-gray-200 rounded-sm animate-pulse mx-2 my-1"
                   aria-hidden="true"
                 />
               ) : (
