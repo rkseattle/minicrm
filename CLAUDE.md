@@ -83,8 +83,9 @@ shared/types/    → shared TypeScript contracts that are neither Zod schemas no
                    instruction. Today that is recordPath.ts, the record-type →
                    client-route mapping (MINCRM-726), pinned to App.tsx's route table by
                    server/src/__tests__/recordPath.test.ts. search.ts is the search
-                   response, built by the server and rendered by the client. Keep these
-                   dependency-free so every workspace can import them.
+                   response, built by the server and rendered by the client. gdpr.ts is the
+                   deletion-log entry the GDPR endpoints return. Keep these dependency-free
+                   so every workspace can import them.
 
 shared/text/     → pure string rules every workspace that writes an email body must
                    apply identically: html.ts's escapeHtml and plainTextToHtml, used by

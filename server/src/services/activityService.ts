@@ -90,12 +90,16 @@ const SELECT_COLS_WITH_OWNER =
  * For a write that must commit with something else; the caller sets the RLS context and
  * calls `announceActivityCreated` after its COMMIT.
  *
+ * @param filedFrom - For an Email activity filed from a message: the message, which marking
+ *   its conversation private later finds it by, and the people it names, whose erasure
+ *   reaches it even once the mailbox is gone.
  * @returns The new activity's id.
  */
 export async function insertActivity(
   client: PoolClient,
   params: CreateActivityInput & { owner_id: string },
   actor: AuditActor,
+  filedFrom?: FiledEmail,
 ): Promise<string> {
   const {
     type,
@@ -111,8 +115,9 @@ export async function insertActivity(
   } = params;
 
   const insertResult = await client.query<{ id: string }>(
-    `INSERT INTO activities (type, subject, notes, due_date, direction, outcome, contact_id, account_id, deal_id, owner_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO activities (type, subject, notes, due_date, direction, outcome, contact_id, account_id, deal_id, owner_id, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+             CASE WHEN $11::text IS NULL THEN NULL ELSE jsonb_build_object('email_message_id', $11::text) END)
      RETURNING id`,
     [
       type,
@@ -125,9 +130,23 @@ export async function insertActivity(
       account_id ?? null,
       deal_id ?? null,
       owner_id,
+      filedFrom?.emailMessageId ?? null,
     ],
   );
   const activityId = insertResult.rows[0].id;
+  if (filedFrom && filedFrom.participants.length > 0) {
+    await client.query(
+      `INSERT INTO activity_participants (activity_id, record_type, record_id)
+       SELECT $1, p.record_type, p.record_id
+         FROM unnest($2::text[], $3::uuid[]) AS p(record_type, record_id)
+       ON CONFLICT DO NOTHING`,
+      [
+        activityId,
+        filedFrom.participants.map((x) => x.recordType),
+        filedFrom.participants.map((x) => x.recordId),
+      ],
+    );
+  }
 
   await writeAuditEntry(client, {
     recordType: 'activity',
@@ -500,6 +519,82 @@ export async function listMyTasks(
     tasks: dataResult.rows,
     total: Number(countResult.rows[0]?.count ?? 0),
   };
+}
+
+/** A person an Email activity's message names; activity_participants.record_type. */
+export interface ActivityParticipant {
+  recordType: 'contact' | 'lead';
+  recordId: string;
+}
+
+/** The message an Email activity was filed from, and who it names. */
+export interface FiledEmail {
+  emailMessageId: string;
+  participants: readonly ActivityParticipant[];
+}
+
+/** Ids of the activities filed from any of the given messages. */
+export async function activityIdsFiledFromMessages(
+  queryable: Pick<PoolClient, 'query'>,
+  messageIds: readonly string[],
+): Promise<string[]> {
+  if (messageIds.length === 0) return [];
+  const result = await queryable.query<{ id: string }>(
+    `SELECT id FROM activities
+      WHERE (metadata->>'email_message_id') IS NOT NULL
+        AND (metadata->>'email_message_id') = ANY($1::text[])`,
+    [messageIds],
+  );
+  return result.rows.map((row) => row.id);
+}
+
+/**
+ * Ids of the activities that carry a person's mail text: those that named them when filed,
+ * and those filed from any of the given messages, whatever their links were then.
+ */
+export async function activityIdsForPerson(
+  queryable: Pick<PoolClient, 'query'>,
+  person: ActivityParticipant,
+  messageIds: readonly string[],
+): Promise<string[]> {
+  const associated = await queryable.query<{ id: string }>(
+    'SELECT activity_id AS id FROM activity_participants WHERE record_type = $1 AND record_id = $2',
+    [person.recordType, person.recordId],
+  );
+  const filed = await activityIdsFiledFromMessages(queryable, messageIds);
+  return [...new Set([...associated.rows.map((row) => row.id), ...filed])];
+}
+
+/** Forgets that activities named these records, which are being deleted or GDPR-erased. */
+export async function removeActivityParticipants(
+  client: PoolClient,
+  recordType: ActivityParticipant['recordType'],
+  recordIds: readonly string[],
+): Promise<void> {
+  if (recordIds.length === 0) return;
+  await client.query(
+    'DELETE FROM activity_participants WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
+    [recordType, recordIds],
+  );
+}
+
+/**
+ * Moves activity associations from a record that is going away to the contact it becomes;
+ * the activity may already name that contact.
+ */
+export async function moveActivityParticipants(
+  client: PoolClient,
+  from: ActivityParticipant,
+  toContactId: string,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO activity_participants (activity_id, record_type, record_id)
+     SELECT activity_id, 'contact', $3 FROM activity_participants
+      WHERE record_type = $1 AND record_id = $2
+     ON CONFLICT DO NOTHING`,
+    [from.recordType, from.recordId, toContactId],
+  );
+  await removeActivityParticipants(client, from.recordType, [from.recordId]);
 }
 
 /** Why an activity's text was removed; matches redacted_records.reason. */

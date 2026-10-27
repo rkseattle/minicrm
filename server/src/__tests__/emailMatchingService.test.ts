@@ -1159,7 +1159,9 @@ describe('activity associations follow their record', () => {
     const contact = await createContact('assoc-deleted');
     await associate(activity, 'contact', contact);
 
-    await inTransaction((client) => deleteLinksForDeletedEntity(client, 'contact', contact));
+    await inTransaction(async (client) => {
+      await deleteLinksForDeletedEntity(client, 'contact', contact);
+    });
 
     expect(await participants(activity)).toEqual([]);
   });

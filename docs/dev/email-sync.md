@@ -576,8 +576,10 @@ snippet.
 ### Private threads
 
 `PATCH /api/v1/email-messages/:id/thread-privacy` sets `is_private` on every message in that
-message's thread, within its owner's mailbox — Pipedrive's model, where visibility is the
-owner's choice and an admin gets no bypass. Another user's copy of the same conversation, in
+message's thread, within its owner's mailbox. The thread is the conversation: sync resolves
+it as each message arrives (the provider's thread id, or for IMAP the root of `References`),
+and the Emails list groups by the same key. This follows Pipedrive's model, where visibility
+is the owner's choice and an admin gets no bypass. Another user's copy of the same conversation, in
 their own mailbox, is theirs and unaffected.
 
 Every user-facing read path — record list, unmatched inbox, detail, global search — chooses its messages

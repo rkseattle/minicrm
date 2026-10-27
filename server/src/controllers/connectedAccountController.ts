@@ -146,6 +146,7 @@ export async function updateConnectedAccountHandler(req: Request, res: Response)
     return;
   }
 
+  // Safe: authenticate runs before this handler and rejects a request with no user.
   const actor = { id: req.user!.id, name: req.user!.name };
   const account = await updateConnectedAccountSettings(
     idParse.data,

@@ -24,6 +24,11 @@ import type { PoolClient } from 'pg';
 import type { EmailLinkRecordType } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 import { NON_TERMINAL_STAGE_PREDICATE } from './pipelineStageService.js';
+import {
+  moveActivityParticipants,
+  removeActivityParticipants,
+  type ActivityParticipant,
+} from './activityService.js';
 
 /**
  * How a link records the way it was made. Mirrors the table's match_type CHECK; a manual
@@ -215,7 +220,8 @@ export async function matchMessagesToRecords(
 }
 
 /**
- * Clears the links pointing at a record being hard-deleted.
+ * Clears the links pointing at a record being hard-deleted or GDPR-erased, with their
+ * suppressions and the activity associations naming it.
  *
  * `record_id` carries no foreign key — the reference is polymorphic, so nothing cascades —
  * and an orphan is not self-correcting: it is invisible to every read, because both list
@@ -223,28 +229,29 @@ export async function matchMessagesToRecords(
  * alongside softDeleteNotesByEntity.
  *
  * @param client - Active DB client, inside the caller's transaction.
- * @param recordType - Type of the record being deleted.
- * @param recordId - Id of the record being deleted.
+ * @param recordType - Type of the record being deleted or erased.
+ * @param recordId - Id of the record being deleted or erased.
+ * @returns How many links it deleted, which an erasure records in gdpr_deletion_log.
  */
 export async function deleteLinksForDeletedEntity(
   client: PoolClient,
   recordType: EmailLinkRecordType,
   recordId: string,
-): Promise<void> {
-  await client.query('DELETE FROM email_message_links WHERE record_type = $1 AND record_id = $2', [
-    recordType,
-    recordId,
-  ]);
+): Promise<number> {
+  const links = await client.query(
+    'DELETE FROM email_message_links WHERE record_type = $1 AND record_id = $2',
+    [recordType, recordId],
+  );
   // The tombstone outlives the record otherwise: record_id carries no FK, so nothing
   // cascades it away.
   await client.query(
     'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = $2',
     [recordType, recordId],
   );
-  await client.query(
-    'DELETE FROM activity_participants WHERE record_type = $1 AND record_id = $2',
-    [recordType, recordId],
-  );
+  if (isParticipantType(recordType)) {
+    await removeActivityParticipants(client, recordType, [recordId]);
+  }
+  return links.rowCount ?? 0;
 }
 
 /** Set-based counterpart for bulk deletes, which remove many rows in one statement. */
@@ -262,10 +269,16 @@ export async function deleteLinksForDeletedEntities(
     'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
     [recordType, recordIds],
   );
-  await client.query(
-    'DELETE FROM activity_participants WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
-    [recordType, recordIds],
-  );
+  if (isParticipantType(recordType)) {
+    await removeActivityParticipants(client, recordType, recordIds);
+  }
+}
+
+/** Only contacts and leads are activity participants; accounts and deals own activities. */
+function isParticipantType(
+  recordType: EmailLinkRecordType,
+): recordType is ActivityParticipant['recordType'] {
+  return recordType === 'contact' || recordType === 'lead';
 }
 
 /**
@@ -302,7 +315,7 @@ export async function relinkLinksToConvertedLead(
     `DELETE FROM email_message_links WHERE record_type = 'lead' AND record_id = $1`,
     [leadId],
   );
-  await moveActivityParticipants(client, 'lead', leadId, contactId);
+  await moveActivityParticipants(client, { recordType: 'lead', recordId: leadId }, contactId);
 }
 
 /**
@@ -516,28 +529,5 @@ export async function relinkLinksToMergedContact(
     `DELETE FROM email_message_links WHERE record_type = 'contact' AND record_id = $1`,
     [loserId],
   );
-  await moveActivityParticipants(client, 'contact', loserId, winnerId);
-}
-
-/**
- * Moves activity associations from a record that is going away to the contact it becomes,
- * guarded like the link moves: the activity may already name that contact.
- */
-async function moveActivityParticipants(
-  client: PoolClient,
-  fromType: 'contact' | 'lead',
-  fromId: string,
-  toContactId: string,
-): Promise<void> {
-  await client.query(
-    `INSERT INTO activity_participants (activity_id, record_type, record_id)
-     SELECT activity_id, 'contact', $3 FROM activity_participants
-      WHERE record_type = $1 AND record_id = $2
-     ON CONFLICT DO NOTHING`,
-    [fromType, fromId, toContactId],
-  );
-  await client.query(
-    'DELETE FROM activity_participants WHERE record_type = $1 AND record_id = $2',
-    [fromType, fromId],
-  );
+  await moveActivityParticipants(client, { recordType: 'contact', recordId: loserId }, winnerId);
 }

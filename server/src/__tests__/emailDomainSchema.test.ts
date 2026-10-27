@@ -169,6 +169,17 @@ describe('request bodies built on the domain rules', () => {
   });
 });
 
+describe("the database limit on a mailbox's excluded domains", () => {
+  it('is the same MAX_EXCLUDED_DOMAINS the schema enforces', async () => {
+    const check = await pool.query<{ definition: string }>(
+      `SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+        WHERE conname = 'connected_accounts_excluded_domains_max_check'`,
+    );
+
+    expect(check.rows[0]?.definition).toMatch(new RegExp(`<= ${MAX_EXCLUDED_DOMAINS}\\)`));
+  });
+});
+
 describe('connected_accounts.excluded_domains in the database', () => {
   let accountId: string;
 

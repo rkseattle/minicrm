@@ -306,11 +306,14 @@ When hard-deleting a parent entity, clean up polymorphic dependents in the same 
   `custom_field_values` is moved, not the way `notes` is: `UNIQUE (email_message_id,
 record_type, record_id)` means one message naming both contacts already has a winner row,
   so a bare `UPDATE ... SET record_id = winner` raises `23505` and rolls back the merge.
-- `activity_participants`: handled by the same three helpers in `emailMatchingService.ts`
+  Update with a `NOT EXISTS` guard, then delete whatever the guard skipped.
+- `activity_participants`: handled by the same four helpers in `emailMatchingService.ts`
   that handle `email_message_links` — deleted with the record, moved to the winner on a
   merge and to the new contact on lead conversion — so no delete path names it directly.
-  GDPR erasure reaches a send's activity on a deal or account through it.
-  Update with a `NOT EXISTS` guard, then delete whatever the guard skipped
+  Application code writes and reads the rows only through `activityService.ts` (the E2E
+  reset script truncates them directly). GDPR erasure reaches a send's activity on a deal
+  or account through them, then drops the erased record's rows with its links: the
+  activities they led to are already redacted.
 
 `audit_log` and `gdpr_deletion_log` rows are retained intentionally for compliance traceability.
 

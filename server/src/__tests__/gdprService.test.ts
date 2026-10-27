@@ -745,6 +745,33 @@ describe('getGdprStatusForRecord', () => {
     expect(status?.record_type).toBe('contact');
     expect(status?.completed_at).not.toBeNull();
   });
+
+  it('lists a pending erasure with a null completed_at, and timestamps as ISO strings', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    await pool.query(
+      `INSERT INTO gdpr_deletion_log (record_type, record_id, requested_by, erasure_scope)
+       VALUES ('contact', $1, $2, '{}')`,
+      [contact.id, adminId],
+    );
+
+    try {
+      const page = await listGdprDeletions(1, 100);
+      const entry = page.data.find((row) => row.record_id === contact.id);
+      expect(entry?.completed_at).toBeNull();
+      expect(entry?.requested_at).toBe(new Date(entry?.requested_at ?? '').toISOString());
+    } finally {
+      await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [contact.id]);
+    }
+  });
+
+  it('returns timestamps as ISO strings, the shape the shared type promises', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    await eraseContact(contact.id, adminActor);
+
+    const status = await getGdprStatusForRecord('contact', contact.id);
+    expect(status?.requested_at).toBe(new Date(status?.requested_at ?? '').toISOString());
+    expect(typeof status?.completed_at).toBe('string');
+  });
 });
 
 // ── hasGdprErasureForRecord ───────────────────────────────────────────────────
@@ -1351,6 +1378,45 @@ describe('GDPR erasure and export of synced email', () => {
       const exported = await getGdprExportForLead(lead.id);
 
       expect(exported.activities.map((a) => a.id)).toEqual([activityId]);
+    } finally {
+      await pool.query('DELETE FROM activities WHERE account_id = $1', [accountId]);
+      await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);
+    }
+  });
+
+  it("drops the erased contact's activity associations, the activity reached and redacted", async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const account = await pool.query<{ id: string }>(
+      `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-acct-${uid()}`, adminId],
+    );
+    const accountId = account.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, account_id, owner_id)
+       VALUES ('Email', 'Renewal call', $1, $2) RETURNING id`,
+      [accountId, adminId],
+    );
+    const activityId = activity.rows[0]!.id; // Safe: as above.
+    await pool.query(
+      `INSERT INTO activity_participants (activity_id, record_type, record_id) VALUES ($1, 'contact', $2)`,
+      [activityId, contact.id],
+    );
+
+    try {
+      await eraseContact(contact.id, adminActor);
+
+      const rows = await pool.query('SELECT 1 FROM activity_participants WHERE record_id = $1', [
+        contact.id,
+      ]);
+      expect(rows.rowCount).toBe(0);
+      const after = await pool.query<{ subject: string }>(
+        'SELECT subject FROM activities WHERE id = $1',
+        [activityId],
+      );
+      expect(after.rows[0]?.subject).toBe('[GDPR deleted]');
+      // Its only route back to the person is gone with the association, as documented.
+      const exported = await getGdprExportForContact(contact.id);
+      expect(exported.activities.map((a) => a.id)).not.toContain(activityId);
     } finally {
       await pool.query('DELETE FROM activities WHERE account_id = $1', [accountId]);
       await pool.query('DELETE FROM accounts WHERE id = $1', [accountId]);

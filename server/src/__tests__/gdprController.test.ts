@@ -85,6 +85,38 @@ async function pollForCascadeRows(id: string, segment: 'contacts' | 'leads'): Pr
   throw new Error(`cascade log row never appeared for ${segment} ${id}`);
 }
 
+describe('GET /:id/gdpr-export', () => {
+  const MISSING_ID = '00000000-0000-4000-8000-0000000fe404';
+
+  it.each(['contacts', 'leads'])('answers 404 for a %s id that does not exist', async (segment) => {
+    const res = await request(app)
+      .get(`/api/v1/${segment}/${MISSING_ID}/gdpr-export`)
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it("downloads an existing contact's export", async () => {
+    const contact = await createContact(
+      {
+        first_name: 'Export',
+        last_name: 'Subject',
+        email: `${FILE_PREFIX}-export-${Date.now()}@example.com`,
+        owner_id: adminId,
+      },
+      adminActor,
+    );
+
+    const res = await request(app)
+      .get(`/api/v1/contacts/${contact.id}/gdpr-export`)
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(JSON.parse(res.text).contact.id).toBe(contact.id);
+  });
+});
+
 describe('POST /api/v1/gdpr/leads/:id/ai-cascade', () => {
   it('returns 409 before the lead has been erased', async () => {
     const lead = await createLead(makeLeadInput('unerased'), adminActor);

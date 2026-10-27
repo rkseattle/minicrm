@@ -39,7 +39,7 @@ import {
   toEmailMessage,
   type EmailMessageRow,
 } from './emailMessageService.js';
-import { GDPR_REDACTED_TEXT } from './mail/gdprRedaction.js';
+import { arrayHasAddress, GDPR_REDACTED_TEXT, replaceInArray } from './mail/gdprRedaction.js';
 import type { NormalizedMessage } from './mail/mailProvider.js';
 import { truncate } from './mail/messageBody.js';
 import { setRlsUserIdTo } from './rlsContextService.js';
@@ -605,6 +605,14 @@ export async function fileSentMessage(
         owner_id: intent.userId,
       },
       actor,
+      {
+        emailMessageId: message.id,
+        participants: links.rows.flatMap((link) =>
+          link.record_type === 'contact' || link.record_type === 'lead'
+            ? [{ recordType: link.record_type, recordId: link.record_id }]
+            : [],
+        ),
+      },
     );
     if (message.redacted || isPrivate) {
       await markActivitiesRedacted(
@@ -613,21 +621,6 @@ export async function fileSentMessage(
         message.redacted ? 'gdpr_erasure' : 'private_thread',
       );
     }
-    // Marking the thread private later finds the activity through its message.
-    await client.query(
-      `UPDATE activities
-          SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('email_message_id', $2::text)
-        WHERE id = $1`,
-      [activityId, message.id],
-    );
-    // Erasure reaches the activity from each person it concerns, even once the mailbox is gone.
-    await client.query(
-      `INSERT INTO activity_participants (activity_id, record_type, record_id)
-       SELECT $1, l.record_type, l.record_id FROM email_message_links l
-        WHERE l.email_message_id = $2 AND l.record_type IN ('contact', 'lead')
-       ON CONFLICT DO NOTHING`,
-      [activityId, message.id],
-    );
   }
 
   await writeAuditEntry(client, {
@@ -746,4 +739,30 @@ export async function fileReconciledIntents(
     }
   }
   return activityIds;
+}
+
+/**
+ * Removes an erased person from every send intent naming them, whatever its status: a settled
+ * intent still holds its recipients until it is purged. An intent filed against the record
+ * loses its activity text too. Runs in the erasure's transaction.
+ *
+ * @param address - The erased address, normalized.
+ * @param placeholder - The record's synthetic address, put in its place.
+ */
+export async function redactIntentsForErasure(
+  client: PoolClient,
+  record: { recordType: 'contact' | 'lead'; recordId: string },
+  address: string,
+  placeholder: string,
+): Promise<void> {
+  await client.query(
+    `UPDATE email_send_intents
+        SET to_addresses = ${replaceInArray('to_addresses', '$3', '$4')},
+            cc_addresses = ${replaceInArray('cc_addresses', '$3', '$4')},
+            activity_notes = NULL,
+            updated_at = now()
+      WHERE ${arrayHasAddress('to_addresses', '$3')} OR ${arrayHasAddress('cc_addresses', '$3')}
+         OR (record_type = $1 AND record_id = $2)`,
+    [record.recordType, record.recordId, address, placeholder],
+  );
 }
