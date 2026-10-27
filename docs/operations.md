@@ -267,6 +267,11 @@ What follows from that:
   no `ENCRYPTION_KEY_V1` — plus every legacy `encrypt`/`decrypt` secret: the storage
   secret, TOTP MFA secrets, the SSO private key and IdP certificate, and webhook signing
   secrets.
+- **GDPR erasure digests depend on it.** `gdpr_deletion_log.erased_address_hmac` is a
+  digest keyed from `NODE_ENCRYPTION_KEY`. Replacing the key makes every stored digest stop
+  matching, silently: mail to people already erased would then sync back in full, and their
+  addresses in sent-mail audit entries would no longer be masked. There is no tooling to
+  re-key the digests, because the addresses they came from are gone by design.
 - **Adding a version does not re-protect existing rows.** Rows already written under a
   compromised key stay readable by anyone holding it. For the AI key and SMTP password,
   adding a version at least confines the exposure to what was written before the switch.

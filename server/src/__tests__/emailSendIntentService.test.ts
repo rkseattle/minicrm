@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 
 import pool from '../db.js';
+import { erasedAddressDigest } from '../services/mail/gdprRedaction.js';
 import logger from '../logger.js';
 import {
   upsertOAuthAccount,
@@ -556,6 +557,45 @@ describe('the sync engine filing a send', () => {
     const filed = await filedRow(contactId);
     expect(filed.notes).toBeNull();
     expect(filed.isPrivate).toBe(true);
+  });
+
+  it('files a recovered send to an erased address without its subject or body', async () => {
+    const erased = 'erased-recovered@example.net';
+    const erasureRecord = randomUUID();
+    await pool.query(
+      `INSERT INTO gdpr_deletion_log
+         (record_type, record_id, requested_by, erasure_scope, completed_at, erased_address_hmac)
+       VALUES ('contact', $1, $2, '{}', now(), $3)`,
+      [erasureRecord, userId, erasedAddressDigest(erased)],
+    );
+    const contactId = await createContact('erased-recover');
+    const { provider, sent } = sender(async () => ({
+      providerMessageId: 'gm-erased',
+      threadId: null,
+    }));
+    failMessageInsert();
+    try {
+      await expect(
+        sendEmail(
+          typed({ to: [erased], record_type: 'contact', record_id: contactId }),
+          userId,
+          actor,
+          freshKey(),
+          { provider },
+        ),
+      ).rejects.toMatchObject({ code: SENT_NOT_RECORDED });
+      vi.restoreAllMocks();
+
+      await syncPage([await sentCopy(onlyDocument(sent), 'gm-erased')]);
+
+      const activity = await pool.query<{ subject: string; notes: string | null }>(
+        'SELECT subject, notes FROM activities WHERE contact_id = $1',
+        [contactId],
+      );
+      expect(activity.rows).toEqual([{ subject: '[GDPR deleted]', notes: null }]);
+    } finally {
+      await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [erasureRecord]);
+    }
   });
 
   it('files an unconfirmed Graph send by the draft id it recorded before submitting', async () => {

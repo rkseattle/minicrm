@@ -15,6 +15,8 @@
 
 import 'dotenv/config';
 import pool from '../db.js';
+import logger from '../logger.js';
+import { vi } from 'vitest';
 import {
   writeAuditEntry,
   writeAuditEntries,
@@ -23,7 +25,10 @@ import {
   getRecordAuditLog,
   listAuditLog,
   listAuditLogActors,
+  maskAuditEvent,
 } from '../services/auditService.js';
+import { createUser } from '../services/userService.js';
+import { erasedAddressDigest } from '../services/mail/gdprRedaction.js';
 
 const RECORD_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const RECORD_ID_2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -704,5 +709,219 @@ describe('source tagging', () => {
     });
     expect(result.data.every((r) => r.source === null)).toBe(true);
     expect(result.data.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ── Erased addresses in address-bearing values ─────────────────────────────────
+
+describe('masking erased addresses in email_sent values', () => {
+  const ERASED = 'erased-subject@example.net';
+  const ERASURE_RECORD = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  let requesterId: string;
+
+  beforeAll(async () => {
+    await pool.query(`DELETE FROM users WHERE email = 'auditsvc-gdpr@example.com'`);
+    const requester = await createUser({
+      email: 'auditsvc-gdpr@example.com',
+      name: 'Audit GDPR Requester',
+      role: 'admin',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    requesterId = requester.id;
+    await pool.query(
+      `INSERT INTO gdpr_deletion_log
+         (record_type, record_id, requested_by, erasure_scope, completed_at, erased_address_hmac)
+       VALUES ('contact', $1, $2, '{}', now(), $3)`,
+      [ERASURE_RECORD, requesterId, erasedAddressDigest(ERASED)],
+    );
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [ERASURE_RECORD]);
+    await pool.query('DELETE FROM users WHERE id = $1', [requesterId]);
+  });
+
+  async function writeSent(): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await writeAuditEntry(client, {
+        recordType: 'connected_account',
+        recordId: RECORD_ID,
+        recordName: 'mailbox@example.com',
+        eventType: 'email_sent',
+        fieldName: 'email_message',
+        newValue: JSON.stringify({
+          message_id: 'm-1',
+          recipient_count: 3,
+          to: [ERASED, 'kept@example.net'],
+          cc: ['Erased-Subject@Example.net'],
+          linked_records: [],
+        }),
+        changedById: ACTOR.id,
+        changedByName: ACTOR.name,
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  function recipients(value: string | null): { to: string[]; cc: string[] } {
+    const parsed = JSON.parse(value ?? '{}') as { to: string[]; cc: string[] };
+    return { to: parsed.to, cc: parsed.cc };
+  }
+
+  const MASKED = { to: ['[GDPR deleted]', 'kept@example.net'], cc: ['[GDPR deleted]'] };
+
+  it("masks them in a record's history, leaving other recipients readable", async () => {
+    await writeSent();
+
+    const [entry] = await getRecordAuditLog({
+      recordType: 'connected_account',
+      recordId: RECORD_ID,
+      all: true,
+    });
+
+    // Safe: the entry written above is this record's only one.
+    expect(recipients(entry!.new_value)).toEqual(MASKED);
+  });
+
+  it('masks them in the admin audit log', async () => {
+    await writeSent();
+
+    const page = await listAuditLog({ recordId: RECORD_ID, eventType: 'email_sent' });
+
+    // Safe: the filter matches the one entry written above.
+    expect(recipients(page.data[0]!.new_value)).toEqual(MASKED);
+  });
+
+  it('masks them in a live notification', async () => {
+    const masked = await maskAuditEvent({
+      id: 'n-1',
+      record_type: 'connected_account',
+      record_id: RECORD_ID,
+      record_name: 'mailbox@example.com',
+      event_type: 'email_sent',
+      field_name: 'email_message',
+      old_value: null,
+      new_value: JSON.stringify({ to: [ERASED], cc: [] }),
+      changed_by_id: ACTOR.id,
+      changed_by_name: ACTOR.name,
+      source: null,
+      created_at: new Date().toISOString(),
+    });
+
+    expect(recipients(masked.new_value)).toEqual({ to: ['[GDPR deleted]'], cc: [] });
+  });
+
+  it.each([
+    ['text that is not JSON', 'to: erased-subject@example.net'],
+    ['a JSON array', JSON.stringify(['erased-subject@example.net'])],
+    ['JSON null', 'null'],
+  ])('shows %s as stored, since masking cannot read it', async (_label, value) => {
+    const masked = await maskAuditEvent({
+      id: 'n-2',
+      record_type: 'connected_account',
+      record_id: RECORD_ID,
+      record_name: null,
+      event_type: 'email_sent',
+      field_name: 'email_message',
+      old_value: null,
+      new_value: value,
+      changed_by_id: ACTOR.id,
+      changed_by_name: ACTOR.name,
+      source: null,
+      created_at: new Date().toISOString(),
+    });
+    expect(masked.new_value).toBe(value);
+  });
+
+  it("masks an unconfirmed send's recipients as it does a sent one's", async () => {
+    const masked = await maskAuditEvent({
+      id: 'n-4',
+      record_type: 'connected_account',
+      record_id: RECORD_ID,
+      record_name: null,
+      event_type: 'email_send_unconfirmed',
+      field_name: 'email_message',
+      old_value: null,
+      new_value: JSON.stringify({ to: [ERASED], cc: [] }),
+      changed_by_id: ACTOR.id,
+      changed_by_name: ACTOR.name,
+      source: null,
+      created_at: new Date().toISOString(),
+    });
+    expect(recipients(masked.new_value)).toEqual({ to: ['[GDPR deleted]'], cc: [] });
+  });
+
+  it('leaves a value alone whose recipient lists are not lists', async () => {
+    const value = JSON.stringify({ to: ERASED, cc: null });
+    const masked = await maskAuditEvent({
+      id: 'n-5',
+      record_type: 'connected_account',
+      record_id: RECORD_ID,
+      record_name: null,
+      event_type: 'email_sent',
+      field_name: 'email_message',
+      old_value: null,
+      new_value: value,
+      changed_by_id: ACTOR.id,
+      changed_by_name: ACTOR.name,
+      source: null,
+      created_at: new Date().toISOString(),
+    });
+    expect(masked.new_value).toBe(value);
+  });
+
+  it('logs a value that is not JSON, so an unmasked one is never silent', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+    try {
+      await maskAuditEvent({
+        id: 'n-3',
+        record_type: 'connected_account',
+        record_id: RECORD_ID,
+        record_name: null,
+        event_type: 'email_sent',
+        field_name: 'email_message',
+        old_value: null,
+        new_value: 'not json',
+        changed_by_id: ACTOR.id,
+        changed_by_name: ACTOR.name,
+        source: null,
+        created_at: new Date().toISOString(),
+      });
+      expect(warn).toHaveBeenCalledWith(
+        { auditId: 'n-3' },
+        expect.stringContaining('left unmasked'),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('leaves values of other event types alone', async () => {
+    const client = await pool.connect();
+    try {
+      await writeAuditEntry(client, {
+        recordType: 'connected_account',
+        recordId: RECORD_ID,
+        eventType: 'updated',
+        fieldName: 'Excluded Domains',
+        newValue: JSON.stringify({ to: [ERASED] }),
+        changedById: ACTOR.id,
+        changedByName: ACTOR.name,
+      });
+    } finally {
+      client.release();
+    }
+
+    const [entry] = await getRecordAuditLog({
+      recordType: 'connected_account',
+      recordId: RECORD_ID,
+      all: true,
+    });
+
+    // Safe: the newest entry is the one written above.
+    expect(entry!.new_value).toContain(ERASED);
   });
 });

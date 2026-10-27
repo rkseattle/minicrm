@@ -353,7 +353,7 @@ erDiagram
   text notes ""
   integer email_messages_redacted "Synced messages the erasure redacted, across every mailbox."
   integer email_links_deleted "Links from synced messages to the erased record that the erasure deleted."
-  text erased_address_hmac "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL when it had none. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
+  text erased_address_hmac "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL only on rows written before the column existed. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
 }
 "public.custom_reports" {
   uuid id ""

@@ -18,7 +18,7 @@ Append-only log of GDPR Art. 17 erasure requests (one row per erased record). Th
 | notes | text |  | true |  |  |  |
 | email_messages_redacted | integer | 0 | false |  |  | Synced messages the erasure redacted, across every mailbox. |
 | email_links_deleted | integer | 0 | false |  |  | Links from synced messages to the erased record that the erasure deleted. |
-| erased_address_hmac | text |  | true |  |  | HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL when it had none. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest. |
+| erased_address_hmac | text |  | true |  |  | HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL only on rows written before the column existed. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest. |
 
 ## Constraints
 
@@ -53,7 +53,7 @@ erDiagram
   text notes ""
   integer email_messages_redacted "Synced messages the erasure redacted, across every mailbox."
   integer email_links_deleted "Links from synced messages to the erased record that the erasure deleted."
-  text erased_address_hmac "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL when it had none. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
+  text erased_address_hmac "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL only on rows written before the column existed. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
 }
 "public.users" {
   uuid id ""

@@ -7,6 +7,11 @@
 
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
+import {
+  GDPR_REDACTED_SQL,
+  GDPR_REDACTED_TEXT,
+  erasedAddressDigest,
+} from './mail/gdprRedaction.js';
 import logger from '../logger.js';
 import type { AuditNotification } from './auditEventBus.js';
 import type { AUDIT_EVENT_TYPES, AUDIT_RECORD_TYPES } from '@minicrm/shared/schemas/auditSchema.js';
@@ -282,6 +287,90 @@ export interface AuditLogPage {
   limit: number;
 }
 
+/** The audit events whose value names recipients' addresses rather than a record's fields. */
+const ADDRESS_BEARING_EVENTS: ReadonlySet<string> = new Set([
+  'email_sent',
+  'email_send_unconfirmed',
+]);
+
+/** The recipient lists those entries carry, as the send filing and its sweep write them. */
+const RECIPIENT_FIELDS = ['to', 'cc'] as const;
+
+/**
+ * Parses an address-bearing value, or null when it is not the JSON object filing writes.
+ * A value that does not parse is shown as stored, so it is logged: masking could not reach it.
+ */
+function parseRecipients(row: {
+  id?: string;
+  new_value: string | null;
+}): Record<string, unknown> | null {
+  if (row.new_value === null) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(row.new_value);
+  } catch {
+    logger.warn({ auditId: row.id }, 'auditService: email_sent value is not JSON; left unmasked');
+    return null;
+  }
+  return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+    ? (parsed as Record<string, unknown>) // Safe: checked to be a plain object above.
+    : null;
+}
+
+function recipientsOf(value: Record<string, unknown>): string[] {
+  return RECIPIENT_FIELDS.flatMap((field) => {
+    const list = value[field];
+    return Array.isArray(list) ? list.filter((a): a is string => typeof a === 'string') : [];
+  });
+}
+
+/**
+ * Masks the addresses of GDPR-erased data subjects in address-bearing audit values.
+ *
+ * Those entries are filed under the mailbox, not the erased record, so the record-keyed
+ * masking join never reaches them. The audit log is immutable, so this happens on read:
+ * every address on the page is digested and looked up against the erasure log in one
+ * query, and each match reads `[GDPR deleted]`.
+ */
+export async function maskErasedAddresses<
+  T extends { id?: string; event_type: string; new_value: string | null },
+>(rows: readonly T[]): Promise<T[]> {
+  const parsedByRow = rows.map((row) =>
+    ADDRESS_BEARING_EVENTS.has(row.event_type) ? parseRecipients(row) : null,
+  );
+  const addresses = [
+    ...new Set(parsedByRow.flatMap((parsed) => (parsed ? recipientsOf(parsed) : []))),
+  ];
+  if (addresses.length === 0) return [...rows];
+
+  const digestByAddress = new Map(addresses.map((a) => [a, erasedAddressDigest(a)]));
+  const erased = await pool.query<{ erased_address_hmac: string }>(
+    `SELECT erased_address_hmac FROM gdpr_deletion_log
+      WHERE completed_at IS NOT NULL AND erased_address_hmac = ANY($1)`,
+    [[...digestByAddress.values()]],
+  );
+  const erasedDigests = new Set(erased.rows.map((r) => r.erased_address_hmac));
+  if (erasedDigests.size === 0) return [...rows];
+
+  return rows.map((row, index) => {
+    const parsed = parsedByRow[index];
+    if (!parsed) return row;
+    let changed = false;
+    const masked: Record<string, unknown> = { ...parsed };
+    for (const field of RECIPIENT_FIELDS) {
+      const list = parsed[field];
+      if (!Array.isArray(list)) continue;
+      masked[field] = list.map((address) => {
+        const hit =
+          typeof address === 'string' && erasedDigests.has(digestByAddress.get(address) ?? '');
+        if (hit) changed = true;
+        return hit ? GDPR_REDACTED_TEXT : address;
+      });
+    }
+    return changed ? { ...row, new_value: JSON.stringify(masked) } : row;
+  });
+}
+
 /**
  * Returns audit log entries for a single record, newest first.
  * Used by the Change History section on detail pages.
@@ -298,8 +387,8 @@ export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Prom
   const query = all
     ? `SELECT
          a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
-         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
+         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
+         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
          a.changed_by_id, a.changed_by_name, a.source, a.created_at
        FROM audit_log a
        LEFT JOIN gdpr_deletion_log g
@@ -308,8 +397,8 @@ export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Prom
        ORDER BY a.created_at DESC`
     : `SELECT
          a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
-         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
+         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
+         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
          a.changed_by_id, a.changed_by_name, a.source, a.created_at
        FROM audit_log a
        LEFT JOIN gdpr_deletion_log g
@@ -320,7 +409,7 @@ export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Prom
   const params = all ? [recordType, recordId] : [recordType, recordId, limit];
 
   const result = await pool.query<AuditLogRow>(query, params);
-  return result.rows;
+  return maskErasedAddresses(result.rows);
 }
 
 /**
@@ -401,8 +490,8 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
     pool.query<AuditLogRow>(
       `SELECT
          a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
-         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
-         CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
+         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
+         CASE WHEN g.record_id IS NOT NULL THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value,
          a.changed_by_id, a.changed_by_name, a.source, a.created_at
        FROM audit_log a ${gdprJoin}
        ${where}
@@ -412,7 +501,7 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
   ]);
 
   return {
-    data: dataResult.rows,
+    data: await maskErasedAddresses(dataResult.rows),
     total: parseInt(countResult.rows[0].count, 10),
     page,
     limit,
@@ -464,6 +553,13 @@ export async function writeAuditEntryBestEffort(entry: AuditEntryInput): Promise
  * @returns A copy of the event with values masked if the record has been erased
  */
 export async function maskAuditEvent(event: AuditNotification): Promise<AuditNotification> {
+  const [addressMasked] = await maskErasedAddresses([event]);
+  // Safe: one row in, one row out.
+  return maskErasedRecord(addressMasked!);
+}
+
+/** Masks a live event whose own record has been erased, as the read queries' join does. */
+async function maskErasedRecord(event: AuditNotification): Promise<AuditNotification> {
   if (!event.record_id) return event;
 
   const result = await pool.query<{ erased: boolean }>(
@@ -478,8 +574,8 @@ export async function maskAuditEvent(event: AuditNotification): Promise<AuditNot
 
   return {
     ...event,
-    old_value: event.old_value !== null ? '[GDPR deleted]' : null,
-    new_value: event.new_value !== null ? '[GDPR deleted]' : null,
+    old_value: event.old_value !== null ? GDPR_REDACTED_TEXT : null,
+    new_value: event.new_value !== null ? GDPR_REDACTED_TEXT : null,
   };
 }
 

@@ -44,7 +44,10 @@ const router = Router();
  *           default: 50
  *     responses:
  *       200:
- *         description: Paginated list of deletion log entries
+ *         description: >
+ *           Paginated list of deletion log entries. Each carries erasure_scope (the fields and
+ *           tables it cleared) and the counts email_messages_redacted and email_links_deleted.
+ *           The keyed digest of the erased address is never returned.
  *       401:
  *         description: Not authenticated
  *       403:
@@ -64,7 +67,9 @@ router.get(
  *     tags: [GDPR]
  *     operationId: getGdprStatus
  *     summary: Get GDPR erasure status for a record
- *     description: Returns the deletion log entry for a record if it has been erased, otherwise null.
+ *     description: >
+ *       Returns the deletion log entry for a record if it has been erased, otherwise null.
+ *       The entry carries the email counts but never the erased address's digest.
  *     security:
  *       - cookieAuth: []
  *     parameters:

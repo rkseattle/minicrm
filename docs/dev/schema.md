@@ -283,15 +283,16 @@ Do not add new values to these ENUMs — use `varchar + CHECK` for all new const
 
 Seven tables use `(type, id)` discriminator pairs instead of typed FK columns. Reference integrity is enforced at the application layer.
 
-| Table                 | Type column                        | Valid type values                    | Orphan cleanup?         |
-| --------------------- | ---------------------------------- | ------------------------------------ | ----------------------- |
-| `attachments`         | `record_type`                      | `contact`, `account`, `deal`, `lead` | Yes — required          |
-| `custom_field_values` | _(via definition's `entity_type`)_ | `contact`, `account`, `deal`         | Yes — required          |
-| `notes`               | `entity_type`                      | `contact`, `account`, `deal`, `lead` | Yes — required          |
-| `gdpr_deletion_log`   | `record_type`                      | any erasable entity type             | No — retained by design |
-| `audit_log`           | `record_type`                      | see migration 076                    | No — retained by design |
-| `ai_gdpr_cascade_log` | `record_type`                      | `contact`, `lead`                    | No — retained by design |
-| `email_message_links` | `record_type`                      | `contact`, `lead`, `account`, `deal` | Yes — required          |
+| Table                   | Type column                        | Valid type values                    | Orphan cleanup?         |
+| ----------------------- | ---------------------------------- | ------------------------------------ | ----------------------- |
+| `attachments`           | `record_type`                      | `contact`, `account`, `deal`, `lead` | Yes — required          |
+| `custom_field_values`   | _(via definition's `entity_type`)_ | `contact`, `account`, `deal`         | Yes — required          |
+| `notes`                 | `entity_type`                      | `contact`, `account`, `deal`, `lead` | Yes — required          |
+| `gdpr_deletion_log`     | `record_type`                      | any erasable entity type             | No — retained by design |
+| `audit_log`             | `record_type`                      | see migration 076                    | No — retained by design |
+| `ai_gdpr_cascade_log`   | `record_type`                      | `contact`, `lead`                    | No — retained by design |
+| `email_message_links`   | `record_type`                      | `contact`, `lead`, `account`, `deal` | Yes — required          |
+| `activity_participants` | `record_type`                      | `contact`, `lead`                    | Yes — required          |
 
 When hard-deleting a parent entity, clean up polymorphic dependents in the same transaction:
 
@@ -304,6 +305,10 @@ When hard-deleting a parent entity, clean up polymorphic dependents in the same 
   `custom_field_values` is moved, not the way `notes` is: `UNIQUE (email_message_id,
 record_type, record_id)` means one message naming both contacts already has a winner row,
   so a bare `UPDATE ... SET record_id = winner` raises `23505` and rolls back the merge.
+- `activity_participants`: handled by the same three helpers in `emailMatchingService.ts`
+  that handle `email_message_links` — deleted with the record, moved to the winner on a
+  merge and to the new contact on lead conversion — so no delete path names it directly.
+  GDPR erasure reaches a send's activity on a deal or account through it.
   Update with a `NOT EXISTS` guard, then delete whatever the guard skipped
 
 `audit_log` and `gdpr_deletion_log` rows are retained intentionally for compliance traceability.

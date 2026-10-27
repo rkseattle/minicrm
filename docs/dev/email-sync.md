@@ -431,6 +431,16 @@ sync in turn, so a pause can land after the claim — which stops a running back
 next page. Its job stays open, and resuming carries on from the
 cursor.
 
+## GDPR redaction on ingest
+
+Both insert paths take `lockForIngest` (a shared advisory lock) first, and GDPR erasure takes
+the exclusive form, so an erasure waits for pages already being stored and its redaction then
+covers them. After each upsert, `redactErasedOnIngest` digests every address on the touched
+rows and redacts any that match `gdpr_deletion_log.erased_address_hmac` — the path that keeps a
+mailbox connected after an erasure from bringing the subject's mail back. `storeMessages`'
+`DO UPDATE` skips a row with `gdpr_redacted_at` set, so a re-sync never restores one. The
+redaction itself lives in `mail/gdprRedaction.ts`, shared with the erasure cascade.
+
 ## Matching
 
 Every message a page creates is linked to the CRM records its addresses name, inside the
@@ -858,7 +868,6 @@ the ambient value.
 
 ## Not covered here
 
-- **GDPR erasure for synced mail.**
 - **Validation of Graph send against a real mailbox** — whether the Sent Items copy keeps
   the draft's immutable id, which Microsoft's own pages state both ways.
 - **Validation against a real IMAP server** — three behaviors here are reasoned from RFC

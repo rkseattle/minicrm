@@ -54,6 +54,7 @@ import {
 import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js';
 import { matchMessagesToRecords } from './emailMatchingService.js';
 import { inheritThreadPrivacy, lockMailboxThreads } from './emailMessageService.js';
+import { lockForIngest, redactErasedOnIngest } from './mail/gdprRedaction.js';
 import type { MatchableMessage } from './emailMatchingService.js';
 import {
   getDealAutoLink,
@@ -241,6 +242,8 @@ async function storeMessages(
                WHEN cardinality(EXCLUDED.reply_to_addresses) > 0 THEN EXCLUDED.reply_to_addresses
                ELSE email_messages.reply_to_addresses
              END
+         -- A GDPR-redacted row is a tombstone: the provider still holds the original.
+         WHERE email_messages.gdpr_redacted_at IS NULL
        RETURNING id, from_address, to_addresses, cc_addresses, (xmax = 0) AS inserted`,
       values,
     );
@@ -315,6 +318,9 @@ async function commitPage(
   try {
     await client.query('BEGIN');
 
+    // First: an erasure holds this exclusively, and must see every page committed before it.
+    await lockForIngest(client);
+
     // Locked before the insert, in the order the send path takes them: intent, then message.
     const outbound = page.messages.filter((message) => message.direction === 'outbound');
     const intents = await lockReconcilableIntents(
@@ -339,11 +345,9 @@ async function commitPage(
     // Same transaction as the insert: a message and the records it names become visible
     // together, and nothing re-reads a message once its provider id is stored.
     await matchMessagesToRecords(client, created, dealAutoLink);
-    await inheritThreadPrivacy(
-      client,
-      accountId,
-      kept.map((message) => message.providerMessageId),
-    );
+    const storedIds = kept.map((message) => message.providerMessageId);
+    await inheritThreadPrivacy(client, accountId, storedIds);
+    await redactErasedOnIngest(client, accountId, storedIds);
 
     createdCount = created.length;
 

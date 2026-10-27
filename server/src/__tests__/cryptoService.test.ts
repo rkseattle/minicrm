@@ -6,7 +6,8 @@
  */
 
 import 'dotenv/config';
-import { encrypt, decrypt } from '../services/cryptoService.js';
+import { encrypt, decrypt, keyedDigest } from '../services/cryptoService.js';
+import { erasedAddressDigest } from '../services/mail/gdprRedaction.js';
 
 // ── encrypt ───────────────────────────────────────────────────────────────────
 
@@ -160,5 +161,59 @@ describe('decrypt', () => {
     // Both must decrypt back to the same value
     expect(decrypt(a)).toBe('repeat');
     expect(decrypt(b)).toBe('repeat');
+  });
+});
+
+describe('keyedDigest', () => {
+  const OTHER_KEY = 'b'.repeat(64);
+
+  it('is a 64-character hex digest, the same every time for one input', () => {
+    const digest = keyedDigest('purpose-a', 'someone@example.com');
+    expect(digest).toMatch(/^[0-9a-f]{64}$/);
+    expect(keyedDigest('purpose-a', 'someone@example.com')).toBe(digest);
+  });
+
+  it('differs by purpose, so one use cannot be matched against another', () => {
+    expect(keyedDigest('purpose-a', 'x')).not.toBe(keyedDigest('purpose-b', 'x'));
+  });
+
+  it('differs by value', () => {
+    expect(keyedDigest('purpose-a', 'x')).not.toBe(keyedDigest('purpose-a', 'y'));
+  });
+
+  it('depends on NODE_ENCRYPTION_KEY, so it cannot be recomputed without the key', () => {
+    const original = process.env.NODE_ENCRYPTION_KEY;
+    const withOriginal = keyedDigest('purpose-a', 'x');
+    try {
+      process.env.NODE_ENCRYPTION_KEY = OTHER_KEY;
+      expect(keyedDigest('purpose-a', 'x')).not.toBe(withOriginal);
+    } finally {
+      process.env.NODE_ENCRYPTION_KEY = original;
+    }
+    expect(keyedDigest('purpose-a', 'x')).toBe(withOriginal);
+  });
+
+  it('refuses to run without a valid key', () => {
+    const original = process.env.NODE_ENCRYPTION_KEY;
+    try {
+      delete process.env.NODE_ENCRYPTION_KEY;
+      expect(() => keyedDigest('purpose-a', 'x')).toThrow(/NODE_ENCRYPTION_KEY/);
+    } finally {
+      process.env.NODE_ENCRYPTION_KEY = original;
+    }
+  });
+});
+
+describe('erasedAddressDigest', () => {
+  it('ignores case and surrounding whitespace, as stored addresses do', () => {
+    expect(erasedAddressDigest('  Someone@Example.COM ')).toBe(
+      erasedAddressDigest('someone@example.com'),
+    );
+  });
+
+  it('is not the plain SHA-256 of the address', async () => {
+    const { createHash } = await import('node:crypto');
+    const plain = createHash('sha256').update('someone@example.com').digest('hex');
+    expect(erasedAddressDigest('someone@example.com')).not.toBe(plain);
   });
 });

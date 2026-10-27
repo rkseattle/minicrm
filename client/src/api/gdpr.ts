@@ -15,6 +15,10 @@ export interface GdprDeletionLogEntry {
   completed_at: string | null;
   erasure_scope: string[];
   notes: string | null;
+  /** Synced messages the erasure redacted, across every mailbox. */
+  email_messages_redacted: number;
+  /** Links from synced messages to the erased record that it deleted. */
+  email_links_deleted: number;
 }
 
 /** Response from a successful erasure */

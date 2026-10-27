@@ -116,6 +116,9 @@ describe('POST /api/v1/gdpr/leads/:id/ai-cascade', () => {
   it('returns 202 when a failed cascade left identifiers to search on', async () => {
     const lead = await createLead(makeLeadInput('retryable'), adminActor);
     await eraseLead(lead.id, adminActor);
+    // The erasure's own cascade clears every row's identifiers when it succeeds; let it
+    // finish first, or it can wipe the failed row this test is about to plant.
+    await pollForCascadeRows(lead.id, 'leads');
     await pool.query(
       `INSERT INTO ai_gdpr_cascade_log
          (record_type, record_id, triggered_by, status, error_detail, original_name, original_email)

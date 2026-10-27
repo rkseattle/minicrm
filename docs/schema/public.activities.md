@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.overdue_task_notifications](public.overdue_task_notifications.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.activity_objection_signals](public.activity_objection_signals.md) [public.activity_meeting_briefs](public.activity_meeting_briefs.md) [public.activity_sentiment_scores](public.activity_sentiment_scores.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.overdue_task_notifications](public.overdue_task_notifications.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.activity_objection_signals](public.activity_objection_signals.md) [public.activity_meeting_briefs](public.activity_meeting_briefs.md) [public.activity_sentiment_scores](public.activity_sentiment_scores.md) [public.activity_participants](public.activity_participants.md) |  |  |
 | type | activity_type |  | false |  |  |  |
 | subject | varchar(255) |  | false |  |  |  |
 | notes | text |  | true |  |  |  |
@@ -60,6 +60,7 @@ erDiagram
 "public.activity_objection_signals" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 "public.activity_meeting_briefs" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 "public.activity_sentiment_scores" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
+"public.activity_participants" }o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
@@ -126,6 +127,11 @@ erDiagram
   timestamp_with_time_zone flagged_inaccurate_at ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.activity_participants" {
+  uuid activity_id FK ""
+  varchar_16_ record_type ""
+  uuid record_id ""
 }
 "public.contacts" {
   uuid id ""

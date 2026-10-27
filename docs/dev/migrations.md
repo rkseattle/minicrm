@@ -211,7 +211,7 @@ DATABASE_URL=postgres://user:pass@host:5432/db npm run db:erd --workspace=minicr
 
 **`NODE_ENCRYPTION_KEY` can never be retired**, rotated or not: it backs key version 1 — there is no `ENCRYPTION_KEY_V1`, version 1 resolves to it — and it also backs every legacy `encrypt`/`decrypt` secret. Removing it makes all of them permanently unreadable.
 
-**Two encryption paths exist.** AI and SMTP credentials use the versioned path. The legacy unversioned `encrypt`/`decrypt` protects a separate, wider set with no `key_version` column at all: the storage secret (`storage_secret_access_key`), TOTP MFA secrets, the SSO SP private key and IdP certificate, and webhook signing secrets — all under `NODE_ENCRYPTION_KEY`.
+**Two encryption paths exist.** AI and SMTP credentials use the versioned path. The legacy unversioned `encrypt`/`decrypt` protects a separate, wider set with no `key_version` column at all: the storage secret (`storage_secret_access_key`), TOTP MFA secrets, the SSO SP private key and IdP certificate, and webhook signing secrets — all under `NODE_ENCRYPTION_KEY`. `NODE_ENCRYPTION_KEY` also keys the HMAC behind `gdpr_deletion_log.erased_address_hmac` (an HKDF subkey, not an encryption): replacing the key silently breaks every stored digest, so mail to already-erased people is no longer redacted on ingest.
 
 [docs/operations.md](../operations.md#key-rotation) carries the operator-facing summary of the same constraints.
 

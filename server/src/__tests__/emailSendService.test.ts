@@ -13,6 +13,7 @@ import { simpleParser } from 'mailparser';
 import { vi } from 'vitest';
 
 import pool from '../db.js';
+import { erasedAddressDigest } from '../services/mail/gdprRedaction.js';
 import { createImapAccount, upsertOAuthAccount } from '../services/connectedAccountService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import {
@@ -700,6 +701,31 @@ describe('sendEmail — activities', () => {
     expect(await activitiesFor('contact_id', contactId)).toEqual([{ type: 'Email' }]);
   });
 
+  it('associates the activity with each contact the message names', async () => {
+    const contactId = await createContact('activity-assoc');
+    const { provider } = fakeSender();
+
+    await sendEmail(
+      typed({
+        to: [`${FILE_PREFIX}-activity-assoc@example.com`],
+        record_type: 'contact',
+        record_id: contactId,
+      }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+
+    const participants = await pool.query<{ record_type: string; record_id: string }>(
+      `SELECT p.record_type, p.record_id FROM activity_participants p
+         JOIN activities a ON a.id = p.activity_id
+        WHERE a.contact_id = $1`,
+      [contactId],
+    );
+    expect(participants.rows).toEqual([{ record_type: 'contact', record_id: contactId }]);
+  });
+
   it('audits the activity in the same transaction, under the sender', async () => {
     const contactId = await createContact('activity-audit');
     const { provider } = fakeSender();
@@ -1231,5 +1257,126 @@ describe('sendEmail — private threads', () => {
     expect(sent.message.thread_id).toBe('private-parent');
     expect(sent.message.is_private).toBe(true);
     expect((await activityFor(contactId)).notes).toBeNull();
+  });
+});
+
+describe('sendEmail — an address already erased under GDPR', () => {
+  const ERASED = 'erased-recipient@example.net';
+  const ERASURE_RECORD = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+
+  afterEach(async () => {
+    await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [ERASURE_RECORD]);
+  });
+
+  it('files its activity without the text the stored copy lost, and answers redacted', async () => {
+    await pool.query(
+      `INSERT INTO gdpr_deletion_log
+         (record_type, record_id, requested_by, erasure_scope, completed_at, erased_address_hmac)
+       VALUES ('contact', $1, $2, '{}', now(), $3)`,
+      [ERASURE_RECORD, userId, erasedAddressDigest(ERASED)],
+    );
+    const contactId = await createContact('erased-recipient-activity');
+    const { provider } = fakeSender();
+
+    const sent = await sendEmail(
+      typed({ to: [ERASED], record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+
+    const activity = await pool.query<{ subject: string; notes: string | null }>(
+      'SELECT subject, notes FROM activities WHERE contact_id = $1',
+      [contactId],
+    );
+    expect(activity.rows).toEqual([{ subject: '[GDPR deleted]', notes: null }]);
+    expect(sent.message.subject).toBe('[GDPR deleted]');
+    expect(sent.message.to_addresses).toEqual([`gdpr-deleted-${ERASURE_RECORD}@gdpr.invalid`]);
+  });
+
+  it('drops the typed activity text of a forward to an erased address', async () => {
+    await pool.query(
+      `INSERT INTO gdpr_deletion_log
+         (record_type, record_id, requested_by, erasure_scope, completed_at, erased_address_hmac)
+       VALUES ('contact', $1, $2, '{}', now(), $3)`,
+      [ERASURE_RECORD, userId, erasedAddressDigest(ERASED)],
+    );
+    const contactId = await createContact('erased-forward');
+    const original = await storeParent({ threadId: 'erased-fwd', rfcMessageId: 'ef@x.test' });
+    const { provider } = fakeSender();
+
+    await sendEmail(
+      typed({
+        to: [ERASED],
+        body_html: '<p>Forwarding about them</p>',
+        forward_of_message_id: original,
+        record_type: 'contact',
+        record_id: contactId,
+      }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+
+    const activity = await pool.query<{ notes: string | null }>(
+      'SELECT notes FROM activities WHERE contact_id = $1',
+      [contactId],
+    );
+    expect(activity.rows).toEqual([{ notes: null }]);
+  });
+
+  it('files no text for a Sent copy sync already stored as a GDPR tombstone', async () => {
+    await pool.query(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address,
+          subject, gdpr_redacted_at)
+       VALUES ($1, 'sent-1', 'tomb-thread', 'outbound', $2, '[GDPR deleted]', now())`,
+      [accountId, MAILBOX.toLowerCase()],
+    );
+    const contactId = await createContact('tombstone-filing');
+    const { provider } = fakeSender();
+
+    await sendEmail(
+      typed({ record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+
+    const activity = await pool.query<{ subject: string; notes: string | null }>(
+      'SELECT subject, notes FROM activities WHERE contact_id = $1',
+      [contactId],
+    );
+    expect(activity.rows).toEqual([{ subject: '[GDPR deleted]', notes: null }]);
+  });
+
+  it('stores the sent copy redacted, as sync would store it', async () => {
+    await pool.query(
+      `INSERT INTO gdpr_deletion_log
+         (record_type, record_id, requested_by, erasure_scope, completed_at, erased_address_hmac)
+       VALUES ('contact', $1, $2, '{}', now(), $3)`,
+      [ERASURE_RECORD, userId, erasedAddressDigest(ERASED)],
+    );
+    const { provider } = fakeSender();
+
+    await sendEmail(typed({ to: [ERASED] }), userId, actor, freshKey(), { provider });
+
+    const stored = await pool.query<{
+      to_addresses: string[];
+      subject: string | null;
+      redacted: boolean;
+    }>(
+      `SELECT to_addresses, subject, gdpr_redacted_at IS NOT NULL AS redacted
+         FROM email_messages WHERE connected_account_id = $1 AND provider_message_id = 'sent-1'`,
+      [accountId],
+    );
+    expect(stored.rows[0]).toEqual({
+      to_addresses: [`gdpr-deleted-${ERASURE_RECORD}@gdpr.invalid`],
+      subject: '[GDPR deleted]',
+      redacted: true,
+    });
   });
 });

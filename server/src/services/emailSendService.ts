@@ -46,6 +46,8 @@ import {
   toEmailMessage,
   type EmailMessageRow,
 } from './emailMessageService.js';
+import { lockForIngest, redactErasedOnIngest } from './mail/gdprRedaction.js';
+import { normalizeAddress } from './mail/address.js';
 import {
   claimSendIntent,
   fileSentMessage,
@@ -483,7 +485,7 @@ export async function sendEmail(
       ? htmlToText(content.bodyHtml, { wordwrap: false }).trim()
       : null;
   if (original && parent?.relation === 'forward') content.bodyHtml += forwardedBlock(original);
-  const fromAddress = account.emailAddress.trim().toLowerCase();
+  const fromAddress = normalizeAddress(account.emailAddress);
   const document = await buildOutboundDocument(
     {
       fromAddress,
@@ -628,6 +630,8 @@ async function recordSent(
   try {
     await client.query('BEGIN');
 
+    // First: an erasure holds this exclusively, and must see every send committed before it.
+    await lockForIngest(client);
     const intent = await lockIntent(client, intentId);
     if (!intent) throw new Error(`emailSendService: intent ${intentId} vanished`);
     await lockMailboxThreads(client, account.id);
@@ -685,7 +689,17 @@ async function recordSent(
     // The upsert can file this row under a private thread; RETURNING predates that.
     const privacy = await inheritThreadPrivacy(client, account.id, [stored.providerMessageId]);
     const isPrivate = privacy.get(row.id) ?? row.is_private;
-    storedRow = { ...row, is_private: isPrivate };
+    await redactErasedOnIngest(client, account.id, [stored.providerMessageId]);
+    // Re-read: redaction just now, or an erasure before the sync stored this copy, both
+    // leave the row a tombstone the upsert's RETURNING cannot show.
+    const reread = await client.query<EmailMessageRow & { redacted: boolean }>(
+      `SELECT ${MESSAGE_SELECT}, m.gdpr_redacted_at IS NOT NULL AS redacted
+         FROM email_messages m WHERE m.id = $1`,
+      [row.id],
+    );
+    const current = reread.rows[0] ?? { ...row, redacted: false };
+    const redacted = current.redacted;
+    storedRow = { ...current, is_private: isPrivate };
 
     // Already filed means the sync engine stored the Sent copy and filed it first.
     if (intent.status !== 'filed') {
@@ -695,11 +709,12 @@ async function recordSent(
         {
           id: row.id,
           providerMessageId: stored.providerMessageId,
-          subject: row.subject,
-          bodyText: parsed.bodyText,
-          toAddresses: row.to_addresses,
-          ccAddresses: row.cc_addresses,
+          subject: current.subject,
+          bodyText: redacted ? null : parsed.bodyText,
+          toAddresses: current.to_addresses,
+          ccAddresses: current.cc_addresses,
           isPrivate,
+          redacted,
         },
         account.emailAddress,
       );

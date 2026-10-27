@@ -34,6 +34,9 @@ const IV_BYTES = 12;
 /** Auth tag length in bytes */
 const AUTH_TAG_BYTES = 16;
 
+/** HMAC-SHA256 subkey length: the hash's output size, the minimum RFC 2104 recommends. */
+const DIGEST_SUBKEY_BYTES = 32;
+
 /**
  * Derives the 32-byte encryption key from the NODE_ENCRYPTION_KEY env var.
  * Throws at call time if the env var is missing or malformed so the error
@@ -186,4 +189,33 @@ export function decryptVersioned(ciphertext: string, keyVersion: number): string
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);
   return decipher.update(cipherData).toString('utf8') + decipher.final('utf8');
+}
+
+/**
+ * A keyed one-way digest of `value` for `purpose`, as lowercase hex.
+ *
+ * HMAC-SHA256 under an HKDF-SHA256 subkey of NODE_ENCRYPTION_KEY, which is never retired, so
+ * a digest stays comparable for the life of the install. Each purpose gets its own subkey,
+ * so no two uses' digests can be matched against each other.
+ */
+export function keyedDigest(purpose: string, value: string): string {
+  return crypto.createHmac('sha256', digestSubkey(purpose)).update(value).digest('hex');
+}
+
+/** Subkeys by purpose and source key, so a digest per address costs one HMAC, not an HKDF. */
+const digestSubkeys = new Map<string, Buffer>();
+
+function digestSubkey(purpose: string): Buffer {
+  const key = getKey();
+  // A fingerprint, so the long-lived cache never holds the key itself.
+  const fingerprint = crypto.createHash('sha256').update(key).digest('hex');
+  const cacheKey = `${fingerprint}:${purpose}`;
+  let subkey = digestSubkeys.get(cacheKey);
+  if (!subkey) {
+    subkey = Buffer.from(
+      crypto.hkdfSync('sha256', key, Buffer.alloc(0), purpose, DIGEST_SUBKEY_BYTES),
+    );
+    digestSubkeys.set(cacheKey, subkey);
+  }
+  return subkey;
 }
