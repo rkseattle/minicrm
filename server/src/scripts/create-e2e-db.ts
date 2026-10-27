@@ -1,5 +1,5 @@
 /**
- * create-e2e-db.ts — Create the minicrm_e2e database if it does not exist,
+ * create-e2e-db.ts — Create the minicrm_e2e_test database if it does not exist,
  * then run all migrations against it.
  *
  * Called by `npm run e2e:setup` (via `npm run create:e2e-db --workspace=minicrm-server`)
@@ -18,8 +18,11 @@ import 'dotenv/config';
 import pg from 'pg';
 import { migrateFromBaseline, productMigrationOptions } from '../migrate.js';
 import { assertTestDatabasePort } from './assertTestDatabaseTarget.js';
-
-const E2E_DB_NAME = 'minicrm_e2e';
+import {
+  E2E_DB_NAME,
+  retiredDatabaseMessage,
+  retiredNameOf,
+} from '@minicrm/shared/testing/testStackDbNames.js';
 
 async function main(): Promise<void> {
   const dbUser = process.env.DB_USER ?? 'minicrm';
@@ -45,6 +48,14 @@ async function main(): Promise<void> {
   ]);
 
   if (rows.length === 0) {
+    const retired = retiredNameOf(E2E_DB_NAME);
+    const stale = retired
+      ? await adminClient.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [retired])
+      : { rows: [] };
+    if (retired && stale.rows.length > 0) {
+      await adminClient.end();
+      throw new Error(`[create-e2e-db] ${retiredDatabaseMessage(retired, E2E_DB_NAME)}`);
+    }
     // datname cannot be parameterised in CREATE DATABASE.
     await adminClient.query(`CREATE DATABASE "${E2E_DB_NAME}"`);
     console.log(`[create-e2e-db] Created database ${E2E_DB_NAME}.`);

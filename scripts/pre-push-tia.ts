@@ -170,8 +170,8 @@ function loadEnvFile(path: string): void {
  * PRECEDENCE, and why it does not matter for DB coordinates. loadEnvFile is
  * first-write-wins, so root .env shadows qa/e2e/.env for any key both define.
  * An earlier version of this comment said "there are none today" — that is no
- * longer true: qa/e2e/.env now defines DB_PORT=5433, DB_NAME=minicrm_e2e and
- * COVERAGE_DB_NAME=minicrm_coverage_e2e, all of which root .env also defines
+ * longer true: qa/e2e/.env now defines DB_PORT=5433, DB_NAME=minicrm_e2e_test and
+ * COVERAGE_DB_NAME=minicrm_coverage_e2e_test, all of which root .env also defines
  * with DEV values that therefore win.
  *
  * That shadowing is harmless BECAUSE nothing downstream reads DB coordinates
@@ -195,8 +195,8 @@ function loadRootEnv(): void {
  * the coverage ingest/dump path), and inheriting root .env's dev values there is the
  * same leak in a different costume.
  *
- * COVERAGE_DB_NAME must be minicrm_coverage_e2e, not minicrm_coverage_test: E2E runs
- * deposit coverage into the _e2e database (docker-compose.test.yml), so pointing TIA at
+ * COVERAGE_DB_NAME must be minicrm_coverage_e2e_test, not minicrm_coverage_test: E2E runs
+ * deposit coverage into the E2E database (docker-compose.test.yml), so pointing TIA at
  * the unit-test database would find zero mappings and silently degrade every push to a
  * full-suite run — defeating the point of test selection. .claude/gates/e2e-run.md's own
  * dump:coverage-map invocation passes the same value.

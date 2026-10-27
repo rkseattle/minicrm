@@ -55,7 +55,7 @@ docker compose -f docker-compose.test.yml up -d
 npm run e2e:setup
 ```
 
-**Symptom:** `database "minicrm_e2e" does not exist`.
+**Symptom:** `database "minicrm_e2e_test" does not exist`.
 **Cause:** Compose starts Postgres but creates no databases. `npm run e2e:setup` is the
 step that creates and migrates them, seeds the admin user, and provisions the MinIO
 bucket.
@@ -78,9 +78,9 @@ below targets the **test** stack; swap host, port, and database name for a dev-s
 recovery:
 
 ```bash
-DATABASE_URL=postgres://minicrm:password@localhost:5433/minicrm_e2e \
+DATABASE_URL=postgres://minicrm:password@localhost:5433/minicrm_e2e_test \
   npm run migrate:down --workspace=minicrm-server
-DATABASE_URL=postgres://minicrm:password@localhost:5433/minicrm_e2e \
+DATABASE_URL=postgres://minicrm:password@localhost:5433/minicrm_e2e_test \
   npm run migrate --workspace=minicrm-server
 ```
 
@@ -128,6 +128,23 @@ The run procedure and cadence policy are in the
 with `PW_GLOBAL_TIMEOUT_MS`.
 **Fix:** how to spot a truncated run, and what to do about a healed locator, are in
 [Reading results](../operations.md#reading-results).
+
+**Symptom:** `minicrm-test-server` exits on "database minicrm_e2e_test does not exist", or a
+script refuses with `DB_NAME="minicrm_e2e" was renamed to "minicrm_e2e_test"`.
+**Cause:** the stack predates the rename of `minicrm_e2e` and `minicrm_coverage_e2e` to
+`minicrm_e2e_test` and `minicrm_coverage_e2e_test`.
+**Fix:** stop `minicrm-test-server`, rename the databases in place, keeping their data and
+TIA mappings:
+
+```bash
+docker exec minicrm-test-db psql -U minicrm -d postgres \
+  -c 'ALTER DATABASE minicrm_e2e RENAME TO minicrm_e2e_test' \
+  -c 'ALTER DATABASE minicrm_coverage_e2e RENAME TO minicrm_coverage_e2e_test'
+```
+
+then set `DB_NAME=minicrm_e2e_test` and `COVERAGE_DB_NAME=minicrm_coverage_e2e_test` in
+`qa/e2e/.env` and `qa/.env`, and recreate the server with
+`docker compose -f docker-compose.test.yml up -d server`.
 
 ---
 

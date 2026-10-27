@@ -29,7 +29,7 @@ jobs:
         env:
           POSTGRES_USER: minicrm
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: minicrm_e2e
+          POSTGRES_DB: minicrm_e2e_test
         ports:
           - 5432:5432
         options: >-
@@ -100,10 +100,10 @@ jobs:
         # and ci.yml's e2e jobs, which all use migrate:fresh for this reason.
         run: npm run migrate:fresh --workspace=minicrm-server
         env:
-          DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
+          DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e_test
           DB_USER: minicrm
           DB_PASSWORD: password
-          DB_NAME: minicrm_e2e
+          DB_NAME: minicrm_e2e_test
           DB_HOST: localhost
           DB_PORT: 5432
           JWT_SECRET: ci-functional-secret
@@ -114,7 +114,7 @@ jobs:
         env:
           DB_USER: minicrm
           DB_PASSWORD: password
-          DB_NAME: minicrm_e2e
+          DB_NAME: minicrm_e2e_test
           DB_HOST: localhost
           DB_PORT: 5432
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
@@ -139,7 +139,7 @@ jobs:
         env:
           DB_USER: minicrm
           DB_PASSWORD: password
-          DB_NAME: minicrm_e2e
+          DB_NAME: minicrm_e2e_test
           DB_HOST: localhost
           DB_PORT: 5432
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
@@ -153,7 +153,7 @@ jobs:
         env:
           DB_USER: minicrm
           DB_PASSWORD: password
-          DB_NAME: minicrm_e2e
+          DB_NAME: minicrm_e2e_test
           DB_HOST: localhost
           DB_PORT: 5432
           JWT_SECRET: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f

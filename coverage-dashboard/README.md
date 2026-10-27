@@ -69,7 +69,7 @@ keeps that port; both run simultaneously). The dev server proxies `/api/*` reque
 your server runs elsewhere.
 
 **To browse E2E coverage data**, point it at the test stack instead: that data lives in
-`minicrm_coverage_e2e`, served by the test server on port 3002 (MINCRM-684).
+`minicrm_coverage_e2e_test`, served by the test server on port 3002 (MINCRM-684).
 
 ```bash
 API_URL=http://localhost:3002 VITE_COVERAGE_DASHBOARD_NO_AUTH=true \

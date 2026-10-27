@@ -46,7 +46,7 @@ npm run e2e:setup
 
 This script:
 
-1. Creates and migrates `minicrm_e2e` and `minicrm_coverage_e2e`
+1. Creates and migrates `minicrm_e2e_test` and `minicrm_coverage_e2e_test`
 2. Resets accumulated test data and seeds the E2E admin user
 3. Waits up to 30 seconds for MinIO to become healthy
 4. Creates the `minicrm-test-bucket` bucket inside the MinIO container (idempotent)

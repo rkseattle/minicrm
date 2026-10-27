@@ -5,8 +5,8 @@
  *   docker compose -f docker-compose.test.yml up -d
  *
  * Steps:
- *   1. Create minicrm_e2e database and run migrations
- *   2. Seed E2E admin user into minicrm_e2e
+ *   1. Create minicrm_e2e_test database and run migrations
+ *   2. Seed E2E admin user into minicrm_e2e_test
  *   3. Wait for MinIO readiness (polls /minio/health/live, 30 s timeout)
  *   4. Create the test bucket idempotently via mc inside the MinIO container
  *   5. Seed MinIO storage config into system_settings (delegates to seed:e2e-storage)
@@ -22,6 +22,7 @@ import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { COVERAGE_E2E_DB_NAME, E2E_DB_NAME } from '@minicrm/shared/testing/testStackDbNames.js';
 // Shared with scripts/pre-push-tia.ts so the two dev-port guards cannot drift,
 // and so the rule has a test runner (root scripts/ has none).
 import {
@@ -128,8 +129,6 @@ try {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const E2E_DB_NAME = 'minicrm_e2e';
-
 // Host-side MinIO port. The test stack publishes MinIO on 9002 (docker-compose.test.yml)
 // so it cannot collide with anything already bound to 9000. Container-side stays 9000 —
 // see MINIO_SERVER_ENDPOINT below.
@@ -221,7 +220,7 @@ function resolveTestDbEnv(): {
   };
 }
 
-// ── Step 1: Create minicrm_e2e database and run migrations ───────────────────
+// ── Step 1: Create minicrm_e2e_test database and run migrations ──────────────
 
 function ensureE2eDatabase(): void {
   console.log(`[e2e:setup] Ensuring ${E2E_DB_NAME} database exists and is migrated...`);
@@ -239,11 +238,9 @@ function ensureE2eDatabase(): void {
   console.log(`[e2e:setup] ${E2E_DB_NAME} is ready.`);
 }
 
-// ── Step 1b: Create minicrm_coverage_e2e database and run coverage migrations ─
-// Coverage/TIA tables live in their own database, separate from minicrm_e2e
+// ── Step 1b: Create minicrm_coverage_e2e_test database, run coverage migrations ─
+// Coverage/TIA tables live in their own database, separate from minicrm_e2e_test
 // above — see qa/migrations/001_coverage_baseline.js and server/src/coverageDb.ts.
-
-const COVERAGE_E2E_DB_NAME = 'minicrm_coverage_e2e';
 
 function ensureCoverageE2eDatabase(): void {
   console.log(`[e2e:setup] Ensuring ${COVERAGE_E2E_DB_NAME} database exists and is migrated...`);
@@ -430,8 +427,8 @@ function seedSmtpConfig(): void {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  ensureE2eDatabase(); // create + migrate minicrm_e2e
-  ensureCoverageE2eDatabase(); // create + migrate minicrm_coverage_e2e (separate DB, see coverageDb.ts)
+  ensureE2eDatabase(); // create + migrate minicrm_e2e_test
+  ensureCoverageE2eDatabase(); // create + migrate minicrm_coverage_e2e_test (separate DB, see coverageDb.ts)
   resetE2eData(); // truncate accumulated test data before seeding
   seedE2eAdmin(); // re-seed admin after reset
   await waitForMinio();

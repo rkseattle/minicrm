@@ -207,8 +207,8 @@ env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
   COVERAGE_DUMPS_ROOT=<scratchpad-path>/coverage-dumps \
   npm run ingest:coverage-dumps --workspace=minicrm-qa
 
-DB_USER=minicrm DB_PASSWORD=password DB_NAME=minicrm_e2e DB_HOST=localhost \
-  DB_PORT=5433 COVERAGE_DB_NAME=minicrm_coverage_e2e \
+DB_USER=minicrm DB_PASSWORD=password DB_NAME=minicrm_e2e_test DB_HOST=localhost \
+  DB_PORT=5433 COVERAGE_DB_NAME=minicrm_coverage_e2e_test \
   npm run dump:coverage-map --workspace=minicrm-server
 ```
 

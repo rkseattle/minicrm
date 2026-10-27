@@ -1,10 +1,10 @@
 /**
- * create-coverage-e2e-db.ts — Create the minicrm_coverage_e2e database if it
+ * create-coverage-e2e-db.ts — Create the minicrm_coverage_e2e_test database if it
  * does not exist, then run all coverage migrations (qa/migrations/) against
  * it.
  *
  * The coverage/TIA schema lives in its own database, separate from the
- * product schema (minicrm_e2e, migrated via server/src/scripts/create-e2e-db.ts) —
+ * product schema (minicrm_e2e_test, migrated via server/src/scripts/create-e2e-db.ts) —
  * see qa/migrations/001_coverage_baseline.js's module docblock for why.
  * Called before the E2E suite runs locally, alongside (not instead of) the
  * product DB's own create:e2e-db script. Idempotent — safe to re-run.
@@ -21,8 +21,12 @@ import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import { join } from 'path';
 import { normalizeDbPort, DEV_DB_PORT } from './test-stack-db-env.js';
+import {
+  COVERAGE_E2E_DB_NAME,
+  retiredDatabaseMessage,
+  retiredNameOf,
+} from '@minicrm/shared/testing/testStackDbNames.js';
 
-const COVERAGE_E2E_DB_NAME = 'minicrm_coverage_e2e';
 // __dirname, not import.meta.url — the qa workspace has no "type": "module"
 // in its package.json (unlike server/), so its .ts files compile/run as
 // CommonJS, where __dirname is the natural way to resolve a path relative
@@ -92,6 +96,16 @@ async function main(): Promise<void> {
   ]);
 
   if (rows.length === 0) {
+    const retired = retiredNameOf(COVERAGE_E2E_DB_NAME);
+    const stale = retired
+      ? await adminClient.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [retired])
+      : { rows: [] };
+    if (retired && stale.rows.length > 0) {
+      await adminClient.end();
+      throw new Error(
+        `[create-coverage-e2e-db] ${retiredDatabaseMessage(retired, COVERAGE_E2E_DB_NAME)}`,
+      );
+    }
     // datname cannot be parameterised in CREATE DATABASE.
     await adminClient.query(`CREATE DATABASE "${COVERAGE_E2E_DB_NAME}"`);
     console.log(`[create-coverage-e2e-db] Created database ${COVERAGE_E2E_DB_NAME}.`);

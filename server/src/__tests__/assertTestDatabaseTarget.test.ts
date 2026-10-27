@@ -11,6 +11,7 @@ import {
   assertTestDatabaseTarget,
   assertTestDatabasePort,
 } from '../scripts/assertTestDatabaseTarget.js';
+import { retiredDatabaseMessage, retiredNameOf } from '@minicrm/shared/testing/testStackDbNames.js';
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -23,26 +24,44 @@ afterAll(() => {
   process.env = ORIGINAL_ENV;
 });
 
+describe('retired test database names', () => {
+  it('maps each current name back to the name it replaced', () => {
+    expect(retiredNameOf('minicrm_e2e_test')).toBe('minicrm_e2e');
+    expect(retiredNameOf('minicrm_coverage_e2e_test')).toBe('minicrm_coverage_e2e');
+  });
+
+  it('has no retired name for a database never renamed, or for a retired name itself', () => {
+    expect(retiredNameOf('minicrm_test')).toBeUndefined();
+    expect(retiredNameOf('minicrm_e2e')).toBeUndefined();
+  });
+
+  it('tells setup how to rename in place rather than create an empty database', () => {
+    expect(retiredDatabaseMessage('minicrm_e2e', 'minicrm_e2e_test')).toContain(
+      "'ALTER DATABASE minicrm_e2e RENAME TO minicrm_e2e_test'",
+    );
+  });
+});
+
 describe('assertTestDatabaseTarget', () => {
   it('accepts a test database on the test stack port', () => {
     process.env.DB_PORT = '5433';
-    process.env.DB_NAME = 'minicrm_e2e';
+    process.env.DB_NAME = 'minicrm_e2e_test';
 
     expect(assertTestDatabaseTarget('spec')).toEqual({
       host: 'localhost',
       port: '5433',
-      database: 'minicrm_e2e',
+      database: 'minicrm_e2e_test',
     });
   });
 
   // CI has one Postgres service container on 5432 and sets DB_NAME explicitly. The guard
-  // must be inert there — see the DB_PORT: 5432 / DB_NAME: minicrm_e2e pairs in ci.yml.
+  // must be inert there — see the DB_PORT: 5432 / DB_NAME: minicrm_e2e_test pairs in ci.yml.
   it("accepts CI's port 5432 when the database is a test database", () => {
     process.env.DB_PORT = '5432';
-    process.env.DB_NAME = 'minicrm_e2e';
+    process.env.DB_NAME = 'minicrm_e2e_test';
     process.env.CI = 'true';
 
-    expect(assertTestDatabaseTarget('spec').database).toBe('minicrm_e2e');
+    expect(assertTestDatabaseTarget('spec').database).toBe('minicrm_e2e_test');
   });
 
   it('accepts minicrm_test, the unit-suite database', () => {
@@ -54,7 +73,7 @@ describe('assertTestDatabaseTarget', () => {
 
   it('throws when DB_PORT is unset, rather than defaulting to the dev port', () => {
     delete process.env.DB_PORT;
-    process.env.DB_NAME = 'minicrm_e2e';
+    process.env.DB_NAME = 'minicrm_e2e_test';
 
     expect(() => assertTestDatabaseTarget('spec')).toThrow(/DB_PORT is not set/);
   });
@@ -63,7 +82,7 @@ describe('assertTestDatabaseTarget', () => {
   // non-numeric value must be rejected here rather than passed through.
   it('throws when DB_PORT is non-numeric', () => {
     process.env.DB_PORT = 'abc';
-    process.env.DB_NAME = 'minicrm_e2e';
+    process.env.DB_NAME = 'minicrm_e2e_test';
 
     expect(() => assertTestDatabaseTarget('spec')).toThrow(/not a valid port number/);
   });
@@ -72,10 +91,29 @@ describe('assertTestDatabaseTarget', () => {
   // guard, or the two can diverge and the more dangerous scripts get the weaker check.
   it('rejects the dev port off CI, same as assertTestDatabasePort', () => {
     process.env.DB_PORT = '5432';
-    process.env.DB_NAME = 'minicrm_e2e';
+    process.env.DB_NAME = 'minicrm_e2e_test';
     delete process.env.CI;
 
     expect(() => assertTestDatabaseTarget('spec')).toThrow(/is the dev database/);
+  });
+
+  it.each([
+    ['DB_NAME', 'minicrm_e2e', 'minicrm_e2e_test'],
+    ['COVERAGE_DB_NAME', 'minicrm_coverage_e2e', 'minicrm_coverage_e2e_test'],
+  ] as const)('names the replacement when %s is a retired name', (envVar, retired, current) => {
+    process.env.DB_PORT = '5433';
+    process.env[envVar] = retired;
+
+    expect(() => assertTestDatabaseTarget('seed', envVar)).toThrow(
+      `${envVar}="${retired}" was renamed to "${current}"`,
+    );
+  });
+
+  it('treats an inherited property name as an unknown database, not a retired one', () => {
+    process.env.DB_PORT = '5433';
+    process.env.DB_NAME = 'constructor';
+
+    expect(() => assertTestDatabaseTarget('spec')).toThrow(/is not a test database/);
   });
 
   // The original failure: root .env supplies DB_NAME=minicrm, and the script truncates.
@@ -102,10 +140,10 @@ describe('assertTestDatabaseTarget', () => {
 
   it('validates COVERAGE_DB_NAME when asked to', () => {
     process.env.DB_PORT = '5433';
-    process.env.COVERAGE_DB_NAME = 'minicrm_coverage_e2e';
+    process.env.COVERAGE_DB_NAME = 'minicrm_coverage_e2e_test';
 
     expect(assertTestDatabaseTarget('spec', 'COVERAGE_DB_NAME').database).toBe(
-      'minicrm_coverage_e2e',
+      'minicrm_coverage_e2e_test',
     );
   });
 
