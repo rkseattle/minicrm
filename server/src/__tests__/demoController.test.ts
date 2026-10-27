@@ -35,6 +35,8 @@ beforeAll(async () => {
   // Enable demo_data feature flag for this test suite (default is false in migration seed)
   await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'demo_data'`);
 
+  // An interrupted run leaves demo rows the fixtures own; clear them first, as afterAll does.
+  await clearDemoData();
   // Remove any notes created_by these test users from prior runs before deleting users
   await pool.query(
     `DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)`,
