@@ -138,7 +138,7 @@ function extractReport(output: unknown): { report_type: string; data: unknown } 
 function renderGenericJson(output: unknown): ReactNode {
   if (output === null || output === undefined) return null;
   return (
-    <pre className="text-xs bg-gray-50 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words">
+    <pre className="text-xs bg-gray-50 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap wrap-break-word">
       {JSON.stringify(output, null, 2)}
     </pre>
   );

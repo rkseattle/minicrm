@@ -334,7 +334,7 @@ export default function MyTasksPage() {
                               onChange={toggleSelectAll}
                               aria-label={t('bulk.selectAll')}
                               data-testid="tasks-select-all"
-                              className="rounded border-gray-300"
+                              className="rounded-sm border-gray-300"
                             />
                           </th>
                         )}
@@ -385,7 +385,7 @@ export default function MyTasksPage() {
                                   onChange={() => toggleRow(task.id)}
                                   aria-label={t('bulk.selectRow')}
                                   data-testid={`bulk-select-${task.id}`}
-                                  className="rounded border-gray-300"
+                                  className="rounded-sm border-gray-300"
                                 />
                               </td>
                             )}
@@ -416,7 +416,7 @@ export default function MyTasksPage() {
                                   {formatLocalDate(task.due_date, i18n.language)}
                                   {overdue && (
                                     <span
-                                      className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
+                                      className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
                                       data-testid={`task-overdue-badge-${task.id}`}
                                     >
                                       {t('myTasks.overdue')}
@@ -496,7 +496,7 @@ export default function MyTasksPage() {
                                 checked={selectedIds.has(task.id)}
                                 onChange={() => toggleRow(task.id)}
                                 data-testid={`bulk-select-${task.id}`}
-                                className="mt-1 rounded border-gray-300 shrink-0"
+                                className="mt-1 rounded-sm border-gray-300 shrink-0"
                               />
                             )}
                             {/* min-w-0: prevents flex child overflow for long subject strings */}
@@ -522,7 +522,7 @@ export default function MyTasksPage() {
                                     {formatLocalDate(task.due_date, i18n.language)}
                                     {overdue && (
                                       <span
-                                        className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
+                                        className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
                                         data-testid={`task-overdue-badge-${task.id}`}
                                       >
                                         {t('myTasks.overdue')}

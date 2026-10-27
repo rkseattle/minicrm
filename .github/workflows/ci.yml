@@ -843,16 +843,8 @@ jobs:
       #
       # Result: 19 advisories -> 0. Pins live in the root package.json `overrides`.
       #
-      # One override knowingly violates a declared range: @connectrpc/connect-node
-      # asks for undici `^5.28.4`, so `npm ls undici` reports `invalid`. That
-      # violation is PRE-EXISTING — main already served it a hoisted v7 (7.28.0) and
-      # reported the same `invalid`; this pin moves 7.28.0 -> 7.29.0 within an
-      # already-violated range, it does not create the violation. It is safe because
-      # connect-node's ONLY undici usage is dist/cjs/node-headers-polyfill.js, which
-      # reads `undici.Headers` solely under `if (major < 18)` — dead code on Node 24
-      # (CI) and Node 22, and undici v7 exports `Headers` regardless. Verified by
-      # loading @connectrpc/connect-node against 7.29.0. Recheck this if connect-node
-      # is upgraded or its undici surface grows beyond that polyfill.
+      # The undici pin's range violations and why each is safe are recorded in
+      # docs/dev/dependencies.md (the undici worked example), not restated here.
       #
       # Keep this job at zero. If a future advisory genuinely has no fix, add an
       # allowlist back with a written justification and a re-resolve actually

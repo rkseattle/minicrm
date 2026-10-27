@@ -214,8 +214,8 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
 
         {isLoading && (
           <div className="space-y-2" aria-hidden="true">
-            <div className="h-4 w-48 bg-gray-100 rounded animate-pulse" />
-            <div className="h-24 w-full bg-gray-100 rounded animate-pulse" />
+            <div className="h-4 w-48 bg-gray-100 rounded-sm animate-pulse" />
+            <div className="h-24 w-full bg-gray-100 rounded-sm animate-pulse" />
           </div>
         )}
 
@@ -359,7 +359,7 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
             <textarea
               id="dismiss-reason"
               data-testid="data-hygiene-dismiss-reason-input"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs"
               rows={3}
               value={dismissDialog.reason}
               onChange={(e) => setDismissDialog({ ...dismissDialog, reason: e.target.value })}

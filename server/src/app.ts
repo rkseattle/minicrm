@@ -132,6 +132,12 @@ const JSON_BODY_SIZE_LIMIT = '10mb';
 app.use(express.json({ limit: JSON_BODY_SIZE_LIMIT }));
 // SAML POST binding sends assertions as application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: false }));
+// Express 5 leaves req.body undefined when no body is sent; every controller's
+// safeParse expects Express 4's empty object, so a bodiless POST must not read as invalid.
+app.use((req, _res, next) => {
+  req.body ??= {};
+  next();
+});
 app.use(cookieParser());
 
 // Coverage/TIA correlation-ID propagation: reads

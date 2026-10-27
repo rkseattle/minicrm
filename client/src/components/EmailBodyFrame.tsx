@@ -44,7 +44,7 @@ interface EmailBodyFrameProps {
 export default function EmailBodyFrame({ html, allowImages, title }: EmailBodyFrameProps) {
   const { t } = useTranslation();
   return (
-    <div className="h-64 resize-y overflow-hidden rounded border border-gray-200 bg-white">
+    <div className="h-64 resize-y overflow-hidden rounded-sm border border-gray-200 bg-white">
       <iframe
         title={t('emails.bodyFrameTitle', { subject: title })}
         sandbox={EMAIL_FRAME_SANDBOX}

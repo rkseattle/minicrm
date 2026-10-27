@@ -116,7 +116,7 @@ export default function ChangePasswordPage() {
           {t('changePassword.contextBanner')}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-8">
           <h2 className="text-base font-semibold text-gray-900 mb-6">
             {t('changePassword.title')}
           </h2>

@@ -167,7 +167,7 @@ export default function ConvertLeadModal({ lead, onClose, onConverted }: Convert
             type="button"
             onClick={onClose}
             data-testid="convert-modal-close"
-            className="rounded p-1 text-gray-500 hover:text-gray-600"
+            className="rounded-sm p-1 text-gray-500 hover:text-gray-600"
             aria-label={t('leads.cancel')}
           >
             <svg

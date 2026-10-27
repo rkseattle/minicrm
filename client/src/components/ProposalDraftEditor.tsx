@@ -314,7 +314,7 @@ export default function ProposalDraftEditor({
             ariaLabel={t('proposalDraft.proposedSolutionHeading')}
             value={draft.proposed_solution}
             onChange={(text) => updateField('proposed_solution', text)}
-            minHeightClassName="min-h-[8rem]"
+            minHeightClassName="min-h-32"
           />
         </section>
 

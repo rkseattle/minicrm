@@ -123,7 +123,7 @@ export default function ContactSelector({
                   type="button"
                   aria-label={`Remove ${contact.first_name} ${contact.last_name}`}
                   data-testid={`${id}-remove-${contact.id}`}
-                  className="ms-1 text-primary-400 hover:text-primary-700 focus:outline-none"
+                  className="ms-1 text-primary-400 hover:text-primary-700 focus:outline-hidden"
                   onClick={() => removeContact(contact.id)}
                 >
                   ×
@@ -179,7 +179,7 @@ export default function ContactSelector({
                   <button
                     type="button"
                     data-testid={`${id}-option-${contact.id}`}
-                    className="w-full text-start px-4 py-2 text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-none"
+                    className="w-full text-start px-4 py-2 text-sm hover:bg-primary-50 focus:bg-primary-50 focus:outline-hidden"
                     onClick={() => addContact(contact.id)}
                   >
                     <span className="font-medium text-gray-900">

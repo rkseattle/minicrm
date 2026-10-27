@@ -289,7 +289,7 @@ export default function LeadDetailPage() {
 
         {/* Edit form */}
         {isEditing && (
-          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 shadow-xs">
             {updateError && (
               <p className="mb-4 text-sm text-red-600" role="alert">
                 {updateError}
@@ -355,7 +355,7 @@ export default function LeadDetailPage() {
 
         {/* Detail fields */}
         {!isEditing && (
-          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 shadow-xs">
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <dt className="text-xs font-medium uppercase text-gray-500">
@@ -486,7 +486,7 @@ export default function LeadDetailPage() {
           >
             {/* Status history timeline */}
             {history.length > 0 && (
-              <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-xs">
                 <h2 className="mb-4 text-sm font-semibold uppercase text-gray-500">
                   {t('leads.statusHistoryHeading')}
                 </h2>
@@ -503,7 +503,7 @@ export default function LeadDetailPage() {
                         {t(`leads.status${entry.to_status}`)}
                       </span>
                       {/* min-w-0: prevents flex child overflow for long names/status strings */}
-                      <span className="text-gray-600 min-w-0 break-words">
+                      <span className="text-gray-600 min-w-0 wrap-break-word">
                         {entry.from_status
                           ? t('leads.statusChangedFrom', {
                               actor: entry.changed_by_name ?? t('leads.unknownActor'),

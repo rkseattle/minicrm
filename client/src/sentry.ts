@@ -38,7 +38,8 @@ export async function redactPiiFromEvent(event: ErrorEvent): Promise<ErrorEvent>
       ...safeUser,
       ...(email !== undefined && { email: await sha256Hex(email) }),
       ...(username !== undefined && { username: await sha256Hex(username) }),
-      ...(name !== undefined && { name: await sha256Hex(name) }),
+      // User types `name` as unknown, but it is still PII and must be hashed.
+      ...(name !== undefined && { name: await sha256Hex(String(name)) }),
     };
   }
 

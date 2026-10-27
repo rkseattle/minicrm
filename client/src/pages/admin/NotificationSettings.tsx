@@ -174,7 +174,7 @@ export default function NotificationSettings() {
     <>
       {/* ── Email Notifications section ─────────────────────── */}
       <div
-        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+        className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="email-notifications-section"
       >
         <h2
@@ -216,14 +216,14 @@ export default function NotificationSettings() {
                 disabled={emailNotifSaving}
                 onClick={() => handleEmailNotifToggle(!emailNotifEnabled)}
                 className={[
-                  'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                  'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
                   emailNotifEnabled ? 'bg-primary-600' : 'bg-gray-200',
                   emailNotifSaving ? 'opacity-50 cursor-not-allowed' : '',
                 ].join(' ')}
               >
                 <span
                   className={[
-                    'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                    'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out',
                     emailNotifEnabled ? 'translate-x-5' : 'translate-x-0',
                   ].join(' ')}
                 />
@@ -252,7 +252,7 @@ export default function NotificationSettings() {
       {/* ── SMTP Configuration section ──────────────────────── */}
       {user?.role === 'admin' && (
         <div
-          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
           data-testid="smtp-section"
         >
           <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="smtp-section-title">
@@ -283,7 +283,7 @@ export default function NotificationSettings() {
                   data-testid="smtp-host-input"
                   value={smtpForm.smtp_host}
                   onChange={(e) => setSmtpHost(e.target.value)}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
                   placeholder="smtp.example.com"
                 />
               </div>
@@ -300,7 +300,7 @@ export default function NotificationSettings() {
                   min={1}
                   max={65535}
                   onChange={(e) => setSmtpPort(parseInt(e.target.value, 10) || 587)}
-                  className="block w-32 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="block w-32 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
                 />
               </div>
 
@@ -314,7 +314,7 @@ export default function NotificationSettings() {
                   data-testid="smtp-user-input"
                   value={smtpForm.smtp_user}
                   onChange={(e) => setSmtpUser(e.target.value)}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
                 />
               </div>
 
@@ -345,7 +345,7 @@ export default function NotificationSettings() {
                       data-testid="smtp-pass-input"
                       value={smtpForm.smtp_pass}
                       onChange={(e) => setSmtpPass(e.target.value)}
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
                       autoComplete="new-password"
                     />
                     {smtpData?.smtp_pass_set && (
@@ -374,13 +374,13 @@ export default function NotificationSettings() {
                   data-testid="smtp-enabled-toggle"
                   onClick={() => setSmtpEnabled((prev) => !prev)}
                   className={[
-                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                    'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
                     smtpForm.smtp_enabled ? 'bg-primary-600' : 'bg-gray-200',
                   ].join(' ')}
                 >
                   <span
                     className={[
-                      'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                      'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out',
                       smtpForm.smtp_enabled ? 'translate-x-5' : 'translate-x-0',
                     ].join(' ')}
                   />
@@ -436,7 +436,7 @@ export default function NotificationSettings() {
                         setSmtpTestAddress(e.target.value);
                         setSmtpTestStatus('idle');
                       }}
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
                       placeholder="you@example.com"
                     />
                   </div>
@@ -466,7 +466,7 @@ export default function NotificationSettings() {
                 {smtpTestStatus === 'error' && (
                   <p
                     role="alert"
-                    className="mt-2 text-sm text-red-600 break-words"
+                    className="mt-2 text-sm text-red-600 wrap-break-word"
                     data-testid="smtp-test-error"
                   >
                     {t('settings.smtp.testError', { message: smtpTestErrorMessage })}

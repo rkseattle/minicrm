@@ -68,7 +68,7 @@ function ToggleConfirmDialog({
         <div className="flex justify-end gap-3">
           <button
             type="button"
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             onClick={onCancel}
             disabled={isPending}
             data-testid="ai-toggle-cancel-button"
@@ -77,7 +77,7 @@ function ToggleConfirmDialog({
           </button>
           <button
             type="button"
-            className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 ${enabling ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500' : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'}`}
+            className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 disabled:opacity-50 ${enabling ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500' : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'}`}
             onClick={onConfirm}
             disabled={isPending}
             data-testid="ai-toggle-confirm-button"
@@ -201,7 +201,7 @@ export default function AiSettings({ disabled = false }: AiSettingsProps) {
     <div className="space-y-8" data-testid="ai-settings-panel" role="region">
       {disabled && (
         <p
-          className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2"
+          className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2"
           data-testid="ai-panel-disabled-banner"
         >
           {t('settings.featureDisabledBanner')}
@@ -226,7 +226,7 @@ export default function AiSettings({ disabled = false }: AiSettingsProps) {
             onClick={handleToggleClick}
             disabled={toggleMutation.isPending}
             data-testid="ai-master-toggle"
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 ${data.enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 ${data.enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${data.enabled ? 'translate-x-6' : 'translate-x-1'}`}

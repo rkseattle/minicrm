@@ -33,7 +33,7 @@ function InsightRow({ insight }: { insight: RepCoachingInsight }) {
         <p className="text-sm text-gray-900">{insight.observation}</p>
         {insight.is_outlier && (
           <span
-            className="shrink-0 inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800"
+            className="shrink-0 inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800"
             data-testid={`coaching-insight-outlier-badge-${insight.metric_type}-${insight.segment ?? 'all'}`}
           >
             {t('coaching.outlierBadge')}
@@ -55,8 +55,8 @@ function RepInsightsList({ repId }: { repId: string }) {
   if (isLoading) {
     return (
       <div className="space-y-2 px-6 py-4" aria-hidden="true">
-        <div className="h-4 w-48 bg-gray-100 rounded animate-pulse" />
-        <div className="h-24 w-full bg-gray-100 rounded animate-pulse" />
+        <div className="h-4 w-48 bg-gray-100 rounded-sm animate-pulse" />
+        <div className="h-24 w-full bg-gray-100 rounded-sm animate-pulse" />
       </div>
     );
   }
@@ -169,11 +169,11 @@ export default function CoachingInsightsPage() {
             {t('coaching.repSelectorLabel')}
           </label>
           {overviewLoading ? (
-            <div className="h-9 w-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+            <div className="h-9 w-64 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
           ) : (
             <select
               id="coaching-rep-select"
-              className="block w-full max-w-xs rounded-md border-gray-300 shadow-sm text-sm"
+              className="block w-full max-w-xs rounded-md border-gray-300 shadow-xs text-sm"
               data-testid="coaching-rep-select"
               value={effectiveRepId ?? ''}
               onChange={(e) => setSelectedRepId(e.target.value)}

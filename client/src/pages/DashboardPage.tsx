@@ -60,11 +60,11 @@ interface StatCardProps {
 function StatCard({ label, value, linkTo, testId, variant = 'default' }: StatCardProps) {
   // clamp(): fluid font between 1rem (mobile) and 1.875rem (desktop) so currency
   // strings like "$1,234,567.89" never overflow card borders at intermediate widths.
-  // break-words ensures no unbreakable string (e.g. ¥1234567890) escapes the card.
+  // wrap-break-word ensures no unbreakable string (e.g. ¥1234567890) escapes the card.
   const valueClass =
     variant === 'warning'
-      ? 'text-[clamp(1rem,2.5vw,1.875rem)] font-bold text-red-600 break-words'
-      : 'text-[clamp(1rem,2.5vw,1.875rem)] font-bold text-gray-900 break-words';
+      ? 'text-[clamp(1rem,2.5vw,1.875rem)] font-bold text-red-600 wrap-break-word'
+      : 'text-[clamp(1rem,2.5vw,1.875rem)] font-bold text-gray-900 wrap-break-word';
 
   return (
     <div
@@ -234,7 +234,7 @@ function RecentActivityFeed({ activities }: { activities: RecentActivityEntry[] 
               >
                 {/* Type badge */}
                 <span
-                  className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium shrink-0 whitespace-nowrap ${badge.className}`}
+                  className={`inline-flex items-center justify-center rounded-sm px-2 py-0.5 text-xs font-medium shrink-0 whitespace-nowrap ${badge.className}`}
                   data-testid={`recent-activity-type-${entry.id}`}
                 >
                   {badge.label}
@@ -383,7 +383,7 @@ export default function DashboardPage() {
                       {')'}
                     </p>
                     <p
-                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 break-words"
+                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 wrap-break-word"
                       data-testid="stat-converted-pipeline-value"
                     >
                       {data.convertedPipelineValue !== null
@@ -403,7 +403,7 @@ export default function DashboardPage() {
                       {')'}
                     </p>
                     <p
-                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 break-words"
+                      className="text-[clamp(1rem,2.5vw,1.5rem)] font-bold text-gray-900 wrap-break-word"
                       data-testid="stat-converted-weighted-pipeline-value"
                     >
                       {data.convertedWeightedPipelineValue !== null
@@ -516,7 +516,7 @@ export default function DashboardPage() {
                             {row.count}
                           </td>
                           <td
-                            className="px-6 py-4 text-sm text-gray-600 text-end break-words"
+                            className="px-6 py-4 text-sm text-gray-600 text-end wrap-break-word"
                             data-testid={`stage-value-${row.stage}`}
                           >
                             {row.mixedCurrencies
@@ -524,7 +524,7 @@ export default function DashboardPage() {
                               : formatCurrency(row.value, i18n.language, row.currency ?? 'USD')}
                           </td>
                           <td
-                            className="px-6 py-4 text-sm text-gray-600 text-end break-words"
+                            className="px-6 py-4 text-sm text-gray-600 text-end wrap-break-word"
                             data-testid={`stage-weighted-value-${row.stage}`}
                           >
                             {row.mixedCurrencies

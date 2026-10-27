@@ -6,8 +6,8 @@
 //
 // Decides on ADVISORIES, not on metadata.vulnerabilities. The metadata counts
 // packages, and a package inherits the severity of every advisory beneath it:
-// one braces advisory makes micromatch, chokidar, tailwindcss and
-// markdownlint-cli2 all count as "high". Subtracting allowlisted packages from
+// one braces advisory makes micromatch, chokidar and markdownlint-cli2
+// all count as "high". Subtracting allowlisted packages from
 // those counts would either leave the dependents blocking or require guessing
 // which counts came from where. Every inherited severity ends at an advisory
 // object, so judging the advisory objects alone is exact.

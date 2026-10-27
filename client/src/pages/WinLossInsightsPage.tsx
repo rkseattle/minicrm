@@ -139,8 +139,8 @@ export default function WinLossInsightsPage() {
 
         {isLoading && (
           <div className="space-y-2" aria-hidden="true">
-            <div className="h-4 w-48 bg-gray-100 rounded animate-pulse" />
-            <div className="h-24 w-full bg-gray-100 rounded animate-pulse" />
+            <div className="h-4 w-48 bg-gray-100 rounded-sm animate-pulse" />
+            <div className="h-24 w-full bg-gray-100 rounded-sm animate-pulse" />
           </div>
         )}
 

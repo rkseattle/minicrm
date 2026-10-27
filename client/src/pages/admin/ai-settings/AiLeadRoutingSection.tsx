@@ -160,7 +160,7 @@ function WeightsForm({ config }: { config: LeadRoutingConfigResponse }) {
               step={0.01}
               value={form[key]}
               onChange={(e) => updateField(key, e.target.value)}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
               data-testid={`lead-routing-${key}-input`}
             />
           </div>
@@ -180,7 +180,7 @@ function WeightsForm({ config }: { config: LeadRoutingConfigResponse }) {
             step={0.01}
             value={form.low_confidence_threshold}
             onChange={(e) => updateField('low_confidence_threshold', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="lead-routing-low-confidence-threshold-input"
           />
         </div>
@@ -199,7 +199,7 @@ function WeightsForm({ config }: { config: LeadRoutingConfigResponse }) {
             step={0.01}
             value={form.medium_confidence_threshold}
             onChange={(e) => updateField('medium_confidence_threshold', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="lead-routing-medium-confidence-threshold-input"
           />
         </div>
@@ -217,7 +217,7 @@ function WeightsForm({ config }: { config: LeadRoutingConfigResponse }) {
             step={1}
             value={form.min_closed_deals_for_win_rate}
             onChange={(e) => updateField('min_closed_deals_for_win_rate', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="lead-routing-min-closed-deals-input"
           />
         </div>
@@ -277,7 +277,7 @@ function TeamOverridesList() {
   if (teamsLoading || overridesLoading) {
     return (
       <div
-        className="animate-pulse h-16 bg-gray-100 rounded"
+        className="animate-pulse h-16 bg-gray-100 rounded-sm"
         data-testid="lead-routing-team-overrides-loading"
       />
     );
@@ -314,7 +314,7 @@ function TeamOverridesList() {
                 onClick={() => mutation.mutate({ teamId: team.id, enabled: !enabled })}
                 disabled={mutation.isPending}
                 data-testid={`lead-routing-team-override-toggle-${team.id}`}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 ${enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 ${enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
               >
                 <span
                   className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : 'translate-x-1'}`}

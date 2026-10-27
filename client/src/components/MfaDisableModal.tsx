@@ -108,7 +108,7 @@ export default function MfaDisableModal({ isOpen, onSuccess, onCancel }: MfaDisa
                   setPassword(e.target.value);
                   setInvalidPassword(false);
                 }}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                 data-testid="mfa-disable-password-input"
               />
               {invalidPassword && (

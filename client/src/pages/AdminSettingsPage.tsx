@@ -76,7 +76,7 @@ function DisabledPanelWrapper({ Panel, banner }: { Panel: React.ComponentType; b
   return (
     <div className="opacity-60" aria-disabled="true" data-testid="ai-panel-disabled-wrapper">
       <p
-        className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-6"
+        className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-6"
         data-testid="ai-panel-disabled-banner"
       >
         {banner}

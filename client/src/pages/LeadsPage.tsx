@@ -398,12 +398,12 @@ export default function LeadsPage() {
 
         {/* Inline create form */}
         {showForm && (
-          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 shadow-xs">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">{t('leads.newLead')}</h2>
 
             {duplicateLead && (
               <div
-                className="mb-4 rounded border border-yellow-300 bg-yellow-50 p-4"
+                className="mb-4 rounded-sm border border-yellow-300 bg-yellow-50 p-4"
                 role="alert"
                 data-testid="duplicate-lead-warning"
               >
@@ -578,7 +578,7 @@ export default function LeadsPage() {
                       setIncludeDisqualified(e.target.checked);
                       setPage(1);
                     }}
-                    className="rounded border-gray-300"
+                    className="rounded-sm border-gray-300"
                     data-testid="toggle-disqualified"
                   />
                   {t('leads.showDisqualified')}
@@ -593,7 +593,7 @@ export default function LeadsPage() {
                       setIncludeConverted(e.target.checked);
                       setPage(1);
                     }}
-                    className="rounded border-gray-300"
+                    className="rounded-sm border-gray-300"
                     data-testid="toggle-converted"
                   />
                   {t('leads.showConverted')}
@@ -655,7 +655,7 @@ export default function LeadsPage() {
                           onChange={toggleSelectAll}
                           aria-label={t('bulk.selectAll')}
                           data-testid="leads-select-all"
-                          className="rounded border-gray-300"
+                          className="rounded-sm border-gray-300"
                         />
                       </th>
                     )}
@@ -698,7 +698,7 @@ export default function LeadsPage() {
                               checked={selectedIds.has(lead.id)}
                               onChange={() => toggleRow(lead.id)}
                               data-testid={`bulk-select-${lead.id}`}
-                              className="rounded border-gray-300"
+                              className="rounded-sm border-gray-300"
                             />
                           </td>
                         )}
@@ -740,7 +740,7 @@ export default function LeadsPage() {
                                   version: lead.version,
                                 });
                               }}
-                              className="rounded border border-gray-300 py-0.5 text-xs"
+                              className="rounded-sm border border-gray-300 py-0.5 text-xs"
                               data-testid={`status-select-${lead.id}`}
                             >
                               {LEAD_STATUSES.map((s) => (

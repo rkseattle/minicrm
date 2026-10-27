@@ -97,7 +97,7 @@ export default function ObjectionInsights({ activityId, hasNotes }: ObjectionIns
           role="region"
           aria-label={t('objections.precedentsPanelLabel')}
           data-testid={`objection-precedents-panel-${activityId}`}
-          className="absolute z-10 top-full mt-1 start-0 w-80 rounded-md border border-gray-200 bg-white p-3 text-xs text-gray-700 shadow-lg"
+          className="absolute z-10 top-full mt-1 inset-s-0 w-80 rounded-md border border-gray-200 bg-white p-3 text-xs text-gray-700 shadow-lg"
         >
           {precedentsQuery.isLoading && <p className="text-gray-400">{t('common.loading')}</p>}
 

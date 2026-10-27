@@ -108,8 +108,8 @@ export function InlineStatusSelect({
         aria-label={t('users.statusSelectLabel', { name: user.name })}
         data-testid={`status-select-${user.id}`}
         className={[
-          'rounded border text-sm bg-white px-2 py-1 leading-tight',
-          'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+          'rounded-sm border text-sm bg-white px-2 py-1 leading-tight',
+          'focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent',
           'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500',
           isDisabled ? 'border-transparent' : 'border-gray-300',
         ].join(' ')}
@@ -148,7 +148,7 @@ export function InlineStatusSelect({
                 <button
                   type="button"
                   data-testid="deactivate-self-close"
-                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-gray-400"
                   onClick={handleSelfDeactivateClose}
                 >
                   {t('users.cancel')}

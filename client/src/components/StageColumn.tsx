@@ -175,7 +175,7 @@ export default function StageColumn({
   return (
     <div
       data-testid={`stage-column-${slug}`}
-      className={`${fullWidth ? 'w-full' : 'flex-shrink-0 w-64'} rounded-lg border ${columnWrapperClass(stage)} flex flex-col`}
+      className={`${fullWidth ? 'w-full' : 'shrink-0 w-64'} rounded-lg border ${columnWrapperClass(stage)} flex flex-col`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >

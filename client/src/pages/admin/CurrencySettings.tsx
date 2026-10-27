@@ -176,7 +176,7 @@ export default function CurrencySettings() {
     <>
       {/* ── Default Currency section ─────────────────────────── */}
       <div
-        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+        className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="currency-section"
       >
         <h2
@@ -247,7 +247,7 @@ export default function CurrencySettings() {
       {/* ── Exchange Rates section ──────────────────────────── */}
       {user?.role === 'admin' && (
         <div
-          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
           data-testid="exchange-rates-section"
         >
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
@@ -258,7 +258,7 @@ export default function CurrencySettings() {
           {ratesRecalculated && (
             <p
               role="alert"
-              className="mb-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2"
+              className="mb-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2"
               data-testid="exchange-rate-recalculated-banner"
             >
               {t('settings.exchangeRates.recalculatedBanner')}
@@ -288,7 +288,7 @@ export default function CurrencySettings() {
 
           <div className="overflow-x-auto mb-4 w-full" style={{ contain: 'paint' }}>
             <table
-              className="min-w-full divide-y divide-gray-100 border border-gray-200 rounded"
+              className="min-w-full divide-y divide-gray-100 border border-gray-200 rounded-sm"
               data-testid="exchange-rate-table"
             >
               <thead className="bg-gray-50">
@@ -356,7 +356,7 @@ export default function CurrencySettings() {
                         aria-label={t('settings.exchangeRates.rateInputLabel')}
                         data-testid={`exchange-rate-input-${row.code}`}
                         value={row.rate}
-                        className="w-28 border border-gray-300 rounded px-2 py-1 text-sm text-end focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-28 border border-gray-300 rounded-sm px-2 py-1 text-sm text-end focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                         onChange={(e) => {
                           const updatedRate = e.target.value;
                           setRateRows((previous) =>
@@ -391,7 +391,7 @@ export default function CurrencySettings() {
 
           {showAddCurrency ? (
             <div
-              className="mb-4 flex flex-wrap gap-3 items-end p-3 bg-gray-50 rounded border border-gray-200"
+              className="mb-4 flex flex-wrap gap-3 items-end p-3 bg-gray-50 rounded-sm border border-gray-200"
               data-testid="add-currency-form"
             >
               <div>
@@ -433,7 +433,7 @@ export default function CurrencySettings() {
                   value={addCurrencyRate}
                   onChange={(e) => setAddCurrencyRate(e.target.value)}
                   placeholder="1.0"
-                  className="w-28 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-28 border border-gray-300 rounded-sm px-2 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                 />
               </div>
               <div className="flex gap-2">

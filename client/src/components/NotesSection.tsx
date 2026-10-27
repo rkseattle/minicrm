@@ -134,7 +134,7 @@ export class ImageNode extends DecoratorNode<ReactElement> {
       <img
         src={this.__src}
         alt={this.__alt}
-        className="max-w-full rounded my-1"
+        className="max-w-full rounded-sm my-1"
         data-testid="note-image"
       />
     );
@@ -151,7 +151,7 @@ const LEXICAL_THEME = {
     italic: 'italic',
     underline: 'underline',
     strikethrough: 'line-through',
-    code: 'font-mono bg-gray-100 rounded px-1 text-sm',
+    code: 'font-mono bg-gray-100 rounded-sm px-1 text-sm',
   },
   heading: {
     h1: 'text-2xl font-bold mt-3 mb-1',
@@ -332,7 +332,7 @@ function ToolbarPlugin({ onImageUpload }: ToolbarPluginProps) {
       aria-label={label}
       aria-pressed={active}
       title={label}
-      className={`rounded px-1.5 py-0.5 text-xs font-medium transition-colors ${
+      className={`rounded-sm px-1.5 py-0.5 text-xs font-medium transition-colors ${
         active ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-gray-100'
       }`}
     >
@@ -407,7 +407,7 @@ function ToolbarPlugin({ onImageUpload }: ToolbarPluginProps) {
           data-testid="toolbar-image"
           aria-label={t('notes.toolbarImage')}
           title={t('notes.toolbarImage')}
-          className="rounded px-1.5 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+          className="rounded-sm px-1.5 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors"
         >
           {t('notes.toolbarImageSymbol')}
         </button>
@@ -632,7 +632,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
         placeholder={t('notes.titlePlaceholder')}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="w-full px-3 py-2 text-sm border-b border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        className="w-full px-3 py-2 text-sm border-b border-gray-200 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
       />
 
       {/* Lexical editor */}
@@ -648,7 +648,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className="outline-none min-h-[120px] text-sm text-gray-900"
+                className="outline-hidden min-h-[120px] text-sm text-gray-900"
                 data-testid="notes-composer-content"
               />
             }
@@ -690,7 +690,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as NoteVisibility)}
             data-testid="notes-visibility-select"
-            className="text-xs border border-gray-300 rounded px-1.5 py-0.5"
+            className="text-xs border border-gray-300 rounded-sm px-1.5 py-0.5"
           >
             {VISIBILITY_OPTIONS.map((v) => (
               <option key={v} value={v}>
@@ -728,7 +728,7 @@ function NoteComposer({ entityType, entityId, editingNote, onSaved, onCancel }: 
             onKeyDown={handleTagKeyDown}
             placeholder={tags.length === 0 ? t('notes.tagsPlaceholder') : ''}
             data-testid="notes-tag-input"
-            className="text-xs outline-none bg-transparent min-w-[80px]"
+            className="text-xs outline-hidden bg-transparent min-w-[80px]"
           />
         </div>
       </div>
@@ -865,7 +865,7 @@ function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: No
 
       {note.title && (
         <h3
-          className="text-sm font-semibold text-gray-900 mb-1 min-w-0 break-words"
+          className="text-sm font-semibold text-gray-900 mb-1 min-w-0 wrap-break-word"
           data-testid={`note-title-${note.id}`}
         >
           {note.title}
@@ -874,13 +874,13 @@ function NoteCard({ note, currentUserId, currentUserRole, onEdit, onDelete }: No
 
       {renderedHtml !== null ? (
         <div
-          className="prose prose-sm max-w-none min-w-0 break-words text-sm"
+          className="prose prose-sm max-w-none min-w-0 wrap-break-word text-sm"
           data-testid={`note-body-${note.id}`}
           dangerouslySetInnerHTML={{ __html: renderedHtml }}
         />
       ) : (
         <div
-          className="prose prose-sm max-w-none min-w-0 break-words text-sm whitespace-pre-wrap"
+          className="prose prose-sm max-w-none min-w-0 wrap-break-word text-sm whitespace-pre-wrap"
           data-testid={`note-body-${note.id}`}
         >
           {note.body_text}
@@ -988,8 +988,8 @@ export default function NotesSection({ entityType, entityId }: NotesSectionProps
         >
           {[1, 2].map((i) => (
             <div key={i} className="px-4 py-4 animate-pulse">
-              <div className="h-3 bg-gray-200 rounded w-1/4 mb-2" />
-              <div className="h-3 bg-gray-200 rounded w-3/4" />
+              <div className="h-3 bg-gray-200 rounded-sm w-1/4 mb-2" />
+              <div className="h-3 bg-gray-200 rounded-sm w-3/4" />
             </div>
           ))}
         </div>

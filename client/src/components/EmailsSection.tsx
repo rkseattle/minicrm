@@ -98,7 +98,7 @@ function DirectionBadge({ direction }: { direction: EmailMessage['direction'] })
   return (
     <span
       data-testid={`email-direction-${direction}`}
-      className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs font-medium ${
+      className={`inline-flex shrink-0 items-center rounded-sm px-1.5 py-0.5 text-xs font-medium ${
         outbound ? 'bg-primary-50 text-primary-700' : 'bg-gray-100 text-gray-700'
       }`}
     >
@@ -140,7 +140,7 @@ function MessageBody({ message, allowImages }: { message: EmailMessage; allowIma
   }
   return (
     <p
-      className="text-sm text-gray-700 whitespace-pre-wrap break-words"
+      className="text-sm text-gray-700 whitespace-pre-wrap wrap-break-word"
       data-testid={`email-body-text-${message.id}`}
     >
       {data.body_text ?? message.snippet ?? ''}
@@ -224,7 +224,7 @@ export default function EmailsSection({
 
   return (
     <section
-      className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6"
+      className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6"
       data-testid="emails-section"
       aria-labelledby="emails-section-title"
     >
@@ -258,8 +258,8 @@ export default function EmailsSection({
 
       {threads.isLoading && (
         <div className="space-y-2" data-testid="emails-loading" aria-hidden="true">
-          <div className="h-12 bg-gray-100 rounded animate-pulse" />
-          <div className="h-12 bg-gray-100 rounded animate-pulse" />
+          <div className="h-12 bg-gray-100 rounded-sm animate-pulse" />
+          <div className="h-12 bg-gray-100 rounded-sm animate-pulse" />
         </div>
       )}
 
@@ -308,7 +308,7 @@ export default function EmailsSection({
                     aria-controls={isOpen ? `email-thread-body-${domId}` : undefined}
                     onClick={() => setExpanded((current) => toggle(current, key))}
                     data-testid={`email-thread-row-${domId}`}
-                    className="w-full py-3 text-start focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+                    className="w-full py-3 text-start focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500 rounded-sm"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <DirectionBadge direction={latest.direction} />
@@ -328,7 +328,7 @@ export default function EmailsSection({
                       </span>
                     </div>
                     <p
-                      className="mt-1 text-sm font-medium text-gray-900 break-words"
+                      className="mt-1 text-sm font-medium text-gray-900 wrap-break-word"
                       data-testid="email-thread-subject"
                     >
                       {latest.subject ?? t('emails.noSubject')}
@@ -363,7 +363,7 @@ export default function EmailsSection({
                         return (
                           <article
                             key={message.id}
-                            className="rounded border border-gray-100 p-3"
+                            className="rounded-sm border border-gray-100 p-3"
                             data-testid={`email-message-${message.id}`}
                           >
                             <button
@@ -376,7 +376,7 @@ export default function EmailsSection({
                                 setToggledMessages((current) => toggle(current, message.id))
                               }
                               data-testid={`email-message-toggle-${message.id}`}
-                              className="flex w-full items-center gap-2 min-w-0 text-start rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                              className="flex w-full items-center gap-2 min-w-0 text-start rounded-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary-500"
                             >
                               <DirectionBadge direction={message.direction} />
                               <span className="text-sm text-gray-700 truncate min-w-0">

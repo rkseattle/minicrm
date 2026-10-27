@@ -162,8 +162,8 @@ export default function AdminTagsPage() {
   if (flagLoading) {
     return (
       <div className="p-8">
-        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
-        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+        <div className="h-8 w-48 bg-gray-200 rounded-sm animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
       </div>
     );
   }
@@ -200,7 +200,7 @@ export default function AdminTagsPage() {
               checked={restricted}
               disabled={restrictMutation.isPending}
               onChange={(e) => restrictMutation.mutate(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-60"
+              className="mt-0.5 h-4 w-4 rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-60"
               data-testid="tags-restrict-toggle"
             />
             <span className="min-w-0">

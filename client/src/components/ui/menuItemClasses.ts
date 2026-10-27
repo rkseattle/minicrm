@@ -8,4 +8,4 @@
  */
 export const MENU_ITEM_CLASSES =
   'block w-full px-4 text-start text-sm text-gray-700 hover:bg-gray-50 ' +
-  'focus:bg-gray-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50';
+  'focus:bg-gray-50 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50';

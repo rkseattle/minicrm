@@ -28,7 +28,7 @@ export default function ActivityResultCard({ activity }: ActivityResultCardProps
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           {activity.type && (
-            <span className="text-xs font-medium text-gray-600 bg-gray-200 rounded px-1.5 py-0.5">
+            <span className="text-xs font-medium text-gray-600 bg-gray-200 rounded-sm px-1.5 py-0.5">
               {activity.type}
             </span>
           )}
@@ -44,7 +44,7 @@ export default function ActivityResultCard({ activity }: ActivityResultCardProps
         )}
       </div>
       {(activity.activity_date ?? activity.due_date) && (
-        <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+        <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
           {(activity.activity_date ?? activity.due_date)!.slice(0, 10)}
         </span>
       )}

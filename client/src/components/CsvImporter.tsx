@@ -244,7 +244,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
             role="button"
             tabIndex={0}
             data-testid={`${entity}-drop-zone`}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
             onClick={() => fileInputRef.current?.click()}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click();
@@ -325,7 +325,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
                       data-testid={`${entity}-map-${field.key}`}
                       value={mapping[field.key] ?? ''}
                       onChange={(e) => handleMappingChange(field.key, e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="">{t('import.selectColumn')}</option>
                       {parseData.headers.map((h) => (
@@ -350,7 +350,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
                         onChange={(e) =>
                           setOptionValues((prev) => ({ ...prev, [opt.key]: e.target.checked }))
                         }
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        className="rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                       />
                       {opt.label}
                     </label>
@@ -364,7 +364,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
                   <h3 className="text-sm font-semibold text-gray-800 mb-2">
                     {t('import.previewHeading')}
                   </h3>
-                  <table className="min-w-full text-xs border border-gray-200 rounded">
+                  <table className="min-w-full text-xs border border-gray-200 rounded-sm">
                     <thead className="bg-gray-50">
                       <tr>
                         {parseData.fields

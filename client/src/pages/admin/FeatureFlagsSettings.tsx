@@ -112,7 +112,7 @@ function ConfirmDialog({
         </h2>
 
         {!enabling && activeUsers >= ACTIVE_USER_WARNING_THRESHOLD && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-4">
             {t('featureFlags.activeUsersWarning', { count: activeUsers })}
           </p>
         )}
@@ -126,7 +126,7 @@ function ConfirmDialog({
         <div className="flex justify-end gap-3">
           <button
             type="button"
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             onClick={onCancel}
             data-testid="feature-flag-confirm-cancel"
           >
@@ -134,7 +134,7 @@ function ConfirmDialog({
           </button>
           <button
             type="button"
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             onClick={onConfirm}
             data-testid="feature-flag-confirm-ok"
           >
@@ -201,7 +201,7 @@ function DeleteGroupDialog({ group, onConfirm, onCancel, triggerRef }: DeleteGro
           {t('featureFlags.groups.deleteConfirmTitle')}
         </h2>
         {group.member_count > 0 && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 mb-4">
             {t('featureFlags.groups.deleteConfirmWarning', {
               count: group.member_count,
             })}
@@ -212,7 +212,7 @@ function DeleteGroupDialog({ group, onConfirm, onCancel, triggerRef }: DeleteGro
           <button
             ref={cancelRef}
             type="button"
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             onClick={onCancel}
             data-testid="delete-group-confirm-cancel"
           >
@@ -220,7 +220,7 @@ function DeleteGroupDialog({ group, onConfirm, onCancel, triggerRef }: DeleteGro
           </button>
           <button
             type="button"
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-hidden focus:ring-2 focus:ring-red-500"
             onClick={onConfirm}
             data-testid="delete-group-confirm-ok"
           >
@@ -325,7 +325,7 @@ function BetaUsersPanel({ flagKey }: BetaUsersPanelProps) {
               </span>
               <button
                 type="button"
-                className="shrink-0 text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-50"
+                className="shrink-0 text-xs text-red-600 hover:text-red-800 focus:outline-hidden focus:underline disabled:opacity-50"
                 disabled={removeMutation.isPending}
                 onClick={() => removeMutation.mutate(user.user_id)}
                 data-testid={`beta-user-remove-${flagKey}-${user.user_id}`}
@@ -345,7 +345,7 @@ function BetaUsersPanel({ flagKey }: BetaUsersPanelProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('featureFlags.betaUserSearch')}
-          className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-full text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
           data-testid={`beta-user-search-${flagKey}`}
           aria-label={t('featureFlags.betaUserSearch')}
           aria-controls={`beta-user-picker-list-${flagKey}`}
@@ -353,7 +353,7 @@ function BetaUsersPanel({ flagKey }: BetaUsersPanelProps) {
         {search.trim() !== '' && filteredUsers.length > 0 && (
           <ul
             id={`beta-user-picker-list-${flagKey}`}
-            className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded shadow-md max-h-40 overflow-y-auto"
+            className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-sm shadow-md max-h-40 overflow-y-auto"
             role="listbox"
             aria-label={t('featureFlags.betaUserSearch')}
           >
@@ -509,7 +509,7 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
                 </span>
                 <button
                   type="button"
-                  className="shrink-0 text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-50"
+                  className="shrink-0 text-xs text-red-600 hover:text-red-800 focus:outline-hidden focus:underline disabled:opacity-50"
                   disabled={removeMutation.isPending}
                   onClick={() => removeMutation.mutate(entry.user_id)}
                   data-testid={`override-remove-${flagKey}-${entry.user_id}`}
@@ -529,13 +529,13 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('featureFlags.overrides.addUser')}
-            className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid={`override-search-${direction}-${flagKey}`}
             aria-label={t('featureFlags.overrides.addUser')}
           />
           {search.trim() !== '' && filteredUsers.length > 0 && pendingAdd === null && (
             <ul
-              className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded shadow-md max-h-40 overflow-y-auto"
+              className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-sm shadow-md max-h-40 overflow-y-auto"
               role="listbox"
               aria-label={t('featureFlags.overrides.addUser')}
             >
@@ -571,13 +571,13 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
               ref={reasonRef}
               type="text"
               placeholder={t('featureFlags.overrides.reasonPlaceholder')}
-              className="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="flex-1 text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
               defaultValue=""
               data-testid={`override-reason-${direction}-${flagKey}`}
             />
             <button
               type="button"
-              className="shrink-0 text-xs font-medium text-white bg-indigo-600 rounded px-2 py-1.5 hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+              className="shrink-0 text-xs font-medium text-white bg-indigo-600 rounded-sm px-2 py-1.5 hover:bg-indigo-700 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
               disabled={upsertMutation.isPending}
               onClick={() => handleAdd(direction, pendingAdd)}
               data-testid={`override-add-confirm-${direction}-${flagKey}`}
@@ -586,7 +586,7 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
             </button>
             <button
               type="button"
-              className="shrink-0 text-xs text-gray-500 hover:text-gray-700 focus:outline-none focus:underline"
+              className="shrink-0 text-xs text-gray-500 hover:text-gray-700 focus:outline-hidden focus:underline"
               onClick={() => {
                 setPendingAdd(null);
                 setSearch('');
@@ -712,7 +712,7 @@ function GroupBetaUsersPanel({ groupKey }: GroupBetaUsersPanelProps) {
               </span>
               <button
                 type="button"
-                className="shrink-0 text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-50"
+                className="shrink-0 text-xs text-red-600 hover:text-red-800 focus:outline-hidden focus:underline disabled:opacity-50"
                 disabled={removeMutation.isPending}
                 onClick={() => removeMutation.mutate(user.user_id)}
                 data-testid={`group-beta-user-remove-${groupKey}-${user.user_id}`}
@@ -731,13 +731,13 @@ function GroupBetaUsersPanel({ groupKey }: GroupBetaUsersPanelProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('featureFlags.betaUserSearch')}
-          className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-full text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
           data-testid={`group-beta-user-search-${groupKey}`}
           aria-label={t('featureFlags.betaUserSearch')}
         />
         {search.trim() !== '' && filteredUsers.length > 0 && (
           <ul
-            className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded shadow-md max-h-40 overflow-y-auto"
+            className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-sm shadow-md max-h-40 overflow-y-auto"
             role="listbox"
             aria-label={t('featureFlags.betaUserSearch')}
           >
@@ -804,7 +804,7 @@ function GroupRow({
             {/* Member count badge */}
             {group.member_count > 0 && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-gray-100 text-gray-600"
                 data-testid={`group-member-count-${group.group_key}`}
               >
                 {t('featureFlags.groups.memberCount', { count: group.member_count })}
@@ -814,7 +814,7 @@ function GroupRow({
             {/* Beta user count badge */}
             {group.beta_user_count > 0 && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-indigo-50 text-indigo-700"
                 data-testid={`group-beta-count-${group.group_key}`}
               >
                 {t('featureFlags.betaUserCount_other', { count: group.beta_user_count })}
@@ -824,7 +824,7 @@ function GroupRow({
             {/* Scheduled badge */}
             {isPendingSchedule && group.enable_at !== null && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-amber-100 text-amber-700"
                 data-testid={`group-badge-scheduled-${group.group_key}`}
                 title={t('featureFlags.scheduledLabel', {
                   date: formatLocalDateTime(group.enable_at, i18n.language),
@@ -836,7 +836,7 @@ function GroupRow({
 
             {!group.enabled && !isPendingSchedule && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-red-50 text-red-700"
                 data-testid={`group-badge-disabled-${group.group_key}`}
               >
                 {t('featureFlags.groups.disabledBadge')}
@@ -845,7 +845,7 @@ function GroupRow({
           </div>
 
           {group.description && (
-            <p className="text-xs text-gray-500 mt-0.5 break-words">{group.description}</p>
+            <p className="text-xs text-gray-500 mt-0.5 wrap-break-word">{group.description}</p>
           )}
 
           {group.updated_by_name && (
@@ -868,12 +868,12 @@ function GroupRow({
             disabled={isPending}
             onClick={() => onToggle(group, !group.enabled)}
             data-testid={`flag-group-toggle-${group.group_key}`}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
               group.enabled ? 'bg-indigo-600' : 'bg-gray-300'
             } disabled:cursor-not-allowed`}
           >
             <span
-              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${
                 group.enabled ? 'translate-x-4' : 'translate-x-0.5'
               }`}
             />
@@ -902,7 +902,7 @@ function GroupRow({
               onEnableAtChange(group, e.target.value ? datetimeLocalToIso(e.target.value) : null)
             }
             data-testid={`group-enable-at-input-${group.group_key}`}
-            className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="text-xs border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
           />
           {group.enable_at !== null && (
             <button
@@ -910,7 +910,7 @@ function GroupRow({
               disabled={isPending}
               onClick={() => onEnableAtChange(group, null)}
               data-testid={`group-enable-at-clear-${group.group_key}`}
-              className="text-xs text-gray-500 hover:text-gray-700 focus:outline-none focus:underline disabled:opacity-50"
+              className="text-xs text-gray-500 hover:text-gray-700 focus:outline-hidden focus:underline disabled:opacity-50"
             >
               {t('featureFlags.enableAtClear')}
             </button>
@@ -922,7 +922,7 @@ function GroupRow({
       <div className="mt-2">
         <button
           type="button"
-          className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+          className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-hidden focus:underline"
           onClick={() => setShowDetail((v) => !v)}
           data-testid={`group-detail-toggle-${group.group_key}`}
           aria-expanded={showDetail}
@@ -947,7 +947,7 @@ function GroupRow({
                   <li key={flag.flag_key}>
                     <button
                       type="button"
-                      className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline focus:outline-none focus:underline"
+                      className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline focus:outline-hidden focus:underline"
                       onClick={() => onFlagClick(flag.flag_key)}
                       data-testid={`group-member-flag-${group.group_key}-${flag.flag_key}`}
                     >
@@ -965,7 +965,7 @@ function GroupRow({
               type="button"
               disabled={isPending}
               onClick={(e) => onDelete(group, e.currentTarget)}
-              className="text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-xs text-red-600 hover:text-red-800 focus:outline-hidden focus:underline disabled:opacity-40 disabled:cursor-not-allowed"
               data-testid={`group-delete-${group.group_key}`}
             >
               {t('featureFlags.groups.delete')}
@@ -1037,7 +1037,7 @@ function CreateGroupForm({ onCreated }: CreateGroupFormProps) {
     return (
       <button
         type="button"
-        className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+        className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-800 focus:outline-hidden focus:underline"
         onClick={() => setShowForm(true)}
         data-testid="group-create-open"
       >
@@ -1071,7 +1071,7 @@ function CreateGroupForm({ onCreated }: CreateGroupFormProps) {
             type="text"
             value={label}
             onChange={(e) => handleLabelChange(e.target.value)}
-            className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="group-create-label"
             maxLength={100}
           />
@@ -1086,7 +1086,7 @@ function CreateGroupForm({ onCreated }: CreateGroupFormProps) {
             type="text"
             value={groupKey}
             onChange={(e) => setGroupKey(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
-            className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+            className="w-full text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 font-mono"
             data-testid="group-create-key"
             maxLength={100}
             placeholder="my_group_key"
@@ -1105,7 +1105,7 @@ function CreateGroupForm({ onCreated }: CreateGroupFormProps) {
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full text-xs border border-gray-300 rounded-sm px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="group-create-description"
             maxLength={1000}
           />
@@ -1117,7 +1117,7 @@ function CreateGroupForm({ onCreated }: CreateGroupFormProps) {
           type="button"
           disabled={!canSubmit}
           onClick={() => createMutation.mutate()}
-          className="text-xs font-medium text-white bg-indigo-600 rounded px-3 py-1.5 hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-xs font-medium text-white bg-indigo-600 rounded-sm px-3 py-1.5 hover:bg-indigo-700 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           data-testid="group-create-submit"
         >
           {t('featureFlags.groups.createSubmit')}
@@ -1128,7 +1128,7 @@ function CreateGroupForm({ onCreated }: CreateGroupFormProps) {
             setShowForm(false);
             setFormError(null);
           }}
-          className="text-xs text-gray-500 hover:text-gray-700 focus:outline-none focus:underline"
+          className="text-xs text-gray-500 hover:text-gray-700 focus:outline-hidden focus:underline"
           data-testid="group-create-cancel"
         >
           {t('common.cancel')}
@@ -1269,7 +1269,7 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
               key={group.group_key}
               ref={(el) => onGroupRowRef(group.group_key, el)}
               tabIndex={-1}
-              className="focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded"
+              className="focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded-sm"
             >
               <GroupRow
                 group={group}
@@ -1397,7 +1397,7 @@ function FlagRow({
             {flag.beta_user_count > 0 && (
               <button
                 type="button"
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                 onClick={() => setShowBetaPanel((v) => !v)}
                 data-testid={`feature-flag-beta-count-${flag.flag_key}`}
                 aria-expanded={showBetaPanel}
@@ -1410,7 +1410,7 @@ function FlagRow({
             {/* Scheduled badge — future enable_at, flag not yet live */}
             {isPendingSchedule && flag.enable_at !== null && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-amber-100 text-amber-700"
                 data-testid={`feature-flag-badge-scheduled-${flag.flag_key}`}
                 title={t('featureFlags.scheduledLabel', {
                   date: formatLocalDateTime(flag.enable_at, i18n.language),
@@ -1423,7 +1423,7 @@ function FlagRow({
             {/* On badge — schedule already fired; cache will reflect this within 60s */}
             {isScheduleFired && flag.enable_at !== null && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-green-100 text-green-700"
                 data-testid={`feature-flag-badge-on-${flag.flag_key}`}
                 title={t('featureFlags.scheduledFiredLabel', {
                   date: formatLocalDateTime(flag.enable_at, i18n.language),
@@ -1436,7 +1436,7 @@ function FlagRow({
             {/* Off badge — only when not scheduled and not fired */}
             {!flag.enabled && !isPendingSchedule && !isScheduleFired && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-gray-100 text-gray-500"
                 data-testid={`feature-flag-badge-off-${flag.flag_key}`}
               >
                 {t('featureFlags.offBadge')}
@@ -1446,7 +1446,7 @@ function FlagRow({
             {/* Rollout percentage badge */}
             {flag.rollout_percentage !== null && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-blue-50 text-blue-700"
                 data-testid={`rollout-percentage-badge-${flag.flag_key}`}
               >
                 {t('featureFlags.rolloutBadge', { pct: flag.rollout_percentage })}
@@ -1456,7 +1456,7 @@ function FlagRow({
             {/* Force-enabled count badge */}
             {flag.override_count.force_enabled > 0 && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-green-50 text-green-700"
                 data-testid={`override-count-force_enabled-${flag.flag_key}`}
               >
                 {t('featureFlags.overrides.forceEnabledBadge', {
@@ -1468,7 +1468,7 @@ function FlagRow({
             {/* Force-disabled count badge */}
             {flag.override_count.force_disabled > 0 && (
               <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-red-50 text-red-700"
                 data-testid={`override-count-force_disabled-${flag.flag_key}`}
               >
                 {t('featureFlags.overrides.forceDisabledBadge', {
@@ -1481,7 +1481,7 @@ function FlagRow({
             {flag.group_key && (
               <button
                 type="button"
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
                 onClick={() => onGroupBadgeClick(flag.group_key!)}
                 data-testid={`flag-group-badge-${flag.flag_key}`}
               >
@@ -1490,7 +1490,7 @@ function FlagRow({
             )}
           </div>
 
-          <p className="text-xs text-gray-500 mt-0.5 break-words">{flag.description}</p>
+          <p className="text-xs text-gray-500 mt-0.5 wrap-break-word">{flag.description}</p>
 
           {/* Scheduled enable date/time display — future only */}
           {isPendingSchedule && flag.enable_at !== null && (
@@ -1530,12 +1530,12 @@ function FlagRow({
             disabled={isPending}
             onClick={() => onToggle(flag, !flag.enabled)}
             data-testid={`feature-flag-toggle-${flag.flag_key}`}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
               flag.enabled ? 'bg-indigo-600' : 'bg-gray-300'
             } disabled:cursor-not-allowed`}
           >
             <span
-              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${
                 flag.enabled ? 'translate-x-4' : 'translate-x-0.5'
               }`}
             />
@@ -1576,7 +1576,7 @@ function FlagRow({
                     disabled={isPending}
                     onChange={(e) => onRoleOverride(flag, roleEntry.name, e.target.checked)}
                     data-testid={`feature-flag-role-override-${flag.flag_key}-${roleEntry.name}`}
-                    className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed"
+                    className="h-3.5 w-3.5 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed"
                   />
                   <span className="text-xs text-gray-600">
                     {t(`featureFlags.roles.${roleEntry.name}`, { defaultValue: roleEntry.name })}
@@ -1599,7 +1599,7 @@ function FlagRow({
                       type="button"
                       disabled={isPending}
                       onClick={() => onRoleOverrideRemove(flag, key)}
-                      className="text-amber-600 hover:text-amber-800 focus:outline-none focus:underline disabled:opacity-50"
+                      className="text-amber-600 hover:text-amber-800 focus:outline-hidden focus:underline disabled:opacity-50"
                       data-testid={`feature-flag-role-override-remove-${flag.flag_key}-${key}`}
                     >
                       ×
@@ -1629,7 +1629,7 @@ function FlagRow({
               onEnableAtChange(flag, e.target.value ? datetimeLocalToIso(e.target.value) : null)
             }
             data-testid={`feature-flag-enable-at-input-${flag.flag_key}`}
-            className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="text-xs border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
           />
           {flag.enable_at !== null && (
             <button
@@ -1637,7 +1637,7 @@ function FlagRow({
               disabled={isPending}
               onClick={() => onEnableAtChange(flag, null)}
               data-testid={`feature-flag-enable-at-clear-${flag.flag_key}`}
-              className="text-xs text-gray-500 hover:text-gray-700 focus:outline-none focus:underline disabled:opacity-50"
+              className="text-xs text-gray-500 hover:text-gray-700 focus:outline-hidden focus:underline disabled:opacity-50"
             >
               {t('featureFlags.enableAtClear')}
             </button>
@@ -1649,7 +1649,7 @@ function FlagRow({
       <div className="mt-2">
         <button
           type="button"
-          className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+          className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-hidden focus:underline"
           onClick={() => setShowAdvanced((v) => !v)}
           data-testid={`feature-flag-advanced-toggle-${flag.flag_key}`}
           aria-expanded={showAdvanced}
@@ -1686,15 +1686,15 @@ function FlagRow({
                     onRolloutChange(flag, e.target.value === '' ? null : Number(e.target.value))
                   }
                   data-testid={`rollout-percentage-input-${flag.flag_key}`}
-                  className="w-20 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-20 text-xs border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
 
               {/* Progress bar */}
               {flag.rollout_percentage !== null && (
-                <div className="mt-2 w-full bg-gray-200 rounded h-2">
+                <div className="mt-2 w-full bg-gray-200 rounded-sm h-2">
                   <div
-                    className="bg-indigo-500 h-2 rounded"
+                    className="bg-indigo-500 h-2 rounded-sm"
                     style={{ width: `${flag.rollout_percentage ?? 0}%` }}
                   />
                 </div>
@@ -1708,7 +1708,7 @@ function FlagRow({
                   </span>
                   <button
                     type="button"
-                    className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-hidden focus:underline"
                     onClick={() => setShowRolloutStages((v) => !v)}
                     data-testid={`rollout-stages-toggle-${flag.flag_key}`}
                   >
@@ -1731,7 +1731,7 @@ function FlagRow({
                                 handleStageChange(index, 'scheduled_at', e.target.value)
                               }
                               onBlur={() => handleStageBlur(localStages)}
-                              className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              className="text-xs border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                               disabled={isPending}
                               data-testid={`rollout-stage-scheduled-at-${flag.flag_key}-${index}`}
                             />
@@ -1745,13 +1745,13 @@ function FlagRow({
                                 handleStageChange(index, 'percentage', e.target.value)
                               }
                               onBlur={() => handleStageBlur(localStages)}
-                              className="w-16 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              className="w-16 text-xs border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                               disabled={isPending}
                               data-testid={`rollout-stage-percentage-${flag.flag_key}-${index}`}
                             />
                             <button
                               type="button"
-                              className="text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-50"
+                              className="text-xs text-red-600 hover:text-red-800 focus:outline-hidden focus:underline disabled:opacity-50"
                               disabled={isPending}
                               onClick={() => handleStageRemove(index)}
                               data-testid={`rollout-stage-remove-${flag.flag_key}-${index}`}
@@ -1765,7 +1765,7 @@ function FlagRow({
 
                     <button
                       type="button"
-                      className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline disabled:opacity-50"
+                      className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-hidden focus:underline disabled:opacity-50"
                       disabled={isPending}
                       onClick={handleStageAdd}
                       data-testid={`rollout-stage-add-${flag.flag_key}`}
@@ -1792,7 +1792,7 @@ function FlagRow({
                 disabled={isPending}
                 value={flag.group_key ?? ''}
                 onChange={(e) => onGroupChange(flag, e.target.value || null)}
-                className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="text-xs border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                 data-testid={`flag-group-select-${flag.flag_key}`}
               >
                 <option value="">{t('featureFlags.groups.noGroup')}</option>
@@ -1812,7 +1812,7 @@ function FlagRow({
           {flag.beta_user_count > 0 && !showBetaPanel && (
             <button
               type="button"
-              className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+              className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 focus:outline-hidden focus:underline"
               onClick={() => setShowBetaPanel(true)}
               data-testid={`feature-flag-beta-expand-${flag.flag_key}`}
             >
@@ -2002,7 +2002,7 @@ export default function FeatureFlagsSettings() {
     return (
       <div className="space-y-4" aria-busy="true" data-testid="feature-flags-loading">
         {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
+          <div key={i} className="h-12 bg-gray-100 rounded-sm animate-pulse" />
         ))}
       </div>
     );
@@ -2086,7 +2086,7 @@ export default function FeatureFlagsSettings() {
                       flagRowRefs.current[flag.flag_key] = el;
                     }}
                     tabIndex={-1}
-                    className="focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded"
+                    className="focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded-sm"
                   >
                     <FlagRow
                       flag={flag}

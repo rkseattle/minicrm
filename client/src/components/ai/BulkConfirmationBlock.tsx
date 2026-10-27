@@ -106,7 +106,7 @@ export default function BulkConfirmationBlock({
           placeholder={t('ai.confirmation.bulkDeleteConfirmPlaceholder', { count: bulkCount })}
           data-testid="nli-bulk-delete-confirm-input"
           aria-label={t('ai.confirmation.bulkDeleteConfirmPlaceholder', { count: bulkCount })}
-          className="w-full rounded-lg border border-red-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
+          className="w-full rounded-lg border border-red-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-red-500 focus:border-transparent disabled:opacity-50"
         />
       </div>
 

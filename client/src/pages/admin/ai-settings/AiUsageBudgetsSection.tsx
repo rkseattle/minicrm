@@ -110,7 +110,7 @@ function UserBudgetRow({ row, onSave, isSaving }: UserBudgetRowProps) {
                 handleChange(e.target.value);
               }}
               placeholder={t('aiSettings.tokenBudgets.overridePlaceholder')}
-              className="w-28 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-28 rounded-sm border border-gray-300 px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               data-testid={`budget-override-input-${row.user_id}`}
             />
             {isDirty && (
@@ -206,8 +206,8 @@ function TokenBudgetSection() {
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-2 py-4" data-testid="ai-token-budgets-loading">
-        <div className="h-4 bg-gray-200 rounded w-1/3" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
+        <div className="h-4 bg-gray-200 rounded-sm w-1/3" />
+        <div className="h-4 bg-gray-200 rounded-sm w-1/2" />
       </div>
     );
   }
@@ -254,7 +254,7 @@ function TokenBudgetSection() {
               setOrgLimitInput(e.target.value);
             }}
             placeholder={t('aiSettings.tokenBudgets.orgLimitPlaceholder')}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             data-testid="ai-org-monthly-limit-input"
           />
           <p className="mt-1 text-xs text-gray-500">{t('aiSettings.tokenBudgets.orgLimitHint')}</p>
@@ -414,7 +414,7 @@ function CostRatesSection({
             min={0}
             value={inputRate}
             onChange={(e) => setInputRate(e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="ai-input-cost-rate-input"
           />
         </div>
@@ -431,7 +431,7 @@ function CostRatesSection({
             min={0}
             value={outputRate}
             onChange={(e) => setOutputRate(e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="ai-output-cost-rate-input"
           />
         </div>

@@ -28,7 +28,7 @@ export function OwnerToggle({ value, onChange, testIdPrefix }: OwnerToggleProps)
   const { t } = useTranslation();
 
   const BASE =
-    'px-3 py-1.5 text-sm font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1';
+    'px-3 py-1.5 text-sm font-medium border transition-colors focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:ring-offset-1';
   const ACTIVE = 'bg-primary-600 text-white border-primary-600 z-10';
   const INACTIVE = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
 
@@ -36,7 +36,7 @@ export function OwnerToggle({ value, onChange, testIdPrefix }: OwnerToggleProps)
     <div
       role="group"
       aria-label={t('common.ownerToggle.label')}
-      className="inline-flex rounded-md shadow-sm"
+      className="inline-flex rounded-md shadow-xs"
     >
       <button
         type="button"

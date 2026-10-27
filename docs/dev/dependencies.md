@@ -76,11 +76,12 @@ cover it. So does a 0.x minor whose changelog marks it breaking.
 
 ### Held
 
-| Package       | Held at | Why                                                                                                                            |
-| ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `typescript`  | 6.x     | 7.x: `@typescript-eslint/parser` (latest, 8.72.1) declares `typescript <6.1.0`                                                 |
-| `eslint`      | 9.x     | 10.x: the newest ESLint `eslint-plugin-react` 7.37.5 accepts is `^9.7`, and `eslint-plugin-jsx-a11y` 6.10.2 `^9` (both latest) |
-| `@types/node` | 24.x    | DefinitelyTyped versions it by Node major, and the runtime is Node 24 (`.nvmrc`, the images); 26.x declares APIs 24 lacks      |
+| Package             | Held at | Why                                                                                                                                                                                                                                       |
+| ------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `typescript`        | 6.x     | 7.x: `@typescript-eslint/parser` (latest, 8.72.1) declares `typescript <6.1.0`                                                                                                                                                            |
+| `eslint`            | 9.x     | 10.x: the newest ESLint `eslint-plugin-react` 7.37.5 accepts is `^9.7`, and `eslint-plugin-jsx-a11y` 6.10.2 `^9` (both latest)                                                                                                            |
+| `@types/node`       | 24.x    | DefinitelyTyped versions it by Node major, and the runtime is Node 24 (`.nvmrc`, the images); 26.x declares APIs 24 lacks                                                                                                                 |
+| `@anthropic-ai/sdk` | 0.x     | 1.0 moves every request to API version 2026-10-21 and sends the key as `Authorization: Bearer`, not `x-api-key`; admins may point the client at a private endpoint or gateway built for 2023-06-01, so it is an API migration, not a bump |
 
 ### Types that lag their runtime
 
@@ -113,8 +114,8 @@ second half: it also audits with `--omit=dev`, and an allowlisted advisory found
 blocks. Each entry names the
 upstream fix it is waiting on, and the gate warns once an entry's advisory stops being
 reported so it gets deleted. It judges advisories, not the package counts in npm's
-summary — one `braces` advisory makes `micromatch`, `chokidar`, `tailwindcss` and
-`markdownlint-cli2` all count as high, and the allowlist must clear those too.
+summary — one `braces` advisory makes `micromatch`, `chokidar` and `markdownlint-cli2`
+all count as high, and the allowlist must clear those too.
 
 ### Dependabot: npm is security-only, on purpose
 
@@ -201,34 +202,30 @@ pointless. A pin sitting inside one vulnerable range may be escaping a worse one
 
 ## Worked example: the `undici` pin violates a declared range
 
-`undici` is pinned to a version that violates two of its five consumers' declared ranges:
+`undici` is pinned to 7.x for every consumer except jsdom, which a jsdom-scoped override
+gives 8.x. npm hoists 8.12.3 to the root and nests 7.30.1 under each 7.x consumer:
 
-| Consumer                   | Declares      |
-| -------------------------- | ------------- |
-| `@connectrpc/connect-node` | `^5.28.4`     |
-| `@ai-sdk/provider-utils`   | `^6.28.0`     |
-| `jsdom`                    | `^7.25.0`     |
-| `openai` (peer)            | `>=5 <9`      |
-| `promptfoo`                | `>=7.30.1 <8` |
+| Consumer                 | Declares      | Gets   |
+| ------------------------ | ------------- | ------ |
+| `@ai-sdk/provider-utils` | `^6.28.0`     | 7.30.1 |
+| `openai` (peer, twice)   | `>=5 <9`      | 7.30.1 |
+| `promptfoo`              | `>=7.30.1 <8` | 7.30.1 |
+| `jsdom`                  | `^8.12.1`     | 8.12.3 |
 
-All five are served one hoisted copy. Two violations are real and `npm ls` marks them
-`invalid`, each safe for a specific, verified reason:
-
-- connect-node's only use of `undici` is `node-headers-polyfill.js`, which assigns
-  `globalThis.Headers` behind a `major < 18` check. This repo's floor is Node 24, so the
-  branch never executes. The module-level `require("undici")` still runs, so the package
-  must resolve and load — only the `Headers` export is ever touched.
-- `@ai-sdk/provider-utils` (dev only, under promptfoo) calls `new Agent({ connect: { lookup } })`
-  and `fetch`. 7.x keeps both: its connector options still pass Node's `lookup` through.
+One violation is real, and `npm ls` marks it `invalid`. It is safe for a specific, verified
+reason: `@ai-sdk/provider-utils` (dev only, under promptfoo) calls
+`new Agent({ connect: { lookup } })` and `fetch`, and 7.x keeps both, since its connector
+options still pass Node's `lookup` through.
 
 **This is the fragile shape**, and worth knowing about: a pin that contradicts a declared
 range is safe only as long as the consumer's usage stays what it was when someone checked.
-An upgrade to `@connectrpc/connect-node` that starts using `undici` for real would break
-silently. If that pin can ever be retired, it should be.
+jsdom 30 is the counterexample. It imports undici's `Dispatcher`, `DecoratorHandler` and
+`WebSocket` for real, so it gets the major it declares rather than the pin.
+`@connectrpc/connect-node` was once a violating consumer too; 2.x dropped undici entirely.
 
-Note the constraint on moving it: `promptfoo` declares `>=7.30.1 <8`, which 8.x would
-break — and unlike connect-node's, that range is currently **satisfied**. Staying on the
-7.x line is deliberate, not neglect.
+Note the constraint on moving it: `promptfoo` declares `>=7.30.1 <8`, and that range is
+**satisfied**, so staying on 7.x is deliberate, not neglect. Retire the global pin once
+promptfoo accepts 8.
 
 ---
 

@@ -66,7 +66,7 @@ export default function DealCard({
   return (
     <div
       data-testid={`deal-card-${deal.id}`}
-      className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm"
+      className="bg-white rounded-lg border border-gray-200 p-3 shadow-xs"
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData('text/plain', deal.id);
@@ -93,8 +93,8 @@ export default function DealCard({
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-        {/* min-w-0 + break-words: prevents long currency values from overflowing the flex row */}
-        <span className="min-w-0 break-words" data-testid={`deal-card-value-${deal.id}`}>
+        {/* min-w-0 + wrap-break-word: prevents long currency values from overflowing the flex row */}
+        <span className="min-w-0 wrap-break-word" data-testid={`deal-card-value-${deal.id}`}>
           {formatValue(deal.value, deal.currency, i18n.language)}
         </span>
         <span className="shrink-0 ms-2" data-testid={`deal-card-close-date-${deal.id}`}>
@@ -106,7 +106,7 @@ export default function DealCard({
       <div className="flex items-center gap-1 mb-2">
         <span
           data-testid={`deal-card-probability-${deal.id}`}
-          className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
+          className={`text-xs px-1.5 py-0.5 rounded-sm whitespace-nowrap shrink-0 ${
             deal.probability_is_overridden
               ? 'bg-primary-100 text-primary-700 font-medium'
               : 'bg-gray-100 text-gray-600 italic'

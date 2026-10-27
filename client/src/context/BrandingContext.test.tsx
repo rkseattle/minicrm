@@ -135,6 +135,7 @@ describe('BrandingContext — CSS custom properties', () => {
     });
     const styleContent = document.getElementById('minicrm-branding')!.textContent ?? '';
     expect(styleContent).toContain('--color-primary-600: #e53e3e');
+    expect(styleContent).toContain('--color-primary-300: color-mix(in srgb, #e53e3e 50%, white)');
     expect(styleContent).toContain('--color-primary-text: #ffffff');
   });
 

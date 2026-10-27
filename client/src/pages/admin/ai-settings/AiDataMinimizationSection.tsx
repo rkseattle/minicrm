@@ -84,8 +84,8 @@ export function AiDataMinimizationSection() {
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-2 py-4" data-testid="ai-field-exclusions-loading">
-        <div className="h-4 bg-gray-200 rounded w-1/3" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
+        <div className="h-4 bg-gray-200 rounded-sm w-1/3" />
+        <div className="h-4 bg-gray-200 rounded-sm w-1/2" />
       </div>
     );
   }

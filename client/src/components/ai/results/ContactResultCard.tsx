@@ -50,7 +50,7 @@ export default function ContactResultCard({ contact }: ContactResultCardProps) {
         {contact.email && <p className="text-xs text-gray-400 truncate">{contact.email}</p>}
       </div>
       {contact.last_activity_at && (
-        <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+        <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
           {t('ai.results.lastActivity', { date: contact.last_activity_at.slice(0, 10) })}
         </span>
       )}

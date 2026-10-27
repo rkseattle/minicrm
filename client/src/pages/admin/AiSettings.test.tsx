@@ -673,7 +673,8 @@ describe('AiSettings — retention stats and manual purge', () => {
 
       renderSection('data-retention');
       await waitFor(() => screen.getByTestId('ai-purge-now-button'));
-      expect(statsRequestCount).toBe(1); // initial mount fetch
+      // The button renders before the stats request lands, so wait on the request itself.
+      await waitFor(() => expect(statsRequestCount).toBe(1));
 
       fireEvent.click(screen.getByTestId('ai-purge-now-button'));
       fireEvent.click(screen.getByTestId('ai-purge-confirm-button'));

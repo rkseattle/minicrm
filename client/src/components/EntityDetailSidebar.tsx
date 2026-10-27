@@ -94,7 +94,7 @@ export default function EntityDetailSidebar({
     <>
       {/* Tags — not supported for lead */}
       {showTags && tagsLoading && (
-        <div className="mt-8 h-20 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+        <div className="mt-8 h-20 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
       )}
       {showTags && !tagsLoading && tagsEnabled && (
         <section
@@ -119,7 +119,7 @@ export default function EntityDetailSidebar({
 
       {/* Activity timeline */}
       {showTimeline && activitiesLoading && (
-        <div className="mt-8 h-32 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+        <div className="mt-8 h-32 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
       )}
       {showTimeline && !activitiesLoading && activitiesEnabled && (
         <ActivityTimeline {...timelineProp} />
@@ -141,7 +141,7 @@ export default function EntityDetailSidebar({
 
       {/* Notes */}
       {notesLoading && (
-        <div className="mt-8 h-24 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+        <div className="mt-8 h-24 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
       )}
       {!notesLoading && notesEnabled && (
         <NotesSection

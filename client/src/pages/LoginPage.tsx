@@ -144,7 +144,7 @@ export default function LoginPage() {
         )}
 
         {/* Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-8">
           <h2 className="text-base font-semibold text-gray-900 mb-6">{t('login.title')}</h2>
 
           {/* SSO login button — shown when SSO is enabled */}
@@ -153,7 +153,7 @@ export default function LoginPage() {
               <a
                 href="/api/v1/auth/sso/login"
                 data-testid="sso-login-button"
-                className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               >
                 {t('login.ssoButton', {
                   protocol: ssoStatus.protocol === 'saml' ? 'SAML 2.0' : 'Single Sign-On',

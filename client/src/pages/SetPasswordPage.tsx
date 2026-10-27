@@ -101,7 +101,7 @@ export default function SetPasswordPage() {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-primary-600 tracking-tight">MiniCRM</h1>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-8">
             <div
               role="alert"
               data-testid="set-password-invalid-token"
@@ -123,7 +123,7 @@ export default function SetPasswordPage() {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-primary-600 tracking-tight">MiniCRM</h1>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-8">
             <div
               role="alert"
               data-testid="set-password-already-activated"
@@ -152,7 +152,7 @@ export default function SetPasswordPage() {
           <h1 className="text-3xl font-bold text-primary-600 tracking-tight">MiniCRM</h1>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-xl shadow-xs border border-gray-200 p-8">
           <h2 className="text-base font-semibold text-gray-900 mb-6">{t('setPassword.title')}</h2>
 
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">

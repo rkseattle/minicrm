@@ -165,7 +165,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
   if (storageLoading) {
     return (
       <div
-        className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6"
+        className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6"
         data-testid="attachments-section"
       >
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -178,7 +178,7 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
 
   return (
     <div
-      className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6"
+      className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6"
       data-testid="attachments-section"
     >
       <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('attachments.sectionTitle')}</h2>
@@ -305,12 +305,12 @@ export default function AttachmentsSection({ recordType, recordId }: Attachments
                       {` · ${formatLocalDateTime(attachment.uploaded_at, i18n.language)}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <a
                       href={getDownloadUrl(attachment.id)}
                       download={attachment.filename}
                       data-testid={`attachment-download-${attachment.id}`}
-                      className="text-sm text-primary-600 hover:text-primary-800 font-medium focus:outline-none focus:underline"
+                      className="text-sm text-primary-600 hover:text-primary-800 font-medium focus:outline-hidden focus:underline"
                     >
                       {t('attachments.download')}
                     </a>

@@ -79,7 +79,7 @@ export function AiSettingsSubNav({ items, activeKey, onChange, ariaLabel }: AiSe
           onClick={() => onChange(item.key)}
           onKeyDown={(e) => handleKeyDown(e, index)}
           className={[
-            'px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500',
+            'px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors focus:outline-hidden focus:ring-2 focus:ring-inset focus:ring-primary-500',
             activeKey === item.key
               ? 'border-primary-600 text-primary-700'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',

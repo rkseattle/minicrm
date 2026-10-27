@@ -24,7 +24,6 @@ import { auditClient } from '@/grpc/auditClient.js';
 import { listAuditLogActors, AUDIT_LOG_ACTORS_QUERY_KEY } from '@/api/auditLog.js';
 import type { AuditLogEntry } from '@shared/schemas/auditSchema.js';
 import { AUDIT_RECORD_TYPES, AUDIT_EVENT_TYPES } from '@shared/schemas/auditSchema.js';
-import type { PlainMessage } from '@bufbuild/protobuf';
 import type { AuditEvent } from '@shared/generated/audit_pb.js';
 import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 
@@ -32,7 +31,7 @@ import { formatLocalDateTime } from '@/utils/formatLocalDate.js';
 const PAGE_SIZE = 50;
 
 /** Maps a ConnectRPC AuditEvent to the AuditLogEntry shape used by the UI. */
-function grpcEventToEntry(event: PlainMessage<AuditEvent>): AuditLogEntry {
+function grpcEventToEntry(event: AuditEvent): AuditLogEntry {
   return {
     id: event.id,
     record_type: event.recordType as AuditLogEntry['record_type'],
@@ -359,7 +358,7 @@ export default function AuditLogPage() {
                     type="date"
                     value={from}
                     onChange={(e) => setFrom(e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                     data-testid="filter-from"
                   />
                 </div>
@@ -377,7 +376,7 @@ export default function AuditLogPage() {
                     type="date"
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
                     data-testid="filter-to"
                   />
                 </div>

@@ -55,7 +55,7 @@ export default function ContextProposalChip({
       {/* Lightbulb icon */}
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary-500"
+        className="mt-0.5 h-4 w-4 shrink-0 text-primary-500"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -70,7 +70,7 @@ export default function ContextProposalChip({
       </svg>
 
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-primary-800 font-medium leading-snug break-words">
+        <p className="text-xs text-primary-800 font-medium leading-snug wrap-break-word">
           <span className="font-semibold">{proposal.key}</span>
           {/* Decorative separator — not translated */}
           {/* eslint-disable-next-line i18next/no-literal-string */}
@@ -80,7 +80,7 @@ export default function ContextProposalChip({
           <span>{proposal.value}</span>
         </p>
         {proposal.reason && (
-          <p className="mt-0.5 text-xs text-primary-600 leading-snug break-words">
+          <p className="mt-0.5 text-xs text-primary-600 leading-snug wrap-break-word">
             {proposal.reason}
           </p>
         )}

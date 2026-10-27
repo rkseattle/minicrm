@@ -71,7 +71,6 @@ export const COVERED_PATHS: readonly ImpactManifestEntry[] = [
   { glob: '**/tsconfig*.json', scopes: [ALL_FUNCTIONAL_SCOPE] },
   { glob: 'client/vite.config.ts', scopes: [ALL_FUNCTIONAL_SCOPE] },
   { glob: '**/postcss.config.cjs', scopes: [ALL_FUNCTIONAL_SCOPE] },
-  { glob: '**/tailwind.config.cjs', scopes: [ALL_FUNCTIONAL_SCOPE] },
 ];
 
 /**

@@ -385,8 +385,10 @@ export default function SendEmailModal({
               <p className="text-sm font-medium text-gray-700 mb-1">
                 {t('contacts.sendEmail.templatePreviewLabel')}
               </p>
-              <p className="text-sm font-semibold text-gray-900 break-words">{template.subject}</p>
-              <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap break-words">
+              <p className="text-sm font-semibold text-gray-900 wrap-break-word">
+                {template.subject}
+              </p>
+              <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap wrap-break-word">
                 {templatePreviewText(template.body)}
               </p>
             </div>

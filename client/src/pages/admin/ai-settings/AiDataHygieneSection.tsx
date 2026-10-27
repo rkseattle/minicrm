@@ -160,7 +160,7 @@ function AiDataHygieneThresholdsForm({ config }: { config: DataHygieneConfigResp
             step={1}
             value={form.contact_inactivity_days}
             onChange={(e) => updateField('contact_inactivity_days', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="hygiene-contact-inactivity-days-input"
           />
         </div>
@@ -178,7 +178,7 @@ function AiDataHygieneThresholdsForm({ config }: { config: DataHygieneConfigResp
             step={1}
             value={form.account_inactivity_days}
             onChange={(e) => updateField('account_inactivity_days', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="hygiene-account-inactivity-days-input"
           />
         </div>
@@ -196,7 +196,7 @@ function AiDataHygieneThresholdsForm({ config }: { config: DataHygieneConfigResp
             step={1}
             value={form.title_staleness_days}
             onChange={(e) => updateField('title_staleness_days', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="hygiene-title-staleness-days-input"
           />
         </div>
@@ -214,7 +214,7 @@ function AiDataHygieneThresholdsForm({ config }: { config: DataHygieneConfigResp
             step={1}
             value={form.opportunity_inactivity_days}
             onChange={(e) => updateField('opportunity_inactivity_days', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="hygiene-opportunity-inactivity-days-input"
           />
         </div>
@@ -232,7 +232,7 @@ function AiDataHygieneThresholdsForm({ config }: { config: DataHygieneConfigResp
             step={1}
             value={form.dismiss_suppression_days}
             onChange={(e) => updateField('dismiss_suppression_days', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="hygiene-dismiss-suppression-days-input"
           />
         </div>

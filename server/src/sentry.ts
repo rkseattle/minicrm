@@ -36,7 +36,8 @@ export function redactPiiFromEvent(event: ErrorEvent): ErrorEvent {
       ...safeUser,
       ...(email !== undefined && { email: sha256Hex(email) }),
       ...(username !== undefined && { username: sha256Hex(username) }),
-      ...(name !== undefined && { name: sha256Hex(name) }),
+      // User types `name` as unknown, but it is still PII and must be hashed.
+      ...(name !== undefined && { name: sha256Hex(String(name)) }),
     };
   }
 

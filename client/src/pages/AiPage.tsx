@@ -78,10 +78,10 @@ function MessageBubble({
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[80%] ${isUser ? '' : 'w-full'}`}>
         <div
-          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed break-words ${
+          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed wrap-break-word ${
             isUser
               ? 'bg-primary-600 text-white rounded-ee-sm'
-              : 'bg-white border border-gray-200 text-gray-800 rounded-es-sm shadow-sm'
+              : 'bg-white border border-gray-200 text-gray-800 rounded-es-sm shadow-xs'
           }`}
           role="article"
           aria-label={isUser ? t('ai.userRole') : t('ai.assistantRole')}
@@ -114,7 +114,7 @@ function MessageBubble({
                     </a>
                   ),
                   code: ({ children }) => (
-                    <code className="bg-gray-100 rounded px-1 py-0.5 text-xs">{children}</code>
+                    <code className="bg-gray-100 rounded-sm px-1 py-0.5 text-xs">{children}</code>
                   ),
                 }}
               >
@@ -199,7 +199,7 @@ function SessionItem({ session, isActive, onSelect, onDelete, isDeleting }: Sess
         disabled={isDeleting}
         aria-label={t('ai.deleteSession')}
         data-testid={`ai-session-delete-${session.id}`}
-        className="opacity-0 group-hover:opacity-100 focus:opacity-100 flex-shrink-0 p-1 rounded text-gray-400 hover:text-red-500 transition-opacity disabled:opacity-40"
+        className="opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0 p-1 rounded-sm text-gray-400 hover:text-red-500 transition-opacity disabled:opacity-40"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -787,7 +787,7 @@ export default function AiPage() {
       <div className="flex flex-1 min-h-0 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 gap-6">
         {/* ── Session sidebar ────────────────────────────────────────────── */}
         <aside
-          className="hidden md:flex flex-col w-56 flex-shrink-0 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+          className="hidden md:flex flex-col w-56 shrink-0 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden"
           aria-label={t('ai.sessionListLabel')}
           data-testid="ai-session-sidebar"
         >
@@ -820,7 +820,7 @@ export default function AiPage() {
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="h-8 bg-gray-100 rounded animate-pulse"
+                    className="h-8 bg-gray-100 rounded-sm animate-pulse"
                     aria-hidden="true"
                   />
                 ))}
@@ -847,11 +847,11 @@ export default function AiPage() {
 
         {/* ── Main conversation panel ────────────────────────────────────── */}
         <main
-          className="flex flex-col flex-1 min-w-0 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+          className="flex flex-col flex-1 min-w-0 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden"
           data-testid="ai-conversation-panel"
         >
           {/* Thread header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
             <h1 className="text-sm font-semibold text-gray-900 truncate min-w-0">
               {activeSession?.name ??
                 sessions.find((s) => s.id === activeSessionId)?.name ??
@@ -872,7 +872,7 @@ export default function AiPage() {
           {/* Retention window notice */}
           {retentionWindow && (
             <p
-              className="px-4 py-1.5 text-xs text-gray-500 border-b border-gray-50 flex-shrink-0"
+              className="px-4 py-1.5 text-xs text-gray-500 border-b border-gray-50 shrink-0"
               data-testid="ai-retention-window-notice"
             >
               {t('ai.retentionWindowNotice', { days: retentionWindow.ai_session_retention_days })}
@@ -951,7 +951,7 @@ export default function AiPage() {
                   aria-label={t('ai.sending')}
                   data-testid="ai-thinking-indicator"
                 >
-                  <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                  <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-xs">
                     <span className="flex gap-1 items-center">
                       {[0, 150, 300].map((delay) => (
                         <span
@@ -980,7 +980,7 @@ export default function AiPage() {
           )}
 
           {/* Input area — fixed at thread bottom */}
-          <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0 bg-white">
+          <div className="px-4 py-3 border-t border-gray-100 shrink-0 bg-white">
             <div className="flex gap-2 items-end">
               <textarea
                 ref={textareaRef}
@@ -992,7 +992,7 @@ export default function AiPage() {
                 rows={1}
                 data-testid="ai-message-input"
                 aria-label={t('ai.messagePlaceholder')}
-                className="flex-1 min-w-0 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 max-h-40 overflow-y-auto"
+                className="flex-1 min-w-0 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 max-h-40 overflow-y-auto"
                 style={{
                   // fieldSizing is a draft CSS property not yet in TS CSSProperties lib
                   fieldSizing: 'content' as React.CSSProperties['fieldSizing'],
@@ -1005,7 +1005,7 @@ export default function AiPage() {
                 disabled={!inputValue.trim() || sendMutation.isPending || createMutation.isPending}
                 data-testid="ai-send-button"
                 aria-label={t('ai.sendButton')}
-                className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="shrink-0 w-10 h-10 flex items-center justify-center bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {sendMutation.isPending ? (
                   <svg

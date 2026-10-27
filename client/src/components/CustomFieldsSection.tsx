@@ -115,7 +115,7 @@ export default function CustomFieldsSection({
               >
                 {v.definition.name}
               </dt>
-              <dd className="mt-1 text-sm text-gray-900 break-words">{v.value}</dd>
+              <dd className="mt-1 text-sm text-gray-900 wrap-break-word">{v.value}</dd>
             </div>
           ))}
         </dl>
@@ -152,7 +152,7 @@ export default function CustomFieldsSection({
                   data-testid={`custom-field-input-${def.id}`}
                   value={currentValue}
                   onChange={(e) => handleChange(def.id, e.target.value || null)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 w-full"
                 />
               )}
 
@@ -163,7 +163,7 @@ export default function CustomFieldsSection({
                   data-testid={`custom-field-input-${def.id}`}
                   value={currentValue}
                   onChange={(e) => handleChange(def.id, e.target.value || null)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 w-full"
                 />
               )}
 
@@ -174,7 +174,7 @@ export default function CustomFieldsSection({
                   data-testid={`custom-field-input-${def.id}`}
                   value={currentValue}
                   onChange={(e) => handleChange(def.id, e.target.value || null)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 w-full"
                 />
               )}
 
@@ -186,7 +186,7 @@ export default function CustomFieldsSection({
                     data-testid={`custom-field-input-${def.id}`}
                     checked={currentValue === 'true'}
                     onChange={(e) => handleChange(def.id, e.target.checked ? 'true' : 'false')}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    className="rounded-sm border-gray-300 text-primary-600 focus:ring-primary-500"
                   />
                   <label htmlFor={`cf-${def.id}`} className="text-sm text-gray-700">
                     {def.name}
@@ -200,7 +200,7 @@ export default function CustomFieldsSection({
                   data-testid={`custom-field-input-${def.id}`}
                   value={currentValue}
                   onChange={(e) => handleChange(def.id, e.target.value || null)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500 w-full"
                 >
                   <option value="">—</option>
                   {(def.options ?? []).map((opt) => (

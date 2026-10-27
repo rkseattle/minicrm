@@ -31,12 +31,12 @@ export default function NoteResultCard({ note }: NoteResultCardProps) {
           {note.entity_name && <span className="font-medium">{note.entity_name}</span>}
           {note.author_name && <span>· {note.author_name}</span>}
         </div>
-        <p className="text-sm text-gray-800 break-words line-clamp-3">
+        <p className="text-sm text-gray-800 wrap-break-word line-clamp-3">
           {note.content ?? note.body_text ?? note.body ?? t('ai.results.noContent')}
         </p>
       </div>
       {note.created_at && (
-        <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+        <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
           {note.created_at.slice(0, 10)}
         </span>
       )}

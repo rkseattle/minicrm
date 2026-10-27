@@ -166,7 +166,7 @@ function AiCoachingThresholdsForm({ config }: { config: RepCoachingConfigRespons
             step={1}
             value={form.min_closed_deals}
             onChange={(e) => updateField('min_closed_deals', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="ai-coaching-min-closed-deals-input"
           />
         </div>
@@ -184,7 +184,7 @@ function AiCoachingThresholdsForm({ config }: { config: RepCoachingConfigRespons
             step={0.01}
             value={form.stage_time_outlier_ratio}
             onChange={(e) => updateField('stage_time_outlier_ratio', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="ai-coaching-stage-ratio-input"
           />
         </div>
@@ -203,7 +203,7 @@ function AiCoachingThresholdsForm({ config }: { config: RepCoachingConfigRespons
             step={0.01}
             value={form.activity_frequency_outlier_ratio}
             onChange={(e) => updateField('activity_frequency_outlier_ratio', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="ai-coaching-activity-ratio-input"
           />
         </div>
@@ -221,7 +221,7 @@ function AiCoachingThresholdsForm({ config }: { config: RepCoachingConfigRespons
             step={1}
             value={form.response_time_outlier_hours}
             onChange={(e) => updateField('response_time_outlier_hours', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="ai-coaching-response-hours-input"
           />
         </div>
@@ -240,7 +240,7 @@ function AiCoachingThresholdsForm({ config }: { config: RepCoachingConfigRespons
             step={0.01}
             value={form.win_rate_outlier_delta}
             onChange={(e) => updateField('win_rate_outlier_delta', e.target.value)}
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             data-testid="ai-coaching-win-rate-delta-input"
           />
         </div>

@@ -28,8 +28,8 @@ export default function ActivityBriefPage() {
   if (flagLoading) {
     return (
       <div className="p-8">
-        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" aria-hidden="true" />
-        <div className="h-64 bg-gray-100 rounded animate-pulse" aria-hidden="true" />
+        <div className="h-8 w-48 bg-gray-200 rounded-sm animate-pulse mb-4" aria-hidden="true" />
+        <div className="h-64 bg-gray-100 rounded-sm animate-pulse" aria-hidden="true" />
       </div>
     );
   }

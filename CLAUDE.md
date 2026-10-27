@@ -332,7 +332,7 @@ Always `void fireAutomationTrigger(...)` — never `await`. It swallows all inte
   from settingsSchema; resolve default via `getDefaultCurrency()`. Format with
   `Intl.NumberFormat` using the deal's own currency.
 - **i18n** — all user-facing strings via `t('key')`; no hardcoded English in JSX. RTL:
-  use logical CSS (`ps-`/`pe-`, `ms-`/`me-`, `start-`/`end-`) not physical directional
+  use logical CSS (`ps-`/`pe-`, `ms-`/`me-`, `inset-s-`/`inset-e-`) not physical directional
   classes.
 - **Migrations** — never modify existing; write corrective migrations. Every migration
   needs `up` + `down`. Add migration → regenerate ERD in same PR. See
@@ -359,7 +359,7 @@ Always `void fireAutomationTrigger(...)` — never `await`. It swallows all inte
 - **React Query:** every API module exports `FOO_QUERY_KEY = ['foo'] as const`; never
   inline strings in `queryKey`. `staleTime: 5*60*1000` on `/api/v1/users/active`;
   `staleTime: 0` on dashboard summary. No global `staleTime`.
-- **Responsive:** `min-w-0` on flex children with text; `break-words` on freetext;
+- **Responsive:** `min-w-0` on flex children with text; `wrap-break-word` on freetext;
   `clamp()` for fluid font sizes. Test at 600/900/1100px.
 
 ---
@@ -370,7 +370,7 @@ Always `void fireAutomationTrigger(...)` — never `await`. It swallows all inte
 lines/functions/branches/statements (CI). `beforeEach` truncates tables. Required:
 `auth-boundaries.test.ts`, `auditService.test.ts`, `notificationService.test.ts`.
 
-**Client** (`client/src/`) — Vitest + RTL + MSW (`onUnhandledRequest: 'error'`). 70%
+**Client** (`client/src/`) — Vitest + RTL + MSW (`onUnhandledFrame: 'error'`). 70%
 lines/functions/branches/statements (CI). Co-locate `Component.test.tsx`. Every async
 component tests loading + error + empty. Every conditional branch gets a test.
 

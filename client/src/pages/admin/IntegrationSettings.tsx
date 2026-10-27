@@ -105,7 +105,7 @@ export default function IntegrationSettings() {
   return (
     <>
       <div
-        className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+        className="bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="storage-section"
       >
         <h2
@@ -144,7 +144,7 @@ export default function IntegrationSettings() {
                 placeholder="https://s3.example.com"
                 value={storageForm.endpoint}
                 onChange={(e) => setStorageForm((prev) => ({ ...prev, endpoint: e.target.value }))}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
@@ -161,7 +161,7 @@ export default function IntegrationSettings() {
                 data-testid="storage-bucket-input"
                 value={storageForm.bucket}
                 onChange={(e) => setStorageForm((prev) => ({ ...prev, bucket: e.target.value }))}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
@@ -180,7 +180,7 @@ export default function IntegrationSettings() {
                 onChange={(e) =>
                   setStorageForm((prev) => ({ ...prev, accessKeyId: e.target.value }))
                 }
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
@@ -205,7 +205,7 @@ export default function IntegrationSettings() {
                 onChange={(e) =>
                   setStorageForm((prev) => ({ ...prev, secretAccessKey: e.target.value }))
                 }
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               />
             </div>
 
@@ -292,7 +292,7 @@ export default function IntegrationSettings() {
       </div>
 
       <div
-        className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+        className="mt-8 bg-white shadow-xs rounded-lg border border-gray-200 p-6 max-w-2xl"
         data-testid="webhooks-section"
       >
         <WebhookSettings />
