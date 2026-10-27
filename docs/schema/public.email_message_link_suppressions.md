@@ -65,6 +65,7 @@ erDiagram
   text rfc_message_id "The message's own RFC 5322 Message-ID, without angle brackets. A reply names it in In-Reply-To."
   text references_header "Ancestor Message-IDs, bracketed and space-separated, oldest first; bounded to the root plus the newest. A reply extends it."
   text__ reply_to_addresses "Addresses the sender named in Reply-To, lowercased. Empty when there is none or it names only the sender; a reply then goes to from_address."
+  timestamp_with_time_zone gdpr_redacted_at "When GDPR erasure redacted this message. A re-sync never overwrites a redacted row, so the redaction survives the provider still holding the original."
 }
 ```
 

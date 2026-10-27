@@ -43,6 +43,7 @@
 import pg from 'pg';
 import { assertTestDatabaseTarget } from './assertTestDatabaseTarget.js';
 import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
+import { EMAIL_SYNC_BACKFILL_DAYS_DEFAULT } from '@minicrm/shared/schemas/settingsSchema.js';
 
 const { Pool } = pg;
 
@@ -255,6 +256,8 @@ async function main(adminEmail: string): Promise<void> {
       ['email_notifications_enabled', 'true'],
       ['tags_restrict_creation', 'false'],
       ['deal_auto_link', 'true'],
+      ['email_sync_excluded_domains', '[]'],
+      ['email_sync_backfill_days', String(EMAIL_SYNC_BACKFILL_DAYS_DEFAULT)],
     ];
     for (const [key, value] of settingResets) {
       await client.query(`UPDATE system_settings SET value = $2 WHERE key = $1`, [key, value]);

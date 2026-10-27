@@ -119,7 +119,11 @@ tags
   name   color
 
 gdpr_deletion_log                              ← GDPR Art. 17 erasure tracking
-  record_type   record_id   requested_by_id   erasure_scope   completed_at nullable
+  record_type   record_id   requested_by   erasure_scope   completed_at nullable
+  email_messages_redacted int   email_links_deleted int  ← what the email cascade touched
+  erased_address_hmac nullable  ← keyed digest (HMAC-SHA256, key derived from
+    NODE_ENCRYPTION_KEY), never the address: pseudonymised, not anonymised. Mail arriving
+    later at it is redacted on ingest. Partial index WHERE NOT NULL.
   UNIQUE on (record_type, record_id)
   ⚠ Unique constraint safe only while all record_ids are gen_random_uuid() UUIDs.
     If deterministic external IDs are introduced this must be revisited. See migration 084.
@@ -179,6 +183,12 @@ user_ai_context
   Per-user AI personalization key/value pairs. Explicitly excluded from the
   session retention purge policy — this is persistent config, not conversation history.
 
+connected_accounts
+  excluded_domains text[] (≤ 500, CHECK)  ← the owner's never-sync list, merged with the
+    org list in system_settings.email_sync_excluded_domains at sync time
+  sync_paused_at nullable  ← owner's pause; kept apart from status, which reports health
+    and is rewritten by every synced page
+
 email_messages
   direction(inbound|outbound)  ← decided by comparing sender to the mailbox's own
     address, not by which folder the message was in: a sent copy can land in INBOX.
@@ -195,6 +205,8 @@ email_messages
     column the note tools deliberately surface. message_body_html is stored exactly as
     the sender wrote it, unsanitized: whatever first renders it must sanitize there,
     since doing it at write time would discard markup a renderer needs.
+  gdpr_redacted_at nullable  ← set by GDPR erasure; the sync upsert skips a redacted row,
+    so a re-sync cannot restore what the provider still holds.
   rfc_message_id  references_header  ← what a reply names in In-Reply-To and extends in
     References. Not derivable from thread_id, which may be a native id or a digest.
     The sync upsert keeps a stored value when a re-read has none.

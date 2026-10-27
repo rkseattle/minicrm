@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { Capability } from './capabilitySchema.js';
 import { paginationParamsSchema } from './paginationSchema.js';
+import { typeErrorMessages } from './typeErrorMessages.js';
 
 /**
  * Record types a message can be linked to.
@@ -127,6 +128,15 @@ export const emailThreadSchema = z.object({
 });
 
 export type EmailThread = z.infer<typeof emailThreadSchema>;
+
+/** Body of PATCH /api/v1/email-messages/:id/thread-privacy; applies to the whole thread. */
+export const threadPrivacySchema = z
+  .object({
+    is_private: z.boolean(typeErrorMessages({ required: 'is_private must be a boolean' })),
+  })
+  .strict();
+
+export type ThreadPrivacyInput = z.infer<typeof threadPrivacySchema>;
 
 /** Longest subject a send accepts, matching the org-SMTP compose path. */
 export const EMAIL_SEND_SUBJECT_MAX = 255;

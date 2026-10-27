@@ -8,6 +8,8 @@
 
 import { z } from 'zod';
 
+import { excludedDomainListSchema } from './emailDomainSchema.js';
+
 /** Mailbox providers a user can connect. */
 export const CONNECTED_ACCOUNT_PROVIDERS = ['google', 'microsoft', 'imap'] as const;
 
@@ -128,6 +130,22 @@ export const connectedAccountResponseSchema = z.object({
 });
 
 export type ConnectedAccountResponse = z.infer<typeof connectedAccountResponseSchema>;
+
+/**
+ * The owner's own sync controls for one mailbox. At least one field is required, so an
+ * empty body is a validation error rather than a write that changes nothing.
+ */
+export const updateConnectedAccountSchema = z
+  .object({
+    sync_paused: z.boolean().optional(),
+    excluded_domains: excludedDomainListSchema.optional(),
+  })
+  .strict()
+  .refine((body) => body.sync_paused !== undefined || body.excluded_domains !== undefined, {
+    message: 'Provide sync_paused or excluded_domains',
+  });
+
+export type UpdateConnectedAccountInput = z.infer<typeof updateConnectedAccountSchema>;
 
 /** Result of testing a stored or candidate mailbox connection. */
 export const connectionTestResultSchema = z.object({

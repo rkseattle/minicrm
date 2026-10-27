@@ -61,20 +61,13 @@ import { driverFetch } from './mail/transport.js';
 import { createImapProvider } from './mail/imapProvider.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mail/mailProvider.js';
 import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
+import { EMAIL_SYNC_BACKFILL_DAYS_DEFAULT } from '@minicrm/shared/schemas/settingsSchema.js';
 
 /** The org-wide kill switch. Off means no mailbox syncs, whatever a user's own flag says. */
 const EMAIL_SYNC_FLAG = 'email_sync';
 
 /** Mailboxes claimed per tick. Bounds how long one tick can run. */
 const MAX_ACCOUNTS_PER_TICK = 25;
-
-/**
- * How far back a never-synced mailbox reads.
- *
- * A module constant until the admin setting that owns this by name ships; the value is
- * the same 90 days that setting will default to.
- */
-const BACKFILL_WINDOW_DAYS = 90;
 
 /**
  * Pages one backfill may consume in a single tick.
@@ -447,7 +440,7 @@ export async function syncOneAccount(
     });
   }
 
-  const since = new Date(Date.now() - BACKFILL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const since = new Date(Date.now() - EMAIL_SYNC_BACKFILL_DAYS_DEFAULT * 24 * 60 * 60 * 1000);
 
   // One global row, so a tick reads it once and hands it down. Resolved here only when a
   // caller synced a single account directly, which is a test and the recovery path.
