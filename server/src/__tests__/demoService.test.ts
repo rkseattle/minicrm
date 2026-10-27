@@ -150,13 +150,17 @@ async function cleanDemoData(): Promise<void> {
   await pool.query(`DELETE FROM users WHERE email LIKE '%@demo.minicrm.dev'`);
 }
 
-beforeAll(async () => {
+/**
+ * Clears what an interrupted run can leave. Demo data goes first because the demo rep owns
+ * it and is deleted with it; then this file's fixtures and everything they own.
+ */
+async function resetFixtures(): Promise<void> {
   await cleanDemoData();
-  // Delete notes created_by admin user before deleting the user
-  await pool.query(`DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`, [
-    ADMIN_USER.email,
-  ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await removeFileFixtures();
+}
+
+beforeAll(async () => {
+  await resetFixtures();
   adminUserId = await claimAdminResolution(ADMIN_USER);
 });
 
@@ -172,107 +176,149 @@ beforeEach(async () => {
   await cleanDemoData();
 });
 
-afterAll(async () => {
-  // Live lookup, not the cached adminUserId: a sibling spec's `DELETE FROM users` can
-  // land between the last test and this hook, and cleaning by a stale id would run ~20
-  // owner-scoped DELETEs against a row that no longer exists while leaving the rows that
-  // do. Reading current state means an absent fixture skips the block, as before.
-  const adminResult = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [
-    ADMIN_USER.email,
+/**
+ * Removes everything this file's fixtures own, then the fixtures. Setup runs it too: a run
+ * interrupted before afterAll leaves owned rows behind, and deleting the users first would
+ * fail on their owner FKs.
+ */
+async function removeFileFixtures(): Promise<void> {
+  // Live lookup: a sibling spec may already have deleted a fixture user.
+  const fixtures = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email LIKE $1`, [
+    `${FILE_PREFIX}-%`,
   ]);
-  const adminId = adminResult.rows[0]?.id;
+  const fixtureIds = fixtures.rows.map((row) => row.id);
 
-  if (adminId) {
-    // Delete notes created_by admin and rep before deleting their entities/users
-    await pool.query(`DELETE FROM notes WHERE created_by = $1`, [adminId]);
-    await pool.query(
-      `DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`,
-      ['alex.rivera@demo.minicrm.app'],
-    );
-    // Delete notes linked to admin-owned entities
-    await pool.query(
-      `DELETE FROM notes WHERE entity_id IN (
-         SELECT id FROM contacts WHERE owner_id = $1
-         UNION SELECT id FROM accounts WHERE owner_id = $1
-         UNION SELECT id FROM deals WHERE owner_id = $1
-       )`,
-      [adminId],
-    );
-    await pool.query(
-      `DELETE FROM custom_field_values WHERE record_id IN (
-       SELECT id FROM contacts WHERE is_demo = true OR owner_id = $1
-       UNION SELECT id FROM deals WHERE is_demo = true OR owner_id = $1
-    )`,
-      [adminId],
-    );
-    // Shared predicate for the demo-flagged half, then this file's own fixtures, which
-    // are demo-shaped without carrying the flag.
-    await deleteDemoHygieneFindings(pool);
-    await pool.query(
-      `DELETE FROM data_hygiene_findings WHERE entity_id IN (
-         SELECT id FROM contacts WHERE owner_id = $1
-         UNION SELECT id FROM accounts WHERE owner_id = $1
-         UNION SELECT id FROM deals WHERE owner_id = $1
-       )`,
-      [adminId],
-    );
-    await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
-      DEMO_CUSTOM_FIELD_NAMES,
-    ]);
-    await pool.query(`DELETE FROM webhook_subscriptions WHERE url = ANY($1::text[])`, [
-      DEMO_WEBHOOK_URLS,
-    ]);
-    await pool.query(`DELETE FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`, [
-      DEMO_CURRENCY_CODES,
-    ]);
-    await pool.query(`DELETE FROM leads WHERE is_demo = true OR owner_id = $1`, [adminId]);
-    await pool.query(
-      `DELETE FROM contact_addresses
-       WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true OR owner_id = $1)`,
-      [adminId],
-    );
-    await pool.query(
-      `DELETE FROM contact_tags
-       WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true OR owner_id = $1)`,
-      [adminId],
-    );
-    await pool.query(
-      `DELETE FROM account_tags
-       WHERE account_id IN (SELECT id FROM accounts WHERE is_demo = true OR owner_id = $1)`,
-      [adminId],
-    );
-    await pool.query(
-      `DELETE FROM deal_tags
-       WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true OR owner_id = $1)`,
-      [adminId],
-    );
-    await pool.query(
-      `DELETE FROM tags
-       WHERE id NOT IN (SELECT tag_id FROM contact_tags)
-         AND id NOT IN (SELECT tag_id FROM account_tags)
-         AND id NOT IN (SELECT tag_id FROM deal_tags)`,
-    );
-    await pool.query(`DELETE FROM automation_rules WHERE is_demo = true OR created_by = $1`, [
-      adminId,
-    ]);
-    await pool.query(`DELETE FROM activities WHERE is_demo = true OR owner_id = $1`, [adminId]);
-    await pool.query(
-      `DELETE FROM deal_contacts
-       WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true OR owner_id = $1)
-          OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true OR owner_id = $1)`,
-      [adminId],
-    );
-    await pool.query(`DELETE FROM deals WHERE is_demo = true OR owner_id = $1`, [adminId]);
-    // Remove the demo pipeline — stages cascade via ON DELETE CASCADE
-    await pool.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
-      DEMO_PIPELINE_NAME,
-    ]);
-    await pool.query(`DELETE FROM contacts WHERE is_demo = true OR owner_id = $1`, [adminId]);
-    await pool.query(`DELETE FROM accounts WHERE is_demo = true OR owner_id = $1`, [adminId]);
-  }
+  // With no fixture left, ANY of the empty array matches nothing and the demo half still runs.
+  // Notes the fixtures and the demo rep wrote, before the entities and users go.
+  await pool.query(`DELETE FROM notes WHERE created_by = ANY($1::uuid[])`, [fixtureIds]);
+  await pool.query(`DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`, [
+    'alex.rivera@demo.minicrm.app',
+  ]);
+  // Notes on entities the fixtures own
+  await pool.query(
+    `DELETE FROM notes WHERE entity_id IN (
+       SELECT id FROM contacts WHERE owner_id = ANY($1::uuid[])
+       UNION SELECT id FROM accounts WHERE owner_id = ANY($1::uuid[])
+       UNION SELECT id FROM deals WHERE owner_id = ANY($1::uuid[])
+     )`,
+    [fixtureIds],
+  );
+  await pool.query(
+    `DELETE FROM custom_field_values WHERE record_id IN (
+     SELECT id FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[])
+     UNION SELECT id FROM deals WHERE is_demo = true OR owner_id = ANY($1::uuid[])
+  )`,
+    [fixtureIds],
+  );
+  // Shared predicate for the demo-flagged half, then this file's own fixtures, which
+  // are demo-shaped without carrying the flag.
+  await deleteDemoHygieneFindings(pool);
+  await pool.query(
+    `DELETE FROM data_hygiene_findings WHERE entity_id IN (
+       SELECT id FROM contacts WHERE owner_id = ANY($1::uuid[])
+       UNION SELECT id FROM accounts WHERE owner_id = ANY($1::uuid[])
+       UNION SELECT id FROM deals WHERE owner_id = ANY($1::uuid[])
+     )`,
+    [fixtureIds],
+  );
+  await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
+    DEMO_CUSTOM_FIELD_NAMES,
+  ]);
+  await pool.query(`DELETE FROM webhook_subscriptions WHERE url = ANY($1::text[])`, [
+    DEMO_WEBHOOK_URLS,
+  ]);
+  await pool.query(`DELETE FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`, [
+    DEMO_CURRENCY_CODES,
+  ]);
+  await pool.query(`DELETE FROM leads WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
+    fixtureIds,
+  ]);
+  await pool.query(
+    `DELETE FROM contact_addresses
+     WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
+    [fixtureIds],
+  );
+  await pool.query(
+    `DELETE FROM contact_tags
+     WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
+    [fixtureIds],
+  );
+  await pool.query(
+    `DELETE FROM account_tags
+     WHERE account_id IN (SELECT id FROM accounts WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
+    [fixtureIds],
+  );
+  await pool.query(
+    `DELETE FROM deal_tags
+     WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
+    [fixtureIds],
+  );
+  await pool.query(
+    `DELETE FROM tags
+     WHERE id NOT IN (SELECT tag_id FROM contact_tags)
+       AND id NOT IN (SELECT tag_id FROM account_tags)
+       AND id NOT IN (SELECT tag_id FROM deal_tags)`,
+  );
+  await pool.query(
+    `DELETE FROM automation_rules WHERE is_demo = true OR created_by = ANY($1::uuid[])`,
+    [fixtureIds],
+  );
+  await pool.query(`DELETE FROM activities WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
+    fixtureIds,
+  ]);
+  await pool.query(
+    `DELETE FROM deal_contacts
+     WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true OR owner_id = ANY($1::uuid[]))
+        OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[]))`,
+    [fixtureIds],
+  );
+  await pool.query(`DELETE FROM deals WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
+    fixtureIds,
+  ]);
+  // Remove the demo pipeline — stages cascade via ON DELETE CASCADE
+  await pool.query(`DELETE FROM pipelines WHERE name = $1 AND is_default = false`, [
+    DEMO_PIPELINE_NAME,
+  ]);
+  await pool.query(`DELETE FROM contacts WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
+    fixtureIds,
+  ]);
+  await pool.query(`DELETE FROM accounts WHERE is_demo = true OR owner_id = ANY($1::uuid[])`, [
+    fixtureIds,
+  ]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   // Outside the demo-svc prefix, so the widened delete above does not cover it.
   await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
+}
+
+afterAll(removeFileFixtures);
+
+// ── recovery from an interrupted run ───────────────────────
+
+describe('resetFixtures', () => {
+  it('removes a fixture user left owning a real account', async () => {
+    await pool.query(
+      `INSERT INTO accounts (name, owner_id, is_demo) VALUES ('Leftover', $1, false)`,
+      [adminUserId],
+    );
+
+    await resetFixtures();
+
+    const left = await pool.query('SELECT 1 FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+    expect(left.rowCount).toBe(0);
+  });
+
+  it('removes seeded demo data, its rep, and the fixture that owns it', async () => {
+    await seedDemo();
+
+    await resetFixtures();
+
+    const rep = await pool.query(
+      `SELECT 1 FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`,
+    );
+    const demo = await pool.query('SELECT 1 FROM accounts WHERE is_demo = true');
+    expect(rep.rowCount).toBe(0);
+    expect(demo.rowCount).toBe(0);
+  });
 });
 
 // ── no-active-admin precondition ───────────────────────────
