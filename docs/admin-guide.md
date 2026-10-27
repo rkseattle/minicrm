@@ -2552,8 +2552,8 @@ see
 
 | Setting                   | Where                                                | Default |
 | ------------------------- | ---------------------------------------------------- | ------- |
-| Excluded domains (org)    | **Admin Settings → Integrations → Email sync**       | None    |
-| Backfill window           | **Admin Settings → Integrations → Email sync**       | 90 days |
+| Excluded domains (org)    | **Admin Settings → Integrations → Email Sync**       | None    |
+| Backfill window           | **Admin Settings → Integrations → Email Sync**       | 90 days |
 | Deal auto-link            | API only — see [System Settings](#3-system-settings) | On      |
 | Messages per user, hourly | `EMAIL_SEND_MAX_PER_HOUR` server variable            | 100     |
 

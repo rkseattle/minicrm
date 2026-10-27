@@ -976,7 +976,7 @@
       "tokenMutationError": "Failed to update SCIM token. Please try again."
     },
     "emailSync": {
-      "sectionTitle": "Email sync",
+      "sectionTitle": "Email Sync",
       "sectionHint": "Applies to every user's connected mailbox.",
       "domainsLabel": "Excluded domains",
       "domainsHint": "One domain per line, such as example.com. Mail whose every other address is on these domains, or on the mailbox owner's own list, is never synced. Applies to mail synced from now on.",
