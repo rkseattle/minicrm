@@ -136,8 +136,6 @@ export const threadPrivacySchema = z
   })
   .strict();
 
-export type ThreadPrivacyInput = z.infer<typeof threadPrivacySchema>;
-
 /** Response of PATCH /api/v1/email-messages/:id/thread-privacy; a type, since nothing parses it. */
 export interface ThreadPrivacyResponse {
   is_private: boolean;

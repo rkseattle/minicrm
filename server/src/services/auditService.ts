@@ -347,20 +347,29 @@ export async function maskErasedAddresses<
   });
 }
 
+/** Shown in place of values a private-thread scrub hid; no erasure happened. */
+export const PRIVATE_REDACTED_TEXT = '[Private]';
+
 /**
  * Joins what masks an audit row's name and values: a completed erasure of its record, or a
- * record in redacted_records (an activity scrubbed by erasure or a private thread). The
- * append-only log still holds what was removed, so reads hide it. Expects audit_log as `a`.
+ * redacted_records row for it. Expects audit_log as `a`. An erasure masks every entry. A
+ * private-thread scrub masks only entries written before it, under its own label: it is
+ * the owner's choice about later sends, and the record's history after it stays auditable.
  */
 export const MASKING_JOIN = `LEFT JOIN gdpr_deletion_log g
          ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
        LEFT JOIN redacted_records r
          ON r.record_type = a.record_type AND r.record_id = a.record_id`;
-const MASKED_SQL = '(g.record_id IS NOT NULL OR r.record_id IS NOT NULL)';
+const ERASED_SQL = "(g.record_id IS NOT NULL OR r.reason = 'gdpr_erasure')";
+const PRIVATE_SQL = "(r.reason = 'private_thread' AND a.created_at < r.redacted_at)";
+const maskedColumn = (column: string): string =>
+  `CASE WHEN ${ERASED_SQL} THEN ${GDPR_REDACTED_SQL} WHEN ${PRIVATE_SQL} THEN '${PRIVATE_REDACTED_TEXT}' ELSE a.${column} END AS ${column}`;
 /** record_name, old_value and new_value, masked; for a select over MASKING_JOIN. */
-export const MASKED_AUDIT_VALUES = `CASE WHEN ${MASKED_SQL} THEN ${GDPR_REDACTED_SQL} ELSE a.record_name END AS record_name,
-         CASE WHEN ${MASKED_SQL} THEN ${GDPR_REDACTED_SQL} ELSE a.old_value END AS old_value,
-         CASE WHEN ${MASKED_SQL} THEN ${GDPR_REDACTED_SQL} ELSE a.new_value END AS new_value`;
+export const MASKED_AUDIT_VALUES = [
+  maskedColumn('record_name'),
+  maskedColumn('old_value'),
+  maskedColumn('new_value'),
+].join(',\n         ');
 
 /**
  * Returns audit log entries for a single record, newest first.
@@ -529,11 +538,11 @@ export async function writeAuditEntryBestEffort(entry: AuditEntryInput): Promise
  * The NOTIFY payload is emitted before the read-time SQL masking in getRecordAuditLog
  * is applied, so subscribers that forward events to clients must call this first.
  *
- * When the record has a completed erasure in gdpr_deletion_log, old_value and
- * new_value are replaced with '[GDPR deleted]'.
+ * Masks as the read queries do: '[GDPR deleted]' when the record is erased, '[Private]'
+ * when a private-thread scrub came after the event.
  *
  * @param event - Raw audit notification from the auditEventBus
- * @returns A copy of the event with values masked if the record has been erased
+ * @returns A copy of the event with its name and values masked where the reads would
  */
 export async function maskAuditEvent(event: AuditNotification): Promise<AuditNotification> {
   const [addressMasked] = await maskErasedAddresses([event]);
@@ -545,23 +554,32 @@ export async function maskAuditEvent(event: AuditNotification): Promise<AuditNot
 async function maskErasedRecord(event: AuditNotification): Promise<AuditNotification> {
   if (!event.record_id) return event;
 
-  const result = await pool.query<{ erased: boolean }>(
+  // Compared in SQL, at the same microsecond precision as MASKING_JOIN.
+  const result = await pool.query<{ erased: boolean; private_hidden: boolean }>(
     `SELECT EXISTS (
-       SELECT 1 FROM gdpr_deletion_log
-       WHERE record_id = $1 AND record_type = $2 AND completed_at IS NOT NULL
-     ) OR EXISTS (
-       SELECT 1 FROM redacted_records WHERE record_id = $1 AND record_type = $2
-     ) AS erased`,
-    [event.record_id, event.record_type],
+              SELECT 1 FROM gdpr_deletion_log
+               WHERE record_id = $1 AND record_type = $2 AND completed_at IS NOT NULL
+            ) OR EXISTS (
+              SELECT 1 FROM redacted_records
+               WHERE record_id = $1 AND record_type = $2 AND reason = 'gdpr_erasure'
+            ) AS erased,
+            EXISTS (
+              SELECT 1 FROM redacted_records
+               WHERE record_id = $1 AND record_type = $2 AND reason = 'private_thread'
+                 AND ($3::timestamptz IS NULL OR redacted_at > $3::timestamptz)
+            ) AS private_hidden`,
+    // A payload missing its timestamp is masked rather than shown: privacy fails closed.
+    [event.record_id, event.record_type, event.created_at || null],
   );
-
-  if (!result.rows[0].erased) return event;
+  const { erased, private_hidden: privateHidden } = result.rows[0]!; // Safe: a SELECT of scalars yields one row.
+  const hidden = erased ? GDPR_REDACTED_TEXT : privateHidden ? PRIVATE_REDACTED_TEXT : null;
+  if (!hidden) return event;
 
   return {
     ...event,
-    record_name: event.record_name !== null ? GDPR_REDACTED_TEXT : null,
-    old_value: event.old_value !== null ? GDPR_REDACTED_TEXT : null,
-    new_value: event.new_value !== null ? GDPR_REDACTED_TEXT : null,
+    record_name: event.record_name !== null ? hidden : null,
+    old_value: event.old_value !== null ? hidden : null,
+    new_value: event.new_value !== null ? hidden : null,
   };
 }
 

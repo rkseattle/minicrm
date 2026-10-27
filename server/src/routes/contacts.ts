@@ -2044,7 +2044,8 @@ router.post(
  *             schema:
  *               type: object
  *               description: >-
- *                 Contact record plus its related activities, deals, notes, custom fields,
+ *                 Contact record plus its activities (its own, and every Email activity filed
+ *                 from mail that names it), deals, notes, custom fields,
  *                 audit history, and email_messages — every synced or sent email that names
  *                 the contact or is linked to it, private threads included, with its links
  *       400:

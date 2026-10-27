@@ -173,6 +173,7 @@ export interface LeadGdprExport {
   subject: string;
   exported_at: string;
   lead: LeadRow;
+  activities: ActivityRow[];
   notes: NoteResponse[];
   custom_fields: CustomFieldValueWithDefinition[];
   audit_history: AuditLogRow[];
@@ -233,12 +234,24 @@ interface EmailCascadeCounts {
  * their address in any address field, in any mailbox, plus any message linked to the record.
  * Used by both erasure and export, so the two can never disagree about what is theirs.
  */
-const EMAIL_SCOPE_FOR_SUBJECT_SQL = `SELECT m.id FROM email_messages m
-   WHERE lower(m.from_address) = $3
-      OR ${arrayHasAddress('m.to_addresses || m.cc_addresses || m.reply_to_addresses', '$3')}
-      OR EXISTS (SELECT 1 FROM email_message_links l
-                  WHERE l.email_message_id = m.id
-                    AND l.record_type = $1 AND l.record_id = $2)`;
+export const EMAIL_SCOPE_FOR_SUBJECT_SQL = `SELECT m.id FROM email_messages m
+   WHERE public.email_message_addresses(m.from_address, m.to_addresses, m.cc_addresses,
+                                        m.reply_to_addresses) @> ARRAY[$3::text]
+   UNION
+   SELECT l.email_message_id FROM email_message_links l
+    WHERE l.record_type = $1 AND l.record_id = $2`;
+
+/**
+ * Selects the activities that carry the subject's mail text: those associated with them when
+ * filed, and those filed from a message in their scope, whatever its links were then. Shares
+ * EMAIL_SCOPE_FOR_SUBJECT_SQL's parameters, so erasure and export reach the same rows.
+ */
+const SUBJECT_ACTIVITIES_SQL = `SELECT activity_id AS id FROM activity_participants
+    WHERE record_type = $1 AND record_id = $2
+   UNION
+   SELECT a.id FROM activities a
+    WHERE (a.metadata->>'email_message_id') IS NOT NULL
+      AND (a.metadata->>'email_message_id') IN (SELECT s.id::text FROM (${EMAIL_SCOPE_FOR_SUBJECT_SQL}) s)`;
 
 /**
  * Redacts the data subject from synced mail and send intents, and drops the record's links.
@@ -258,6 +271,12 @@ async function cascadeErasureToEmail(
     recordId,
     address,
   ]);
+  // Before redaction, which replaces the address the scope matches on.
+  const associated = await client.query<{ id: string }>(SUBJECT_ACTIVITIES_SQL, [
+    recordType,
+    recordId,
+    address,
+  ]);
   const messagesRedacted = await redactMessages(
     client,
     scope.rows.map((r) => r.id),
@@ -265,11 +284,7 @@ async function cascadeErasureToEmail(
     placeholder,
   );
 
-  // A send's activity on a deal or account carries the mail's text; reach it by association.
-  const associated = await client.query<{ id: string }>(
-    `SELECT activity_id AS id FROM activity_participants WHERE record_type = $1 AND record_id = $2`,
-    [recordType, recordId],
-  );
+  // A send's activity on a deal or account carries the mail's text.
   await scrubActivities(
     client,
     associated.rows.map((row) => row.id),
@@ -638,6 +653,27 @@ export async function eraseLead(
 
 // ── Export ─────────────────────────────────────────────────────────────────────
 
+/**
+ * The activities an export owes the subject: a contact's own, and every activity erasure would
+ * scrub as theirs (SUBJECT_ACTIVITIES_SQL), so the two never disagree.
+ */
+async function getActivitiesForSubject(
+  recordType: CascadeRecordType,
+  recordId: string,
+  email: string,
+): Promise<ActivityRow[]> {
+  const result = await pool.query<ActivityRow>(
+    `SELECT a.*, u.name AS owner_name
+       FROM activities a
+       JOIN users u ON u.id = a.owner_id
+      WHERE ($1 = 'contact' AND a.contact_id = $2)
+         OR a.id IN (${SUBJECT_ACTIVITIES_SQL})
+      ORDER BY a.created_at DESC`,
+    [recordType, recordId, normalizeAddress(email)],
+  );
+  return result.rows;
+}
+
 /** The synced mail a subject-access export includes; the same scope erasure redacts. */
 async function getEmailMessagesForSubject(
   recordType: CascadeRecordType,
@@ -668,38 +704,28 @@ async function getEmailMessagesForSubject(
  * Assembles a full GDPR subject-access export for a contact.
  * Read-only; no transaction required.
  *
- * Audit history is returned with GDPR masking applied via LEFT JOIN on
- * gdpr_deletion_log so old_value/new_value show '[GDPR deleted]' when erasure
- * is complete.
+ * Audit history is returned with read-time masking applied (MASKING_JOIN in
+ * auditService): '[GDPR deleted]' once erasure is complete, '[Private]' for entries a
+ * private-thread scrub hid.
  *
  * @param id - UUID of the contact
  * @returns Full export payload
  */
 export async function getGdprExportForContact(id: string): Promise<ContactGdprExport> {
-  const [contactResult, activitiesResult, dealsResult, notesResult, cfResult, auditResult] =
-    await Promise.all([
-      pool.query<ContactRow>('SELECT * FROM contacts WHERE id = $1 LIMIT 1', [id]),
+  const [contactResult, dealsResult, notesResult, cfResult, auditResult] = await Promise.all([
+    pool.query<ContactRow>('SELECT * FROM contacts WHERE id = $1 LIMIT 1', [id]),
 
-      pool.query<ActivityRow>(
-        `SELECT a.*, u.name AS owner_name
-         FROM activities a
-         JOIN users u ON u.id = a.owner_id
-         WHERE a.contact_id = $1
-         ORDER BY a.created_at DESC`,
-        [id],
-      ),
-
-      pool.query<DealRow>(
-        `SELECT d.*
+    pool.query<DealRow>(
+      `SELECT d.*
          FROM deals d
          JOIN deal_contacts dc ON dc.deal_id = d.id
          WHERE dc.contact_id = $1
          ORDER BY d.created_at DESC`,
-        [id],
-      ),
+      [id],
+    ),
 
-      pool.query<NoteRow>(
-        `SELECT
+    pool.query<NoteRow>(
+      `SELECT
            n.id, n.entity_type, n.entity_id, n.title, n.body, n.body_text,
            n.visibility,
            COALESCE(
@@ -719,11 +745,11 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
          -- carve-out from that right.
          WHERE n.entity_type = 'contact' AND n.entity_id = $1 AND n.deleted_at IS NULL
          ORDER BY n.created_at DESC`,
-        [id],
-      ),
+      [id],
+    ),
 
-      pool.query<CustomFieldValueRaw>(
-        `SELECT
+    pool.query<CustomFieldValueRaw>(
+      `SELECT
            v.id, v.definition_id, v.record_id, v.value, v.created_at, v.updated_at,
            d.id AS def_id,
            d.entity_type AS def_entity_type,
@@ -737,12 +763,12 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
          JOIN custom_field_definitions d ON d.id = v.definition_id AND d.entity_type = 'contact'
          WHERE v.record_id = $1
          ORDER BY d.sort_order ASC, d.name ASC`,
-        [id],
-      ),
+      [id],
+    ),
 
-      // Audit history with GDPR masking applied
-      pool.query<AuditLogRow>(
-        `SELECT
+    // Audit history with GDPR masking applied
+    pool.query<AuditLogRow>(
+      `SELECT
            a.id, a.record_type, a.record_id, a.event_type, a.field_name,
            ${MASKED_AUDIT_VALUES},
            a.changed_by_id, a.changed_by_name, a.created_at
@@ -750,9 +776,9 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
          ${MASKING_JOIN}
          WHERE a.record_type = 'contact' AND a.record_id = $1
          ORDER BY a.created_at DESC`,
-        [id],
-      ),
-    ]);
+      [id],
+    ),
+  ]);
 
   const contact = contactResult.rows[0];
 
@@ -782,7 +808,7 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
     subject: id,
     exported_at: new Date().toISOString(),
     contact,
-    activities: activitiesResult.rows,
+    activities: await getActivitiesForSubject('contact', id, contact.email),
     deals: dealsResult.rows,
     notes,
     custom_fields: customFields,
@@ -887,6 +913,7 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
     notes,
     custom_fields: customFields,
     audit_history: auditResult.rows,
+    activities: await getActivitiesForSubject('lead', id, lead.email),
     email_messages: await getEmailMessagesForSubject('lead', id, lead.email),
   };
 }

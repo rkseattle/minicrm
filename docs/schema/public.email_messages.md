@@ -50,6 +50,7 @@ Messages synced from a connected mailbox. Headers, metadata, and body text. All 
 | email_messages_account_thread_idx | CREATE INDEX email_messages_account_thread_idx ON public.email_messages USING btree (connected_account_id, thread_id) |
 | email_messages_subject_trgm_idx | CREATE INDEX email_messages_subject_trgm_idx ON public.email_messages USING gin (subject gin_trgm_ops) |
 | email_messages_snippet_trgm_idx | CREATE INDEX email_messages_snippet_trgm_idx ON public.email_messages USING gin (message_snippet gin_trgm_ops) |
+| email_messages_addresses_idx | CREATE INDEX email_messages_addresses_idx ON public.email_messages USING gin (email_message_addresses(from_address, to_addresses, cc_addresses, reply_to_addresses)) |
 
 ## Relations
 

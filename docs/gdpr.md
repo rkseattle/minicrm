@@ -94,9 +94,10 @@ with how the rest of the record is handled:
   connected later, or one reconnected — is redacted as it is stored. The digest is
   pseudonymised data, not anonymised: reversing it needs the server's encryption key.
 - **Activities filed from that mail** — a send from a contact, deal or account files an Email
-  activity carrying its subject and text, associated with every contact and lead the message
-  names. Erasure redacts every activity associated with the person, even after the mailbox
-  it came from is disconnected. Activities filed before this release were associated where
+  activity carrying its subject and text. Erasure redacts every activity filed from mail in
+  the person's scope, found through the message it was filed from, and every activity
+  associated with them when it was filed, which still reaches it after the mailbox is
+  disconnected. Activities filed before this release were associated where
   their send record and message still existed (sends from the previous 30 days whose mailbox
   is still connected); older ones are not reached.
 - **Sent-mail audit entries** — the audit log records the recipients of each email sent from
@@ -203,7 +204,7 @@ An admin user can download a complete JSON export of all personal data held for 
 1. Navigate to the contact or lead record.
 2. Scroll to the **GDPR & Privacy** section.
 3. Click **Download data export**.
-4. The browser downloads a JSON file containing: the contact/lead record, all linked activities, all linked deals, all linked notes (private ones included — see below), all custom field values, the full audit history for the record (with GDPR masking applied if erasure has occurred), and every synced or sent email that names the person or is linked to the record — with the mailbox it came from and its links. Private email threads are included, as private notes are: Art. 15 covers all data held about the subject, whatever its internal sharing.
+4. The browser downloads a JSON file containing: the contact/lead record, all linked activities and every Email activity filed from mail that names the person (the same activities erasure would redact), all linked deals, all linked notes (private ones included — see below), all custom field values, the full audit history for the record (with GDPR masking applied if erasure has occurred), and every synced or sent email that names the person or is linked to the record — with the mailbox it came from and its links. Private email threads are included, as private notes are: Art. 15 covers all data held about the subject, whatever its internal sharing.
 5. Provide this file to the data subject.
 
 #### Art. 20 — Right to Data Portability

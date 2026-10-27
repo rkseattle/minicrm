@@ -143,7 +143,7 @@ describe('/api/v1/settings/email-sync-backfill-days', () => {
     expect(res.body).toEqual({ days: 30 });
     const read = await request(app)
       .get('/api/v1/settings/email-sync-backfill-days')
-      .set('Cookie', repCookie);
+      .set('Cookie', adminCookie);
     expect(read.body).toEqual({ days: 30 });
     expect(await settingsAudits()).toEqual([
       { field_name: 'Email Sync Backfill Window (days)', new_value: '30' },
@@ -163,6 +163,13 @@ describe('/api/v1/settings/email-sync-backfill-days', () => {
   it('answers 401 without a session', async () => {
     const res = await request(app).get('/api/v1/settings/email-sync-backfill-days');
     expect(res.status).toBe(401);
+  });
+
+  it('keeps the window from reps, whose only reader is the admin panel', async () => {
+    const res = await request(app)
+      .get('/api/v1/settings/email-sync-backfill-days')
+      .set('Cookie', repCookie);
+    expect(res.status).toBe(403);
   });
 
   it('refuses a rep with 403', async () => {

@@ -2,7 +2,7 @@
 
 ## Description
 
-Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask their entries; kept after the record is deleted.
+Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask an erased record's entries, and a scrubbed one's written before redacted_at; kept after the record is deleted.
 
 ## Columns
 

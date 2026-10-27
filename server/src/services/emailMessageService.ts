@@ -36,6 +36,7 @@ import type { AuditActor } from './auditService.js';
 import { clearDerivedLinkSuppression, suppressDerivedLink } from './emailMatchingService.js';
 import { buildVisibilityFilter } from './visibilityService.js';
 import { scrubActivities } from './activityService.js';
+import { lockForIngest } from './mail/gdprRedaction.js';
 
 /** A link row as the write endpoints return it. */
 export interface EmailMessageLinkRow {
@@ -139,8 +140,8 @@ function groupIntoThreads(rows: readonly EmailMessageRow[]): EmailThread[] {
  *
  * @param source - A FROM/WHERE fragment selecting `m`, the messages in scope. Written by
  *   this module, never by a caller: it is interpolated, not bound.
- * @param messageFilter - The same restriction as a bare predicate, re-applied when the
- *   page's messages are joined back.
+ * @param messageFilter - The same restriction as a bare predicate over `m` and `ca`,
+ *   privacy term included, re-applied when the page's messages are joined back.
  * @param params - Bind values both fragments refer to. The page's LIMIT and OFFSET follow
  *   them, so the fragments may use $1..$n and nothing higher.
  */
@@ -177,6 +178,7 @@ async function listThreadPage(
          JOIN email_messages m
            ON m.connected_account_id = page.connected_account_id
           AND m.thread_id = page.thread_id
+         JOIN connected_accounts ca ON ca.id = m.connected_account_id
         WHERE ${messageFilter}
         ORDER BY page.newest DESC NULLS LAST, page.thread_id ASC, page.connected_account_id ASC,
                  m.sent_at ASC NULLS LAST, m.id ASC`,
@@ -214,7 +216,7 @@ export async function listMessagesForRecord(
     `EXISTS (
        SELECT 1 FROM email_message_links l
         WHERE l.email_message_id = m.id AND l.record_type = $1 AND l.record_id = $2
-     )`,
+     ) AND ${messageAccessPredicate('$3')}`,
     [recordType, recordId, userId],
     page,
     limit,
@@ -325,7 +327,7 @@ export async function listUnmatchedMessages(
        JOIN connected_accounts ca ON ca.id = m.connected_account_id
       WHERE ${messageAccessPredicate('$1')}
         AND NOT ${visible.sql}`,
-    `NOT ${visible.sql}`,
+    `NOT ${visible.sql} AND ${messageAccessPredicate('$1')}`,
     [userId, ...visible.params],
     page,
     limit,
@@ -462,6 +464,11 @@ export async function setThreadPrivacy(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // Same order as sync and send: shared ingest lock first, so an erasure, which takes it
+    // exclusively, never interleaves with this write and deadlocks on the rows.
+    await lockForIngest(client);
+    // No setRlsUserId: the scrub below reaches activities reassigned to colleagues, a
+    // cross-owner write like erasure's, which owner policies would silently narrow.
     const mailbox = await client.query<{ connected_account_id: string; email_address: string }>(
       `SELECT m.connected_account_id, ca.email_address
          FROM email_messages m
@@ -502,11 +509,15 @@ export async function setThreadPrivacy(
           WHERE m.connected_account_id = $1 AND m.thread_id = $2`,
         [message.connected_account_id, message.thread_id],
       );
+      const filedIds = filed.rows.map((row) => row.id);
+      // A real change of setting moves every filed activity's cutoff, so text a user wrote and
+      // removed meanwhile is masked too; a repeated request moves only what it scrubbed.
       const activityIds = await scrubActivities(
         client,
-        filed.rows.map((row) => row.id),
+        filedIds,
         PRIVATE_EMAIL_SUBJECT,
         'private_thread',
+        (updated.rowCount ?? 0) > 0 ? filedIds : undefined,
       );
       // The removed text is not logged again; redacted_records masks earlier entries.
       await writeAuditEntries(
@@ -533,7 +544,8 @@ export async function setThreadPrivacy(
         eventType: 'email_thread_privacy_changed',
         // A count, not the thread id: an RFC-derived id can name the correspondent's host.
         fieldName: 'thread_privacy',
-        oldValue: isPrivate ? 'visible' : 'private',
+        // Not the thread's prior setting: a thread can mix both, and the count says what changed.
+        oldValue: null,
         newValue: `${isPrivate ? 'private' : 'visible'} (${updated.rowCount ?? 0} messages)`,
         changedById: actor.id,
         changedByName: actor.name,

@@ -39,8 +39,6 @@ export const excludedDomainListSchema = z
   .transform((domains) => [...new Set(domains)])
   .pipe(z.array(z.string()).max(MAX_EXCLUDED_DOMAINS));
 
-export type ExcludedDomainList = z.infer<typeof excludedDomainListSchema>;
-
 /**
  * Splits an editor's text into candidate domains, one per line, blank lines dropped; validate
  * the result with excludedDomainListSchema. Shared so the personal and org editors, whose

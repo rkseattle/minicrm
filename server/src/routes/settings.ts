@@ -435,7 +435,7 @@ router.patch(
  *   get:
  *     tags: [Settings]
  *     operationId: getEmailSyncBackfillDays
- *     summary: Get how far back a newly connected mailbox syncs, in days
+ *     summary: Get how far back a newly connected mailbox syncs, in days (admin only)
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -449,6 +449,8 @@ router.patch(
  *                 days: { type: integer, minimum: 1, maximum: 365 }
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
  *       500:
  *         description: >-
  *           The stored value is unreadable (only after a direct database edit); replace it
@@ -457,6 +459,7 @@ router.patch(
 router.get(
   '/email-sync-backfill-days',
   authenticate,
+  requireRole('admin'),
   asyncHandler(getEmailSyncBackfillDaysHandler),
 );
 

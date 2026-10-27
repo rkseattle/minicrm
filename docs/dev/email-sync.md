@@ -435,7 +435,8 @@ cursor.
 
 Both insert paths take `lockForIngest` (a shared advisory lock) first, and GDPR erasure takes
 the exclusive form, so an erasure waits for pages already being stored and its redaction then
-covers them. After each upsert, `redactErasedOnIngest` digests every address on the touched
+covers them. `setThreadPrivacy` takes it too, though it inserts nothing: it writes the same
+messages and activities an erasure does, and one lock order between them rules out deadlock. After each upsert, `redactErasedOnIngest` digests every address on the touched
 rows and redacts any that match `gdpr_deletion_log.erased_address_hmac` — the path that keeps a
 mailbox connected after an erasure from bringing the subject's mail back. `storeMessages`'
 `DO UPDATE` skips a row with `gdpr_redacted_at` set, so a re-sync never restores one. The
@@ -580,9 +581,8 @@ owner's choice and an admin gets no bypass. Another user's copy of the same conv
 their own mailbox, is theirs and unaffected.
 
 Every user-facing read path — record list, unmatched inbox, detail, global search — chooses its messages
-with `messageAccessPredicate`, which names the owner term and the privacy term together. (The
-list's second statement re-joins whole threads inside the mailboxes the first one chose; a
-team view widening the scope would need the privacy term there too.) Today
+with `messageAccessPredicate`, which names the owner term and the privacy term together,
+including the list's second statement, which re-joins whole threads. Today
 the owner term alone decides, since nothing reads across mailboxes; the privacy term is there
 so a future team view widens the owner term in plain sight and keeps the rule. Two tests in
 `emailMessageService.test.ts` hold this: one widens the scope to every mailbox and proves
@@ -606,10 +606,16 @@ its own deriving; the filing then stores the message private as well.
 
 Each filed activity records its message as `metadata.email_message_id`. Marking a thread
 private scrubs activities already filed from it the same way and records them in
-`redacted_records`, which masks their audit entries on read, and bumps their `version`, so
+`redacted_records`, and bumps their `version`, so
 an edit form opened before cannot write the text back. Champion/blocker quotes on those
 activities' contacts are cleared, since a signal does not record its activity. Making the
 thread visible again does not restore any of it.
+
+Audit reads mask by the redaction's reason. An erasure masks every entry for the record as
+`[GDPR deleted]`. A private-thread scrub masks only entries written before it, as `[Private]`,
+so the record's later history stays auditable; marking the thread private again moves that
+point forward only for activities it actually scrubbed, so a repeated request hides nothing
+new. A later erasure upgrades the record, masking its whole history.
 
 ### Rendering a body
 
