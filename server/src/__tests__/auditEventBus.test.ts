@@ -15,6 +15,7 @@ import pool from '../db.js';
 import { auditEventBus, type AuditNotification } from '../services/auditEventBus.js';
 import { maskAuditEvent, writeAuditEntry } from '../services/auditService.js';
 import { createUser } from '../services/userService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'audit-event-bus';
 // Each test uses its own RECORD_ID to prevent LISTEN notifications from one
@@ -39,7 +40,7 @@ beforeAll(async () => {
   await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = ANY($1::uuid[])', [
     [RECORD_ID_EMIT, RECORD_ID_NOEMIT, RECORD_ID_GDPR],
   ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   // Create a real user to satisfy gdpr_deletion_log.requested_by FK
   const user = await createUser({
@@ -69,7 +70,7 @@ afterAll(async () => {
   await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = ANY($1::uuid[])', [
     [RECORD_ID_EMIT, RECORD_ID_NOEMIT, RECORD_ID_GDPR],
   ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   // Rows in audit_log keyed by RECORD_ID / ACTOR_ID are harmless to other test files
   // (unique IDs ensure no cross-file query contamination). Skip the DISABLE TRIGGER
   // dance to avoid the inter-file race condition on audit_log_no_modify.

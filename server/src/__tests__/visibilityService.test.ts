@@ -19,6 +19,7 @@ import {
 import { getTeamIdsForManager } from '../services/teamService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'vis-svc';
 
@@ -64,7 +65,7 @@ beforeAll(async () => {
        OR name LIKE $2`,
     [`${FILE_PREFIX}-%`, `${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   // Create users
   const admin = await createUser(makeUser('admin', 'admin'));
@@ -131,7 +132,7 @@ afterAll(async () => {
     [`${FILE_PREFIX}-%`],
   );
   await pool.query('DELETE FROM teams WHERE name LIKE $1', [`${FILE_PREFIX}-%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── getAllVisibilityPolicies ─────────────────────────────────────────────────
@@ -263,7 +264,7 @@ describe('buildVisibilityFilter — manager role', () => {
     expect(filter.clause).toBe('c.owner_id = $1');
     expect(filter.params).toEqual([loneManager.id]);
 
-    await pool.query('DELETE FROM users WHERE id = $1', [loneManager.id]);
+    await purgeFixtureUsers({ ids: [loneManager.id] });
   });
 
   it('uses correct paramOffset when offset is greater than 1', async () => {
@@ -331,7 +332,7 @@ describe('buildVisibilityFilter — rep role, team policy', () => {
     expect(filter.clause).toBe('c.owner_id = $1');
     expect(filter.params).toEqual([loneRep.id]);
 
-    await pool.query('DELETE FROM users WHERE id = $1', [loneRep.id]);
+    await purgeFixtureUsers({ ids: [loneRep.id] });
   });
 });
 
@@ -380,6 +381,6 @@ describe('validateReassignment', () => {
       validateReassignment(teamMember1Id, { id: loneManager.id, role: 'manager' }),
     ).rejects.toMatchObject({ code: 'REASSIGNMENT_NOT_PERMITTED' });
 
-    await pool.query('DELETE FROM users WHERE id = $1', [loneManager.id]);
+    await purgeFixtureUsers({ ids: [loneManager.id] });
   });
 });

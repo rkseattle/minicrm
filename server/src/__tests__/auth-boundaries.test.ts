@@ -27,7 +27,7 @@ import { createAccount } from '../services/accountService.js';
 import { createDeal } from '../services/dealService.js';
 import { createActivity } from '../services/activityService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const BASE_USER = {
   passwordHash: '$2b$12$placeholder_hash',
@@ -62,7 +62,7 @@ beforeAll(async () => {
   await pool.query(
     "DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
-  await pool.query("DELETE FROM users WHERE email LIKE 'bounds-%'");
+  await purgeFixtureUsers({ emailLike: 'bounds-%' });
 
   const repA = await createUser({
     ...BASE_USER,
@@ -127,7 +127,7 @@ afterAll(async () => {
   await pool.query(
     "DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'bounds-%')",
   );
-  await pool.query("DELETE FROM users WHERE email LIKE 'bounds-%'");
+  await purgeFixtureUsers({ emailLike: 'bounds-%' });
 });
 
 // ── Deals ─────────────────────────────────────────────────────────────────────
@@ -646,9 +646,9 @@ describe('manager and viewer are blocked from admin-only endpoints', () => {
       'Manager sequence',
       'Admin-only delete',
     ]);
-    await pool.query(
-      "DELETE FROM users WHERE email IN ('bounds-manager@example.com', 'bounds-viewer@example.com')",
-    );
+    await purgeFixtureUsers({
+      emails: ['bounds-manager@example.com', 'bounds-viewer@example.com'],
+    });
   });
 
   // Sequence and custom-report routes gate on capability, so the seeded grants decide these
@@ -780,7 +780,7 @@ describe('service_account is blocked from admin-only endpoints', () => {
   });
 
   afterAll(async () => {
-    await pool.query("DELETE FROM users WHERE email = 'bounds-service-account@example.com'");
+    await purgeFixtureUsers({ emails: ['bounds-service-account@example.com'] });
   });
 
   it('returns 403 AUTH_FORBIDDEN when service_account attempts to change a user role', async () => {

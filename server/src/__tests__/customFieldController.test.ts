@@ -10,7 +10,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createContact } from '../services/contactService.js';
 import pool from '../db.js';
-import { makeAuthCookie, uid } from './testUtils.js';
+import { makeAuthCookie, uid, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'cf-ctrl';
 
@@ -21,7 +21,7 @@ let repId: string;
 
 beforeAll(async () => {
   await pool.query(`DELETE FROM custom_field_definitions WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
@@ -55,7 +55,7 @@ afterAll(async () => {
     `DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── GET /api/v1/custom-fields/definitions ────────────────────────────────────

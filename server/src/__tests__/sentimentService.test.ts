@@ -35,6 +35,7 @@ import {
 } from '../services/sentimentService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 /** Direct SQL write bypasses isFeatureEnabled's in-memory cache — must invalidate
  * explicitly, otherwise a warm cache from another test file's earlier reads (the
@@ -114,7 +115,7 @@ function mockSentimentResponse(
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -133,7 +134,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
   // Some tests in this file disable ai_sentiment_tracking mid-test (see
   // setSentimentFlagEnabled(false) above) — restore it in case this file's last test left

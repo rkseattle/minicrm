@@ -37,7 +37,7 @@ import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 /**
  * Guards against the ai_features master toggle being left disabled by another
@@ -70,7 +70,7 @@ beforeAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const rep = await createUser({
     email: REP_EMAIL,
     name: 'Objection Rep',
@@ -138,7 +138,7 @@ afterAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
 });
 

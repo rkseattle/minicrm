@@ -12,6 +12,7 @@ import { createAccount, updateAccount, setAccountContacts } from '../services/ac
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import type { PoolClient } from 'pg';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'acct-link-svc';
 
@@ -58,7 +59,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
 });
@@ -83,7 +84,7 @@ afterAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── setAccountContacts ──────────────────────────────────────────────────────────

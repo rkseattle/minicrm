@@ -12,7 +12,7 @@ import app from '../app.js';
 import { createTeam, addTeamMember } from '../services/teamService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'team-ctrl';
 const ACTOR = { id: '00000000-0000-4000-8000-000000000002', name: 'Controller Test Actor' };
@@ -21,7 +21,7 @@ let adminCookie: string;
 let repCookie: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
@@ -55,7 +55,7 @@ beforeEach(async () => {
 afterAll(async () => {
   await pool.query('DELETE FROM team_memberships');
   await pool.query('DELETE FROM teams');
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── GET /api/v1/teams ─────────────────────────────────────────────────────────

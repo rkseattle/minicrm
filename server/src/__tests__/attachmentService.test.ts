@@ -17,6 +17,7 @@ import {
 import { createUser } from '../services/userService.js';
 import { createContact } from '../services/contactService.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const UPLOADER = {
   email: 'attachment-uploader@example.com',
@@ -46,7 +47,7 @@ beforeAll(async () => {
   await pool.query(
     "DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'attachment-%')",
   );
-  await pool.query("DELETE FROM users WHERE email LIKE 'attachment-%'");
+  await purgeFixtureUsers({ emailLike: 'attachment-%' });
 
   const uploader = await createUser(UPLOADER);
   uploaderId = uploader.id;

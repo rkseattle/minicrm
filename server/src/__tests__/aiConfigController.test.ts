@@ -16,7 +16,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 
 const FILE_PREFIX = 'ai-ctrl';
@@ -59,7 +59,7 @@ async function resetAiConfig(): Promise<void> {
 }
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -91,7 +91,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await resetAiConfig();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   // Do NOT call pool.end() — this file runs in the parallel Vitest project
   // and pool is a shared singleton. Calling end() here terminates it for all
   // other concurrent test files and causes "Cannot use a pool after calling end".

@@ -10,7 +10,7 @@ import request, { type Response } from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'import-ctrl';
 const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
@@ -41,7 +41,7 @@ async function waitForJob(jobId: string, cookie: string, timeoutMs = 10000): Pro
 }
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -82,7 +82,7 @@ afterAll(async () => {
     `DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── POST /api/v1/admin/import/accounts/parse ─────────────────────────────────────

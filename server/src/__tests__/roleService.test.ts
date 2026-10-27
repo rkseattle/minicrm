@@ -31,6 +31,7 @@ import {
 import { createUser } from '../services/userService.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'role-svc';
 const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -39,7 +40,7 @@ let repId: string;
 let adminId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const rep = await createUser({
     email: `${FILE_PREFIX}-rep@example.com`,
@@ -65,7 +66,7 @@ afterAll(async () => {
   await pool.query(`DELETE FROM custom_roles WHERE name LIKE $1 AND is_builtin = false`, [
     `${FILE_PREFIX}-%`,
   ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── userCapabilities ──────────────────────────────────────────────────────────
@@ -315,7 +316,7 @@ describe('getUserRoles', () => {
     const roles = await getUserRoles(user.id);
     expect(roles).toHaveLength(0);
 
-    await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
+    await purgeFixtureUsers({ ids: [user.id] });
   });
 });
 

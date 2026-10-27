@@ -19,7 +19,7 @@ import { createUser } from '../services/userService.js';
 import { createDeal } from '../services/dealService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'deal-health-ctrl';
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
@@ -35,7 +35,7 @@ beforeAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const rep = await createUser({
     email: REP_EMAIL,
     name: 'Deal Health Rep',
@@ -66,7 +66,7 @@ afterAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('POST /api/v1/deals/:id/health-check', () => {

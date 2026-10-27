@@ -31,7 +31,12 @@ import {
 import { GMAIL_READ_SCOPE, GRAPH_MAIL_READ_SCOPE } from '../services/oauthProviderService.js';
 import type { RefreshedTokens } from '../services/oauthProviderService.js';
 
-import { clearAuditLogFor, deadGrantError, deferMailboxesOfOtherSuites } from './testUtils.js';
+import {
+  clearAuditLogFor,
+  deadGrantError,
+  deferMailboxesOfOtherSuites,
+  purgeFixtureUsers,
+} from './testUtils.js';
 
 const FILE_PREFIX = 'connacct';
 const REP_A_ACTOR = { id: '', name: 'Connected Rep A' };
@@ -47,7 +52,7 @@ const IMAP_INPUT = {
 };
 
 async function deleteFixtureUsers(): Promise<void> {
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

@@ -18,7 +18,7 @@ import app from '../app.js';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { setSsoConfig } from '../services/ssoSettingsService.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 // Spy on ssoService functions so we can simulate a successful SSO round-trip
 // without needing a real IdP. The actual service logic is tested in ssoService.test.ts.
@@ -50,7 +50,7 @@ let adminCookie!: string;
 let repCookie!: string;
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'sso-ctrl-test%'");
+  await purgeFixtureUsers({ emailLike: 'sso-ctrl-test%' });
   await pool.query('DELETE FROM system_settings WHERE key = ANY($1)', [SSO_KEYS]);
 
   const admin = await createUser({
@@ -78,7 +78,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'sso-ctrl-test%'");
+  await purgeFixtureUsers({ emailLike: 'sso-ctrl-test%' });
   await pool.query('DELETE FROM system_settings WHERE key = ANY($1)', [SSO_KEYS]);
   await pool.end();
 });
@@ -403,7 +403,7 @@ describe('POST /api/v1/auth/login — SSO enforcement', () => {
     expect(res.body.error.code).toBe('AUTH_SSO_REQUIRED');
 
     // Cleanup
-    await pool.query("DELETE FROM users WHERE email = 'sso-ctrl-test-bound@example.com'");
+    await purgeFixtureUsers({ emails: ['sso-ctrl-test-bound@example.com'] });
   });
 
   it('allows SSO-bound admin to use password login as escape hatch', async () => {
@@ -432,7 +432,7 @@ describe('POST /api/v1/auth/login — SSO enforcement', () => {
     expect(res.headers['set-cookie']).toBeDefined();
 
     // Cleanup
-    await pool.query("DELETE FROM users WHERE email = 'sso-ctrl-test-bound-admin@example.com'");
+    await purgeFixtureUsers({ emails: ['sso-ctrl-test-bound-admin@example.com'] });
   });
 });
 
@@ -482,7 +482,7 @@ describe('GET /api/v1/auth/sso/callback — OIDC success path', () => {
     expect(cookieHeader).toContain('token=');
 
     // Cleanup
-    await pool.query("DELETE FROM users WHERE email = 'sso-ctrl-test-success@example.com'");
+    await purgeFixtureUsers({ emails: ['sso-ctrl-test-success@example.com'] });
   });
 
   it('redirects to /login?sso_error=SSO_USER_INACTIVE when user is inactive', async () => {
@@ -520,7 +520,7 @@ describe('GET /api/v1/auth/sso/callback — OIDC success path', () => {
     expect(res.headers.location).toMatch(/sso_error=SSO_USER_INACTIVE/);
 
     // Cleanup
-    await pool.query("DELETE FROM users WHERE email = 'sso-ctrl-test-inactive@example.com'");
+    await purgeFixtureUsers({ emails: ['sso-ctrl-test-inactive@example.com'] });
   });
 });
 

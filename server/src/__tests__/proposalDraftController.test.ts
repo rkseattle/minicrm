@@ -43,7 +43,7 @@ import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'proposal-draft-ctrl';
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
@@ -78,7 +78,7 @@ beforeAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const rep = await createUser({
     email: REP_EMAIL,
     name: 'Proposal Rep',
@@ -118,7 +118,7 @@ afterAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
 });
 

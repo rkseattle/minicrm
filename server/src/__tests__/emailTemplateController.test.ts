@@ -13,7 +13,7 @@ import pool from '../db.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 import { createUser } from '../services/userService.js';
 
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'emailtplctl';
 const URL = '/api/v1/email-templates';
@@ -44,7 +44,7 @@ async function insertTemplate(name: string, enabled: boolean): Promise<void> {
 
 beforeAll(async () => {
   await pool.query(`DELETE FROM email_templates WHERE name LIKE '${FILE_PREFIX}-%'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
   const rep = await createUser({
     email: `${FILE_PREFIX}-rep@example.com`,
     name: 'Template Rep',
@@ -89,7 +89,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await pool.query(`DELETE FROM email_templates WHERE name LIKE '${FILE_PREFIX}-%'`);
   await pool.query('DELETE FROM custom_roles WHERE id = $1', [noMailboxRoleId]);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
   await setEmailSync(false);
   await pool.end();
 });

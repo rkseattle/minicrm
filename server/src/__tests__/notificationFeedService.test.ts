@@ -12,13 +12,14 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '../services/notificationFeedService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'notif-feed-svc';
 
 let userId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const user = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
     name: 'Notification Feed Owner',
@@ -35,7 +36,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await pool.query('DELETE FROM notifications WHERE user_id = $1', [userId]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('createNotification / getNotificationFeed', () => {
@@ -108,7 +109,7 @@ describe('markNotificationRead', () => {
     expect(stillUnread.unread_count).toBe(1);
 
     await pool.query('DELETE FROM notifications WHERE user_id = $1', [otherUser.id]);
-    await pool.query('DELETE FROM users WHERE id = $1', [otherUser.id]);
+    await purgeFixtureUsers({ ids: [otherUser.id] });
   });
 });
 

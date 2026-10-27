@@ -10,11 +10,10 @@ import { randomUUID } from 'crypto';
 import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
-import pool from '../db.js';
 import coverageDb from '../coverageDb.js';
 import { upsertCoverageUnits } from '../services/coverageModelService.js';
 import { linkCoverageUnitsToTest } from '../services/coverageMappingService.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'coverage-mapping-ctrl';
 
@@ -42,7 +41,7 @@ async function linkAndCommit(
 }
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
@@ -69,7 +68,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('coverage mapping API — auth boundaries', () => {

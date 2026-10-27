@@ -7,26 +7,17 @@ import 'dotenv/config';
 import request from 'supertest';
 import app from '../app.js';
 import pool from '../db.js';
-import { claimAdminResolution, ensureUser, makeAuthCookie } from './testUtils.js';
+import {
+  claimAdminResolution,
+  ensureUser,
+  makeAuthCookie,
+  purgeFixtureUsers,
+} from './testUtils.js';
+import { clearDemoRecords } from './demoFixtures.js';
 
 const FILE_PREFIX = 'demo-ctrl';
 const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
-
-// Derived from DEMO_WEBHOOK_SUBSCRIPTIONS in demoService.ts
-const DEMO_WEBHOOK_URLS_CTRL = [
-  'https://hooks.example.com/slack/minicrm-deals',
-  'https://hooks.zapier.com/example/minicrm',
-];
-// Derived from DEMO_CUSTOM_FIELD_DEFINITIONS in demoService.ts
-const DEMO_CUSTOM_FIELD_NAMES_CTRL = [
-  'LinkedIn URL',
-  'Lead Source Detail',
-  'Contract Signed Date',
-  'Estimated ARR',
-];
-// Derived from DEMO_CURRENCIES in demoService.ts
-const DEMO_CURRENCY_CODES_CTRL = ['GBP', 'EUR', 'CAD'];
 
 let adminCookie: string;
 let repCookie: string;
@@ -37,15 +28,11 @@ beforeAll(async () => {
 
   // An interrupted run leaves demo rows the fixtures own; clear them first, as afterAll does.
   await clearDemoData();
-  // Remove any notes created_by these test users from prior runs before deleting users
   await pool.query(
     `DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)', [
-    'alex.rivera@demo.minicrm.app',
-  ]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   await ensureFixtureUsers();
 });
@@ -91,68 +78,7 @@ async function ensureFixtureUsers(): Promise<void> {
  * succeeds even if the route is broken, avoiding cascading test failures.
  */
 async function clearDemoData(): Promise<void> {
-  // Notes are identified by entity FK, not is_demo — delete before entities
-  await pool.query(
-    `DELETE FROM notes WHERE entity_id IN (
-       SELECT id FROM contacts WHERE is_demo = true
-       UNION SELECT id FROM accounts WHERE is_demo = true
-       UNION SELECT id FROM deals WHERE is_demo = true
-       UNION SELECT id FROM leads WHERE is_demo = true
-     )`,
-  );
-  // Also delete notes left by the demo rep user (no is_demo column on notes)
-  await pool.query(`DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`, [
-    'alex.rivera@demo.minicrm.app',
-  ]);
-  await pool.query(
-    `DELETE FROM custom_field_values WHERE record_id IN (
-       SELECT id FROM contacts WHERE is_demo = true
-       UNION SELECT id FROM deals WHERE is_demo = true
-     )`,
-  );
-  await pool.query(`DELETE FROM custom_field_definitions WHERE name = ANY($1::text[])`, [
-    DEMO_CUSTOM_FIELD_NAMES_CTRL,
-  ]);
-  await pool.query(`DELETE FROM webhook_subscriptions WHERE url = ANY($1::text[])`, [
-    DEMO_WEBHOOK_URLS_CTRL,
-  ]);
-  await pool.query(`DELETE FROM currencies WHERE code = ANY($1::text[]) AND is_home = false`, [
-    DEMO_CURRENCY_CODES_CTRL,
-  ]);
-  await pool.query('DELETE FROM leads WHERE is_demo = true');
-  await pool.query(
-    `DELETE FROM contact_addresses WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
-  );
-  await pool.query(
-    `DELETE FROM contact_tags WHERE contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
-  );
-  await pool.query(
-    `DELETE FROM account_tags WHERE account_id IN (SELECT id FROM accounts WHERE is_demo = true)`,
-  );
-  await pool.query(
-    `DELETE FROM deal_tags WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)`,
-  );
-  await pool.query(
-    `DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM contact_tags)
-      AND id NOT IN (SELECT tag_id FROM account_tags)
-      AND id NOT IN (SELECT tag_id FROM deal_tags)`,
-  );
-  await pool.query('DELETE FROM automation_rules WHERE is_demo = true');
-  await pool.query('DELETE FROM activities WHERE is_demo = true');
-  await pool.query(
-    `DELETE FROM deal_contacts
-     WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)
-        OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
-  );
-  await pool.query('DELETE FROM deals WHERE is_demo = true');
-  await pool.query('DELETE FROM contacts WHERE is_demo = true');
-  await pool.query('DELETE FROM accounts WHERE is_demo = true');
-  // Remove demo rep user created by insertDemoData
-  await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
-  // The demo IAM users are also created by insertDemoData and carry no is_demo
-  // flag. admin@demo.minicrm.dev is an ACTIVE ADMIN, so leaving it resident makes it a
-  // candidate for getAdminUserId()'s ORDER BY created_at.
-  await pool.query(`DELETE FROM users WHERE email LIKE '%@demo.minicrm.dev'`);
+  await clearDemoRecords();
 }
 
 beforeEach(async () => {
@@ -165,12 +91,11 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await clearDemoData();
-  // Remove notes created_by these test users before deleting them
   await pool.query(
     `DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   // Restore demo_data flag to its seeded default
   await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'demo_data'`);
 });

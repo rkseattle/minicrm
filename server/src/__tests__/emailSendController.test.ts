@@ -35,7 +35,7 @@ import type * as GmailProviderModule from '../services/mail/gmailProvider.js';
 import { createUser } from '../services/userService.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
-import { clearAuditLogFor, makeAuthCookie } from './testUtils.js';
+import { clearAuditLogFor, makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const sendMock = vi.hoisted(() => vi.fn());
 const matchFailure = vi.hoisted(() => ({ next: null as Error | null }));
@@ -82,7 +82,7 @@ let noActivityRoleId: string;
 
 async function deleteFixtures(): Promise<void> {
   await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 function body(overrides: Record<string, unknown> = {}): Record<string, unknown> {

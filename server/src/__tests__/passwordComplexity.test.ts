@@ -21,7 +21,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 import { PASSWORD_MIN_LENGTH } from '@minicrm/shared/schemas/userSchema.js';
 
 const BASE_USER = {
@@ -49,7 +49,7 @@ let repCookie: string;
 let targetUserId: string;
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'pwdcx-%'");
+  await purgeFixtureUsers({ emailLike: 'pwdcx-%' });
 
   // Admin user for admin-set-password and invite endpoints
   const admin = await createUser({
@@ -102,7 +102,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'pwdcx-%'");
+  await purgeFixtureUsers({ emailLike: 'pwdcx-%' });
 });
 
 // ── Helper to get a fresh invite token ───────────────────────────────────────
@@ -110,7 +110,7 @@ afterAll(async () => {
 async function getFreshInviteToken(): Promise<string> {
   // Re-invite a fresh user each time so the token is valid and unused.
   // We delete and recreate the invited user for each set-password scenario.
-  await pool.query("DELETE FROM users WHERE email = 'pwdcx-invited-fresh@example.com'");
+  await purgeFixtureUsers({ emails: ['pwdcx-invited-fresh@example.com'] });
   const inviteRes = await request(app)
     .post('/api/v1/users/invite')
     .set('Cookie', adminCookie)

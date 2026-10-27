@@ -19,6 +19,7 @@ import {
   getAccountHealthScoringConfig,
   setAccountHealthScoringConfig,
 } from '../services/relationshipHealthService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'rel-health-svc';
 
@@ -63,7 +64,7 @@ async function resetConfig(): Promise<void> {
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
     name: 'Relationship Health Owner',
@@ -81,7 +82,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('computeAccountHealthScores', () => {

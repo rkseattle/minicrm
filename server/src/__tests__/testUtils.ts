@@ -551,3 +551,64 @@ export function failClientQueriesContaining(fragment: string): void {
 export function failMessageInsert(): void {
   failClientQueriesContaining(SEND_PATH_MESSAGE_INSERT);
 }
+
+/**
+ * Every foreign key onto users that blocks deleting a referenced user, as [table, column]:
+ * RESTRICT / NO ACTION, and SET NULL on a NOT NULL column, which fails instead of nulling.
+ * Pinned to the catalog by testUtils.test.ts.
+ */
+export const USER_OWNER_REFERENCES: ReadonlyArray<readonly [string, string]> = [
+  ['accounts', 'owner_id'],
+  ['activities', 'owner_id'],
+  ['activity_meeting_briefs', 'generated_by'],
+  ['automation_rules', 'created_by'],
+  ['contacts', 'owner_id'],
+  ['deals', 'owner_id'],
+  ['gdpr_deletion_log', 'requested_by'],
+  ['lead_routing_decisions', 'actual_assignee_id'],
+  ['leads', 'owner_id'],
+  ['notes', 'created_by'],
+  ['notes', 'updated_by'],
+];
+
+/** Which fixture users to delete. Every value is bound as a parameter; no caller writes SQL. */
+export type FixtureUserMatch =
+  | { emailLike: string; exceptEmails?: readonly string[] }
+  | { emails: readonly string[] }
+  | { ids: readonly string[] };
+
+/**
+ * Deletes the matched fixture users after the rows they own, so setup and teardown succeed
+ * whatever an interrupted earlier run left behind.
+ */
+export async function purgeFixtureUsers(match: FixtureUserMatch): Promise<void> {
+  const users =
+    'emailLike' in match
+      ? await pool.query<{ id: string }>(
+          'SELECT id FROM users WHERE email LIKE $1 AND NOT (email = ANY($2::text[]))',
+          [match.emailLike, match.exceptEmails ?? []],
+        )
+      : 'emails' in match
+        ? await pool.query<{ id: string }>('SELECT id FROM users WHERE email = ANY($1::text[])', [
+            match.emails,
+          ])
+        : await pool.query<{ id: string }>('SELECT id FROM users WHERE id = ANY($1::uuid[])', [
+            match.ids,
+          ]);
+  const ids = users.rows.map((row) => row.id);
+  if (ids.length === 0) return;
+  // Polymorphic children of the records about to go have no FK to cascade from.
+  const owned = `SELECT id FROM contacts WHERE owner_id = ANY($1::uuid[])
+    UNION SELECT id FROM accounts WHERE owner_id = ANY($1::uuid[])
+    UNION SELECT id FROM deals WHERE owner_id = ANY($1::uuid[])
+    UNION SELECT id FROM leads WHERE owner_id = ANY($1::uuid[])`;
+  await pool.query(`DELETE FROM notes WHERE entity_id IN (${owned})`, [ids]);
+  await pool.query(`DELETE FROM custom_field_values WHERE record_id IN (${owned})`, [ids]);
+  await pool.query(`DELETE FROM attachments WHERE record_id IN (${owned})`, [ids]);
+  await pool.query(`DELETE FROM data_hygiene_findings WHERE entity_id IN (${owned})`, [ids]);
+  // Table and column come from the constant above, never from a caller.
+  for (const [table, column] of USER_OWNER_REFERENCES) {
+    await pool.query(`DELETE FROM ${table} WHERE ${column} = ANY($1::uuid[])`, [ids]);
+  }
+  await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [ids]);
+}

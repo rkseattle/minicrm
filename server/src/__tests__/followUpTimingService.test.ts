@@ -16,6 +16,7 @@ import {
   computeFollowUpTimingSuggestions,
   getFollowUpTiming,
 } from '../services/followUpTimingService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'followup-timing-svc';
 
@@ -57,7 +58,7 @@ async function cleanup(): Promise<void> {
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
     name: 'Follow-up Timing Owner',
@@ -75,7 +76,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('getFollowUpTiming', () => {

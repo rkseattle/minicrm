@@ -30,7 +30,12 @@ import { GMAIL_READ_SCOPE, GRAPH_MAIL_READ_SCOPE } from '../services/oauthProvid
 import { parseCursor, serializeCursor } from '../services/mail/graphProvider.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 
-import { clearAuditLogFor, deadGrantError, deferMailboxesOfOtherSuites } from './testUtils.js';
+import {
+  clearAuditLogFor,
+  deadGrantError,
+  deferMailboxesOfOtherSuites,
+  purgeFixtureUsers,
+} from './testUtils.js';
 
 const FILE_PREFIX = 'emailsync';
 const ACTOR = { id: '', name: 'Email Sync Rep' };
@@ -179,7 +184,7 @@ async function deleteFixtureUsers(): Promise<void> {
   // Contacts first: owner_id is ON DELETE RESTRICT, so a leftover match fixture would
   // block the user delete and strand every later run of this file.
   await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

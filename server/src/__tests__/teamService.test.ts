@@ -20,6 +20,7 @@ import {
 } from '../services/teamService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test Actor' };
 
@@ -33,7 +34,7 @@ beforeEach(async () => {
   // Memberships reference teams and users — delete in dependency order
   await pool.query('DELETE FROM team_memberships');
   await pool.query('DELETE FROM teams');
-  await pool.query("DELETE FROM users WHERE email LIKE 'team-svc-%'");
+  await purgeFixtureUsers({ emailLike: 'team-svc-%' });
 });
 
 // ── createTeam ─────────────────────────────────────────────────────────────────

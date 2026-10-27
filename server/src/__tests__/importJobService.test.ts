@@ -19,7 +19,7 @@ import {
   updateJobProgress,
 } from '../services/importJobService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'import-job';
 const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
@@ -33,7 +33,7 @@ const CONTACTS_CSV = Buffer.from(
 );
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -55,7 +55,7 @@ afterAll(async () => {
   await pool.query(
     `DELETE FROM contacts WHERE email IN ('alice.job@example.com','bob.job@example.com')`,
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── 1. POST /run returns 202 + job_id promptly (async contract) ──────────────
@@ -159,7 +159,7 @@ describe('GET /api/v1/admin/import/jobs/:job_id', () => {
 
   it('returns 403 for a rep', async () => {
     const repEmail = `${FILE_PREFIX}-rep@example.com`;
-    await pool.query('DELETE FROM users WHERE email = $1', [repEmail]);
+    await purgeFixtureUsers({ emails: [repEmail] });
     const rep = await createUser({
       email: repEmail,
       name: 'Import Job Rep',

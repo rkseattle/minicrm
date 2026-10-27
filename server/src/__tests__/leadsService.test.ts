@@ -28,7 +28,7 @@ import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { convertLeadSchema } from '@minicrm/shared/schemas/leadSchema.js';
 import pool from '../db.js';
-import { uid, clearAuditLogFor } from './testUtils.js';
+import { uid, clearAuditLogFor, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'leads-svc';
 
@@ -69,7 +69,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = $1)',
     [OWNER_USER.email],
   );
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await purgeFixtureUsers({ emails: [OWNER_USER.email] });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -104,7 +104,7 @@ afterAll(async () => {
     [ownerId],
   );
   await pool.query('DELETE FROM leads WHERE owner_id = $1', [ownerId]);
-  await pool.query('DELETE FROM users WHERE email = $1', [OWNER_USER.email]);
+  await purgeFixtureUsers({ emails: [OWNER_USER.email] });
   await pool.end();
 });
 
@@ -254,7 +254,7 @@ describe('exportLeadsForCsv', () => {
     expect(rows.every((r) => r.id !== otherLead.id)).toBe(true);
 
     await pool.query('DELETE FROM leads WHERE owner_id = $1', [otherOwner.id]);
-    await pool.query('DELETE FROM users WHERE id = $1', [otherOwner.id]);
+    await purgeFixtureUsers({ ids: [otherOwner.id] });
   });
 
   it('includes Disqualified and converted leads when their include flags are set', async () => {

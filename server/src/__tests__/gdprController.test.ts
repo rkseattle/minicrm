@@ -15,7 +15,7 @@ import { createUser } from '../services/userService.js';
 import { createLead } from '../services/leadsService.js';
 import { createContact } from '../services/contactService.js';
 import { eraseLead, eraseContact } from '../services/gdprService.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'gdpr-ctrl';
 
@@ -24,7 +24,7 @@ let adminCookie: string;
 let adminActor: { id: string; name: string };
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
     name: 'GDPR Controller Admin',
@@ -56,7 +56,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.end();
 });
 

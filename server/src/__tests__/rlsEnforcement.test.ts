@@ -37,6 +37,7 @@ import { createDeal } from '../services/dealService.js';
 import { createLead } from '../services/leadsService.js';
 import { createActivity } from '../services/activityService.js';
 import { assertTestDatabasePort } from '../scripts/assertTestDatabaseTarget.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 // ── Test users ────────────────────────────────────────────────────────────────
 
@@ -113,7 +114,7 @@ beforeAll(async () => {
   await pool.query(
     "DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'rls-%')",
   );
-  await pool.query("DELETE FROM users WHERE email LIKE 'rls-%'");
+  await purgeFixtureUsers({ emailLike: 'rls-%' });
 
   // Create users (superuser pool — no RLS on users table)
   const repA = await createUser({
@@ -243,7 +244,7 @@ afterAll(async () => {
   await pool.query(
     "DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE 'rls-%')",
   );
-  await pool.query("DELETE FROM users WHERE email LIKE 'rls-%'");
+  await purgeFixtureUsers({ emailLike: 'rls-%' });
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

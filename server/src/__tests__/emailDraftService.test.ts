@@ -30,6 +30,7 @@ import { createContact } from '../services/contactService.js';
 import { createAccount } from '../services/accountService.js';
 import { generateEmailDraft } from '../services/emailDraftService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'email-draft-svc';
 
@@ -41,7 +42,7 @@ beforeAll(async () => {
     [`${FILE_PREFIX}-%`],
   );
   await pool.query('DELETE FROM accounts WHERE name LIKE $1', [`${FILE_PREFIX}-%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
@@ -68,7 +69,7 @@ afterAll(async () => {
     [`${FILE_PREFIX}-%`],
   );
   await pool.query('DELETE FROM accounts WHERE name LIKE $1', [`${FILE_PREFIX}-%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
 });
 

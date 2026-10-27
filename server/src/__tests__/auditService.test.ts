@@ -29,6 +29,7 @@ import {
 } from '../services/auditService.js';
 import { createUser } from '../services/userService.js';
 import { erasedAddressDigest } from '../services/mail/gdprRedaction.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const RECORD_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const RECORD_ID_2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -720,7 +721,7 @@ describe('masking erased addresses in email_sent values', () => {
   let requesterId: string;
 
   beforeAll(async () => {
-    await pool.query(`DELETE FROM users WHERE email = 'auditsvc-gdpr@example.com'`);
+    await purgeFixtureUsers({ emails: [`auditsvc-gdpr@example.com`] });
     const requester = await createUser({
       email: 'auditsvc-gdpr@example.com',
       name: 'Audit GDPR Requester',
@@ -739,7 +740,7 @@ describe('masking erased addresses in email_sent values', () => {
 
   afterAll(async () => {
     await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [ERASURE_RECORD]);
-    await pool.query('DELETE FROM users WHERE id = $1', [requesterId]);
+    await purgeFixtureUsers({ ids: [requesterId] });
   });
 
   async function writeSent(): Promise<void> {
@@ -934,7 +935,7 @@ describe('masking an erased record, and a scrubbed activity, by name too', () =>
   let activityId: string;
 
   beforeAll(async () => {
-    await pool.query(`DELETE FROM users WHERE email = 'auditsvc-names@example.com'`);
+    await purgeFixtureUsers({ emails: [`auditsvc-names@example.com`] });
     const owner = await createUser({
       email: 'auditsvc-names@example.com',
       name: 'Audit Names Owner',
@@ -950,7 +951,7 @@ describe('masking an erased record, and a scrubbed activity, by name too', () =>
     await pool.query('DELETE FROM redacted_records WHERE record_id = $1', [activityId]);
     await pool.query('DELETE FROM activities WHERE owner_id = $1', [ownerId]);
     await pool.query('DELETE FROM accounts WHERE owner_id = $1', [ownerId]);
-    await pool.query('DELETE FROM users WHERE id = $1', [ownerId]);
+    await purgeFixtureUsers({ ids: [ownerId] });
   });
 
   async function writeNamed(recordType: 'contact' | 'activity', recordId: string, name: string) {

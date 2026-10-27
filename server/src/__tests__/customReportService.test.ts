@@ -17,6 +17,7 @@ import {
 } from '../services/customReportService.js';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'cr-svc';
 
@@ -37,7 +38,7 @@ async function truncate(): Promise<void> {
 let REP_ACTOR = { id: '', name: 'Test Rep' };
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const actor = await createUser({
     email: `${FILE_PREFIX}-actor@example.com`,
     name: 'Test Actor',
@@ -67,7 +68,7 @@ afterAll(async () => {
   await truncate();
   await pool.query(`DELETE FROM contacts WHERE email LIKE $1`, [`${FILE_PREFIX}-%`]);
   await pool.query(`DELETE FROM leads WHERE email LIKE $1`, [`${FILE_PREFIX}-%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.end();
 });
 
@@ -271,7 +272,7 @@ describe('createReport', () => {
     expect(auditRows.rows).toHaveLength(1);
     expect(auditRows.rows[0].event_type).toBe('created');
 
-    await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
+    await purgeFixtureUsers({ ids: [user.id] });
   });
 });
 

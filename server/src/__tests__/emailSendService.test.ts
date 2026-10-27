@@ -39,7 +39,12 @@ import {
   type SendEmailInput,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
-import { clearAuditLogFor, failMessageInsert, insertParkedMailbox } from './testUtils.js';
+import {
+  clearAuditLogFor,
+  failMessageInsert,
+  insertParkedMailbox,
+  purgeFixtureUsers,
+} from './testUtils.js';
 import { PRIVATE_EMAIL_SUBJECT } from '../services/emailMessageService.js';
 
 const FILE_PREFIX = 'emailsend';
@@ -139,7 +144,7 @@ async function deleteFixtures(): Promise<void> {
   await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
   await pool.query(`DELETE FROM accounts WHERE name LIKE '${FILE_PREFIX}-%'`);
   await pool.query(`DELETE FROM email_templates WHERE name LIKE '${FILE_PREFIX}-%'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

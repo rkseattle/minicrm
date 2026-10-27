@@ -27,7 +27,7 @@ import { createAutomationRule } from '../services/automationService.js';
 import pool from '../db.js';
 import logger from '../logger.js';
 import coverageDb from '../coverageDb.js';
-import { uid } from './testUtils.js';
+import { uid, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'reliability';
 
@@ -72,7 +72,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -140,7 +140,7 @@ afterAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── fire-and-forget automation trigger ─────────────────────────

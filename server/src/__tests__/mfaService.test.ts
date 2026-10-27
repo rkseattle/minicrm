@@ -27,7 +27,7 @@ import {
   getMfaStatus,
 } from '../services/mfaService.js';
 import { decrypt } from '../services/cryptoService.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test Actor' };
 const BASE_USER = {
@@ -41,7 +41,7 @@ let userId: string;
 let authCookie: string;
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'mfa-test-%'");
+  await purgeFixtureUsers({ emailLike: 'mfa-test-%' });
 
   const user = await createUser({ ...BASE_USER, email: 'mfa-test-main@example.com' });
   userId = user.id;
@@ -49,7 +49,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'mfa-test-%'");
+  await purgeFixtureUsers({ emailLike: 'mfa-test-%' });
   await pool.end();
 });
 

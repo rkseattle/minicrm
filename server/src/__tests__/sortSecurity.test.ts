@@ -20,8 +20,7 @@ import 'dotenv/config';
 import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
-import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const BASE_USER = {
   name: 'Sort Security Test User',
@@ -46,7 +45,7 @@ const DIRECTION_PAYLOADS = ['asc', 'desc', 'ASC', 'DESC', 'invalid', '; DROP TAB
 let authCookie: string;
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email = 'sort-sec-test@example.com'");
+  await purgeFixtureUsers({ emails: ['sort-sec-test@example.com'] });
 
   const user = await createUser({
     ...BASE_USER,
@@ -62,7 +61,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query("DELETE FROM users WHERE email = 'sort-sec-test@example.com'");
+  await purgeFixtureUsers({ emails: ['sort-sec-test@example.com'] });
 });
 
 // ── Contacts ─────────────────────────────────────────────────────────────────

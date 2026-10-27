@@ -11,7 +11,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createContact } from '../services/contactService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const UPLOADER_EMAIL = 'uploader-attach-ctrl@example.com';
 const OTHER_REP_EMAIL = 'other-rep-attach-ctrl@example.com';
@@ -30,7 +30,7 @@ beforeAll(async () => {
   await pool.query(
     "DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE '%-attach-ctrl@example.com')",
   );
-  await pool.query("DELETE FROM users WHERE email LIKE '%-attach-ctrl@example.com'");
+  await purgeFixtureUsers({ emailLike: '%-attach-ctrl@example.com' });
 
   const uploader = await createUser({
     email: UPLOADER_EMAIL,
@@ -98,7 +98,7 @@ afterAll(async () => {
   await pool.query(
     "DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE '%-attach-ctrl@example.com')",
   );
-  await pool.query("DELETE FROM users WHERE email LIKE '%-attach-ctrl@example.com'");
+  await purgeFixtureUsers({ emailLike: '%-attach-ctrl@example.com' });
 });
 
 /**

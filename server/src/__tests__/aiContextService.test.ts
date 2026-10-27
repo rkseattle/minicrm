@@ -23,6 +23,7 @@ import {
   updateContextEntry,
   deleteContextEntry,
 } from '../services/aiContextService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'aic-svc';
 const ACTOR = { id: '00000000-0000-4000-8000-000000000001', name: 'Test User' };
@@ -31,7 +32,7 @@ let userId: string;
 let otherUserId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const r1 = await pool.query<{ id: string }>(
     `INSERT INTO users (email, name, role, password_hash, status)
@@ -55,7 +56,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.end();
 });
 

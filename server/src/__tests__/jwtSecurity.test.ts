@@ -20,8 +20,8 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
-import pool from '../db.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const BASE_USER = {
   passwordHash: '$2b$12$placeholder_hash',
@@ -33,7 +33,7 @@ let repUserEmail: string;
 let repUserName: string;
 
 beforeAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'jwt-sec-%'");
+  await purgeFixtureUsers({ emailLike: 'jwt-sec-%' });
 
   const repUser = await createUser({
     ...BASE_USER,
@@ -47,7 +47,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query("DELETE FROM users WHERE email LIKE 'jwt-sec-%'");
+  await purgeFixtureUsers({ emailLike: 'jwt-sec-%' });
 });
 
 // ── Test 1: Forged JWT (wrong secret) ────────────────────────────────────────

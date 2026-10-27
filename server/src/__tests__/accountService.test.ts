@@ -22,6 +22,7 @@ import {
 } from '../services/accountService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'acct-svc';
 
@@ -54,7 +55,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
 });
@@ -79,7 +80,7 @@ afterAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── createAccount ───────────────────────────────────────────────────────────────
@@ -438,7 +439,7 @@ describe('exportAccountsForCsv', () => {
     await pool.query(
       `DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email = 'acct-svc-export-other@example.com')`,
     );
-    await pool.query(`DELETE FROM users WHERE email = 'acct-svc-export-other@example.com'`);
+    await purgeFixtureUsers({ emails: ['acct-svc-export-other@example.com'] });
 
     const otherUser = await pool.query<{ id: string }>(
       `INSERT INTO users (email, name, role, password_hash, status)
@@ -454,7 +455,7 @@ describe('exportAccountsForCsv', () => {
 
     // Must delete accounts before user due to FK constraint
     await pool.query('DELETE FROM accounts WHERE owner_id = $1', [otherOwnerId]);
-    await pool.query('DELETE FROM users WHERE email = $1', ['acct-svc-export-other@example.com']);
+    await purgeFixtureUsers({ emails: ['acct-svc-export-other@example.com'] });
   });
 
   it('filters by search', async () => {

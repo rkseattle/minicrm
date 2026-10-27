@@ -15,7 +15,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createSession } from '../services/aiSessionService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 
 const FILE_PREFIX = 'ai-retention-ctrl';
@@ -28,7 +28,7 @@ let repCookie: string;
 let repId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: ADMIN_EMAIL,
@@ -69,7 +69,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── Role enforcement ──────────────────────────────────────────────────────────

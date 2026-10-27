@@ -10,7 +10,7 @@ import { sanitizeUser } from '../utils/userUtils.js';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 // ── serializeToCsv ────────────────────────────────────────────────────────────
 
@@ -98,7 +98,7 @@ describe('POST /api/v1/users/:id/reset-onboarding', () => {
   let repUserId: string;
 
   beforeAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+    await purgeFixtureUsers({ emails: [ADMIN_EMAIL, REP_EMAIL] });
 
     const admin = await createUser({
       email: ADMIN_EMAIL,
@@ -126,7 +126,7 @@ describe('POST /api/v1/users/:id/reset-onboarding', () => {
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = ANY($1)', [[ADMIN_EMAIL, REP_EMAIL]]);
+    await purgeFixtureUsers({ emails: [ADMIN_EMAIL, REP_EMAIL] });
   });
 
   it('returns 200 with { success: true } when admin resets another user', async () => {

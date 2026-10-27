@@ -9,7 +9,7 @@ import pool from '../db.js';
 import { globalSearch } from '../services/searchService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 import { createUser } from '../services/userService.js';
-import { insertParkedMailbox } from './testUtils.js';
+import { insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'searchemail';
 const NEEDLE = 'zebracorn';
@@ -80,7 +80,7 @@ async function insertContact(ownerId: string, suffix: string): Promise<string> {
 async function deleteFixtures(): Promise<void> {
   await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
   await pool.query(`DELETE FROM leads WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 async function user(suffix: string, role: 'admin' | 'rep' | 'viewer'): Promise<string> {

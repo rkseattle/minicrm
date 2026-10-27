@@ -18,7 +18,7 @@ import pool from '../db.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 import { setThreadPrivacy } from '../services/emailMessageService.js';
 import { createUser } from '../services/userService.js';
-import { insertParkedMailbox, makeAuthCookie } from './testUtils.js';
+import { insertParkedMailbox, makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'emailprivacy';
 const NEEDLE = 'quokkaprivate';
@@ -81,7 +81,7 @@ async function linkToContact(messageId: string): Promise<void> {
 
 async function deleteFixtures(): Promise<void> {
   await pool.query(`DELETE FROM contacts WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
-  await pool.query(`DELETE FROM users WHERE email LIKE '${FILE_PREFIX}-%@example.com'`);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%@example.com` });
 }
 
 beforeAll(async () => {

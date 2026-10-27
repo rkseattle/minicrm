@@ -17,9 +17,8 @@ import 'dotenv/config';
 import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
-import pool from '../db.js';
 import coverageDb from '../coverageDb.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'coverage-session-ctrl';
 
@@ -42,7 +41,7 @@ beforeAll(async () => {
   // cross-database foreign key into users — see
   // qa/migrations/001_coverage_baseline.js) — cleanup instead filters
   // coverage_sessions directly by adminId once it's known, in afterAll.
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const admin = await createUser({
     email: `${FILE_PREFIX}-admin@example.com`,
@@ -75,7 +74,7 @@ afterAll(async () => {
     [adminId],
   );
   await coverageDb.query('DELETE FROM coverage_sessions WHERE started_by = $1', [adminId]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('coverage session control API — auth boundaries', () => {

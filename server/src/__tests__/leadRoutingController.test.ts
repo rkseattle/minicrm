@@ -12,7 +12,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createTeam } from '../services/teamService.js';
 import pool from '../db.js';
-import { makeAuthCookie, uid } from './testUtils.js';
+import { makeAuthCookie, uid, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'lead-routing-ctrl';
 const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -44,7 +44,7 @@ async function resetConfig(): Promise<void> {
 }
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}%`]);
 
   const rep = await createUser({
@@ -88,7 +88,7 @@ afterAll(async () => {
     [teamId],
   );
   await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await resetConfig();
 });
 

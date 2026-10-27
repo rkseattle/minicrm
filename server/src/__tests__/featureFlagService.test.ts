@@ -39,7 +39,7 @@ import {
 } from '../services/featureFlagService.js';
 import pool from '../db.js';
 import { SEEDED_ROLE_OVERRIDES } from '@minicrm/shared/schemas/featureFlagSchema.js';
-import { waitUntil } from './testUtils.js';
+import { waitUntil, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'ff-svc';
 const ACTOR_EMAIL = `${FILE_PREFIX}-actor@example.com`;
@@ -48,7 +48,7 @@ let actorId: string;
 const ACTOR = () => ({ id: actorId, name: 'FF Service Actor' });
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const result = await pool.query<{ id: string }>(
     `INSERT INTO users (email, name, role, password_hash, status)
      VALUES ($1, 'FF Service Actor', 'admin', '$2b$12$placeholder', 'active')
@@ -88,7 +88,7 @@ afterAll(async () => {
   await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
   // DELETE cascades to feature_flag_group_beta_users and sets feature_flags.group_key = null.
   await pool.query('DELETE FROM feature_flag_groups');
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   // The last test in the 'ai_features master toggle' describe block disables
   // ai_features and nothing after it re-enables it. Without this reset, that
   // leaks into every other serial test file run afterward (e.g.
@@ -378,7 +378,7 @@ describe('updateFeatureFlag', () => {
     );
 
     // Cleanup helper user
-    await pool.query('DELETE FROM users WHERE id = $1', [uniqueActorId]);
+    await purgeFixtureUsers({ ids: [uniqueActorId] });
 
     expect(audit.rows.length).toBeGreaterThanOrEqual(2);
     const fieldNames = audit.rows.map((r: { field_name: string }) => r.field_name);
@@ -641,7 +641,7 @@ describe('beta user enrollment', () => {
     await enrollBetaUser('mobile_access', actorId, ACTOR());
     expect(await isFlagEnabledForUser('mobile_access', otherId, 'rep')).toBe(false);
 
-    await pool.query('DELETE FROM users WHERE id = $1', [otherId]);
+    await purgeFixtureUsers({ ids: [otherId] });
   });
 
   it('beta enrollment has no effect when flag is globally enabled', async () => {
@@ -846,7 +846,7 @@ describe('rollout bucketing', () => {
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-bucket-%`]);
+    await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-bucket-%` });
   });
 
   it('user in bucket sees disabled flag as enabled when rollout_percentage covers them', async () => {
@@ -993,7 +993,7 @@ describe('user overrides', () => {
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = $1', [TARGET_EMAIL]);
+    await purgeFixtureUsers({ emails: [TARGET_EMAIL] });
   });
 
   it('force_enabled user sees flag even when globally disabled and not beta-enrolled', async () => {
@@ -1381,7 +1381,7 @@ describe('flag group beta user management', () => {
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM users WHERE email = $1', [TARGET_EMAIL]);
+    await purgeFixtureUsers({ emails: [TARGET_EMAIL] });
   });
 
   it('getFlagGroupBetaUsers throws FLAG_GROUP_NOT_FOUND for unknown group', async () => {

@@ -8,7 +8,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createNotification } from '../services/notificationFeedService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'notif-feed-ctrl';
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
@@ -17,7 +17,7 @@ let repCookie: string;
 let repId: string;
 
 beforeAll(async () => {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const rep = await createUser({
     email: REP_EMAIL,
     name: 'Notification Rep',
@@ -35,7 +35,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await pool.query('DELETE FROM notifications WHERE user_id = $1', [repId]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('GET /api/v1/notifications', () => {

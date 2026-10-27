@@ -29,6 +29,7 @@ import { createUser } from '../services/userService.js';
 import { createAccount } from '../services/accountService.js';
 import { enrichContactFromText } from '../services/contactEnrichmentService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'contact-enrichment-svc';
 
@@ -36,7 +37,7 @@ let ownerId: string;
 
 beforeAll(async () => {
   await pool.query('DELETE FROM accounts WHERE name LIKE $1', [`${FILE_PREFIX}-%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
@@ -59,7 +60,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await pool.query('DELETE FROM accounts WHERE name LIKE $1', [`${FILE_PREFIX}-%`]);
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
 });
 

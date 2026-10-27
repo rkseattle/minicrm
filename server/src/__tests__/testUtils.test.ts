@@ -13,6 +13,8 @@
 import 'dotenv/config';
 import pool from '../db.js';
 import {
+  purgeFixtureUsers,
+  USER_OWNER_REFERENCES,
   FIXTURE_CREATED_AT_BACKDATE,
   assertResolvedAdminIs,
   claimAdminResolution,
@@ -35,7 +37,7 @@ const OLDEST_BACKDATE = '500 years';
 const NEWER_BACKDATE = '1 year';
 
 async function deleteFixtureUsers(): Promise<void> {
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 }
 
 beforeEach(async () => {
@@ -44,6 +46,88 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await deleteFixtureUsers();
+});
+
+describe('purgeFixtureUsers', () => {
+  it('lists exactly the foreign keys onto users that block a delete', async () => {
+    const catalog = await pool.query<{ ref: string }>(
+      `SELECT c.conrelid::regclass::text || '.' || a.attname AS ref
+         FROM pg_constraint c
+         JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+        WHERE c.contype = 'f' AND c.confrelid = 'users'::regclass
+          AND (c.confdeltype IN ('a', 'r') OR (c.confdeltype = 'n' AND a.attnotnull))`,
+    );
+
+    expect(USER_OWNER_REFERENCES.map(([table, column]) => `${table}.${column}`).sort()).toEqual(
+      catalog.rows.map((row) => row.ref).sort(),
+    );
+  });
+
+  it('deletes a fixture user left owning rows an interrupted run did not clean up', async () => {
+    const owner = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, 'Leftover', 'rep', '$2b$12$placeholder', 'active') RETURNING id`,
+      [`${FILE_PREFIX}-leftover@example.com`],
+    );
+    const ownerId = owner.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    await pool.query(`INSERT INTO accounts (name, owner_id) VALUES ('Leftover', $1)`, [ownerId]);
+    await pool.query(
+      `INSERT INTO notes (entity_type, entity_id, body, created_by)
+       VALUES ('account', gen_random_uuid(), 'left', $1)`,
+      [ownerId],
+    );
+
+    await purgeFixtureUsers({ emails: [`${FILE_PREFIX}-leftover@example.com`] });
+
+    const left = await pool.query('SELECT 1 FROM users WHERE id = $1', [ownerId]);
+    expect(left.rowCount).toBe(0);
+  });
+
+  async function insertFixtureUser(local: string): Promise<string> {
+    const user = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, $2, 'rep', '$2b$12$placeholder', 'active') RETURNING id`,
+      [`${FILE_PREFIX}-${local}@example.com`, local],
+    );
+    return user.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+  }
+
+  async function remaining(ids: readonly string[]): Promise<string[]> {
+    const result = await pool.query<{ id: string }>(
+      'SELECT id FROM users WHERE id = ANY($1::uuid[]) ORDER BY id',
+      [ids],
+    );
+    return result.rows.map((row) => row.id);
+  }
+
+  it('spares a user listed in exceptEmails while deleting its siblings', async () => {
+    const kept = await insertFixtureUser('purge-kept');
+    const gone = await insertFixtureUser('purge-gone');
+
+    await purgeFixtureUsers({
+      emailLike: `${FILE_PREFIX}-purge-%`,
+      exceptEmails: [`${FILE_PREFIX}-purge-kept@example.com`],
+    });
+
+    expect(await remaining([kept, gone])).toEqual([kept]);
+    await purgeFixtureUsers({ ids: [kept] });
+  });
+
+  it('deletes by id, leaving users it was not given', async () => {
+    const target = await insertFixtureUser('purge-target');
+    const bystander = await insertFixtureUser('purge-bystander');
+
+    await purgeFixtureUsers({ ids: [target] });
+
+    expect(await remaining([target, bystander])).toEqual([bystander]);
+    await purgeFixtureUsers({ ids: [bystander] });
+  });
+
+  it('does nothing when no user matches', async () => {
+    await expect(
+      purgeFixtureUsers({ emails: ['nobody@example.invalid'] }),
+    ).resolves.toBeUndefined();
+  });
 });
 
 describe('ensureUser', () => {

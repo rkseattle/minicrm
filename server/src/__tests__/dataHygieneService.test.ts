@@ -23,7 +23,12 @@ import { createAccount, deleteAccount } from '../services/accountService.js';
 import { createDeal, updateDeal, deleteDeal } from '../services/dealService.js';
 import { createActivity } from '../services/activityService.js';
 import { randomUUID } from 'node:crypto';
-import { uid, countAuditRowsFor, expectActorScopingIsolatesForeignRows } from './testUtils.js';
+import {
+  uid,
+  countAuditRowsFor,
+  expectActorScopingIsolatesForeignRows,
+  purgeFixtureUsers,
+} from './testUtils.js';
 import {
   runDataHygieneScan,
   listHygieneFindings,
@@ -92,7 +97,7 @@ async function resetConfig(): Promise<void> {
 
 beforeAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   const owner = await createUser({
     email: `${FILE_PREFIX}-owner@example.com`,
     name: 'Hygiene Owner',
@@ -119,7 +124,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanup();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 describe('runDataHygieneScan — contact signals', () => {

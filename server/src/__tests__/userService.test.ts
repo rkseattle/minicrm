@@ -35,6 +35,7 @@ import {
 import pool from '../db.js';
 import { NAV_LAYOUTS } from '@minicrm/shared/schemas/settingsSchema.js';
 import { getFieldDisplayName } from '../services/auditService.js';
+import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'user-svc';
 
@@ -68,7 +69,7 @@ beforeEach(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── createUser ─────────────────────────────────────────────────────────────────

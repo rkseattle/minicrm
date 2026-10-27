@@ -25,7 +25,7 @@ import {
 } from '@minicrm/shared/schemas/activitySchema.js';
 import pool from '../db.js';
 import type { QueryResult } from 'pg';
-import { waitUntil, clearAuditLogFor } from './testUtils.js';
+import { waitUntil, clearAuditLogFor, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'act-svc';
 
@@ -65,7 +65,7 @@ beforeAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 
   const owner = await createUser(OWNER_USER);
   ownerId = owner.id;
@@ -126,7 +126,7 @@ afterAll(async () => {
     'DELETE FROM accounts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── createActivity ──────────────────────────────────────────────────────────────

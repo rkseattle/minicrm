@@ -15,7 +15,7 @@
 import 'dotenv/config';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
-import { ensureUser } from './testUtils.js';
+import { ensureUser, purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'demo-seed';
 
@@ -55,7 +55,7 @@ async function cleanOwnerData(): Promise<void> {
 
 beforeAll(async () => {
   await cleanOwnerData();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
   ownerId = await ensureUser(OWNER_USER);
   defaultPipelineId = await getDefaultPipelineId();
 });
@@ -72,7 +72,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await cleanOwnerData();
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await purgeFixtureUsers({ emailLike: `${FILE_PREFIX}-%` });
 });
 
 // ── Accounts ─────────────────────────────────────────────────────────────────
