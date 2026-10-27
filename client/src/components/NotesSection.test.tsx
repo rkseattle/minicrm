@@ -797,6 +797,46 @@ describe('NotesSection — a body the editor cannot read', () => {
   });
 });
 
+describe('NotesSection — an image node with a malformed src', () => {
+  const MALFORMED_IMAGE_NOTE: NoteResponse = {
+    ...NOTE_1,
+    body: JSON.stringify({
+      root: {
+        type: 'root',
+        version: 1,
+        format: '',
+        indent: 0,
+        direction: null,
+        children: [{ type: 'image', version: 1, src: { toString: null }, alt: 'chart' }],
+      },
+    }),
+    body_text: 'Pipeline chart',
+  };
+
+  it('shows the plain-text copy instead of crashing the page', async () => {
+    const report = vi.spyOn(sentry, 'captureException').mockImplementation(() => undefined);
+    withNotes([MALFORMED_IMAGE_NOTE]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+
+    const body = await screen.findByTestId(`note-body-${NOTE_ID_1}`);
+    expect(body.textContent).toBe('Pipeline chart');
+    expect(report).toHaveBeenCalled();
+    report.mockRestore();
+  });
+
+  it('opens the plain-text copy in the editor', async () => {
+    const report = vi.spyOn(sentry, 'captureException').mockImplementation(() => undefined);
+    withNotes([MALFORMED_IMAGE_NOTE]);
+    renderWithProviders(<NotesSection entityType="contact" entityId={CONTACT_ID} />);
+    fireEvent.click(await screen.findByTestId(`note-edit-${NOTE_ID_1}`));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('notes-composer-content').textContent).toBe('Pipeline chart');
+    });
+    report.mockRestore();
+  });
+});
+
 describe('NotesSection — bodies the server writes in other shapes', () => {
   it.each([
     ['a Tiptap document from demo data', '{"type":"doc","content":[]}'],

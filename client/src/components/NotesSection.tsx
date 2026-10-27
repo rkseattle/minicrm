@@ -100,7 +100,12 @@ export class ImageNode extends DecoratorNode<ReactElement> {
   }
 
   static importJSON(serializedNode: SerializedImageNode): ImageNode {
-    return new ImageNode(serializedNode.src, serializedNode.alt);
+    // Stored JSON is untyped at runtime; a non-string src throws later, inside render.
+    const { src, alt } = serializedNode as { src: unknown; alt: unknown };
+    if (typeof src !== 'string' || typeof alt !== 'string') {
+      throw new TypeError('An image node needs a string src and alt');
+    }
+    return new ImageNode(src, alt);
   }
 
   constructor(src: string, alt: string, key?: NodeKey) {
@@ -246,12 +251,18 @@ function loadEditorState(
  */
 function renderNoteHtml(editor: LexicalEditor, json: string, noteId: string): string | null {
   if (!isReadableBody(json, noteId)) return null;
-  const state = editor.parseEditorState(json);
-  let html = '';
-  state.read(() => {
-    html = $generateHtmlFromNodes(editor);
-  });
-  return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+  // A body can parse and still fail to export, so both share the plain-text fallback.
+  try {
+    const state = editor.parseEditorState(json);
+    let html = '';
+    state.read(() => {
+      html = $generateHtmlFromNodes(editor);
+    });
+    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+  } catch (err) {
+    if (isLexicalShaped(json)) captureException(new NoteBodyParseError(noteId, err));
+    return null;
+  }
 }
 
 // ── Toolbar plugin ─────────────────────────────────────────────────────────────

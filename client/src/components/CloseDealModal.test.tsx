@@ -2,7 +2,7 @@
  * Tests for CloseDealModal component.
  */
 
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import CloseDealModal from './CloseDealModal.js';
@@ -218,5 +218,20 @@ describe('CloseDealModal', () => {
 
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expectTabWrapsInside(dialog);
+  });
+
+  it('moves keyboard focus into the dialog when it opens', async () => {
+    renderWithProviders(
+      <CloseDealModal
+        isOpen={true}
+        targetStage="Closed Won"
+        initialCloseDate={TODAY}
+        isSubmitting={false}
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('close-deal-date-input')).toHaveFocus());
   });
 });
