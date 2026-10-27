@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { excludedDomainListSchema } from './emailDomainSchema.js';
 import { typeErrorMessages } from './typeErrorMessages.js';
 
 /** All language codes supported by the application */
@@ -169,6 +170,25 @@ export const navLayoutEnum = z.enum(
 /** Body of PATCH /api/v1/settings/deal-auto-link. */
 export const dealAutoLinkSchema = z.object({
   enabled: z.boolean(typeErrorMessages({ required: 'enabled must be a boolean' })),
+});
+
+/** Bounds on how far back a never-synced mailbox reads, in days. */
+export const EMAIL_SYNC_BACKFILL_DAYS_MIN = 1;
+export const EMAIL_SYNC_BACKFILL_DAYS_MAX = 365;
+export const EMAIL_SYNC_BACKFILL_DAYS_DEFAULT = 90;
+
+/** Body of PATCH /api/v1/settings/email-sync-backfill-days. */
+export const emailSyncBackfillDaysSchema = z.object({
+  days: z
+    .number(typeErrorMessages({ required: 'days must be a number' }))
+    .int()
+    .min(EMAIL_SYNC_BACKFILL_DAYS_MIN)
+    .max(EMAIL_SYNC_BACKFILL_DAYS_MAX),
+});
+
+/** Body of PATCH /api/v1/settings/email-sync-excluded-domains. */
+export const emailSyncExcludedDomainsSchema = z.object({
+  domains: excludedDomainListSchema,
 });
 
 export const setNavLayoutSchema = z.object({

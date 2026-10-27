@@ -3555,6 +3555,26 @@
           "name": "notes",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "email_messages_redacted",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "comment": "Synced messages the erasure redacted, across every mailbox."
+        },
+        {
+          "name": "email_links_deleted",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "comment": "Links from synced messages to the erased record that the erasure deleted."
+        },
+        {
+          "name": "erased_address_hmac",
+          "type": "text",
+          "nullable": true,
+          "comment": "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL when it had none. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
         }
       ],
       "indexes": [
@@ -3573,6 +3593,14 @@
           "columns": [
             "record_type",
             "record_id"
+          ]
+        },
+        {
+          "name": "gdpr_deletion_log_erased_address_idx",
+          "def": "CREATE INDEX gdpr_deletion_log_erased_address_idx ON public.gdpr_deletion_log USING btree (erased_address_hmac) WHERE (erased_address_hmac IS NOT NULL)",
+          "table": "public.gdpr_deletion_log",
+          "columns": [
+            "erased_address_hmac"
           ]
         }
       ],
@@ -10280,6 +10308,19 @@
           "type": "timestamp with time zone",
           "nullable": true,
           "comment": "Earliest time this mailbox may be synced again. Null means due now while sync_failure_count is below the ceiling, and parked-until-a-user-acts once it reaches it; the two columns gate the claim together."
+        },
+        {
+          "name": "excluded_domains",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]",
+          "comment": "Domains this mailbox's owner never wants synced, lowercased. A message is skipped at sync time when every counterparty address is on one of these or on the org list."
+        },
+        {
+          "name": "sync_paused_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When the owner paused sync, or NULL when it runs. Kept apart from status, which reports connection health and is rewritten by every synced page."
         }
       ],
       "indexes": [
@@ -10319,6 +10360,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "connected_accounts_excluded_domains_max_check",
+          "type": "CHECK",
+          "def": "CHECK ((cardinality(excluded_domains) \u003c= 500))",
+          "table": "public.connected_accounts",
+          "referenced_table": "",
+          "columns": [
+            "excluded_domains"
+          ]
+        },
         {
           "name": "connected_accounts_provider_check",
           "type": "CHECK",
@@ -10588,6 +10639,12 @@
           "nullable": false,
           "default": "'{}'::text[]",
           "comment": "Addresses the sender named in Reply-To, lowercased. Empty when there is none or it names only the sender; a reply then goes to from_address."
+        },
+        {
+          "name": "gdpr_redacted_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When GDPR erasure redacted this message. A re-sync never overwrites a redacted row, so the redaction survives the provider still holding the original."
         }
       ],
       "indexes": [

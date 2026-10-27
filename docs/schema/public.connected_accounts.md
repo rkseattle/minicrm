@@ -23,11 +23,14 @@ Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth token
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 | sync_failure_count | integer | 0 | false |  |  | Consecutive failed sync attempts. Drives the retry delay and the ceiling past which a mailbox is no longer claimed; reset when a connection test succeeds. |
 | sync_next_attempt_at | timestamp with time zone |  | true |  |  | Earliest time this mailbox may be synced again. Null means due now while sync_failure_count is below the ceiling, and parked-until-a-user-acts once it reaches it; the two columns gate the claim together. |
+| excluded_domains | text[] | '{}'::text[] | false |  |  | Domains this mailbox's owner never wants synced, lowercased. A message is skipped at sync time when every counterparty address is on one of these or on the org list. |
+| sync_paused_at | timestamp with time zone |  | true |  |  | When the owner paused sync, or NULL when it runs. Kept apart from status, which reports connection health and is rewritten by every synced page. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| connected_accounts_excluded_domains_max_check | CHECK | CHECK ((cardinality(excluded_domains) <= 500)) |
 | connected_accounts_provider_check | CHECK | CHECK (((provider)::text = ANY ((ARRAY['google'::character varying, 'microsoft'::character varying, 'imap'::character varying])::text[]))) |
 | connected_accounts_status_check | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'error'::character varying, 'disconnected'::character varying])::text[]))) |
 | connected_accounts_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
@@ -75,6 +78,8 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   integer sync_failure_count "Consecutive failed sync attempts. Drives the retry delay and the ceiling past which a mailbox is no longer claimed; reset when a connection test succeeds."
   timestamp_with_time_zone sync_next_attempt_at "Earliest time this mailbox may be synced again. Null means due now while sync_failure_count is below the ceiling, and parked-until-a-user-acts once it reaches it; the two columns gate the claim together."
+  text__ excluded_domains "Domains this mailbox's owner never wants synced, lowercased. A message is skipped at sync time when every counterparty address is on one of these or on the org list."
+  timestamp_with_time_zone sync_paused_at "When the owner paused sync, or NULL when it runs. Kept apart from status, which reports connection health and is rewritten by every synced page."
 }
 "public.email_messages" {
   uuid id ""
@@ -96,6 +101,7 @@ erDiagram
   text rfc_message_id "The message's own RFC 5322 Message-ID, without angle brackets. A reply names it in In-Reply-To."
   text references_header "Ancestor Message-IDs, bracketed and space-separated, oldest first; bounded to the root plus the newest. A reply extends it."
   text__ reply_to_addresses "Addresses the sender named in Reply-To, lowercased. Empty when there is none or it names only the sender; a reply then goes to from_address."
+  timestamp_with_time_zone gdpr_redacted_at "When GDPR erasure redacted this message. A re-sync never overwrites a redacted row, so the redaction survives the provider still holding the original."
 }
 "public.email_sync_jobs" {
   uuid id ""

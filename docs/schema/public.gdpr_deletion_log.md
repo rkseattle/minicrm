@@ -16,6 +16,9 @@ Append-only log of GDPR Art. 17 erasure requests (one row per erased record). Th
 | completed_at | timestamp with time zone |  | true |  |  |  |
 | erasure_scope | text[] |  | false |  |  |  |
 | notes | text |  | true |  |  |  |
+| email_messages_redacted | integer | 0 | false |  |  | Synced messages the erasure redacted, across every mailbox. |
+| email_links_deleted | integer | 0 | false |  |  | Links from synced messages to the erased record that the erasure deleted. |
+| erased_address_hmac | text |  | true |  |  | HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL when it had none. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest. |
 
 ## Constraints
 
@@ -30,6 +33,7 @@ Append-only log of GDPR Art. 17 erasure requests (one row per erased record). Th
 | ---- | ---------- |
 | gdpr_deletion_log_pkey | CREATE UNIQUE INDEX gdpr_deletion_log_pkey ON public.gdpr_deletion_log USING btree (id) |
 | gdpr_deletion_log_record_idx | CREATE UNIQUE INDEX gdpr_deletion_log_record_idx ON public.gdpr_deletion_log USING btree (record_type, record_id) |
+| gdpr_deletion_log_erased_address_idx | CREATE INDEX gdpr_deletion_log_erased_address_idx ON public.gdpr_deletion_log USING btree (erased_address_hmac) WHERE (erased_address_hmac IS NOT NULL) |
 
 ## Relations
 
@@ -47,6 +51,9 @@ erDiagram
   timestamp_with_time_zone completed_at ""
   text__ erasure_scope ""
   text notes ""
+  integer email_messages_redacted "Synced messages the erasure redacted, across every mailbox."
+  integer email_links_deleted "Links from synced messages to the erased record that the erasure deleted."
+  text erased_address_hmac "HMAC-SHA256 hex, under a key derived from NODE_ENCRYPTION_KEY, of the erased record's lowercased email address; NULL when it had none. A pseudonym, not the address. Mail arriving later at that address is redacted on ingest."
 }
 "public.users" {
   uuid id ""
