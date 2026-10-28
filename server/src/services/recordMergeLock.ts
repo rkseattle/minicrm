@@ -6,7 +6,8 @@
  * another transaction has yet to insert, so a send claimed or a message linked while the
  * merge runs would be left on the removed record, out of erasure's reach. An advisory lock
  * per record id serializes the two instead, as Postgres documents for application-defined
- * locks. Transaction-scoped, so a rollback releases it. Each transaction takes all of its
+ * locks, keyed on the canonical uuid text so any spelling of an id takes the same lock.
+ * Transaction-scoped, so a rollback releases it. Each transaction takes all of its
  * record locks in one statement, ordered by lock key: two statements, or another order,
  * can deadlock against a merge taking the same two records.
  *
@@ -26,7 +27,7 @@ export async function lockRecordsForMerge(
 ): Promise<void> {
   await client.query(
     `SELECT pg_advisory_xact_lock(hashtext($1), key)
-       FROM (SELECT DISTINCT hashtext(unnest($2::text[])) AS key ORDER BY 1) keys`,
+       FROM (SELECT DISTINCT hashtext(unnest($2::uuid[])::text) AS key ORDER BY 1) keys`,
     [RECORD_MERGE_LOCK_NAMESPACE, recordIds],
   );
 }
@@ -41,7 +42,7 @@ export async function holdRecordsAgainstMerge(
 ): Promise<void> {
   await client.query(
     `SELECT pg_advisory_xact_lock_shared(hashtext($1), key)
-       FROM (SELECT DISTINCT hashtext(unnest($2::text[])) AS key ORDER BY 1) keys`,
+       FROM (SELECT DISTINCT hashtext(unnest($2::uuid[])::text) AS key ORDER BY 1) keys`,
     [RECORD_MERGE_LOCK_NAMESPACE, recordIds],
   );
 }
