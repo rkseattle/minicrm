@@ -1,12 +1,12 @@
 # data-testid Audit Report
 
-Generated: 2026-10-27T17:18:13.952Z
+Generated: 2026-10-28T13:34:24.093Z
 
 ## Summary
 
-- Matched: 601
+- Matched: 611
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1062
+- Unexercised (in app, not in tests): 1054
 - Dynamic (manual review required): 715
 
 ## Stale testids (action required)
@@ -132,14 +132,14 @@ _None — all test-referenced testids are present in the application source._
 | `email-composer` | client/src/components/EmailComposer.tsx | 148 |
 | `email-draft-error` | client/src/components/EmailDraftPanel.tsx | 142 |
 | `email-draft-copy-error` | client/src/components/EmailDraftPanel.tsx | 192 |
-| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 291 |
-| `emails-loading` | client/src/components/EmailsSection.tsx | 297 |
-| `emails-error` | client/src/components/EmailsSection.tsx | 304 |
-| `email-thread-participants` | client/src/components/EmailsSection.tsx | 356 |
-| `email-thread-date` | client/src/components/EmailsSection.tsx | 364 |
-| `email-thread-subject` | client/src/components/EmailsSection.tsx | 371 |
-| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 378 |
-| `emails-thread-list` | client/src/components/EmailsSection.tsx | 326 |
+| `emails-accounts-error` | client/src/components/EmailsSection.tsx | 297 |
+| `emails-loading` | client/src/components/EmailsSection.tsx | 303 |
+| `emails-error` | client/src/components/EmailsSection.tsx | 310 |
+| `email-thread-participants` | client/src/components/EmailsSection.tsx | 362 |
+| `email-thread-date` | client/src/components/EmailsSection.tsx | 370 |
+| `email-thread-subject` | client/src/components/EmailsSection.tsx | 377 |
+| `email-thread-snippet` | client/src/components/EmailsSection.tsx | 384 |
+| `emails-thread-list` | client/src/components/EmailsSection.tsx | 332 |
 | `error-boundary-reload` | client/src/components/ErrorBoundary.tsx | 29 |
 | `error-boundary-dashboard-link` | client/src/components/ErrorBoundary.tsx | 37 |
 | `error-boundary-fallback` | client/src/components/ErrorBoundary.tsx | 20 |
@@ -263,8 +263,8 @@ _None — all test-referenced testids are present in the application source._
 | `send-email-template-preview` | client/src/components/SendEmailModal.tsx | 384 |
 | `send-email-error` | client/src/components/SendEmailModal.tsx | 444 |
 | `send-email-cancel` | client/src/components/SendEmailModal.tsx | 468 |
-| `setup-checklist-expand-button` | client/src/components/SetupChecklistWidget.tsx | 223 |
-| `setup-checklist-complete` | client/src/components/SetupChecklistWidget.tsx | 307 |
+| `setup-checklist-expand-button` | client/src/components/SetupChecklistWidget.tsx | 224 |
+| `setup-checklist-complete` | client/src/components/SetupChecklistWidget.tsx | 308 |
 | `settings-tab-list-select` | client/src/components/SubPageNav.tsx | 71 |
 | `task-suggestion-heading` | client/src/components/TaskSuggestionPanel.tsx | 59 |
 | `task-suggestion-panel-dismiss` | client/src/components/TaskSuggestionPanel.tsx | 67 |
@@ -284,7 +284,7 @@ _None — all test-referenced testids are present in the application source._
 | `nli-confirmation-fields` | client/src/components/ai/MutationConfirmationBlock.tsx | 68 |
 | `nli-bulk-sample` | client/src/components/ai/MutationConfirmationBlock.tsx | 107 |
 | `nli-operation-badge` | client/src/components/ai/MutationConfirmationBlock.tsx | 158 |
-| `nli-entity-name` | client/src/components/ai/MutationConfirmationBlock.tsx | 173 |
+| `nli-entity-name` | client/src/components/ai/MutationConfirmationBlock.tsx | 172 |
 | `ai-budget-exceeded-banner` | client/src/components/ai/TokenBudgetWarningBanner.tsx | 36 |
 | `ai-budget-warning-banner` | client/src/components/ai/TokenBudgetWarningBanner.tsx | 48 |
 | `nli-result-loading` | client/src/components/ai/results/NliResultBlock.tsx | 152 |
@@ -390,7 +390,7 @@ _None — all test-referenced testids are present in the application source._
 | `admin-tags-create-form` | client/src/pages/AdminTagsPage.tsx | 290 |
 | `ai-delete-cancel-button` | client/src/pages/AiPage.tsx | 768 |
 | `ai-retention-window-notice` | client/src/pages/AiPage.tsx | 876 |
-| `ai-thinking-indicator` | client/src/pages/AiPage.tsx | 952 |
+| `ai-thinking-indicator` | client/src/pages/AiPage.tsx | 950 |
 | `filter-from` | client/src/pages/AuditLogPage.tsx | 366 |
 | `filter-to` | client/src/pages/AuditLogPage.tsx | 384 |
 | `filter-user` | client/src/pages/AuditLogPage.tsx | 400 |
@@ -748,19 +748,19 @@ _None — all test-referenced testids are present in the application source._
 | `ai-usage-dashboard-page` | client/src/pages/admin/AiUsageDashboardPage.tsx | 155 |
 | `contrast-indicator` | client/src/pages/admin/BrandingSettings.tsx | 68 |
 | `branding-preview` | client/src/pages/admin/BrandingSettings.tsx | 89 |
-| `branding-section-title` | client/src/pages/admin/BrandingSettings.tsx | 211 |
-| `branding-logo-url` | client/src/pages/admin/BrandingSettings.tsx | 246 |
-| `branding-logo-preview` | client/src/pages/admin/BrandingSettings.tsx | 257 |
-| `branding-logo-alt-text` | client/src/pages/admin/BrandingSettings.tsx | 270 |
-| `branding-favicon-url` | client/src/pages/admin/BrandingSettings.tsx | 290 |
-| `branding-color-picker` | client/src/pages/admin/BrandingSettings.tsx | 307 |
-| `branding-error` | client/src/pages/admin/BrandingSettings.tsx | 364 |
-| `branding-reset-cancel-button` | client/src/pages/admin/BrandingSettings.tsx | 419 |
-| `branding-reset-confirm` | client/src/pages/admin/BrandingSettings.tsx | 403 |
-| `branding-reset-error` | client/src/pages/admin/BrandingSettings.tsx | 437 |
-| `branding-reset-section` | client/src/pages/admin/BrandingSettings.tsx | 385 |
-| `branding-loading` | client/src/pages/admin/BrandingSettings.tsx | 459 |
-| `branding-load-error` | client/src/pages/admin/BrandingSettings.tsx | 467 |
+| `branding-section-title` | client/src/pages/admin/BrandingSettings.tsx | 212 |
+| `branding-logo-url` | client/src/pages/admin/BrandingSettings.tsx | 247 |
+| `branding-logo-preview` | client/src/pages/admin/BrandingSettings.tsx | 258 |
+| `branding-logo-alt-text` | client/src/pages/admin/BrandingSettings.tsx | 271 |
+| `branding-favicon-url` | client/src/pages/admin/BrandingSettings.tsx | 291 |
+| `branding-color-picker` | client/src/pages/admin/BrandingSettings.tsx | 308 |
+| `branding-error` | client/src/pages/admin/BrandingSettings.tsx | 365 |
+| `branding-reset-cancel-button` | client/src/pages/admin/BrandingSettings.tsx | 420 |
+| `branding-reset-confirm` | client/src/pages/admin/BrandingSettings.tsx | 404 |
+| `branding-reset-error` | client/src/pages/admin/BrandingSettings.tsx | 438 |
+| `branding-reset-section` | client/src/pages/admin/BrandingSettings.tsx | 386 |
+| `branding-loading` | client/src/pages/admin/BrandingSettings.tsx | 460 |
+| `branding-load-error` | client/src/pages/admin/BrandingSettings.tsx | 468 |
 | `currency-section-title` | client/src/pages/admin/CurrencySettings.tsx | 184 |
 | `currency-loading` | client/src/pages/admin/CurrencySettings.tsx | 191 |
 | `currency-load-error` | client/src/pages/admin/CurrencySettings.tsx | 196 |
@@ -821,18 +821,10 @@ _None — all test-referenced testids are present in the application source._
 | `audit-log-section-title` | client/src/pages/admin/DataSettings.tsx | 391 |
 | `audit-log-link` | client/src/pages/admin/DataSettings.tsx | 399 |
 | `audit-log-section` | client/src/pages/admin/DataSettings.tsx | 387 |
-| `email-sync-settings-disabled-banner` | client/src/pages/admin/EmailSyncSettings.tsx | 135 |
 | `email-sync-settings-loading` | client/src/pages/admin/EmailSyncSettings.tsx | 142 |
 | `email-sync-settings-error` | client/src/pages/admin/EmailSyncSettings.tsx | 148 |
-| `email-sync-excluded-domains-input` | client/src/pages/admin/EmailSyncSettings.tsx | 177 |
-| `email-sync-domains-error` | client/src/pages/admin/EmailSyncSettings.tsx | 183 |
-| `email-sync-domains-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 192 |
-| `email-sync-domains-save` | client/src/pages/admin/EmailSyncSettings.tsx | 200 |
-| `email-sync-backfill-days-input` | client/src/pages/admin/EmailSyncSettings.tsx | 230 |
 | `email-sync-days-error` | client/src/pages/admin/EmailSyncSettings.tsx | 233 |
 | `email-sync-days-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 241 |
-| `email-sync-days-save` | client/src/pages/admin/EmailSyncSettings.tsx | 249 |
-| `email-sync-settings` | client/src/pages/admin/EmailSyncSettings.tsx | 123 |
 | `feature-flag-confirm-cancel` | client/src/pages/admin/FeatureFlagsSettings.tsx | 131 |
 | `group-create-open` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1042 |
 | `group-create-label` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1075 |
@@ -1028,10 +1020,10 @@ _None — all test-referenced testids are present in the application source._
 | `ai-field-exclusions-loading` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 86 |
 | `ai-field-exclusions-error` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 95 |
 | `ai-field-exclusions-save-error` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 116 |
-| `ai-standard-fields-table` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 152 |
-| `ai-custom-fields-excluded-list` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 193 |
-| `ai-custom-fields-excluded-empty` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 187 |
-| `ai-manage-custom-fields-link` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 215 |
+| `ai-standard-fields-table` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 153 |
+| `ai-custom-fields-excluded-list` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 194 |
+| `ai-custom-fields-excluded-empty` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 188 |
+| `ai-manage-custom-fields-link` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 216 |
 | `ai-data-minimization-section` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 109 |
 | `ai-purge-cancel-button` | client/src/pages/admin/ai-settings/AiDataRetentionSection.tsx | 54 |
 | `ai-purge-confirm-dialog` | client/src/pages/admin/ai-settings/AiDataRetentionSection.tsx | 39 |
@@ -1040,18 +1032,18 @@ _None — all test-referenced testids are present in the application source._
 | `ai-retention-stats-error` | client/src/pages/admin/ai-settings/AiDataRetentionSection.tsx | 268 |
 | `ai-purge-error` | client/src/pages/admin/ai-settings/AiDataRetentionSection.tsx | 302 |
 | `ai-deployment-mode-badge` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 192 |
-| `ai-base-url-input` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 328 |
-| `ai-api-key-cancel-button` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 379 |
-| `ai-api-key-change-button` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 350 |
-| `ai-config-save-success` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 424 |
-| `ai-config-save-error` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 429 |
-| `ai-provider-dpa-link` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 457 |
-| `ai-custom-dpa-url-input` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 479 |
-| `ai-dpa-not-acknowledged-state` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 494 |
-| `ai-dpa-acknowledged-state` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 487 |
-| `ai-dpa-save-success` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 519 |
-| `ai-dpa-save-error` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 524 |
-| `ai-dpa-self-hosted-notice` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 534 |
+| `ai-base-url-input` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 333 |
+| `ai-api-key-cancel-button` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 384 |
+| `ai-api-key-change-button` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 355 |
+| `ai-config-save-success` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 429 |
+| `ai-config-save-error` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 434 |
+| `ai-provider-dpa-link` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 462 |
+| `ai-custom-dpa-url-input` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 484 |
+| `ai-dpa-not-acknowledged-state` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 499 |
+| `ai-dpa-acknowledged-state` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 492 |
+| `ai-dpa-save-success` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 524 |
+| `ai-dpa-save-error` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 529 |
+| `ai-dpa-self-hosted-notice` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 539 |
 | `lead-routing-low-confidence-threshold-input` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 184 |
 | `lead-routing-medium-confidence-threshold-input` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 203 |
 | `lead-routing-min-closed-deals-input` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 221 |
@@ -1151,28 +1143,28 @@ _None — all test-referenced testids are present in the application source._
 | `**-parsing` | client/src/components/CsvImporter.tsx | 285 | app |
 | `**-parse-error` | client/src/components/CsvImporter.tsx | 291 | app |
 | `**-selected-file` | client/src/components/CsvImporter.tsx | 300 | app |
-| `**-map-*` | client/src/components/CsvImporter.tsx | 325 | app |
-| `**-option-*` | client/src/components/CsvImporter.tsx | 348 | app |
-| `**-preview-row-*` | client/src/components/CsvImporter.tsx | 387 | app |
-| `**-run-error` | client/src/components/CsvImporter.tsx | 414 | app |
-| `**-back-button` | client/src/components/CsvImporter.tsx | 424 | app |
-| `**-preview-button` | client/src/components/CsvImporter.tsx | 434 | app |
-| `**-run-button` | client/src/components/CsvImporter.tsx | 446 | app |
-| `**-progress-bar` | client/src/components/CsvImporter.tsx | 495 | app |
-| `**-progress-text` | client/src/components/CsvImporter.tsx | 503 | app |
-| `**-progress-created` | client/src/components/CsvImporter.tsx | 516 | app |
-| `**-progress-skipped` | client/src/components/CsvImporter.tsx | 519 | app |
-| `**-progress-failed` | client/src/components/CsvImporter.tsx | 522 | app |
-| `**-elapsed` | client/src/components/CsvImporter.tsx | 529 | app |
-| `**-running` | client/src/components/CsvImporter.tsx | 460 | app |
-| `**-summary-created` | client/src/components/CsvImporter.tsx | 564 | app |
-| `**-summary-skipped` | client/src/components/CsvImporter.tsx | 567 | app |
-| `**-summary-failed` | client/src/components/CsvImporter.tsx | 570 | app |
-| `**-download-errors` | client/src/components/CsvImporter.tsx | 579 | app |
-| `**-summary-error` | client/src/components/CsvImporter.tsx | 543 | app |
-| `**-download-errors` | client/src/components/CsvImporter.tsx | 551 | app |
-| `**-import-again` | client/src/components/CsvImporter.tsx | 592 | app |
-| `**-summary` | client/src/components/CsvImporter.tsx | 537 | app |
+| `**-map-*` | client/src/components/CsvImporter.tsx | 328 | app |
+| `**-option-*` | client/src/components/CsvImporter.tsx | 351 | app |
+| `**-preview-row-*` | client/src/components/CsvImporter.tsx | 390 | app |
+| `**-run-error` | client/src/components/CsvImporter.tsx | 417 | app |
+| `**-back-button` | client/src/components/CsvImporter.tsx | 427 | app |
+| `**-preview-button` | client/src/components/CsvImporter.tsx | 437 | app |
+| `**-run-button` | client/src/components/CsvImporter.tsx | 449 | app |
+| `**-progress-bar` | client/src/components/CsvImporter.tsx | 498 | app |
+| `**-progress-text` | client/src/components/CsvImporter.tsx | 506 | app |
+| `**-progress-created` | client/src/components/CsvImporter.tsx | 519 | app |
+| `**-progress-skipped` | client/src/components/CsvImporter.tsx | 522 | app |
+| `**-progress-failed` | client/src/components/CsvImporter.tsx | 525 | app |
+| `**-elapsed` | client/src/components/CsvImporter.tsx | 532 | app |
+| `**-running` | client/src/components/CsvImporter.tsx | 463 | app |
+| `**-summary-created` | client/src/components/CsvImporter.tsx | 567 | app |
+| `**-summary-skipped` | client/src/components/CsvImporter.tsx | 570 | app |
+| `**-summary-failed` | client/src/components/CsvImporter.tsx | 573 | app |
+| `**-download-errors` | client/src/components/CsvImporter.tsx | 582 | app |
+| `**-summary-error` | client/src/components/CsvImporter.tsx | 546 | app |
+| `**-download-errors` | client/src/components/CsvImporter.tsx | 554 | app |
+| `**-import-again` | client/src/components/CsvImporter.tsx | 595 | app |
+| `**-summary` | client/src/components/CsvImporter.tsx | 540 | app |
 | `csv-importer-*` | client/src/components/CsvImporter.tsx | 239 | app |
 | `custom-field-label-*` | client/src/components/CustomFieldsSection.tsx | 114 | app |
 | `custom-field-label-*` | client/src/components/CustomFieldsSection.tsx | 143 | app |
@@ -1188,21 +1180,21 @@ _None — all test-referenced testids are present in the application source._
 | `deal-card-probability-*` | client/src/components/DealCard.tsx | 108 | app |
 | `deal-card-stage-select-*` | client/src/components/DealCard.tsx | 127 | app |
 | `deal-card-*` | client/src/components/DealCard.tsx | 68 | app |
-| `email-direction-*` | client/src/components/EmailsSection.tsx | 101 | app |
-| `email-thread-private-*` | client/src/components/EmailsSection.tsx | 116 | app |
-| `email-body-loading-*` | client/src/components/EmailsSection.tsx | 134 | app |
-| `email-body-error-*` | client/src/components/EmailsSection.tsx | 141 | app |
-| `email-body-text-*` | client/src/components/EmailsSection.tsx | 158 | app |
-| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 348 | app |
-| `email-thread-privacy-hint-*` | client/src/components/EmailsSection.tsx | 391 | app |
-| `email-thread-privacy-error-*` | client/src/components/EmailsSection.tsx | 399 | app |
-| `email-thread-privacy-*` | client/src/components/EmailsSection.tsx | 410 | app |
-| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 425 | app |
-| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 450 | app |
-| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 497 | app |
-| `email-reply-*` | client/src/components/EmailsSection.tsx | 469 | app |
-| `email-message-*` | client/src/components/EmailsSection.tsx | 439 | app |
-| `email-thread-*` | client/src/components/EmailsSection.tsx | 340 | app |
+| `email-direction-*` | client/src/components/EmailsSection.tsx | 102 | app |
+| `email-thread-private-*` | client/src/components/EmailsSection.tsx | 117 | app |
+| `email-body-loading-*` | client/src/components/EmailsSection.tsx | 135 | app |
+| `email-body-error-*` | client/src/components/EmailsSection.tsx | 142 | app |
+| `email-body-text-*` | client/src/components/EmailsSection.tsx | 159 | app |
+| `email-thread-row-*` | client/src/components/EmailsSection.tsx | 354 | app |
+| `email-thread-privacy-hint-*` | client/src/components/EmailsSection.tsx | 397 | app |
+| `email-thread-privacy-error-*` | client/src/components/EmailsSection.tsx | 405 | app |
+| `email-thread-privacy-*` | client/src/components/EmailsSection.tsx | 416 | app |
+| `email-thread-show-images-*` | client/src/components/EmailsSection.tsx | 431 | app |
+| `email-message-toggle-*` | client/src/components/EmailsSection.tsx | 456 | app |
+| `email-message-snippet-*` | client/src/components/EmailsSection.tsx | 503 | app |
+| `email-reply-*` | client/src/components/EmailsSection.tsx | 475 | app |
+| `email-message-*` | client/src/components/EmailsSection.tsx | 445 | app |
+| `email-thread-*` | client/src/components/EmailsSection.tsx | 346 | app |
 | `**-tags-heading` | client/src/components/EntityDetailSidebar.tsx | 108 | app |
 | `**-tags-section` | client/src/components/EntityDetailSidebar.tsx | 103 | app |
 | `field-merge-auto-*` | client/src/components/FieldMergeModal.tsx | 332 | app |
@@ -1293,9 +1285,9 @@ _None — all test-referenced testids are present in the application source._
 | `nli-note-card-*` | client/src/components/ai/results/NoteResultCard.tsx | 27 | app |
 | `nli-report-card-*` | client/src/components/ai/results/ReportResultCard.tsx | 257 | app |
 | `role-select-*` | client/src/components/ui/InlineRoleSelect.tsx | 107 | app |
-| `role-cell-*` | client/src/components/ui/InlineRoleSelect.tsx | 98 | app |
+| `role-cell-*` | client/src/components/ui/InlineRoleSelect.tsx | 97 | app |
 | `custom-role-chip-*` | client/src/components/ui/InlineRoleSelect.tsx | 135 | app |
-| `status-invited-*` | client/src/components/ui/InlineStatusSelect.tsx | 93 | app |
+| `status-invited-*` | client/src/components/ui/InlineStatusSelect.tsx | 92 | app |
 | `status-select-*` | client/src/components/ui/InlineStatusSelect.tsx | 109 | app |
 | `user-actions-*` | client/src/components/ui/UserActionsMenu.tsx | 88 | app |
 | `issue-token-*` | client/src/components/ui/UserActionsMenu.tsx | 115 | app |
@@ -1642,9 +1634,9 @@ _None — all test-referenced testids are present in the application source._
 | `webhook-event-*` | client/src/pages/admin/WebhookSettings.tsx | 446 | app |
 | `field-exclusion-toggle-*` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 39 | app |
 | `field-exclusion-row-*` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 30 | app |
-| `always-excluded-field-*` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 135 | app |
-| `ai-deployment-mode-radio-*` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 299 | app |
-| `ai-deployment-mode-*` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 289 | app |
+| `always-excluded-field-*` | client/src/pages/admin/ai-settings/AiDataMinimizationSection.tsx | 136 | app |
+| `ai-deployment-mode-radio-*` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 298 | app |
+| `ai-deployment-mode-*` | client/src/pages/admin/ai-settings/AiGeneralSection.tsx | 288 | app |
 | `lead-routing-*` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 164 | app |
 | `lead-routing-team-override-toggle-*` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 316 | app |
 | `lead-routing-team-override-*` | client/src/pages/admin/ai-settings/AiLeadRoutingSection.tsx | 307 | app |
@@ -1757,44 +1749,44 @@ _None — all test-referenced testids are present in the application source._
 | `recent-activity-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 415 | test |
 | `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 812 | test |
 | `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 801 | test |
-| `pipeline-stage-name-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 359 | test |
-| `pipeline-edit-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1314 | test |
-| `pipeline-edit-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1332 | test |
-| `pipeline-save-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1349 | test |
-| `pipeline-delete-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1366 | test |
-| `pipeline-stage-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1418 | test |
-| `pipeline-stage-edit-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1458 | test |
-| `pipeline-stage-save-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1470 | test |
-| `pipeline-stage-exit-required-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1483 | test |
-| `pipeline-stage-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1605 | test |
-| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1628 | test |
-| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1651 | test |
-| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1672 | test |
-| `webhook-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2173 | test |
-| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2211 | test |
-| `feature-flag-badge-off-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2232 | test |
-| `feature-flag-enable-at-clear-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2245 | test |
-| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2264 | test |
-| `feature-flag-advanced-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2286 | test |
-| `feature-flag-beta-expand-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2313 | test |
-| `feature-flag-beta-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2335 | test |
-| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2358 | test |
-| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2381 | test |
-| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2404 | test |
-| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2427 | test |
-| `rollout-percentage-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2445 | test |
-| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2475 | test |
-| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2498 | test |
-| `feature-flag-overrides-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2517 | test |
-| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2542 | test |
-| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2565 | test |
-| `override-remove-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2582 | test |
-| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2630 | test |
-| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2652 | test |
-| `flag-group-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2668 | test |
-| `feature-flag-role-override-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2695 | test |
-| `group-detail-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2726 | test |
-| `group-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2741 | test |
+| `pipeline-stage-name-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 360 | test |
+| `pipeline-edit-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1322 | test |
+| `pipeline-edit-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1340 | test |
+| `pipeline-save-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1357 | test |
+| `pipeline-delete-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1374 | test |
+| `pipeline-stage-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1426 | test |
+| `pipeline-stage-edit-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1466 | test |
+| `pipeline-stage-save-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1478 | test |
+| `pipeline-stage-exit-required-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1491 | test |
+| `pipeline-stage-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1613 | test |
+| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1636 | test |
+| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1659 | test |
+| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1680 | test |
+| `webhook-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2181 | test |
+| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2219 | test |
+| `feature-flag-badge-off-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2240 | test |
+| `feature-flag-enable-at-clear-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2253 | test |
+| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2272 | test |
+| `feature-flag-advanced-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2294 | test |
+| `feature-flag-beta-expand-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2321 | test |
+| `feature-flag-beta-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2343 | test |
+| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2366 | test |
+| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2389 | test |
+| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2412 | test |
+| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2435 | test |
+| `rollout-percentage-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2453 | test |
+| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2483 | test |
+| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2506 | test |
+| `feature-flag-overrides-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2525 | test |
+| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2550 | test |
+| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2573 | test |
+| `override-remove-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2590 | test |
+| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2638 | test |
+| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2660 | test |
+| `flag-group-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2676 | test |
+| `feature-flag-role-override-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2703 | test |
+| `group-detail-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2734 | test |
+| `group-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2749 | test |
 | `custom-field-delete-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 597 | test |
 | `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 616 | test |
 | `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 639 | test |
