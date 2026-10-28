@@ -23,6 +23,7 @@ import {
   reconcileDerivedLinks,
   relinkLinksToMergedContact,
 } from './emailMatchingService.js';
+import { moveSendIntentsToContact } from './emailSendIntentService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 import { getDealAutoLink } from './settingsService.js';
 import { normalizeAddress } from '../utils/emailAddress.js';
@@ -1009,6 +1010,7 @@ export async function mergeContacts(
       [winnerId, loserId],
     );
     await relinkLinksToMergedContact(client, winnerId, loserId);
+    await moveSendIntentsToContact(client, { recordType: 'contact', recordId: loserId }, winnerId);
 
     // After the move, not before: the loser's messages only reach the winner here, and
     // they arrive carrying links derived from the loser's account and deals. Runs

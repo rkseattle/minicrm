@@ -11275,6 +11275,26 @@
           "nullable": false,
           "default": "false",
           "comment": "True when the message answered or forwarded was in a private thread at claim time. Its filing then stores the message private and files an activity without a body."
+        },
+        {
+          "name": "parent_message_id",
+          "type": "uuid",
+          "nullable": true,
+          "comment": "The message this send answers or forwards; null for a new conversation. Lets a privacy change reach a send not yet stored."
+        },
+        {
+          "name": "recipient_contact_ids",
+          "type": "uuid[]",
+          "nullable": false,
+          "default": "'{}'::uuid[]",
+          "comment": "Contacts whose address the recipients named at claim time; erasure finds the intent by them."
+        },
+        {
+          "name": "recipient_lead_ids",
+          "type": "uuid[]",
+          "nullable": false,
+          "default": "'{}'::uuid[]",
+          "comment": "Unconverted leads the recipients named at claim time where no contact held the address."
         }
       ],
       "indexes": [
@@ -11335,6 +11355,14 @@
           "columns": [
             "user_id",
             "idempotency_key"
+          ]
+        },
+        {
+          "name": "email_send_intents_parent_message_idx",
+          "def": "CREATE INDEX email_send_intents_parent_message_idx ON public.email_send_intents USING btree (parent_message_id) WHERE (parent_message_id IS NOT NULL)",
+          "table": "public.email_send_intents",
+          "columns": [
+            "parent_message_id"
           ]
         }
       ],
@@ -11404,6 +11432,19 @@
           "referenced_table": "public.email_messages",
           "columns": [
             "email_message_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_send_intents_parent_message_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (parent_message_id) REFERENCES email_messages(id) ON DELETE SET NULL",
+          "table": "public.email_send_intents",
+          "referenced_table": "public.email_messages",
+          "columns": [
+            "parent_message_id"
           ],
           "referenced_columns": [
             "id"
@@ -13330,6 +13371,19 @@
       "def": "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
     },
     {
+      "table": "public.email_send_intents",
+      "columns": [
+        "parent_message_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.email_messages",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (parent_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
+    },
+    {
       "table": "public.email_send_ledger",
       "columns": [
         "user_id"
@@ -13656,6 +13710,24 @@
       "name": "public.scrub_activities_filed_from_own_mail",
       "return_type": "record",
       "arguments": "message_ids uuid[], new_subject text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.address_array_replace",
+      "return_type": "_text",
+      "arguments": "addresses text[], address text, replacement text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.address_array_has",
+      "return_type": "bool",
+      "arguments": "addresses text[], address text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.address_matched_records",
+      "return_type": "record",
+      "arguments": "addresses text[]",
       "type": "FUNCTION"
     }
   ],

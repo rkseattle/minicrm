@@ -1457,7 +1457,8 @@
     "EMAIL_ACCOUNT_NOT_FOUND": "Dieses Postfach ist nicht mehr verbunden.",
     "TEMPLATE_NOT_FOUND": "Diese Vorlage ist nicht mehr verfügbar.",
     "EMAIL_MESSAGE_NOT_FOUND": "Diese Nachricht ist nicht mehr verfügbar.",
-    "SEND_NOT_CONFIRMED": "Der E-Mail-Anbieter hat diese Nachricht nicht bestätigt. Sie wurde möglicherweise gesendet – prüfen Sie Ihren Ordner „Gesendet“, bevor Sie sie erneut senden."
+    "SEND_NOT_CONFIRMED": "Der E-Mail-Anbieter hat diese Nachricht nicht bestätigt. Sie wurde möglicherweise gesendet – prüfen Sie Ihren Ordner „Gesendet“, bevor Sie sie erneut senden.",
+    "BRIEF_SOURCES_CHANGED": "Die Aktivitäten, auf denen dieses Briefing beruht, wurden während der Erstellung geändert. Bitte erneut erstellen."
   },
   "search": {
     "inputLabel": "Suche",

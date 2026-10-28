@@ -6,7 +6,11 @@
 import type { Request, Response } from 'express';
 import { handleAiServiceError } from '../utils/aiErrorHandling.js';
 import { findActivityById } from '../services/activityService.js';
-import { generateMeetingBrief, getMeetingBrief } from '../services/meetingBriefService.js';
+import {
+  BRIEF_SOURCES_CHANGED,
+  generateMeetingBrief,
+  getMeetingBrief,
+} from '../services/meetingBriefService.js';
 import { toUtcDateString } from '../utils/utcDate.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
@@ -75,6 +79,15 @@ export async function generateMeetingBriefHandler(req: Request, res: Response): 
     res.status(200).json(result);
   } catch (err: unknown) {
     if (handleAiServiceError(err, res)) return;
+    if (err instanceof Error && 'code' in err && err.code === BRIEF_SOURCES_CHANGED) {
+      res.status(409).json({
+        error: {
+          code: BRIEF_SOURCES_CHANGED,
+          message: 'The activities this brief draws on changed. Generate it again.',
+        },
+      });
+      return;
+    }
     throw err;
   }
 }

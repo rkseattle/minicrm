@@ -75,6 +75,9 @@ async function cleanup(): Promise<void> {
   );
 }
 
+/** The version an activity row is inserted at (the column default). */
+const INSERTED_VERSION = 1;
+
 /** Inserts a bare activity row directly (bypasses createActivity's own fire-and-forget
  * analyzeContactSignals call, which would otherwise double-trigger analysis alongside
  * this test file's explicit calls). */
@@ -132,6 +135,7 @@ describe('analyzeContactSignals', () => {
   it('no-ops when the activity has no linked contact', async () => {
     await analyzeContactSignals({
       activityId: '00000000-0000-4000-8000-000000000001',
+      activityVersion: INSERTED_VERSION,
       contactId: null,
       notes: 'Mentioned sharing proposal with VP Finance',
       subject: 'Call',
@@ -164,6 +168,7 @@ describe('analyzeContactSignals', () => {
     );
     await analyzeContactSignals({
       activityId,
+      activityVersion: INSERTED_VERSION,
       contactId,
       notes: 'Mentioned sharing proposal with VP Finance',
       subject: 'Call',
@@ -192,6 +197,7 @@ describe('analyzeContactSignals', () => {
     const activityId = await insertTestActivity(contactId, 'Call', 'Discussed pricing details.');
     await analyzeContactSignals({
       activityId,
+      activityVersion: INSERTED_VERSION,
       contactId,
       notes: 'Discussed pricing details.',
       subject: 'Call',
@@ -217,6 +223,7 @@ describe('analyzeContactSignals', () => {
     const activityId1 = await insertTestActivity(contactId, 'Call', 'Signal one');
     await analyzeContactSignals({
       activityId: activityId1,
+      activityVersion: INSERTED_VERSION,
       contactId,
       notes: 'Signal one',
       subject: 'Call',
@@ -235,6 +242,7 @@ describe('analyzeContactSignals', () => {
     const activityId2 = await insertTestActivity(contactId, 'Call', 'Signal two');
     await analyzeContactSignals({
       activityId: activityId2,
+      activityVersion: INSERTED_VERSION,
       contactId,
       notes: 'Signal two',
       subject: 'Call',
@@ -244,6 +252,38 @@ describe('analyzeContactSignals', () => {
     expect(status.status).toBe('champion');
     // Most recent signal first
     expect(status.recent_signals[0].description).toBe('Signal two');
+  });
+  it('discards a result that arrives after the activity was scrubbed', async () => {
+    const contactId = await createTestContact();
+    const activityId = await insertTestActivity(contactId, 'Call', 'Signal before scrub');
+    mockCreate.mockImplementation(async () => {
+      // The scrub commits while the AI request is still out.
+      await pool.query(`UPDATE activities SET notes = NULL, version = version + 1 WHERE id = $1`, [
+        activityId,
+      ]);
+      return {
+        usage: { input_tokens: 30, output_tokens: 10 },
+        content: [
+          {
+            type: 'tool_use',
+            name: 'report_champion_blocker_signal',
+            input: { signal_detected: true, direction: 'champion', description: 'Late quote' },
+          },
+        ],
+      };
+    });
+
+    await analyzeContactSignals({
+      activityId,
+      activityVersion: INSERTED_VERSION,
+      contactId,
+      notes: 'Signal before scrub',
+      subject: 'Call',
+    });
+
+    const status = await getContactChampionBlockerStatus(contactId);
+    expect(status.recent_signals).toEqual([]);
+    expect(status.status).toBe('neutral');
   });
 });
 
@@ -281,6 +321,7 @@ describe('dismissContactClassification / overrideContactClassification', () => {
     const blockerActivityId = await insertTestActivity(contactId, 'Call', 'Blocker signal');
     await analyzeContactSignals({
       activityId: blockerActivityId,
+      activityVersion: INSERTED_VERSION,
       contactId,
       notes: 'Blocker signal',
       subject: 'Call',

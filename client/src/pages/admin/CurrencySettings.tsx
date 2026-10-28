@@ -98,7 +98,9 @@ export default function CurrencySettings() {
   // than via an effect — avoids the extra render an effect-based sync would
   // cause. See:
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-  const [prevCurrenciesConfigData, setPrevCurrenciesConfigData] = useState(currenciesConfigData);
+  // Unset at first, so data already cached on mount fills the form too.
+  const [prevCurrenciesConfigData, setPrevCurrenciesConfigData] =
+    useState<typeof currenciesConfigData>(undefined);
   if (currenciesConfigData && currenciesConfigData !== prevCurrenciesConfigData) {
     setPrevCurrenciesConfigData(currenciesConfigData);
     setHomeCurrency(currenciesConfigData.home_currency);

@@ -187,6 +187,32 @@ describe('POST /api/v1/activities/:id/brief', () => {
     expect(res.body.brief.account_summary).toBe('Summary.');
   });
 
+  it('returns 409 when an activity the brief drew on is scrubbed while it is generated', async () => {
+    const activityId = await createTestActivity();
+    const source = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, notes, contact_id, owner_id)
+       SELECT 'Call', 'Pricing', 'Said yes', contact_id, owner_id FROM activities WHERE id = $1
+       RETURNING id`,
+      [activityId],
+    );
+    const sourceId = source.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    mockBriefResponse();
+    const respond = mockCreate.getMockImplementation();
+    mockCreate.mockImplementationOnce(async (...args: unknown[]) => {
+      await pool.query('UPDATE activities SET notes = NULL, version = version + 1 WHERE id = $1', [
+        sourceId,
+      ]);
+      return respond?.(...args);
+    });
+
+    const res = await request(app)
+      .post(`/api/v1/activities/${activityId}/brief`)
+      .set('Cookie', repCookie)
+      .expect(409);
+
+    expect(res.body.error.code).toBe('BRIEF_SOURCES_CHANGED');
+  });
+
   it('returns 404 for a non-existent activity', async () => {
     await request(app)
       .post('/api/v1/activities/00000000-0000-0000-0000-000000000000/brief')

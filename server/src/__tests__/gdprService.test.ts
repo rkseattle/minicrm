@@ -14,6 +14,7 @@
 
 import 'dotenv/config';
 import pool from '../db.js';
+import { recordPath } from '@minicrm/shared/types/recordPath.js';
 import { vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -21,8 +22,8 @@ import { randomUUID } from 'node:crypto';
 import logger from '../logger.js';
 import * as sentry from '../sentry.js';
 import { createUser } from '../services/userService.js';
-import { createContact } from '../services/contactService.js';
-import { createLead } from '../services/leadsService.js';
+import { createContact, mergeContacts } from '../services/contactService.js';
+import { convertLead, createLead } from '../services/leadsService.js';
 import { getRecordAuditLog } from '../services/auditService.js';
 import {
   eraseContact,
@@ -38,6 +39,7 @@ import {
   EMAIL_SCOPE_FOR_SUBJECT_SQL,
 } from '../services/gdprService.js';
 import { syncOneAccount } from '../services/emailSyncService.js';
+import { claimSendIntent, markIntentUnconfirmed } from '../services/emailSendIntentService.js';
 import { createImapAccount } from '../services/connectedAccountService.js';
 import type { ClaimedSyncAccount } from '../services/connectedAccountService.js';
 import type { MailProvider, NormalizedMessage } from '../services/mail/mailProvider.js';
@@ -833,6 +835,34 @@ describe('cascadeGdprErasureToAiData', () => {
     expect(stored.rows[0].original_email).toBeNull();
   });
 
+  it('clears tool results that name the erased person', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const session = await pool.query<{ id: string }>(
+      `INSERT INTO ai_sessions (user_id, name) VALUES ($1, 'Tools') RETURNING id`,
+      [adminId],
+    );
+    const sessionId = session.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    await pool.query(
+      `INSERT INTO ai_messages (session_id, role, content, tool_results)
+       VALUES ($1, 'assistant', 'Here you go.', $2)`,
+      [sessionId, JSON.stringify([{ tool: 'search_activities', notes: 'Alice Erasure says yes' }])],
+    );
+
+    await cascadeGdprErasureToAiData(
+      contact.id,
+      'contact',
+      'Alice Erasure',
+      `${FILE_PREFIX}-tools@example.com`,
+      adminActor,
+    );
+
+    const stored = await pool.query<{ tool_results: unknown }>(
+      'SELECT tool_results FROM ai_messages WHERE session_id = $1',
+      [sessionId],
+    );
+    expect(stored.rows).toEqual([{ tool_results: null }]);
+  });
+
   it('records the erased record type, keeping contact_id in step with record_id', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
 
@@ -1187,6 +1217,154 @@ describe('GDPR erasure and export of synced email', () => {
     expect(intent.rows).toEqual([{ to_addresses: ['someone@example.net'], activity_notes: null }]);
   });
 
+  it('clears the text of an unconfirmed forward from another record that went to the subject', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const sent = await pool.query<{ id: string }>(
+      `INSERT INTO email_send_intents
+         (user_id, connected_account_id, rfc_message_id, actor_name, to_addresses,
+          activity_notes, status, idempotency_key, request_hash, record_type, record_id)
+       VALUES ($1, $2, $3, 'GDPR Admin', $4, 'Forwarded to Alice', 'pending', $5, 'gdpr-test',
+               'deal', $6)
+       RETURNING id`,
+      [adminId, mailboxOne, `${uid()}@x.test`, [contact.email], randomUUID(), randomUUID()],
+    );
+    // Safe: the insert above returned its one row.
+    const intentId = sent.rows[0]!.id;
+    await markIntentUnconfirmed(intentId);
+
+    await eraseContact(contact.id, adminActor);
+
+    const intent = await pool.query<{ to_addresses: string[]; activity_notes: string | null }>(
+      'SELECT to_addresses, activity_notes FROM email_send_intents WHERE id = $1',
+      [intentId],
+    );
+    expect(intent.rows).toEqual([
+      { to_addresses: [placeholder(contact.id)], activity_notes: null },
+    ]);
+  });
+
+  /** A pending forward from the given record to a third party, holding its text. */
+  async function insertForwardFrom(recordType: 'contact' | 'lead', recordId: string) {
+    const sent = await pool.query<{ id: string }>(
+      `INSERT INTO email_send_intents
+         (user_id, connected_account_id, rfc_message_id, actor_name, to_addresses,
+          activity_notes, status, idempotency_key, request_hash, record_type, record_id)
+       VALUES ($1, $2, $3, 'GDPR Admin', '{someone@example.net}', 'Forwarded about them',
+               'pending', $4, 'gdpr-test', $5, $6)
+       RETURNING id`,
+      [adminId, mailboxOne, `${uid()}@x.test`, randomUUID(), recordType, recordId],
+    );
+    return sent.rows[0]!.id; // Safe: RETURNING one row.
+  }
+
+  async function intentNotes(intentId: string): Promise<string | null | undefined> {
+    const row = await pool.query<{ activity_notes: string | null }>(
+      'SELECT activity_notes FROM email_send_intents WHERE id = $1',
+      [intentId],
+    );
+    return row.rows[0]?.activity_notes;
+  }
+
+  it('clears the text of a send made from a lead when the contact it became is erased', async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: adminId }, adminActor);
+    const intentId = await insertForwardFrom('lead', lead.id);
+    const converted = await convertLead(
+      lead.id,
+      {
+        contact: { first_name: lead.first_name, last_name: 'Erasure', email: lead.email },
+        account: { mode: 'create', name: `Converted ${uid()}` },
+        deal: { name: `Converted deal ${uid()}`, stage: 'Prospecting' },
+      },
+      adminActor,
+    );
+
+    await eraseContact(converted.contact_id, adminActor);
+
+    expect(await intentNotes(intentId)).toBeNull();
+  });
+
+  it('clears the text of a send made from a merged-away contact when the survivor is erased', async () => {
+    const winner = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const loser = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const intentId = await insertForwardFrom('contact', loser.id);
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, adminActor);
+
+    await eraseContact(winner.id, adminActor);
+
+    expect(await intentNotes(intentId)).toBeNull();
+  });
+
+  /** A forward from a deal to the given address, claimed as the send path claims it. */
+  async function claimForwardTo(address: string): Promise<string> {
+    const claim = await claimSendIntent(
+      {
+        userId: adminId,
+        actorName: 'GDPR Admin',
+        connectedAccountId: mailboxOne,
+        rfcMessageId: `${uid()}@x.test`,
+        recordType: 'deal',
+        recordId: randomUUID(),
+        activityNotes: 'Forwarded to them',
+        threadPrivate: false,
+        parentMessageId: null,
+        toAddresses: [address],
+        ccAddresses: [],
+        idempotencyKey: randomUUID(),
+        requestHash: 'gdpr-test',
+        unresolvedMergeTags: [],
+      },
+      false,
+    );
+    if (claim.kind !== 'claimed') throw new Error(`unexpected claim: ${claim.kind}`);
+    return claim.intentId;
+  }
+
+  it('clears the text of a send to an address the contact has since changed', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const intentId = await claimForwardTo(contact.email);
+    await pool.query('UPDATE contacts SET email = $2 WHERE id = $1', [
+      contact.id,
+      `${FILE_PREFIX}-new-${uid()}@example.com`,
+    ]);
+
+    await eraseContact(contact.id, adminActor);
+
+    expect(await intentNotes(intentId)).toBeNull();
+  });
+
+  it("clears the text of a send to a merged-away contact's own address", async () => {
+    const winner = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const loser = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const intentId = await claimForwardTo(loser.email);
+    await mergeContacts({ winnerId: winner.id, loserId: loser.id, fieldChoices: {} }, adminActor);
+
+    await eraseContact(winner.id, adminActor);
+
+    expect(await intentNotes(intentId)).toBeNull();
+  });
+
+  it('clears the text of a send to a lead once the contact it became is erased', async () => {
+    const lead = await createLead({ ...makeLead(), owner_id: adminId }, adminActor);
+    const intentId = await claimForwardTo(lead.email);
+    const converted = await convertLead(
+      lead.id,
+      {
+        contact: {
+          first_name: lead.first_name,
+          last_name: 'Erasure',
+          email: `${FILE_PREFIX}-corrected-${uid()}@example.com`,
+        },
+        account: { mode: 'create', name: `Converted ${uid()}` },
+        deal: { name: `Converted deal ${uid()}`, stage: 'Prospecting' },
+      },
+      adminActor,
+    );
+
+    await eraseContact(converted.contact_id, adminActor);
+
+    expect(await intentNotes(intentId)).toBeNull();
+  });
+
   it('redacts a send intent addressed to the subject in another case', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
     const mixedCase = contact.email.toUpperCase();
@@ -1237,6 +1415,59 @@ describe('GDPR erasure and export of synced email', () => {
       [contact.id],
     );
     expect(signals.rowCount).toBe(0);
+  });
+
+  it("deletes meeting briefs and clears churn factors drawn from the contact's activities", async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const account = await pool.query<{ id: string }>(
+      'INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id',
+      [`Derived ${uid()}`, adminId],
+    );
+    const accountId = account.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    const activities = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, notes, contact_id, account_id, owner_id)
+       VALUES ('Call', 'Pricing call', 'Alice says yes', $1, $2, $3),
+              ('Meeting', 'Next meeting', NULL, $1, NULL, $3)
+       RETURNING id`,
+      [contact.id, accountId, adminId],
+    );
+    const meetingId = activities.rows[1]!.id; // Safe: two rows inserted above.
+    await pool.query(
+      `INSERT INTO activity_meeting_briefs (activity_id, brief_json, generated_by, generated_at)
+       VALUES ($1, '{"recent_activity_summary": ["Alice says yes"]}', $2, now())`,
+      [meetingId, adminId],
+    );
+    await pool.query(
+      `INSERT INTO account_churn_expansion_signals
+         (account_id, signal_type, confidence, contributing_factors)
+       VALUES ($1, 'expansion', 0.9, '[{"description": "Alice says yes"}]')`,
+      [accountId],
+    );
+    const alertRow = await pool.query<{ id: string }>(
+      `INSERT INTO notifications (user_id, type, title, body, link_path)
+       VALUES ($1, 'churn_risk_detected', 'Churn risk detected: Derived', 'Alice says yes', $2)
+       RETURNING id`,
+      [adminId, recordPath('account', accountId)],
+    );
+    const alertId = alertRow.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+
+    await eraseContact(contact.id, adminActor);
+
+    const briefs = await pool.query(
+      'SELECT 1 FROM activity_meeting_briefs WHERE activity_id = $1',
+      [meetingId],
+    );
+    expect(briefs.rowCount).toBe(0);
+    const churn = await pool.query<{ contributing_factors: unknown[] }>(
+      'SELECT contributing_factors FROM account_churn_expansion_signals WHERE account_id = $1',
+      [accountId],
+    );
+    expect(churn.rows).toEqual([{ contributing_factors: [] }]);
+    const alert = await pool.query<{ title: string; body: string | null }>(
+      'SELECT title, body FROM notifications WHERE id = $1',
+      [alertId],
+    );
+    expect(alert.rows).toEqual([{ title: 'Churn risk detected: Derived', body: null }]);
   });
 
   it('scrubs text written onto an activity after an earlier redaction', async () => {

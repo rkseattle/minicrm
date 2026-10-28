@@ -79,11 +79,9 @@ function toAddressPairs(messages: readonly MatchableMessage[]): {
 }
 
 /**
- * Links every message that names a contact's address.
- *
- * Both sides of the address comparison are already lowercase, but LOWER() stays on the
- * column so the functional index serves it and a row written before that normalization
- * still matches.
+ * Links every message that names a contact's address. Which records an address names is
+ * defined once, in the database's address_matched_records(), which lowercases the CRM side
+ * so the functional index serves it and a row written before normalization still matches.
  */
 async function linkContacts(
   client: PoolClient,
@@ -92,9 +90,10 @@ async function linkContacts(
 ): Promise<void> {
   await client.query(
     `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type, source)
-     SELECT DISTINCT named.message_id, 'contact', c.id, $3, $4
+     SELECT DISTINCT named.message_id, 'contact', matched.record_id, $3, $4
        FROM unnest($1::uuid[], $2::text[]) AS named(message_id, address)
-       JOIN contacts c ON LOWER(c.email) = named.address
+       JOIN address_matched_records($2::text[]) matched
+         ON matched.address = named.address AND matched.record_type = 'contact'
      ON CONFLICT DO NOTHING`,
     [messageIds, addresses, AUTO_MATCH, SYSTEM_SOURCE],
   );
@@ -103,9 +102,9 @@ async function linkContacts(
 /**
  * Links leads, but only for an address no contact answered.
  *
- * That is the documented precedence — a contact beats a lead for the same address — and it
- * is expressed against `contacts` rather than against the rows just inserted, so the rule
- * does not depend on this function running after linkContacts.
+ * That is the documented precedence — a contact beats a lead for the same address — and
+ * address_matched_records() expresses it against `contacts` rather than against the rows just
+ * inserted, so the rule does not depend on this function running after linkContacts.
  *
  * A converted lead is excluded outright, following the `converted_at IS NULL` filter
  * leadsService uses wherever it means "still a lead". Precedence alone would not cover it:
@@ -119,13 +118,10 @@ async function linkLeads(
 ): Promise<void> {
   await client.query(
     `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type, source)
-     SELECT DISTINCT named.message_id, 'lead', l.id, $3, $4
+     SELECT DISTINCT named.message_id, 'lead', matched.record_id, $3, $4
        FROM unnest($1::uuid[], $2::text[]) AS named(message_id, address)
-       JOIN leads l ON LOWER(l.email) = named.address
-      WHERE l.converted_at IS NULL
-        AND NOT EXISTS (
-          SELECT 1 FROM contacts c WHERE LOWER(c.email) = named.address
-        )
+       JOIN address_matched_records($2::text[]) matched
+         ON matched.address = named.address AND matched.record_type = 'lead'
      ON CONFLICT DO NOTHING`,
     [messageIds, addresses, AUTO_MATCH, SYSTEM_SOURCE],
   );

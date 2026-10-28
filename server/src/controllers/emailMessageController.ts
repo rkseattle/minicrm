@@ -25,13 +25,13 @@ import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema
 import {
   createManualLink,
   deleteMessageLink,
-  findLinkedRecordOwner,
   findMessageForUser,
   findLinkForUser,
   listMessagesForRecord,
   listUnmatchedMessages,
   setThreadPrivacy,
 } from '../services/emailMessageService.js';
+import { findLinkedRecordOwner } from '../services/emailMessageRecord.js';
 import {
   EMAIL_ACCOUNT_NOT_FOUND,
   EMAIL_MESSAGE_NOT_FOUND,

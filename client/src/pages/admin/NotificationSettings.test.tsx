@@ -19,8 +19,9 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import { SMTP_CONFIG_QUERY_KEY } from '@/api/settings.js';
 import { server } from '../../test/setup.js';
-import { renderWithProviders } from '../../test/renderWithProviders.js';
+import { createCachedQueryClient, renderWithProviders } from '../../test/renderWithProviders.js';
 import NotificationSettings from './NotificationSettings.js';
 
 function mockRepUser() {
@@ -279,5 +280,25 @@ describe('NotificationSettings — SMTP section', () => {
     await waitFor(() => {
       expect(screen.getByTestId('smtp-test-error')).toBeInTheDocument();
     });
+  });
+});
+
+describe('NotificationSettings — SMTP form', () => {
+  it('shows the stored configuration when it is already cached on opening', async () => {
+    const queryClient = createCachedQueryClient([
+      [
+        SMTP_CONFIG_QUERY_KEY,
+        {
+          smtp_host: 'mail.cached.example',
+          smtp_port: 2525,
+          smtp_user: 'cached-user',
+          smtp_pass_set: true,
+          smtp_enabled: true,
+        },
+      ],
+    ]);
+    renderWithProviders(<NotificationSettings />, { queryClient });
+
+    expect(await screen.findByTestId('smtp-host-input')).toHaveValue('mail.cached.example');
   });
 });

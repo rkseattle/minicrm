@@ -24,12 +24,14 @@ import {
   fileReconciledIntents,
   lockReconcilableIntents,
   markIntentNotSent,
+  markIntentUnconfirmed,
   SEND_LIMIT_LOCK_NAMESPACE,
   sweepUnsettledIntents,
   type NewSendIntent,
 } from '../services/emailSendIntentService.js';
 import { setRlsUserIdTo } from '../services/rlsContextService.js';
-import { PRIVATE_EMAIL_SUBJECT, setThreadPrivacy } from '../services/emailMessageService.js';
+import { lockMailboxThreads, setThreadPrivacy } from '../services/emailMessageService.js';
+import { PRIVATE_EMAIL_SUBJECT } from '../services/emailMessageRecord.js';
 import {
   getRecordAuditLog,
   listAuditLog,
@@ -341,7 +343,10 @@ describe('the intent each outcome leaves', () => {
 
     await expect(sendEmail(typed(), userId, actor, freshKey(), { provider })).rejects.toBeDefined();
 
-    expect(await intent()).toMatchObject({ status: 'unconfirmed', to_addresses: [] });
+    expect(await intent()).toMatchObject({
+      status: 'unconfirmed',
+      to_addresses: ['someone@example.net'],
+    });
     const audit = await pool.query<{ new_value: string }>(
       `SELECT new_value FROM audit_log
         WHERE event_type = 'email_send_unconfirmed' AND record_id = $1`,
@@ -771,6 +776,72 @@ describe('the sync engine filing a send', () => {
     await syncPage([await sentCopy(onlyDocument(sent), 'gm-swept', { threadId: 'swept-thread' })]);
 
     expect((await intent()).status).toBe('filed');
+    expect((await mailboxEntry('email_send_unconfirmed', intentId))['to']).toBe(
+      PRIVATE_REDACTED_TEXT,
+    );
+  });
+
+  it('hides a reply still in flight when its thread is made private', async () => {
+    const parent = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'INBOX:inflight-parent', 'inflight-thread', 'inbound', 'someone@example.net')
+       RETURNING id`,
+      [accountId],
+    );
+    const parentId = parent.rows[0]!.id; // Safe: RETURNING one row.
+    const { provider } = sender(async () => {
+      await setThreadPrivacy(parentId, userId, true, actor);
+      throw sendFailure(SEND_OUTCOME_UNKNOWN, 'test');
+    });
+
+    await expect(
+      sendEmail(typed({ in_reply_to_message_id: parentId }), userId, actor, freshKey(), {
+        provider,
+      }),
+    ).rejects.toBeDefined();
+
+    const sent = await intent();
+    expect(sent.status).toBe('unconfirmed');
+    expect((await mailboxEntry('email_send_unconfirmed', sent.id))['to']).toBe(
+      PRIVATE_REDACTED_TEXT,
+    );
+  });
+
+  it('does not wait on a reply another transaction holds, and that holder still hides it', async () => {
+    const parent = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'INBOX:held-parent', 'held-thread', 'inbound', 'someone@example.net')
+       RETURNING id`,
+      [accountId],
+    );
+    const parentId = parent.rows[0]!.id; // Safe: RETURNING one row.
+    const held = await pool.query<{ id: string }>(
+      `INSERT INTO email_send_intents
+         (idempotency_key, request_hash, user_id, actor_name, connected_account_id,
+          rfc_message_id, status, to_addresses, parent_message_id)
+       VALUES (gen_random_uuid(), '', $1, 'Intent Rep', $2, $3, 'pending',
+               '{someone@example.net}', $4)
+       RETURNING id`,
+      [userId, accountId, `${randomUUID()}@x.test`, parentId],
+    );
+    const intentId = held.rows[0]!.id; // Safe: RETURNING one row.
+    // Holds the intent, then wants the mailbox lock: the send path's order.
+    const holder = await pool.connect();
+    try {
+      await holder.query('BEGIN');
+      await holder.query('SELECT 1 FROM email_send_intents WHERE id = $1 FOR UPDATE', [intentId]);
+
+      await setThreadPrivacy(parentId, userId, true, actor);
+
+      await lockMailboxThreads(holder, accountId);
+      await holder.query('ROLLBACK');
+    } finally {
+      holder.release();
+    }
+    await markIntentUnconfirmed(intentId);
+
     expect((await mailboxEntry('email_send_unconfirmed', intentId))['to']).toBe(
       PRIVATE_REDACTED_TEXT,
     );
@@ -1471,6 +1542,7 @@ describe('the hourly send limit', () => {
       recordId: null,
       activityNotes: null,
       threadPrivate: false,
+      parentMessageId: null,
       toAddresses: ['someone@example.net'],
       ccAddresses: [],
       idempotencyKey,

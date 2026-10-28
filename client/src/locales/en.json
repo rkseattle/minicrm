@@ -1422,7 +1422,8 @@
     "EMAIL_ACCOUNT_NOT_FOUND": "That mailbox is no longer connected.",
     "TEMPLATE_NOT_FOUND": "That template is no longer available.",
     "EMAIL_MESSAGE_NOT_FOUND": "That message is no longer available.",
-    "SEND_NOT_CONFIRMED": "The mail provider did not confirm this message. It may have been sent — check your Sent folder before sending it again."
+    "SEND_NOT_CONFIRMED": "The mail provider did not confirm this message. It may have been sent — check your Sent folder before sending it again.",
+    "BRIEF_SOURCES_CHANGED": "The activities this brief draws on changed while it was generated. Generate it again."
   },
   "search": {
     "inputLabel": "Search",

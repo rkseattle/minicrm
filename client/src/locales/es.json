@@ -1457,7 +1457,8 @@
     "EMAIL_ACCOUNT_NOT_FOUND": "Ese buzón ya no está conectado.",
     "TEMPLATE_NOT_FOUND": "Esa plantilla ya no está disponible.",
     "EMAIL_MESSAGE_NOT_FOUND": "Ese mensaje ya no está disponible.",
-    "SEND_NOT_CONFIRMED": "El proveedor de correo no confirmó este mensaje. Es posible que se haya enviado; revisa tu carpeta de enviados antes de volver a enviarlo."
+    "SEND_NOT_CONFIRMED": "El proveedor de correo no confirmó este mensaje. Es posible que se haya enviado; revisa tu carpeta de enviados antes de volver a enviarlo.",
+    "BRIEF_SOURCES_CHANGED": "Las actividades en las que se basa este resumen cambiaron mientras se generaba. Vuelve a generarlo."
   },
   "search": {
     "inputLabel": "Buscar",

@@ -973,7 +973,7 @@ export async function getGdprStatusForRecord(
  * 1. Searches for the name and email the caller captured before the erasure
  *    overwrote the row, plus any free-text identifiers within the length bounds.
  * 2. Redacts ai_messages.content wherever an identifier appears, and clears
- *    pending_action when it references one.
+ *    pending_action and tool_results when they reference one.
  * 3. Redacts ai_sessions.name and removes matching user_ai_context entries.
  * 4. Inserts a row into ai_gdpr_cascade_log recording counts and outcome.
  * 5. Writes an audit entry on the erased record documenting the cascade.
@@ -1086,8 +1086,10 @@ export async function cascadeGdprErasureToAiData(
     const redactExpression = `regexp_replace(content, $1, '[redacted]', 'gi')`;
     const contentMatches = `content ~* $1`;
     const pendingMatches = `pending_action::text ~* $1`;
+    const toolResultsMatch = `tool_results::text ~* $1`;
 
-    // Step 1 — redact ai_messages.content and clear pending_action containing PII.
+    // Step 1 — redact ai_messages.content and clear pending_action and tool_results
+    // containing PII. tool_results hold the records a tool returned, notes included.
     // pending_action JSONB stores pre-PII-filter record fields (entityName, input
     // fields, summary text) from mutation confirmation flows — it must be cleared
     // on erasure. One UPDATE covers every identifier so a message matching several
@@ -1100,9 +1102,14 @@ export async function cascadeGdprErasureToAiData(
            pending_action = CASE
              WHEN pending_action IS NOT NULL AND (${pendingMatches}) THEN NULL
              ELSE pending_action
+           END,
+           tool_results = CASE
+             WHEN tool_results IS NOT NULL AND (${toolResultsMatch}) THEN NULL
+             ELSE tool_results
            END
          WHERE ${contentMatches}
             OR (pending_action IS NOT NULL AND (${pendingMatches}))
+            OR (tool_results IS NOT NULL AND (${toolResultsMatch}))
          RETURNING id
        )
        SELECT count(*)::text AS count FROM updated`,

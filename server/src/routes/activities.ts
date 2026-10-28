@@ -812,6 +812,10 @@ router.post(
  *         description: AI token budget exhausted for the current period
  *       404:
  *         description: Activity not found
+ *       409:
+ *         description: >-
+ *           BRIEF_SOURCES_CHANGED — an activity the brief drew on was edited or had its text
+ *           removed while it was generated; nothing was saved. Generate it again.
  */
 router.post(
   '/:id/brief',

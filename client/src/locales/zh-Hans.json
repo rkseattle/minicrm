@@ -1457,7 +1457,8 @@
     "EMAIL_ACCOUNT_NOT_FOUND": "该邮箱已不再连接。",
     "TEMPLATE_NOT_FOUND": "该模板已不可用。",
     "EMAIL_MESSAGE_NOT_FOUND": "该邮件已不可用。",
-    "SEND_NOT_CONFIRMED": "邮件服务商未确认此邮件。它可能已发送 — 再次发送前请检查“已发送”文件夹。"
+    "SEND_NOT_CONFIRMED": "邮件服务商未确认此邮件。它可能已发送 — 再次发送前请检查“已发送”文件夹。",
+    "BRIEF_SOURCES_CHANGED": "生成期间，此简报所依据的活动已更改。请重新生成。"
   },
   "search": {
     "inputLabel": "搜索",

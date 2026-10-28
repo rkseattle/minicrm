@@ -44,8 +44,8 @@ import {
   PRIVATE_EMAIL_SUBJECT,
   toEmailMessage,
   type EmailMessageRow,
-} from './emailMessageService.js';
-import { arrayHasAddress, GDPR_REDACTED_TEXT, replaceInArray } from './mail/gdprRedaction.js';
+} from './emailMessageRecord.js';
+import { GDPR_REDACTED_TEXT } from './mail/gdprRedaction.js';
 import type { NormalizedMessage } from './mail/mailProvider.js';
 import { truncate } from './mail/messageBody.js';
 import { setRlsUserIdTo } from './rlsContextService.js';
@@ -84,6 +84,8 @@ export interface SendIntent {
   status: SendIntentStatus;
   /** The answered or forwarded message's thread was private when the send was claimed. */
   threadPrivate: boolean;
+  /** The answered or forwarded message; null for a new conversation. */
+  parentMessageId: string | null;
 }
 
 export interface NewSendIntent {
@@ -97,6 +99,8 @@ export interface NewSendIntent {
   activityNotes: string | null;
   /** Whether the answered or forwarded message's thread is private; false for a new one. */
   threadPrivate: boolean;
+  /** The answered or forwarded message; null for a new conversation. */
+  parentMessageId: string | null;
   toAddresses: readonly string[];
   ccAddresses: readonly string[];
   /** The client's key for this compose; a repeat under it never sends again. */
@@ -140,10 +144,11 @@ interface SendIntentRow {
   actor_name: string;
   status: SendIntentStatus;
   thread_private: boolean;
+  parent_message_id: string | null;
 }
 
 const INTENT_COLUMNS = `id, user_id, connected_account_id, rfc_message_id, provider_message_id,
-  record_type, record_id, activity_notes, actor_name, status, thread_private`;
+  record_type, record_id, activity_notes, actor_name, status, thread_private, parent_message_id`;
 
 function toSendIntent(row: SendIntentRow): SendIntent {
   return {
@@ -158,6 +163,7 @@ function toSendIntent(row: SendIntentRow): SendIntent {
     actorName: row.actor_name,
     status: row.status,
     threadPrivate: row.thread_private,
+    parentMessageId: row.parent_message_id,
   };
 }
 
@@ -295,21 +301,6 @@ export async function claimSendIntent(
   input: NewSendIntent,
   enforceLimit: boolean,
 ): Promise<SendClaim> {
-  const values = [
-    input.userId,
-    input.actorName,
-    input.connectedAccountId,
-    input.rfcMessageId,
-    input.recordType,
-    input.recordId,
-    input.activityNotes,
-    input.toAddresses,
-    input.ccAddresses,
-    input.idempotencyKey,
-    input.requestHash,
-    input.unresolvedMergeTags,
-    input.threadPrivate,
-  ];
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -320,12 +311,42 @@ export async function claimSendIntent(
       ]);
     }
 
+    // Matched by the same rule auto-linking applies to a synced message.
+    const recipients = await client.query<{ contact_ids: string[]; lead_ids: string[] }>(
+      `SELECT ARRAY(SELECT DISTINCT record_id FROM address_matched_records($1::text[])
+                     WHERE record_type = 'contact') AS contact_ids,
+              ARRAY(SELECT DISTINCT record_id FROM address_matched_records($1::text[])
+                     WHERE record_type = 'lead') AS lead_ids`,
+      [[...input.toAddresses, ...input.ccAddresses]],
+    );
+    // Safe: a SELECT without FROM returns exactly one row.
+    const matched = recipients.rows[0]!;
+    const values = [
+      input.userId,
+      input.actorName,
+      input.connectedAccountId,
+      input.rfcMessageId,
+      input.recordType,
+      input.recordId,
+      input.activityNotes,
+      input.toAddresses,
+      input.ccAddresses,
+      input.idempotencyKey,
+      input.requestHash,
+      input.unresolvedMergeTags,
+      input.threadPrivate,
+      input.parentMessageId,
+      matched.contact_ids,
+      matched.lead_ids,
+    ];
+
     const inserted = await client.query<{ id: string }>(
       `INSERT INTO email_send_intents
          (user_id, actor_name, connected_account_id, rfc_message_id, record_type, record_id,
           activity_notes, to_addresses, cc_addresses, idempotency_key, request_hash,
-          unresolved_merge_tags, thread_private)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          unresolved_merge_tags, thread_private, parent_message_id, recipient_contact_ids,
+          recipient_lead_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        ON CONFLICT (user_id, idempotency_key) DO NOTHING
        RETURNING id`,
       values,
@@ -338,7 +359,9 @@ export async function claimSendIntent(
               SET status = 'pending', actor_name = $2, connected_account_id = $3,
                   rfc_message_id = $4, provider_message_id = NULL, record_type = $5,
                   record_id = $6, activity_notes = $7, to_addresses = $8, cc_addresses = $9,
-                  unresolved_merge_tags = $12, thread_private = $13, created_at = now(),
+                  unresolved_merge_tags = $12, thread_private = $13, parent_message_id = $14,
+                  recipient_contact_ids = $15, recipient_lead_ids = $16,
+                  created_at = now(),
                   updated_at = now()
             WHERE user_id = $1 AND idempotency_key = $10 AND request_hash = $11
               AND status = 'not_sent'
@@ -350,6 +373,14 @@ export async function claimSendIntent(
       await client.query('COMMIT');
       return { kind: 'taken' };
     }
+    // Locked after the intent, the documented order: a privacy change either committed
+    // first, and is read here, or waits on this lock and then finds the committed intent.
+    if (!input.threadPrivate && (await parentIsPrivate(client, input.parentMessageId))) {
+      await client.query('UPDATE email_send_intents SET thread_private = true WHERE id = $1', [
+        claimed.id,
+      ]);
+    }
+
     // Written whether or not the ceiling is enforced, so lifting a bypass sees true counts.
     await client.query('INSERT INTO email_send_ledger (user_id, intent_id) VALUES ($1, $2)', [
       input.userId,
@@ -422,7 +453,8 @@ const UNCONFIRM_STALE = `status IN ('pending', 'sent')
 
 /**
  * Moves intents to `unconfirmed` and audits each, so a send that may have gone out is
- * recorded even if it is never filed. The recipients move into the audit entry.
+ * recorded even if it is never filed. The recipients are copied into the audit entry and
+ * kept on the row, which erasure finds by them while it still holds the activity text.
  */
 async function unconfirm(target: UnconfirmTarget): Promise<number> {
   const [condition, value] =
@@ -444,6 +476,7 @@ async function unconfirm(target: UnconfirmTarget): Promise<number> {
       record_type: string | null;
       record_id: string | null;
       thread_private: boolean;
+      parent_message_id: string | null;
     }>(
       `WITH moved AS (
          SELECT id, status AS previous_status, to_addresses, cc_addresses
@@ -453,14 +486,13 @@ async function unconfirm(target: UnconfirmTarget): Promise<number> {
             FOR UPDATE
        )
        UPDATE email_send_intents i
-          SET status = 'unconfirmed', to_addresses = '{}', cc_addresses = '{}',
-              updated_at = now()
+          SET status = 'unconfirmed', updated_at = now()
          FROM moved, connected_accounts ca
         WHERE i.id = moved.id AND ca.id = i.connected_account_id
        RETURNING i.id, i.user_id, i.actor_name, i.connected_account_id, ca.email_address,
                  moved.previous_status = 'sent' AS provider_confirmed,
                  moved.to_addresses, moved.cc_addresses, i.record_type, i.record_id,
-                 i.thread_private`,
+                 i.thread_private, i.parent_message_id`,
       [value],
     );
     for (const row of moved.rows) {
@@ -480,7 +512,15 @@ async function unconfirm(target: UnconfirmTarget): Promise<number> {
         changedById: row.user_id,
         changedByName: row.actor_name,
       });
-      if (row.thread_private) {
+      // A privacy change skips an intent locked here; its parent carries the setting.
+      const isPrivate =
+        row.thread_private || (await parentIsPrivate(client, row.parent_message_id));
+      if (isPrivate && !row.thread_private) {
+        await client.query('UPDATE email_send_intents SET thread_private = true WHERE id = $1', [
+          row.id,
+        ]);
+      }
+      if (isPrivate) {
         await markSendEntriesPrivate(client, row.connected_account_id, { intentIds: [row.id] });
       }
     }
@@ -492,6 +532,93 @@ async function unconfirm(target: UnconfirmTarget): Promise<number> {
   } finally {
     client.release();
   }
+}
+
+/**
+ * Moves the sends made from a converted lead or a merged-away contact onto the contact that
+ * survives it, so erasing that contact still finds them. Runs in the caller's transaction.
+ */
+export async function moveSendIntentsToContact(
+  client: PoolClient,
+  from: { recordType: 'contact' | 'lead'; recordId: string },
+  contactId: string,
+): Promise<void> {
+  await client.query(
+    `UPDATE email_send_intents SET record_type = 'contact', record_id = $3
+      WHERE record_type = $1 AND record_id = $2`,
+    [from.recordType, from.recordId, contactId],
+  );
+  // As a message's links move, so do the recipients an intent matched.
+  await client.query(
+    `UPDATE email_send_intents
+        SET recipient_contact_ids = CASE
+              WHEN $3 = ANY(recipient_contact_ids) THEN array_remove(recipient_contact_ids, $2)
+              WHEN $1 = 'lead' THEN array_append(recipient_contact_ids, $3)
+              ELSE array_replace(recipient_contact_ids, $2, $3) END,
+            recipient_lead_ids = array_remove(recipient_lead_ids, $2)
+      WHERE ($1 = 'contact' AND $2 = ANY(recipient_contact_ids))
+         OR ($1 = 'lead' AND $2 = ANY(recipient_lead_ids))`,
+    [from.recordType, from.recordId, contactId],
+  );
+}
+
+/** Reads the parent's privacy under its row lock, so an uncommitted privacy change is waited for. */
+async function parentIsPrivate(
+  client: PoolClient,
+  parentMessageId: string | null,
+): Promise<boolean> {
+  if (!parentMessageId) return false;
+  const parent = await client.query<{ is_private: boolean }>(
+    'SELECT is_private FROM email_messages WHERE id = $1 FOR SHARE',
+    [parentMessageId],
+  );
+  return parent.rows[0]?.is_private ?? false;
+}
+
+/**
+ * Carries a thread's privacy to its sends still in flight. Such a send has no stored message
+ * yet, and its own Message-ID matches nothing in the thread, so its parent is its only link.
+ * Runs in the privacy change's transaction.
+ *
+ * Every other path locks an intent before the mailbox lock this caller already holds, so
+ * waiting here could deadlock. A locked intent is skipped instead: its holder (filing,
+ * unconfirm) reads the parent again under the parent's row lock, which this change holds.
+ */
+export async function setUnsettledSendsPrivacy(
+  client: PoolClient,
+  accountId: string,
+  threadMessageIds: readonly string[],
+  isPrivate: boolean,
+): Promise<void> {
+  await client.query(
+    `UPDATE email_send_intents SET thread_private = $3
+      WHERE id IN (SELECT id FROM email_send_intents
+                    WHERE connected_account_id = $1 AND parent_message_id = ANY($2::uuid[])
+                      AND status = ANY($4::text[]) AND thread_private <> $3
+                      FOR UPDATE SKIP LOCKED)`,
+    [accountId, threadMessageIds, isPrivate, RECONCILABLE],
+  );
+}
+
+/**
+ * The intents of a thread's sends, whatever their status: stored in the thread, answering a
+ * message in it, or carrying the Message-ID of a message stored in it.
+ */
+export async function findThreadSendIntentIds(
+  client: PoolClient,
+  accountId: string,
+  threadMessageIds: readonly string[],
+): Promise<string[]> {
+  const result = await client.query<{ id: string }>(
+    `SELECT i.id FROM email_send_intents i
+      WHERE i.connected_account_id = $1
+        AND (i.email_message_id = ANY($2::uuid[])
+          OR i.parent_message_id = ANY($2::uuid[])
+          OR i.rfc_message_id IN (SELECT rfc_message_id FROM email_messages
+                                   WHERE id = ANY($2::uuid[])))`,
+    [accountId, threadMessageIds],
+  );
+  return result.rows.map((row) => row.id);
 }
 
 /** The provider did not say whether the message went. */
@@ -584,8 +711,12 @@ export async function fileSentMessage(
     [message.id],
   );
 
-  // The claim knew the conversation; the stored row's thread may be one sync derived.
-  const isPrivate = intent.threadPrivate || message.isPrivate;
+  // The claim knew the conversation; the stored row's thread may be one sync derived. A
+  // privacy change skips an intent locked here, so the parent is read again, under its lock.
+  const isPrivate =
+    intent.threadPrivate ||
+    message.isPrivate ||
+    (await parentIsPrivate(client, intent.parentMessageId));
   if (isPrivate && !message.isPrivate) {
     await client.query('UPDATE email_messages SET is_private = true WHERE id = $1', [message.id]);
   }
@@ -775,12 +906,14 @@ export async function redactIntentsForErasure(
 ): Promise<void> {
   await client.query(
     `UPDATE email_send_intents
-        SET to_addresses = ${replaceInArray('to_addresses', '$3', '$4')},
-            cc_addresses = ${replaceInArray('cc_addresses', '$3', '$4')},
+        SET to_addresses = address_array_replace(to_addresses, $3, $4),
+            cc_addresses = address_array_replace(cc_addresses, $3, $4),
             activity_notes = NULL,
             updated_at = now()
-      WHERE ${arrayHasAddress('to_addresses', '$3')} OR ${arrayHasAddress('cc_addresses', '$3')}
-         OR (record_type = $1 AND record_id = $2)`,
+      WHERE address_array_has(to_addresses, $3) OR address_array_has(cc_addresses, $3)
+         OR (record_type = $1 AND record_id = $2)
+         OR ($1 = 'contact' AND $2 = ANY(recipient_contact_ids))
+         OR ($1 = 'lead' AND $2 = ANY(recipient_lead_ids))`,
     [record.recordType, record.recordId, address, placeholder],
   );
 }
