@@ -185,6 +185,40 @@ describe('detectChurnExpansionSignals', () => {
     expect(result.signal?.confidence).toBe(0.9);
   });
 
+  it('saves no signal and sends no alert when a note it drew on is scrubbed meanwhile', async () => {
+    const accountId = await createClosedWonAccountWithActivity('Expanding to a second team.');
+    mockCreate.mockImplementationOnce(async () => {
+      // The scrub commits while the AI request is still out.
+      await pool.query(
+        'UPDATE activities SET notes = NULL, version = version + 1 WHERE account_id = $1',
+        [accountId],
+      );
+      return {
+        usage: { input_tokens: 50, output_tokens: 20 },
+        content: [
+          {
+            type: 'tool_use',
+            name: 'report_churn_expansion_signal',
+            input: {
+              signal_detected: true,
+              signal_type: 'churn_risk',
+              confidence: 0.9,
+              contributing_factors: ['Quoted from the scrubbed note'],
+            },
+          },
+        ],
+      };
+    });
+
+    await detectChurnExpansionSignals();
+
+    expect((await getAccountChurnExpansionSignal(accountId)).signal).toBeNull();
+    const alerts = await pool.query(
+      `SELECT 1 FROM notifications WHERE type = 'churn_risk_detected' AND body LIKE '%scrubbed note%'`,
+    );
+    expect(alerts.rowCount).toBe(0);
+  });
+
   it('suppresses a signal below the configured confidence threshold', async () => {
     const accountId = await createClosedWonAccountWithActivity();
 

@@ -11,6 +11,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import pool from '../db.js';
+import { activitiesUnchangedSince, type ActivityReadVersion } from './activityDerivedText.js';
 import logger from '../logger.js';
 import { decryptVersioned } from './cryptoService.js';
 import { recordTokenUsage } from './aiTokenBudgetService.js';
@@ -112,6 +113,9 @@ const NEWS_HOOK_TOOL: Anthropic.Messages.WebSearchTool20250305 = {
 /** Maximum news items surfaced in the brief, per the ticket's AC. */
 const MAX_NEWS_ITEMS = 2;
 
+/** Error code when a brief's source activities changed while it was generated. */
+export const BRIEF_SOURCES_CHANGED = 'BRIEF_SOURCES_CHANGED';
+
 /**
  * Best-effort web search for recent news about the account company. Returns
  * undefined (section omitted, not an empty array) on any failure or when
@@ -201,7 +205,9 @@ interface BriefContext {
  * Gathers the brief context for a Call/Meeting activity's linked contact.
  * Returns null when the activity does not exist or has no linked contact.
  */
-async function gatherBriefContext(activityId: string): Promise<BriefContext | null> {
+async function gatherBriefContext(
+  activityId: string,
+): Promise<{ context: BriefContext; sources: ActivityReadVersion[] } | null> {
   const activity = await findActivityById(activityId);
   if (!activity?.contact_id) return null;
 
@@ -220,16 +226,23 @@ async function gatherBriefContext(activityId: string): Promise<BriefContext | nu
         ),
       ),
       withRlsQuery((client) =>
-        client.query<{ type: string; subject: string; notes: string | null; created_at: Date }>(
-          `SELECT type, subject, notes, created_at FROM activities
+        client.query<{
+          id: string;
+          version: number;
+          type: string;
+          subject: string;
+          notes: string | null;
+          created_at: Date;
+        }>(
+          `SELECT id, version, type, subject, notes, created_at FROM activities
            WHERE contact_id = $1 AND id != $2
            ORDER BY created_at DESC LIMIT 5`,
           [contact.id, activityId],
         ),
       ),
       withRlsQuery((client) =>
-        client.query<{ subject: string }>(
-          `SELECT subject FROM activities
+        client.query<{ id: string; version: number; subject: string }>(
+          `SELECT id, version, subject FROM activities
            WHERE contact_id = $1 AND type = 'Task' AND status = 'open'
            ORDER BY due_date ASC NULLS LAST LIMIT 5`,
           [contact.id],
@@ -252,7 +265,7 @@ async function gatherBriefContext(activityId: string): Promise<BriefContext | nu
 
   const openDeals = dealsRaw.filter((deal) => deal.close_date === null);
 
-  return {
+  const context: BriefContext = {
     contact: {
       id: contact.id,
       name: `${contact.first_name} ${contact.last_name}`,
@@ -280,6 +293,11 @@ async function gatherBriefContext(activityId: string): Promise<BriefContext | nu
     open_tasks: openTasksResult.rows.map((row) => row.subject),
     known_objections: objectionsResult.rows.map((row) => row.category),
   };
+  // The brief's own activity too: an erasure scrubs it, and the brief names its contact.
+  const sources = [activity, ...recentActivitiesResult.rows, ...openTasksResult.rows].map(
+    (row) => ({ id: row.id, version: row.version }),
+  );
+  return { context, sources };
 }
 
 function buildSystemPrompt(): string {
@@ -303,8 +321,9 @@ export async function generateMeetingBrief(
   userId: string,
   userRole: string,
 ): Promise<MeetingBriefResponse | null> {
-  const context = await gatherBriefContext(activityId);
-  if (!context) return null;
+  const gathered = await gatherBriefContext(activityId);
+  if (!gathered) return null;
+  const { context, sources } = gathered;
 
   let brief: MeetingBriefContent;
 
@@ -458,13 +477,29 @@ export async function generateMeetingBrief(
   }
 
   const generatedAt = new Date();
-  await pool.query(
-    `INSERT INTO activity_meeting_briefs (activity_id, brief_json, generated_by, generated_at)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (activity_id) DO UPDATE
-       SET brief_json = $2, generated_by = $3, generated_at = $4`,
-    [activityId, JSON.stringify(brief), userId, generatedAt],
-  );
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // A source scrubbed while the AI ran would put its removed text back into the brief.
+    if (!(await activitiesUnchangedSince(client, sources))) {
+      throw Object.assign(new Error('The activities this brief draws on changed meanwhile'), {
+        code: BRIEF_SOURCES_CHANGED,
+      });
+    }
+    await client.query(
+      `INSERT INTO activity_meeting_briefs (activity_id, brief_json, generated_by, generated_at)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (activity_id) DO UPDATE
+         SET brief_json = $2, generated_by = $3, generated_at = $4`,
+      [activityId, JSON.stringify(brief), userId, generatedAt],
+    );
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 
   return {
     activity_id: activityId,

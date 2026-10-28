@@ -1422,7 +1422,8 @@
     "EMAIL_ACCOUNT_NOT_FOUND": "[Thät mäïlböx ïŝ ñö löñgër ĉöññëĉtëd.~~~~~~~~~~~]",
     "TEMPLATE_NOT_FOUND": "[Thät tëmplätë ïŝ ñö löñgër äväïläblë.~~~~~~~~~~~~]",
     "EMAIL_MESSAGE_NOT_FOUND": "[Thät mëŝŝägë ïŝ ñö löñgër äväïläblë.~~~~~~~~~~~]",
-    "SEND_NOT_CONFIRMED": "[Thë mäïl prövïdër dïd ñöt ĉöñfïrm thïŝ mëŝŝägë. Ït mäy hävë bëëñ ŝëñt — ĉhëĉk yöür Ŝëñt földër bëförë ŝëñdïñg ït ägäïñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]"
+    "SEND_NOT_CONFIRMED": "[Thë mäïl prövïdër dïd ñöt ĉöñfïrm thïŝ mëŝŝägë. Ït mäy hävë bëëñ ŝëñt — ĉhëĉk yöür Ŝëñt földër bëförë ŝëñdïñg ït ägäïñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "BRIEF_SOURCES_CHANGED": "[Thë äĉtïvïtïëŝ thïŝ brïëf dräwŝ öñ ĉhäñgëd whïlë ït wäŝ gëñërätëd. Gëñërätë ït ägäïñ.~~~~~~~~~~~~~~~~~~~~~~~~~~]"
   },
   "search": {
     "inputLabel": "[Ŝëärĉh~~]",

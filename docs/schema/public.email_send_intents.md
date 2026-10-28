@@ -28,6 +28,9 @@ A send recorded before it reaches the provider. Holds what only this application
 | request_hash | text |  | false |  |  | SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed. |
 | unresolved_merge_tags | text[] | '{}'::text[] | false |  |  | Template tags the first send could not resolve, so a replay answers exactly as it did. |
 | thread_private | boolean | false | false |  |  | True when the message answered or forwarded was in a private thread at claim time. Its filing then stores the message private and files an activity without a body. |
+| parent_message_id | uuid |  | true |  | [public.email_messages](public.email_messages.md) | The message this send answers or forwards; null for a new conversation. Lets a privacy change reach a send not yet stored. |
+| recipient_contact_ids | uuid[] | '{}'::uuid[] | false |  |  | Contacts whose address the recipients named at claim time; erasure finds the intent by them. |
+| recipient_lead_ids | uuid[] | '{}'::uuid[] | false |  |  | Unconverted leads the recipients named at claim time where no contact held the address. |
 
 ## Constraints
 
@@ -39,6 +42,7 @@ A send recorded before it reaches the provider. Holds what only this application
 | email_send_intents_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
 | email_send_intents_connected_account_id_fkey | FOREIGN KEY | FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE |
 | email_send_intents_email_message_id_fkey | FOREIGN KEY | FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL |
+| email_send_intents_parent_message_id_fkey | FOREIGN KEY | FOREIGN KEY (parent_message_id) REFERENCES email_messages(id) ON DELETE SET NULL |
 | email_send_intents_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | email_send_intents_rfc_unique | UNIQUE | UNIQUE (connected_account_id, rfc_message_id) |
 | email_send_intents_idempotency_unique | UNIQUE | UNIQUE (user_id, idempotency_key) |
@@ -54,6 +58,7 @@ A send recorded before it reaches the provider. Holds what only this application
 | email_send_intents_message_idx | CREATE INDEX email_send_intents_message_idx ON public.email_send_intents USING btree (email_message_id) WHERE (email_message_id IS NOT NULL) |
 | email_send_intents_unsettled_idx | CREATE INDEX email_send_intents_unsettled_idx ON public.email_send_intents USING btree (updated_at) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'sent'::character varying])::text[])) |
 | email_send_intents_idempotency_unique | CREATE UNIQUE INDEX email_send_intents_idempotency_unique ON public.email_send_intents USING btree (user_id, idempotency_key) |
+| email_send_intents_parent_message_idx | CREATE INDEX email_send_intents_parent_message_idx ON public.email_send_intents USING btree (parent_message_id) WHERE (parent_message_id IS NOT NULL) |
 
 ## Relations
 
@@ -64,6 +69,7 @@ erDiagram
 "public.email_send_intents" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.email_send_intents" }o--|| "public.connected_accounts" : "FOREIGN KEY (connected_account_id) REFERENCES connected_accounts(id) ON DELETE CASCADE"
 "public.email_send_intents" }o--o| "public.email_messages" : "FOREIGN KEY (email_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
+"public.email_send_intents" }o--o| "public.email_messages" : "FOREIGN KEY (parent_message_id) REFERENCES email_messages(id) ON DELETE SET NULL"
 
 "public.email_send_intents" {
   uuid id ""
@@ -86,6 +92,9 @@ erDiagram
   text request_hash "SHA-256 of the parsed request, keys sorted, so a key reused for different mail is refused rather than replayed."
   text__ unresolved_merge_tags "Template tags the first send could not resolve, so a replay answers exactly as it did."
   boolean thread_private "True when the message answered or forwarded was in a private thread at claim time. Its filing then stores the message private and files an activity without a body."
+  uuid parent_message_id FK "The message this send answers or forwards; null for a new conversation. Lets a privacy change reach a send not yet stored."
+  uuid__ recipient_contact_ids "Contacts whose address the recipients named at claim time; erasure finds the intent by them."
+  uuid__ recipient_lead_ids "Unconverted leads the recipients named at claim time where no contact held the address."
 }
 "public.email_send_ledger" {
   uuid id ""

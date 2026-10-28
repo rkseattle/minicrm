@@ -29,8 +29,13 @@ import { createContact } from '../services/contactService.js';
 import { createAccount } from '../services/accountService.js';
 import { createDeal } from '../services/dealService.js';
 import { createActivity } from '../services/activityService.js';
+import { eraseContact } from '../services/gdprService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
-import { generateMeetingBrief, getMeetingBrief } from '../services/meetingBriefService.js';
+import {
+  BRIEF_SOURCES_CHANGED,
+  generateMeetingBrief,
+  getMeetingBrief,
+} from '../services/meetingBriefService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 import { purgeFixtureUsers } from './testUtils.js';
@@ -215,6 +220,57 @@ describe('generateMeetingBrief', () => {
     expect(persisted?.brief.account_summary).toBe(result?.brief.account_summary);
   });
 
+  it('saves nothing when an activity it drew on is scrubbed while the AI runs', async () => {
+    const contactId = await createTestContact();
+    const earlier = await createActivity(
+      {
+        type: 'Call',
+        subject: 'Pricing',
+        notes: 'Said yes',
+        contact_id: contactId,
+        owner_id: ownerId,
+      },
+      { id: ownerId, name: OWNER_USER.name },
+    );
+    const meeting = await createActivity(
+      { type: 'Meeting', subject: 'Follow-up', contact_id: contactId, owner_id: ownerId },
+      { id: ownerId, name: OWNER_USER.name },
+    );
+    mockBriefResponse();
+    const respond = mockCreate.getMockImplementation();
+    mockCreate.mockImplementationOnce(async (...args: unknown[]) => {
+      // The scrub commits while the AI request is still out.
+      await pool.query('UPDATE activities SET notes = NULL, version = version + 1 WHERE id = $1', [
+        earlier.id,
+      ]);
+      return respond?.(...args);
+    });
+
+    await expect(generateMeetingBrief(meeting.id, ownerId, OWNER_USER.role)).rejects.toMatchObject({
+      code: BRIEF_SOURCES_CHANGED,
+    });
+    expect(await getMeetingBrief(meeting.id)).toBeNull();
+  });
+
+  it('saves nothing when its contact is erased while the AI runs', async () => {
+    const contactId = await createTestContact();
+    const meeting = await createActivity(
+      { type: 'Meeting', subject: 'Intro', contact_id: contactId, owner_id: ownerId },
+      { id: ownerId, name: OWNER_USER.name },
+    );
+    mockBriefResponse();
+    const respond = mockCreate.getMockImplementation();
+    mockCreate.mockImplementationOnce(async (...args: unknown[]) => {
+      await eraseContact(contactId, { id: ownerId, name: OWNER_USER.name });
+      return respond?.(...args);
+    });
+
+    await expect(generateMeetingBrief(meeting.id, ownerId, OWNER_USER.role)).rejects.toMatchObject({
+      code: BRIEF_SOURCES_CHANGED,
+    });
+    expect(await getMeetingBrief(meeting.id)).toBeNull();
+  });
+
   // ── AI follow-up timing suggestion integration ────────────────────
 
   it('includes the follow-up timing suggestion when the flag is enabled and a suggestion exists', async () => {
@@ -241,8 +297,13 @@ describe('generateMeetingBrief', () => {
   });
 
   it('omits the follow-up timing suggestion when ai_followup_timing_suggestions is disabled', async () => {
+    // Role overrides outrank `enabled`, and the seed sets them, so both are cleared.
+    const saved = await pool.query<{ role_overrides: unknown }>(
+      `SELECT role_overrides FROM feature_flags WHERE flag_key = 'ai_followup_timing_suggestions'`,
+    );
     await pool.query(
-      `UPDATE feature_flags SET enabled = false WHERE flag_key = 'ai_followup_timing_suggestions'`,
+      `UPDATE feature_flags SET enabled = false, role_overrides = NULL
+        WHERE flag_key = 'ai_followup_timing_suggestions'`,
     );
     invalidateFeatureFlagCache();
     try {
@@ -266,7 +327,9 @@ describe('generateMeetingBrief', () => {
       expect(result?.brief.followup_timing).toBeUndefined();
     } finally {
       await pool.query(
-        `UPDATE feature_flags SET enabled = true WHERE flag_key = 'ai_followup_timing_suggestions'`,
+        `UPDATE feature_flags SET enabled = true, role_overrides = $1
+          WHERE flag_key = 'ai_followup_timing_suggestions'`,
+        [saved.rows[0]?.role_overrides ?? null],
       );
       invalidateFeatureFlagCache();
     }

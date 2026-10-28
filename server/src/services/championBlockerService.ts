@@ -14,6 +14,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
+import { activitiesUnchangedSince } from './activityDerivedText.js';
 import logger from '../logger.js';
 import { decryptVersioned } from './cryptoService.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
@@ -87,6 +88,8 @@ function buildSystemPrompt(): string {
 
 interface AnalyzeContactSignalsParams {
   activityId: string;
+  /** The activity version the text was read at; a later edit or scrub voids the result. */
+  activityVersion: number;
   contactId: string | null;
   notes: string | null;
   subject: string;
@@ -165,7 +168,7 @@ export async function analyzeContactSignals(params: AnalyzeContactSignalsParams)
 
     if (!signal) return;
 
-    await applySignal(params.contactId, params.activityId, signal);
+    await applySignal(params.contactId, params.activityId, params.activityVersion, signal);
   } catch (err) {
     logger.error({ err, activityId: params.activityId }, 'championBlocker: analysis failed');
   }
@@ -175,6 +178,7 @@ export async function analyzeContactSignals(params: AnalyzeContactSignalsParams)
 async function applySignal(
   contactId: string,
   activityId: string,
+  activityVersion: number,
   signal: { direction: 'champion' | 'blocker'; description: string },
 ): Promise<void> {
   // Read-merge-write must be atomic: two activities logged for the same contact in
@@ -186,6 +190,11 @@ async function applySignal(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    if (!(await activitiesUnchangedSince(client, [{ id: activityId, version: activityVersion }]))) {
+      await client.query('ROLLBACK');
+      return;
+    }
 
     const existingResult = await client.query<{ contributing_signals: ChampionBlockerSignal[] }>(
       `SELECT contributing_signals FROM contact_champion_blocker_signals
@@ -432,24 +441,6 @@ export async function getDealStakeholderMap(dealId: string): Promise<Stakeholder
     blocker_count: blockerCount,
     single_threaded_risk: singleThreadedRisk,
   };
-}
-
-/**
- * Drops the quoted signals of every contact the given activities were filed on. A signal does
- * not record its activity, so one quote cannot be removed alone; the status label stays.
- */
-export async function clearSignalQuotesForActivities(
-  client: PoolClient,
-  activityIds: readonly string[],
-): Promise<void> {
-  if (activityIds.length === 0) return;
-  await client.query(
-    `UPDATE contact_champion_blocker_signals
-        SET contributing_signals = '[]'::jsonb, updated_at = now()
-      WHERE contact_id IN (SELECT contact_id FROM activities WHERE id = ANY($1::uuid[]))
-        AND contributing_signals <> '[]'::jsonb`,
-    [activityIds],
-  );
 }
 
 /** Deletes the AI's champion/blocker inference about a contact, quotes and all, for erasure. */

@@ -23,7 +23,6 @@
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import type {
   EmailLinkRecordType,
-  EmailMessage,
   EmailMessageDetail,
   EmailThread,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
@@ -38,6 +37,13 @@ import { buildVisibilityFilter } from './visibilityService.js';
 import { scrubActivitiesFiledFromOwnMail } from './activityService.js';
 import { lockForIngest } from './mail/gdprRedaction.js';
 import { setRlsUserIdTo } from './rlsContextService.js';
+import { findThreadSendIntentIds, setUnsettledSendsPrivacy } from './emailSendIntentService.js';
+import {
+  MESSAGE_SELECT,
+  PRIVATE_EMAIL_SUBJECT,
+  toEmailMessage,
+  type EmailMessageRow,
+} from './emailMessageRecord.js';
 
 /** A link row as the write endpoints return it. */
 export interface EmailMessageLinkRow {
@@ -47,52 +53,6 @@ export interface EmailMessageLinkRow {
   record_id: string;
   match_type: 'auto' | 'manual';
   created_at: Date;
-}
-
-/** A row from email_messages, as the list projection selects it. */
-export interface EmailMessageRow {
-  id: string;
-  connected_account_id: string;
-  thread_id: string;
-  direction: 'inbound' | 'outbound';
-  from_address: string;
-  to_addresses: string[];
-  cc_addresses: string[];
-  reply_to_addresses: string[];
-  subject: string | null;
-  message_snippet: string | null;
-  has_attachments: boolean;
-  sent_at: Date | null;
-  is_private: boolean;
-}
-
-/**
- * The columns a message's list shape is read from.
- *
- * The bodies are deliberately absent: a list has no business carrying one, and the HTML is
- * stored unsanitized. Only `findMessageForUser` adds them, for one message at a time.
- */
-export const MESSAGE_SELECT = `m.id, m.connected_account_id, m.thread_id, m.direction, m.from_address,
-       m.to_addresses, m.cc_addresses, m.reply_to_addresses, m.subject, m.message_snippet,
-       m.has_attachments, m.sent_at, m.is_private`;
-
-/** Maps a row to the API shape, rendering timestamps as ISO strings. */
-export function toEmailMessage(row: EmailMessageRow): EmailMessage {
-  return {
-    id: row.id,
-    connected_account_id: row.connected_account_id,
-    thread_id: row.thread_id,
-    direction: row.direction,
-    from_address: row.from_address,
-    to_addresses: row.to_addresses,
-    cc_addresses: row.cc_addresses,
-    reply_to_addresses: row.reply_to_addresses,
-    subject: row.subject,
-    snippet: row.message_snippet,
-    has_attachments: row.has_attachments,
-    sent_at: row.sent_at ? row.sent_at.toISOString() : null,
-    is_private: row.is_private,
-  };
 }
 
 /**
@@ -336,19 +296,6 @@ export async function listUnmatchedMessages(
 }
 
 /**
- * Tables holding the linkable record types, keyed by the value the links table stores.
- *
- * An allowlist rather than an interpolated name: `recordType` is typed, but the table name
- * reaches SQL as text, and a lookup keeps it that way by construction.
- */
-const OWNER_TABLES: Readonly<Record<EmailLinkRecordType, string>> = {
-  contact: 'contacts',
-  lead: 'leads',
-  account: 'accounts',
-  deal: 'deals',
-};
-
-/**
  * Reads one message with its bodies, only through the caller's own mailboxes.
  *
  * @returns null when no such message is in the caller's mailboxes.
@@ -447,9 +394,6 @@ export async function inheritThreadPrivacy(
   return new Map(result.rows.map((row) => [row.id, row.is_private]));
 }
 
-/** Subject of an Email activity filed from a private thread, which records the send only. */
-export const PRIVATE_EMAIL_SUBJECT = 'Private email';
-
 /**
  * Marks or unmarks the whole thread a message belongs to as private, in its owner's mailbox.
  *
@@ -505,19 +449,17 @@ export async function setThreadPrivacy(
       `UPDATE email_messages SET is_private = $2 WHERE id = ANY($1::uuid[]) AND is_private <> $2`,
       [threadIds, isPrivate],
     );
+    await setUnsettledSendsPrivacy(client, message.connected_account_id, threadIds, isPrivate);
     if (isPrivate) {
       // The thread's sends, stored or still unconfirmed, name who they concerned in the log.
-      const threadSends = await client.query<{ id: string }>(
-        `SELECT i.id FROM email_send_intents i
-          WHERE i.connected_account_id = $1
-            AND (i.email_message_id = ANY($2::uuid[])
-              OR i.rfc_message_id IN (SELECT rfc_message_id FROM email_messages
-                                       WHERE id = ANY($2::uuid[])))`,
-        [message.connected_account_id, threadIds],
+      const threadSendIds = await findThreadSendIntentIds(
+        client,
+        message.connected_account_id,
+        threadIds,
       );
       await markSendEntriesPrivate(client, message.connected_account_id, {
         messageIds: threadIds,
-        intentIds: threadSends.rows.map((row) => row.id),
+        intentIds: threadSendIds,
       });
       // Activities already filed from the thread carry its text onto shared timelines,
       // whoever owns them now: the text is the mailbox owner's. A real change of setting
@@ -569,28 +511,6 @@ export async function setThreadPrivacy(
   } finally {
     client.release();
   }
-}
-
-/**
- * Reads just the owner of a linkable record, or null when no such record exists.
- *
- * The detail finders would answer this too, but each builds a whole page's worth of row —
- * joined addresses, computed stage probability — inside its own RLS transaction, to
- * resolve one boolean.
- *
- * @param executor - A transaction's client, when the answer must hold within it.
- */
-export async function findLinkedRecordOwner(
-  recordType: EmailLinkRecordType,
-  recordId: string,
-  executor: Pick<PoolClient, 'query'> = pool,
-): Promise<string | null> {
-  // Outside RLS, unlike the detail finders: the caller gates on the owner returned.
-  const result = await executor.query<{ owner_id: string }>(
-    `SELECT owner_id FROM ${OWNER_TABLES[recordType]} WHERE id = $1 LIMIT 1`,
-    [recordId],
-  );
-  return result.rows[0]?.owner_id ?? null;
 }
 
 /**

@@ -22,6 +22,7 @@ import {
   reconcileDerivedLinks,
   relinkLinksToConvertedLead,
 } from './emailMatchingService.js';
+import { moveSendIntentsToContact } from './emailSendIntentService.js';
 import { computeLeadRoutingSuggestion, persistRoutingDecision } from './leadRoutingService.js';
 import { getDealAutoLink } from './settingsService.js';
 import { normalizeAddress } from '../utils/emailAddress.js';
@@ -644,6 +645,7 @@ export async function convertLead(
     // Every read hides a converted lead, so its synced mail moves to the contact rather
     // than staying on a record nothing joins from.
     await relinkLinksToConvertedLead(client, leadId, contactId);
+    await moveSendIntentsToContact(client, { recordType: 'lead', recordId: leadId }, contactId);
 
     // The contact now has an account and a deal, so rules 3 and 4 apply to the mail that
     // just moved onto it — otherwise a message synced a minute later reaches both and

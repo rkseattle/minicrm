@@ -17,8 +17,9 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import { CURRENCIES_CONFIG_QUERY_KEY } from '@/api/settings.js';
 import { server } from '../../test/setup.js';
-import { renderWithProviders } from '../../test/renderWithProviders.js';
+import { createCachedQueryClient, renderWithProviders } from '../../test/renderWithProviders.js';
 import CurrencySettings from './CurrencySettings.js';
 
 function mockRepUser() {
@@ -255,5 +256,39 @@ describe('CurrencySettings — exchange rates', () => {
     await waitFor(() => {
       expect(screen.getByTestId('exchange-rate-save-error')).toBeInTheDocument();
     });
+  });
+});
+
+describe('CurrencySettings — exchange rates from cache', () => {
+  it('shows the stored rates when they are already cached on opening', async () => {
+    const queryClient = createCachedQueryClient([
+      [
+        CURRENCIES_CONFIG_QUERY_KEY,
+        {
+          home_currency: 'EUR',
+          currencies: [
+            {
+              code: 'EUR',
+              name: 'Euro',
+              symbol: '€',
+              rate_to_home: 1,
+              is_home: true,
+              updated_at: '2026-01-01T00:00:00Z',
+            },
+            {
+              code: 'GBP',
+              name: 'British Pound',
+              symbol: '£',
+              rate_to_home: 0.85,
+              is_home: false,
+              updated_at: '2026-01-01T00:00:00Z',
+            },
+          ],
+        },
+      ],
+    ]);
+    renderWithProviders(<CurrencySettings />, { queryClient });
+
+    expect(await screen.findByTestId('exchange-rate-input-GBP')).toHaveValue(0.85);
   });
 });

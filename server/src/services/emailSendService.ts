@@ -39,13 +39,8 @@ import {
   type ConnectedAccountInternal,
 } from './connectedAccountService.js';
 import { matchMessagesToRecords } from './emailMatchingService.js';
-import {
-  inheritThreadPrivacy,
-  lockMailboxThreads,
-  MESSAGE_SELECT,
-  toEmailMessage,
-  type EmailMessageRow,
-} from './emailMessageService.js';
+import { inheritThreadPrivacy, lockMailboxThreads } from './emailMessageService.js';
+import { MESSAGE_SELECT, toEmailMessage, type EmailMessageRow } from './emailMessageRecord.js';
 import { lockForIngest, redactErasedOnIngest } from './mail/gdprRedaction.js';
 import { normalizeAddress } from '../utils/emailAddress.js';
 import {
@@ -520,6 +515,7 @@ export async function sendEmail(
       // Only an override: a filing otherwise takes the stored body, so no second copy waits here.
       activityNotes,
       threadPrivate: original?.isPrivate ?? false,
+      parentMessageId: input.in_reply_to_message_id ?? input.forward_of_message_id ?? null,
       toAddresses: parsed.toAddresses,
       ccAddresses: parsed.ccAddresses,
       idempotencyKey: idempotency.key,

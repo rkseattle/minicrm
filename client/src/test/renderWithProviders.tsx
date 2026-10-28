@@ -68,3 +68,17 @@ export function renderWithProviders(
     </QueryClientProvider>,
   );
 }
+
+/**
+ * A QueryClient already holding the given queries, as when a page is opened again with its
+ * data cached. Nothing refetches, so a component sees only what was cached.
+ */
+export function createCachedQueryClient(
+  entries: ReadonlyArray<readonly [readonly unknown[], unknown]>,
+): QueryClient {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  });
+  for (const [key, data] of entries) queryClient.setQueryData(key, data);
+  return queryClient;
+}

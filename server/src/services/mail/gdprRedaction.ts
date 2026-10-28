@@ -58,29 +58,6 @@ export async function lockForErasure(client: PoolClient): Promise<void> {
 }
 
 /**
- * SQL replacing one address with another in an address array, ignoring case and keeping
- * order. array_replace compares exactly; a mixed-case copy of the address would survive it.
- *
- * @param addressParam - Placeholder bound to the lowercased address, e.g. `$2`.
- * @param placeholderParam - Placeholder bound to its replacement.
- */
-export function replaceInArray(
-  column: string,
-  addressParam = '$2',
-  placeholderParam = '$3',
-): string {
-  return `ARRAY(SELECT CASE WHEN lower(a.address) = ${addressParam} THEN ${placeholderParam}
-                         ELSE a.address END
-                  FROM unnest(${column}) WITH ORDINALITY AS a(address, position)
-                 ORDER BY a.position)`;
-}
-
-/** SQL true when an address array holds the given address in any case. */
-export function arrayHasAddress(column: string, addressParam: string): string {
-  return `EXISTS (SELECT 1 FROM unnest(${column}) AS a(address) WHERE lower(a.address) = ${addressParam})`;
-}
-
-/**
  * Redacts one address from the given messages, and their subject lines and bodies.
  *
  * @param address - The erased subject's address, lowercased.
@@ -96,9 +73,9 @@ export async function redactMessages(
   const result = await client.query(
     `UPDATE email_messages
         SET from_address = CASE WHEN lower(from_address) = $2 THEN $3 ELSE from_address END,
-            to_addresses = ${replaceInArray('to_addresses')},
-            cc_addresses = ${replaceInArray('cc_addresses')},
-            reply_to_addresses = ${replaceInArray('reply_to_addresses')},
+            to_addresses = address_array_replace(to_addresses, $2, $3),
+            cc_addresses = address_array_replace(cc_addresses, $2, $3),
+            reply_to_addresses = address_array_replace(reply_to_addresses, $2, $3),
             subject = $4,
             message_body_text = NULL,
             message_body_html = NULL,

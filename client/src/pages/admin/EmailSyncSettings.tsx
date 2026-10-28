@@ -54,13 +54,14 @@ export default function EmailSyncSettings({ disabled = false }: EmailSyncSetting
   const [daysError, setDaysError] = useState<string | null>(null);
   const [saved, setSaved] = useState<'domains' | 'days' | null>(null);
 
-  // Re-synced during render when the server snapshot changes, as NotificationSettings does.
-  const [prevDomains, setPrevDomains] = useState(domainsQuery.data);
+  // Re-synced during render when the server snapshot changes. Unset at first, so data
+  // already cached on mount fills the fields too.
+  const [prevDomains, setPrevDomains] = useState<typeof domainsQuery.data>(undefined);
   if (domainsQuery.data && domainsQuery.data !== prevDomains) {
     setPrevDomains(domainsQuery.data);
     setDomainsText(domainsQuery.data.domains.join('\n'));
   }
-  const [prevDays, setPrevDays] = useState(daysQuery.data);
+  const [prevDays, setPrevDays] = useState<typeof daysQuery.data>(undefined);
   if (daysQuery.data && daysQuery.data !== prevDays) {
     setPrevDays(daysQuery.data);
     setDaysText(String(daysQuery.data.days));

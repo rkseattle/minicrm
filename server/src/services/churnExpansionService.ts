@@ -16,10 +16,11 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
+import { activitiesUnchangedSince, type ActivityReadVersion } from './activityDerivedText.js';
 import logger from '../logger.js';
 import { decryptVersioned } from './cryptoService.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
-import { createNotification } from './notificationFeedService.js';
+import { CHURN_RISK_NOTIFICATION_TYPE, createNotification } from './notificationFeedService.js';
 import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import type {
   AccountChurnExpansionSignal,
@@ -69,6 +70,8 @@ interface ClosedWonAccountSignals {
   recentActivityCount: number;
   daysSinceLastActivity: number | null;
   recentNotes: string[];
+  /** The activities those notes came from, at the versions read. */
+  noteSources: ActivityReadVersion[];
 }
 
 const SIGNAL_TOOL_NAME = 'report_churn_expansion_signal';
@@ -134,14 +137,15 @@ async function gatherClosedWonAccounts(): Promise<ClosedWonAccountSignals[]> {
     owner_id: string;
     recent_activity_count: string;
     last_activity_at: Date | null;
-    recent_notes: string[] | null;
+    recent_notes: Array<{ id: string; version: number; notes: string }> | null;
   }>(
     `SELECT
        a.id, a.name, a.owner_id,
        (SELECT COUNT(*) FROM activities act WHERE act.account_id = a.id AND act.created_at >= now() - interval '30 days') AS recent_activity_count,
        (SELECT MAX(act.created_at) FROM activities act WHERE act.account_id = a.id) AS last_activity_at,
-       (SELECT array_agg(act.notes ORDER BY act.created_at DESC)
-          FROM (SELECT notes, created_at FROM activities WHERE account_id = a.id AND notes IS NOT NULL ORDER BY created_at DESC LIMIT 5) act
+       (SELECT json_agg(json_build_object('id', act.id, 'version', act.version, 'notes', act.notes)
+                        ORDER BY act.created_at DESC)
+          FROM (SELECT id, version, notes, created_at FROM activities WHERE account_id = a.id AND notes IS NOT NULL ORDER BY created_at DESC LIMIT 5) act
        ) AS recent_notes
      FROM accounts a
      WHERE EXISTS (SELECT 1 FROM deals d WHERE d.account_id = a.id AND d.stage = 'Closed Won')
@@ -157,7 +161,8 @@ async function gatherClosedWonAccounts(): Promise<ClosedWonAccountSignals[]> {
     daysSinceLastActivity: row.last_activity_at
       ? Math.floor((now - row.last_activity_at.getTime()) / (1000 * 60 * 60 * 24))
       : null,
-    recentNotes: row.recent_notes ?? [],
+    recentNotes: (row.recent_notes ?? []).map((note) => note.notes),
+    noteSources: (row.recent_notes ?? []).map(({ id, version }) => ({ id, version })),
   }));
 }
 
@@ -308,6 +313,8 @@ async function processAccount(
 
   try {
     await withTransaction(async (client) => {
+      // A note scrubbed while the AI ran would survive in the factors; the next run retries.
+      if (!(await activitiesUnchangedSince(client, account.noteSources))) return;
       if (existing) {
         await client.query(
           `UPDATE account_churn_expansion_signals SET cleared_at = now() WHERE id = $1`,
@@ -337,6 +344,23 @@ async function processAccount(
         changedById: SYSTEM_ACTOR.id,
         changedByName: SYSTEM_ACTOR.name,
       });
+
+      // Committed with the signal, so the version guard above covers the factor it quotes.
+      if (
+        result.signalType === 'churn_risk' &&
+        result.confidence >= HIGH_CONFIDENCE_NOTIFICATION_THRESHOLD
+      ) {
+        await createNotification(
+          {
+            userId: account.ownerId,
+            type: CHURN_RISK_NOTIFICATION_TYPE,
+            title: `Churn risk detected: ${account.name}`,
+            body: result.factors[0],
+            linkPath: recordPath('account', account.id),
+          },
+          client,
+        );
+      }
     });
   } catch (err) {
     // 23505: account_churn_expansion_signals_one_active_per_type — an overlapping
@@ -351,19 +375,6 @@ async function processAccount(
       return;
     }
     throw err;
-  }
-
-  if (
-    result.signalType === 'churn_risk' &&
-    result.confidence >= HIGH_CONFIDENCE_NOTIFICATION_THRESHOLD
-  ) {
-    await createNotification({
-      userId: account.ownerId,
-      type: 'churn_risk_detected',
-      title: `Churn risk detected: ${account.name}`,
-      body: result.factors[0],
-      linkPath: recordPath('account', account.id),
-    });
   }
 }
 

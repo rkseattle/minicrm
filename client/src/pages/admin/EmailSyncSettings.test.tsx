@@ -5,8 +5,12 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import {
+  EMAIL_SYNC_BACKFILL_DAYS_QUERY_KEY,
+  EMAIL_SYNC_EXCLUDED_DOMAINS_QUERY_KEY,
+} from '@/api/settings.js';
 import { server } from '../../test/setup.js';
-import { renderWithProviders } from '../../test/renderWithProviders.js';
+import { createCachedQueryClient, renderWithProviders } from '../../test/renderWithProviders.js';
 import EmailSyncSettings from './EmailSyncSettings.js';
 
 function serve(domains: string[] = ['hr.example'], days = 45) {
@@ -54,6 +58,18 @@ describe('EmailSyncSettings', () => {
       'hr.example\nfamily.example',
     );
     expect(screen.getByTestId('email-sync-backfill-days-input')).toHaveValue(30);
+  });
+
+  it('shows the stored values when they are already cached on opening', async () => {
+    const queryClient = createCachedQueryClient([
+      [EMAIL_SYNC_EXCLUDED_DOMAINS_QUERY_KEY, { domains: ['cached.example'] }],
+      [EMAIL_SYNC_BACKFILL_DAYS_QUERY_KEY, { days: 14 }],
+    ]);
+    renderWithProviders(<EmailSyncSettings />, { queryClient });
+    await loaded();
+
+    expect(screen.getByTestId('email-sync-excluded-domains-input')).toHaveValue('cached.example');
+    expect(screen.getByTestId('email-sync-backfill-days-input')).toHaveValue(14);
   });
 
   it('shows an empty list as an empty box', async () => {

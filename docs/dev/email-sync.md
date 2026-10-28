@@ -618,14 +618,37 @@ A send into a private thread still files its `Email` activity, as **Private emai
 body: the activity records that mail was sent, and the text stays in the owner's mailbox.
 Privacy is taken from the answered or forwarded message when the send is claimed and stored
 as `email_send_intents.thread_private`, because sync may file the Sent copy under a thread of
-its own deriving; the filing then stores the message private as well.
+its own deriving; the filing then stores the message private as well. The intent also records
+that message as `parent_message_id`, so marking the thread private reaches a reply still in
+flight, which has no stored message of its own yet. Every other path locks an intent before
+the mailbox lock the privacy change holds, so the privacy change never waits on an intent: it
+updates the in-flight intents it can lock (`SKIP LOCKED`), and each path holding one (the
+claim, filing, unconfirm) re-reads the parent's privacy under the parent's row lock, which the
+privacy change holds until it commits. Intent before message, everywhere, rules out a cycle. Intents claimed before migration 199 have no recorded parent and cannot be given one,
+since nothing stored names it; they age out with the 30-day intent purge.
 
 Each filed activity records its message as `metadata.email_message_id`. Marking a thread
 private scrubs activities already filed from it the same way and records them in
 `redacted_records`, and bumps their `version`, so
-an edit form opened before cannot write the text back. Champion/blocker quotes on those
-activities' contacts are cleared, since a signal does not record its activity. Making the
-thread visible again does not restore any of it.
+an edit form opened before cannot write the text back. AI text derived from those activities
+is cleared in the same transaction (`activityDerivedText.ts`), since none of it records which
+activities it drew on: champion/blocker quotes on their contacts, meeting briefs on their
+contacts' activities, and churn/expansion factors on their accounts, with the body of the
+churn alert that quotes one. Labels without text stay.
+An analysis still running saves its result only if every activity it read is still at the
+version it read, checked under a share lock the scrub's update conflicts with; a meeting brief
+that loses that race answers 409 `BRIEF_SOURCES_CHANGED`. Making the thread visible again does
+not restore any of it.
+
+Each send intent also records, at claim time, the contacts and leads its recipients matched
+(`recipient_contact_ids`, `recipient_lead_ids`, by `address_matched_records()`, the one
+definition auto-linking uses too), the
+intent's equivalent of a message's links. Erasure finds an intent by those as well as by
+address, so a send to an address the subject has since changed, or to a merged-away contact's
+own address, is still scrubbed. Converting a lead or merging a contact moves both the intents
+sent from it and those ids onto the surviving contact, as its links and activity participants
+move. The address-array matching erasure applies to messages and intents is in the database,
+as `address_array_replace` and `address_array_has`, so every value is bound as a parameter.
 
 Audit reads mask by the redaction's reason. An erasure masks every entry for the record as
 `[GDPR deleted]`. A private-thread scrub masks only entries written before it, as `[Private]`,
@@ -720,7 +743,9 @@ it. A record deleted since the send is skipped, not an error.
 
 A send that may have gone but is never filed is still audited: moving to `unconfirmed`
 writes `email_send_unconfirmed` with the recipients, the record it was sent from, and
-whether the provider confirmed it. Every sync scheduler tick runs that sweep, before it
+whether the provider confirmed it. The intent keeps its recipients until it is filed or
+purged: erasure finds an intent by them, and an unconfirmed forward still holds its text.
+Every sync scheduler tick runs that sweep, before it
 checks the feature flag, and the retention purge runs it again first.
 Intents are deleted after 30 days whatever their status, so a Sent copy arriving later is
 stored but no longer filed. A message sent from a record is linked to it whatever its addresses

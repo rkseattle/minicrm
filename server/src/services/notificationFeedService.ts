@@ -11,6 +11,7 @@
  * without a migration.
  */
 
+import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import type {
   NotificationFeedItem,
@@ -25,9 +26,19 @@ interface CreateNotificationParams {
   linkPath?: string;
 }
 
-/** Inserts a new notification row for a user. Fire-and-forget callers should not await this synchronously in a request path — call from a background job context. */
-export async function createNotification(params: CreateNotificationParams): Promise<void> {
-  await pool.query(
+/** Type of the notification a high-confidence churn signal sends; its body quotes a factor. */
+export const CHURN_RISK_NOTIFICATION_TYPE = 'churn_risk_detected';
+
+/**
+ * Inserts a new notification row for a user. Fire-and-forget callers should not await this synchronously in a request path — call from a background job context.
+ *
+ * @param executor - A transaction's client, when the notification must commit with it.
+ */
+export async function createNotification(
+  params: CreateNotificationParams,
+  executor: Pick<PoolClient, 'query'> = pool,
+): Promise<void> {
+  await executor.query(
     `INSERT INTO notifications (user_id, type, title, body, link_path)
      VALUES ($1, $2, $3, $4, $5)`,
     [params.userId, params.type, params.title, params.body ?? null, params.linkPath ?? null],
@@ -91,5 +102,19 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
   await pool.query(
     `UPDATE notifications SET read_at = now() WHERE user_id = $1 AND read_at IS NULL`,
     [userId],
+  );
+}
+
+/** Blanks the bodies of one type's notifications that link to the given pages; titles stay. */
+export async function clearNotificationBodies(
+  client: PoolClient,
+  type: string,
+  linkPaths: readonly string[],
+): Promise<void> {
+  if (linkPaths.length === 0) return;
+  await client.query(
+    `UPDATE notifications SET body = NULL
+      WHERE type = $1 AND link_path = ANY($2::text[]) AND body IS NOT NULL`,
+    [type, linkPaths],
   );
 }

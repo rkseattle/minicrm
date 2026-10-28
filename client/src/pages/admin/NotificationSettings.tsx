@@ -107,7 +107,8 @@ export default function NotificationSettings() {
   // than via an effect — avoids the extra render an effect-based sync would
   // cause. See:
   // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-  const [prevSmtpData, setPrevSmtpData] = useState(smtpData);
+  // Unset at first, so data already cached on mount fills the form too.
+  const [prevSmtpData, setPrevSmtpData] = useState<typeof smtpData>(undefined);
   if (smtpData && smtpData !== prevSmtpData) {
     setPrevSmtpData(smtpData);
     setSmtpHost(smtpData.smtp_host);

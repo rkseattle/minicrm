@@ -21,7 +21,8 @@ import {
 import type { AuditActor } from './auditService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { buildVisibilityFilter } from './visibilityService.js';
-import { analyzeContactSignals, clearSignalQuotesForActivities } from './championBlockerService.js';
+import { analyzeContactSignals } from './championBlockerService.js';
+import { clearTextDerivedFromActivities } from './activityDerivedText.js';
 import { scoreActivitySentiment } from './sentimentService.js';
 
 /** Columns that may be updated via updateActivity — guards against SQL injection from dynamic field names */
@@ -177,6 +178,7 @@ export async function announceActivityCreated(activityId: string): Promise<Activ
   // Unhandled rejections are caught by the global handler in server.ts.
   void analyzeContactSignals({
     activityId: activity.id,
+    activityVersion: activity.version,
     contactId: activity.contact_id,
     notes: activity.notes,
     subject: activity.subject,
@@ -657,7 +659,7 @@ export async function scrubActivitiesFiledFromOwnMail(
   return ids;
 }
 
-/** What follows a scrub: the redaction record, and the champion/blocker quotes it carried. */
+/** What follows a scrub: the redaction record, and the AI text derived from what it removed. */
 async function recordScrub(
   client: PoolClient,
   activityIds: readonly string[],
@@ -666,7 +668,7 @@ async function recordScrub(
   cutoffIds: readonly string[] | undefined,
 ): Promise<void> {
   await markActivitiesRedacted(client, activityIds, reason, cutoffIds ?? scrubbedIds);
-  await clearSignalQuotesForActivities(client, scrubbedIds);
+  await clearTextDerivedFromActivities(client, scrubbedIds);
 }
 
 /**

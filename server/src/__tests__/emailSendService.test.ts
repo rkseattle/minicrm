@@ -45,7 +45,7 @@ import {
   insertParkedMailbox,
   purgeFixtureUsers,
 } from './testUtils.js';
-import { PRIVATE_EMAIL_SUBJECT } from '../services/emailMessageService.js';
+import { PRIVATE_EMAIL_SUBJECT } from '../services/emailMessageRecord.js';
 
 const FILE_PREFIX = 'emailsend';
 const MAILBOX = `${FILE_PREFIX}-Mailbox@Example.com`;
