@@ -716,7 +716,7 @@ describe('listAccounts — accountType filter', () => {
     await createAccount({ name: 'Customer Co', owner_id: ownerId, account_type: 'Customer' });
     await createAccount({ name: 'Prospect Co', owner_id: ownerId, account_type: 'Prospect' });
 
-    const result = await listAccounts({ accountType: 'Customer' });
+    const result = await listAccounts({ ownerId, accountType: 'Customer' });
     expect(result.data).toHaveLength(1);
     expect(result.data[0].name).toBe('Customer Co');
   });

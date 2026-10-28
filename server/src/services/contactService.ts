@@ -906,7 +906,10 @@ export async function mergeContacts(
   input: MergeContactsInput,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<ContactRow> {
-  const { winnerId, loserId, fieldChoices } = input;
+  const { fieldChoices } = input;
+  // Postgres returns UUIDs lowercase and accepts any case, so compare in its form.
+  const winnerId = input.winnerId.toLowerCase();
+  const loserId = input.loserId.toLowerCase();
 
   if (winnerId === loserId) {
     throw Object.assign(new Error('Cannot merge a contact with itself'), { code: 'SELF_MERGE' });

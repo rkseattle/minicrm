@@ -2435,4 +2435,49 @@ describe('the lock order between sends and record merges', () => {
       await pool.query('DELETE FROM leads WHERE id = $1', [leadId]);
     }
   });
+  it('merges contacts named by uppercase ids, which Postgres accepts', async () => {
+    const winnerId = await createContact('upper-winner');
+    const loserId = await createContact('upper-loser');
+
+    const merged = await mergeContacts(
+      { winnerId: winnerId.toUpperCase(), loserId: loserId.toUpperCase(), fieldChoices: {} },
+      actor,
+    );
+
+    expect(merged.id).toBe(winnerId);
+    const left = await pool.query('SELECT 1 FROM contacts WHERE id = $1', [loserId]);
+    expect(left.rowCount).toBe(0);
+  });
+
+  it('refuses to merge a contact with itself named in two cases', async () => {
+    const contactId = await createContact('upper-self');
+
+    await expect(
+      mergeContacts(
+        { winnerId: contactId, loserId: contactId.toUpperCase(), fieldChoices: {} },
+        actor,
+      ),
+    ).rejects.toMatchObject({ code: 'SELF_MERGE' });
+  });
+
+  it('takes the same record lock for an id however it is cased', async () => {
+    const loserId = await createContact('upper-claim');
+    const holder = await pool.connect();
+    let claiming: ReturnType<typeof claimSendIntent>;
+    try {
+      await holder.query('BEGIN');
+      await lockRecordsForMerge(holder, [loserId]);
+      claiming = claimSendIntent(
+        sendFrom('contact', loserId.toUpperCase(), ['x@example.net']),
+        false,
+      );
+      await waitForLockWaiter('pg_advisory');
+      await holder.query('DELETE FROM contacts WHERE id = $1', [loserId]);
+      await holder.query('COMMIT');
+    } finally {
+      holder.release();
+    }
+
+    expect((await claiming).kind).toBe('record_gone');
+  });
 });
