@@ -768,6 +768,8 @@ export async function isSetPasswordTokenInvalid(context: AuthBehaviorContext): P
 export async function navigateToLoginPage(context: AuthBehaviorContext): Promise<void> {
   const po = new LoginPage(context);
   await po.navigate();
+  // The route is lazy-loaded; callers must see the form, not the Suspense fallback.
+  await po.waitForFormVisible();
 }
 
 /**
@@ -811,6 +813,8 @@ export async function waitForLoginAlert(
 export async function navigateToForgotPasswordPage(context: AuthBehaviorContext): Promise<void> {
   const po = new ForgotPasswordPage(context);
   await po.navigate();
+  // The route is lazy-loaded; callers must see the form, not the Suspense fallback.
+  await po.waitForFormVisible();
 }
 
 // ---------------------------------------------------------------------------

@@ -882,7 +882,7 @@ export default function AiPage() {
           {/* Message thread — scrollable */}
           <div
             className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
-            aria-live="polite"
+            role="log"
             aria-label={t('ai.pageTitle')}
             data-testid="ai-message-thread"
           >
@@ -946,11 +946,9 @@ export default function AiPage() {
             {sendMutation.isPending &&
               displayedOptimisticMessages.length === 1 &&
               displayedOptimisticMessages[0].role === 'user' && (
-                <div
-                  className="flex justify-start"
-                  aria-label={t('ai.sending')}
-                  data-testid="ai-thinking-indicator"
-                >
+                // No live region of its own: the thread's log role announces it as it is added.
+                <div className="flex justify-start" data-testid="ai-thinking-indicator">
+                  <span className="sr-only">{t('ai.sending')}</span>
                   <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-xs">
                     <span className="flex gap-1 items-center">
                       {[0, 150, 300].map((delay) => (

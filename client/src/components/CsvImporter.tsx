@@ -315,9 +315,12 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
                     >
                       {field.label}
                       {field.required && (
-                        <span className="ms-1 text-red-500" aria-label={t('import.required')}>
-                          *
-                        </span>
+                        <>
+                          <span className="ms-1 text-red-500" aria-hidden="true">
+                            *
+                          </span>{' '}
+                          <span className="sr-only">{t('import.required')}</span>
+                        </>
                       )}
                     </label>
                     <select

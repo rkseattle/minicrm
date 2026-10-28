@@ -384,6 +384,37 @@ describe('ChangeHistory', () => {
     expect(screen.getByTestId('change-history-toggle')).toHaveTextContent(/show less/i);
   });
 
+  it('exposes the total count by its visible text, not an aria-label override', async () => {
+    const preview = Array.from({ length: 20 }, (_, i) =>
+      makeEntry({ id: `00000000-0000-0000-0000-0000000000${String(i).padStart(2, '0')}` }),
+    );
+    const extra = makeEntry({ id: '00000000-0000-4000-8000-000000000099' });
+
+    server.use(
+      http.get('/api/v1/audit-log/record', ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get('all') === 'true') {
+          return HttpResponse.json({ entries: [...preview, extra] });
+        }
+        return HttpResponse.json({ entries: preview });
+      }),
+    );
+
+    renderWithProviders(<ChangeHistory recordType="contact" recordId={RECORD_ID} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('change-history-toggle')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('change-history-toggle'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`change-history-entry-${extra.id}`)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('(21)')).not.toHaveAttribute('aria-label');
+  });
+
   // Replaces a `never` exhaustiveness cast that type-checked against a stale enum and so
   // proved nothing. Every schema-admitted type must render as prose; a new one added to
   // the schema alone fails here instead of reaching a user as a bare identifier.

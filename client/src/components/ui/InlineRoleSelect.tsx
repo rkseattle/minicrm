@@ -94,10 +94,10 @@ export function InlineRoleSelect({
         <span
           className="text-sm text-gray-500 cursor-default"
           title={t('users.serviceAccountRoleTooltip')}
-          aria-label={t('users.serviceAccountRoleTooltip')}
           data-testid={`role-cell-${user.id}`}
         >
           {t(ROLE_LABEL_KEYS[user.role])}
+          <span className="sr-only">{t('users.serviceAccountRoleTooltip')}</span>
         </span>
       ) : (
         <select

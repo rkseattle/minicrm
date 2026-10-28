@@ -276,6 +276,23 @@ describe('AiSettings — deployment mode', () => {
     fireEvent.click(screen.getByTestId('ai-deployment-mode-radio-self_hosted'));
     expect(screen.getByTestId('ai-base-url-input')).toBeInTheDocument();
   });
+
+  it.each([
+    ['Cloud API', 'Data transits provider infrastructure. DPA required.'],
+    [
+      'Private Endpoint',
+      'Data routed via private network link. No public internet exposure. DPA required.',
+    ],
+    ['Self-Hosted', 'Data does not leave your infrastructure. No DPA required.'],
+  ])(
+    'names the %s radio by its title and describes it by its description',
+    async (name, description) => {
+      renderWithProviders(<AiSettings />);
+      await waitFor(() => screen.getByTestId('ai-settings-panel-general'));
+
+      expect(screen.getByRole('radio', { name })).toHaveAccessibleDescription(description);
+    },
+  );
 });
 
 // ── General section — API key display ──────────────────────────────────────────
@@ -734,6 +751,13 @@ describe('AiSettings — data minimization section', () => {
     });
     expect(screen.getByTestId('always-excluded-field-password_hash')).toBeInTheDocument();
     expect(screen.getByTestId('always-excluded-field-ssn')).toBeInTheDocument();
+  });
+
+  it('exposes the always-excluded fields as a named group', async () => {
+    renderSection('data-minimization');
+    expect(
+      await screen.findByRole('group', { name: 'Always excluded (cannot be changed)' }),
+    ).toBeInTheDocument();
   });
 
   it('renders standard fields with toggles', async () => {

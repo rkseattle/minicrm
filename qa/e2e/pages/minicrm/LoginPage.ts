@@ -14,6 +14,9 @@
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
+/** How long a lazy-loaded route's chunk may take before its form renders. */
+const FORM_READY_TIMEOUT_MS = 10_000;
+
 // ---------------------------------------------------------------------------
 // Fixture context accepted by this Page Object
 // ---------------------------------------------------------------------------
@@ -63,6 +66,23 @@ export class LoginPage {
   // ---------------------------------------------------------------------------
   // Form interactions
   // ---------------------------------------------------------------------------
+
+  /**
+   * Waits for the lazy-loaded form to replace the route's loading fallback.
+   *
+   * @param timeout - How long the chunk may take to load.
+   */
+  async waitForFormVisible(timeout = FORM_READY_TIMEOUT_MS): Promise<void> {
+    await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'login-email' },
+          { type: 'label', value: t('login.emailLabel'), options: { exact: true } },
+        ],
+        { intent: 'email input field on login form' },
+      )
+      .resolve(timeout);
+  }
 
   /**
    * Fills the email input field.

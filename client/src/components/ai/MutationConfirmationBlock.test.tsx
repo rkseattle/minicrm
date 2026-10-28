@@ -57,6 +57,19 @@ describe('MutationConfirmationBlock — create operation', () => {
     expect(screen.getByText('Create a new contact Jane')).toBeInTheDocument();
   });
 
+  it('exposes the badge by its visible text, not a duplicate aria-label', () => {
+    renderWithProviders(
+      <MutationConfirmationBlock
+        pendingAction={BASE_CREATE}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const badge = screen.getByTestId('nli-operation-badge');
+    expect(badge).toHaveTextContent('Create');
+    expect(badge).not.toHaveAttribute('aria-label');
+  });
+
   it('shows field table with field names', () => {
     renderWithProviders(
       <MutationConfirmationBlock

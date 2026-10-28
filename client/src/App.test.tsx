@@ -50,6 +50,16 @@ describe('App routing', () => {
     });
   });
 
+  // The only test to render /forgot-password: once its chunk loads, no fallback renders.
+  it('announces a lazy route as loading until it renders', async () => {
+    renderApp('/forgot-password');
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…');
+    await waitFor(() => {
+      expect(screen.getByTestId('forgot-password-email')).toBeInTheDocument();
+    });
+  });
+
   it('redirects unauthenticated users to /login', async () => {
     server.use(
       http.get('/api/v1/auth/me', () =>

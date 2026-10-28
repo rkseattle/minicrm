@@ -191,7 +191,7 @@ export default function ChangeHistory({ recordType, recordId }: ChangeHistoryPro
                   : t('auditLog.showAll')}
             </button>
             {showAll && (
-              <span className="ms-2 text-xs text-gray-500" aria-label={String(totalCount)}>
+              <span className="ms-2 text-xs text-gray-500">
                 {t('auditLog.totalCount', { count: totalCount })}
               </span>
             )}

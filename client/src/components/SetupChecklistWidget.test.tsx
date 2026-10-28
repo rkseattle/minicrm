@@ -228,6 +228,25 @@ describe('SetupChecklistWidget', () => {
     });
   });
 
+  it('exposes the collapsed pill as a named group', async () => {
+    mockAdminUser();
+    mockFirstRun();
+
+    renderWithProviders(<SetupChecklistWidget />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-checklist-collapse-button')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('setup-checklist-collapse-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('group', { name: 'Setup checklist (collapsed)' }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it('persists collapsed state in localStorage', async () => {
     mockAdminUser();
     mockFirstRun();

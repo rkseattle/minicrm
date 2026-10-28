@@ -10,6 +10,9 @@
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
 
+/** How long a lazy-loaded route's chunk may take before its form renders. */
+const FORM_READY_TIMEOUT_MS = 10_000;
+
 /** Subset of Playwright fixtures required by ForgotPasswordPage. */
 export interface ForgotPasswordPageContext {
   page: PageFacade;
@@ -33,6 +36,23 @@ export class ForgotPasswordPage {
    */
   async navigate(): Promise<void> {
     await this.page.goto(ForgotPasswordPage.PATH);
+  }
+
+  /**
+   * Waits for the lazy-loaded form to replace the route's loading fallback.
+   *
+   * @param timeout - How long the chunk may take to load.
+   */
+  async waitForFormVisible(timeout = FORM_READY_TIMEOUT_MS): Promise<void> {
+    await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'forgot-password-email' },
+          { type: 'label', value: t('forgotPassword.emailLabel'), options: { exact: true } },
+        ],
+        { intent: 'email input on forgot password form' },
+      )
+      .resolve(timeout);
   }
 
   /**
