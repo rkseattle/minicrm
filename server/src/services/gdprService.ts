@@ -23,7 +23,7 @@ import {
   lockForErasure,
   redactMessages,
 } from './mail/gdprRedaction.js';
-import { normalizeAddress } from './mail/address.js';
+import { normalizeAddress } from '../utils/emailAddress.js';
 import type { AuditActor, AuditLogRow } from './auditService.js';
 import type { NoteResponse } from '@minicrm/shared/schemas/noteSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
@@ -37,6 +37,7 @@ import { activityIdsForPerson, scrubActivities } from './activityService.js';
 import { deleteLinksForDeletedEntity } from './emailMatchingService.js';
 import { redactIntentsForErasure } from './emailSendIntentService.js';
 import type { GdprDeletionLogEntry } from '@minicrm/shared/types/gdpr.js';
+import { deleteSignalsForContact } from './championBlockerService.js';
 
 // ── PII field lists ────────────────────────────────────────────────────────────
 
@@ -384,7 +385,7 @@ export async function eraseContact(
       'gdpr_erasure',
     );
     // The AI's inference about the person, with quotes from their mail and notes.
-    await client.query('DELETE FROM contact_champion_blocker_signals WHERE contact_id = $1', [id]);
+    await deleteSignalsForContact(client, id);
 
     // Step 7 — scrub linked notes. Soft-deleted rows are included: the row still holds
     // the subject's personal data, and nothing else ever purges it.

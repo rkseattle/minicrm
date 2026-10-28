@@ -49,7 +49,7 @@ import {
   type ParsedMessageBody,
 } from './messageBody.js';
 import { extractHeaderField, resolveThreadId } from './threading.js';
-import { normalizeAddress } from './address.js';
+import { normalizeAddress } from '../../utils/emailAddress.js';
 
 /** The mailbox every IMAP server has, under this exact name. */
 const INBOX_PATH = 'INBOX';

@@ -37,7 +37,7 @@ import { createDeal } from '../services/dealService.js';
 import { createLead } from '../services/leadsService.js';
 import { createActivity } from '../services/activityService.js';
 import { assertTestDatabasePort } from '../scripts/assertTestDatabaseTarget.js';
-import { purgeFixtureUsers } from './testUtils.js';
+import { insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
 
 // ── Test users ────────────────────────────────────────────────────────────────
 
@@ -455,5 +455,56 @@ describe('RLS — activities', () => {
       repBActivityId,
     ]);
     expect(rows).toHaveLength(1);
+  });
+});
+
+describe("RLS — scrubbing activities filed from a mailbox owner's mail", () => {
+  /** Rep B's activity, filed from a message in rep A's mailbox. */
+  let reassignedActivityId: string;
+  let messageId: string;
+
+  beforeAll(async () => {
+    const mailbox = await insertParkedMailbox(repAId, 'rls-mailbox-a@example.com');
+    const message = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'INBOX:rls-1', 'rls-thread', 'inbound', 'someone@example.net') RETURNING id`,
+      [mailbox],
+    );
+    messageId = message.rows[0]!.id; // Safe: INSERT ... RETURNING yields one row.
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, metadata)
+       VALUES ('Email', 'Filed from A', $1, $2, jsonb_build_object('email_message_id', $3::text))
+       RETURNING id`,
+      [repBContactId, repBId, messageId],
+    );
+    reassignedActivityId = activity.rows[0]!.id; // Safe: as above.
+  });
+
+  const SCRUB =
+    'SELECT activity_id, scrubbed FROM scrub_activities_filed_from_own_mail($1::uuid[], $2)';
+
+  it('reaches nothing for a user whose mailbox the message is not in', async () => {
+    const rows = await queryAsUser(repBId, SCRUB, [`{${messageId}}`, '[Private]']);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("does not open a colleague's activity to the mailbox owner's other writes", async () => {
+    const rows = await queryAsUser(
+      repAId,
+      'UPDATE activities SET owner_id = $2 WHERE id = $1 RETURNING id',
+      [reassignedActivityId, repAId],
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  it('lets the mailbox owner scrub it, though a colleague owns it', async () => {
+    const rows = await queryAsUser(repAId, SCRUB, [`{${messageId}}`, '[Private]']);
+    expect(rows).toEqual([{ activity_id: reassignedActivityId, scrubbed: true }]);
+    const after = await pool.query(
+      'SELECT subject, notes, owner_id FROM activities WHERE id = $1',
+      [reassignedActivityId],
+    );
+    expect(after.rows[0]).toEqual({ subject: '[Private]', notes: null, owner_id: repBId });
   });
 });

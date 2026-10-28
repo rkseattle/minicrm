@@ -31,12 +31,13 @@ import type {
 import type { PoolClient } from 'pg';
 
 import pool from '../db.js';
-import { writeAuditEntries, writeAuditEntry } from './auditService.js';
+import { markSendEntriesPrivate, writeAuditEntries, writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { clearDerivedLinkSuppression, suppressDerivedLink } from './emailMatchingService.js';
 import { buildVisibilityFilter } from './visibilityService.js';
-import { activityIdsFiledFromMessages, scrubActivities } from './activityService.js';
+import { scrubActivitiesFiledFromOwnMail } from './activityService.js';
 import { lockForIngest } from './mail/gdprRedaction.js';
+import { setRlsUserIdTo } from './rlsContextService.js';
 
 /** A link row as the write endpoints return it. */
 export interface EmailMessageLinkRow {
@@ -467,8 +468,8 @@ export async function setThreadPrivacy(
     // Same order as sync and send: shared ingest lock first, so an erasure, which takes it
     // exclusively, never interleaves with this write and deadlocks on the rows.
     await lockForIngest(client);
-    // No setRlsUserId: the scrub below reaches activities reassigned to colleagues, a
-    // cross-owner write like erasure's, which owner policies would silently narrow.
+    // The scrub function reaches only the mailboxes of the user named here, not the request's.
+    await setRlsUserIdTo(client, userId);
     const mailbox = await client.query<{ connected_account_id: string; email_address: string }>(
       `SELECT m.connected_account_id, ca.email_address
          FROM email_messages m
@@ -505,17 +506,28 @@ export async function setThreadPrivacy(
       [threadIds, isPrivate],
     );
     if (isPrivate) {
+      // The thread's sends, stored or still unconfirmed, name who they concerned in the log.
+      const threadSends = await client.query<{ id: string }>(
+        `SELECT i.id FROM email_send_intents i
+          WHERE i.connected_account_id = $1
+            AND (i.email_message_id = ANY($2::uuid[])
+              OR i.rfc_message_id IN (SELECT rfc_message_id FROM email_messages
+                                       WHERE id = ANY($2::uuid[])))`,
+        [message.connected_account_id, threadIds],
+      );
+      await markSendEntriesPrivate(client, message.connected_account_id, {
+        messageIds: threadIds,
+        intentIds: threadSends.rows.map((row) => row.id),
+      });
       // Activities already filed from the thread carry its text onto shared timelines,
-      // whoever owns them now: the text is the mailbox owner's.
-      const filedIds = await activityIdsFiledFromMessages(client, threadIds);
-      // A real change of setting moves every filed activity's cutoff, so text a user wrote and
-      // removed meanwhile is masked too; a repeated request moves only what it scrubbed.
-      const activityIds = await scrubActivities(
+      // whoever owns them now: the text is the mailbox owner's. A real change of setting
+      // moves every filed activity's cutoff, so text written and removed meanwhile is masked.
+      const activityIds = await scrubActivitiesFiledFromOwnMail(
         client,
-        filedIds,
+        threadIds,
         PRIVATE_EMAIL_SUBJECT,
         'private_thread',
-        (updated.rowCount ?? 0) > 0 ? filedIds : undefined,
+        (updated.rowCount ?? 0) > 0,
       );
       // The removed text is not logged again; redacted_records masks earlier entries.
       await writeAuditEntries(

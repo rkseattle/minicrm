@@ -269,8 +269,44 @@ const ADDRESS_BEARING_EVENTS: ReadonlySet<string> = new Set([
   'email_send_unconfirmed',
 ]);
 
-/** The recipient lists those entries carry, as the send filing and its sweep write them. */
-const RECIPIENT_FIELDS = ['to', 'cc'] as const;
+/** The value of an `email_sent` entry, written when a send is filed. */
+export interface EmailSentAuditValue {
+  message_id: string;
+  recipient_count: number;
+  to: readonly string[];
+  cc: readonly string[];
+  linked_records: readonly string[];
+}
+
+/** The value of an `email_send_unconfirmed` entry, written when the sweep gives up on one. */
+export interface EmailSendUnconfirmedAuditValue {
+  intent_id: string;
+  provider_confirmed: boolean;
+  to: readonly string[];
+  cc: readonly string[];
+  sent_from_record: string | null;
+}
+
+/** The recipient lists those entries carry; both value types above share them. */
+const RECIPIENT_FIELDS = ['to', 'cc'] as const satisfies readonly (keyof EmailSentAuditValue &
+  keyof EmailSendUnconfirmedAuditValue)[];
+
+/** Each row's send-entry value, parsed; null for any other event or an unparseable value. */
+function parsedSendValues(
+  rows: readonly { id?: string; event_type: string; new_value: string | null }[],
+): (Record<string, unknown> | null)[] {
+  return rows.map((row) =>
+    ADDRESS_BEARING_EVENTS.has(row.event_type) ? parseRecipients(row) : null,
+  );
+}
+
+/** The fields that say who a send concerned, hidden for a send in a private thread. */
+const PRIVATE_SEND_FIELDS = [
+  'to',
+  'cc',
+  'linked_records',
+  'sent_from_record',
+] as const satisfies readonly (keyof EmailSentAuditValue | keyof EmailSendUnconfirmedAuditValue)[];
 
 /**
  * Parses an address-bearing value, or null when it is not the JSON object filing writes.
@@ -308,12 +344,9 @@ function recipientsOf(value: Record<string, unknown>): string[] {
  * every address on the page is digested and looked up against the erasure log in one
  * query, and each match reads `[GDPR deleted]`.
  */
-export async function maskErasedAddresses<
+async function maskErasedAddresses<
   T extends { id?: string; event_type: string; new_value: string | null },
->(rows: readonly T[]): Promise<T[]> {
-  const parsedByRow = rows.map((row) =>
-    ADDRESS_BEARING_EVENTS.has(row.event_type) ? parseRecipients(row) : null,
-  );
+>(rows: readonly T[], parsedByRow: readonly (Record<string, unknown> | null)[]): Promise<T[]> {
   const addresses = [
     ...new Set(parsedByRow.flatMap((parsed) => (parsed ? recipientsOf(parsed) : []))),
   ];
@@ -345,6 +378,76 @@ export async function maskErasedAddresses<
     }
     return changed ? { ...row, new_value: JSON.stringify(masked) } : row;
   });
+}
+
+/**
+ * Records a private thread's send entries on a mailbox as private, so reads hide who they
+ * concerned. Kept in redacted_records against the entry itself: the message and send intent
+ * the entries name can be deleted, and the decision must outlive them.
+ *
+ * @param keys - The thread's messages (email_sent) and private sends (email_send_unconfirmed).
+ */
+export async function markSendEntriesPrivate(
+  client: PoolClient,
+  connectedAccountId: string,
+  keys: { messageIds?: readonly string[]; intentIds?: readonly string[] },
+): Promise<void> {
+  const messageIds = keys.messageIds ?? [];
+  const intentIds = keys.intentIds ?? [];
+  if (messageIds.length === 0 && intentIds.length === 0) return;
+  await client.query(
+    `INSERT INTO redacted_records (record_type, record_id, reason)
+     SELECT 'audit_log', a.id, 'private_thread' FROM audit_log a
+      WHERE a.record_type = 'connected_account' AND a.record_id = $1
+        AND (CASE
+               -- Guarded: evaluation order is undefined, and the log holds non-JSON values.
+               WHEN a.event_type = 'email_sent' AND a.new_value IS JSON OBJECT
+                 THEN (a.new_value::jsonb ->> 'message_id') = ANY($2::text[])
+               WHEN a.event_type = 'email_send_unconfirmed' AND a.new_value IS JSON OBJECT
+                 THEN (a.new_value::jsonb ->> 'intent_id') = ANY($3::text[])
+               ELSE false
+             END)
+     ON CONFLICT DO NOTHING`,
+    [connectedAccountId, messageIds, intentIds],
+  );
+}
+
+/**
+ * Hides who a send in a private thread concerned: recipients and linked records read
+ * `[Private]` for the entries markSendEntriesPrivate recorded. Admins read these entries in
+ * the audit log, and a private thread is its owner's alone.
+ */
+async function maskPrivateSends<
+  T extends { id?: string; event_type: string; new_value: string | null },
+>(rows: readonly T[], parsedByRow: readonly (Record<string, unknown> | null)[]): Promise<T[]> {
+  const candidates = rows.flatMap((row, index) => (parsedByRow[index] && row.id ? [row.id] : []));
+  if (candidates.length === 0) return [...rows];
+  const hiddenRows = await pool.query<{ id: string }>(
+    `SELECT record_id::text AS id FROM redacted_records
+      WHERE record_type = 'audit_log' AND record_id = ANY($1::uuid[])`,
+    [candidates],
+  );
+  const hidden = new Set(hiddenRows.rows.map((r) => r.id));
+  if (hidden.size === 0) return [...rows];
+
+  return rows.map((row, index) => {
+    const parsed = parsedByRow[index];
+    if (!parsed || !row.id || !hidden.has(row.id)) return row;
+    const masked: Record<string, unknown> = { ...parsed };
+    for (const field of PRIVATE_SEND_FIELDS) {
+      if (field in masked) masked[field] = PRIVATE_REDACTED_TEXT;
+    }
+    return { ...row, new_value: JSON.stringify(masked) };
+  });
+}
+
+/** Both read-time maskings of send entries: erased addresses, then private sends. */
+async function maskSendEntries<
+  T extends { id?: string; event_type: string; new_value: string | null },
+>(rows: readonly T[]): Promise<T[]> {
+  const parsed = parsedSendValues(rows);
+  // The private mask replaces every address field, so it may start from the unmasked parse.
+  return maskPrivateSends(await maskErasedAddresses(rows, parsed), parsed);
 }
 
 /** Shown in place of values a private-thread scrub hid; no erasure happened. */
@@ -381,8 +484,8 @@ export const MASKED_AUDIT_VALUES = [
 export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Promise<AuditLogRow[]> {
   const { recordType, recordId, limit = 20, all = false } = options;
 
-  // Read-time masking: an erased record's values, or a scrubbed activity's, display
-  // '[GDPR deleted]' so audit history does not keep what was removed.
+  // Read-time masking (MASKING_JOIN): '[GDPR deleted]' for an erased record, '[Private]' for
+  // a scrubbed activity's entries from before its scrub.
   const query = all
     ? `SELECT
          a.id, a.record_type, a.record_id, a.event_type, a.field_name,
@@ -404,7 +507,7 @@ export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Prom
   const params = all ? [recordType, recordId] : [recordType, recordId, limit];
 
   const result = await pool.query<AuditLogRow>(query, params);
-  return maskErasedAddresses(result.rows);
+  return maskSendEntries(result.rows);
 }
 
 /**
@@ -493,7 +596,7 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
   ]);
 
   return {
-    data: await maskErasedAddresses(dataResult.rows),
+    data: await maskSendEntries(dataResult.rows),
     total: parseInt(countResult.rows[0].count, 10),
     page,
     limit,
@@ -545,7 +648,7 @@ export async function writeAuditEntryBestEffort(entry: AuditEntryInput): Promise
  * @returns A copy of the event with its name and values masked where the reads would
  */
 export async function maskAuditEvent(event: AuditNotification): Promise<AuditNotification> {
-  const [addressMasked] = await maskErasedAddresses([event]);
+  const [addressMasked] = await maskSendEntries([event]);
   // Safe: one row in, one row out.
   return maskErasedRecord(addressMasked!);
 }

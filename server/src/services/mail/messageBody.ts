@@ -26,7 +26,7 @@ import {
   singleMessageId,
   type ThreadingHeaders,
 } from './threading.js';
-import { normalizeAddress } from './address.js';
+import { normalizeAddress } from '../../utils/emailAddress.js';
 
 /** Characters of body text kept for a list view that must not load a whole body. */
 const SNIPPET_LENGTH = 200;

@@ -2,7 +2,7 @@
 
 ## Description
 
-Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask an erased record's entries, and a scrubbed one's written before redacted_at; kept after the record is deleted.
+Records whose content reads masked. An activity: subject and text removed (GDPR erasure or a private thread); audit reads mask an erased one's entries, and a scrubbed one's written before redacted_at. An audit_log entry: a private thread's send, whose recipients and linked records read [Private]. Kept after the record is deleted.
 
 ## Columns
 
@@ -18,7 +18,7 @@ Records whose subject and text were removed (GDPR erasure or a private thread). 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | redacted_records_reason_check | CHECK | CHECK ((reason = ANY (ARRAY['gdpr_erasure'::text, 'private_thread'::text]))) |
-| redacted_records_record_type_check | CHECK | CHECK ((record_type = 'activity'::text)) |
+| redacted_records_record_type_check | CHECK | CHECK ((record_type = ANY (ARRAY['activity'::text, 'audit_log'::text]))) |
 | redacted_records_pkey | PRIMARY KEY | PRIMARY KEY (record_type, record_id) |
 
 ## Indexes

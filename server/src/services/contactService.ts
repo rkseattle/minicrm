@@ -25,6 +25,7 @@ import {
 } from './emailMatchingService.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 import { getDealAutoLink } from './settingsService.js';
+import { normalizeAddress } from '../utils/emailAddress.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -172,7 +173,7 @@ export async function createContact(
       [
         first_name,
         last_name,
-        email.toLowerCase(),
+        normalizeAddress(email),
         phone ?? null,
         title ?? null,
         department ?? null,
@@ -467,7 +468,7 @@ export async function updateContact(
   const { version, ...rest } = params;
   const normalized: Omit<UpdateContactInput, 'version'> = {
     ...rest,
-    ...(rest.email !== undefined ? { email: rest.email.toLowerCase() } : {}),
+    ...(rest.email !== undefined ? { email: normalizeAddress(rest.email) } : {}),
   };
   const fields = (Object.keys(normalized) as (keyof typeof normalized)[]).filter((field) =>
     ALLOWED_UPDATE_FIELDS.has(field as keyof UpdateContactInput),

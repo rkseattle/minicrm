@@ -10,6 +10,7 @@ import pool from '../db.js';
 import logger from '../logger.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { normalizeAddress } from '../utils/emailAddress.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -117,7 +118,7 @@ export async function provisionScimUser(
   input: ScimCreateUserInput,
   actor: AuditActor,
 ): Promise<ScimUserRow> {
-  const email = input.userName.toLowerCase().trim();
+  const email = normalizeAddress(input.userName);
   const name = [input.givenName, input.familyName].filter(Boolean).join(' ').trim() || email;
   const status = input.active === false ? 'inactive' : 'active';
 
@@ -199,7 +200,7 @@ export async function listScimUsers(filter?: string): Promise<ScimUserRow[]> {
   if (filter) {
     const match = /^userName\s+eq\s+"([^"]+)"$/i.exec(filter.trim());
     if (match) {
-      const email = match[1]!.toLowerCase().trim(); // regex group is always present
+      const email = normalizeAddress(match[1]!); // regex group is always present
       const result = await pool.query<ScimUserRow>(
         `SELECT id, email, name, role, status, scim_external_id, created_at, updated_at
          FROM public.users
@@ -236,7 +237,7 @@ export async function replaceScimUser(
     throw err;
   }
 
-  const email = input.userName.toLowerCase().trim();
+  const email = normalizeAddress(input.userName);
   const name = [input.givenName, input.familyName].filter(Boolean).join(' ').trim() || email;
   let status: 'active' | 'inactive' = input.active === false ? 'inactive' : 'active';
 
@@ -334,7 +335,7 @@ export async function patchScimUser(
         status = op.value ? 'active' : 'inactive';
       }
     } else if (path === 'username') {
-      if (typeof op.value === 'string') email = op.value.toLowerCase().trim();
+      if (typeof op.value === 'string') email = normalizeAddress(op.value);
     } else if (path === 'displayname') {
       if (typeof op.value === 'string') name = op.value.trim();
     } else if (path === 'name.givenname') {
@@ -345,7 +346,7 @@ export async function patchScimUser(
       // Whole-object value with no path (RFC 7644 §3.5.2 "add" without path)
       const val = op.value as Record<string, unknown>;
       if (typeof val.active === 'boolean') status = val.active ? 'active' : 'inactive';
-      if (typeof val.userName === 'string') email = val.userName.toLowerCase().trim();
+      if (typeof val.userName === 'string') email = normalizeAddress(val.userName);
       if (typeof val.displayName === 'string') name = val.displayName.trim();
       const nameObj = val.name as Record<string, string> | undefined;
       if (nameObj) {

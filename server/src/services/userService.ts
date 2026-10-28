@@ -15,6 +15,7 @@ import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema
 import { writeAuditEntry, getFieldDisplayName } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
+import { normalizeAddress } from '../utils/emailAddress.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -86,7 +87,7 @@ interface CreateUserParams {
  */
 export async function findUserByEmail(email: string): Promise<UserRow | null> {
   const result = await pool.query<UserRow>('SELECT * FROM users WHERE email = $1 LIMIT 1', [
-    email.toLowerCase().trim(),
+    normalizeAddress(email),
   ]);
   return result.rows[0] ?? null;
 }
@@ -118,7 +119,7 @@ export async function createUser(
       `INSERT INTO users (email, name, role, password_hash, status)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [email.toLowerCase().trim(), name.trim(), role, passwordHash, status],
+      [normalizeAddress(email), name.trim(), role, passwordHash, status],
     );
 
     const user = result.rows[0];
@@ -385,10 +386,10 @@ export async function seedDefaultAdmin(): Promise<void> {
   }
 
   // Log and compare the normalized form throughout: createUser stores
-  // email.toLowerCase().trim(), so a raw comparison would miss the stored row whenever
+  // normalizeAddress(email), so a raw comparison would miss the stored row whenever
   // ADMIN_EMAIL carries different case or padding — and a raw log line would show an
   // operator an address that does not match what is in the table.
-  const normalizedAdminEmail = ADMIN_EMAIL.toLowerCase().trim();
+  const normalizedAdminEmail = normalizeAddress(ADMIN_EMAIL);
 
   const existing = await findUserByEmail(normalizedAdminEmail);
   if (existing) {

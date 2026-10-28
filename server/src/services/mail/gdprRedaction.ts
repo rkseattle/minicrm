@@ -11,7 +11,7 @@
 import type { PoolClient } from 'pg';
 
 import { keyedDigest } from '../cryptoService.js';
-import { normalizeAddress } from './address.js';
+import { normalizeAddress } from '../../utils/emailAddress.js';
 
 /** Purpose label for the HKDF subkey, so this digest can never equal another use's. */
 const ERASED_ADDRESS_DIGEST_PURPOSE = 'gdpr-erased-address';
@@ -116,16 +116,13 @@ export async function redactMessages(
  * A redacted row protects only itself: a mailbox connected after an erasure, or one
  * disconnected and reconnected, would otherwise bring the subject's mail back in full. The
  * erasure log holds only a keyed digest, so each address is digested and matched here.
- *
- * @returns the ids of the messages redacted, each once.
  */
 export async function redactErasedOnIngest(
   client: PoolClient,
   accountId: string,
   providerMessageIds: readonly string[],
-): Promise<Set<string>> {
-  const redacted = new Set<string>();
-  if (providerMessageIds.length === 0) return redacted;
+): Promise<void> {
+  if (providerMessageIds.length === 0) return;
   const stored = await client.query<{ id: string; addresses: string[] }>(
     `SELECT id,
             public.email_message_addresses(from_address, to_addresses, cc_addresses,
@@ -143,14 +140,14 @@ export async function redactErasedOnIngest(
       }
     }
   }
-  if (digestByAddress.size === 0) return redacted;
+  if (digestByAddress.size === 0) return;
 
   const erased = await client.query<{ record_id: string; erased_address_hmac: string }>(
     `SELECT record_id, erased_address_hmac FROM gdpr_deletion_log
       WHERE completed_at IS NOT NULL AND erased_address_hmac = ANY($1)`,
     [[...digestByAddress.values()]],
   );
-  if (erased.rows.length === 0) return redacted;
+  if (erased.rows.length === 0) return;
 
   for (const [address, digest] of digestByAddress) {
     for (const erasure of erased.rows.filter((row) => row.erased_address_hmac === digest)) {
@@ -158,8 +155,6 @@ export async function redactErasedOnIngest(
         .filter((row) => row.addresses.some((a) => normalizeAddress(a) === address))
         .map((row) => row.id);
       await redactMessages(client, ids, address, erasedPlaceholderAddress(erasure.record_id));
-      for (const id of ids) redacted.add(id);
     }
   }
-  return redacted;
 }

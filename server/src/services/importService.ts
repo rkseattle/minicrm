@@ -7,6 +7,7 @@
 import { parse } from 'csv-parse/sync';
 import pool from '../db.js';
 import { getDefaultPipelineId } from './pipelineService.js';
+import { normalizeAddress } from '../utils/emailAddress.js';
 
 /** Maximum CSV file size in bytes (10 MB) */
 export const MAX_CSV_BYTES = 10 * 1024 * 1024;
@@ -275,7 +276,7 @@ export async function importContacts(
 
   // Pre-load all existing emails for duplicate detection
   const { rows: existingRows } = await pool.query<{ email: string }>('SELECT email FROM contacts');
-  const existingEmails = new Set(existingRows.map((r) => r.email.toLowerCase()));
+  const existingEmails = new Set(existingRows.map((r) => normalizeAddress(r.email)));
 
   // Pre-load account name → id map for account_name lookup
   const { rows: accountRows } = await pool.query<{ id: string; name: string }>(
@@ -289,7 +290,7 @@ export async function importContacts(
 
     const firstName = (csvRow[mapping.first_name] ?? '').trim();
     const lastName = (csvRow[mapping.last_name] ?? '').trim();
-    const email = (csvRow[mapping.email] ?? '').trim().toLowerCase();
+    const email = normalizeAddress(csvRow[mapping.email] ?? '');
 
     const validationErrors: string[] = [];
     if (!firstName) validationErrors.push('Missing required field: first_name');

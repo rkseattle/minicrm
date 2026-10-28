@@ -242,12 +242,7 @@ export async function deleteLinksForDeletedEntity(
     'DELETE FROM email_message_links WHERE record_type = $1 AND record_id = $2',
     [recordType, recordId],
   );
-  // The tombstone outlives the record otherwise: record_id carries no FK, so nothing
-  // cascades it away.
-  await client.query(
-    'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = $2',
-    [recordType, recordId],
-  );
+  await deleteSuppressionsFor(client, recordType, [recordId]);
   if (isParticipantType(recordType)) {
     await removeActivityParticipants(client, recordType, [recordId]);
   }
@@ -265,10 +260,7 @@ export async function deleteLinksForDeletedEntities(
     'DELETE FROM email_message_links WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
     [recordType, recordIds],
   );
-  await client.query(
-    'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
-    [recordType, recordIds],
-  );
+  await deleteSuppressionsFor(client, recordType, recordIds);
   if (isParticipantType(recordType)) {
     await removeActivityParticipants(client, recordType, recordIds);
   }
@@ -279,6 +271,22 @@ function isParticipantType(
   recordType: EmailLinkRecordType,
 ): recordType is ActivityParticipant['recordType'] {
   return recordType === 'contact' || recordType === 'lead';
+}
+
+/**
+ * Drops the link suppressions naming records that are gone, or merged or converted away.
+ * record_id carries no FK, so nothing cascades them; only derived (account, deal) pairs
+ * consult them, so a merged contact's or converted lead's are inert.
+ */
+async function deleteSuppressionsFor(
+  client: PoolClient,
+  recordType: EmailLinkRecordType,
+  recordIds: readonly string[],
+): Promise<void> {
+  await client.query(
+    'DELETE FROM email_message_link_suppressions WHERE record_type = $1 AND record_id = ANY($2::uuid[])',
+    [recordType, recordIds],
+  );
 }
 
 /**
@@ -315,6 +323,7 @@ export async function relinkLinksToConvertedLead(
     `DELETE FROM email_message_links WHERE record_type = 'lead' AND record_id = $1`,
     [leadId],
   );
+  await deleteSuppressionsFor(client, 'lead', [leadId]);
   await moveActivityParticipants(client, { recordType: 'lead', recordId: leadId }, contactId);
 }
 
@@ -529,5 +538,6 @@ export async function relinkLinksToMergedContact(
     `DELETE FROM email_message_links WHERE record_type = 'contact' AND record_id = $1`,
     [loserId],
   );
+  await deleteSuppressionsFor(client, 'contact', [loserId]);
   await moveActivityParticipants(client, { recordType: 'contact', recordId: loserId }, winnerId);
 }

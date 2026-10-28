@@ -19,7 +19,7 @@ import {
   DEMO_WEBHOOK_URLS,
 } from '../services/demoService.js';
 import pool from '../db.js';
-import { claimAdminResolution, purgeFixtureUsers } from './testUtils.js';
+import { claimAdminResolution, insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
 import { clearDemoRecords } from './demoFixtures.js';
 import {
   gatherOfflineHygieneSignals,
@@ -462,6 +462,52 @@ describe('removeDemo', () => {
        WHERE c.is_demo = true`,
     );
     expect(addresses.rowCount).toBe(0);
+  });
+
+  it("clears mail's links and activity associations pointing at demo records", async () => {
+    await seedDemo();
+    const contact = await pool.query<{ id: string }>(
+      'SELECT id FROM contacts WHERE is_demo = true LIMIT 1',
+    );
+    const demoContactId = contact.rows[0]!.id; // Safe: seedDemo inserts demo contacts.
+    const mailbox = await insertParkedMailbox(adminUserId, `${FILE_PREFIX}-mailbox@example.com`);
+    const message = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'INBOX:demo-1', 'demo-1', 'inbound', 'someone@example.net') RETURNING id`,
+      [mailbox],
+    );
+    const realContact = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Real', 'Person', $1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-real@example.com`, adminUserId],
+    );
+    const activity = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, contact_id, owner_id)
+       VALUES ('Email', 'Real mail', $1, $2) RETURNING id`,
+      [realContact.rows[0]!.id, adminUserId], // Safe: INSERT ... RETURNING yields one row.
+    );
+    await pool.query(
+      `INSERT INTO email_message_link_suppressions (email_message_id, record_type, record_id)
+       VALUES ($1, 'contact', $2)`,
+      [message.rows[0]!.id, demoContactId], // Safe: INSERT ... RETURNING yields one row.
+    );
+    await pool.query(
+      `INSERT INTO activity_participants (activity_id, record_type, record_id)
+       VALUES ($1, 'contact', $2)`,
+      [activity.rows[0]!.id, demoContactId], // Safe: as above.
+    );
+
+    await removeDemo();
+
+    const left = await pool.query<{ suppressions: number; participants: number }>(
+      `SELECT (SELECT count(*)::int FROM email_message_link_suppressions WHERE record_id = $1)
+                AS suppressions,
+              (SELECT count(*)::int FROM activity_participants WHERE record_id = $1)
+                AS participants`,
+      [demoContactId],
+    );
+    expect(left.rows[0]).toEqual({ suppressions: 0, participants: 0 });
   });
 
   it('leaves no findings naming deleted records when removal races the producers', async () => {

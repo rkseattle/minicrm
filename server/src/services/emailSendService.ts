@@ -47,7 +47,7 @@ import {
   type EmailMessageRow,
 } from './emailMessageService.js';
 import { lockForIngest, redactErasedOnIngest } from './mail/gdprRedaction.js';
-import { normalizeAddress } from './mail/address.js';
+import { normalizeAddress } from '../utils/emailAddress.js';
 import {
   claimSendIntent,
   fileSentMessage,
@@ -699,7 +699,9 @@ async function recordSent(
     );
     const current = reread.rows[0] ?? { ...row, redacted: false };
     const redacted = current.redacted;
-    storedRow = { ...current, is_private: isPrivate };
+    // Filing below makes the row private when the send was claimed into a private thread,
+    // whatever thread the provider filed it under; the response says what the row will be.
+    storedRow = { ...current, is_private: isPrivate || intent.threadPrivate };
 
     // Already filed means the sync engine stored the Sent copy and filed it first.
     if (intent.status !== 'filed') {

@@ -32,9 +32,11 @@ import { setRlsUserIdTo } from '../services/rlsContextService.js';
 import { PRIVATE_EMAIL_SUBJECT, setThreadPrivacy } from '../services/emailMessageService.js';
 import {
   getRecordAuditLog,
+  listAuditLog,
   maskAuditEvent,
   PRIVATE_REDACTED_TEXT,
 } from '../services/auditService.js';
+import type { AuditNotification } from '../services/auditEventBus.js';
 import {
   IDEMPOTENCY_KEY_REUSED,
   replaySend,
@@ -189,6 +191,7 @@ async function createContact(local: string): Promise<string> {
 }
 
 async function intent(): Promise<{
+  id: string;
   status: string;
   provider_message_id: string | null;
   email_message_id: string | null;
@@ -196,7 +199,7 @@ async function intent(): Promise<{
   to_addresses: string[];
 }> {
   const result = await pool.query(
-    `SELECT status, provider_message_id, email_message_id, activity_notes, to_addresses
+    `SELECT id, status, provider_message_id, email_message_id, activity_notes, to_addresses
        FROM email_send_intents WHERE connected_account_id = $1`,
     [accountId],
   );
@@ -417,6 +420,57 @@ describe('the intent each outcome leaves', () => {
   });
 });
 
+/** A send entry on this mailbox, as the audit log reads it, found by the id it names. */
+async function mailboxEntry(
+  eventType: 'email_sent' | 'email_send_unconfirmed',
+  namedId: string,
+): Promise<Record<string, unknown>> {
+  const entries = await getRecordAuditLog({
+    recordType: 'connected_account',
+    recordId: accountId,
+    all: true,
+  });
+  const entry = entries.find(
+    (row) => row.event_type === eventType && row.new_value?.includes(namedId),
+  );
+  return JSON.parse(entry?.new_value ?? '{}') as Record<string, unknown>;
+}
+
+/** An audit row as stored, shaped as the live stream carries it. */
+async function rawEntry(id: string): Promise<AuditNotification> {
+  const result = await pool.query<AuditNotification>(
+    `SELECT id, record_type, record_id, record_name, event_type, field_name, old_value,
+            new_value, changed_by_id, changed_by_name, source,
+            to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at
+       FROM audit_log WHERE id = $1`,
+    [id],
+  );
+  return result.rows[0]!; // Safe: the caller read this id from the log.
+}
+
+/** A sent-but-unfiled send to someone@example.net, old enough for the sweep, with a record. */
+async function insertUnsettledIntent(options: {
+  rfcMessageId: string;
+  threadPrivate: boolean;
+}): Promise<void> {
+  await pool.query(
+    `INSERT INTO email_send_intents
+       (idempotency_key, request_hash, user_id, actor_name, connected_account_id, rfc_message_id,
+        status, to_addresses, record_type, record_id, thread_private, updated_at)
+     VALUES (gen_random_uuid(), '', $1, 'Intent Rep', $2, $3, 'sent', '{someone@example.net}',
+             'contact', gen_random_uuid(), $4, now() - interval '2 hours')`,
+    [userId, accountId, options.rfcMessageId, options.threadPrivate],
+  );
+}
+
+async function intentIdFor(rfcMessageId: string): Promise<string> {
+  const result = await pool.query<{ id: string }>(
+    'SELECT id FROM email_send_intents WHERE rfc_message_id = $1',
+    [rfcMessageId],
+  );
+  return result.rows[0]!.id; // Safe: the caller inserted it.
+}
+
 /** Stores a private message in this mailbox to answer, in a thread of its own. */
 async function privateParent(threadId: string): Promise<string> {
   const result = await pool.query<{ id: string }>(
@@ -568,6 +622,30 @@ describe('the sync engine filing a send', () => {
     expect(filed.isPrivate).toBe(true);
   });
 
+  it('answers a reply into a private thread as private, under whatever thread it lands', async () => {
+    const parent = await privateParent('private-answer');
+    const contactId = await createContact('answer-private');
+    // The provider files the sent message under a thread of its own.
+    const { provider } = sender(async () => ({
+      providerMessageId: 'gm-answer',
+      threadId: 'provider-thread',
+    }));
+
+    const response = await sendEmail(
+      typed({ in_reply_to_message_id: parent, record_type: 'contact', record_id: contactId }),
+      userId,
+      actor,
+      freshKey(),
+      { provider },
+    );
+
+    expect(response.message.is_private).toBe(true);
+    expect((await filedRow(contactId)).isPrivate).toBe(true);
+    expect((await mailboxEntry('email_sent', response.message.id))['to']).toBe(
+      PRIVATE_REDACTED_TEXT,
+    );
+  });
+
   it('files a recovered send to an erased address without its subject or body', async () => {
     const erased = 'erased-recovered@example.net';
     const erasureRecord = randomUUID();
@@ -655,6 +733,47 @@ describe('the sync engine filing a send', () => {
 
     expect((await intent()).status).toBe('filed');
     expect(await activitiesFor(contactId)).toBe(1);
+  });
+
+  it('hides a swept send once sync files it into a thread made private meanwhile', async () => {
+    const contactId = await createContact('swept-private');
+    const { provider, sent } = sender(async () => {
+      throw sendFailure(SEND_OUTCOME_UNKNOWN, 'test');
+    });
+    await expect(
+      sendEmail(
+        typed({ record_type: 'contact', record_id: contactId }),
+        userId,
+        actor,
+        freshKey(),
+        {
+          provider,
+        },
+      ),
+    ).rejects.toBeDefined();
+    await pool.query(
+      `UPDATE email_send_intents SET updated_at = now() - interval '2 hours'
+        WHERE connected_account_id = $1`,
+      [accountId],
+    );
+    await sweepUnsettledIntents();
+    const intentId = (await intent()).id;
+    // The thread is made private before the Sent copy arrives in it.
+    const parent = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'INBOX:swept-parent', 'swept-thread', 'inbound', 'someone@example.net')
+       RETURNING id`,
+      [accountId],
+    );
+    await setThreadPrivacy(parent.rows[0]!.id, userId, true, actor); // Safe: RETURNING one row.
+
+    await syncPage([await sentCopy(onlyDocument(sent), 'gm-swept', { threadId: 'swept-thread' })]);
+
+    expect((await intent()).status).toBe('filed');
+    expect((await mailboxEntry('email_send_unconfirmed', intentId))['to']).toBe(
+      PRIVATE_REDACTED_TEXT,
+    );
   });
 
   it('files once when sync stores the Sent copy before the send path records it', async () => {
@@ -1018,6 +1137,19 @@ describe('sweepUnsettledIntents', () => {
       (row) => (JSON.parse(row.new_value) as { provider_confirmed: boolean }).provider_confirmed,
     );
   }
+
+  it('keeps a send claimed into a private thread hidden after its intent is purged', async () => {
+    await insertUnsettledIntent({ rfcMessageId: 'private-purged@x.test', threadPrivate: true });
+    await sweepUnsettledIntents();
+    const intentId = await intentIdFor('private-purged@x.test');
+
+    await pool.query('DELETE FROM email_send_intents WHERE id = $1', [intentId]);
+
+    const entry = await mailboxEntry('email_send_unconfirmed', intentId);
+    expect(entry['to']).toBe(PRIVATE_REDACTED_TEXT);
+    expect(entry['sent_from_record']).toBe(PRIVATE_REDACTED_TEXT);
+    expect(entry['provider_confirmed']).toBe(true);
+  });
 
   it('reports a send left unanswered or unfiled for an hour, saying which', async () => {
     await insertIntent('pending', 90);
@@ -1770,6 +1902,80 @@ describe('marking a thread private after its sends were filed', () => {
 
     const history = await getRecordAuditLog({ recordType: 'activity', recordId: id, all: true });
     expect(history.find((row) => row.field_name === 'due_date')?.new_value).toContain('2030');
+  });
+
+  it("hides who a send concerned once its thread is private, in the mailbox's audit log", async () => {
+    const contactId = await createContact('audit-private');
+    const messageId = await sendTo(contactId, 'gm-audit-private');
+    expect((await mailboxEntry('email_sent', messageId))['to']).toEqual(['someone@example.net']);
+
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    const masked = await mailboxEntry('email_sent', messageId);
+    expect(masked['to']).toBe(PRIVATE_REDACTED_TEXT);
+    expect(masked['cc']).toBe(PRIVATE_REDACTED_TEXT);
+    expect(masked['linked_records']).toBe(PRIVATE_REDACTED_TEXT);
+    expect(masked['recipient_count']).toBe(1);
+  });
+
+  it('marks a thread private past a send entry on the mailbox that is not JSON', async () => {
+    const contactId = await createContact('audit-not-json');
+    const messageId = await sendTo(contactId, 'gm-audit-not-json');
+    await pool.query(
+      `INSERT INTO audit_log (record_type, record_id, event_type, new_value, changed_by_id,
+                              changed_by_name)
+       VALUES ('connected_account', $1, 'email_sent', 'not json', $2, 'Intent Rep')`,
+      [accountId, userId],
+    );
+
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    expect((await mailboxEntry('email_sent', messageId))['to']).toBe(PRIVATE_REDACTED_TEXT);
+  });
+
+  it('keeps a private send hidden after its message is gone, in every audit read', async () => {
+    const contactId = await createContact('audit-private-gone');
+    const messageId = await sendTo(contactId, 'gm-audit-gone');
+    await setThreadPrivacy(messageId, userId, true, actor);
+
+    // As disconnecting the mailbox does, by cascade.
+    await pool.query('DELETE FROM email_messages WHERE id = $1', [messageId]);
+
+    expect((await mailboxEntry('email_sent', messageId))['to']).toBe(PRIVATE_REDACTED_TEXT);
+    const page = await listAuditLog({ recordType: 'connected_account', recordId: accountId });
+    const listed = page.data.find(
+      (row) => row.event_type === 'email_sent' && row.new_value?.includes(messageId),
+    );
+    expect(JSON.parse(listed?.new_value ?? '{}')['to']).toBe(PRIVATE_REDACTED_TEXT);
+    const [stored] = (
+      await getRecordAuditLog({ recordType: 'connected_account', recordId: accountId, all: true })
+    ).filter((row) => row.event_type === 'email_sent');
+    const live = await maskAuditEvent(await rawEntry(stored!.id)); // Safe: the send wrote one.
+    expect(JSON.parse(live.new_value ?? '{}')['to']).toBe(PRIVATE_REDACTED_TEXT);
+  });
+
+  it('hides an unconfirmed send once a thread it went into is made private', async () => {
+    const threadId = 'later-private';
+    await insertUnsettledIntent({ rfcMessageId: `${threadId}@x.test`, threadPrivate: false });
+    await sweepUnsettledIntents();
+    const intentId = await intentIdFor(`${threadId}@x.test`);
+    expect((await mailboxEntry('email_send_unconfirmed', intentId))['to']).toEqual([
+      'someone@example.net',
+    ]);
+    // Its copy reached the mailbox by sync, in a thread the owner then marks private.
+    const copy = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address,
+          rfc_message_id)
+       VALUES ($1, 'SENT:later', $2, 'outbound', 'rep@example.com', $3) RETURNING id`,
+      [accountId, threadId, `${threadId}@x.test`],
+    );
+
+    await setThreadPrivacy(copy.rows[0]!.id, userId, true, actor); // Safe: RETURNING one row.
+
+    expect((await mailboxEntry('email_send_unconfirmed', intentId))['to']).toBe(
+      PRIVATE_REDACTED_TEXT,
+    );
   });
 
   it("waits for an erasure in progress before changing a thread's privacy", async () => {

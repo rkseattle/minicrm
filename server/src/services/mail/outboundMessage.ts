@@ -22,7 +22,7 @@ import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 
 import { boundIndexedId, subjectOf } from './messageBody.js';
 import { extractMessageIds, normalizeMessageId } from './threading.js';
-import { domainOfAddress } from './address.js';
+import { domainOfAddress } from '../../utils/emailAddress.js';
 
 /** What a caller asks to be sent. */
 export interface OutboundMessage {

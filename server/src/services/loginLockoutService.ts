@@ -5,10 +5,12 @@
  * attempts are blocked for LOCKOUT_WINDOW_MS. The counter resets on any
  * successful login.
  *
- * Keyed on a lowercased email address. In-process only — resets on server
+ * Keyed on the normalized email address. In-process only — resets on server
  * restart, which is acceptable for this threat model (the lockout is a
  * defence-in-depth measure, not the primary credential guard).
  */
+
+import { normalizeAddress } from '../utils/emailAddress.js';
 
 /** Consecutive failures before the account is temporarily locked. */
 export const LOCKOUT_MAX_ATTEMPTS = 10;
@@ -26,7 +28,7 @@ const store = new Map<string, LockoutEntry>();
 
 /** Returns the canonical map key for a given email. */
 function key(email: string): string {
-  return email.toLowerCase();
+  return normalizeAddress(email);
 }
 
 /**
