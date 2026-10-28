@@ -647,7 +647,20 @@ intent's equivalent of a message's links. Erasure finds an intent by those as we
 address, so a send to an address the subject has since changed, or to a merged-away contact's
 own address, is still scrubbed. Converting a lead or merging a contact moves both the intents
 sent from it and those ids onto the surviving contact, as its links and activity participants
-move. The address-array matching erasure applies to messages and intents is in the database,
+move.
+
+The full lock order is: the GDPR ingest lock, the per-record merge locks, intents, the
+contacts and leads they name (several in id order), then the mailbox and message. A row lock
+cannot cover what merge or conversion must move, since another transaction may not have
+inserted it yet, so each contact and lead has a named advisory lock (`recordMergeLock.ts`):
+merge and conversion take it exclusively, then lock the intents they will move, then the
+records, because filing key-share locks its record when it inserts the activity. Claiming a
+send, storing a sync page, filing a send and linking by hand take it shared on the records
+they name before anything else, so a merge or conversion running meanwhile commits first and
+is seen, or waits for them and then moves what they wrote. A record that comes to match an
+address only while one waited is not linked by it, as if the change had landed just after.
+A send from a record that merge removed, or from a lead that conversion converted, is refused
+404 `NOT_FOUND` and nothing is sent; a manual link to one answers 404 too. The address-array matching erasure applies to messages and intents is in the database,
 as `address_array_replace` and `address_array_has`, so every value is bound as a parameter.
 
 Audit reads mask by the redaction's reason. An erasure masks every entry for the record as

@@ -36,6 +36,7 @@ import { clearDerivedLinkSuppression, suppressDerivedLink } from './emailMatchin
 import { buildVisibilityFilter } from './visibilityService.js';
 import { scrubActivitiesFiledFromOwnMail } from './activityService.js';
 import { lockForIngest } from './mail/gdprRedaction.js';
+import { holdRecordsAgainstMerge, mergeableRecordExists } from './recordMergeLock.js';
 import { setRlsUserIdTo } from './rlsContextService.js';
 import { findThreadSendIntentIds, setUnsettledSendsPrivacy } from './emailSendIntentService.js';
 import {
@@ -343,6 +344,9 @@ export function messageAccessPredicate(
 /** Namespace for the per-mailbox advisory lock, so it cannot collide with another feature's. */
 const THREAD_PRIVACY_LOCK_NAMESPACE = 'email_thread_privacy';
 
+/** The record a manual link names was merged away or converted after the caller checked it. */
+export const LINK_RECORD_NOT_FOUND = 'LINK_RECORD_NOT_FOUND';
+
 /**
  * Serializes privacy writes against message inserts on one mailbox, for this transaction.
  *
@@ -539,17 +543,19 @@ export async function findLinkForUser(
  * Links a message to a record by hand.
  *
  * The message must be in one of the caller's own mailboxes; the controller has already
- * established that the record exists and that the caller may write to it. A record deleted
- * between those two moments leaves a link the ordinary cleanup would have caught, which is
- * the same window every polymorphic writer here has.
+ * established that the record exists and that the caller may write to it. A contact or lead
+ * is held against a merge and checked again here, so one merged away or converted meanwhile
+ * is refused rather than linked on a record nothing reads. A plain delete in that window
+ * leaves a link the ordinary cleanup would have caught, as for every polymorphic writer here.
  *
  * The audit entry is filed against the mailbox, not the linked record — an entry on a
  * contact would reach the client's Change History, which renders only the event types its
  * own schema admits. The linked record is named in the entry instead.
  *
  * @param actor - The caller, for the audit entry.
- * @throws when the message is not in the caller's mailboxes. A duplicate link surfaces as
- *   PG 23505, which the controller maps to 409.
+ * @throws `EMAIL_MESSAGE_NOT_FOUND` when the message is not in the caller's mailboxes, and
+ *   `LINK_RECORD_NOT_FOUND` when the contact or lead was merged away or converted. A duplicate
+ *   link surfaces as PG 23505, which the controller maps to 409.
  */
 export async function createManualLink(
   messageId: string,
@@ -561,6 +567,13 @@ export async function createManualLink(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // A merge or conversion running now would move every link but this uncommitted one.
+    if (recordType === 'contact' || recordType === 'lead') {
+      await holdRecordsAgainstMerge(client, [recordId]);
+      if (!(await mergeableRecordExists(client, recordType, recordId))) {
+        throw Object.assign(new Error('No such record'), { code: LINK_RECORD_NOT_FOUND });
+      }
+    }
 
     const mailbox = await client.query<{ id: string; email_address: string }>(
       `SELECT ca.id, ca.email_address

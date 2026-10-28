@@ -16,8 +16,10 @@
  *   sent    → unconfirmed   accepted but still unfiled after an hour
  *   pending | sent | unconfirmed → filed   exactly once, by whichever path locks it first
  *
- * Lock order is the intent, then the message. Both filing paths take it that way, which
- * is what keeps them from deadlocking each other on one message.
+ * Lock order is the GDPR ingest lock, the per-record merge locks (recordMergeLock.ts), the
+ * intent, the contacts and leads it names (in id order), then the mailbox and message.
+ * Filing key-share locks its record when it inserts the activity, so a merge or lead
+ * conversion locks the intents it moves before the records.
  */
 
 import type {
@@ -45,9 +47,10 @@ import {
   toEmailMessage,
   type EmailMessageRow,
 } from './emailMessageRecord.js';
-import { GDPR_REDACTED_TEXT } from './mail/gdprRedaction.js';
+import { GDPR_REDACTED_TEXT, lockForIngest } from './mail/gdprRedaction.js';
 import type { NormalizedMessage } from './mail/mailProvider.js';
 import { truncate } from './mail/messageBody.js';
+import { holdMatchedRecordsAgainstMerge, mergeableRecordExists } from './recordMergeLock.js';
 import { setRlsUserIdTo } from './rlsContextService.js';
 
 export type SendIntentStatus = 'pending' | 'not_sent' | 'sent' | 'unconfirmed' | 'filed';
@@ -278,7 +281,8 @@ export async function precheckSendLimit(
 export type SendClaim =
   | { kind: 'claimed'; intentId: string }
   | { kind: 'taken' }
-  | { kind: 'limited'; retryAfterSeconds: number };
+  | { kind: 'limited'; retryAfterSeconds: number }
+  | { kind: 'record_gone' };
 
 /**
  * Records a send about to be handed to the provider, under the client's key, and counts it
@@ -295,7 +299,8 @@ export type SendClaim =
  *
  * @param enforceLimit - False where every limiter is bypassed (`shouldSkipRateLimit`).
  * @returns `taken` when the key belongs to another attempt — the caller answers from
- *   `findIntentByKey`.
+ *   `findIntentByKey`; `record_gone` when the contact or lead sent from was merged away or
+ *   converted before the claim, which then records nothing.
  */
 export async function claimSendIntent(
   input: NewSendIntent,
@@ -304,6 +309,16 @@ export async function claimSendIntent(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await lockForIngest(client);
+    // Before the intent, the documented order: a merge or conversion of these records either
+    // commits first, and is seen below, or waits for this claim and then moves it.
+    const sourceRecord =
+      input.recordType === 'contact' || input.recordType === 'lead' ? input.recordId : null;
+    const heldRecordIds = await holdMatchedRecordsAgainstMerge(
+      client,
+      [...input.toAddresses, ...input.ccAddresses],
+      sourceRecord === null ? [] : [sourceRecord],
+    );
     if (enforceLimit) {
       await client.query('SELECT pg_advisory_xact_lock($1, hashtext($2))', [
         SEND_LIMIT_LOCK_NAMESPACE,
@@ -311,16 +326,6 @@ export async function claimSendIntent(
       ]);
     }
 
-    // Matched by the same rule auto-linking applies to a synced message.
-    const recipients = await client.query<{ contact_ids: string[]; lead_ids: string[] }>(
-      `SELECT ARRAY(SELECT DISTINCT record_id FROM address_matched_records($1::text[])
-                     WHERE record_type = 'contact') AS contact_ids,
-              ARRAY(SELECT DISTINCT record_id FROM address_matched_records($1::text[])
-                     WHERE record_type = 'lead') AS lead_ids`,
-      [[...input.toAddresses, ...input.ccAddresses]],
-    );
-    // Safe: a SELECT without FROM returns exactly one row.
-    const matched = recipients.rows[0]!;
     const values = [
       input.userId,
       input.actorName,
@@ -336,17 +341,14 @@ export async function claimSendIntent(
       input.unresolvedMergeTags,
       input.threadPrivate,
       input.parentMessageId,
-      matched.contact_ids,
-      matched.lead_ids,
     ];
 
     const inserted = await client.query<{ id: string }>(
       `INSERT INTO email_send_intents
          (user_id, actor_name, connected_account_id, rfc_message_id, record_type, record_id,
           activity_notes, to_addresses, cc_addresses, idempotency_key, request_hash,
-          unresolved_merge_tags, thread_private, parent_message_id, recipient_contact_ids,
-          recipient_lead_ids)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+          unresolved_merge_tags, thread_private, parent_message_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        ON CONFLICT (user_id, idempotency_key) DO NOTHING
        RETURNING id`,
       values,
@@ -360,7 +362,6 @@ export async function claimSendIntent(
                   rfc_message_id = $4, provider_message_id = NULL, record_type = $5,
                   record_id = $6, activity_notes = $7, to_addresses = $8, cc_addresses = $9,
                   unresolved_merge_tags = $12, thread_private = $13, parent_message_id = $14,
-                  recipient_contact_ids = $15, recipient_lead_ids = $16,
                   created_at = now(),
                   updated_at = now()
             WHERE user_id = $1 AND idempotency_key = $10 AND request_hash = $11
@@ -372,6 +373,10 @@ export async function claimSendIntent(
     if (!claimed) {
       await client.query('COMMIT');
       return { kind: 'taken' };
+    }
+    if (!(await recordNamedRecipients(client, claimed.id, input, heldRecordIds))) {
+      await client.query('ROLLBACK');
+      return { kind: 'record_gone' };
     }
     // Locked after the intent, the documented order: a privacy change either committed
     // first, and is read here, or waits on this lock and then finds the committed intent.
@@ -532,6 +537,56 @@ async function unconfirm(target: UnconfirmTarget): Promise<number> {
   } finally {
     client.release();
   }
+}
+
+/**
+ * Records the contacts and leads the recipients match, of those held against a merge, and
+ * reports whether the record sent from still exists as one. Runs after the intent is written.
+ */
+async function recordNamedRecipients(
+  client: PoolClient,
+  intentId: string,
+  input: NewSendIntent,
+  heldRecordIds: readonly string[],
+): Promise<boolean> {
+  await client.query(
+    `UPDATE email_send_intents
+        SET recipient_contact_ids = ARRAY(SELECT DISTINCT record_id
+                                            FROM address_matched_records($2::text[])
+                                           WHERE record_type = 'contact'
+                                             AND record_id = ANY($3::uuid[])),
+            recipient_lead_ids = ARRAY(SELECT DISTINCT record_id
+                                         FROM address_matched_records($2::text[])
+                                        WHERE record_type = 'lead'
+                                          AND record_id = ANY($3::uuid[]))
+      WHERE id = $1`,
+    [intentId, [...input.toAddresses, ...input.ccAddresses], heldRecordIds],
+  );
+  // A merged-away contact or converted lead would hold the send where erasure cannot reach it.
+  if ((input.recordType === 'contact' || input.recordType === 'lead') && input.recordId) {
+    return mergeableRecordExists(client, input.recordType, input.recordId);
+  }
+  return true;
+}
+
+/**
+ * Locks every send intent a merge or lead conversion may move, before the caller locks the
+ * records: filing holds an intent while it key-share locks the record its activity names.
+ */
+export async function lockSendIntentsNaming(
+  client: PoolClient,
+  records: readonly { recordType: 'contact' | 'lead'; recordId: string }[],
+): Promise<void> {
+  await client.query(
+    `SELECT i.id FROM email_send_intents i
+       JOIN unnest($1::text[], $2::uuid[]) AS r(record_type, record_id)
+         ON (i.record_type = r.record_type AND i.record_id = r.record_id)
+         OR (r.record_type = 'contact' AND r.record_id = ANY(i.recipient_contact_ids))
+         OR (r.record_type = 'lead' AND r.record_id = ANY(i.recipient_lead_ids))
+      ORDER BY i.id
+        FOR UPDATE OF i`,
+    [records.map((record) => record.recordType), records.map((record) => record.recordId)],
+  );
 }
 
 /**

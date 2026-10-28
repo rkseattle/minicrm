@@ -22,7 +22,9 @@ import {
   reconcileDerivedLinks,
   relinkLinksToConvertedLead,
 } from './emailMatchingService.js';
-import { moveSendIntentsToContact } from './emailSendIntentService.js';
+import { lockSendIntentsNaming, moveSendIntentsToContact } from './emailSendIntentService.js';
+import { lockForIngest } from './mail/gdprRedaction.js';
+import { lockRecordsForMerge } from './recordMergeLock.js';
 import { computeLeadRoutingSuggestion, persistRoutingDecision } from './leadRoutingService.js';
 import { getDealAutoLink } from './settingsService.js';
 import { normalizeAddress } from '../utils/emailAddress.js';
@@ -543,6 +545,18 @@ export async function convertLead(
   try {
     await client.query('BEGIN');
     await setRlsUserId(client);
+    // The send-intent lock order: ingest lock, record lock and intents before the lead's row.
+    await lockForIngest(client);
+    await lockRecordsForMerge(client, [leadId]);
+    // Read again under the lock: a conversion queued behind this one must not run twice.
+    const current = await client.query<{ converted_at: Date | null }>(
+      'SELECT converted_at FROM leads WHERE id = $1',
+      [leadId],
+    );
+    if (current.rows[0]?.converted_at) {
+      throw Object.assign(new Error('Lead already converted'), { code: 'ALREADY_CONVERTED' });
+    }
+    await lockSendIntentsNaming(client, [{ recordType: 'lead', recordId: leadId }]);
 
     const defaultPipelineId = await getDefaultPipelineId(client);
 

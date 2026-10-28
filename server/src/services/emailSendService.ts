@@ -38,7 +38,8 @@ import {
   updateAccountStatus,
   type ConnectedAccountInternal,
 } from './connectedAccountService.js';
-import { matchMessagesToRecords } from './emailMatchingService.js';
+import { addressesNamedBy, matchMessagesToRecords } from './emailMatchingService.js';
+import { holdMatchedRecordsAgainstMerge } from './recordMergeLock.js';
 import { inheritThreadPrivacy, lockMailboxThreads } from './emailMessageService.js';
 import { MESSAGE_SELECT, toEmailMessage, type EmailMessageRow } from './emailMessageRecord.js';
 import { lockForIngest, redactErasedOnIngest } from './mail/gdprRedaction.js';
@@ -86,6 +87,7 @@ import { shouldSkipRateLimit } from '../utils/nodeEnv.js';
 export const EMAIL_ACCOUNT_NOT_FOUND = 'EMAIL_ACCOUNT_NOT_FOUND' satisfies SendErrorCode;
 export const EMAIL_MESSAGE_NOT_FOUND = 'EMAIL_MESSAGE_NOT_FOUND' satisfies SendErrorCode;
 export const TEMPLATE_NOT_FOUND = 'TEMPLATE_NOT_FOUND' satisfies SendErrorCode;
+export const SEND_RECORD_NOT_FOUND = 'NOT_FOUND' satisfies SendErrorCode;
 export const PROVIDER_SEND_UNSUPPORTED = 'PROVIDER_SEND_UNSUPPORTED' satisfies SendErrorCode;
 export const SEND_FAILED = 'SEND_FAILED' satisfies SendErrorCode;
 export const RATE_LIMITED = 'RATE_LIMITED' satisfies SendErrorCode;
@@ -525,6 +527,7 @@ export async function sendEmail(
     enforceLimit,
   );
   if (claim.kind === 'limited') throw limitError(claim.retryAfterSeconds);
+  if (claim.kind === 'record_gone') throw sendError(SEND_RECORD_NOT_FOUND, 'No such record');
   if (claim.kind === 'taken') {
     // A concurrent request with this key got there first; answer as it will.
     const existing = await findIntentByKey(userId, idempotency.key);
@@ -628,6 +631,12 @@ async function recordSent(
 
     // First: an erasure holds this exclusively, and must see every send committed before it.
     await lockForIngest(client);
+    const heldRecordIds = await holdMatchedRecordsAgainstMerge(
+      client,
+      addressesNamedBy([
+        { fromAddress, toAddresses: parsed.toAddresses, ccAddresses: parsed.ccAddresses },
+      ]),
+    );
     const intent = await lockIntent(client, intentId);
     if (!intent) throw new Error(`emailSendService: intent ${intentId} vanished`);
     await lockMailboxThreads(client, account.id);
@@ -679,6 +688,7 @@ async function recordSent(
           },
         ],
         dealAutoLink,
+        heldRecordIds,
       );
     }
 

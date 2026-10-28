@@ -17,6 +17,7 @@ import { erasedAddressDigest } from '../services/mail/gdprRedaction.js';
 import { createImapAccount, upsertOAuthAccount } from '../services/connectedAccountService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
 import {
+  SEND_RECORD_NOT_FOUND,
   sendEmail,
   SENT_NOT_RECORDED,
   type SendIdempotency,
@@ -821,28 +822,22 @@ describe('sendEmail — activities', () => {
     expect(await storedRows()).toHaveLength(1);
   });
 
-  it('files a message whose record no longer exists without its link or activity', async () => {
-    const { provider } = fakeSender();
+  it('refuses a send from a record that no longer exists, sending nothing', async () => {
+    const { provider, calls } = fakeSender();
     const missing = '00000000-0000-4000-8000-000000000001';
 
-    const response = await sendEmail(
-      typed({ record_type: 'contact', record_id: missing }),
-      userId,
-      actor,
-      freshKey(),
-      { provider },
-    );
+    await expect(
+      sendEmail(typed({ record_type: 'contact', record_id: missing }), userId, actor, freshKey(), {
+        provider,
+      }),
+    ).rejects.toMatchObject({ code: SEND_RECORD_NOT_FOUND });
 
-    const links = await pool.query('SELECT 1 FROM email_message_links WHERE record_id = $1', [
+    expect(calls).toHaveLength(0);
+    expect(await storedRows()).toHaveLength(0);
+    const intents = await pool.query('SELECT 1 FROM email_send_intents WHERE record_id = $1', [
       missing,
     ]);
-    const activities = await pool.query('SELECT 1 FROM activities WHERE contact_id = $1', [
-      missing,
-    ]);
-    expect(response.message.id).toBeDefined();
-    expect(links.rowCount).toBe(0);
-    expect(activities.rowCount).toBe(0);
-    expect(await auditEntries()).toHaveLength(1);
+    expect(intents.rowCount).toBe(0);
   });
 
   it('rolls back the stored message when storing fails after the send, and says it was sent', async () => {

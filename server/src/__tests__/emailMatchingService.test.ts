@@ -12,9 +12,11 @@
 import 'dotenv/config';
 
 import pool from '../db.js';
+import { holdMatchedRecordsAgainstMerge } from '../services/recordMergeLock.js';
 import type { PoolClient } from 'pg';
 import { createUser } from '../services/userService.js';
 import {
+  addressesNamedBy,
   clearDerivedLinkSuppression,
   deleteLinksForDeletedEntities,
   deleteLinksForDeletedEntity,
@@ -72,7 +74,9 @@ async function match(messages: MatchableMessage[], dealAutoLink = true): Promise
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
-    await matchMessagesToRecords(client, messages, dealAutoLink);
+    // The caller's order: records held before the match.
+    const held = await holdMatchedRecordsAgainstMerge(client, addressesNamedBy(messages));
+    await matchMessagesToRecords(client, messages, dealAutoLink, held);
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -408,6 +412,20 @@ describe('matchMessagesToRecords', () => {
       [messageId],
     );
     expect(types.rows).toEqual([{ match_type: 'auto' }]);
+  });
+});
+
+describe('address_matched_records', () => {
+  it('answers an address once however often it is repeated', async () => {
+    const contactId = await createContact('repeated');
+    const address = `${FILE_PREFIX}-repeated@example.com`;
+
+    const matched = await pool.query<{ record_id: string }>(
+      'SELECT record_id FROM address_matched_records($1::text[])',
+      [[address, address, address]],
+    );
+
+    expect(matched.rows.map((row) => row.record_id)).toEqual([contactId]);
   });
 });
 

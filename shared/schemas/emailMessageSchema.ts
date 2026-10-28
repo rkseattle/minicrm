@@ -309,7 +309,6 @@ export type SendRequestErrorCode = Extract<
   | 'PAYLOAD_TOO_LARGE'
   | 'VALIDATION_ERROR'
   | 'FORBIDDEN'
-  | 'NOT_FOUND'
   | 'IDEMPOTENCY_KEY_REQUIRED'
   | 'IDEMPOTENCY_KEY_INVALID'
 >;
