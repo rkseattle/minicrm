@@ -47,7 +47,10 @@ export function erasedPlaceholderAddress(recordId: string): string {
   return `${PLACEHOLDER_PREFIX}${recordId}${PLACEHOLDER_DOMAIN}`;
 }
 
-/** Taken by every ingest path, and thread privacy changes, before any intent or message row. */
+/**
+ * Taken first by every path that writes intents or mail, thread privacy changes, send claims,
+ * and contact merge and lead conversion, so none interleaves with an erasure.
+ */
 export async function lockForIngest(client: PoolClient): Promise<void> {
   await client.query(`SELECT pg_advisory_xact_lock_shared(${GDPR_INGEST_LOCK_SQL})`);
 }

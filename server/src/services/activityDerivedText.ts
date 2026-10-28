@@ -34,16 +34,23 @@ export async function activitiesUnchangedSince(
   client: PoolClient,
   read: readonly ActivityReadVersion[],
 ): Promise<boolean> {
-  if (read.length === 0) return true;
+  // One version per id: a duplicate read cannot stand in for a changed source.
+  const versionById = new Map<string, number>();
+  for (const activity of read) {
+    const seen = versionById.get(activity.id);
+    if (seen !== undefined && seen !== activity.version) return false;
+    versionById.set(activity.id, activity.version);
+  }
+  if (versionById.size === 0) return true;
   const result = await client.query(
     `SELECT a.id FROM activities a
        JOIN unnest($1::uuid[], $2::int[]) AS r(id, version)
          ON r.id = a.id AND r.version = a.version
       ORDER BY a.id
         FOR SHARE OF a`,
-    [read.map((activity) => activity.id), read.map((activity) => activity.version)],
+    [[...versionById.keys()], [...versionById.values()]],
   );
-  return result.rowCount === new Set(read.map((activity) => activity.id)).size;
+  return result.rowCount === versionById.size;
 }
 
 /**

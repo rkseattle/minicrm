@@ -23,7 +23,9 @@ import {
   reconcileDerivedLinks,
   relinkLinksToMergedContact,
 } from './emailMatchingService.js';
-import { moveSendIntentsToContact } from './emailSendIntentService.js';
+import { lockSendIntentsNaming, moveSendIntentsToContact } from './emailSendIntentService.js';
+import { lockForIngest } from './mail/gdprRedaction.js';
+import { lockRecordsForMerge } from './recordMergeLock.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 import { getDealAutoLink } from './settingsService.js';
 import { normalizeAddress } from '../utils/emailAddress.js';
@@ -915,18 +917,20 @@ export async function mergeContacts(
     await client.query('BEGIN');
     await setRlsUserId(client);
 
-    // Fetch both contacts sequentially — a single pg client cannot run concurrent queries
-    const winnerResult = await client.query<ContactRow>(
-      'SELECT * FROM contacts WHERE id = $1 FOR UPDATE',
-      [winnerId],
-    );
-    const loserResult = await client.query<ContactRow>(
-      'SELECT * FROM contacts WHERE id = $1 FOR UPDATE',
-      [loserId],
+    // The send-intent lock order: ingest lock, record locks, intents, contacts in id order.
+    await lockForIngest(client);
+    await lockRecordsForMerge(client, [winnerId, loserId]);
+    await lockSendIntentsNaming(client, [
+      { recordType: 'contact', recordId: winnerId },
+      { recordType: 'contact', recordId: loserId },
+    ]);
+    const locked = await client.query<ContactRow>(
+      'SELECT * FROM contacts WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE',
+      [[winnerId, loserId]],
     );
 
-    const winner = winnerResult.rows[0];
-    const loser = loserResult.rows[0];
+    const winner = locked.rows.find((row) => row.id === winnerId);
+    const loser = locked.rows.find((row) => row.id === loserId);
 
     if (!winner) throw new Error(`Winner contact ${winnerId} not found`);
     if (!loser) throw new Error(`Loser contact ${loserId} not found`);

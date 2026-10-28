@@ -30,7 +30,15 @@ import {
   type NewSendIntent,
 } from '../services/emailSendIntentService.js';
 import { setRlsUserIdTo } from '../services/rlsContextService.js';
-import { lockMailboxThreads, setThreadPrivacy } from '../services/emailMessageService.js';
+import { mergeContacts } from '../services/contactService.js';
+import { convertLead } from '../services/leadsService.js';
+import { holdRecordsAgainstMerge, lockRecordsForMerge } from '../services/recordMergeLock.js';
+import {
+  createManualLink,
+  LINK_RECORD_NOT_FOUND,
+  lockMailboxThreads,
+  setThreadPrivacy,
+} from '../services/emailMessageService.js';
 import { PRIVATE_EMAIL_SUBJECT } from '../services/emailMessageRecord.js';
 import {
   getRecordAuditLog,
@@ -1098,19 +1106,20 @@ describe('the sync engine filing a send, by what it was sent from', () => {
   });
 });
 
-/** Waits until another session is blocked on a lock on the intents table. */
-async function waitForLockWaiter(): Promise<void> {
+/** Waits until another session is blocked on a lock, in a query naming the table. */
+async function waitForLockWaiter(table = 'email_send_intents'): Promise<void> {
   const deadline = Date.now() + 5_000;
   while (Date.now() < deadline) {
     const waiting = await pool.query(
       `SELECT 1 FROM pg_stat_activity
         WHERE datname = current_database() AND wait_event_type = 'Lock'
-          AND query LIKE '%email_send_intents%' AND pid <> pg_backend_pid()`,
+          AND query LIKE '%' || $1 || '%' AND pid <> pg_backend_pid()`,
+      [table],
     );
     if ((waiting.rowCount ?? 0) > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
-  throw new Error('no session ever waited on the intent lock');
+  throw new Error(`no session ever waited on a lock in ${table}`);
 }
 
 /**
@@ -2125,5 +2134,305 @@ describe('marking a thread private after its sends were filed', () => {
       subject: PRIVATE_EMAIL_SUBJECT,
       scrubbed: true,
     });
+  });
+});
+
+describe('the lock order between sends and record merges', () => {
+  function sendFrom(
+    recordType: 'contact' | 'lead' | null,
+    recordId: string | null,
+    toAddresses: string[],
+  ): NewSendIntent {
+    return {
+      userId,
+      actorName: 'Intent Rep',
+      connectedAccountId: accountId,
+      rfcMessageId: `${randomUUID()}@example.com`,
+      recordType,
+      recordId,
+      activityNotes: null,
+      threadPrivate: false,
+      parentMessageId: null,
+      toAddresses,
+      ccAddresses: [],
+      idempotencyKey: randomUUID(),
+      requestHash: 'merge-order',
+      unresolvedMergeTags: [],
+    };
+  }
+
+  it('a contact merge waits on a send being filed from the losing contact', async () => {
+    const winnerId = await createContact('merge-winner');
+    const loserId = await createContact('merge-loser');
+    const claim = await claimSendIntent(sendFrom('contact', loserId, ['x@example.net']), false);
+    if (claim.kind !== 'claimed') throw new Error(`expected a claim, got ${claim.kind}`);
+    const holder = await pool.connect();
+    try {
+      // Filing's order: the intent first.
+      await holder.query('BEGIN');
+      await holder.query('SELECT 1 FROM email_send_intents WHERE id = $1 FOR UPDATE', [
+        claim.intentId,
+      ]);
+      const merging = mergeContacts({ winnerId, loserId, fieldChoices: {} }, actor);
+      await waitForLockWaiter();
+      // Then its activity, which key-share locks the contact. Had the merge locked the contact
+      // before waiting, each would wait on the other and Postgres would abort one.
+      await holder.query(
+        `INSERT INTO activities (type, subject, contact_id, owner_id)
+         VALUES ('Call', 'Filed send', $1, $2)`,
+        [loserId, userId],
+      );
+      await holder.query('COMMIT');
+      await merging;
+    } finally {
+      holder.release();
+    }
+
+    const moved = await pool.query<{ record_id: string }>(
+      'SELECT record_id FROM email_send_intents WHERE id = $1',
+      [claim.intentId],
+    );
+    expect(moved.rows[0]?.record_id).toBe(winnerId);
+  });
+
+  it('a merge waits for a send being claimed from its losing contact, then moves it', async () => {
+    const winnerId = await createContact('claimed-winner');
+    const loserId = await createContact('claimed-loser');
+    const holder = await pool.connect();
+    let merging: ReturnType<typeof mergeContacts>;
+    try {
+      // A claim's order: the record held, then its intent written, both uncommitted.
+      await holder.query('BEGIN');
+      await holdRecordsAgainstMerge(holder, [loserId]);
+      await holder.query(
+        `INSERT INTO email_send_intents
+           (idempotency_key, request_hash, user_id, actor_name, connected_account_id,
+            rfc_message_id, status, record_type, record_id)
+         VALUES (gen_random_uuid(), '', $1, 'Intent Rep', $2, $3, 'pending', 'contact', $4)`,
+        [userId, accountId, `${randomUUID()}@x.test`, loserId],
+      );
+      merging = mergeContacts({ winnerId, loserId, fieldChoices: {} }, actor);
+      await waitForLockWaiter('pg_advisory');
+      await holder.query('COMMIT');
+    } finally {
+      holder.release();
+    }
+    await merging;
+
+    const left = await pool.query('SELECT 1 FROM email_send_intents WHERE record_id = $1', [
+      loserId,
+    ]);
+    expect(left.rowCount).toBe(0);
+  });
+
+  it('refuses a send from a contact a merge removes while it is being claimed', async () => {
+    const loserId = await createContact('claim-loser');
+    const holder = await pool.connect();
+    let claiming: ReturnType<typeof claimSendIntent>;
+    try {
+      await holder.query('BEGIN');
+      await lockRecordsForMerge(holder, [loserId]);
+      claiming = claimSendIntent(sendFrom('contact', loserId, ['x@example.net']), false);
+      await waitForLockWaiter('pg_advisory');
+      await holder.query('DELETE FROM contacts WHERE id = $1', [loserId]);
+      await holder.query('COMMIT');
+    } finally {
+      holder.release();
+    }
+
+    expect((await claiming).kind).toBe('record_gone');
+  });
+
+  it('refuses a send from a lead converted while it is being claimed', async () => {
+    const lead = await pool.query<{ id: string }>(
+      `INSERT INTO leads (first_name, last_name, email, owner_id, status)
+       VALUES ('Lea', 'Lead', $1, $2, 'New') RETURNING id`,
+      [`${FILE_PREFIX}-claim-lead@example.com`, userId],
+    );
+    const leadId = lead.rows[0]!.id; // Safe: RETURNING one row.
+    const holder = await pool.connect();
+    let claiming: ReturnType<typeof claimSendIntent>;
+    try {
+      await holder.query('BEGIN');
+      await lockRecordsForMerge(holder, [leadId]);
+      claiming = claimSendIntent(
+        { ...sendFrom(null, null, ['x@example.net']), recordType: 'lead', recordId: leadId },
+        false,
+      );
+      await waitForLockWaiter('pg_advisory');
+      await holder.query('UPDATE leads SET converted_at = now() WHERE id = $1', [leadId]);
+      await holder.query('COMMIT');
+    } finally {
+      holder.release();
+    }
+
+    try {
+      expect((await claiming).kind).toBe('record_gone');
+    } finally {
+      await pool.query('DELETE FROM leads WHERE id = $1', [leadId]);
+    }
+  });
+
+  it('records no recipient contact a merge removed while the claim waited', async () => {
+    const loserId = await createContact('recipient-loser');
+    const loserAddress = `${FILE_PREFIX}-recipient-loser@example.com`;
+    const holder = await pool.connect();
+    let claiming: ReturnType<typeof claimSendIntent>;
+    try {
+      await holder.query('BEGIN');
+      await lockRecordsForMerge(holder, [loserId]);
+      claiming = claimSendIntent(sendFrom(null, null, [loserAddress]), false);
+      await waitForLockWaiter('pg_advisory');
+      await holder.query('DELETE FROM contacts WHERE id = $1', [loserId]);
+      await holder.query('COMMIT');
+    } finally {
+      holder.release();
+    }
+    const claim = await claiming;
+    if (claim.kind !== 'claimed') throw new Error(`expected a claim, got ${claim.kind}`);
+
+    const recorded = await pool.query<{ recipient_contact_ids: string[] }>(
+      'SELECT recipient_contact_ids FROM email_send_intents WHERE id = $1',
+      [claim.intentId],
+    );
+    expect(recorded.rows[0]?.recipient_contact_ids).toEqual([]);
+  });
+
+  it('links no message to a contact a merge removed while the page was being stored', async () => {
+    const loserId = await createContact('synced-loser');
+    const holder = await pool.connect();
+    let syncing: Promise<void>;
+    try {
+      await holder.query('BEGIN');
+      await lockRecordsForMerge(holder, [loserId]);
+      syncing = syncPage([
+        {
+          providerMessageId: 'INBOX:merge-race',
+          threadId: 'thread-merge-race',
+          direction: 'inbound',
+          fromAddress: `${FILE_PREFIX}-synced-loser@example.com`,
+          toAddresses: [MAILBOX],
+          ccAddresses: [],
+          subject: 'Hello',
+          hasAttachments: false,
+          sentAt: new Date('2026-08-01T12:00:00Z'),
+          bodyText: null,
+          bodyHtml: null,
+          snippet: null,
+          rfcMessageId: null,
+          references: null,
+          replyToAddresses: [],
+        },
+      ]);
+      await waitForLockWaiter('pg_advisory');
+      await holder.query('DELETE FROM contacts WHERE id = $1', [loserId]);
+      await holder.query('COMMIT');
+    } finally {
+      holder.release();
+    }
+    await syncing;
+
+    const links = await pool.query('SELECT 1 FROM email_message_links WHERE record_id = $1', [
+      loserId,
+    ]);
+    expect(links.rowCount).toBe(0);
+  });
+
+  it('refuses a manual link to a contact a merge removed while it waited', async () => {
+    const loserId = await createContact('linked-loser');
+    const message = await pool.query<{ id: string }>(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'INBOX:manual-race', 'thread-manual-race', 'inbound', 'someone@example.net')
+       RETURNING id`,
+      [accountId],
+    );
+    const holder = await pool.connect();
+    let linking: ReturnType<typeof createManualLink>;
+    try {
+      await holder.query('BEGIN');
+      await lockRecordsForMerge(holder, [loserId]);
+      // Safe: RETURNING one row.
+      linking = createManualLink(message.rows[0]!.id, 'contact', loserId, userId, actor);
+      await waitForLockWaiter('pg_advisory');
+      await holder.query('DELETE FROM contacts WHERE id = $1', [loserId]);
+      await holder.query('COMMIT');
+    } finally {
+      holder.release();
+    }
+
+    await expect(linking).rejects.toMatchObject({ code: LINK_RECORD_NOT_FOUND });
+  });
+  it('takes every record lock a claim needs at once, so a merge of the two cannot deadlock it', async () => {
+    const one = await createContact('pair-one');
+    const two = await createContact('pair-two');
+    // A merge locks both in key order; find which of the two it takes first.
+    const order = await pool.query<{ id: string }>(
+      'SELECT id FROM unnest($1::text[]) AS id ORDER BY hashtext(id)',
+      [[one, two]],
+    );
+    const [first, second] = order.rows.map((row) => row.id) as [string, string];
+    const holder = await pool.connect();
+    let claiming: ReturnType<typeof claimSendIntent>;
+    try {
+      // The merge midway: the first record locked, the second still to come.
+      await holder.query('BEGIN');
+      await lockRecordsForMerge(holder, [first]);
+      // Sent from the first, to the second's address: the claim needs both.
+      claiming = claimSendIntent(
+        sendFrom('contact', first, [
+          `${FILE_PREFIX}-${second === one ? 'pair-one' : 'pair-two'}@example.com`,
+        ]),
+        false,
+      );
+      await waitForLockWaiter('pg_advisory');
+      // Had the claim taken the second before waiting on the first, this would deadlock.
+      await lockRecordsForMerge(holder, [second]);
+      await holder.query('COMMIT');
+    } finally {
+      holder.release();
+    }
+
+    expect((await claiming).kind).toBe('claimed');
+  });
+
+  it('does not convert a lead twice when a second conversion waited on the first', async () => {
+    const lead = await pool.query<{ id: string }>(
+      `INSERT INTO leads (first_name, last_name, email, owner_id, status)
+       VALUES ('Lea', 'Twice', $1, $2, 'Qualified') RETURNING id`,
+      [`${FILE_PREFIX}-twice-lead@example.com`, userId],
+    );
+    const leadId = lead.rows[0]!.id; // Safe: RETURNING one row.
+    const holder = await pool.connect();
+    let converting: ReturnType<typeof convertLead>;
+    try {
+      // The first conversion, holding the lead while it commits.
+      await holder.query('BEGIN');
+      await lockRecordsForMerge(holder, [leadId]);
+      await holder.query('UPDATE leads SET converted_at = now() WHERE id = $1', [leadId]);
+      converting = convertLead(
+        leadId,
+        {
+          contact: {
+            first_name: 'Lea',
+            last_name: 'Twice',
+            email: `${FILE_PREFIX}-twice@example.com`,
+          },
+          account: { mode: 'create', name: `${FILE_PREFIX} twice` },
+          deal: { name: `${FILE_PREFIX} twice deal`, stage: 'Prospecting' },
+        },
+        actor,
+      );
+      await waitForLockWaiter('pg_advisory');
+      await holder.query('COMMIT');
+    } finally {
+      holder.release();
+    }
+
+    try {
+      await expect(converting).rejects.toMatchObject({ code: 'ALREADY_CONVERTED' });
+    } finally {
+      await pool.query('DELETE FROM leads WHERE id = $1', [leadId]);
+    }
   });
 });

@@ -52,7 +52,8 @@ import {
   sweepUnsettledIntents,
 } from './emailSendIntentService.js';
 import { isFeatureEnabled, isFlagEnabledForUser } from './featureFlagService.js';
-import { matchMessagesToRecords } from './emailMatchingService.js';
+import { addressesNamedBy, matchMessagesToRecords } from './emailMatchingService.js';
+import { holdMatchedRecordsAgainstMerge } from './recordMergeLock.js';
 import { inheritThreadPrivacy, lockMailboxThreads } from './emailMessageService.js';
 import { lockForIngest, redactErasedOnIngest } from './mail/gdprRedaction.js';
 import type { MatchableMessage } from './emailMatchingService.js';
@@ -320,6 +321,10 @@ async function commitPage(
 
     // First: an erasure holds this exclusively, and must see every page committed before it.
     await lockForIngest(client);
+    const heldRecordIds = await holdMatchedRecordsAgainstMerge(
+      client,
+      addressesNamedBy(page.messages),
+    );
 
     // Locked before the insert, in the order the send path takes them: intent, then message.
     const outbound = page.messages.filter((message) => message.direction === 'outbound');
@@ -344,7 +349,7 @@ async function commitPage(
 
     // Same transaction as the insert: a message and the records it names become visible
     // together, and nothing re-reads a message once its provider id is stored.
-    await matchMessagesToRecords(client, created, dealAutoLink);
+    await matchMessagesToRecords(client, created, dealAutoLink, heldRecordIds);
     const storedIds = kept.map((message) => message.providerMessageId);
     await inheritThreadPrivacy(client, accountId, storedIds);
     await redactErasedOnIngest(client, accountId, storedIds);

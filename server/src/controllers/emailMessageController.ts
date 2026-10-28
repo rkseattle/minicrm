@@ -29,6 +29,7 @@ import {
   findLinkForUser,
   listMessagesForRecord,
   listUnmatchedMessages,
+  LINK_RECORD_NOT_FOUND,
   setThreadPrivacy,
 } from '../services/emailMessageService.js';
 import { findLinkedRecordOwner } from '../services/emailMessageRecord.js';
@@ -49,6 +50,7 @@ import {
   sendEmail,
   SENT_NOT_RECORDED,
   TEMPLATE_NOT_FOUND,
+  SEND_RECORD_NOT_FOUND,
 } from '../services/emailSendService.js';
 import { SEND_AUTH_EXPIRED } from '../services/mail/sendOutcome.js';
 import { userCapabilities } from '../services/roleService.js';
@@ -239,6 +241,10 @@ export async function createLinkHandler(req: Request, res: Response): Promise<vo
       res.status(404).json(errorBody('NOT_FOUND', 'No such message'));
       return;
     }
+    if (code === LINK_RECORD_NOT_FOUND) {
+      res.status(404).json(errorBody('NOT_FOUND', 'No such record'));
+      return;
+    }
     if (code === '23505') {
       res.status(409).json(errorBody('LINK_EXISTS', 'That record is already linked'));
       return;
@@ -306,6 +312,7 @@ const SEND_ERROR_STATUS: Readonly<Record<Exclude<SendErrorCode, SendRequestError
   [EMAIL_ACCOUNT_NOT_FOUND]: 404,
   [EMAIL_MESSAGE_NOT_FOUND]: 404,
   [TEMPLATE_NOT_FOUND]: 404,
+  [SEND_RECORD_NOT_FOUND]: 404,
   [PROVIDER_SEND_UNSUPPORTED]: 409,
   [SEND_AUTH_EXPIRED]: 409,
   [RECONNECT_REQUIRED]: 409,
@@ -381,7 +388,7 @@ export async function sendEmailHandler(req: Request, res: Response): Promise<voi
   if (input.record_type !== undefined && input.record_id !== undefined) {
     const ownerId = await findLinkedRecordOwner(input.record_type, input.record_id);
     if (ownerId === null) {
-      res.status(404).json(errorBody('NOT_FOUND', 'No such record'));
+      res.status(404).json(errorBody(SEND_RECORD_NOT_FOUND, 'No such record'));
       return;
     }
     // One rule for client and server: the capabilities the composer checks before it opens.

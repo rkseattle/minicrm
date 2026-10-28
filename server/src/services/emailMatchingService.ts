@@ -53,6 +53,15 @@ export interface MatchableMessage {
   ccAddresses: string[];
 }
 
+/** Every address the messages name, for holding their records before any intent lock. */
+export function addressesNamedBy(messages: readonly Omit<MatchableMessage, 'id'>[]): string[] {
+  return messages.flatMap((message) =>
+    [message.fromAddress, ...message.toAddresses, ...message.ccAddresses].filter(
+      (address) => address !== '',
+    ),
+  );
+}
+
 /**
  * Flattens each message to the addresses it names, as parallel arrays.
  *
@@ -68,8 +77,7 @@ function toAddressPairs(messages: readonly MatchableMessage[]): {
   const addresses: string[] = [];
 
   for (const message of messages) {
-    for (const address of [message.fromAddress, ...message.toAddresses, ...message.ccAddresses]) {
-      if (address === '') continue;
+    for (const address of addressesNamedBy([message])) {
       messageIds.push(message.id);
       addresses.push(address);
     }
@@ -87,6 +95,7 @@ async function linkContacts(
   client: PoolClient,
   messageIds: readonly string[],
   addresses: readonly string[],
+  heldRecordIds: readonly string[],
 ): Promise<void> {
   await client.query(
     `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type, source)
@@ -94,8 +103,9 @@ async function linkContacts(
        FROM unnest($1::uuid[], $2::text[]) AS named(message_id, address)
        JOIN address_matched_records($2::text[]) matched
          ON matched.address = named.address AND matched.record_type = 'contact'
+      WHERE matched.record_id = ANY($5::uuid[])
      ON CONFLICT DO NOTHING`,
-    [messageIds, addresses, AUTO_MATCH, SYSTEM_SOURCE],
+    [messageIds, addresses, AUTO_MATCH, SYSTEM_SOURCE, heldRecordIds],
   );
 }
 
@@ -115,6 +125,7 @@ async function linkLeads(
   client: PoolClient,
   messageIds: readonly string[],
   addresses: readonly string[],
+  heldRecordIds: readonly string[],
 ): Promise<void> {
   await client.query(
     `INSERT INTO email_message_links (email_message_id, record_type, record_id, match_type, source)
@@ -122,8 +133,9 @@ async function linkLeads(
        FROM unnest($1::uuid[], $2::text[]) AS named(message_id, address)
        JOIN address_matched_records($2::text[]) matched
          ON matched.address = named.address AND matched.record_type = 'lead'
+      WHERE matched.record_id = ANY($5::uuid[])
      ON CONFLICT DO NOTHING`,
-    [messageIds, addresses, AUTO_MATCH, SYSTEM_SOURCE],
+    [messageIds, addresses, AUTO_MATCH, SYSTEM_SOURCE, heldRecordIds],
   );
 }
 
@@ -195,19 +207,22 @@ async function linkContactDeals(client: PoolClient, messageIds: readonly string[
  * @param messages - Messages created by this page's insert.
  * @param dealAutoLink - Whether to link open deals, from the system setting. Resolved once
  *   per tick by the caller rather than read here, which would query per page.
+ * @param heldRecordIds - From `holdMatchedRecordsAgainstMerge`, taken before any intent
+ *   lock; only these contacts and leads are linked.
  */
 export async function matchMessagesToRecords(
   client: PoolClient,
   messages: readonly MatchableMessage[],
   dealAutoLink: boolean,
+  heldRecordIds: readonly string[],
 ): Promise<void> {
   if (messages.length === 0) return;
 
   const { messageIds, addresses } = toAddressPairs(messages);
   if (addresses.length === 0) return;
 
-  await linkContacts(client, messageIds, addresses);
-  await linkLeads(client, messageIds, addresses);
+  await linkContacts(client, messageIds, addresses, heldRecordIds);
+  await linkLeads(client, messageIds, addresses, heldRecordIds);
 
   // Both read back the contact links above, so they run after it rather than beside it.
   const linkedIds = messages.map((message) => message.id);
