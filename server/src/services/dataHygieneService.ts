@@ -32,7 +32,7 @@ import type {
   DataHygieneConfigResponse,
 } from '@minicrm/shared/schemas/dataHygieneSchema.js';
 import type { SetDataHygieneConfigInput } from '@minicrm/shared/schemas/dataHygieneSchema.js';
-import { domainOfAddress } from './mail/address.js';
+import { domainOfAddress } from '../utils/emailAddress.js';
 
 export interface HygieneConfig {
   contact_inactivity_days: number;

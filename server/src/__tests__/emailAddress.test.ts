@@ -1,4 +1,4 @@
-import { domainOfAddress } from '../services/mail/address.js';
+import { domainOfAddress, normalizeAddress } from '../utils/emailAddress.js';
 
 describe('domainOfAddress', () => {
   it.each([
@@ -16,4 +16,16 @@ describe('domainOfAddress', () => {
       expect(domainOfAddress(address)).toBeNull();
     },
   );
+});
+
+describe('normalizeAddress', () => {
+  it.each([
+    ['Someone@Example.COM', 'someone@example.com'],
+    ['  someone@example.com\t', 'someone@example.com'],
+    ['someone@example.com', 'someone@example.com'],
+    ['', ''],
+    ['   ', ''],
+  ])('normalizes %j to %j', (address, normalized) => {
+    expect(normalizeAddress(address)).toBe(normalized);
+  });
 });

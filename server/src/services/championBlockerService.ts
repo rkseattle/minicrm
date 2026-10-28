@@ -451,3 +451,13 @@ export async function clearSignalQuotesForActivities(
     [activityIds],
   );
 }
+
+/** Deletes the AI's champion/blocker inference about a contact, quotes and all, for erasure. */
+export async function deleteSignalsForContact(
+  client: PoolClient,
+  contactId: string,
+): Promise<void> {
+  await client.query('DELETE FROM contact_champion_blocker_signals WHERE contact_id = $1', [
+    contactId,
+  ]);
+}

@@ -281,19 +281,20 @@ Do not add new values to these ENUMs — use `varchar + CHECK` for all new const
 
 ## Polymorphic FK Pattern
 
-Seven tables use `(type, id)` discriminator pairs instead of typed FK columns. Reference integrity is enforced at the application layer.
+Ten tables use `(type, id)` discriminator pairs instead of typed FK columns. Reference integrity is enforced at the application layer.
 
-| Table                   | Type column                        | Valid type values                    | Orphan cleanup?         |
-| ----------------------- | ---------------------------------- | ------------------------------------ | ----------------------- |
-| `attachments`           | `record_type`                      | `contact`, `account`, `deal`, `lead` | Yes — required          |
-| `custom_field_values`   | _(via definition's `entity_type`)_ | `contact`, `account`, `deal`         | Yes — required          |
-| `notes`                 | `entity_type`                      | `contact`, `account`, `deal`, `lead` | Yes — required          |
-| `gdpr_deletion_log`     | `record_type`                      | any erasable entity type             | No — retained by design |
-| `audit_log`             | `record_type`                      | see migration 076                    | No — retained by design |
-| `ai_gdpr_cascade_log`   | `record_type`                      | `contact`, `lead`                    | No — retained by design |
-| `email_message_links`   | `record_type`                      | `contact`, `lead`, `account`, `deal` | Yes — required          |
-| `activity_participants` | `record_type`                      | `contact`, `lead`                    | Yes — required          |
-| `redacted_records`      | `record_type`                      | `activity`                           | No — retained by design |
+| Table                             | Type column                        | Valid type values                    | Orphan cleanup?         |
+| --------------------------------- | ---------------------------------- | ------------------------------------ | ----------------------- |
+| `attachments`                     | `record_type`                      | `contact`, `account`, `deal`, `lead` | Yes — required          |
+| `custom_field_values`             | _(via definition's `entity_type`)_ | `contact`, `account`, `deal`         | Yes — required          |
+| `notes`                           | `entity_type`                      | `contact`, `account`, `deal`, `lead` | Yes — required          |
+| `gdpr_deletion_log`               | `record_type`                      | any erasable entity type             | No — retained by design |
+| `audit_log`                       | `record_type`                      | see migration 076                    | No — retained by design |
+| `ai_gdpr_cascade_log`             | `record_type`                      | `contact`, `lead`                    | No — retained by design |
+| `email_message_links`             | `record_type`                      | `contact`, `lead`, `account`, `deal` | Yes — required          |
+| `activity_participants`           | `record_type`                      | `contact`, `lead`                    | Yes — required          |
+| `email_message_link_suppressions` | `record_type`                      | `contact`, `lead`, `account`, `deal` | Yes — required          |
+| `redacted_records`                | `record_type`                      | `activity`, `audit_log`              | No — retained by design |
 
 When hard-deleting a parent entity, clean up polymorphic dependents in the same transaction:
 
@@ -314,6 +315,8 @@ record_type, record_id)` means one message naming both contacts already has a wi
   reset script truncates them directly). GDPR erasure reaches a send's activity on a deal
   or account through them, then drops the erased record's rows with its links: the
   activities they led to are already redacted.
+- `email_message_link_suppressions`: deleted with the record by the same helpers, and on a
+  merge or lead conversion too, since only account and deal pairs consult them.
 
 `audit_log` and `gdpr_deletion_log` rows are retained intentionally for compliance traceability.
 

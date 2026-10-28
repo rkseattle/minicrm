@@ -534,7 +534,7 @@ export interface FiledEmail {
 }
 
 /** Ids of the activities filed from any of the given messages. */
-export async function activityIdsFiledFromMessages(
+async function activityIdsFiledFromMessages(
   queryable: Pick<PoolClient, 'query'>,
   messageIds: readonly string[],
 ): Promise<string[]> {
@@ -627,9 +627,46 @@ export async function scrubActivities(
     [activityIds, subject],
   );
   const ids = scrubbed.rows.map((row) => row.id);
-  await markActivitiesRedacted(client, activityIds, reason, cutoffIds ?? ids);
-  await clearSignalQuotesForActivities(client, ids);
+  await recordScrub(client, activityIds, ids, reason, cutoffIds);
   return ids;
+}
+
+/**
+ * Scrubs, as scrubActivities does, every activity filed from these messages of the current
+ * app user's own mailboxes, whoever owns it now. The cross-owner write goes through
+ * scrub_activities_filed_from_own_mail, which changes nothing but the subject and text.
+ *
+ * @param moveAllCutoffs - Move every filed activity's masking cutoff, not just those scrubbed.
+ * @returns The ids actually scrubbed.
+ */
+export async function scrubActivitiesFiledFromOwnMail(
+  client: PoolClient,
+  messageIds: readonly string[],
+  subject: string,
+  reason: ActivityRedactionReason,
+  moveAllCutoffs: boolean,
+): Promise<string[]> {
+  if (messageIds.length === 0) return [];
+  const result = await client.query<{ activity_id: string; scrubbed: boolean }>(
+    'SELECT activity_id, scrubbed FROM scrub_activities_filed_from_own_mail($1::uuid[], $2)',
+    [messageIds, subject],
+  );
+  const filedIds = result.rows.map((row) => row.activity_id);
+  const ids = result.rows.filter((row) => row.scrubbed).map((row) => row.activity_id);
+  await recordScrub(client, filedIds, ids, reason, moveAllCutoffs ? filedIds : undefined);
+  return ids;
+}
+
+/** What follows a scrub: the redaction record, and the champion/blocker quotes it carried. */
+async function recordScrub(
+  client: PoolClient,
+  activityIds: readonly string[],
+  scrubbedIds: readonly string[],
+  reason: ActivityRedactionReason,
+  cutoffIds: readonly string[] | undefined,
+): Promise<void> {
+  await markActivitiesRedacted(client, activityIds, reason, cutoffIds ?? scrubbedIds);
+  await clearSignalQuotesForActivities(client, scrubbedIds);
 }
 
 /**

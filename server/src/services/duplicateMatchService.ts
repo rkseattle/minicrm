@@ -12,7 +12,7 @@ import type {
   DuplicateMatchResult,
   DuplicateMatchSignal,
 } from '@minicrm/shared/schemas/duplicateMatchSchema.js';
-import { domainOfAddress } from './mail/address.js';
+import { normalizeAddress, domainOfAddress } from '../utils/emailAddress.js';
 
 /** Points contributed by each signal toward the 0-100 composite score. */
 const SIGNAL_WEIGHTS: Record<DuplicateMatchSignal, number> = {
@@ -99,8 +99,8 @@ export function scoreDuplicateMatch(
 ): DuplicateMatchResult {
   const matchedSignals: DuplicateMatchSignal[] = [];
 
-  const emailA = a.email.toLowerCase().trim();
-  const emailB = b.email.toLowerCase().trim();
+  const emailA = normalizeAddress(a.email);
+  const emailB = normalizeAddress(b.email);
 
   if (emailA !== '' && emailA === emailB) {
     matchedSignals.push('exact_email');

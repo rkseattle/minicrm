@@ -19,6 +19,7 @@ import { encrypt } from './cryptoService.js';
 import { setRlsUserId } from './rlsContextService.js';
 import { syncEntityTagsWithinTransaction } from './tagService.js';
 import type pg from 'pg';
+import { deleteLinksForDeletedEntities } from './emailMatchingService.js';
 
 /** Number of bcrypt salt rounds — matches userService.ts */
 const BCRYPT_SALT_ROUNDS = 12;
@@ -1675,6 +1676,32 @@ export async function getDemoStatus(): Promise<{ active: boolean }> {
   }
 }
 
+/** Each demo record type, with the table its demo rows live in. */
+const DEMO_LINKED_TABLES = {
+  lead: 'leads',
+  deal: 'deals',
+  contact: 'contacts',
+  account: 'accounts',
+} as const;
+
+/**
+ * Clears what points at the demo rows of one type before they are deleted: their mail links,
+ * link suppressions and activity associations, through the helper every hard delete uses.
+ */
+async function clearDemoLinks(
+  client: pg.PoolClient,
+  recordType: keyof typeof DEMO_LINKED_TABLES,
+): Promise<void> {
+  const demo = await client.query<{ id: string }>(
+    `SELECT id FROM ${DEMO_LINKED_TABLES[recordType]} WHERE is_demo = true`,
+  );
+  await deleteLinksForDeletedEntities(
+    client,
+    recordType,
+    demo.rows.map((row) => row.id),
+  );
+}
+
 /**
  * Removes all demo-flagged records from the database inside a single transaction.
  * Deletion order respects FK constraints.
@@ -1745,10 +1772,7 @@ export async function removeDemoData(client: pg.PoolClient): Promise<void> {
   ]);
 
   // lead_status_history cascades automatically when leads are deleted
-  await client.query(
-    `DELETE FROM email_message_links
-     WHERE record_type = 'lead' AND record_id IN (SELECT id FROM leads WHERE is_demo = true)`,
-  );
+  await clearDemoLinks(client, 'lead');
   await client.query(`DELETE FROM leads WHERE is_demo = true`);
 
   await client.query(
@@ -1787,10 +1811,7 @@ export async function removeDemoData(client: pg.PoolClient): Promise<void> {
      WHERE deal_id IN (SELECT id FROM deals WHERE is_demo = true)
         OR contact_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
   );
-  await client.query(
-    `DELETE FROM email_message_links
-     WHERE record_type = 'deal' AND record_id IN (SELECT id FROM deals WHERE is_demo = true)`,
-  );
+  await clearDemoLinks(client, 'deal');
   await client.query(`DELETE FROM deals WHERE is_demo = true`);
 
   // Delete the demo pipeline — pipeline_stages cascade automatically via ON DELETE CASCADE.
@@ -1799,15 +1820,9 @@ export async function removeDemoData(client: pg.PoolClient): Promise<void> {
     DEMO_PIPELINE_NAME,
   ]);
 
-  await client.query(
-    `DELETE FROM email_message_links
-     WHERE record_type = 'contact' AND record_id IN (SELECT id FROM contacts WHERE is_demo = true)`,
-  );
+  await clearDemoLinks(client, 'contact');
   await client.query(`DELETE FROM contacts WHERE is_demo = true`);
-  await client.query(
-    `DELETE FROM email_message_links
-     WHERE record_type = 'account' AND record_id IN (SELECT id FROM accounts WHERE is_demo = true)`,
-  );
+  await clearDemoLinks(client, 'account');
   await client.query(`DELETE FROM accounts WHERE is_demo = true`);
 
   // Remove the demo rep user — all their owned records are already deleted above via is_demo

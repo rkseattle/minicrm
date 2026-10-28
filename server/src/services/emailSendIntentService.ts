@@ -30,7 +30,13 @@ import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { insertActivity, markActivitiesRedacted } from './activityService.js';
-import { writeAuditEntry, type AuditActor } from './auditService.js';
+import {
+  markSendEntriesPrivate,
+  writeAuditEntry,
+  type AuditActor,
+  type EmailSendUnconfirmedAuditValue,
+  type EmailSentAuditValue,
+} from './auditService.js';
 import { clearDerivedLinkSuppression } from './emailMatchingService.js';
 import {
   findLinkedRecordOwner,
@@ -437,6 +443,7 @@ async function unconfirm(target: UnconfirmTarget): Promise<number> {
       cc_addresses: string[];
       record_type: string | null;
       record_id: string | null;
+      thread_private: boolean;
     }>(
       `WITH moved AS (
          SELECT id, status AS previous_status, to_addresses, cc_addresses
@@ -452,7 +459,8 @@ async function unconfirm(target: UnconfirmTarget): Promise<number> {
         WHERE i.id = moved.id AND ca.id = i.connected_account_id
        RETURNING i.id, i.user_id, i.actor_name, i.connected_account_id, ca.email_address,
                  moved.previous_status = 'sent' AS provider_confirmed,
-                 moved.to_addresses, moved.cc_addresses, i.record_type, i.record_id`,
+                 moved.to_addresses, moved.cc_addresses, i.record_type, i.record_id,
+                 i.thread_private`,
       [value],
     );
     for (const row of moved.rows) {
@@ -468,10 +476,13 @@ async function unconfirm(target: UnconfirmTarget): Promise<number> {
           to: row.to_addresses,
           cc: row.cc_addresses,
           sent_from_record: row.record_type ? `${row.record_type}:${row.record_id}` : null,
-        }),
+        } satisfies EmailSendUnconfirmedAuditValue),
         changedById: row.user_id,
         changedByName: row.actor_name,
       });
+      if (row.thread_private) {
+        await markSendEntriesPrivate(client, row.connected_account_id, { intentIds: [row.id] });
+      }
     }
     await client.query('COMMIT');
     return moved.rows.length;
@@ -635,10 +646,17 @@ export async function fileSentMessage(
       to: message.toAddresses,
       cc: message.ccAddresses,
       linked_records: links.rows.map((link) => `${link.record_type}:${link.record_id}`),
-    }),
+    } satisfies EmailSentAuditValue),
     changedById: actor.id,
     changedByName: actor.name,
   });
+  if (isPrivate) {
+    // Both entries: a sweep may have logged this send before its thread became private.
+    await markSendEntriesPrivate(client, intent.connectedAccountId, {
+      messageIds: [message.id],
+      intentIds: [intent.id],
+    });
+  }
 
   await client.query(
     `UPDATE email_send_intents

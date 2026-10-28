@@ -579,7 +579,21 @@ snippet.
 message's thread, within its owner's mailbox. The thread is the conversation: sync resolves
 it as each message arrives (the provider's thread id, or for IMAP the root of `References`),
 and the Emails list groups by the same key. This follows Pipedrive's model, where visibility
-is the owner's choice and an admin gets no bypass. Another user's copy of the same conversation, in
+is the owner's choice and an admin gets no bypass in any list, detail or search. The audit
+log hides who a private thread's sends concerned (`email_sent` and `email_send_unconfirmed`
+recipients and linked records read `[Private]`). The decision is recorded in
+`redacted_records` against each audit entry, so it outlives the message and send intent it
+names.
+
+Marking a thread private scrubs every activity filed from it, including ones since reassigned
+to a colleague. That cross-owner write goes through one `SECURITY DEFINER` function,
+`scrub_activities_filed_from_own_mail` (migration 198), which changes only the subject and
+text, and only of activities filed from messages in a mailbox of `app.current_user_id`. The app
+connects as a superuser today, so row policies do not apply; the function keeps the scrub
+narrow and correct under the NOBYPASSRLS role too, where a row policy could not, since
+policies cannot restrict which columns a write changes. The deliberate exception is
+the GDPR Art. 15 export, which includes private threads naming the subject, as it includes
+private notes; `docs/gdpr.md` records it. Another user's copy of the same conversation, in
 their own mailbox, is theirs and unaffected.
 
 Every user-facing read path — record list, unmatched inbox, detail, global search — chooses its messages

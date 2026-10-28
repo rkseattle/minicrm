@@ -14,6 +14,7 @@
  */
 
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { vi } from 'vitest';
@@ -800,7 +801,7 @@ describe('masking erased addresses in email_sent values', () => {
 
   it('masks them in a live notification', async () => {
     const masked = await maskAuditEvent({
-      id: 'n-1',
+      id: randomUUID(),
       record_type: 'connected_account',
       record_id: RECORD_ID,
       record_name: 'mailbox@example.com',
@@ -823,7 +824,7 @@ describe('masking erased addresses in email_sent values', () => {
     ['JSON null', 'null'],
   ])('shows %s as stored, since masking cannot read it', async (_label, value) => {
     const masked = await maskAuditEvent({
-      id: 'n-2',
+      id: randomUUID(),
       record_type: 'connected_account',
       record_id: RECORD_ID,
       record_name: null,
@@ -841,7 +842,7 @@ describe('masking erased addresses in email_sent values', () => {
 
   it("masks an unconfirmed send's recipients as it does a sent one's", async () => {
     const masked = await maskAuditEvent({
-      id: 'n-4',
+      id: randomUUID(),
       record_type: 'connected_account',
       record_id: RECORD_ID,
       record_name: null,
@@ -860,7 +861,7 @@ describe('masking erased addresses in email_sent values', () => {
   it('leaves a value alone whose recipient lists are not lists', async () => {
     const value = JSON.stringify({ to: ERASED, cc: null });
     const masked = await maskAuditEvent({
-      id: 'n-5',
+      id: randomUUID(),
       record_type: 'connected_account',
       record_id: RECORD_ID,
       record_name: null,
@@ -878,9 +879,10 @@ describe('masking erased addresses in email_sent values', () => {
 
   it('logs a value that is not JSON, so an unmasked one is never silent', async () => {
     const warn = vi.spyOn(logger, 'warn').mockImplementation(() => logger);
+    const auditId = randomUUID();
     try {
       await maskAuditEvent({
-        id: 'n-3',
+        id: auditId,
         record_type: 'connected_account',
         record_id: RECORD_ID,
         record_name: null,
@@ -893,10 +895,9 @@ describe('masking erased addresses in email_sent values', () => {
         source: null,
         created_at: new Date().toISOString(),
       });
-      expect(warn).toHaveBeenCalledWith(
-        { auditId: 'n-3' },
-        expect.stringContaining('left unmasked'),
-      );
+      // Once: both maskings read the same parse.
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith({ auditId }, expect.stringContaining('left unmasked'));
     } finally {
       warn.mockRestore();
     }

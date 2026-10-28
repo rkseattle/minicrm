@@ -11620,7 +11620,7 @@
     {
       "name": "public.redacted_records",
       "type": "BASE TABLE",
-      "comment": "Records whose subject and text were removed (GDPR erasure or a private thread). Audit reads mask an erased record's entries, and a scrubbed one's written before redacted_at; kept after the record is deleted.",
+      "comment": "Records whose content reads masked. An activity: subject and text removed (GDPR erasure or a private thread); audit reads mask an erased one's entries, and a scrubbed one's written before redacted_at. An audit_log entry: a private thread's send, whose recipients and linked records read [Private]. Kept after the record is deleted.",
       "columns": [
         {
           "name": "record_type",
@@ -11669,7 +11669,7 @@
         {
           "name": "redacted_records_record_type_check",
           "type": "CHECK",
-          "def": "CHECK ((record_type = 'activity'::text))",
+          "def": "CHECK ((record_type = ANY (ARRAY['activity'::text, 'audit_log'::text])))",
           "table": "public.redacted_records",
           "referenced_table": "",
           "columns": [
@@ -13650,6 +13650,12 @@
       "name": "public.email_message_addresses",
       "return_type": "_text",
       "arguments": "from_address text, to_addresses text[], cc_addresses text[], reply_to_addresses text[]",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.scrub_activities_filed_from_own_mail",
+      "return_type": "record",
+      "arguments": "message_ids uuid[], new_subject text",
       "type": "FUNCTION"
     }
   ],

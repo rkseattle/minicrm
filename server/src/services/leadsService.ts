@@ -24,6 +24,7 @@ import {
 } from './emailMatchingService.js';
 import { computeLeadRoutingSuggestion, persistRoutingDecision } from './leadRoutingService.js';
 import { getDealAutoLink } from './settingsService.js';
+import { normalizeAddress } from '../utils/emailAddress.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -158,7 +159,7 @@ export async function createLead(
       [
         first_name,
         last_name ?? null,
-        email.toLowerCase(),
+        normalizeAddress(email),
         phone ?? null,
         company_name ?? null,
         lead_source ?? null,
@@ -366,7 +367,7 @@ export async function updateLead(
   const { version, ...rest } = params;
   const normalized: Omit<UpdateLeadInput, 'version'> = {
     ...rest,
-    ...(rest.email !== undefined ? { email: rest.email.toLowerCase() } : {}),
+    ...(rest.email !== undefined ? { email: normalizeAddress(rest.email) } : {}),
   };
 
   const fields = (Object.keys(normalized) as string[]).filter((field) =>
@@ -572,7 +573,7 @@ export async function convertLead(
       [
         input.contact.first_name,
         input.contact.last_name,
-        input.contact.email.toLowerCase(),
+        normalizeAddress(input.contact.email),
         input.contact.phone ?? null,
         accountId,
         actor.id,

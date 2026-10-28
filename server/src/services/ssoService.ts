@@ -28,6 +28,7 @@ import type { AuditActor } from './auditService.js';
 import type { UserRow } from './userService.js';
 import type { SsoProtocol } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
+import { normalizeAddress } from '../utils/emailAddress.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -275,7 +276,7 @@ export async function validateSamlResponse(samlResponse: string): Promise<SsoIde
 
   return {
     subject: String(subject),
-    email: String(email).toLowerCase().trim(),
+    email: normalizeAddress(String(email)),
     name: String(name),
   };
   /* v8 ignore stop */
@@ -363,7 +364,7 @@ export async function validateOidcCallback(
       ? `${claims.given_name} ${claims.family_name}`
       : email);
 
-  return { subject, email: email.toLowerCase().trim(), name: String(name) };
+  return { subject, email: normalizeAddress(email), name: String(name) };
   /* v8 ignore stop */
 }
 

@@ -7,7 +7,7 @@
  * mailbox's own address is never a counterparty; a note-to-self has none and is kept.
  */
 
-import { domainOfAddress, normalizeAddress } from './address.js';
+import { domainOfAddress, normalizeAddress } from '../../utils/emailAddress.js';
 import type { NormalizedMessage } from './mailProvider.js';
 
 type AddressedMessage = Pick<
@@ -54,7 +54,7 @@ export interface PageExclusion {
 }
 
 /** Sent copies an open send intent is waiting to file, by either id. */
-export interface ClaimedCopies {
+interface ClaimedCopies {
   providerMessageIds: readonly string[];
   rfcMessageIds: readonly string[];
 }

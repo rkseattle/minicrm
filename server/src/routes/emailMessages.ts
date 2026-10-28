@@ -281,8 +281,11 @@ router.post('/:id/links', asyncHandler(createLinkHandler));
  *     description: >
  *       Sets is_private on every message in the thread the given message belongs to, within
  *       the caller's own mailbox. A private thread is readable only by its mailbox's owner,
- *       administrators included, and mail arriving later in it inherits the setting. Other
- *       users' copies of the same conversation, in their own mailboxes, are unaffected.
+ *       administrators included, in every list, detail and search, and mail arriving later in
+ *       it inherits the setting; the audit log hides who its sends concerned. The one
+ *       exception is a GDPR subject-access export, which by law includes every message about
+ *       the person, private ones too. Other users' copies of the same conversation, in their
+ *       own mailboxes, are unaffected.
  *     security:
  *       - cookieAuth: []
  *     parameters:

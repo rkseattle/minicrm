@@ -479,6 +479,23 @@ describe('cleanup on delete', () => {
   });
 });
 
+/** How many link suppressions name this record. */
+async function suppressionsNaming(recordId: string): Promise<number> {
+  const result = await pool.query<{ count: number }>(
+    'SELECT count(*)::int AS count FROM email_message_link_suppressions WHERE record_id = $1',
+    [recordId],
+  );
+  return result.rows[0]!.count; // Safe: count(*) always yields one row.
+}
+
+async function suppress(messageId: string, recordType: string, recordId: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO email_message_link_suppressions (email_message_id, record_type, record_id)
+     VALUES ($1, $2, $3)`,
+    [messageId, recordType, recordId],
+  );
+}
+
 describe('re-pointing on contact merge', () => {
   async function merge(winnerId: string, loserId: string): Promise<void> {
     const client = await pool.connect();
@@ -503,6 +520,17 @@ describe('re-pointing on contact merge', () => {
     await merge(winner, loser);
 
     expect(await linksFor(messageId)).toEqual([`contact:${winner}`]);
+  });
+
+  it("drops the loser's suppressions, which name a record gone", async () => {
+    const winner = await createContact('sup-winner');
+    const loser = await createContact('sup-loser');
+    const messageId = await insertMessage('1');
+    await suppress(messageId, 'contact', loser);
+
+    await merge(winner, loser);
+
+    expect(await suppressionsNaming(loser)).toBe(0);
   });
 
   it('collapses to one link when a message named both contacts', async () => {
@@ -571,6 +599,17 @@ describe('re-pointing on lead conversion', () => {
     await convert(leadId, contactId);
 
     expect(await linksFor(messageId)).toEqual([`contact:${contactId}`]);
+  });
+
+  it("drops the lead's suppressions on conversion", async () => {
+    const leadId = await createLead('sup-converting');
+    const contactId = await createContact('sup-converting-contact');
+    const messageId = await insertMessage('1');
+    await suppress(messageId, 'lead', leadId);
+
+    await convert(leadId, contactId);
+
+    expect(await suppressionsNaming(leadId)).toBe(0);
   });
 
   it('collapses to one link when the message already named the new contact', async () => {

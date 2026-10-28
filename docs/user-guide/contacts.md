@@ -247,7 +247,10 @@ timeline: emails you send in that conversation are logged as an Email activity w
 their subject nor their text, activities already logged from it lose theirs, and later mail in
 the conversation stays private too. A **Private** badge marks it in the list; **Make visible**
 undoes it for future sends. The conversation itself was already yours alone — colleagues on
-it have their own copies in their own mailboxes.
+it have their own copies in their own mailboxes. One exception: if someone in the
+conversation asks for a copy of the data held about them (a GDPR subject-access request), an
+administrator's export includes your messages that name them, private ones too, because the
+law covers all of it.
 
 ### AI Champion/Blocker badge
 
