@@ -143,6 +143,17 @@ describe('CsvImporter', () => {
       expect(previewBtn).toBeInTheDocument();
     });
 
+    it('names a required field by sr-only "required" text and hides the asterisk', async () => {
+      await uploadAndWaitForMapping();
+      expect(screen.getByRole('combobox', { name: /^First Name required$/ })).toBeInTheDocument();
+      // The mock marks first_name, last_name and email as required.
+      expect(screen.getAllByText('required')).toHaveLength(3);
+      for (const asterisk of screen.getAllByText('*')) {
+        expect(asterisk).toHaveAttribute('aria-hidden', 'true');
+        expect(asterisk).not.toHaveAttribute('aria-label');
+      }
+    });
+
     it('clicking Back resets to file select step', async () => {
       const user = await uploadAndWaitForMapping();
       await user.click(screen.getByTestId('contacts-back-button'));

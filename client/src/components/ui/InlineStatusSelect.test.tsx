@@ -4,7 +4,7 @@
  * canEdit=false read-only mode, and self-deactivation confirmation.
  */
 
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
@@ -84,6 +84,15 @@ describe('InlineStatusSelect', () => {
     const badge = screen.getByTestId(`status-invited-${INVITED_USER.id}`);
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveAttribute('title');
+  });
+
+  it('invited badge keeps its visible name and carries the tooltip as sr-only text', () => {
+    renderWithProviders(<InlineStatusSelect {...defaultProps({ user: INVITED_USER })} />);
+
+    const badge = screen.getByTestId(`status-invited-${INVITED_USER.id}`);
+    expect(badge).not.toHaveAttribute('aria-label');
+    expect(badge).toHaveTextContent('Invited');
+    expect(within(badge).getByText('Awaiting first login')).toHaveClass('sr-only');
   });
 
   it('canEdit=false renders a disabled select', () => {

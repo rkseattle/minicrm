@@ -89,6 +89,7 @@ function BrandingPreview({ form }: BrandingPreviewProps) {
       data-testid="branding-preview"
       className="border border-gray-200 rounded-lg overflow-hidden w-36 shrink-0"
       style={{ fontFamily }}
+      role="group"
       aria-label={t('settings.branding.previewLabel')}
     >
       {/* Mini nav header */}

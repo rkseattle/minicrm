@@ -60,6 +60,11 @@ describe('BrandingSettings — empty state', () => {
     expect(screen.getByTestId('branding-font-select')).toHaveValue('inter');
     expect(screen.getByTestId('branding-reset-section')).toBeInTheDocument();
   });
+
+  it('exposes the branding preview as a named group', async () => {
+    renderWithProviders(<BrandingSettings />);
+    expect(await screen.findByRole('group', { name: 'Preview' })).toBeInTheDocument();
+  });
 });
 
 describe('BrandingSettings — with existing branding', () => {

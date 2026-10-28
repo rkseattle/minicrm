@@ -10,6 +10,7 @@
  */
 
 import { lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import ProtectedRoute from '@/components/ProtectedRoute.js';
 import AdminRoute from '@/components/AdminRoute.js';
@@ -95,9 +96,14 @@ function ResolvedLayoutShell() {
  * nav layout provider.
  */
 function AppRoutes() {
+  const { t } = useTranslation();
   return (
     <Suspense
-      fallback={<div className="flex h-screen items-center justify-center" aria-label="Loading" />}
+      fallback={
+        <div role="status" className="flex h-screen items-center justify-center">
+          <span className="sr-only">{t('common.loading')}</span>
+        </div>
+      }
     >
       <Routes>
         {/* Public routes — no layout shell */}

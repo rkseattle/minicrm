@@ -284,8 +284,7 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
                 <label
                   key={mode}
                   htmlFor={`ai-deployment-mode-radio-${mode}`}
-                  aria-label={t(`aiSettings.deploymentMode.${mode}.label`)}
-                  className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors ${deploymentMode === mode ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+                  className={`grid grid-cols-[auto_1fr] items-start gap-x-3 rounded-md border p-3 cursor-pointer transition-colors ${deploymentMode === mode ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
                   data-testid={`ai-deployment-mode-${mode}`}
                 >
                   <input
@@ -295,17 +294,23 @@ export function AiGeneralSection({ data }: { data: AiConfigResponse }) {
                     value={mode}
                     checked={deploymentMode === mode}
                     onChange={() => setDeploymentMode(mode)}
-                    className="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                    className="row-span-2 mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                     data-testid={`ai-deployment-mode-radio-${mode}`}
+                    aria-labelledby={`ai-deployment-mode-title-${mode}`}
+                    aria-describedby={`ai-deployment-mode-description-${mode}`}
                   />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {t(`aiSettings.deploymentMode.${mode}.label`)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {t(`aiSettings.deploymentMode.${mode}.description`)}
-                    </p>
-                  </div>
+                  <span
+                    id={`ai-deployment-mode-title-${mode}`}
+                    className="text-sm font-medium text-gray-900"
+                  >
+                    {t(`aiSettings.deploymentMode.${mode}.label`)}
+                  </span>
+                  <span
+                    id={`ai-deployment-mode-description-${mode}`}
+                    className="text-xs text-gray-500 mt-0.5"
+                  >
+                    {t(`aiSettings.deploymentMode.${mode}.description`)}
+                  </span>
                 </label>
               ))}
             </div>

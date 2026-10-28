@@ -126,6 +126,7 @@ export function AiDataMinimizationSection() {
         <div
           className="flex flex-wrap gap-2"
           data-testid="ai-always-excluded-fields"
+          role="group"
           aria-label={t('aiSettings.dataMinimization.alwaysExcludedHeading')}
         >
           {data.always_excluded.map((fieldName) => (

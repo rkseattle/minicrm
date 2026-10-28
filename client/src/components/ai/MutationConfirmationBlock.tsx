@@ -156,7 +156,6 @@ export default function MutationConfirmationBlock({
         <span
           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${BADGE_CLASSES[operation] ?? BADGE_CLASSES['update']}`}
           data-testid="nli-operation-badge"
-          aria-label={t(OP_LABEL_KEY[operation] ?? OP_LABEL_KEY['update'])}
         >
           {t(OP_LABEL_KEY[operation] ?? OP_LABEL_KEY['update'])}
         </span>

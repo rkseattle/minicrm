@@ -25,7 +25,7 @@
  *    invalidateQueries to be defeated by.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -856,6 +856,50 @@ describe('AiPage — optimistic state is scoped per session', () => {
     await waitFor(() => {
       expect(screen.getByText('Message from session A')).toBeInTheDocument();
     });
+  });
+});
+
+describe('AiPage — accessible regions', () => {
+  it('exposes the message thread as a named log', async () => {
+    mockSingleSession();
+    server.use(
+      http.get('/api/v1/ai/retention-window', () =>
+        HttpResponse.json({ ai_session_retention_days: 90 }),
+      ),
+    );
+
+    renderWithProviders(<AiPage />);
+
+    expect(await screen.findByRole('log', { name: 'AI Assistant' })).toBeInTheDocument();
+  });
+
+  it('announces the pending reply inside the thread log while the send is in flight', async () => {
+    mockSingleSession();
+    server.use(
+      http.get('/api/v1/ai/retention-window', () =>
+        HttpResponse.json({ ai_session_retention_days: 90 }),
+      ),
+      // Held open so the thinking indicator stays mounted.
+      http.post(
+        `/api/v1/ai/sessions/${SESSION_ID}/messages`,
+        () =>
+          new Promise(() => {
+            /* never resolves within this test */
+          }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AiPage />);
+
+    const input = await screen.findByTestId('ai-message-input');
+    await user.type(input, 'Hello assistant');
+    await user.click(screen.getByTestId('ai-send-button'));
+
+    const thread = await screen.findByRole('log', { name: 'AI Assistant' });
+    expect(await within(thread).findByTestId('ai-thinking-indicator')).toHaveTextContent(
+      'Sending…',
+    );
   });
 });
 

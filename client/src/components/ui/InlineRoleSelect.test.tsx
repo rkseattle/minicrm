@@ -4,7 +4,7 @@
  * canEdit=false read-only mode, and custom role chips.
  */
 
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
@@ -68,6 +68,17 @@ describe('InlineRoleSelect', () => {
     const span = screen.getByTestId(`role-cell-${SERVICE_ACCOUNT.id}`);
     expect(span).toBeInTheDocument();
     expect(span).toHaveAttribute('title');
+  });
+
+  it('service account role keeps its visible name and carries the tooltip as sr-only text', () => {
+    renderWithProviders(<InlineRoleSelect {...defaultProps({ user: SERVICE_ACCOUNT })} />);
+
+    const span = screen.getByTestId(`role-cell-${SERVICE_ACCOUNT.id}`);
+    expect(span).not.toHaveAttribute('aria-label');
+    expect(span).toHaveTextContent('Service account');
+    expect(within(span).getByText('Service account role cannot be changed here')).toHaveClass(
+      'sr-only',
+    );
   });
 
   it('canEdit=false renders a disabled select (not editable)', () => {

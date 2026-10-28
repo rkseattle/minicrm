@@ -215,6 +215,7 @@ export default function SetupChecklistWidget() {
       <div
         className="fixed bottom-4 inset-e-4 z-50"
         data-testid="setup-checklist-pill"
+        role="group"
         aria-label={t('setupChecklist.pillLabel')}
       >
         <button

@@ -89,11 +89,11 @@ export function InlineStatusSelect({
     return (
       <span
         title={t('users.invitedBadgeTooltip')}
-        aria-label={t('users.invitedBadgeTooltip')}
         data-testid={`status-invited-${user.id}`}
         className="inline-flex items-center rounded-full bg-amber-50 border border-amber-300 px-2 py-0.5 text-xs text-amber-700 cursor-default"
       >
         {t('users.statusInvited')}
+        <span className="sr-only">{t('users.invitedBadgeTooltip')}</span>
       </span>
     );
   }
