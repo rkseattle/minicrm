@@ -28,6 +28,7 @@ import {
   syncNowResponseSchema,
   type SyncNowResponse,
 } from '@minicrm/shared/schemas/testEmailSyncSchema.js';
+import type { FeatureFlagKey } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import { ProfilePage } from '@pages/minicrm/ProfilePage.js';
 import { EmailsSectionPage } from '@pages/minicrm/EmailsSectionPage.js';
 import { EmailComposerPage } from '@pages/minicrm/EmailComposerPage.js';
@@ -40,6 +41,7 @@ import {
   mailEmulator,
 } from '@apps/minicrm/mail-fakes.js';
 import { loginAs, loginAsAdmin } from './auth.behaviors.js';
+import { updateFeatureFlag } from './feature-flags.behaviors.js';
 import { openProfilePage } from './connected-accounts.behaviors.js';
 
 /** Fixtures required by the browser-side email sync behaviors. */
@@ -61,6 +63,38 @@ const MAX_SYNC_ROUNDS = 10;
 
 /** GreenMail's IMAP login takes any password once auth is disabled; one fixed value is enough. */
 const GREENMAIL_PASSWORD = 'any-password-1';
+
+/** The flag every email sync route sits behind. */
+export const EMAIL_SYNC_FLAG = 'email_sync' satisfies FeatureFlagKey;
+
+// ---------------------------------------------------------------------------
+// Feature gate
+// ---------------------------------------------------------------------------
+
+/**
+ * Turns email sync on for one test, and registers turning it back off.
+ *
+ * Call it first, before anything else the test registers: teardown runs last-in first-out,
+ * so the flag goes off only after every mailbox has been deleted, through routes that sit
+ * behind the same flag. Turning it off in an afterEach instead runs before that teardown
+ * and refuses every mailbox delete with 403.
+ *
+ * Writes a global row, so a caller is @serial (resource-registry.ts).
+ *
+ * @param restClient - The fixture client; left signed in as admin.
+ * @param testData - Where the flag's restore is registered.
+ */
+export async function enableEmailSyncForTest(
+  restClient: RestClient,
+  testData: TestDataManager,
+): Promise<void> {
+  await loginAsAdmin(restClient);
+  testData.registerCustomTeardown('email-sync-flag-off', async () => {
+    await loginAsAdmin(restClient);
+    await updateFeatureFlag(restClient, EMAIL_SYNC_FLAG, { enabled: false });
+  });
+  await updateFeatureFlag(restClient, EMAIL_SYNC_FLAG, { enabled: true });
+}
 
 // ---------------------------------------------------------------------------
 // Mailboxes

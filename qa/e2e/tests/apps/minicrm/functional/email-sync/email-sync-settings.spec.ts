@@ -4,10 +4,9 @@
  * Covers the panel as assembled in a real browser: shown disabled while email sync is off
  * org-wide, and saving both settings through it once it is on, read back through the API.
  *
- * Mail itself is out of reach here: a mailbox cannot be created in an E2E run, because
- * assertHostnameIsSafe blocks GreenMail's private address, so sync-time exclusion and the
- * thread privacy toggle are covered by emailSyncService.test.ts, emailPrivacy.test.ts and
- * EmailsSection.test.tsx instead.
+ * Mail itself is not synced here: sync-time exclusion and the thread privacy toggle are
+ * covered end to end by excluded-domains.spec.ts and thread-privacy.spec.ts beside this
+ * file.
  *
  * The flag is set in the browser with withAdminFlagList(): the panel reads the org-level
  * value from the admin flag list, and the settings endpoints are not behind the flag.

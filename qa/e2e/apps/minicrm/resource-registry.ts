@@ -161,6 +161,50 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
   },
   {
+    // Syncs through the flag-gated test routes, so the real email_sync row is written.
+    file: 'qa/e2e/tests/apps/minicrm/functional/email-sync/connect-imap.spec.ts',
+    reads: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+    writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+  },
+  {
+    // Syncs through the flag-gated test routes, so the real email_sync row is written.
+    file: 'qa/e2e/tests/apps/minicrm/functional/email-sync/sync-timeline.spec.ts',
+    reads: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+    writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+  },
+  {
+    // Syncs through the flag-gated test routes, so the real email_sync row is written.
+    file: 'qa/e2e/tests/apps/minicrm/functional/email-sync/unmatched-links.spec.ts',
+    reads: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+    writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+  },
+  {
+    // Syncs through the flag-gated test routes, so the real email_sync row is written.
+    file: 'qa/e2e/tests/apps/minicrm/functional/email-sync/compose-reply.spec.ts',
+    reads: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+    writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+  },
+  {
+    // Syncs through the flag-gated test routes, so the real email_sync row is written.
+    file: 'qa/e2e/tests/apps/minicrm/functional/email-sync/thread-privacy.spec.ts',
+    reads: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+    writes: ['feature_flags.email_sync', 'settings.ensure_system_defaults'],
+  },
+  {
+    // Also writes the org excluded domains, which every mailbox's sync reads.
+    file: 'qa/e2e/tests/apps/minicrm/functional/email-sync/excluded-domains.spec.ts',
+    reads: [
+      'feature_flags.email_sync',
+      'settings.email_sync_excluded_domains',
+      'settings.ensure_system_defaults',
+    ],
+    writes: [
+      'feature_flags.email_sync',
+      'settings.email_sync_excluded_domains',
+      'settings.ensure_system_defaults',
+    ],
+  },
+  {
     // Writes both org email sync governance settings; the flag is set in the browser only.
     file: 'qa/e2e/tests/apps/minicrm/functional/email-sync/email-sync-settings.spec.ts',
     reads: [
