@@ -22,6 +22,7 @@
 
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import type {
+  EmailLinkMatchType,
   EmailLinkRecordType,
   EmailMessageDetail,
   EmailThread,
@@ -52,7 +53,7 @@ export interface EmailMessageLinkRow {
   email_message_id: string;
   record_type: EmailLinkRecordType;
   record_id: string;
-  match_type: 'auto' | 'manual';
+  match_type: EmailLinkMatchType;
   created_at: Date;
 }
 

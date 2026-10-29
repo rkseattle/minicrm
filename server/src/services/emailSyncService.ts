@@ -22,15 +22,19 @@ import type { PoolClient } from 'pg';
 import {
   isStatusDetail,
   SYNC_FAILED_DETAIL,
+  type ConnectedAccountStatusDetail,
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 
 import pool from '../db.js';
 import { ONE_DAY_MS } from '../utils/utcDate.js';
+import { thrownCode } from '../utils/errorCode.js';
+import { isEmailSyncSchedulerOff } from '../utils/nonProductionSeams.js';
 import logger from '../logger.js';
 import { captureException } from '../sentry.js';
 
 import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import {
+  claimAccountByIdForSync,
   claimAccountsDueForSync,
   getAccountAuthForSync,
   isSyncPaused,
@@ -74,6 +78,19 @@ import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSche
 
 /** The org-wide kill switch. Off means no mailbox syncs, whatever a user's own flag says. */
 const EMAIL_SYNC_FLAG = 'email_sync';
+
+/** Namespace for the run-now advisory lock, so it cannot collide with another feature's. */
+const SYNC_NOW_LOCK_NAMESPACE = 'email_sync_now';
+
+/** A run-now request found another run of the same mailbox already holding its lock. */
+export const SYNC_IN_PROGRESS = 'SYNC_IN_PROGRESS';
+
+/** A run-now request in a process whose scheduler may sync the same mailbox meanwhile. */
+export const SCHEDULER_RUNNING = 'SCHEDULER_RUNNING';
+
+/** What one run-now did: synced a page, or recorded the failure a tick would have. */
+export type SyncNowResult =
+  { status: 'synced'; outcome: SyncOutcome } | { status: 'failed'; errorCode: string };
 
 /** Mailboxes claimed per tick. Bounds how long one tick can run. */
 const MAX_ACCOUNTS_PER_TICK = 25;
@@ -533,6 +550,68 @@ export async function syncOneAccount(
 }
 
 /**
+ * Syncs one of a user's own mailboxes now, as one scheduler tick would.
+ *
+ * Refused unless EMAIL_SYNC_SCHEDULER=off: the claim ignores the due time, which is also
+ * the scheduler's only lease, so with the scheduler on a tick could sync the same mailbox
+ * from a stale cursor. With it off, run-now is the only sync, and a transaction-scoped
+ * advisory lock keeps two runs of one mailbox apart, keyed on the canonical UUID text so
+ * two spellings of an id contend for one lock.
+ *
+ * The same flag, governance, and failure recording as syncDueAccounts apply.
+ *
+ * @param provider - Injected so tests can drive a fake, as for syncOneAccount.
+ * @returns null when the account is not the user's, cannot sync, or the user's flag is off.
+ * @throws `SCHEDULER_RUNNING` unless the scheduler is off, and `SYNC_IN_PROGRESS` when
+ *   another run of this mailbox holds the lock.
+ */
+export async function syncAccountNow(
+  accountId: string,
+  userId: string,
+  provider?: MailProvider,
+): Promise<SyncNowResult | null> {
+  if (!isEmailSyncSchedulerOff()) {
+    throw Object.assign(new Error('emailSyncService: run-now needs EMAIL_SYNC_SCHEDULER=off'), {
+      code: SCHEDULER_RUNNING,
+    });
+  }
+  // Read before claiming, as a tick does: a malformed org setting is no mailbox's failure.
+  const governance = await readSyncGovernance();
+  const dealAutoLink = await getDealAutoLink();
+
+  const lockClient = await pool.connect();
+  try {
+    await lockClient.query('BEGIN');
+    const lock = await lockClient.query<{ locked: boolean }>(
+      'SELECT pg_try_advisory_xact_lock(hashtext($1), hashtext($2::uuid::text)) AS locked',
+      [SYNC_NOW_LOCK_NAMESPACE, accountId],
+    );
+    if (lock.rows[0]?.locked !== true) {
+      throw Object.assign(new Error('emailSyncService: this mailbox is already syncing'), {
+        code: SYNC_IN_PROGRESS,
+      });
+    }
+
+    const account = await claimAccountByIdForSync(accountId, userId);
+    if (!account) return null;
+    if (!(await isFlagEnabledForUser(EMAIL_SYNC_FLAG, account.userId, account.userRole))) {
+      return null;
+    }
+    try {
+      const outcome = await syncOneAccount(account, provider, undefined, dealAutoLink, governance);
+      return { status: 'synced', outcome };
+    } catch (err) {
+      logger.warn({ err, accountId }, 'emailSyncService: run-now sync failed');
+      captureException(err);
+      return { status: 'failed', errorCode: await recordSyncFailure(account, err) };
+    }
+  } finally {
+    // Destroyed, not returned: ending the session ends its transaction and the lock with it.
+    lockClient.release(true);
+  }
+}
+
+/**
  * Records a failed sync and schedules the retry.
  *
  * The status write is unaudited below the ceiling, following updateAccountStatus: it
@@ -540,10 +619,13 @@ export async function syncOneAccount(
  * is audited, following markAuthExpired — the mailbox stops syncing until someone acts,
  * and that is a lifecycle event a user must be able to account for.
  */
-async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Promise<void> {
+async function recordSyncFailure(
+  account: ClaimedSyncAccount,
+  err: unknown,
+): Promise<ConnectedAccountStatusDetail> {
   // Only a known reason: the client renders this column by translating it, so a pg error
   // code or a transport errno would reach a user as a raw token.
-  const code: unknown = err instanceof Error ? (err as { code?: unknown }).code : undefined;
+  const code = thrownCode(err);
   const detail = isStatusDetail(code) ? code : SYNC_FAILED_DETAIL;
 
   const client = await pool.connect();
@@ -568,7 +650,7 @@ async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Pro
     );
     if (current.rows.length === 0) {
       await client.query('ROLLBACK');
-      return;
+      return detail;
     }
 
     // A row already parked was retired by the credential path, which does this same
@@ -579,7 +661,7 @@ async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Pro
       current.rows[0].sync_failure_count >= MAX_SYNC_FAILURES;
     if (alreadyParked) {
       await client.query('ROLLBACK');
-      return;
+      return detail;
     }
 
     const failureCount = current.rows[0].sync_failure_count + 1;
@@ -626,6 +708,7 @@ async function recordSyncFailure(account: ClaimedSyncAccount, err: unknown): Pro
   } finally {
     client.release();
   }
+  return detail;
 }
 
 /**

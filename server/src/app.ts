@@ -49,6 +49,7 @@ import customFieldValueRoutes from './routes/customFieldValues.js';
 import noteRoutes from './routes/notes.js';
 import gdprRoutes from './routes/gdpr.js';
 import mfaRoutes from './routes/mfa.js';
+import testEmailSyncRoutes from './routes/testEmailSync.js';
 import ssoRoutes from './routes/sso.js';
 import pipelineRoutes from './routes/pipelines.js';
 import customReportRoutes from './routes/customReports.js';
@@ -302,6 +303,8 @@ if (isNonProductionEnv()) {
 // the narrower list: staging serves the API docs but is a real deployment, and
 // this runs a background job on demand with no authentication of its own.
 if (isAuthBypassEnv()) {
+  app.use(`${API_V1}/test`, testEmailSyncRoutes);
+
   /**
    * POST /api/v1/test/advance-sequences — dev/test only.
    * Calls advanceDueEnrollments() immediately so E2E tests can verify

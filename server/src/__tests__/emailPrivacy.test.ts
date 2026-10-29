@@ -13,6 +13,8 @@
 import 'dotenv/config';
 import request from 'supertest';
 
+import { threadPrivacyResponseSchema } from '@minicrm/shared/schemas/emailMessageSchema.js';
+
 import app from '../app.js';
 import pool from '../db.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
@@ -215,7 +217,10 @@ describe('PATCH /api/v1/email-messages/:id/thread-privacy', () => {
   it('lets the owner make the thread visible and private again', async () => {
     const visible = await patch(privateMessageA, repA, { is_private: false });
     expect(visible.status).toBe(200);
-    expect(visible.body).toEqual({ is_private: false, updated: 2 });
+    expect(threadPrivacyResponseSchema.parse(visible.body)).toEqual({
+      is_private: false,
+      updated: 2,
+    });
 
     const restored = await patch(privateMessageA, repA, { is_private: true });
     expect(restored.body).toEqual({ is_private: true, updated: 2 });

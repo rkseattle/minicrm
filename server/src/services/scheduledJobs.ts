@@ -21,7 +21,7 @@ import { ensureAuditLogPartitions } from './auditPartitionService.js';
 import { syncDueAccounts } from './emailSyncService.js';
 import { startRolloutScheduler, stopRolloutScheduler } from './featureFlagService.js';
 import { runCoverageRetentionPruning } from '../coverageAgent/coverageRetentionScheduler.js';
-import { nonProductionSeam } from '../utils/nonProductionSeams.js';
+import { isEmailSyncSchedulerOff } from '../utils/nonProductionSeams.js';
 
 /** A job driven by a cron expression, or one polling on a fixed interval. */
 export type ScheduledJobKind = 'cron' | 'interval';
@@ -245,7 +245,7 @@ export function startScheduledJobs(
   const started: ScheduledTask[] = [];
   const stoppers: Array<() => void> = [];
   // A run triggering each sync itself must not race a tick on one mailbox.
-  const emailSyncOff = nonProductionSeam('EMAIL_SYNC_SCHEDULER') === 'off';
+  const emailSyncOff = isEmailSyncSchedulerOff();
 
   for (const job of buildScheduledJobs(coverageRetentionDays, emailSyncIntervalMinutes)) {
     if (emailSyncOff && job.name === EMAIL_SYNC_JOB_NAME) {

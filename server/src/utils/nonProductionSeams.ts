@@ -26,6 +26,8 @@ const URL_SEAM_KEYS: ReadonlySet<NonProductionSeamKey> = new Set([
 /** The values EMAIL_SYNC_SCHEDULER accepts; `off` leaves the email sync job unscheduled. */
 export const EMAIL_SYNC_SCHEDULER_VALUES = ['on', 'off'] as const;
 
+const EMAIL_SYNC_SCHEDULER_OFF: (typeof EMAIL_SYNC_SCHEDULER_VALUES)[number] = 'off';
+
 function rawSeam(key: NonProductionSeamKey): string | undefined {
   const value = process.env[key]?.trim();
   return value ? value : undefined;
@@ -95,4 +97,9 @@ export function nonProductionSeamProblem(): string | null {
     );
   }
   return problems.length > 0 ? problems.join('; ') : null;
+}
+
+/** True when this process leaves email sync to a test's run-now rather than to the cron. */
+export function isEmailSyncSchedulerOff(): boolean {
+  return nonProductionSeam('EMAIL_SYNC_SCHEDULER') === EMAIL_SYNC_SCHEDULER_OFF;
 }
