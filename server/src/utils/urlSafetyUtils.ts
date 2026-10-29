@@ -1,39 +1,56 @@
 /**
  * Shared SSRF-prevention helpers for any server-side fetch of an admin/user-supplied
  * URL (webhook delivery, PDF branding logo fetch, etc.). Resolves the hostname and
- * checks every returned address against blocked ranges — callers must re-check
+ * admits it only if every returned address is public unicast — callers must re-check
  * immediately before each actual fetch, not just at input-validation time, to
  * mitigate DNS rebinding.
  */
 
 import dns from 'dns';
 import { isProductionEnv } from './nodeEnv.js';
+import { nonProductionSeam } from './nonProductionSeams.js';
 import ipaddr from 'ipaddr.js';
 
 /**
- * IPv4 CIDR ranges that must never be reachable via a server-initiated fetch of a
- * user-supplied URL. Covers: loopback, link-local/cloud metadata, RFC 1918 private ranges.
- * Using class-specific parseCIDR so match() receives the correct tuple type.
+ * The one range a server-initiated fetch of a user-supplied URL may reach: public unicast.
+ *
+ * Allowing a single range rather than blocking a list of others is what closes the
+ * special-purpose prefixes a blocklist forgets — IPv4 written as NAT64, 6to4 or teredo,
+ * carrier-grade NAT, multicast, reserved space. ipaddr.js classifies every one.
  */
-const BLOCKED_IPV4_CIDRS: Array<[ipaddr.IPv4, number]> = [
-  ipaddr.IPv4.parseCIDR('127.0.0.0/8'), // loopback
-  ipaddr.IPv4.parseCIDR('169.254.0.0/16'), // link-local / cloud metadata
-  ipaddr.IPv4.parseCIDR('10.0.0.0/8'), // RFC 1918
-  ipaddr.IPv4.parseCIDR('172.16.0.0/12'), // RFC 1918
-  ipaddr.IPv4.parseCIDR('192.168.0.0/16'), // RFC 1918
-];
+const PUBLIC_RANGE = 'unicast';
+
+/** What an allowlisted host may resolve into besides public space: this machine and RFC 1918. */
+const ALLOWLISTED_EXTRA_RANGES: ReadonlySet<string> = new Set(['loopback', 'private']);
 
 /**
- * IPv6 CIDR ranges that must never be reachable via a server-initiated fetch of a
- * user-supplied URL. Covers: loopback (::1/128), link-local (fe80::/10 — the IPv6
- * counterpart to blocked IPv4 169.254.0.0/16, reachable on the adjacent network
- * segment in dual-stack environments), and ULA (fc00::/7).
+ * True when SSRF_ALLOWED_PRIVATE_HOSTS names this host exactly, ignoring case.
+ *
+ * Exact names only: a suffix or pattern would let any subdomain an attacker can register
+ * under it through. The seam is honored only outside production.
  */
-const BLOCKED_IPV6_CIDRS: Array<[ipaddr.IPv6, number]> = [
-  ipaddr.IPv6.parseCIDR('::1/128'), // loopback
-  ipaddr.IPv6.parseCIDR('fe80::/10'), // link-local
-  ipaddr.IPv6.parseCIDR('fc00::/7'), // ULA
-];
+function isAllowlistedPrivateHost(hostname: string): boolean {
+  const list = nonProductionSeam('SSRF_ALLOWED_PRIVATE_HOSTS');
+  if (list === undefined) return false;
+  const name = hostname.toLowerCase();
+  return list.split(',').some((entry) => entry.trim().toLowerCase() === name);
+}
+
+/**
+ * True when the address may be dialed.
+ *
+ * `process` unwraps an IPv4 address written as IPv4-mapped or IPv4-compatible IPv6 first,
+ * so `::ffff:169.254.169.254` is judged as the metadata address it is.
+ */
+function isPermittedAddress(address: string, allowlisted: boolean): boolean {
+  let range: string;
+  try {
+    range = ipaddr.process(address).range();
+  } catch {
+    return false;
+  }
+  return range === PUBLIC_RANGE || (allowlisted && ALLOWLISTED_EXTRA_RANGES.has(range));
+}
 
 /** Reason a URL was rejected by {@link assertUrlIsFetchSafe}. */
 export type UrlSafetyRejectionReason =
@@ -91,7 +108,10 @@ export async function assertUrlIsFetchSafe(urlString: string): Promise<void> {
  * Call it immediately before connecting, never only at input-validation time: a hostname
  * that resolved publicly a moment ago can resolve to loopback on the next lookup.
  *
- * @param hostname - Host to resolve and check against the blocked ranges.
+ * A host named in SSRF_ALLOWED_PRIVATE_HOSTS, outside production, may also resolve to a
+ * loopback or RFC 1918 address, so an E2E stack can reach its own fake mail servers.
+ *
+ * @param hostname - Host to resolve and admit only if every address it resolves to is permitted.
  * @throws UrlNotSafeError when the name cannot resolve or any address is blocked.
  */
 export async function assertHostnameIsSafe(hostname: string): Promise<void> {
@@ -106,35 +126,13 @@ export async function assertHostnameIsSafe(hostname: string): Promise<void> {
     );
   }
 
-  for (const { address, family } of addresses) {
-    if (family === 4) {
-      const ip = ipaddr.IPv4.parse(address);
-      for (const cidr of BLOCKED_IPV4_CIDRS) {
-        if (ip.match(cidr)) {
-          throw new UrlNotSafeError(
-            'blocked_address',
-            `Hostname resolves to a blocked IP address: ${address}`,
-          );
-        }
-      }
-    } else if (family === 6) {
-      try {
-        const ip = ipaddr.IPv6.parse(address);
-        for (const cidr of BLOCKED_IPV6_CIDRS) {
-          if (ip.match(cidr)) {
-            throw new UrlNotSafeError(
-              'blocked_address',
-              `Hostname resolves to a blocked IP address: ${address}`,
-            );
-          }
-        }
-      } catch {
-        // ipaddr.js may not recognise some IPv6 representations; treat as blocked
-        throw new UrlNotSafeError(
-          'blocked_address',
-          `Hostname resolves to an unrecognised IPv6 address: ${address}`,
-        );
-      }
+  const allowlisted = isAllowlistedPrivateHost(hostname);
+  for (const { address } of addresses) {
+    if (!isPermittedAddress(address, allowlisted)) {
+      throw new UrlNotSafeError(
+        'blocked_address',
+        `Hostname resolves to a blocked IP address: ${address}`,
+      );
     }
   }
 }

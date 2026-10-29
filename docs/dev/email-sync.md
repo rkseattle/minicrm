@@ -838,6 +838,20 @@ The interval is resolved once at boot, and a value outside its range falls back 
 default rather than producing an invalid cron expression. For the send limit, anything but
 a positive integer falls back to the default.
 
+Four more variables exist only so an E2E stack can reach fake providers. They are honored
+under `NODE_ENV` `development` or `test`, and the server refuses to boot when any is set
+under another value:
+
+| Variable                     | Meaning                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `SSRF_ALLOWED_PRIVATE_HOSTS` | Comma-separated exact hostnames the SSRF guard lets resolve to private IPs.    |
+| `GMAIL_API_BASE_URL`         | Replaces `https://gmail.googleapis.com/gmail/v1/users/me`.                     |
+| `GRAPH_API_BASE_URL`         | Replaces `https://graph.microsoft.com/v1.0/me`; delta links pin to its origin. |
+| `EMAIL_SYNC_SCHEDULER`       | `off` leaves the sync job unscheduled; `on`, the default, schedules it.        |
+
+An allowlisted host may resolve only into public, loopback, or RFC 1918 space. Link-local,
+carrier-grade NAT, and IPv6 unique-local space, where cloud metadata services live, stay refused.
+
 ## Testing
 
 Most IMAP specs drive a hand-written fake `ImapFlow` injected as a client factory, because

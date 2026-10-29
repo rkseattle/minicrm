@@ -21,6 +21,7 @@ import { ensureAuditLogPartitions } from './auditPartitionService.js';
 import { syncDueAccounts } from './emailSyncService.js';
 import { startRolloutScheduler, stopRolloutScheduler } from './featureFlagService.js';
 import { runCoverageRetentionPruning } from '../coverageAgent/coverageRetentionScheduler.js';
+import { nonProductionSeam } from '../utils/nonProductionSeams.js';
 
 /** A job driven by a cron expression, or one polling on a fixed interval. */
 export type ScheduledJobKind = 'cron' | 'interval';
@@ -84,6 +85,9 @@ function skipWhileRunning(
 
 /** Default minutes between email sync ticks, when the env var is unset. */
 const DEFAULT_EMAIL_SYNC_INTERVAL_MINUTES = 15;
+
+/** The email sync job's name, which EMAIL_SYNC_SCHEDULER=off leaves unscheduled. */
+export const EMAIL_SYNC_JOB_NAME = 'Email sync';
 
 /**
  * Every scheduled job, in fire-time order.
@@ -192,7 +196,7 @@ export function buildScheduledJobs(
       run: skipWhileRunning('sequence advancement', advanceDueEnrollments),
     },
     {
-      name: 'Email sync',
+      name: EMAIL_SYNC_JOB_NAME,
       kind: 'cron',
       schedule: `*/${String(emailSyncIntervalMinutes)} * * * *`,
       displaySchedule: `Every ${String(emailSyncIntervalMinutes)} minutes`,
@@ -240,8 +244,14 @@ export function startScheduledJobs(
 ): () => void {
   const started: ScheduledTask[] = [];
   const stoppers: Array<() => void> = [];
+  // A run triggering each sync itself must not race a tick on one mailbox.
+  const emailSyncOff = nonProductionSeam('EMAIL_SYNC_SCHEDULER') === 'off';
 
   for (const job of buildScheduledJobs(coverageRetentionDays, emailSyncIntervalMinutes)) {
+    if (emailSyncOff && job.name === EMAIL_SYNC_JOB_NAME) {
+      logger.info(`Not scheduling ${job.name}: EMAIL_SYNC_SCHEDULER=off`);
+      continue;
+    }
     if (job.kind === 'interval') {
       job.start();
       stoppers.push(job.stop);

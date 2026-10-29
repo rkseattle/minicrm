@@ -44,8 +44,7 @@ import {
   type SendFailureCode,
 } from './sendOutcome.js';
 import { isTransportFailure, readBodyOrNull, startBound } from './transport.js';
-
-const GRAPH_API_BASE = 'https://graph.microsoft.com/v1.0/me';
+import { graphApiBase, isGraphOriginUrl } from './providerEndpoints.js';
 
 // Re-exported from the shared list rather than restated: this value reaches status_detail,
 // which the client renders by translating, so a copy that drifts degrades the mailbox to
@@ -120,21 +119,6 @@ function isSyncedFolder(value: string): value is SyncedFolder {
 }
 
 /**
- * Graph's own host, the only one a stored link may point at.
- *
- * A cursor is data read back from a column, and the driver replays it with a bearer token
- * attached. Pinning the host is what stops a tampered row from directing that token
- * somewhere else.
- */
-function isGraphUrl(value: string): boolean {
-  try {
-    return new URL(value).origin === 'https://graph.microsoft.com';
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Parses the stored cursor.
  *
  * A cursor that will not parse is treated as absent rather than thrown on: forgetting
@@ -159,7 +143,7 @@ export function parseCursor(cursor: string | null): CursorByFolder {
     if (typeof value !== 'object' || value === null) continue;
 
     const { link, opening } = value as { link?: unknown; opening?: unknown };
-    if (typeof link !== 'string' || !isGraphUrl(link)) continue;
+    if (typeof link !== 'string' || !isGraphOriginUrl(link)) continue;
 
     // An absent flag reads as an unfinished round, which is the safe direction: the worst
     // it costs is one window filter applied to an incremental page, where the opposite
@@ -360,7 +344,7 @@ async function graphExchange<T>(
  * Issues one bounded GET against an absolute URL and reads it with `read`.
  *
  * Absolute rather than a path fragment because a delta link is returned whole and replayed
- * whole; callers building a fresh URL join it to GRAPH_API_BASE themselves.
+ * whole; callers building a fresh URL join it to graphApiBase() themselves.
  */
 async function graphGet<T>(
   fetchImpl: FetchLike,
@@ -392,7 +376,7 @@ async function graphGet<T>(
  * Issues one bounded GET expecting JSON, against an absolute URL.
  *
  * Absolute rather than a path fragment because a delta link is returned whole and replayed
- * whole; callers building a fresh URL join it to GRAPH_API_BASE themselves.
+ * whole; callers building a fresh URL join it to graphApiBase() themselves.
  */
 async function graphRequest(
   fetchImpl: FetchLike,
@@ -558,7 +542,7 @@ async function sendDocument(
   onPrepared?: (providerMessageId: string) => Promise<void>,
 ): Promise<SentMessage> {
   const { draftId, conversationId } = await createDraft(fetchImpl, accessToken, mime);
-  const draftUrl = `${GRAPH_API_BASE}/messages/${encodeURIComponent(draftId)}`;
+  const draftUrl = `${graphApiBase()}/messages/${encodeURIComponent(draftId)}`;
 
   if (onPrepared) {
     try {
@@ -603,7 +587,7 @@ async function createDraft(
 ): Promise<{ draftId: string; conversationId: string | null }> {
   let created: GraphWriteResult;
   try {
-    created = await graphWrite(fetchImpl, accessToken, `${GRAPH_API_BASE}/messages`, {
+    created = await graphWrite(fetchImpl, accessToken, `${graphApiBase()}/messages`, {
       method: 'POST',
       // Microsoft documents base64 of the whole document, under text/plain.
       payload: { body: mime.toString('base64'), contentType: 'text/plain' },
@@ -691,7 +675,7 @@ export async function testGraphAccess(
     const { status, body } = await graphRequest(
       fetchImpl,
       accessToken,
-      `${GRAPH_API_BASE}/mailFolders/inbox`,
+      `${graphApiBase()}/mailFolders/inbox`,
     );
 
     // graphRequest hands a 404 back rather than throwing, because on the sync paths it
@@ -718,7 +702,7 @@ async function resolveFolderId(
   const { status, body } = await graphRequest(
     fetchImpl,
     accessToken,
-    `${GRAPH_API_BASE}/mailFolders/${folder}`,
+    `${graphApiBase()}/mailFolders/${folder}`,
   );
 
   // A folder the mailbox does not have. Only this answer is an absent folder.
@@ -819,7 +803,7 @@ async function readMessages(
     const source = await graphFetchSource(
       fetchImpl,
       accessToken,
-      `${GRAPH_API_BASE}/messages/${encodeURIComponent(ref.id)}/$value`,
+      `${graphApiBase()}/messages/${encodeURIComponent(ref.id)}/$value`,
     );
 
     // A message listed a moment ago can be gone by the time it is fetched. Skipping it
@@ -892,7 +876,7 @@ async function readFolder(
       return { refs: [], position: null, invalid: false, hasMore: false, present: false };
     }
     url =
-      `${GRAPH_API_BASE}/mailFolders/${encodeURIComponent(folderId)}/messages/delta` +
+      `${graphApiBase()}/mailFolders/${encodeURIComponent(folderId)}/messages/delta` +
       `?$select=${DELTA_SELECT}`;
   } else {
     url = stored.link;
@@ -926,7 +910,7 @@ async function readFolder(
   // a malformed response rather than a stale cursor. Raised as a folder failure so the
   // failure ceiling can retire the mailbox: treating it as an invalidation would re-read
   // from null on every tick while commitPage cleared the failure count, forever.
-  if (typeof resume !== 'string' || !isGraphUrl(resume)) {
+  if (typeof resume !== 'string' || !isGraphOriginUrl(resume)) {
     throw providerError(
       'graphProvider: delta page carried no usable continuation link',
       CONNECTION_FAILED,

@@ -44,8 +44,7 @@ import {
   type SendFailureCode,
 } from './sendOutcome.js';
 import { readBodyOrNull, startBound } from './transport.js';
-
-const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
+import { gmailApiBase } from './providerEndpoints.js';
 
 /** How this driver names its provider in messages. */
 const PROVIDER_NAME = 'Gmail';
@@ -271,7 +270,7 @@ async function gmailRequest(
   params: Record<string, string>,
 ): Promise<GmailRequestResult> {
   const query = new URLSearchParams(params).toString();
-  const url = `${GMAIL_API_BASE}${path}${query ? `?${query}` : ''}`;
+  const url = `${gmailApiBase()}${path}${query ? `?${query}` : ''}`;
   const bound = startBound(REQUEST_TIMEOUT_MS);
 
   try {
@@ -559,7 +558,7 @@ async function sendMessage(
   const bound = startBound(SEND_TIMEOUT_MS);
 
   try {
-    const response = await fetchImpl(`${GMAIL_API_BASE}/messages/send`, {
+    const response = await fetchImpl(`${gmailApiBase()}/messages/send`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
