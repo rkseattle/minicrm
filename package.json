@@ -66,14 +66,15 @@
   "//overrides.undici": "Holds the tree on 7.x, violating @ai-sdk/provider-utils' ^6.28.0 (npm ls marks it invalid): safe because it uses only Agent connect.lookup and fetch, both unchanged in 7.x. Held below 8 because promptfoo declares >=7.30.1 <8. jsdom needs ^8 and gets its own copy via the jsdom-scoped override. See docs/dev/dependencies.md.",
   "//overrides.@azure/identity": "Pins @azure/msal-node past the ^6.0.0 @azure/identity declares, because no 6.x fixes GHSA-xcx6-jx8p-x3h5; npm ls marks it invalid. Safe because 7.0.0's sole break removes responseMode from acquireTokenInteractive, which @azure/identity never passes (msal-node CHANGELOG.md). Dev only, via promptfoo. Retire once @azure/identity declares ^7. See docs/dev/dependencies.md.",
   "overrides": {
+    "re2js": "2.8.7",
     "undici": "7.30.1",
     "sharp": "0.35.5",
-    "@hono/node-server": "2.1.1",
+    "@hono/node-server": "2.1.5",
     "promptfoo": {
       "hono": "4.13.13"
     },
-    "fast-uri": "3.1.7",
-    "qs": "6.16.0",
+    "fast-uri": "3.1.9",
+    "qs": "6.16.1",
     "@xmldom/xmldom": "0.9.12",
     "decode-uri-component": "0.5.0",
     "basic-ftp": "6.2.3",
