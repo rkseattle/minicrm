@@ -86,7 +86,7 @@
 | [public.lead_routing_scoring_config](public.lead_routing_scoring_config.md) | 11 | Singleton admin-editable weights/thresholds for lead routing suggestion scoring (MINCRM-475). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151; rep_coaching_scoring_config, migration 153). | BASE TABLE |
 | [public.data_hygiene_scoring_config](public.data_hygiene_scoring_config.md) | 9 | Singleton admin-editable thresholds for the data hygiene scan (MINCRM-476). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151). | BASE TABLE |
 | [public.data_hygiene_findings](public.data_hygiene_findings.md) | 13 | Current data hygiene queue (MINCRM-476), one row per flagged record per issue type. Upserted nightly by dataHygieneService; mutated in place by update/merge/archive/dismiss actions rather than appended — reflects current state, not a history log. A finding is cleared (deleted) once the nightly scan no longer detects the issue, or the underlying record is deleted/archived. dismissed_until implements the 90-day (admin-configurable) dismiss suppression window. | BASE TABLE |
-| [public.connected_accounts](public.connected_accounts.md) | 17 | Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth tokens or IMAP credentials as JSON); it is never returned by any API. | BASE TABLE |
+| [public.connected_accounts](public.connected_accounts.md) | 18 | Per-user linked mailboxes. auth_encrypted is AES-256-GCM ciphertext (OAuth tokens or IMAP credentials as JSON); it is never returned by any API. | BASE TABLE |
 | [public.connected_account_oauth_states](public.connected_account_oauth_states.md) | 6 | Single-use OAuth authorization-code state. Binds a flow to the user who started it and holds that flow PKCE verifier until the callback consumes the row. | BASE TABLE |
 | [public.email_messages](public.email_messages.md) | 20 | Messages synced from a connected mailbox. Headers, metadata, and body text. All three body columns are nullable: a message may store its headers with no body. | BASE TABLE |
 | [public.email_sync_jobs](public.email_sync_jobs.md) | 9 | Progress of a bounded mailbox backfill. One row per backfill run; incremental syncs create none. | BASE TABLE |
@@ -1163,6 +1163,7 @@ erDiagram
   timestamp_with_time_zone sync_next_attempt_at "Earliest time this mailbox may be synced again. Null means due now while sync_failure_count is below the ceiling, and parked-until-a-user-acts once it reaches it; the two columns gate the claim together."
   text__ excluded_domains "Domains this mailbox's owner never wants synced, lowercased. A message is skipped at sync time when every counterparty address is on one of these or on the org list."
   timestamp_with_time_zone sync_paused_at "When the owner paused sync, or NULL when it runs. Kept apart from status, which reports connection health and is rewritten by every synced page."
+  boolean is_demo "True for the demo seed's mailbox, which demo removal deletes by this flag."
 }
 "public.connected_account_oauth_states" {
   text state ""

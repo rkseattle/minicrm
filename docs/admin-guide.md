@@ -286,6 +286,11 @@ npm run seed:demo
 This creates a set of demo records flagged with `is_demo = true`. They appear in all
 lists and the pipeline board exactly like real records.
 
+The demo sales rep also gets a few email threads on their contacts, plus one in their
+unmatched inbox. They come from a paused demo mailbox that never connects to a real mail
+server, so it shows as paused on the rep's profile. Like all synced mail, they are visible
+only while the **Email sync** feature flag is on.
+
 The seed also creates a demo sales rep you can sign in as:
 
 | Field    | Value                          |

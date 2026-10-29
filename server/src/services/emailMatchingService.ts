@@ -207,8 +207,9 @@ async function linkContactDeals(client: PoolClient, messageIds: readonly string[
  * @param messages - Messages created by this page's insert.
  * @param dealAutoLink - Whether to link open deals, from the system setting. Resolved once
  *   per tick by the caller rather than read here, which would query per page.
- * @param heldRecordIds - From `holdMatchedRecordsAgainstMerge`, taken before any intent
- *   lock; only these contacts and leads are linked.
+ * @param heldRecordIds - The only contacts and leads linked. Sync passes
+ *   `holdMatchedRecordsAgainstMerge`'s, taken before any intent lock; any caller must pass
+ *   records no concurrent merge can move, such as rows its own transaction created.
  */
 export async function matchMessagesToRecords(
   client: PoolClient,
