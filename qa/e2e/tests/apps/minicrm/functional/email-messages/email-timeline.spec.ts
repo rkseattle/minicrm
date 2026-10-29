@@ -4,13 +4,10 @@
  * Covers when the section renders and what a user with no mailbox is told, in a real
  * browser against the running stack.
  *
- * Scope is bounded the same way as email-messages.spec.ts: a synced message needs a
- * mailbox, and a mailbox cannot be created in an E2E run because assertHostnameIsSafe
- * blocks GreenMail's private address. So the thread list, the message reader, replying
- * and the global-search Emails group are unreachable here; EmailsSection.test.tsx and
- * GlobalSearch.test.tsx cover them against mocked responses. What E2E adds is the gating
- * as assembled: the real flag row, the real capability set, and the list endpoint
- * answering for a mailbox-less rep.
+ * This file covers the section with no mail. The thread list, replying and privacy are
+ * covered with real synced mail by the specs in functional/email-sync/. What E2E adds here
+ * is the gating as assembled: the real flag row, the real capability set, and the list
+ * endpoint answering for a mailbox-less rep.
  *
  * @serial because it flips the real email_sync feature_flags row. withFlags() intercepts
  * the browser's flag fetch only — the list endpoint re-reads the row per request, so the
@@ -32,6 +29,7 @@ import {
 } from '@apps/minicrm/helpers.js';
 import { loginAs, loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
+import { EMAIL_SYNC_FLAG } from '@behaviors/minicrm/email-sync.behaviors.js';
 import {
   isEmailComposeDisabled,
   isEmailsSectionAbsent,
@@ -41,8 +39,6 @@ import {
 } from '@behaviors/minicrm/email-messages.behaviors.js';
 import { waitForNotesSection } from '@behaviors/minicrm/notes.behaviors.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
-
-const EMAIL_SYNC_FLAG = 'email_sync';
 
 /** The no-mailbox reason's English text, matched loosely so copy edits do not break it. */
 const NO_MAILBOX_REASON = /connect a mailbox/i;

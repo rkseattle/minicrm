@@ -57,8 +57,7 @@ export function toEmailMessage(row: EmailMessageRow): EmailMessage {
   };
 }
 
-/** Subject of an Email activity filed from a private thread, which records the send only. */
-export const PRIVATE_EMAIL_SUBJECT = 'Private email';
+export { PRIVATE_EMAIL_SUBJECT } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 /**
  * Tables holding the linkable record types, keyed by the value the links table stores.

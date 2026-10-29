@@ -168,6 +168,9 @@ export const threadPrivacyResponseSchema = z.object({
 
 export type ThreadPrivacyResponse = z.infer<typeof threadPrivacyResponseSchema>;
 
+/** What a private thread's scrubbed activities and audit entries read as, in place of its subject. */
+export const PRIVATE_EMAIL_SUBJECT = 'Private email';
+
 /** Longest subject a send accepts, matching the org-SMTP compose path. */
 export const EMAIL_SEND_SUBJECT_MAX = 255;
 
