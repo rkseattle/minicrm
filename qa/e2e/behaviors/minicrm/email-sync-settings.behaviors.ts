@@ -13,7 +13,7 @@ import type { PageFacade } from '@framework/fixtures/index.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import {
   emailSyncBackfillDaysSchema,
-  emailSyncExcludedDomainsSchema,
+  emailSyncExcludedDomainsResponseSchema,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { EmailSyncSettingsPage } from '@pages/minicrm/EmailSyncSettingsPage.js';
 import { navigateToAdminSettingsIntegrations } from './settings.behaviors.js';
@@ -155,8 +155,31 @@ export async function readOrgEmailSyncSettings(
   restClient: RestClient,
 ): Promise<{ domains: string[]; days: number }> {
   const [domains, days] = await Promise.all([
-    restClient.get<{ domains: string[] }>(DOMAINS_PATH, { schema: emailSyncExcludedDomainsSchema }),
+    restClient.get<{ domains: string[] }>(DOMAINS_PATH, {
+      schema: emailSyncExcludedDomainsResponseSchema,
+    }),
     restClient.get<{ days: number }>(DAYS_PATH, { schema: emailSyncBackfillDaysSchema }),
   ]);
   return { domains: domains.body.domains, days: days.body.days };
+}
+
+/**
+ * Sets the org-wide excluded domains through the API, as an admin.
+ *
+ * Writes a shared setting: a spec calling this is @serial and restores defaults after.
+ *
+ * @param restClient - Authenticated as an admin.
+ * @param domains - Domains no mailbox in the org syncs.
+ * @returns The list as the server normalized and stored it.
+ */
+export async function setOrgExcludedDomainsViaApi(
+  restClient: RestClient,
+  domains: string[],
+): Promise<string[]> {
+  const res = await restClient.patch<{ domains: string[] }>(
+    DOMAINS_PATH,
+    { domains },
+    { schema: emailSyncExcludedDomainsResponseSchema },
+  );
+  return res.body.domains;
 }

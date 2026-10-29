@@ -1083,3 +1083,27 @@ export async function withAdminFlagList(
     }
   });
 }
+
+/**
+ * Arms a wait for the next API response with this method and path; await it after acting.
+ *
+ * Arm it before the click or navigation that sends the request, or a fast answer is missed.
+ *
+ * @param page - The page whose network to watch.
+ * @param method - HTTP method, upper case.
+ * @param path - The exact pathname, or a test on it.
+ * @param timeout - How long to wait for the response.
+ */
+export function awaitApiResponse(
+  page: Pick<Page, 'waitForResponse'>,
+  method: string,
+  path: string | ((pathname: string) => boolean),
+  timeout: number = FIRST_INTERACTION_TIMEOUT_MS,
+): ReturnType<Page['waitForResponse']> {
+  const matches = typeof path === 'string' ? (pathname: string) => pathname === path : path;
+  return page.waitForResponse(
+    (response) =>
+      response.request().method() === method && matches(new URL(response.url()).pathname),
+    { timeout },
+  );
+}
