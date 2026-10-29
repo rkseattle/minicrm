@@ -62,6 +62,7 @@
       "actionlint"
     ]
   },
+  "//overrides.decode-uri-component": "Crosses query-string's declared ^0.2.2 because only 0.5.1 fixes GHSA-qr28-fpjm-wq7f; npm ls marks it invalid. 0.5.x is ESM-only, so every query-string function that decodes throws under it. Safe only while its sole consumer, minio, calls nothing on query-string but stringify. Retire once minio depends on a query-string that declares ^0.5. See docs/dev/dependencies.md.",
   "//overrides.basic-ftp": "Crosses get-uri's declared ^5.3.1 because no 5.x fixes GHSA-c475-qrg2-pj4r; npm ls marks it invalid. Safe because get-uri imports only Client, and 6.0.0's sole break is refusing a separate FTP transfer host by default. Retire once get-uri declares ^6. See docs/dev/dependencies.md.",
   "//overrides.undici": "Holds the tree on 7.x, violating @ai-sdk/provider-utils' ^6.28.0 (npm ls marks it invalid): safe because it uses only Agent connect.lookup and fetch, both unchanged in 7.x. Held below 8 because promptfoo declares >=7.30.1 <8. jsdom needs ^8 and gets its own copy via the jsdom-scoped override. See docs/dev/dependencies.md.",
   "//overrides.@azure/identity": "Pins @azure/msal-node past the ^6.0.0 @azure/identity declares, because no 6.x fixes GHSA-xcx6-jx8p-x3h5; npm ls marks it invalid. Safe because 7.0.0's sole break removes responseMode from acquireTokenInteractive, which @azure/identity never passes (msal-node CHANGELOG.md). Dev only, via promptfoo. Retire once @azure/identity declares ^7. See docs/dev/dependencies.md.",
@@ -76,7 +77,7 @@
     "fast-uri": "3.1.9",
     "qs": "6.16.1",
     "@xmldom/xmldom": "0.9.12",
-    "decode-uri-component": "0.5.0",
+    "decode-uri-component": "0.5.1",
     "basic-ftp": "6.2.3",
     "body-parser@2": "2.4.0",
     "@azure/identity": {
