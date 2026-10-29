@@ -15,11 +15,18 @@ import { writeDealStageHistoryEntry } from './dealService.js';
 import { runDataHygieneScan } from './dataHygieneService.js';
 import { generateRepCoachingInsights } from './repCoachingService.js';
 import logger from '../logger.js';
-import { encrypt } from './cryptoService.js';
+import { encrypt, encryptVersioned } from './cryptoService.js';
 import { setRlsUserId } from './rlsContextService.js';
 import { syncEntityTagsWithinTransaction } from './tagService.js';
 import type pg from 'pg';
-import { deleteLinksForDeletedEntities } from './emailMatchingService.js';
+import {
+  deleteLinksForDeletedEntities,
+  matchMessagesToRecords,
+  type MatchableMessage,
+} from './emailMatchingService.js';
+import type { ImapAuthPayload } from './connectedAccountService.js';
+import { snippetOf } from './mail/messageBody.js';
+import { getDealAutoLink } from './settingsService.js';
 
 /** Number of bcrypt salt rounds — matches userService.ts */
 const BCRYPT_SALT_ROUNDS = 12;
@@ -742,7 +749,7 @@ const DEMO_AUTOMATION_RULES = [
 
 // ── Rep user fixtures ────────────────────────────────────────────
 
-const DEMO_REP = {
+export const DEMO_REP = {
   name: 'Alex Rivera',
   email: 'alex.rivera@demo.minicrm.app',
   password: 'Demo1234!',
@@ -783,6 +790,74 @@ const DEMO_SENIOR_REP_CAPABILITIES = [
   'reports:export',
   'data:export',
 ] as const;
+
+/**
+ * The demo rep's mailbox. Paused, so the scheduler never dials it, and on a host under
+ * `.invalid` (RFC 2606), which never resolves: its Test button reports a failed connection
+ * rather than reaching a real server, and resuming it leaves it in error.
+ */
+const DEMO_MAILBOX = {
+  provider: 'imap',
+  host: 'imap.demo.invalid',
+  port: 993,
+  password: 'demo-mailbox-not-real',
+};
+
+/**
+ * Synced threads in the demo mailbox. `contactIndex` names a DEMO_REP_CONTACTS entry the
+ * thread is filed on; null leaves it in the unmatched inbox, so both states are shown.
+ */
+const DEMO_EMAIL_THREADS: Array<{
+  contactIndex: number | null;
+  subject: string;
+  messages: Array<{ direction: 'inbound' | 'outbound'; body: string; daysAgo: number }>;
+}> = [
+  {
+    contactIndex: 0,
+    subject: 'Cloud migration timeline',
+    messages: [
+      {
+        direction: 'inbound',
+        body: 'Could we start the migration in the next quarter?',
+        daysAgo: 6,
+      },
+      { direction: 'outbound', body: 'Yes — I will send a proposed plan on Friday.', daysAgo: 5 },
+    ],
+  },
+  {
+    contactIndex: 1,
+    subject: 'Security review questions',
+    messages: [
+      {
+        direction: 'inbound',
+        body: 'Our security team has a few questions about SSO.',
+        daysAgo: 3,
+      },
+    ],
+  },
+  {
+    contactIndex: 3,
+    subject: 'Renewal pricing',
+    messages: [
+      { direction: 'outbound', body: 'Here is the renewal pricing we discussed.', daysAgo: 2 },
+      { direction: 'inbound', body: 'Thanks — reviewing with finance this week.', daysAgo: 1 },
+    ],
+  },
+  {
+    contactIndex: null,
+    subject: 'Conference speaker invitation',
+    messages: [
+      { direction: 'inbound', body: 'Would you speak at our partner summit in March?', daysAgo: 1 },
+    ],
+  },
+];
+
+/** Prefixes for the demo mailbox's thread and message ids, which no real provider issues. */
+const DEMO_THREAD_ID_PREFIX = 'demo-thread-';
+const DEMO_MESSAGE_ID_PREFIX = 'demo:';
+
+/** Sender of the unmatched demo thread: an address no demo record carries. */
+const DEMO_UNMATCHED_SENDER = 'events@summit-demo.example.com';
 
 // Rep accounts include international companies to demonstrate cross-locale data.
 const DEMO_REP_ACCOUNTS = [
@@ -1820,6 +1895,9 @@ export async function removeDemoData(client: pg.PoolClient): Promise<void> {
     DEMO_PIPELINE_NAME,
   ]);
 
+  // Its messages, links and sync jobs cascade from it.
+  await client.query(`DELETE FROM connected_accounts WHERE is_demo = true`);
+
   await clearDemoLinks(client, 'contact');
   await client.query(`DELETE FROM contacts WHERE is_demo = true`);
   await clearDemoLinks(client, 'account');
@@ -1893,6 +1971,81 @@ async function resolvePipelineStageId(
     throw new Error(`Demo seed: unknown stage '${stageName}' in pipeline ${pipelineId}`);
   }
   return stageId;
+}
+
+/**
+ * Seeds the demo rep's mailbox and its threads, filed by the same matcher sync uses.
+ *
+ * Call it after the rep's contacts, deals and deal contacts exist: matching derives account
+ * and deal links from the contact links, so anything inserted later is never linked.
+ *
+ * The credential is encrypted like a real one, so a Test or resume of the mailbox fails on
+ * its unresolvable host rather than on a credential that will not decrypt.
+ */
+async function insertDemoMail(
+  client: pg.PoolClient,
+  repId: string,
+  repContactIds: string[],
+): Promise<void> {
+  const auth: ImapAuthPayload = {
+    kind: 'imap',
+    host: DEMO_MAILBOX.host,
+    port: DEMO_MAILBOX.port,
+    username: DEMO_REP.email,
+    password: DEMO_MAILBOX.password,
+    secure: true,
+  };
+  const credential = encryptVersioned(JSON.stringify(auth));
+  const account = await client.query<{ id: string }>(
+    `INSERT INTO connected_accounts
+       (user_id, provider, email_address, auth_encrypted, key_version, status,
+        last_sync_at, sync_paused_at, is_demo)
+     VALUES ($1, $2, $3, $4, $5, 'active', now(), now(), true)
+     RETURNING id`,
+    [repId, DEMO_MAILBOX.provider, DEMO_REP.email, credential.ciphertext, credential.keyVersion],
+  );
+  const accountId = account.rows[0].id;
+
+  const created: MatchableMessage[] = [];
+  for (const [threadIndex, thread] of DEMO_EMAIL_THREADS.entries()) {
+    const counterparty = demoCounterparty(thread.contactIndex);
+    for (const [messageIndex, message] of thread.messages.entries()) {
+      const inbound = message.direction === 'inbound';
+      const fromAddress = inbound ? counterparty : DEMO_REP.email;
+      const toAddresses = [inbound ? DEMO_REP.email : counterparty];
+      const providerMessageId = `${DEMO_MESSAGE_ID_PREFIX}${String(threadIndex)}:${String(messageIndex)}`;
+      const inserted = await client.query<{ id: string }>(
+        `INSERT INTO email_messages
+           (connected_account_id, provider_message_id, thread_id, direction, from_address,
+            to_addresses, subject, message_snippet, message_body_text, sent_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now() - ($10 || ' days')::interval)
+         RETURNING id`,
+        [
+          accountId,
+          providerMessageId,
+          `${DEMO_THREAD_ID_PREFIX}${String(threadIndex)}`,
+          message.direction,
+          fromAddress,
+          toAddresses,
+          messageIndex === 0 ? thread.subject : `Re: ${thread.subject}`,
+          snippetOf(message.body),
+          message.body,
+          message.daysAgo,
+        ],
+      );
+      created.push({ id: inserted.rows[0].id, fromAddress, toAddresses, ccAddresses: [] });
+    }
+  }
+  // The rep's contacts are this transaction's own uncommitted rows, so no merge can race them.
+  await matchMessagesToRecords(client, created, await getDealAutoLink(), repContactIds);
+}
+
+/** The address a demo thread is with: its contact's, or the unmatched sender's. */
+function demoCounterparty(contactIndex: number | null): string {
+  if (contactIndex === null) return DEMO_UNMATCHED_SENDER;
+  const contact = DEMO_REP_CONTACTS[contactIndex];
+  if (!contact) throw new Error(`Demo seed: no demo rep contact at index ${String(contactIndex)}`);
+  return contact.email;
 }
 
 /**
@@ -2256,6 +2409,9 @@ async function insertDemoData(
       [repDealIds[i], repContactIds[primaryContactIndex]],
     );
   }
+
+  // 13b. The rep's demo mailbox and its synced threads.
+  await insertDemoMail(client, repId, repContactIds);
 
   // 14. Rep-owned activities
   for (const activity of DEMO_REP_ACTIVITIES) {

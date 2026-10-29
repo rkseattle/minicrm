@@ -10329,6 +10329,13 @@
           "type": "timestamp with time zone",
           "nullable": true,
           "comment": "When the owner paused sync, or NULL when it runs. Kept apart from status, which reports connection health and is rewritten by every synced page."
+        },
+        {
+          "name": "is_demo",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "True for the demo seed's mailbox, which demo removal deletes by this flag."
         }
       ],
       "indexes": [

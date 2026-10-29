@@ -144,6 +144,7 @@ erDiagram
   timestamp_with_time_zone sync_next_attempt_at "Earliest time this mailbox may be synced again. Null means due now while sync_failure_count is below the ceiling, and parked-until-a-user-acts once it reaches it; the two columns gate the claim together."
   text__ excluded_domains "Domains this mailbox's owner never wants synced, lowercased. A message is skipped at sync time when every counterparty address is on one of these or on the org list."
   timestamp_with_time_zone sync_paused_at "When the owner paused sync, or NULL when it runs. Kept apart from status, which reports connection health and is rewritten by every synced page."
+  boolean is_demo "True for the demo seed's mailbox, which demo removal deletes by this flag."
 }
 ```
 
