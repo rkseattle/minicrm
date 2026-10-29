@@ -9,6 +9,12 @@ import 'dotenv/config';
 
 import request from 'supertest';
 
+import {
+  emailMessageEnvelopeSchema,
+  emailMessageLinkEnvelopeSchema,
+  emailThreadPageSchema,
+} from '@minicrm/shared/schemas/emailMessageSchema.js';
+
 import app from '../app.js';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
@@ -249,6 +255,7 @@ describe('GET /api/v1/email-messages', () => {
         .set('Cookie', adminCookie);
 
       expect(res.status).toBe(200);
+      expect(emailThreadPageSchema.safeParse(res.body).success).toBe(true);
     });
   });
 
@@ -346,7 +353,8 @@ describe('GET /api/v1/email-messages/unmatched', () => {
       .get('/api/v1/email-messages/unmatched')
       .set('Cookie', repBCookie);
 
-    expect(forA.body.total).toBe(1);
+    // Parsed rather than spot-checked: E2E behaviors validate this response with the schema.
+    expect(emailThreadPageSchema.parse(forA.body).total).toBe(1);
     expect(forA.body.data[0].thread_id).toBe('thread-loose-a');
     expect(forB.body.total).toBe(1);
     expect(forB.body.data[0].thread_id).toBe('thread-loose-b');
@@ -374,7 +382,7 @@ describe('GET /api/v1/email-messages/:id', () => {
       .set('Cookie', repACookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.message).toMatchObject({
+    expect(emailMessageEnvelopeSchema.parse(res.body).message).toMatchObject({
       id: messageId,
       body_text: 'Plain',
       body_html: '<p>Html</p>',
@@ -429,7 +437,7 @@ describe('POST /api/v1/email-messages/:id/links', () => {
       .send({ record_type: 'contact', record_id: contactAId });
 
     expect(res.status).toBe(201);
-    expect(res.body.link.match_type).toBe('manual');
+    expect(emailMessageLinkEnvelopeSchema.parse(res.body).link.match_type).toBe('manual');
 
     const audit = await pool.query<{ event_type: string; new_value: string; record_type: string }>(
       `SELECT event_type, new_value, record_type FROM audit_log

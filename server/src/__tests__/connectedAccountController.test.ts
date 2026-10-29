@@ -12,6 +12,11 @@
 import 'dotenv/config';
 import request from 'supertest';
 
+import {
+  connectedAccountEnvelopeSchema,
+  connectedAccountListResponseSchema,
+} from '@minicrm/shared/schemas/connectedAccountSchema.js';
+
 import app from '../app.js';
 import pool from '../db.js';
 import { createImapAccount, upsertOAuthAccount } from '../services/connectedAccountService.js';
@@ -268,7 +273,7 @@ describe('GET /api/v1/connected-accounts', () => {
     const res = await request(app).get('/api/v1/connected-accounts').set('Cookie', repACookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.accounts).toHaveLength(1);
+    expect(connectedAccountListResponseSchema.parse(res.body).accounts).toHaveLength(1);
     expect(res.body.accounts[0]).not.toHaveProperty('auth_encrypted');
     expect(res.body.accounts[0]).not.toHaveProperty('key_version');
     expect(JSON.stringify(res.body)).not.toContain(VALID_BODY.password);
@@ -724,7 +729,11 @@ describe('PATCH /api/v1/connected-accounts/:id', () => {
       .send({ sync_paused: true });
 
     expect(res.status).toBe(200);
-    expect(res.body.account).toMatchObject({ id, sync_paused: true, excluded_domains: [] });
+    expect(connectedAccountEnvelopeSchema.parse(res.body).account).toMatchObject({
+      id,
+      sync_paused: true,
+      excluded_domains: [],
+    });
   });
 
   it('normalizes the excluded domains it stores', async () => {

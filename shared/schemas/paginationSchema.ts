@@ -40,3 +40,21 @@ export interface PaginatedResponse<T> {
   /** Max records per page as requested */
   limit: number;
 }
+
+/**
+ * Zod form of {@link PaginatedResponse}, for a caller that must validate a list response
+ * rather than trust its type. The return type is the interface itself, so the two cannot
+ * drift without a compile error.
+ *
+ * @param item - Schema for one record in `data`.
+ */
+export function paginatedResponseSchema<T extends z.ZodTypeAny>(
+  item: T,
+): z.ZodType<PaginatedResponse<z.infer<T>>> {
+  return z.object({
+    data: z.array(item),
+    total: z.number().int().min(0),
+    page: z.number().int().min(1),
+    limit: z.number().int().min(1),
+  });
+}
