@@ -11,25 +11,22 @@ import { RestClientError, type RestClient } from '@framework/clients/rest-client
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { EmailsSectionPage } from '@pages/minicrm/EmailsSectionPage.js';
 import { FIRST_INTERACTION_TIMEOUT_MS, gotoAndSettle } from '@apps/minicrm/helpers.js';
+import {
+  emailThreadPageSchema,
+  type EmailLinkRecordType,
+  type EmailThread,
+} from '@minicrm/shared/schemas/emailMessageSchema.js';
+import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 
 // ---------------------------------------------------------------------------
 // API data types
 // ---------------------------------------------------------------------------
 
 /** One thread as the read endpoints return it. */
-export interface TestEmailThread {
-  thread_id: string;
-  connected_account_id: string;
-  messages: Array<{ id: string; subject: string | null; snippet: string | null }>;
-}
+export type TestEmailThread = EmailThread;
 
 /** A page of threads. */
-export interface TestEmailThreadPage {
-  data: TestEmailThread[];
-  total: number;
-  page: number;
-  limit: number;
-}
+export type TestEmailThreadPage = PaginatedResponse<EmailThread>;
 
 // ---------------------------------------------------------------------------
 // Behaviors
@@ -42,7 +39,9 @@ export interface TestEmailThreadPage {
  * @returns One page of unmatched threads.
  */
 export async function listUnmatchedMail(restClient: RestClient): Promise<TestEmailThreadPage> {
-  const res = await restClient.get<TestEmailThreadPage>('/api/v1/email-messages/unmatched');
+  const res = await restClient.get<TestEmailThreadPage>('/api/v1/email-messages/unmatched', {
+    schema: emailThreadPageSchema,
+  });
   return res.body;
 }
 
@@ -58,7 +57,9 @@ export async function listUnmatchedMail(restClient: RestClient): Promise<TestEma
  */
 export async function statusOfUnmatchedMailRequest(restClient: RestClient): Promise<number> {
   try {
-    const res = await restClient.get<TestEmailThreadPage>('/api/v1/email-messages/unmatched');
+    const res = await restClient.get<TestEmailThreadPage>('/api/v1/email-messages/unmatched', {
+      schema: emailThreadPageSchema,
+    });
     return res.status;
   } catch (err) {
     if (err instanceof RestClientError) {
@@ -78,11 +79,12 @@ export async function statusOfUnmatchedMailRequest(restClient: RestClient): Prom
  */
 export async function listMailForRecord(
   restClient: RestClient,
-  recordType: 'contact' | 'lead' | 'account' | 'deal',
+  recordType: EmailLinkRecordType,
   recordId: string,
 ): Promise<TestEmailThreadPage> {
   const res = await restClient.get<TestEmailThreadPage>(
     `/api/v1/email-messages?record_type=${recordType}&record_id=${recordId}`,
+    { schema: emailThreadPageSchema },
   );
   return res.body;
 }
@@ -96,8 +98,8 @@ export interface EmailsSectionBehaviorContext {
   page: PageFacade;
 }
 
-/** A record type the Emails section is embedded in. */
-export type EmailRecordType = 'contact' | 'lead' | 'account' | 'deal';
+/** A record type the Emails section is embedded in: any record mail can be filed on. */
+export type EmailRecordType = EmailLinkRecordType;
 
 /** What the detail page's own email requests answered. */
 export interface RecordEmailRequestStatuses {

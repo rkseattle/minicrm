@@ -191,6 +191,14 @@ export const emailSyncExcludedDomainsSchema = z.object({
   domains: excludedDomainListSchema,
 });
 
+/**
+ * Response of GET and PATCH /api/v1/settings/email-sync-excluded-domains. Validates only,
+ * never normalizes, so a caller reads exactly what the server stored.
+ */
+export const emailSyncExcludedDomainsResponseSchema = z.object({
+  domains: z.array(z.string()),
+});
+
 export const setNavLayoutSchema = z.object({
   layout: navLayoutEnum,
 });

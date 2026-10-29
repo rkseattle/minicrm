@@ -575,6 +575,93 @@ export class ProfilePage {
     return resolved.getAttribute('href');
   }
 
+  /** Opens the manual IMAP form inside the connected mailboxes panel. */
+  async showImapForm(): Promise<void> {
+    const resolved = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'connected-accounts-show-imap-form' },
+          { type: 'role', value: 'button', options: { name: /imap/i } },
+        ],
+        { intent: 'button revealing the manual IMAP connection form' },
+      )
+      .resolve();
+    await resolved.click();
+  }
+
+  /** Fills one field of the IMAP form, by the suffix of its test id. */
+  async fillImapField(
+    field: 'email' | 'host' | 'port' | 'username' | 'password',
+    value: string,
+  ): Promise<void> {
+    const resolved = await this.page
+      .locate(
+        [
+          { type: 'testId', value: `connected-accounts-imap-${field}` },
+          { type: 'css', value: `[data-testid="connected-accounts-imap-form"] #imap-${field}` },
+        ],
+        { intent: `IMAP connection form ${field} field` },
+      )
+      .resolve();
+    await resolved.fill(value);
+  }
+
+  /** Sets the IMAP form's TLS checkbox. */
+  async setImapSecure(secure: boolean): Promise<void> {
+    const resolved = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'connected-accounts-imap-secure' },
+          {
+            type: 'css',
+            value: '[data-testid="connected-accounts-imap-form"] input[type="checkbox"]',
+          },
+        ],
+        { intent: 'IMAP connection form TLS checkbox' },
+      )
+      .resolve();
+    await resolved.setChecked(secure);
+  }
+
+  /** Submits the IMAP form. */
+  async submitImapForm(): Promise<void> {
+    const resolved = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'connected-accounts-imap-submit' },
+          {
+            type: 'css',
+            value: '[data-testid="connected-accounts-imap-form"] button[type="submit"]',
+          },
+        ],
+        { intent: 'button submitting the IMAP connection form' },
+      )
+      .resolve();
+    await resolved.click();
+  }
+
+  /**
+   * Reads one connected mailbox's status label once its row has rendered.
+   *
+   * @param accountId - The connected account's id, which its row's test ids carry.
+   */
+  async connectedAccountStatusText(accountId: string, timeout?: number): Promise<string> {
+    const resolved = await this.page
+      .locate(
+        [
+          { type: 'testId', value: `connected-account-status-${accountId}` },
+          {
+            type: 'css',
+            value: `[data-testid="connected-account-row-${accountId}"] [data-testid^="connected-account-status-"]:not([data-testid*="-detail-"])`,
+          },
+        ],
+        { intent: 'status label of one connected mailbox' },
+      )
+      .resolve(timeout);
+    await resolved.waitFor({ state: 'visible', timeout });
+    return (await resolved.textContent())?.trim() ?? '';
+  }
+
   // ── Navigation layout preference ────────────────────────────────────────────
 
   /** Returns the layout currently selected, or '' for the workspace default. */
