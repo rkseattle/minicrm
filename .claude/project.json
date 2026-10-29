@@ -29,5 +29,6 @@
   "registry_file": ".claude/registries.md",
   "plan_rules_file": ".claude/plan-rules.md",
 
-  "extra_gates": [".claude/gates/e2e-run.md", ".claude/gates/new-endpoint.md"]
+  "extra_gates": [".claude/gates/e2e-run.md", ".claude/gates/new-endpoint.md"],
+  "exceptions_log": ".claude/exceptions.md"
 }
