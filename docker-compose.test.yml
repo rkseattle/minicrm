@@ -169,6 +169,11 @@ services:
       E2E: 'true'
       EMAIL_SYNC_INTERVAL_MINUTES: ${EMAIL_SYNC_INTERVAL_MINUTES:-15}
       EMAIL_SEND_MAX_PER_HOUR: ${EMAIL_SEND_MAX_PER_HOUR:-100}
+      # Fake mail providers for the email sync specs; see docs/dev/email-sync.md.
+      SSRF_ALLOWED_PRIVATE_HOSTS: ${SSRF_ALLOWED_PRIVATE_HOSTS:-greenmail}
+      GMAIL_API_BASE_URL: ${GMAIL_API_BASE_URL:-http://mail-emulator:4010/gmail/v1/users/me}
+      GRAPH_API_BASE_URL: ${GRAPH_API_BASE_URL:-http://mail-emulator:4010/v1.0/me}
+      EMAIL_SYNC_SCHEDULER: ${EMAIL_SYNC_SCHEDULER:-off}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
@@ -191,6 +196,10 @@ services:
       - '3002:3001'
     depends_on:
       db:
+        condition: service_healthy
+      greenmail:
+        condition: service_started
+      mail-emulator:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3001/api/health']
@@ -259,6 +268,8 @@ services:
   # publishes, so it is deliberately left unpublished — the tests use IMAP, not the API.
   # In greenmail.users, `rep:secret-pass-12@example.com` is login `rep`, password
   # `secret-pass-12`, domain `example.com`. The IMAP login is `rep`, NOT the address.
+  # auth.disabled lets any password log in, and delivery to an unknown address creates
+  # that mailbox, so each E2E spec owns a fresh one.
   greenmail:
     container_name: minicrm-test-greenmail
     logging: *default-logging
@@ -273,9 +284,36 @@ services:
         -Dgreenmail.setup.test.imap
         -Dgreenmail.hostname=0.0.0.0
         -Dgreenmail.users=rep:secret-pass-12@example.com
+        -Dgreenmail.auth.disabled
     ports:
       - '3143:3143'
       - '3025:3025'
+  # Stand-in for the Gmail and Graph mail APIs, so OAuth mailboxes sync and send with no
+  # provider. Node strips the TypeScript itself, so the source is mounted, not built. Built
+  # as the server is, a cache hit, so its Node version is the one .nvmrc guards there.
+  mail-emulator:
+    container_name: minicrm-test-mail-emulator
+    logging: *default-logging
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: 'no'
+    working_dir: /emulator
+    command:
+      - node
+      - --disable-warning=MODULE_TYPELESS_PACKAGE_JSON
+      - start-mail-provider-emulator.mjs
+    volumes:
+      - ./qa/e2e/framework/fakes:/emulator:ro
+    environment:
+      MAIL_EMULATOR_PORT: 4010
+    ports:
+      - '4010:4010'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:4010/health']
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   db_data:

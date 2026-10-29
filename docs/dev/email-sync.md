@@ -875,10 +875,10 @@ source that made a fallback branch unreachable. Audit it field by field against
 `FetchMessageObject` and `ListResponse` before trusting a new assertion built on it.
 
 `imapProviderLive.test.ts` closes part of that gap by running the provider against
-GreenMail, a real IMAP server in the test stack (IMAP 3143, SMTP 3025). It is a server
-test rather than an E2E spec: nothing triggers a sync over HTTP, there is no read API for
-stored messages, and CI never invokes Compose. It stubs `assertHostSafe`, which the SSRF
-guard's own seam sanctions, because GreenMail sits on a private address.
+GreenMail, a real IMAP server in the test stack (IMAP 3143, SMTP 3025). It stays a server
+test beside the E2E specs because it asserts on what the provider returns, which no HTTP
+response exposes. It stubs `assertHostSafe`, which the SSRF guard's own seam sanctions,
+because GreenMail sits on a private address.
 
 **Now observed rather than reasoned:** that bodies and subjects survive a real `source`
 fetch, that a real attachment sets `has_attachments`, that the cursor advances so a re-sync
@@ -898,6 +898,34 @@ not be able to pass by not running.
 The mailbox login is `rep`, **not** `rep@example.com`: GreenMail reads
 `-Dgreenmail.users=rep:secret-pass-12@example.com` as user `rep`, password
 `secret-pass-12`, domain `example.com`.
+
+### End to end: GreenMail and the mail provider emulator
+
+The E2E specs sync real mailboxes through the running server, against two fakes:
+
+- **GreenMail** for IMAP. With `-Dgreenmail.auth.disabled` any password logs in, and
+  delivery to an unknown address creates that mailbox, so each spec seeds a message to a
+  fresh address over SMTP before connecting it. The server dials it by Compose service
+  name (`greenmail`) locally and by `localhost` in CI, which is why both names appear in
+  `SSRF_ALLOWED_PRIVATE_HOSTS` across the two environments.
+- **The mail provider emulator** (`qa/e2e/framework/fakes/mail-provider-emulator.ts`) for
+  Gmail and Graph, which IMAP cannot stand in for: an IMAP mailbox cannot send. It holds
+  real state per bearer token, so cursors advance and expire as the providers' do, and
+  its `/__admin` routes seed mail, list what was sent, and expire cursors. Its docblock
+  defines every route.
+
+Two test-only routes, mounted only under `development` and `test`, do what a consent
+screen and a scheduler tick otherwise would: `POST /api/v1/test/connected-accounts/oauth`
+stores a Gmail or Microsoft mailbox with the scopes real consent requests and a token the
+emulator knows, and `POST /api/v1/test/email-sync/accounts/:id/run` runs one tick's sync
+for one of the caller's mailboxes. The run refuses with 409 `SCHEDULER_RUNNING` unless
+`EMAIL_SYNC_SCHEDULER=off`, because its claim ignores the due time that is the
+scheduler's only lease.
+
+`npm run e2e:setup` waits for both fakes and resets the emulator. `docker compose -f
+docker-compose.test.yml up -d` starts them; CI's `e2e-serial` job declares GreenMail as a
+service and starts the emulator as a step. The specs are `@serial`, since each writes the
+global `email_sync` flag.
 
 ### The Gmail fake and Google's Discovery Document
 

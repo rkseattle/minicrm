@@ -11,6 +11,8 @@
  *   4. Create the test bucket idempotently via mc inside the MinIO container
  *   5. Seed MinIO storage config into system_settings (delegates to seed:e2e-storage)
  *   6. [STUB — activate ] Seed Mailhog SMTP config into system_settings
+ *   7. Wait for GreenMail (IMAP 3143) and the mail provider emulator (/health), then
+ *      reset the emulator so no mailbox survives from an earlier run
  *
  * Usage:
  *   npm run e2e:setup
@@ -20,6 +22,7 @@
 
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
+import { connect } from 'net';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { COVERAGE_E2E_DB_NAME, E2E_DB_NAME } from '@minicrm/shared/testing/testStackDbNames.js';
@@ -154,8 +157,16 @@ const MINIO_ROOT_PASSWORD = 'minioadmin';
 const MAILHOG_SERVER_HOST = 'mailhog';
 const MAILHOG_SMTP_PORT = '1025';
 
+// Host-side ports of the fake mail providers in docker-compose.test.yml.
+const GREENMAIL_HOST = 'localhost';
+const GREENMAIL_IMAP_PORT = 3143;
+// The test stack's own emulator, which is the one setup provisions and resets.
+const MAIL_EMULATOR_URL = 'http://localhost:4010';
+
 const READINESS_TIMEOUT_MS = 30_000;
 const READINESS_POLL_INTERVAL_MS = 1_000;
+// One probe's own budget, so a server that accepts but never answers cannot stall the wait.
+const PROBE_TIMEOUT_MS = 3_000;
 
 /**
  * Resolves the DB connection settings injected into every child process below.
@@ -312,31 +323,46 @@ function seedE2eAdmin(): void {
 
 // ── Step 3: Wait for MinIO readiness ─────────────────────────────────────────
 
-async function waitForMinio(): Promise<void> {
-  console.log('[e2e:setup] Waiting for MinIO to be ready...');
+/**
+ * Polls `probe` until it resolves true, or exits naming the service and how to start it.
+ * A probe that throws counts as not ready yet.
+ */
+async function waitUntilReady(name: string, probe: () => Promise<boolean>): Promise<void> {
+  console.log(`[e2e:setup] Waiting for ${name} to be ready...`);
 
   const deadline = Date.now() + READINESS_TIMEOUT_MS;
+  let lastError: unknown;
 
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(MINIO_HEALTH_URL);
-      if (response.ok) {
-        console.log('[e2e:setup] MinIO is ready.');
+      if (await probe()) {
+        console.log(`[e2e:setup] ${name} is ready.`);
         return;
       }
-    } catch {
-      // MinIO not yet reachable — keep polling
+      lastError = undefined;
+    } catch (err) {
+      // Kept for the timeout message: a probe that can never succeed must say why.
+      lastError = err;
     }
 
     await new Promise<void>((resolve) => setTimeout(resolve, READINESS_POLL_INTERVAL_MS));
   }
 
   console.error(
-    `[e2e:setup] ERROR: MinIO did not become ready within ${READINESS_TIMEOUT_MS / 1000} seconds.\n` +
-      '  Make sure the e2e Compose profile is running:\n' +
+    `[e2e:setup] ERROR: ${name} did not become ready within ${READINESS_TIMEOUT_MS / 1000} seconds.\n` +
+      (lastError === undefined ? '' : `  Last probe error: ${String(lastError)}\n`) +
+      '  Make sure the test stack is running:\n' +
       '    docker compose -f docker-compose.test.yml up -d',
   );
   process.exit(1);
+}
+
+async function waitForMinio(): Promise<void> {
+  await waitUntilReady(
+    'MinIO',
+    async () =>
+      (await fetch(MINIO_HEALTH_URL, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) })).ok,
+  );
 }
 
 // ── Step 4: Create the test bucket idempotently ───────────────────────────────
@@ -424,6 +450,53 @@ function seedSmtpConfig(): void {
   console.log('[e2e:setup] SMTP config seeded.');
 }
 
+/**
+ * True once the server sends its IMAP greeting.
+ *
+ * A bare TCP connect is not enough: Docker Desktop accepts on the published port before the
+ * process inside the container is listening, so only the server's own `* OK` proves it.
+ */
+function greetsWithImapOk(host: string, port: number): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const socket = connect({ host, port });
+    socket.setTimeout(PROBE_TIMEOUT_MS);
+    const finish = (ready: boolean): void => {
+      socket.destroy();
+      resolve(ready);
+    };
+    socket.once('data', (chunk: Buffer) => finish(chunk.toString('utf8').startsWith('* OK')));
+    socket.once('timeout', () => finish(false));
+    socket.once('end', () => finish(false));
+    socket.once('error', (err) => {
+      socket.destroy();
+      reject(err);
+    });
+  });
+}
+
+// ── Step 7: Fake mail providers ──────────────────────────────────────────────
+
+async function prepareFakeMailProviders(): Promise<void> {
+  await waitUntilReady('GreenMail', () => greetsWithImapOk(GREENMAIL_HOST, GREENMAIL_IMAP_PORT));
+  await waitUntilReady(
+    'the mail provider emulator',
+    async () =>
+      (
+        await fetch(`${MAIL_EMULATOR_URL}/health`, {
+          signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+        })
+      ).ok,
+  );
+  const reset = await fetch(`${MAIL_EMULATOR_URL}/__admin/reset`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+  });
+  if (!reset.ok) {
+    throw new Error(`mail provider emulator reset answered ${reset.status}`);
+  }
+  console.log('[e2e:setup] Mail provider emulator reset.');
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -435,6 +508,7 @@ async function main(): Promise<void> {
   createMinioBucket();
   seedStorageConfig();
   seedSmtpConfig(); // seed Mailhog SMTP config
+  await prepareFakeMailProviders();
 
   console.log('[e2e:setup] Done. Local E2E infrastructure is ready.');
 }

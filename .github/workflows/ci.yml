@@ -2192,6 +2192,24 @@ jobs:
           - 1025:1025
           - 8025:8025
 
+      # The email sync specs' IMAP provider. auth.disabled, and a mailbox created on first
+      # delivery, let each spec own a fresh mailbox; see docker-compose.test.yml.
+      greenmail:
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-greenmail:2.1.13
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GREENMAIL_OPTS: >-
+            -Dgreenmail.setup.test.smtp
+            -Dgreenmail.setup.test.imap
+            -Dgreenmail.hostname=0.0.0.0
+            -Dgreenmail.users=rep:secret-pass-12@example.com
+            -Dgreenmail.auth.disabled
+        ports:
+          - 3143:3143
+          - 3025:3025
+
     steps:
       - uses: actions/checkout@v7
 
@@ -2276,6 +2294,18 @@ jobs:
           E2E_SMTP_HOST: localhost
           E2E_SMTP_PORT: '1025'
 
+      # Stand-in for the Gmail and Graph APIs the server is pointed at below.
+      - name: Start mail provider emulator
+        run: |
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
+            qa/e2e/framework/fakes/start-mail-provider-emulator.mjs &
+          for _ in $(seq 1 30); do
+            curl -sf --max-time 3 http://localhost:4010/health && exit 0
+            sleep 1
+          done
+          echo "::error::mail provider emulator did not start"
+          exit 1
+
       - name: Start application server
         run: npm run start --workspace=minicrm-server &
         env:
@@ -2290,6 +2320,11 @@ jobs:
           E2E: true
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
           APP_URL: http://localhost:5173
+          # Fake mail providers for the email sync specs; see docs/dev/email-sync.md.
+          SSRF_ALLOWED_PRIVATE_HOSTS: localhost
+          GMAIL_API_BASE_URL: http://localhost:4010/gmail/v1/users/me
+          GRAPH_API_BASE_URL: http://localhost:4010/v1.0/me
+          EMAIL_SYNC_SCHEDULER: 'off'
           # Coverage/TIA control API and session management routes are
           # registered only when these are 'true' at process boot
           # (MINCRM-663, MINCRM-685). No @serial spec depends on these any more:
@@ -2412,6 +2447,9 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           E2E: true
           MAILHOG_URL: http://localhost:8025
+          E2E_GREENMAIL_SMTP_URL: smtp://localhost:3025
+          E2E_IMAP_HOST_FOR_SERVER: localhost
+          E2E_MAIL_EMULATOR_URL: http://localhost:4010
           AI_HEALING: true
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AI_HEAL_COST_WARNING_THRESHOLD: '20'
