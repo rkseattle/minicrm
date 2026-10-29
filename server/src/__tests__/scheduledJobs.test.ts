@@ -12,7 +12,11 @@
 import { vi, describe, it, expect, afterEach } from 'vitest';
 import cron from 'node-cron';
 import logger from '../logger.js';
-import { buildScheduledJobs, startScheduledJobs } from '../services/scheduledJobs.js';
+import {
+  buildScheduledJobs,
+  EMAIL_SYNC_JOB_NAME,
+  startScheduledJobs,
+} from '../services/scheduledJobs.js';
 import * as notificationService from '../services/notificationService.js';
 import * as sequenceService from '../services/sequenceService.js';
 import * as retentionService from '../services/retentionService.js';
@@ -81,6 +85,7 @@ describe('the email sync interval', () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe('buildScheduledJobs', () => {
@@ -190,13 +195,22 @@ describe('buildScheduledJobs', () => {
   });
 });
 
+/** Stubs cron.schedule and returns the list each scheduled expression is appended to. */
+function captureCronExpressions(): string[] {
+  const scheduled: string[] = [];
+  vi.spyOn(cron, 'schedule').mockImplementation(((expression: string) => {
+    scheduled.push(expression);
+    return { stop: vi.fn() };
+  }) as unknown as typeof cron.schedule);
+  return scheduled;
+}
+
+/** Not 15, sequence advancement's interval, so the expression list shows which job ran. */
+const DISTINCT_EMAIL_SYNC_MINUTES = 7;
+
 describe('startScheduledJobs', () => {
   it('schedules every cron job with its own expression', () => {
-    const scheduled: string[] = [];
-    vi.spyOn(cron, 'schedule').mockImplementation(((expression: string) => {
-      scheduled.push(expression);
-      return { stop: vi.fn() };
-    }) as unknown as typeof cron.schedule);
+    const scheduled = captureCronExpressions();
 
     const stop = startScheduledJobs(COVERAGE_RETENTION_DAYS);
 
@@ -205,6 +219,34 @@ describe('startScheduledJobs', () => {
         ([, schedule]) => schedule,
       ),
     );
+    stop();
+  });
+
+  it('leaves only the email sync job unscheduled when EMAIL_SYNC_SCHEDULER=off', () => {
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('EMAIL_SYNC_SCHEDULER', 'off');
+    const scheduled = captureCronExpressions();
+
+    const stop = startScheduledJobs(COVERAGE_RETENTION_DAYS, DISTINCT_EMAIL_SYNC_MINUTES);
+
+    expect(scheduled).not.toContain(`*/${String(DISTINCT_EMAIL_SYNC_MINUTES)} * * * *`);
+    expect(scheduled).toEqual(
+      EXPECTED_JOBS.filter(
+        ([name, schedule]) => schedule !== 'every 60 seconds' && name !== EMAIL_SYNC_JOB_NAME,
+      ).map(([, schedule]) => schedule),
+    );
+    stop();
+  });
+
+  it('ignores EMAIL_SYNC_SCHEDULER=off outside development and test', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('EMAIL_SYNC_SCHEDULER', 'off');
+    const scheduled = captureCronExpressions();
+
+    const stop = startScheduledJobs(COVERAGE_RETENTION_DAYS, DISTINCT_EMAIL_SYNC_MINUTES);
+
+    expect(scheduled).toContain(`*/${String(DISTINCT_EMAIL_SYNC_MINUTES)} * * * *`);
+    expect(scheduled).toHaveLength(EXPECTED_JOBS.length - 1);
     stop();
   });
 
