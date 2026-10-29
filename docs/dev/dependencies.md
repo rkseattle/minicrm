@@ -267,6 +267,26 @@ Safe for a verified reason: 7.0.0's sole breaking change removes `responseMode` 
 
 ---
 
+## Worked example: the `decode-uri-component` pin violates a declared range
+
+`decode-uri-component` is pinned to 0.5.x, past the `^0.2.2` its only consumer declares
+(`server` → `minio` → `query-string@7`). Only 0.5.1 fixes `GHSA-qr28-fpjm-wq7f`. `npm ls`
+marks it `invalid`.
+
+Safe for a verified reason, with a known cost: 0.5.x is ESM-only with a default export, so
+every `query-string` function that decodes throws `decodeComponent is not a function` under
+it. `stringify` never decodes, and it is the only function `minio` calls. Before moving
+`minio`, confirm that is still true. It imports the module under two names:
+
+```bash
+grep -rnoE '\b(qs|querystring)\.[a-zA-Z]+' node_modules/minio/dist | grep -v '\.stringify$'
+```
+
+Any output is a call this pin may break. Retire the pin once `minio` depends on a
+`query-string` that declares `^0.5`.
+
+---
+
 ## Related
 
 - [CI Pipeline](ci.md) — where the audit gate runs and what it blocks
