@@ -923,8 +923,9 @@ for one of the caller's mailboxes. The run refuses with 409 `SCHEDULER_RUNNING` 
 scheduler's only lease.
 
 `npm run e2e:setup` waits for both fakes and resets the emulator. `docker compose -f
-docker-compose.test.yml up -d` starts them; CI's `e2e-serial` job declares GreenMail as a
-service and starts the emulator as a step. The specs are `@serial`, since each writes the
+docker-compose.test.yml up -d` starts them. In CI, `ci.yml`'s `e2e-serial` job and TIA
+record mode (through the `e2e-infra` action's `fake-mail-providers` input) each declare
+GreenMail as a service and start the emulator as a step. The specs are `@serial`, since each writes the
 global `email_sync` flag.
 
 ### The Gmail fake and Google's Discovery Document

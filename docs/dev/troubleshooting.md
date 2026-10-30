@@ -22,6 +22,7 @@ test stacks run side by side on offset ports, and they have separate databases.
 | MinIO           | —    | 9002 (API), 9003 (console)  |
 | Mailhog         | —    | 1025 (SMTP), 8025 (HTTP)    |
 | GreenMail       | —    | 3143 (IMAP), 3025 (SMTP)    |
+| Mail emulator   | —    | 4010 (HTTP)                 |
 
 The test stack's own service table, including its container names, is in the
 [Operations Guide](../operations.md#local-test-environment-developer-workflow).

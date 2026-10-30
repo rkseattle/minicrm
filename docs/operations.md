@@ -23,14 +23,15 @@ docker compose -f docker-compose.test.yml up -d
 
 This starts the `minicrm-test` project:
 
-| Service   | Purpose                             | Host port(s)                 |
-| --------- | ----------------------------------- | ---------------------------- |
-| Postgres  | Test databases                      | 5433                         |
-| Server    | App server for E2E                  | 3002                         |
-| Client    | Static build (E2E uses Vite)        | 8080                         |
-| MinIO     | S3-compatible attachment store      | 9002 (API), 9003 (console)   |
-| Mailhog   | SMTP capture for email tests        | 1025 (SMTP), 8025 (HTTP API) |
-| GreenMail | Real IMAP server for provider tests | 3143 (IMAP), 3025 (SMTP)     |
+| Service       | Purpose                                            | Host port(s)                 |
+| ------------- | -------------------------------------------------- | ---------------------------- |
+| Postgres      | Test databases                                     | 5433                         |
+| Server        | App server for E2E                                 | 3002                         |
+| Client        | Static build (E2E uses Vite)                       | 8080                         |
+| MinIO         | S3-compatible attachment store                     | 9002 (API), 9003 (console)   |
+| Mailhog       | SMTP capture for email tests                       | 1025 (SMTP), 8025 (HTTP API) |
+| GreenMail     | Real IMAP server for provider tests                | 3143 (IMAP), 3025 (SMTP)     |
+| Mail emulator | Stand-in Gmail and Graph APIs for email sync tests | 4010 (HTTP)                  |
 
 Every port that the dev stack also uses is offset, so both can run at once and a
 misconfigured test process fails to connect rather than silently writing into dev data.
@@ -51,6 +52,8 @@ This script:
 3. Waits up to 30 seconds for MinIO to become healthy
 4. Creates the `minicrm-test-bucket` bucket inside the MinIO container (idempotent)
 5. Seeds MinIO storage and Mailhog SMTP coordinates into `system_settings`
+6. Waits for GreenMail's IMAP greeting and the mail emulator's health check, then resets
+   the emulator so no mailbox survives an earlier run
 
 The script is idempotent — safe to re-run if you restart the Docker services or wipe
 the database. It reads `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` from `qa/e2e/.env`;

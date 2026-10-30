@@ -1,7 +1,8 @@
 /**
  * Where this app's email sync specs find the fake mail providers, and clients for them.
  *
- * Defaults match docker-compose.test.yml; CI's e2e-serial job sets each variable itself.
+ * Defaults match docker-compose.test.yml; CI's e2e-serial job and TIA record mode set each
+ * variable themselves.
  * See docs/dev/email-sync.md for how the server is pointed at the same fakes.
  */
 
