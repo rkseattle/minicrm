@@ -33,7 +33,7 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 
 function storedCount(outcomes: SyncOutcome[]): number {
-  return outcomes.reduce((sum, o) => sum + (o.status === 'synced' ? o.messages_stored : 0), 0);
+  return outcomes.reduce((sum, o) => sum + o.messages_stored, 0);
 }
 
 /** Both senders as contacts of the rep, and one message from each in a fresh mailbox. */

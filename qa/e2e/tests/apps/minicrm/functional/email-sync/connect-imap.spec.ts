@@ -65,9 +65,7 @@ test.describe.serial('Connect an IMAP mailbox', () => {
 
     const outcomes = await syncMailboxNow(restClient, account.id);
     expect(outcomes.at(-1)).toMatchObject({ status: 'synced', has_more: false });
-    expect(
-      outcomes.reduce((sum, o) => sum + (o.status === 'synced' ? o.messages_stored : 0), 0),
-    ).toBe(1);
+    expect(outcomes.reduce((sum, o) => sum + o.messages_stored, 0)).toBe(1);
 
     const [stored] = await listMyMailboxes(restClient);
     expect(stored).toMatchObject({ id: account.id, status: 'active' });
