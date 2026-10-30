@@ -20,11 +20,12 @@
  * disagree with what `limit` bounds.
  */
 
-import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import type {
+  EmailLinkMatchType,
   EmailLinkRecordType,
   EmailMessageDetail,
   EmailThread,
+  EmailThreadPage,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 import type { PoolClient } from 'pg';
@@ -52,7 +53,7 @@ export interface EmailMessageLinkRow {
   email_message_id: string;
   record_type: EmailLinkRecordType;
   record_id: string;
-  match_type: 'auto' | 'manual';
+  match_type: EmailLinkMatchType;
   created_at: Date;
 }
 
@@ -113,7 +114,7 @@ async function listThreadPage(
   params: readonly unknown[],
   page: number,
   limit: number,
-): Promise<PaginatedResponse<EmailThread>> {
+): Promise<EmailThreadPage> {
   const offset = (page - 1) * limit;
   const limitParam = `$${params.length + 1}`;
   const offsetParam = `$${params.length + 2}`;
@@ -169,7 +170,7 @@ export async function listMessagesForRecord(
   userId: string,
   page: number,
   limit: number,
-): Promise<PaginatedResponse<EmailThread>> {
+): Promise<EmailThreadPage> {
   return listThreadPage(
     `FROM email_message_links l
        JOIN email_messages m ON m.id = l.email_message_id
@@ -282,7 +283,7 @@ export async function listUnmatchedMessages(
   userRole: string,
   page: number,
   limit: number,
-): Promise<PaginatedResponse<EmailThread>> {
+): Promise<EmailThreadPage> {
   const visible = await buildVisibleLinkExists(userId, userRole, 2);
   return listThreadPage(
     `FROM email_messages m

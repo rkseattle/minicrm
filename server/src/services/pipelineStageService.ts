@@ -17,6 +17,7 @@ import { writeAuditEntry, writeAuditEntries, SYSTEM_ACTOR } from './auditService
 import { withRlsQuery } from './rlsContextService.js';
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Shape of a pipeline_stages row as stored in the database */
 export interface PipelineStageRow {
@@ -183,7 +184,7 @@ export async function createPipelineStage(
     return normaliseRow(stage);
   } catch (err) {
     await client.query('ROLLBACK');
-    if ((err as NodeJS.ErrnoException).code === '23505') {
+    if (thrownCode(err) === '23505') {
       const e = new Error(`A stage named "${name}" already exists in this pipeline`);
       (e as NodeJS.ErrnoException).code = 'STAGE_NAME_CONFLICT';
       throw e;
@@ -343,7 +344,7 @@ export async function updatePipelineStage(
     return updated ? normaliseRow(updated) : null;
   } catch (error) {
     await client.query('ROLLBACK');
-    const pgCode = (error as NodeJS.ErrnoException).code;
+    const pgCode = thrownCode(error);
     if (pgCode === '23505') {
       const constraint =
         (error as NodeJS.ErrnoException & { constraint?: string }).constraint ?? '';

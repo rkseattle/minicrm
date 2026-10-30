@@ -36,6 +36,7 @@ import { decryptVersioned, encryptVersioned } from './cryptoService.js';
 import { PROVIDER_AUTH_EXPIRED } from './imapConnectionService.js';
 import { isDeadGrantError } from './oauthProviderService.js';
 import type { RefreshedTokens } from './oauthProviderService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ── Row type ──────────────────────────────────────────────────────────────────
 
@@ -174,6 +175,58 @@ function isOAuthProvider(provider: ConnectedAccountProvider): provider is OAuthP
 }
 
 /**
+ * Encrypts credentials for storage, the inverse of decryptAuth below.
+ *
+ * @param auth - The decrypted credentials.
+ * @returns The ciphertext and the key version it was written under.
+ */
+export function encryptAccountAuth(auth: ConnectedAccountAuth): {
+  ciphertext: string;
+  keyVersion: number;
+} {
+  return encryptVersioned(JSON.stringify(auth));
+}
+
+/** The demo seed's mailbox: never dialed, so stored without a connection test. */
+export interface DemoMailboxInsert {
+  userId: string;
+  provider: ConnectedAccountProvider;
+  emailAddress: string;
+  auth: ConnectedAccountAuth;
+}
+
+/**
+ * Inserts the demo seed's mailbox on the seed's transaction: paused, so no sync claims it,
+ * and flagged is_demo, so demo removal finds it. Unaudited, as the rest of the seed is.
+ *
+ * @param client - The seed's transaction client.
+ * @param mailbox - The row to write.
+ * @returns The new mailbox's id.
+ */
+export async function insertDemoMailboxWithinTransaction(
+  client: PoolClient,
+  mailbox: DemoMailboxInsert,
+): Promise<string> {
+  const encrypted = encryptAccountAuth(mailbox.auth);
+  const result = await client.query<{ id: string }>(
+    `INSERT INTO connected_accounts
+       (user_id, provider, email_address, auth_encrypted, key_version, status,
+        last_sync_at, sync_paused_at, is_demo)
+     VALUES ($1, $2, $3, $4, $5, 'active', now(), now(), true)
+     RETURNING id`,
+    [
+      mailbox.userId,
+      mailbox.provider,
+      mailbox.emailAddress,
+      encrypted.ciphertext,
+      encrypted.keyVersion,
+    ],
+  );
+  // Safe: INSERT ... RETURNING yields exactly one row.
+  return result.rows[0]!.id;
+}
+
+/**
  * Decrypts one row's stored credentials.
  *
  * Returns null rather than throwing: every caller's answer to unreadable ciphertext is
@@ -213,7 +266,7 @@ function toConnectedAccountResponse(
 
 /** Wraps a PG unique violation on the mailbox key as a domain error. */
 function asDuplicateError(err: unknown): Error | null {
-  if ((err as { code?: string }).code !== '23505') return null;
+  if (thrownCode(err) !== '23505') return null;
   return Object.assign(new Error('That mailbox is already connected to your account'), {
     code: 'CONNECTED_ACCOUNT_DUPLICATE',
   });
@@ -386,7 +439,7 @@ export async function createImapAccount(
     password: input.password,
     secure: input.secure,
   };
-  const encrypted = encryptVersioned(JSON.stringify(payload));
+  const encrypted = encryptAccountAuth(payload);
 
   const client: PoolClient = await pool.connect();
   try {
@@ -435,7 +488,7 @@ export async function upsertOAuthAccount(
   params: OAuthAccountUpsert,
   actor: AuditActor,
 ): Promise<ConnectedAccountResponse> {
-  const encrypted = encryptVersioned(JSON.stringify(params.auth));
+  const encrypted = encryptAccountAuth(params.auth);
 
   const client: PoolClient = await pool.connect();
   try {
@@ -666,7 +719,7 @@ async function refreshLockedRow(
     refresh_token: refreshed.refreshToken,
     expires_at: refreshed.expiresAt,
   };
-  const encrypted = encryptVersioned(JSON.stringify(rotated));
+  const encrypted = encryptAccountAuth(rotated);
 
   // Deliberately leaves sync_failure_count alone, unlike the connect-test and
   // re-consent paths. A refreshed token proves the credential is valid, not that the
@@ -823,10 +876,10 @@ export async function updateAccountStatus(
 
 // ── Scheduler-facing API ──────────────────────────────────────────────────────
 //
-// The two functions below are this module's only queries not scoped by user_id, and the
-// exception is deliberate: the scheduler acts for no user. Neither returns credential
-// material to a caller that has not asked for it by account id, and neither is reachable
-// from a route.
+// claimAccountsDueForSync and getAccountAuthForSync are this module's only queries not
+// scoped by user_id, and the exception is deliberate: the scheduler acts for no user.
+// Neither returns credential material to a route. The one route that reaches them, the
+// test-only run-now, first claims through claimAccountByIdForSync, which is user-scoped.
 
 /**
  * Claims a batch of mailboxes that are due to sync.
@@ -891,7 +944,49 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
     [IMPLEMENTED_SYNC_PROVIDERS, limit, SYNC_CLAIM_LEASE_MS, MAX_SYNC_FAILURES],
   );
 
-  return result.rows.map((row) => ({
+  return result.rows.map(toClaimedSyncAccount);
+}
+
+/**
+ * Claims one owned mailbox for an immediate sync, whatever its due time.
+ *
+ * Every predicate of claimAccountsDueForSync applies but `sync_next_attempt_at`. That
+ * column is both the due time and the scheduler's lease, and each committed page pushes it
+ * forward, so honoring it would refuse a second sync minutes after the first. The lease is
+ * still taken, so a scheduler that is running skips the mailbox; callers serialize their
+ * own runs.
+ *
+ * @returns the claimed account, or null when it is missing, not this user's, paused,
+ *   retired by failures, or in a status that does not sync.
+ */
+export async function claimAccountByIdForSync(
+  accountId: string,
+  userId: string,
+): Promise<ClaimedSyncAccount | null> {
+  const result = await pool.query<ConnectedAccountRow & { user_role: string }>(
+    `UPDATE connected_accounts ca
+        SET sync_next_attempt_at = NOW() + ($4 || ' milliseconds')::interval
+       FROM users u
+      WHERE ca.id = $1
+        AND ca.user_id = $2
+        AND u.id = ca.user_id
+        AND u.status = 'active'
+        AND ca.status IN ('active', 'error')
+        AND ca.provider = ANY($3)
+        AND ca.sync_failure_count < $5
+        AND ca.sync_paused_at IS NULL
+  RETURNING ca.id, ca.user_id, ca.provider, ca.email_address, ca.sync_cursor,
+            ca.sync_failure_count, ca.granted_scopes, ca.excluded_domains, u.role AS user_role`,
+    [accountId, userId, IMPLEMENTED_SYNC_PROVIDERS, SYNC_CLAIM_LEASE_MS, MAX_SYNC_FAILURES],
+  );
+  const row = result.rows[0];
+  return row ? toClaimedSyncAccount(row) : null;
+}
+
+function toClaimedSyncAccount(
+  row: ConnectedAccountRow & { user_role: string },
+): ClaimedSyncAccount {
+  return {
     id: row.id,
     userId: row.user_id,
     userRole: row.user_role,
@@ -901,7 +996,7 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
     syncFailureCount: row.sync_failure_count,
     grantedScopes: row.granted_scopes,
     excludedDomains: row.excluded_domains,
-  }));
+  };
 }
 
 /**
@@ -909,7 +1004,8 @@ export async function claimAccountsDueForSync(limit: number): Promise<ClaimedSyn
  * expired.
  *
  * Not scoped by user_id, because the scheduler has no user — the account id comes from
- * claimAccountsDueForSync, which has already applied every ownership and status rule.
+ * claimAccountsDueForSync or claimAccountByIdForSync, which have already applied every
+ * ownership and status rule.
  *
  * An OAuth account takes the same locked check-and-refresh a person's request does, for
  * the same reason: a sync and a user action can race for one rotating refresh token. The

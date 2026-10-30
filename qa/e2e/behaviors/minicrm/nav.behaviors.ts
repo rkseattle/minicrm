@@ -12,7 +12,12 @@
  */
 
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
-import { gotoAndSettle, navigateAndSettle } from '@apps/minicrm/helpers.js';
+import {
+  gotoAndSettle,
+  navigateAndSettle,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+} from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { NavPage } from '@pages/minicrm/NavPage.js';
 import { ProfilePage } from '@pages/minicrm/ProfilePage.js';
@@ -744,10 +749,7 @@ export async function waitForNavLayoutFetched(
   context: NavBehaviorContext,
   timeout = 10_000,
 ): Promise<void> {
-  await context.page.waitForResponse(
-    (res) => res.url().includes('/api/v1/settings/nav-layout') && res.status() === 200,
-    { timeout },
-  );
+  await awaitApiResponse(context.page, 'GET', '/api/v1/settings/nav-layout', timeout, 200);
 }
 
 /**
@@ -886,10 +888,11 @@ export async function selectLanguageAndWaitForPatch(
   locator: SafeLocator,
   context: NavBehaviorContext,
 ): Promise<void> {
-  const patchDone = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/users/me/language') &&
-      response.request().method() === 'PATCH',
+  const patchDone = awaitApiResponse(
+    context.page,
+    'PATCH',
+    (url) => url.href.includes('/api/v1/users/me/language'),
+    NO_RESPONSE_TIMEOUT,
   );
   await locator.selectOption(locale);
   await patchDone;
@@ -910,10 +913,11 @@ export async function saveProfileNavLayout(
   const profilePage = new ProfilePage(context);
   await profilePage.selectNavLayout(layout);
 
-  const patchDone = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/users/me/nav-layout') &&
-      response.request().method() === 'PATCH',
+  const patchDone = awaitApiResponse(
+    context.page,
+    'PATCH',
+    (url) => url.href.includes('/api/v1/users/me/nav-layout'),
+    NO_RESPONSE_TIMEOUT,
   );
   await profilePage.saveNavLayout();
   const response = await patchDone;

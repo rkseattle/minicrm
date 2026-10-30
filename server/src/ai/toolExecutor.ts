@@ -137,6 +137,7 @@ import { listWebhookSubscriptions } from '../services/webhookService.js';
 
 // ── Email Templates ────────────────────────────────────────────────────────────
 import { listEmailTemplates, findEmailTemplateById } from '../services/emailTemplateService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -851,7 +852,7 @@ export async function executeToolCall(
             ctx.actor,
           );
         } catch (err) {
-          if ((err as NodeJS.ErrnoException).code === 'TAG_NAME_CONFLICT') {
+          if (thrownCode(err) === 'TAG_NAME_CONFLICT') {
             return {
               error: {
                 code: 'TAG_NAME_CONFLICT',
@@ -908,7 +909,7 @@ export async function executeToolCall(
             ctx.actor,
           );
         } catch (err) {
-          if ((err as NodeJS.ErrnoException).code === 'CUSTOM_REPORT_NAME_CONFLICT') {
+          if (thrownCode(err) === 'CUSTOM_REPORT_NAME_CONFLICT') {
             return {
               error: {
                 code: 'CUSTOM_REPORT_NAME_CONFLICT',

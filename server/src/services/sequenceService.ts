@@ -22,6 +22,7 @@ import {
 import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { firstIssueMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Concurrent enrollment-processing limit for the due-enrollments cron. */
 const ENROLLMENT_PROCESSING_CONCURRENCY = 5;
@@ -655,7 +656,7 @@ export async function enrollContact(
   } catch (err) {
     await client.query('ROLLBACK');
     // pg unique-violation on the partial index → duplicate active enrollment
-    if ((err as NodeJS.ErrnoException).code === '23505') {
+    if (thrownCode(err) === '23505') {
       const conflict = new Error('Contact is already actively enrolled in this sequence');
       Object.assign(conflict, { code: 'ENROLLMENT_DUPLICATE' });
       throw conflict;

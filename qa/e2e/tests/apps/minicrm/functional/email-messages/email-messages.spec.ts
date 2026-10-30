@@ -4,20 +4,13 @@
  * Covers the three router-level gates on /api/v1/email-messages and the shape the
  * unmatched inbox returns, over real HTTP against the running stack.
  *
- * Scope is bounded by what an E2E test can construct, not by preference. Every endpoint
- * here needs a message, a message needs a mailbox, and the only way to create a mailbox is
- * POST /api/v1/connected-accounts — which dials the IMAP host and refuses to store
- * anything the dial did not reach. GreenMail runs in the test stack, but it answers on a
- * private address, and assertHostnameIsSafe blocks every private range with no environment
- * bypass. So a synced message cannot exist in an E2E run, and the link/unlink and
- * per-record read paths are unreachable from here; imapProviderLive.test.ts reaches the
- * provider by stubbing that guard, which only a server test can do, and the matching and
- * filing paths are covered against a real database by emailMatchingService.test.ts,
- * emailMessageService.test.ts, and emailMessageController.test.ts.
+ * Mail that has actually synced — the link/unlink and per-record read paths — is covered
+ * by the specs in functional/email-sync/, which seed GreenMail and the mail provider
+ * emulator; this file stays on the gates, which need no mailbox.
  *
- * What E2E adds over those is the wiring the contract tests mount around: that the flag
- * gate, the capability gate, and authentication are actually attached to this router in
- * the assembled app, and that a mailbox-less caller gets an empty page rather than an
+ * What E2E adds over the server's contract tests is the wiring they mount around: that the
+ * flag gate, the capability gate, and authentication are actually attached to this router
+ * in the assembled app, and that a mailbox-less caller gets an empty page rather than an
  * error.
  *
  * @serial because it flips the real email_sync feature_flags row. withFlags() intercepts
@@ -34,13 +27,12 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { createTestRep } from '@apps/minicrm/helpers.js';
 import { loginAs, loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
+import { EMAIL_SYNC_FLAG } from '@behaviors/minicrm/email-sync.behaviors.js';
 import {
   listUnmatchedMail,
   statusOfUnmatchedMailRequest,
 } from '@behaviors/minicrm/email-messages.behaviors.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
-
-const EMAIL_SYNC_FLAG = 'email_sync';
 
 // describe.serial for intra-file ordering: these tests write one global flag row, so
 // they must not interleave with each other. Cross-file protection is the @serial tag plus

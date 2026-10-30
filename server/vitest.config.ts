@@ -408,6 +408,12 @@ const SERIAL_FILES = [
   'src/__tests__/emailSend.routes.test.ts',
   // Flips the global email_sync flag, which gates the template list.
   'src/__tests__/emailTemplateController.test.ts',
+  // Both flip the global email_sync flag that run-now and the seed route check.
+  'src/__tests__/emailSyncNow.test.ts',
+  'src/__tests__/testEmailSyncController.test.ts',
+  // Flips the global email_sync flag that email search checks; a per-user override would
+  // not hold, as two serial suites truncate the overrides table.
+  'src/__tests__/searchEmail.test.ts',
   // relationshipHealthService mutates the same global account_health_scoring_config
   // singleton row as relationshipHealthController above (min_logged_activities et al.),
   // and its computeAccountHealthScores() scans ALL accounts org-wide (no owner filter)

@@ -21,6 +21,7 @@ import {
 } from '@minicrm/shared/schemas/customFieldSchema.js';
 import { z } from 'zod';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Validates that a string is a known entity type */
 function isValidEntityType(value: string): value is (typeof ENTITY_TYPES)[number] {
@@ -63,7 +64,7 @@ export async function createCustomFieldDefinitionHandler(
     const definition = await createDefinition(parsed.data);
     res.status(201).json(toDefinitionResponse(definition));
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'CUSTOM_FIELD_NAME_CONFLICT') {
       res.status(409).json({
         error: { code: 'CUSTOM_FIELD_NAME_CONFLICT', message: (err as Error).message },
@@ -99,7 +100,7 @@ export async function updateCustomFieldDefinitionHandler(
     }
     res.status(200).json(toDefinitionResponse(definition));
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'CUSTOM_FIELD_NAME_CONFLICT') {
       res.status(409).json({
         error: { code: 'CUSTOM_FIELD_NAME_CONFLICT', message: (err as Error).message },

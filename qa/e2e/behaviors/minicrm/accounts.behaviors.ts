@@ -16,6 +16,8 @@ import {
   gotoAndSettle,
   navigateAndSettle,
   FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
 } from '@apps/minicrm/helpers.js';
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { AccountsPage } from '@pages/minicrm/AccountsPage.js';
@@ -725,9 +727,11 @@ export async function fillAccountDetailField(
  */
 export async function saveAccountDetail(context: AccountsBehaviorContext): Promise<void> {
   const detailPage = new AccountDetailPage(context);
-  const patchDone = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/accounts/') && response.request().method() === 'PATCH',
+  const patchDone = awaitApiResponse(
+    context.page,
+    'PATCH',
+    (url) => url.href.includes('/api/v1/accounts/'),
+    NO_RESPONSE_TIMEOUT,
   );
   await detailPage.save();
   await patchDone;
@@ -789,10 +793,11 @@ export async function clickAccountExportPdfAndAwaitResponse(
   context: AccountsBehaviorContext,
 ): Promise<{ status: number; contentType: string }> {
   const detail = new AccountDetailPage(context);
-  const responsePromise = context.page.waitForResponse(
-    (response) =>
-      response.url().includes(`/api/v1/accounts/${id}/export.pdf`) &&
-      response.request().method() === 'GET',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'GET',
+    (url) => url.href.includes(`/api/v1/accounts/${id}/export.pdf`),
+    NO_RESPONSE_TIMEOUT,
   );
   const button = await detail.exportPdfButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await button.click();

@@ -8,6 +8,7 @@
 
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AiUsageDashboardPage } from '@pages/minicrm/AiUsageDashboardPage.js';
+import { awaitApiResponse, NO_RESPONSE_TIMEOUT } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Context
@@ -57,10 +58,11 @@ export async function clickAiUsageExportPdfAndAwaitResponse(
 ): Promise<{ status: number; contentType: string }> {
   const dashboard = new AiUsageDashboardPage(context);
   await dashboard.openExportMenu();
-  const responsePromise = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/admin/ai/usage/export.pdf') &&
-      response.request().method() === 'GET',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'GET',
+    (url) => url.href.includes('/api/v1/admin/ai/usage/export.pdf'),
+    NO_RESPONSE_TIMEOUT,
   );
   await dashboard.clickExportPdf();
   const response = await responsePromise;

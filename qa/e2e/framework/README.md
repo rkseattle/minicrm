@@ -13,6 +13,8 @@ Product-agnostic framework code. **Must contain zero application-domain referenc
 - Playwright fixtures — base fixture wiring (exports `page: PageFacade`, `restClient`, `grpcClient`; `healPage` retained as a legacy fixture for framework-level tests only)
 - REST API client
 - gRPC client (unary, server-streaming, client-streaming, bidirectional-streaming)
+- Mail seeding clients — `MailEmulatorClient` for the emulator's admin API, `SmtpSeedClient` for delivering mail to a test SMTP server
+- `fakes/mail-provider-emulator.ts` — a stateful stand-in for the Gmail and Graph mail APIs, run under plain Node in the test stack
 - `HealingReporter` — custom Playwright reporter that emits `healing-report.json`
 - `StepSummaryReporter` — custom Playwright reporter that appends a rich markdown job summary to `$GITHUB_STEP_SUMMARY` in CI; no-ops locally when that env var is unset
 

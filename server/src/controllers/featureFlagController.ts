@@ -33,6 +33,7 @@ import {
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import type { MyFeatureFlagsResponse } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /**
  * GET /api/v1/admin/feature-flags
@@ -98,7 +99,7 @@ export async function updateFeatureFlagHandler(req: Request, res: Response): Pro
   try {
     updated = await updateFeatureFlag(key, parsed.data, actor, { onDisabled });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'FEATURE_FLAG_UNKNOWN_ROLE_KEY') {
       res.status(422).json({
         error: {
@@ -163,7 +164,7 @@ export async function enrollBetaUserHandler(req: Request, res: Response): Promis
   try {
     entry = await enrollBetaUser(key, parsed.data.userId, actor);
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'FEATURE_FLAG_NOT_FOUND') {
       res.status(404).json({
         error: {
@@ -272,7 +273,7 @@ export async function upsertUserOverrideHandler(req: Request, res: Response): Pr
       actor,
     );
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'FEATURE_FLAG_NOT_FOUND') {
       res.status(404).json({
         error: {
@@ -354,7 +355,7 @@ export async function createFlagGroupHandler(req: Request, res: Response): Promi
   try {
     group = await createFlagGroup(parsed.data, actor);
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'FLAG_GROUP_DUPLICATE_KEY') {
       res.status(409).json({
         error: {
@@ -440,8 +441,7 @@ export async function listGroupBetaUsersHandler(req: Request, res: Response): Pr
     const users = await getFlagGroupBetaUsers(groupKey);
     res.json({ users });
   } catch (err) {
-    const domainErr = err as { code?: string };
-    if (domainErr.code === 'FLAG_GROUP_NOT_FOUND') {
+    if (thrownCode(err) === 'FLAG_GROUP_NOT_FOUND') {
       res.status(404).json({
         error: { code: 'FLAG_GROUP_NOT_FOUND', message: `Group '${groupKey}' not found` },
       });
@@ -471,7 +471,7 @@ export async function enrollGroupBetaUserHandler(req: Request, res: Response): P
   try {
     entry = await addGroupBetaUser(groupKey, parsed.data.userId, actor);
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'FLAG_GROUP_NOT_FOUND') {
       res.status(404).json({
         error: {
@@ -524,8 +524,7 @@ export async function removeGroupBetaUserHandler(req: Request, res: Response): P
   try {
     removed = await removeGroupBetaUser(groupKey, userId, actor);
   } catch (err) {
-    const domainErr = err as { code?: string };
-    if (domainErr.code === 'FLAG_GROUP_NOT_FOUND') {
+    if (thrownCode(err) === 'FLAG_GROUP_NOT_FOUND') {
       res.status(404).json({
         error: { code: 'FLAG_GROUP_NOT_FOUND', message: `Group '${groupKey}' not found` },
       });

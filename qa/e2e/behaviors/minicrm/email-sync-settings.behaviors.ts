@@ -13,10 +13,11 @@ import type { PageFacade } from '@framework/fixtures/index.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import {
   emailSyncBackfillDaysSchema,
-  emailSyncExcludedDomainsSchema,
+  emailSyncExcludedDomainsResponseSchema,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { EmailSyncSettingsPage } from '@pages/minicrm/EmailSyncSettingsPage.js';
 import { navigateToAdminSettingsIntegrations } from './settings.behaviors.js';
+import { awaitApiResponse, NO_RESPONSE_TIMEOUT } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -91,8 +92,11 @@ export async function saveOrgExcludedDomains(
   await (await panel.domainsInputLocator()).fill(text);
   const save = await panel.domainsSaveLocator();
   const [response] = await Promise.all([
-    ctx.page.waitForResponse(
-      (resp) => resp.url().includes(DOMAINS_PATH) && resp.request().method() === 'PATCH',
+    awaitApiResponse(
+      ctx.page,
+      'PATCH',
+      (url) => url.href.includes(DOMAINS_PATH),
+      NO_RESPONSE_TIMEOUT,
     ),
     save.click(),
   ]);
@@ -142,9 +146,7 @@ export async function saveBackfillWindow(
   await (await panel.daysInputLocator()).fill(String(days));
   const save = await panel.daysSaveLocator();
   const [response] = await Promise.all([
-    ctx.page.waitForResponse(
-      (resp) => resp.url().includes(DAYS_PATH) && resp.request().method() === 'PATCH',
-    ),
+    awaitApiResponse(ctx.page, 'PATCH', (url) => url.href.includes(DAYS_PATH), NO_RESPONSE_TIMEOUT),
     save.click(),
   ]);
   return response.status();
@@ -155,8 +157,31 @@ export async function readOrgEmailSyncSettings(
   restClient: RestClient,
 ): Promise<{ domains: string[]; days: number }> {
   const [domains, days] = await Promise.all([
-    restClient.get<{ domains: string[] }>(DOMAINS_PATH, { schema: emailSyncExcludedDomainsSchema }),
+    restClient.get<{ domains: string[] }>(DOMAINS_PATH, {
+      schema: emailSyncExcludedDomainsResponseSchema,
+    }),
     restClient.get<{ days: number }>(DAYS_PATH, { schema: emailSyncBackfillDaysSchema }),
   ]);
   return { domains: domains.body.domains, days: days.body.days };
+}
+
+/**
+ * Sets the org-wide excluded domains through the API, as an admin.
+ *
+ * Writes a shared setting: a spec calling this is @serial and restores defaults after.
+ *
+ * @param restClient - Authenticated as an admin.
+ * @param domains - Domains no mailbox in the org syncs.
+ * @returns The list as the server normalized and stored it.
+ */
+export async function setOrgExcludedDomainsViaApi(
+  restClient: RestClient,
+  domains: string[],
+): Promise<string[]> {
+  const res = await restClient.patch<{ domains: string[] }>(
+    DOMAINS_PATH,
+    { domains },
+    { schema: emailSyncExcludedDomainsResponseSchema },
+  );
+  return res.body.domains;
 }

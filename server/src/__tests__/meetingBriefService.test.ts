@@ -440,6 +440,60 @@ describe('generateMeetingBrief', () => {
     expect(mockCreate).toHaveBeenCalledTimes(2);
   });
 
+  it('drops a news result whose URL will not parse, keeping the rest', async () => {
+    const account = await createAccount(
+      { name: `Acme-badurl-${Date.now()}`, owner_id: ownerId },
+      { id: ownerId, name: OWNER_USER.name },
+    );
+    const contactId = await createTestContact(account.id);
+    const activity = await createActivity(
+      { type: 'Call', subject: 'Call', contact_id: contactId, owner_id: ownerId },
+      { id: ownerId, name: OWNER_USER.name },
+    );
+    await pool.query(`UPDATE ai_configuration SET web_search_enabled = true`);
+    const result = (title: string, url: string) => ({
+      type: 'web_search_result',
+      title,
+      url,
+      page_age: '1 day ago',
+      encrypted_content: 'stub',
+    });
+
+    mockCreate
+      .mockResolvedValueOnce({
+        usage: { input_tokens: 100, output_tokens: 50 },
+        content: [
+          {
+            type: 'tool_use',
+            name: 'report_meeting_brief',
+            input: {
+              account_summary: 'Summary.',
+              recent_activity_summary: [],
+              suggested_talking_points: ['Point one.', 'Point two.', 'Point three.'],
+              next_steps: [],
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        usage: { input_tokens: 30, output_tokens: 10 },
+        content: [
+          {
+            type: 'web_search_tool_result',
+            content: [
+              result('Broken link', 'not a url'),
+              result('Acme hires a CFO', 'https://news.example.com/acme-cfo'),
+            ],
+          },
+        ],
+      });
+
+    const brief = await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
+
+    expect(brief?.brief.news_hook?.map((item) => item.title)).toEqual(['Acme hires a CFO']);
+    expect(brief?.brief.news_hook?.[0].source).toBe('news.example.com');
+  });
+
   it('omits the news hook (does not fail the brief) when the search errors', async () => {
     const account = await createAccount(
       { name: `Acme-${Date.now()}`, owner_id: ownerId },

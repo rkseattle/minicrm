@@ -22,6 +22,7 @@ import { resolveCoveragePolicy } from './coverageAgent/coveragePolicyConfig.js';
 import { SDK_VERSION } from './coverageAgent/sdk/CoverageAgentPlugin.js';
 import { registerCoverageAgent } from './coverageAgent/coverageAgentRegistry.js';
 import { unrecognizedEnvMessage } from './utils/nodeEnv.js';
+import { nonProductionSeamProblem } from './utils/nonProductionSeams.js';
 
 /** Default port for the API server */
 const DEFAULT_PORT = 3001;
@@ -42,6 +43,11 @@ const SHUTDOWN_TIMEOUT_MS = 10_000;
 const envProblem = unrecognizedEnvMessage();
 if (envProblem) {
   throw new Error(envProblem);
+}
+
+const seamProblem = nonProductionSeamProblem();
+if (seamProblem) {
+  throw new Error(seamProblem);
 }
 
 const jwtSecret = process.env.JWT_SECRET ?? '';

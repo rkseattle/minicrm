@@ -28,7 +28,7 @@ import { findAccountById } from '../services/accountService.js';
 import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
-import { queueAssignmentNotification } from '../services/notificationService.js';
+import { notifyReassignedOwner } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { sendContactEmail } from '../services/emailService.js';
 import { createActivity } from '../services/activityService.js';
@@ -47,6 +47,7 @@ import {
 import logger from '../logger.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -106,7 +107,7 @@ export async function createContactHandler(req: Request, res: Response): Promise
     );
   } catch (err) {
     // DB unique constraint fired (TOCTOU race or force=true on an existing email).
-    if ((err as { code?: string }).code === 'DUPLICATE_EMAIL') {
+    if (thrownCode(err) === 'DUPLICATE_EMAIL') {
       res.status(409).json({
         error: { code: 'DUPLICATE_EMAIL', message: 'A contact with this email already exists' },
       });
@@ -245,7 +246,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
       { id: req.user!.id, role: req.user!.role },
     );
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
       // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findContactById(id);
@@ -262,21 +263,12 @@ export async function updateContactHandler(req: Request, res: Response): Promise
 
   // Fire-and-forget: notify the new owner when the contact is reassigned.
   if (contact && parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
-    void (async () => {
-      try {
-        const newOwner = await findUserById(parsed.data.owner_id!);
-        if (newOwner && newOwner.notify_assignments) {
-          queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
-            recordType: 'contact',
-            recordName: `${contact.first_name} ${contact.last_name}`,
-            recordPath: recordPath('contact', contact.id),
-            assignedByName: req.user!.name,
-          });
-        }
-      } catch {
-        // Swallow — notification failure must not affect the response
-      }
-    })();
+    notifyReassignedOwner(parsed.data.owner_id, {
+      recordType: 'contact',
+      recordName: `${contact.first_name} ${contact.last_name}`,
+      recordPath: recordPath('contact', contact.id),
+      assignedByName: req.user!.name,
+    });
   }
 }
 

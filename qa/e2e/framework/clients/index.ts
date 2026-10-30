@@ -19,3 +19,11 @@ export type { AuthStrategy, ApiResponse, RestClientOptions } from './rest-client
 export { GrpcClient, GrpcClientError } from './grpc-client.js';
 
 export type { GrpcClientOptions } from './grpc-client.js';
+
+export { MailEmulatorClient, MailEmulatorError } from './mail-emulator-client.js';
+
+export type { SeededMessage } from './mail-emulator-client.js';
+
+export { SmtpSeedClient } from './smtp-seed-client.js';
+
+export type { SeedMail } from './smtp-seed-client.js';

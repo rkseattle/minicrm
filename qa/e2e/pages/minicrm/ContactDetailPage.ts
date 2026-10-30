@@ -219,6 +219,24 @@ export class ContactDetailPage {
   }
 
   /**
+   * Chooses which of the user's mailboxes the send email modal sends from.
+   *
+   * @param accountId - The connected mailbox's id, which is the option's value.
+   */
+  async selectSendEmailFrom(accountId: string): Promise<void> {
+    const select = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'send-email-from' },
+          { type: 'role', value: 'combobox', options: { name: /send as/i } },
+        ],
+        { intent: 'send as mailbox picker in the send email modal' },
+      )
+      .resolve();
+    await select.selectOption(accountId);
+  }
+
+  /**
    * Fills the subject field in the send email modal.
    *
    * @param subject - Subject line text.

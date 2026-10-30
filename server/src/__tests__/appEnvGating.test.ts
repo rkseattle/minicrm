@@ -19,10 +19,17 @@ import { UNRECOGNIZED_ENVS } from './nodeEnvCorpus.js';
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 const FILE_PREFIX = 'app-env-gating';
 
-// Two SCIM routers mount `authenticate` at the bare /api/v1 prefix, so an
-// unauthenticated request to any unmatched path there is challenged with 401
-// before reaching the 404 handler. Authenticating is what makes 404 (route not
-// registered) distinguishable from 401 (registered, or merely unreachable).
+/**
+ * The test-only email sync routes, probed so a mounted route never answers 404: an empty
+ * body and a malformed id draw 400, or 403 with email_sync off, whatever the flag reads.
+ */
+const TEST_EMAIL_SYNC_PATHS = [
+  '/api/v1/test/connected-accounts/oauth',
+  '/api/v1/test/email-sync/accounts/not-a-uuid/run',
+];
+
+// Signed in as admin, so a guarded route that is mounted answers past its guard: a 404
+// then means the route is not registered, never that a guard refused the request.
 let adminCookie: string;
 
 beforeAll(async () => {
@@ -118,6 +125,15 @@ describe.each(UNRECOGNIZED_ENVS)('NODE_ENV %s', (_label, value) => {
     expect(res.status).toBe(404);
     expect(res.body).not.toEqual({ ok: true });
   });
+
+  it('does not mount the test-only email sync endpoints', async () => {
+    const app = await loadAppWithNodeEnv(value);
+
+    for (const path of TEST_EMAIL_SYNC_PATHS) {
+      const res = await request(app).post(path).set('Cookie', adminCookie).send({});
+      expect(res.status).toBe(404);
+    }
+  });
 });
 
 describe('NODE_ENV staging', () => {
@@ -151,6 +167,12 @@ describe('NODE_ENV staging', () => {
       .post('/api/v1/test/advance-sequences')
       .set('Cookie', adminCookie);
     expect(advance.status).toBe(404);
+
+    // Seeds a mailbox without consent and runs a sync on demand.
+    for (const path of TEST_EMAIL_SYNC_PATHS) {
+      const res = await request(app).post(path).set('Cookie', adminCookie).send({});
+      expect(res.status).toBe(404);
+    }
   });
 });
 
@@ -179,5 +201,20 @@ describe('NODE_ENV development', () => {
       .get('/api/v1/auth/mfa/dev/totp-code')
       .set('Cookie', adminCookie);
     expect(totp.status).not.toBe(404);
+
+    for (const path of TEST_EMAIL_SYNC_PATHS) {
+      const res = await request(app).post(path).set('Cookie', adminCookie).send({});
+      expect(res.status).not.toBe(404);
+    }
+  });
+
+  it('guards the email sync test routes alone, not the rest of /api/v1/test', async () => {
+    const app = await loadAppWithNodeEnv('development');
+
+    // Authenticated, so only a guard of this router can refuse it. Router-wide, the
+    // email_sync gate (off by default) would answer 403 before the 404 handler.
+    const res = await request(app).post('/api/v1/test/no-such-route').set('Cookie', adminCookie);
+
+    expect(res.status).toBe(404);
   });
 });

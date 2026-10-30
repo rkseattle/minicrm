@@ -14,6 +14,7 @@ import type {
 } from '@minicrm/shared/schemas/teamSchema.js';
 import { writeAuditEntry, writeAuditEntries, diffFields, SYSTEM_ACTOR } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Full team row as stored in the database */
 export interface TeamRow {
@@ -157,12 +158,12 @@ export async function createTeam(
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
-    if ((err as { code?: string }).code === '23505') {
+    if (thrownCode(err) === '23505') {
       throw Object.assign(new Error(`A team with the name "${params.name}" already exists`), {
         code: 'TEAM_NAME_DUPLICATE',
       });
     }
-    if ((err as { code?: string }).code === '23503') {
+    if (thrownCode(err) === '23503') {
       throw Object.assign(
         new Error('manager_id or parent_team_id references a non-existent record'),
         { code: 'MANAGER_OR_PARENT_NOT_FOUND' },
@@ -291,12 +292,12 @@ export async function updateTeam(
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
-    if ((err as { code?: string }).code === '23505') {
+    if (thrownCode(err) === '23505') {
       throw Object.assign(new Error('A team with this name already exists'), {
         code: 'TEAM_NAME_DUPLICATE',
       });
     }
-    if ((err as { code?: string }).code === '23503') {
+    if (thrownCode(err) === '23503') {
       throw Object.assign(
         new Error('manager_id or parent_team_id references a non-existent record'),
         { code: 'MANAGER_OR_PARENT_NOT_FOUND' },
@@ -416,12 +417,12 @@ export async function addTeamMember(
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
-    if ((err as { code?: string }).code === '23505') {
+    if (thrownCode(err) === '23505') {
       throw Object.assign(new Error('User is already a member of this team'), {
         code: 'TEAM_MEMBER_ALREADY_EXISTS',
       });
     }
-    if ((err as { code?: string }).code === '23503') {
+    if (thrownCode(err) === '23503') {
       throw Object.assign(new Error('Team or user not found'), {
         code: 'TEAM_OR_USER_NOT_FOUND',
       });

@@ -9,7 +9,7 @@
 import { z } from 'zod';
 
 import { Capability } from './capabilitySchema.js';
-import { paginationParamsSchema } from './paginationSchema.js';
+import { paginatedResponseSchema, paginationParamsSchema } from './paginationSchema.js';
 import { typeErrorMessages } from './typeErrorMessages.js';
 
 /**
@@ -79,6 +79,24 @@ export const createEmailMessageLinkSchema = emailLinkTargetSchema;
 
 export type CreateEmailMessageLinkInput = z.infer<typeof createEmailMessageLinkSchema>;
 
+/** How a link came to exist: by the matcher, or by a person filing the message. */
+export const EMAIL_LINK_MATCH_TYPES = ['auto', 'manual'] as const;
+
+export type EmailLinkMatchType = (typeof EMAIL_LINK_MATCH_TYPES)[number];
+
+/** Response of POST /api/v1/email-messages/:id/links: the link just filed. */
+export const emailMessageLinkEnvelopeSchema = z.object({
+  link: z.object({
+    id: z.string().uuid(),
+    email_message_id: z.string().uuid(),
+    record_type: emailLinkTargetSchema.shape.record_type,
+    record_id: z.string().uuid(),
+    match_type: z.enum(EMAIL_LINK_MATCH_TYPES),
+    created_at: z.string(),
+  }),
+});
+export type EmailMessageLinkEnvelope = z.infer<typeof emailMessageLinkEnvelopeSchema>;
+
 /**
  * One message as the API returns it.
  *
@@ -129,6 +147,14 @@ export const emailThreadSchema = z.object({
 
 export type EmailThread = z.infer<typeof emailThreadSchema>;
 
+/** Response of both thread list endpoints: the unmatched inbox and one record's mail. */
+export const emailThreadPageSchema = paginatedResponseSchema(emailThreadSchema);
+export type EmailThreadPage = z.infer<typeof emailThreadPageSchema>;
+
+/** Response of GET /api/v1/email-messages/:id. */
+export const emailMessageEnvelopeSchema = z.object({ message: emailMessageDetailSchema });
+export type EmailMessageEnvelope = z.infer<typeof emailMessageEnvelopeSchema>;
+
 /** Body of PATCH /api/v1/email-messages/:id/thread-privacy; applies to the whole thread. */
 export const threadPrivacySchema = z
   .object({
@@ -136,12 +162,17 @@ export const threadPrivacySchema = z
   })
   .strict();
 
-/** Response of PATCH /api/v1/email-messages/:id/thread-privacy; a type, since nothing parses it. */
-export interface ThreadPrivacyResponse {
-  is_private: boolean;
+/** Response of PATCH /api/v1/email-messages/:id/thread-privacy. */
+export const threadPrivacyResponseSchema = z.object({
+  is_private: z.boolean(),
   /** Messages whose setting changed; 0 when the thread already had it. */
-  updated: number;
-}
+  updated: z.number().int().min(0),
+});
+
+export type ThreadPrivacyResponse = z.infer<typeof threadPrivacyResponseSchema>;
+
+/** What a private thread's scrubbed activities and audit entries read as, in place of its subject. */
+export const PRIVATE_EMAIL_SUBJECT = 'Private email';
 
 /** Longest subject a send accepts, matching the org-SMTP compose path. */
 export const EMAIL_SEND_SUBJECT_MAX = 255;

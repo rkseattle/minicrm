@@ -15,7 +15,11 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { MyTasksPage } from '@pages/minicrm/MyTasksPage.js';
 import { ActivityTimelinePage } from '@pages/minicrm/ActivityTimelinePage.js';
-import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  AI_RESPONSE_TIMEOUT_MS,
+} from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // API data types
@@ -222,9 +226,11 @@ export async function summarizeActivityNotes(
   await timeline.clickSummarize(FIRST_INTERACTION_TIMEOUT_MS);
   await timeline.fillSummaryInput(rawText);
 
-  const responseReceived = context.page.waitForResponse(
-    (res) => res.request().method() === 'POST' && res.url().includes('/activities/summarize'),
-    { timeout: 30_000 },
+  const responseReceived = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => url.href.includes('/activities/summarize'),
+    AI_RESPONSE_TIMEOUT_MS,
   );
   await timeline.clickSummarySubmit(FIRST_INTERACTION_TIMEOUT_MS);
   const response = await responseReceived;

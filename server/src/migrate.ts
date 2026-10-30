@@ -22,6 +22,8 @@ import { createRequire } from 'module';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import pg from 'pg';
 import logger from './logger.js';
+import { thrownCode } from './utils/errorCode.js';
+import { unlockThenDispose } from './utils/advisoryLock.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -105,10 +107,12 @@ export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promis
     // pg_advisory_unlock on a lock this session never held returns false and
     // logs a spurious server-side WARNING on every timeout, which would add
     // noise during an on-call investigation of a stuck migration lock.
-    if (acquired) {
-      await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]).catch(() => {});
-    }
-    await client.end();
+    // A dedicated client is ended either way, which drops the lock even if the unlock failed.
+    await unlockThenDispose(
+      acquired ? () => client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]) : null,
+      () => client.end(),
+      'migrate',
+    );
   }
 }
 
@@ -380,10 +384,8 @@ async function ensureCoverageDatabaseExists(): Promise<void> {
         await adminClient.query(`CREATE DATABASE "${coverageDbName.replace(/"/g, '""')}"`);
         logger.info({ coverageDbName }, 'Created coverage database');
       } catch (err) {
-        const isConcurrentCreation =
-          err instanceof Error &&
-          'code' in err &&
-          (err.code === PG_DUPLICATE_DATABASE || err.code === PG_UNIQUE_VIOLATION);
+        const code = thrownCode(err);
+        const isConcurrentCreation = code === PG_DUPLICATE_DATABASE || code === PG_UNIQUE_VIOLATION;
         if (isConcurrentCreation) {
           logger.info(
             { coverageDbName },

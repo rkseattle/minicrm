@@ -188,6 +188,8 @@ connected_accounts
     org list in system_settings.email_sync_excluded_domains at sync time
   sync_paused_at nullable  ← owner's pause; kept apart from status, which reports health
     and is rewritten by every synced page
+  is_demo  ← the demo seed's mailbox: paused, so no sync claims it, and pointed at an
+    .invalid host, so a Test or resume fails rather than reaching a real server
 
 email_messages
   direction(inbound|outbound)  ← decided by comparing sender to the mailbox's own

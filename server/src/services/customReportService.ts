@@ -16,6 +16,7 @@ import type {
 import { writeAuditEntry } from './auditService.js';
 import { SYSTEM_ACTOR } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ── Row shapes ────────────────────────────────────────────────────────────────
 
@@ -291,7 +292,7 @@ export async function createReport(
         ],
       );
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === '23505') {
+      if (thrownCode(err) === '23505') {
         const e = new Error(`A report named "${input.name}" already exists`);
         (e as NodeJS.ErrnoException).code = 'CUSTOM_REPORT_NAME_CONFLICT';
         throw e;
@@ -379,7 +380,7 @@ export async function updateReport(
         values,
       );
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === '23505') {
+      if (thrownCode(err) === '23505') {
         const e = new Error(`A report named "${input.name}" already exists`);
         (e as NodeJS.ErrnoException).code = 'CUSTOM_REPORT_NAME_CONFLICT';
         throw e;
@@ -711,7 +712,7 @@ export async function saveNliReport(
         [params.name, entityType, configJson, 'public', actor.id],
       );
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === '23505') {
+      if (thrownCode(err) === '23505') {
         const e = new Error(`A report named "${params.name}" already exists`);
         (e as NodeJS.ErrnoException).code = 'CUSTOM_REPORT_NAME_CONFLICT';
         throw e;

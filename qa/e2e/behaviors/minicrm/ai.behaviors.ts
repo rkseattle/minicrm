@@ -12,7 +12,11 @@
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AiPage } from '@pages/minicrm/AiPage.js';
-import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+} from '@apps/minicrm/helpers.js';
 import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
 import type { AiMessageResponse } from '@minicrm/shared/schemas/aiSessionSchema.js';
 import {
@@ -24,6 +28,12 @@ import {
 // ---------------------------------------------------------------------------
 // Shared constants
 // ---------------------------------------------------------------------------
+
+/** How long a chat reply may take: a whole model turn, not one quick call. */
+const AI_CHAT_REPLY_TIMEOUT_MS = 60_000;
+
+/** A session's message endpoint, which both posts a message and answers with the reply. */
+const AI_MESSAGES_PATH = /^\/api\/v1\/ai\/sessions\/[^/]+\/messages$/;
 
 /** Deterministic stub returned by the E2E server (E2E=true mode) for a non-prefixed message. */
 export const E2E_STUB = E2E_STUB_RESPONSE;
@@ -272,13 +282,12 @@ export async function sendAiMessageViaUI(
   // The client commits the assistant reply straight from this POST response
   // into the query cache — there is no follow-up GET refetch to
   // disambiguate against, so a plain POST-to-this-URL filter is sufficient.
-  const replyReceived = context.page.waitForResponse(
-    (res) =>
-      res.request().method() === 'POST' &&
-      res.url().includes('/api/v1/ai/sessions') &&
-      res.url().includes('/messages') &&
-      res.status() === 200,
-    { timeout: 60_000 },
+  const replyReceived = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => AI_MESSAGES_PATH.test(url.pathname),
+    AI_CHAT_REPLY_TIMEOUT_MS,
+    200,
   );
   await aiPage.sendMessage(content);
   await replyReceived;
@@ -306,10 +315,9 @@ export async function sendAiMessageViaUI(
 
 /**
  * Types the given message into the AI input and clicks Send, waiting for the
- * send request to settle with a non-2xx response (rather than
- * sendAiMessageViaUI's 200-only wait, which would time out for 60s on an
- * error response before its caller's .catch() could rescue it). Does not
- * wait for an assistant bubble — there is none on an error response.
+ * send request to settle with a non-2xx response; sendAiMessageViaUI expects a 200 and
+ * fails on anything else. Does not wait for an assistant bubble — there is none on an
+ * error response.
  *
  * @param context - Playwright fixture context.
  * @param content - Message text to send.
@@ -319,13 +327,12 @@ export async function sendAiMessageExpectingErrorViaUI(
   content: string,
 ): Promise<void> {
   const aiPage = new AiPage(context);
-  const errorReceived = context.page.waitForResponse(
-    (res) =>
-      res.request().method() === 'POST' &&
-      res.url().includes('/api/v1/ai/sessions') &&
-      res.url().includes('/messages') &&
-      res.status() >= 400,
-    { timeout: 15_000 },
+  const errorReceived = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => AI_MESSAGES_PATH.test(url.pathname),
+    FIRST_INTERACTION_TIMEOUT_MS,
+    (status) => status >= 400,
   );
   await aiPage.sendMessage(content);
   await errorReceived;
@@ -374,10 +381,11 @@ export async function clickNewSessionButton(context: AiBehaviorContext): Promise
     : await aiPage.newSessionButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await btn.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 
-  const responsePromise = context.page.waitForResponse(
-    (res) =>
-      /\/api\/v1\/ai\/sessions$/.test(new URL(res.url()).pathname) &&
-      res.request().method() === 'POST',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => /\/api\/v1\/ai\/sessions$/.test(url.pathname),
+    NO_RESPONSE_TIMEOUT,
   );
   await aiPage.clickNewSession();
   const response = await responsePromise;

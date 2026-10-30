@@ -384,6 +384,18 @@ same way rather than widening `qa`.
 
 ---
 
+## Fake external services
+
+The test stack replaces each third party with a local fake: MinIO for object storage,
+Mailhog to capture outbound SMTP, GreenMail for a real IMAP mailbox, and the mail provider
+emulator for the Gmail and Graph APIs. `npm run e2e:setup` waits for each and resets the
+emulator. How the email sync specs use the last two is in
+[email-sync.md](email-sync.md#end-to-end-greenmail-and-the-mail-provider-emulator).
+
+A fake shared by parallel workers must be cleaned up per resource, never globally: the
+emulator's `POST /__admin/reset` is for global setup only, and a test deletes the one
+mailbox it registered.
+
 ## Cleaning up what a test creates
 
 `TestDataManager` deletes only what a test registers — it never truncates and never

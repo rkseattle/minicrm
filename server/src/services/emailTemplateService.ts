@@ -10,6 +10,7 @@ import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 
 import type { MergeTag } from '@minicrm/shared/schemas/emailTemplateSchema.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** A merge tag descriptor, as stored in the merge_tags jsonb array. */
 export type { MergeTag };
@@ -158,7 +159,7 @@ export async function createEmailTemplate(
     return row;
   } catch (err: unknown) {
     await client.query('ROLLBACK');
-    if ((err as { code?: string }).code === '23505') {
+    if (thrownCode(err) === '23505') {
       throw Object.assign(new Error('An email template with this name already exists'), {
         code: 'EMAIL_TEMPLATE_NAME_CONFLICT',
         statusCode: 409,
@@ -244,7 +245,7 @@ export async function updateEmailTemplate(
     return after;
   } catch (err: unknown) {
     await client.query('ROLLBACK');
-    if ((err as { code?: string }).code === '23505') {
+    if (thrownCode(err) === '23505') {
       throw Object.assign(new Error('An email template with this name already exists'), {
         code: 'EMAIL_TEMPLATE_NAME_CONFLICT',
         statusCode: 409,

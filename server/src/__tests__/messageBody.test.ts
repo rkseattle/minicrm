@@ -25,6 +25,7 @@ import {
   storedThreadingHeaders,
   subjectOf,
 } from '../services/mail/messageBody.js';
+import logger from '../logger.js';
 
 /** Builds a document from raw header and body text, with the CRLF line endings MIME uses. */
 function mime(...lines: string[]): Buffer {
@@ -313,6 +314,8 @@ describe('parseMessageBody — malformed input', () => {
     // has to cover the conversion and not just the parse — and the HTML the parser had
     // already returned is kept, since only the text derivation failed.
     const depth = 20000;
+    const warn = vi.spyOn(logger, 'warn');
+    onTestFinished(() => warn.mockRestore());
     const body = await parseMessageBody(
       mime(
         'From: sender@example.com',
@@ -333,6 +336,29 @@ describe('parseMessageBody — malformed input', () => {
     // The HTML survived but the text did not, and a null text column is the loss the
     // caller reports — keeping the HTML must not make it look like nothing was lost.
     expect(body.lostText).toBe(true);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(RangeError) }),
+      expect.stringContaining('body text could not be derived'),
+    );
+  });
+
+  it('keeps the headers when only the text derivation overflows', async () => {
+    const depth = 20000;
+    const parsed = await parseMessage(
+      mime(
+        'From: sender@example.com',
+        'Subject: Deep',
+        'Message-ID: <deep@example.com>',
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        '<div>'.repeat(depth) + 'deep' + '</div>'.repeat(depth),
+      ),
+    );
+
+    expect(parsed.fromAddress).toBe('sender@example.com');
+    expect(parsed.subject).toBe('Deep');
+    expect(parsed.threading.messageId).toBe('<deep@example.com>');
+    expect(parsed.lostText).toBe(true);
   });
 
   it('drops a NUL byte, which a text column cannot store', async () => {

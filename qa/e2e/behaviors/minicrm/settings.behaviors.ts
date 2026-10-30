@@ -4,11 +4,20 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { gotoAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  gotoAndSettle,
+  FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+} from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 import type { AdminSettingsTab } from '@pages/minicrm/AdminSettingsPage.js';
-import { EMAIL_SYNC_BACKFILL_DAYS_DEFAULT } from '@minicrm/shared/schemas/settingsSchema.js';
+import {
+  EMAIL_SYNC_BACKFILL_DAYS_DEFAULT,
+  emailSyncBackfillDaysSchema,
+  emailSyncExcludedDomainsResponseSchema,
+} from '@minicrm/shared/schemas/settingsSchema.js';
 
 /**
  * Resets all mutable system settings to their known-good defaults in parallel.
@@ -248,11 +257,12 @@ export async function clickMoveUpAndWaitForReorder(
 ): Promise<StageReorderResult> {
   const moveUpButton = await new AdminSettingsPage(context).pipelineStageMoveUpLocator(stageId);
   const [reorderResp] = await Promise.all([
-    context.page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/pipeline-stages/reorder') &&
-        resp.request().method() === 'PUT' &&
-        resp.status() === 200,
+    awaitApiResponse(
+      context.page,
+      'PUT',
+      '/api/v1/settings/pipeline-stages/reorder',
+      NO_RESPONSE_TIMEOUT,
+      200,
     ),
     moveUpButton.click(),
   ]);
@@ -270,11 +280,12 @@ export async function clickMoveDownAndWaitForReorder(
 ): Promise<StageReorderResult> {
   const moveDownButton = await new AdminSettingsPage(context).pipelineStageMoveDownLocator(stageId);
   const [reorderResp] = await Promise.all([
-    context.page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/pipeline-stages/reorder') &&
-        resp.request().method() === 'PUT' &&
-        resp.status() === 200,
+    awaitApiResponse(
+      context.page,
+      'PUT',
+      '/api/v1/settings/pipeline-stages/reorder',
+      NO_RESPONSE_TIMEOUT,
+      200,
     ),
     moveDownButton.click(),
   ]);
@@ -429,10 +440,16 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
     // Email sync governance, seeded empty and at the default window; reset-e2e-data.ts
     // restores the same values. Not swallowed: a failed reset would leave exclusions set for
     // the next serial spec with nothing reporting it.
-    restClient.patch('/api/v1/settings/email-sync-excluded-domains', { domains: [] }),
-    restClient.patch('/api/v1/settings/email-sync-backfill-days', {
-      days: EMAIL_SYNC_BACKFILL_DAYS_DEFAULT,
-    }),
+    restClient.patch(
+      '/api/v1/settings/email-sync-excluded-domains',
+      { domains: [] },
+      { schema: emailSyncExcludedDomainsResponseSchema },
+    ),
+    restClient.patch(
+      '/api/v1/settings/email-sync-backfill-days',
+      { days: EMAIL_SYNC_BACKFILL_DAYS_DEFAULT },
+      { schema: emailSyncBackfillDaysSchema },
+    ),
     restClient
       .put('/api/v1/settings/currencies', { home_currency: 'USD', currencies: [] })
       .catch(() => undefined),
@@ -1189,9 +1206,12 @@ export async function clickAiToggleConfirmButton(
 export async function clickAiToggleConfirmAndWait(
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
-  const toggleDone = context.page.waitForResponse(
-    (res) => res.url().includes('/admin/ai/master-toggle') && res.status() === 200,
-    { timeout: 15_000 },
+  const toggleDone = awaitApiResponse(
+    context.page,
+    'PATCH',
+    '/api/v1/admin/ai/master-toggle',
+    FIRST_INTERACTION_TIMEOUT_MS,
+    200,
   );
   await (await new AdminSettingsPage(context).aiToggleConfirmButtonLocator()).click();
   await toggleDone;
@@ -1926,9 +1946,12 @@ export async function clickAiDpaCheckbox(context: AdminSettingsBehaviorContext):
  * cache briefly re-renders dpa_acknowledged: false during the refetch window.
  */
 export async function acknowledgeAiDpa(context: AdminSettingsBehaviorContext): Promise<void> {
-  const dpaPostDone = context.page.waitForResponse(
-    (res) => res.url().includes('/admin/ai/dpa-acknowledgment') && res.status() === 200,
-    { timeout: 15_000 },
+  const dpaPostDone = awaitApiResponse(
+    context.page,
+    'POST',
+    '/api/v1/admin/ai/dpa-acknowledgment',
+    FIRST_INTERACTION_TIMEOUT_MS,
+    200,
   );
   await (await new AdminSettingsPage(context).aiDpaCheckboxLocator()).click();
   await dpaPostDone;
@@ -2987,10 +3010,11 @@ export async function getAiFieldExclusionToggle(
 export async function clickDataHygieneRunNowAndAwaitResponse(
   context: AdminSettingsBehaviorContext,
 ): Promise<{ status: number }> {
-  const responsePromise = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/admin/ai/data-hygiene/run') &&
-      response.request().method() === 'POST',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => url.href.includes('/api/v1/admin/ai/data-hygiene/run'),
+    NO_RESPONSE_TIMEOUT,
   );
   await new AdminSettingsPage(context).clickDataHygieneRunNowButton();
   const response = await responsePromise;

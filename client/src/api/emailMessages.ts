@@ -8,12 +8,12 @@ import {
   IDEMPOTENCY_KEY_HEADER,
   type EmailLinkRecordType,
   type EmailMessageDetail,
-  type EmailThread,
+  type EmailMessageEnvelope,
+  type EmailThreadPage,
   type SendEmailInput,
   type SendEmailResponse,
   type ThreadPrivacyResponse,
 } from '@shared/schemas/emailMessageSchema.js';
-import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
 import apiClient from './axiosInstance.js';
 
@@ -48,8 +48,8 @@ export async function listRecordEmailThreads(params: {
   recordId: string;
   page: number;
   limit: number;
-}): Promise<PaginatedResponse<EmailThread>> {
-  const response = await apiClient.get<PaginatedResponse<EmailThread>>('/email-messages', {
+}): Promise<EmailThreadPage> {
+  const response = await apiClient.get<EmailThreadPage>('/email-messages', {
     params: {
       record_type: params.recordType,
       record_id: params.recordId,
@@ -62,7 +62,7 @@ export async function listRecordEmailThreads(params: {
 
 /** One message with its bodies. The HTML is unsanitized: render it only through EmailBodyFrame. */
 export async function getEmailMessage(id: string): Promise<EmailMessageDetail> {
-  const response = await apiClient.get<{ message: EmailMessageDetail }>(`/email-messages/${id}`);
+  const response = await apiClient.get<EmailMessageEnvelope>(`/email-messages/${id}`);
   return response.data.message;
 }
 

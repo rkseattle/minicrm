@@ -135,6 +135,25 @@ jobs:
           - 1025:1025
           - 8025:8025
 
+      # The email sync specs' IMAP provider. Workflow services cannot be shared, so this
+      # repeats ci.yml's e2e-serial block and docker-compose.test.yml: change all three.
+      # server-tests' copy omits auth.disabled on purpose; its live IMAP test logs in as rep.
+      greenmail:
+        image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-greenmail:2.1.13
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GREENMAIL_OPTS: >-
+            -Dgreenmail.setup.test.smtp
+            -Dgreenmail.setup.test.imap
+            -Dgreenmail.hostname=0.0.0.0
+            -Dgreenmail.users=rep:secret-pass-12@example.com
+            -Dgreenmail.auth.disabled
+        ports:
+          - 3143:3143
+          - 3025:3025
+
     steps:
       - uses: actions/checkout@v7
         with:
@@ -217,6 +236,7 @@ jobs:
           # a clean, zero-overhead baseline run (see the action's own input
           # docs).
           coverage-instrumentation: 'true'
+          fake-mail-providers: 'true'
 
       # Single worker, not the config's own IS_CI default (4): this run
       # mixes @functional and @serial tests in ONE invocation (unlike
@@ -315,6 +335,9 @@ jobs:
           E2E_API_URL: http://localhost:3001
           E2E: true
           MAILHOG_URL: http://localhost:8025
+          E2E_GREENMAIL_SMTP_URL: smtp://localhost:3025
+          E2E_IMAP_HOST_FOR_SERVER: localhost
+          E2E_MAIL_EMULATOR_URL: http://localhost:4010
           # Bind the coverage sessions this run records to the SAME SHA the
           # attestation step verifies against. resolveSessionBuildSha()
           # (coverage-session-control-client.ts:28-30) falls back to

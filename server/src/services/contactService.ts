@@ -29,6 +29,7 @@ import { lockRecordsForMerge } from './recordMergeLock.js';
 import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 import { getDealAutoLink } from './settingsService.js';
 import { normalizeAddress } from '../utils/emailAddress.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -243,7 +244,7 @@ export async function createContact(
     await client.query('ROLLBACK');
     // PostgreSQL error code 23505 = unique_violation — catches concurrent inserts
     // that both bypass the service-layer duplicate check (TOCTOU race).
-    if ((error as { code?: string }).code === '23505') {
+    if (thrownCode(error) === '23505') {
       throw Object.assign(new Error('A contact with this email address already exists'), {
         code: 'DUPLICATE_EMAIL',
       });

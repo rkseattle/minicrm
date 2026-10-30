@@ -24,7 +24,7 @@ import { findAccountById } from '../services/accountService.js';
 import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
-import { queueAssignmentNotification } from '../services/notificationService.js';
+import { notifyReassignedOwner } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import { listNotes } from '../services/noteService.js';
@@ -43,6 +43,7 @@ import { z } from 'zod';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
 import { toUtcDateString } from '../utils/utcDate.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -229,7 +230,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
       role: req.user!.role,
     });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
       // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findDealById(id);
@@ -268,21 +269,12 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
 
   // Fire-and-forget: notify the new owner when the deal is reassigned.
   if (parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
-    void (async () => {
-      try {
-        const newOwner = await findUserById(parsed.data.owner_id!);
-        if (newOwner && newOwner.notify_assignments) {
-          queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
-            recordType: 'deal',
-            recordName: deal.name,
-            recordPath: recordPath('deal', deal.id),
-            assignedByName: req.user!.name,
-          });
-        }
-      } catch {
-        // Swallow — notification failure must not affect the response
-      }
-    })();
+    notifyReassignedOwner(parsed.data.owner_id, {
+      recordType: 'deal',
+      recordName: deal.name,
+      recordPath: recordPath('deal', deal.id),
+      assignedByName: req.user!.name,
+    });
   }
 }
 

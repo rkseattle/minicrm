@@ -50,6 +50,10 @@ import {
 } from './messageBody.js';
 import { extractHeaderField, resolveThreadId } from './threading.js';
 import { normalizeAddress } from '../../utils/emailAddress.js';
+import { parseStoredCursor } from './storedCursor.js';
+
+/** How this driver names its provider in messages. */
+const PROVIDER_NAME = 'IMAP';
 
 /** The mailbox every IMAP server has, under this exact name. */
 const INBOX_PATH = 'INBOX';
@@ -125,16 +129,10 @@ export function parseCursor(cursor: string | null): CursorByMailbox {
   const parsed: CursorByMailbox = new Map();
   if (!cursor) return parsed;
 
-  let decoded: unknown;
-  try {
-    decoded = JSON.parse(cursor);
-  } catch {
-    return parsed;
-  }
-  if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return parsed;
+  const decoded = parseStoredCursor(cursor, PROVIDER_NAME);
+  if (!decoded) return parsed;
 
-  // Safe: the guard above rejects anything that is not a non-array object.
-  for (const [path, value] of Object.entries(decoded as Record<string, unknown>)) {
+  for (const [path, value] of Object.entries(decoded)) {
     if (!path || typeof value !== 'object' || value === null) continue;
     const { uidValidity, uidNext } = value as { uidValidity?: unknown; uidNext?: unknown };
     if (typeof uidValidity !== 'string' || !uidValidity) continue;

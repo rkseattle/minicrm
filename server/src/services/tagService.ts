@@ -13,6 +13,7 @@ import type {
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { writeAuditEntry, writeAuditEntryBestEffort } from './auditService.js';
 import type { AuditActor, AuditRecordType } from './auditService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Shape of a tag row returned from the database */
 export interface TagRow {
@@ -217,7 +218,7 @@ export async function renameTagByName(
       }
       updated = result.rows[0];
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === '23505') {
+      if (thrownCode(err) === '23505') {
         const e = new Error(`Tag "${newName}" already exists`);
         (e as NodeJS.ErrnoException).code = 'TAG_NAME_CONFLICT';
         throw e;

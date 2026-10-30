@@ -25,6 +25,7 @@ import {
   CoverageSessionCorrelationMismatchError,
 } from '../services/coverageSessionService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const sessionIdParamSchema = z.string().uuid();
 const correlationIdParamSchema = z.string().uuid();
@@ -216,8 +217,7 @@ export async function recordCoverageSessionDumpHandler(req: Request, res: Respon
       res.status(400).json({ error: { code: err.code, message: err.message } });
       return;
     }
-    const code =
-      err instanceof Error && 'code' in err ? (err as { code?: string }).code : undefined;
+    const code = thrownCode(err);
     if (code === '23503') {
       res.status(400).json({
         error: { code: 'COVERAGE_SESSION_NOT_FOUND', message: 'Coverage session not found' },

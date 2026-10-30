@@ -287,10 +287,10 @@ describe('spec covers every route registration', () => {
   // floor left enough slack to hide a real drop: an empty @openapi tag once consumed the
   // next annotation and dropped a public endpoint while a 0.95 floor still passed.
   //
-  // Four registrations carry an eslint-disable (three dev-only routes, one documented on
+  // Six registrations carry an eslint-disable (five dev-only routes, one documented on
   // its sibling), and shared-path blocks document two methods from one annotation, which
   // nets out to this number. Change it only with the reason.
-  const EXPECTED_SHORTFALL = 2;
+  const EXPECTED_SHORTFALL = 4;
 
   it('generates an operation for every route registration but the known exceptions', () => {
     const routesDir = join(__dirname, '..', 'routes');

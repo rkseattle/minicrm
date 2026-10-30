@@ -18,7 +18,8 @@
 # action — and for passing the minio one's id as `minio-container-id`, since
 # the `job` context that carries it does not reach inside this action. A
 # caller whose specs assert on email delivery must also declare a mailhog
-# service on :1025/:8025, which the SMTP seeding step below assumes.
+# service on :1025/:8025, which the SMTP seeding step below assumes. One that sets
+# `fake-mail-providers` must also declare a greenmail service on :3143/:3025.
 #
 # MINCRM-324, MINCRM-687
 
@@ -61,6 +62,13 @@ inputs:
       input is what supplies that precondition instead.
       Every other caller needs the backend V8 agent OFF for a clean,
       zero-overhead baseline run, so this defaults to unset.
+    required: false
+    default: 'false'
+  fake-mail-providers:
+    description: >
+      Set to 'true' to start the Gmail/Graph emulator and point the app server at it and at
+      the caller's `greenmail` service, as ci.yml's e2e-serial job does, so the email sync
+      specs can run. The caller must declare that service on ports 3143/3025.
     required: false
     default: 'false'
 
@@ -172,6 +180,20 @@ runs:
         E2E_SMTP_HOST: localhost
         E2E_SMTP_PORT: '1025'
 
+    # Stand-in for the Gmail and Graph APIs the server is pointed at below.
+    - name: Start mail provider emulator
+      if: inputs.fake-mail-providers == 'true'
+      shell: bash
+      run: |
+        node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
+          qa/e2e/framework/fakes/start-mail-provider-emulator.mjs &
+        for _ in $(seq 1 30); do
+          curl -sf --max-time 3 http://localhost:4010/health && exit 0
+          sleep 1
+        done
+        echo "::error::mail provider emulator did not start"
+        exit 1
+
     - name: Start application server
       shell: bash
       run: npm run start --workspace=minicrm-server &
@@ -191,6 +213,11 @@ runs:
         COVERAGE_MAPPING_QUERY: ${{ inputs.coverage-instrumentation }}
         COVERAGE_REPORTING_QUERY: ${{ inputs.coverage-instrumentation }}
         COVERAGE_PIPELINE_INGESTION: ${{ inputs.coverage-instrumentation }}
+        # Empty when the input is off, which the server reads as unset.
+        SSRF_ALLOWED_PRIVATE_HOSTS: ${{ inputs.fake-mail-providers == 'true' && 'localhost' || '' }}
+        GMAIL_API_BASE_URL: ${{ inputs.fake-mail-providers == 'true' && 'http://localhost:4010/gmail/v1/users/me' || '' }}
+        GRAPH_API_BASE_URL: ${{ inputs.fake-mail-providers == 'true' && 'http://localhost:4010/v1.0/me' || '' }}
+        EMAIL_SYNC_SCHEDULER: ${{ inputs.fake-mail-providers == 'true' && 'off' || '' }}
         # `npm run start --workspace=minicrm-server` sets this process's cwd
         # to server/, not the repo root — coverageConfig.ts's
         # resolveSourceRoot() would otherwise relativize coverage paths

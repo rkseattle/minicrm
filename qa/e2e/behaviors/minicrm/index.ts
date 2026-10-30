@@ -828,7 +828,31 @@ export {
   listUnmatchedMail,
   statusOfUnmatchedMailRequest,
 } from './email-messages.behaviors.js';
-export type { TestEmailThread, TestEmailThreadPage } from './email-messages.behaviors.js';
+export {
+  connectEmulatedMailbox,
+  connectImapMailboxViaApi,
+  connectImapMailboxViaProfile,
+  countMessagesInThread,
+  deliverToImapMailbox,
+  linkMessageToRecord,
+  listEmulatedMail,
+  listMyMailboxes,
+  readMailboxStatusLabel,
+  readTimelineThreadSubjects,
+  replyToMessage,
+  seedEmulatedMail,
+  setMailboxExcludedDomains,
+  syncMailboxNow,
+  toggleThreadPrivacy,
+  unlinkMessageFromRecord,
+  waitForThreadMarkedPrivate,
+} from './email-sync.behaviors.js';
+export type {
+  EmailSyncBehaviorContext,
+  ImapConnectResult,
+  MailboxOwner,
+  SyncOutcome,
+} from './email-sync.behaviors.js';
 export type { TestFeatureFlag } from './feature-flags.behaviors.js';
 
 export {

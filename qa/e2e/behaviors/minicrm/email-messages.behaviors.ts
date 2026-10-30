@@ -10,26 +10,16 @@
 import { RestClientError, type RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { EmailsSectionPage } from '@pages/minicrm/EmailsSectionPage.js';
-import { FIRST_INTERACTION_TIMEOUT_MS, gotoAndSettle } from '@apps/minicrm/helpers.js';
-
-// ---------------------------------------------------------------------------
-// API data types
-// ---------------------------------------------------------------------------
-
-/** One thread as the read endpoints return it. */
-export interface TestEmailThread {
-  thread_id: string;
-  connected_account_id: string;
-  messages: Array<{ id: string; subject: string | null; snippet: string | null }>;
-}
-
-/** A page of threads. */
-export interface TestEmailThreadPage {
-  data: TestEmailThread[];
-  total: number;
-  page: number;
-  limit: number;
-}
+import {
+  FIRST_INTERACTION_TIMEOUT_MS,
+  gotoAndSettle,
+  awaitApiResponse,
+} from '@apps/minicrm/helpers.js';
+import {
+  emailThreadPageSchema,
+  type EmailLinkRecordType,
+  type EmailThreadPage,
+} from '@minicrm/shared/schemas/emailMessageSchema.js';
 
 // ---------------------------------------------------------------------------
 // Behaviors
@@ -41,8 +31,10 @@ export interface TestEmailThreadPage {
  * @param restClient - The authenticated client whose mailboxes are read.
  * @returns One page of unmatched threads.
  */
-export async function listUnmatchedMail(restClient: RestClient): Promise<TestEmailThreadPage> {
-  const res = await restClient.get<TestEmailThreadPage>('/api/v1/email-messages/unmatched');
+export async function listUnmatchedMail(restClient: RestClient): Promise<EmailThreadPage> {
+  const res = await restClient.get<EmailThreadPage>('/api/v1/email-messages/unmatched', {
+    schema: emailThreadPageSchema,
+  });
   return res.body;
 }
 
@@ -58,7 +50,9 @@ export async function listUnmatchedMail(restClient: RestClient): Promise<TestEma
  */
 export async function statusOfUnmatchedMailRequest(restClient: RestClient): Promise<number> {
   try {
-    const res = await restClient.get<TestEmailThreadPage>('/api/v1/email-messages/unmatched');
+    const res = await restClient.get<EmailThreadPage>('/api/v1/email-messages/unmatched', {
+      schema: emailThreadPageSchema,
+    });
     return res.status;
   } catch (err) {
     if (err instanceof RestClientError) {
@@ -78,11 +72,12 @@ export async function statusOfUnmatchedMailRequest(restClient: RestClient): Prom
  */
 export async function listMailForRecord(
   restClient: RestClient,
-  recordType: 'contact' | 'lead' | 'account' | 'deal',
+  recordType: EmailLinkRecordType,
   recordId: string,
-): Promise<TestEmailThreadPage> {
-  const res = await restClient.get<TestEmailThreadPage>(
+): Promise<EmailThreadPage> {
+  const res = await restClient.get<EmailThreadPage>(
     `/api/v1/email-messages?record_type=${recordType}&record_id=${recordId}`,
+    { schema: emailThreadPageSchema },
   );
   return res.body;
 }
@@ -96,9 +91,6 @@ export interface EmailsSectionBehaviorContext {
   page: PageFacade;
 }
 
-/** A record type the Emails section is embedded in. */
-export type EmailRecordType = 'contact' | 'lead' | 'account' | 'deal';
-
 /** What the detail page's own email requests answered. */
 export interface RecordEmailRequestStatuses {
   /** Status of the page's `GET /api/v1/email-messages?record_type=&record_id=`. */
@@ -110,7 +102,7 @@ export interface RecordEmailRequestStatuses {
 /** How long a doesNotExist probe waits once the page has proved it rendered. */
 const SECTION_ABSENCE_PROBE_MS = 2_000;
 
-const DETAIL_PATH_SEGMENT: Record<EmailRecordType, string> = {
+const DETAIL_PATH_SEGMENT: Record<EmailLinkRecordType, string> = {
   contact: 'contacts',
   lead: 'leads',
   account: 'accounts',
@@ -140,22 +132,22 @@ const READ_ACCESSIBLE_DESCRIPTION = new Function(
  */
 export async function navigateToRecordAndAwaitEmailRequests(
   context: EmailsSectionBehaviorContext,
-  recordType: EmailRecordType,
+  recordType: EmailLinkRecordType,
   recordId: string,
 ): Promise<RecordEmailRequestStatuses> {
   const { page } = context;
-  const threads = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'GET' &&
-      response.url().includes('/api/v1/email-messages?') &&
-      response.url().includes(`record_id=${recordId}`),
-    { timeout: FIRST_INTERACTION_TIMEOUT_MS },
+  const threads = awaitApiResponse(
+    page,
+    'GET',
+    (url) =>
+      url.href.includes('/api/v1/email-messages?') && url.href.includes(`record_id=${recordId}`),
+    FIRST_INTERACTION_TIMEOUT_MS,
   );
-  const mailboxes = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'GET' &&
-      new URL(response.url()).pathname === '/api/v1/connected-accounts',
-    { timeout: FIRST_INTERACTION_TIMEOUT_MS },
+  const mailboxes = awaitApiResponse(
+    page,
+    'GET',
+    '/api/v1/connected-accounts',
+    FIRST_INTERACTION_TIMEOUT_MS,
   );
 
   await gotoAndSettle(page, `/${DETAIL_PATH_SEGMENT[recordType]}/${recordId}`);

@@ -15,7 +15,16 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { LeadsPage } from '@pages/minicrm/LeadsPage.js';
 import { LeadDetailPage } from '@pages/minicrm/LeadDetailPage.js';
-import { navigateAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  navigateAndSettle,
+  FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+  AI_RESPONSE_TIMEOUT_MS,
+} from '@apps/minicrm/helpers.js';
+
+/** How long a lead submit may take to answer. */
+const LEAD_SUBMIT_TIMEOUT_MS = 30_000;
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -117,12 +126,12 @@ export async function createLeadViaUI(
 
   // Set up the response listener BEFORE clicking submit so we don't miss the
   // response if the server responds before Playwright registers the listener.
-  const responseReceived = context.page.waitForResponse(
-    (res) =>
-      res.request().method() === 'POST' &&
-      res.url().includes('/api/v1/leads') &&
-      (res.status() === 201 || res.status() === 409),
-    { timeout: 30_000 },
+  const responseReceived = awaitApiResponse(
+    context.page,
+    'POST',
+    '/api/v1/leads',
+    LEAD_SUBMIT_TIMEOUT_MS,
+    (status) => status === 201 || status === 409,
   );
 
   await leadsPage.submitForm();
@@ -181,23 +190,23 @@ export async function createLeadViaUIThenCreateAnyway(
   }
 
   // First submit triggers a 409 duplicate response.
-  const firstResponse = context.page.waitForResponse(
-    (res) =>
-      res.request().method() === 'POST' &&
-      res.url().includes('/api/v1/leads') &&
-      res.status() === 409,
-    { timeout: 30_000 },
+  const firstResponse = awaitApiResponse(
+    context.page,
+    'POST',
+    '/api/v1/leads',
+    LEAD_SUBMIT_TIMEOUT_MS,
+    409,
   );
   await leadsPage.submitForm();
   await firstResponse;
 
   // Second submit (force=true) triggers the actual 201 creation.
-  const secondResponse = context.page.waitForResponse(
-    (res) =>
-      res.request().method() === 'POST' &&
-      res.url().includes('/api/v1/leads') &&
-      res.status() === 201,
-    { timeout: 30_000 },
+  const secondResponse = awaitApiResponse(
+    context.page,
+    'POST',
+    '/api/v1/leads',
+    LEAD_SUBMIT_TIMEOUT_MS,
+    201,
   );
   await leadsPage.clickCreateAnyway();
   await secondResponse;
@@ -604,9 +613,12 @@ export async function navigateToLeadsOwnedByMe(context: LeadsBehaviorContext): P
   // query is captured even when the server responds quickly. waitForPresent
   // inside filterByOwnerMe guards on the filter button, but the list query
   // must have settled before clicking so React state is stable.
-  const leadsLoaded = context.page.waitForResponse(
-    (res) => res.url().includes('/api/v1/leads') && res.status() === 200,
-    { timeout: 15_000 },
+  const leadsLoaded = awaitApiResponse(
+    context.page,
+    'GET',
+    '/api/v1/leads',
+    FIRST_INTERACTION_TIMEOUT_MS,
+    200,
   );
   await leadsPage.navigate();
   await leadsLoaded;
@@ -614,9 +626,12 @@ export async function navigateToLeadsOwnedByMe(context: LeadsBehaviorContext): P
   // captured even when the server responds quickly. Without this, callers that
   // immediately measure layout (e.g. assertEmptyStateContainerFills) can read
   // a mid-render height of 0 before the filtered list has committed to the DOM.
-  const filteredLoaded = context.page.waitForResponse(
-    (res) => res.url().includes('/api/v1/leads') && res.status() === 200,
-    { timeout: 15_000 },
+  const filteredLoaded = awaitApiResponse(
+    context.page,
+    'GET',
+    (url) => url.pathname === '/api/v1/leads' && url.searchParams.get('owner') === 'me',
+    FIRST_INTERACTION_TIMEOUT_MS,
+    200,
   );
   await leadsPage.filterByOwnerMe();
   await filteredLoaded;
@@ -689,9 +704,11 @@ export async function fillLeadDetailField(
  */
 export async function saveLead(context: LeadsBehaviorContext): Promise<void> {
   const detailPage = new LeadDetailPage(context);
-  const patchDone = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/leads/') && response.request().method() === 'PATCH',
+  const patchDone = awaitApiResponse(
+    context.page,
+    'PATCH',
+    (url) => url.href.includes('/api/v1/leads/'),
+    NO_RESPONSE_TIMEOUT,
   );
   await detailPage.save();
   await patchDone;
@@ -733,9 +750,11 @@ export async function requestLeadScoreNarrative(
 ): Promise<RequestLeadScoreNarrativeResult> {
   const detailPage = new LeadDetailPage(context);
 
-  const responseReceived = context.page.waitForResponse(
-    (res) => res.request().method() === 'POST' && res.url().includes('/score-narrative'),
-    { timeout: 30_000 },
+  const responseReceived = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => url.href.includes('/score-narrative'),
+    AI_RESPONSE_TIMEOUT_MS,
   );
   await detailPage.clickScoreWhy(FIRST_INTERACTION_TIMEOUT_MS);
   const response = await responseReceived;
@@ -764,10 +783,11 @@ export async function clickLeadExportPdfAndAwaitResponse(
   context: LeadsBehaviorContext,
 ): Promise<{ status: number; contentType: string }> {
   const detail = new LeadDetailPage(context);
-  const responsePromise = context.page.waitForResponse(
-    (response) =>
-      response.url().includes(`/api/v1/leads/${id}/export.pdf`) &&
-      response.request().method() === 'GET',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'GET',
+    (url) => url.href.includes(`/api/v1/leads/${id}/export.pdf`),
+    NO_RESPONSE_TIMEOUT,
   );
   const button = await detail.exportPdfButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await button.click();

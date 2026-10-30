@@ -15,11 +15,22 @@ import {
   DEMO_CURRENCY_CODES,
   DEMO_CUSTOM_FIELD_DEFINITION_NAMES,
   DEMO_PIPELINE_NAME,
+  DEMO_PRODUCER_LOCK,
   DEMO_SEEDED_USER_EMAILS,
+  DEMO_REP,
   DEMO_WEBHOOK_URLS,
 } from '../services/demoService.js';
+import {
+  claimAccountByIdForSync,
+  getAccountAuthForSync,
+} from '../services/connectedAccountService.js';
 import pool from '../db.js';
-import { claimAdminResolution, insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
+import {
+  claimAdminResolution,
+  insertParkedMailbox,
+  purgeFixtureUsers,
+  stubClientQueries,
+} from './testUtils.js';
 import { clearDemoRecords } from './demoFixtures.js';
 import {
   gatherOfflineHygieneSignals,
@@ -418,6 +429,94 @@ describe('seedDemo', () => {
   });
 });
 
+// ── seedDemo: email ───────────────────────────────────────────────────────────
+
+describe('seedDemo email threads', () => {
+  it('seeds one paused demo mailbox for the demo rep, which no sync claims', async () => {
+    await seedDemo();
+
+    const mailboxes = await pool.query<{ id: string; user_id: string; email: string }>(
+      `SELECT ca.id, ca.user_id, u.email
+         FROM connected_accounts ca JOIN users u ON u.id = ca.user_id
+        WHERE ca.is_demo = true`,
+    );
+    expect(mailboxes.rows).toHaveLength(1);
+    // Safe: length asserted just above.
+    const mailbox = mailboxes.rows[0]!;
+    expect(mailbox.email).toBe(DEMO_REP.email);
+    expect(await claimAccountByIdForSync(mailbox.id, mailbox.user_id)).toBeNull();
+  });
+
+  it('stores a credential that decrypts, aimed at a host that never resolves', async () => {
+    await seedDemo();
+
+    const row = await pool.query<{ id: string }>(
+      `SELECT id FROM connected_accounts WHERE is_demo = true`,
+    );
+    // Safe: seedDemo always creates the demo mailbox.
+    const auth = await getAccountAuthForSync(row.rows[0]!.id, () => {
+      throw new Error('an IMAP credential is never refreshed');
+    });
+    expect(auth).toMatchObject({ kind: 'imap', host: 'imap.demo.invalid' });
+  });
+
+  it("files threads on the demo rep's contacts and their accounts, and leaves one unmatched", async () => {
+    await seedDemo();
+
+    const threads = await pool.query<{
+      thread_id: string;
+      on_contact: boolean;
+      on_account: boolean;
+      owner_is_rep: boolean;
+    }>(
+      `SELECT m.thread_id,
+              bool_or(l.record_type = 'contact') AS on_contact,
+              bool_or(l.record_type = 'account') AS on_account,
+              bool_and(l.id IS NULL OR l.record_type <> 'contact' OR c.owner_id = ca.user_id)
+                AS owner_is_rep
+         FROM email_messages m
+         JOIN connected_accounts ca ON ca.id = m.connected_account_id
+         LEFT JOIN email_message_links l ON l.email_message_id = m.id
+         LEFT JOIN contacts c ON c.id = l.record_id AND l.record_type = 'contact'
+        WHERE ca.is_demo = true
+        GROUP BY m.thread_id`,
+    );
+    const linked = threads.rows.filter((t) => t.on_contact);
+    const unmatched = threads.rows.filter((t) => !t.on_contact);
+    expect(linked.length).toBeGreaterThan(0);
+    expect(unmatched).toHaveLength(1);
+    // Every demo contact with mail has an account, so sync's matcher files the thread there too.
+    expect(linked.every((t) => t.on_account)).toBe(true);
+    // The rep must be able to read every contact a demo thread is filed on.
+    expect(linked.every((t) => t.owner_is_rep)).toBe(true);
+  });
+});
+
+// ── Producer lock ─────────────────────────────────────────────────────────────
+
+describe('demo producer lock', () => {
+  it('frees the lock and its connection even when the unlock fails', async () => {
+    const { destroyed } = stubClientQueries(['pg_advisory_unlock'], 'fail');
+    try {
+      await runPostSeedProducers();
+    } finally {
+      vi.restoreAllMocks();
+    }
+    expect(destroyed).toEqual([expect.any(Error)]);
+
+    const probe = await pool.connect();
+    try {
+      // Waits rather than tries: the destroyed session releases the lock once it has exited.
+      await probe.query(`SET lock_timeout = '5s'`);
+      await probe.query('SELECT pg_advisory_lock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
+      await probe.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
+    } finally {
+      await probe.query('RESET lock_timeout');
+      probe.release();
+    }
+  });
+});
+
 // ── removeDemo ────────────────────────────────────────────────────────────────
 
 describe('removeDemo', () => {
@@ -434,6 +533,61 @@ describe('removeDemo', () => {
     expect(contacts.rowCount).toBe(0);
     expect(deals.rowCount).toBe(0);
     expect(activities.rowCount).toBe(0);
+  });
+
+  it('removes the rest after an admin deleted only the demo accounts, so a re-seed succeeds', async () => {
+    await seedDemo();
+    await pool.query(`UPDATE contacts SET account_id = NULL WHERE is_demo = true`);
+    await pool.query(`UPDATE deals SET account_id = NULL WHERE is_demo = true`);
+    await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
+
+    expect((await getDemoStatus()).active).toBe(true);
+    await removeDemo();
+    const leftover = await pool.query(`SELECT id FROM contacts WHERE is_demo = true`);
+    expect(leftover.rowCount).toBe(0);
+    await expect(seedDemo()).resolves.toMatchObject({ seeded: true });
+  });
+
+  it('reports demo data when a flagged mailbox is all that is left', async () => {
+    const leftover = await insertParkedMailbox(adminUserId, `${FILE_PREFIX}-leftover@example.com`);
+    try {
+      expect((await getDemoStatus()).active).toBe(false);
+      await pool.query(`UPDATE connected_accounts SET is_demo = true WHERE id = $1`, [leftover]);
+      expect((await getDemoStatus()).active).toBe(true);
+    } finally {
+      await pool.query(`DELETE FROM connected_accounts WHERE id = $1`, [leftover]);
+    }
+  });
+
+  it('removes the demo mailbox and its mail, and leaves real mail alone', async () => {
+    await seedDemo();
+    const realMailbox = await insertParkedMailbox(adminUserId, `${FILE_PREFIX}-real@example.com`);
+    await pool.query(
+      `INSERT INTO email_messages
+         (connected_account_id, provider_message_id, thread_id, direction, from_address)
+       VALUES ($1, 'INBOX:real-1', 'real-thread', 'inbound', 'someone@example.net')`,
+      [realMailbox],
+    );
+
+    try {
+      await removeDemo();
+
+      const demoMail = await pool.query(
+        `SELECT id FROM email_messages WHERE provider_message_id LIKE 'demo:%'`,
+      );
+      const demoMailboxes = await pool.query(
+        `SELECT id FROM connected_accounts WHERE is_demo = true`,
+      );
+      const realMail = await pool.query(
+        `SELECT id FROM email_messages WHERE connected_account_id = $1`,
+        [realMailbox],
+      );
+      expect(demoMail.rowCount).toBe(0);
+      expect(demoMailboxes.rowCount).toBe(0);
+      expect(realMail.rowCount).toBe(1);
+    } finally {
+      await pool.query(`DELETE FROM connected_accounts WHERE id = $1`, [realMailbox]);
+    }
   });
 
   it('removes demo leads', async () => {

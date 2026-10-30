@@ -155,3 +155,38 @@ describe('NODE_ENV startup validation', () => {
     SPAWN_TEST_TIMEOUT,
   );
 });
+
+// ── E2E-only seams ────────────────────────────────────────────────────────────
+
+describe('non-production seam startup validation', () => {
+  it(
+    'refuses to boot, naming the seam, when one is set under production',
+    () => {
+      const { status, stderr } = spawnServerCapturing({
+        JWT_SECRET: VALID_JWT_SECRET,
+        NODE_ENCRYPTION_KEY: VALID_ENCRYPTION_KEY,
+        NODE_ENV: 'production',
+        SSRF_ALLOWED_PRIVATE_HOSTS: 'greenmail',
+      });
+
+      expect(status).not.toBe(0);
+      expect(stderr).toContain('SSRF_ALLOWED_PRIVATE_HOSTS is set');
+    },
+    SPAWN_TEST_TIMEOUT,
+  );
+
+  it(
+    'refuses to boot on a malformed base URL under test',
+    () => {
+      const { status, stderr } = spawnServerCapturing({
+        JWT_SECRET: VALID_JWT_SECRET,
+        NODE_ENCRYPTION_KEY: VALID_ENCRYPTION_KEY,
+        GMAIL_API_BASE_URL: 'not a url',
+      });
+
+      expect(status).not.toBe(0);
+      expect(stderr).toContain('GMAIL_API_BASE_URL is not a valid URL');
+    },
+    SPAWN_TEST_TIMEOUT,
+  );
+});

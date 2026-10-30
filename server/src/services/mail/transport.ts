@@ -7,6 +7,7 @@
  */
 
 import logger from '../../logger.js';
+import { thrownCauseCode } from '../../utils/errorCode.js';
 
 /** A request's timeout, and whether it is what ended the request. */
 export interface RequestBound {
@@ -59,9 +60,7 @@ export async function readBodyOrNull(
  * including a body cut off mid-stream, which arrives after the headers did.
  */
 export function isTransportFailure(err: unknown): boolean {
-  // Safe: an arbitrary thrown value, narrowed by the typeof below.
-  const cause = (err as { cause?: { code?: unknown } } | null)?.cause?.code;
-  return err instanceof TypeError && typeof cause === 'string';
+  return err instanceof TypeError && thrownCauseCode(err) !== undefined;
 }
 
 /**

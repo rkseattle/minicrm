@@ -1,13 +1,13 @@
 # data-testid Audit Report
 
-Generated: 2026-10-28T13:34:24.093Z
+Generated: 2026-10-29T21:34:03.147Z
 
 ## Summary
 
-- Matched: 611
+- Matched: 616
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1054
-- Dynamic (manual review required): 715
+- Unexercised (in app, not in tests): 1043
+- Dynamic (manual review required): 719
 
 ## Stale testids (action required)
 
@@ -77,15 +77,6 @@ _None — all test-referenced testids are present in the application source._
 | `connected-accounts-loading` | client/src/components/ConnectedAccountsPanel.tsx | 259 |
 | `connected-accounts-load-error` | client/src/components/ConnectedAccountsPanel.tsx | 268 |
 | `connected-accounts-empty` | client/src/components/ConnectedAccountsPanel.tsx | 275 |
-| `connected-accounts-show-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 511 |
-| `connected-accounts-imap-email` | client/src/components/ConnectedAccountsPanel.tsx | 543 |
-| `connected-accounts-imap-host` | client/src/components/ConnectedAccountsPanel.tsx | 561 |
-| `connected-accounts-imap-port` | client/src/components/ConnectedAccountsPanel.tsx | 575 |
-| `connected-accounts-imap-username` | client/src/components/ConnectedAccountsPanel.tsx | 591 |
-| `connected-accounts-imap-password` | client/src/components/ConnectedAccountsPanel.tsx | 608 |
-| `connected-accounts-imap-secure` | client/src/components/ConnectedAccountsPanel.tsx | 620 |
-| `connected-accounts-imap-submit` | client/src/components/ConnectedAccountsPanel.tsx | 643 |
-| `connected-accounts-imap-form` | client/src/components/ConnectedAccountsPanel.tsx | 521 |
 | `contact-enrichment-error` | client/src/components/ContactEnrichmentModal.tsx | 125 |
 | `contact-enrichment-insufficient` | client/src/components/ContactEnrichmentModal.tsx | 135 |
 | `contact-enrichment-cancel` | client/src/components/ContactEnrichmentModal.tsx | 168 |
@@ -124,10 +115,8 @@ _None — all test-referenced testids are present in the application source._
 | `email-composer-to` | client/src/components/EmailComposer.tsx | 196 |
 | `email-composer-cc` | client/src/components/EmailComposer.tsx | 214 |
 | `email-composer-subject` | client/src/components/EmailComposer.tsx | 229 |
-| `email-composer-body` | client/src/components/EmailComposer.tsx | 241 |
 | `email-composer-success` | client/src/components/EmailComposer.tsx | 248 |
 | `email-composer-error` | client/src/components/EmailComposer.tsx | 258 |
-| `email-composer-send` | client/src/components/EmailComposer.tsx | 269 |
 | `email-composer-cancel` | client/src/components/EmailComposer.tsx | 281 |
 | `email-composer` | client/src/components/EmailComposer.tsx | 148 |
 | `email-draft-error` | client/src/components/EmailDraftPanel.tsx | 142 |
@@ -761,17 +750,17 @@ _None — all test-referenced testids are present in the application source._
 | `branding-reset-section` | client/src/pages/admin/BrandingSettings.tsx | 386 |
 | `branding-loading` | client/src/pages/admin/BrandingSettings.tsx | 460 |
 | `branding-load-error` | client/src/pages/admin/BrandingSettings.tsx | 468 |
-| `currency-section-title` | client/src/pages/admin/CurrencySettings.tsx | 184 |
-| `currency-loading` | client/src/pages/admin/CurrencySettings.tsx | 191 |
-| `currency-load-error` | client/src/pages/admin/CurrencySettings.tsx | 196 |
-| `default-currency-select` | client/src/pages/admin/CurrencySettings.tsx | 205 |
-| `currency-save-button` | client/src/pages/admin/CurrencySettings.tsx | 224 |
-| `currency-save-success` | client/src/pages/admin/CurrencySettings.tsx | 235 |
-| `currency-save-error` | client/src/pages/admin/CurrencySettings.tsx | 241 |
-| `exchange-rate-recalculated-banner` | client/src/pages/admin/CurrencySettings.tsx | 262 |
-| `exchange-rate-table` | client/src/pages/admin/CurrencySettings.tsx | 292 |
-| `add-currency-cancel` | client/src/pages/admin/CurrencySettings.tsx | 454 |
-| `exchange-rate-save-error` | client/src/pages/admin/CurrencySettings.tsx | 493 |
+| `currency-section-title` | client/src/pages/admin/CurrencySettings.tsx | 186 |
+| `currency-loading` | client/src/pages/admin/CurrencySettings.tsx | 193 |
+| `currency-load-error` | client/src/pages/admin/CurrencySettings.tsx | 198 |
+| `default-currency-select` | client/src/pages/admin/CurrencySettings.tsx | 207 |
+| `currency-save-button` | client/src/pages/admin/CurrencySettings.tsx | 226 |
+| `currency-save-success` | client/src/pages/admin/CurrencySettings.tsx | 237 |
+| `currency-save-error` | client/src/pages/admin/CurrencySettings.tsx | 243 |
+| `exchange-rate-recalculated-banner` | client/src/pages/admin/CurrencySettings.tsx | 264 |
+| `exchange-rate-table` | client/src/pages/admin/CurrencySettings.tsx | 294 |
+| `add-currency-cancel` | client/src/pages/admin/CurrencySettings.tsx | 456 |
+| `exchange-rate-save-error` | client/src/pages/admin/CurrencySettings.tsx | 495 |
 | `pipelines-section-title` | client/src/pages/admin/CustomisationSettings.tsx | 559 |
 | `pipelines-list` | client/src/pages/admin/CustomisationSettings.tsx | 577 |
 | `create-pipeline-cancel-button` | client/src/pages/admin/CustomisationSettings.tsx | 716 |
@@ -821,10 +810,10 @@ _None — all test-referenced testids are present in the application source._
 | `audit-log-section-title` | client/src/pages/admin/DataSettings.tsx | 391 |
 | `audit-log-link` | client/src/pages/admin/DataSettings.tsx | 399 |
 | `audit-log-section` | client/src/pages/admin/DataSettings.tsx | 387 |
-| `email-sync-settings-loading` | client/src/pages/admin/EmailSyncSettings.tsx | 142 |
-| `email-sync-settings-error` | client/src/pages/admin/EmailSyncSettings.tsx | 148 |
-| `email-sync-days-error` | client/src/pages/admin/EmailSyncSettings.tsx | 233 |
-| `email-sync-days-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 241 |
+| `email-sync-settings-loading` | client/src/pages/admin/EmailSyncSettings.tsx | 143 |
+| `email-sync-settings-error` | client/src/pages/admin/EmailSyncSettings.tsx | 149 |
+| `email-sync-days-error` | client/src/pages/admin/EmailSyncSettings.tsx | 234 |
+| `email-sync-days-saved` | client/src/pages/admin/EmailSyncSettings.tsx | 242 |
 | `feature-flag-confirm-cancel` | client/src/pages/admin/FeatureFlagsSettings.tsx | 131 |
 | `group-create-open` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1042 |
 | `group-create-label` | client/src/pages/admin/FeatureFlagsSettings.tsx | 1075 |
@@ -870,29 +859,29 @@ _None — all test-referenced testids are present in the application source._
 | `mfa-required-toggle-label` | client/src/pages/admin/MfaSettings.tsx | 57 |
 | `mfa-required-error` | client/src/pages/admin/MfaSettings.tsx | 80 |
 | `mfa-required-section` | client/src/pages/admin/MfaSettings.tsx | 50 |
-| `email-notifications-section-title` | client/src/pages/admin/NotificationSettings.tsx | 182 |
-| `email-notif-loading` | client/src/pages/admin/NotificationSettings.tsx | 189 |
-| `email-notif-error` | client/src/pages/admin/NotificationSettings.tsx | 195 |
-| `email-notif-save-error` | client/src/pages/admin/NotificationSettings.tsx | 244 |
-| `smtp-section-title` | client/src/pages/admin/NotificationSettings.tsx | 258 |
-| `smtp-loading` | client/src/pages/admin/NotificationSettings.tsx | 264 |
-| `smtp-load-error` | client/src/pages/admin/NotificationSettings.tsx | 269 |
-| `smtp-host-input` | client/src/pages/admin/NotificationSettings.tsx | 283 |
-| `smtp-port-input` | client/src/pages/admin/NotificationSettings.tsx | 298 |
-| `smtp-user-input` | client/src/pages/admin/NotificationSettings.tsx | 314 |
-| `smtp-pass-input` | client/src/pages/admin/NotificationSettings.tsx | 345 |
-| `smtp-cancel-password-button` | client/src/pages/admin/NotificationSettings.tsx | 356 |
-| `smtp-pass-masked` | client/src/pages/admin/NotificationSettings.tsx | 327 |
-| `smtp-change-password-button` | client/src/pages/admin/NotificationSettings.tsx | 334 |
-| `smtp-enabled-toggle` | client/src/pages/admin/NotificationSettings.tsx | 374 |
-| `smtp-save-success` | client/src/pages/admin/NotificationSettings.tsx | 396 |
-| `smtp-save-error` | client/src/pages/admin/NotificationSettings.tsx | 401 |
-| `smtp-save-button` | client/src/pages/admin/NotificationSettings.tsx | 411 |
-| `smtp-test-address-input` | client/src/pages/admin/NotificationSettings.tsx | 433 |
-| `smtp-test-button` | client/src/pages/admin/NotificationSettings.tsx | 447 |
-| `smtp-test-success` | client/src/pages/admin/NotificationSettings.tsx | 461 |
-| `smtp-test-error` | client/src/pages/admin/NotificationSettings.tsx | 470 |
-| `smtp-section` | client/src/pages/admin/NotificationSettings.tsx | 256 |
+| `email-notifications-section-title` | client/src/pages/admin/NotificationSettings.tsx | 183 |
+| `email-notif-loading` | client/src/pages/admin/NotificationSettings.tsx | 190 |
+| `email-notif-error` | client/src/pages/admin/NotificationSettings.tsx | 196 |
+| `email-notif-save-error` | client/src/pages/admin/NotificationSettings.tsx | 245 |
+| `smtp-section-title` | client/src/pages/admin/NotificationSettings.tsx | 259 |
+| `smtp-loading` | client/src/pages/admin/NotificationSettings.tsx | 265 |
+| `smtp-load-error` | client/src/pages/admin/NotificationSettings.tsx | 270 |
+| `smtp-host-input` | client/src/pages/admin/NotificationSettings.tsx | 284 |
+| `smtp-port-input` | client/src/pages/admin/NotificationSettings.tsx | 299 |
+| `smtp-user-input` | client/src/pages/admin/NotificationSettings.tsx | 315 |
+| `smtp-pass-input` | client/src/pages/admin/NotificationSettings.tsx | 346 |
+| `smtp-cancel-password-button` | client/src/pages/admin/NotificationSettings.tsx | 357 |
+| `smtp-pass-masked` | client/src/pages/admin/NotificationSettings.tsx | 328 |
+| `smtp-change-password-button` | client/src/pages/admin/NotificationSettings.tsx | 335 |
+| `smtp-enabled-toggle` | client/src/pages/admin/NotificationSettings.tsx | 375 |
+| `smtp-save-success` | client/src/pages/admin/NotificationSettings.tsx | 397 |
+| `smtp-save-error` | client/src/pages/admin/NotificationSettings.tsx | 402 |
+| `smtp-save-button` | client/src/pages/admin/NotificationSettings.tsx | 412 |
+| `smtp-test-address-input` | client/src/pages/admin/NotificationSettings.tsx | 434 |
+| `smtp-test-button` | client/src/pages/admin/NotificationSettings.tsx | 448 |
+| `smtp-test-success` | client/src/pages/admin/NotificationSettings.tsx | 462 |
+| `smtp-test-error` | client/src/pages/admin/NotificationSettings.tsx | 471 |
+| `smtp-section` | client/src/pages/admin/NotificationSettings.tsx | 257 |
 | `tags-section-title` | client/src/pages/admin/PipelinesAndFieldsSettings.tsx | 173 |
 | `tags-section-hint` | client/src/pages/admin/PipelinesAndFieldsSettings.tsx | 176 |
 | `tags-restrict-toggle` | client/src/pages/admin/PipelinesAndFieldsSettings.tsx | 194 |
@@ -1488,10 +1477,10 @@ _None — all test-referenced testids are present in the application source._
 | `ai-usage-daily-bar-*` | client/src/pages/admin/AiUsageDashboardPage.tsx | 389 | app |
 | `ai-usage-user-row-*` | client/src/pages/admin/AiUsageDashboardPage.tsx | 437 | app |
 | `ai-usage-feature-row-*` | client/src/pages/admin/AiUsageDashboardPage.tsx | 494 | app |
-| `exchange-rate-row-*` | client/src/pages/admin/CurrencySettings.tsx | 326 | app |
-| `exchange-rate-input-*` | client/src/pages/admin/CurrencySettings.tsx | 357 | app |
-| `exchange-rate-remove-*` | client/src/pages/admin/CurrencySettings.tsx | 378 | app |
-| `exchange-rate-row-*` | client/src/pages/admin/CurrencySettings.tsx | 346 | app |
+| `exchange-rate-row-*` | client/src/pages/admin/CurrencySettings.tsx | 328 | app |
+| `exchange-rate-input-*` | client/src/pages/admin/CurrencySettings.tsx | 359 | app |
+| `exchange-rate-remove-*` | client/src/pages/admin/CurrencySettings.tsx | 380 | app |
+| `exchange-rate-row-*` | client/src/pages/admin/CurrencySettings.tsx | 348 | app |
 | `pipeline-name-*` | client/src/pages/admin/CustomisationSettings.tsx | 634 | app |
 | `pipeline-default-badge-*` | client/src/pages/admin/CustomisationSettings.tsx | 641 | app |
 | `pipeline-edit-button-*` | client/src/pages/admin/CustomisationSettings.tsx | 650 | app |
@@ -1703,6 +1692,8 @@ _None — all test-referenced testids are present in the application source._
 | `unlink-contact-*` | qa/e2e/pages/minicrm/DealDetailPage.ts | 327 | test |
 | `objection-category-badge-*` | qa/e2e/pages/minicrm/DealDetailPage.ts | 595 | test |
 | `activity-item-*` | qa/e2e/pages/minicrm/DealDetailPage.ts | 626 | test |
+| `email-message-toggle-*` | qa/e2e/pages/minicrm/EmailsSectionPage.ts | 123 | test |
+| `email-reply-*` | qa/e2e/pages/minicrm/EmailsSectionPage.ts | 219 | test |
 | `search-result-*` | qa/e2e/pages/minicrm/GlobalSearchPage.ts | 231 | test |
 | `search-result-*` | qa/e2e/pages/minicrm/GlobalSearchPage.ts | 281 | test |
 | `lead-row-*` | qa/e2e/pages/minicrm/LeadsPage.ts | 136 | test |
@@ -1729,6 +1720,8 @@ _None — all test-referenced testids are present in the application source._
 | `notif-checkbox-*` | qa/e2e/pages/minicrm/ProfilePage.ts | 237 | test |
 | `notif-checkbox-*` | qa/e2e/pages/minicrm/ProfilePage.ts | 256 | test |
 | `connected-accounts-connect-*` | qa/e2e/pages/minicrm/ProfilePage.ts | 569 | test |
+| `connected-accounts-imap-*` | qa/e2e/pages/minicrm/ProfilePage.ts | 600 | test |
+| `connected-account-status-*` | qa/e2e/pages/minicrm/ProfilePage.ts | 652 | test |
 | `tag-input-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 48 | test |
 | `tag-input-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 91 | test |
 | `tag-badge-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 110 | test |
@@ -1749,44 +1742,44 @@ _None — all test-referenced testids are present in the application source._
 | `recent-activity-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 415 | test |
 | `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 812 | test |
 | `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 801 | test |
-| `pipeline-stage-name-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 360 | test |
-| `pipeline-edit-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1322 | test |
-| `pipeline-edit-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1340 | test |
-| `pipeline-save-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1357 | test |
-| `pipeline-delete-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1374 | test |
-| `pipeline-stage-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1426 | test |
-| `pipeline-stage-edit-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1466 | test |
-| `pipeline-stage-save-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1478 | test |
-| `pipeline-stage-exit-required-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1491 | test |
-| `pipeline-stage-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1613 | test |
-| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1636 | test |
-| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1659 | test |
-| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1680 | test |
-| `webhook-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2181 | test |
-| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2219 | test |
-| `feature-flag-badge-off-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2240 | test |
-| `feature-flag-enable-at-clear-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2253 | test |
-| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2272 | test |
-| `feature-flag-advanced-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2294 | test |
-| `feature-flag-beta-expand-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2321 | test |
-| `feature-flag-beta-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2343 | test |
-| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2366 | test |
-| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2389 | test |
-| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2412 | test |
-| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2435 | test |
-| `rollout-percentage-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2453 | test |
-| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2483 | test |
-| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2506 | test |
-| `feature-flag-overrides-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2525 | test |
-| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2550 | test |
-| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2573 | test |
-| `override-remove-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2590 | test |
-| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2638 | test |
-| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2660 | test |
-| `flag-group-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2676 | test |
-| `feature-flag-role-override-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2703 | test |
-| `group-detail-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2734 | test |
-| `group-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2749 | test |
+| `pipeline-stage-name-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 364 | test |
+| `pipeline-edit-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1332 | test |
+| `pipeline-edit-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1350 | test |
+| `pipeline-save-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1367 | test |
+| `pipeline-delete-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1384 | test |
+| `pipeline-stage-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1436 | test |
+| `pipeline-stage-edit-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1476 | test |
+| `pipeline-stage-save-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1488 | test |
+| `pipeline-stage-exit-required-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1501 | test |
+| `pipeline-stage-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1623 | test |
+| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1646 | test |
+| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1669 | test |
+| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1690 | test |
+| `webhook-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2191 | test |
+| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2229 | test |
+| `feature-flag-badge-off-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2250 | test |
+| `feature-flag-enable-at-clear-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2263 | test |
+| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2282 | test |
+| `feature-flag-advanced-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2304 | test |
+| `feature-flag-beta-expand-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2331 | test |
+| `feature-flag-beta-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2353 | test |
+| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2376 | test |
+| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2399 | test |
+| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2422 | test |
+| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2445 | test |
+| `rollout-percentage-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2463 | test |
+| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2493 | test |
+| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2516 | test |
+| `feature-flag-overrides-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2535 | test |
+| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2560 | test |
+| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2583 | test |
+| `override-remove-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2600 | test |
+| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2648 | test |
+| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2670 | test |
+| `flag-group-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2686 | test |
+| `feature-flag-role-override-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2713 | test |
+| `group-detail-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2744 | test |
+| `group-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2759 | test |
 | `custom-field-delete-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 597 | test |
 | `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 616 | test |
 | `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 639 | test |

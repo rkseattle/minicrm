@@ -44,8 +44,9 @@ import {
   type SendFailureCode,
 } from './sendOutcome.js';
 import { readBodyOrNull, startBound } from './transport.js';
-
-const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
+import { gmailApiBase } from './providerEndpoints.js';
+import { thrownCode } from '../../utils/errorCode.js';
+import { parseStoredCursor } from './storedCursor.js';
 
 /** How this driver names its provider in messages. */
 const PROVIDER_NAME = 'Gmail';
@@ -172,20 +173,10 @@ interface GmailCursor {
 export function parseCursor(cursor: string | null): GmailCursor | null {
   if (!cursor) return null;
 
-  let decoded: unknown;
-  try {
-    decoded = JSON.parse(cursor);
-  } catch {
-    return null;
-  }
-  if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return null;
+  const decoded = parseStoredCursor(cursor, PROVIDER_NAME);
+  if (!decoded) return null;
 
-  const { phase, historyId, pageToken, afterSeconds } = decoded as {
-    phase?: unknown;
-    historyId?: unknown;
-    pageToken?: unknown;
-    afterSeconds?: unknown;
-  };
+  const { phase, historyId, pageToken, afterSeconds } = decoded;
   if (phase !== 'backfill' && phase !== 'incremental') return null;
   if (typeof historyId !== 'string' || historyId === '') return null;
   if (pageToken !== null && typeof pageToken !== 'string') return null;
@@ -271,7 +262,7 @@ async function gmailRequest(
   params: Record<string, string>,
 ): Promise<GmailRequestResult> {
   const query = new URLSearchParams(params).toString();
-  const url = `${GMAIL_API_BASE}${path}${query ? `?${query}` : ''}`;
+  const url = `${gmailApiBase()}${path}${query ? `?${query}` : ''}`;
   const bound = startBound(REQUEST_TIMEOUT_MS);
 
   try {
@@ -296,8 +287,7 @@ async function gmailRequest(
   } catch (err) {
     // A string code marks an error this module classified. An abort's DOMException also
     // carries `code`, but a numeric one, and must be rewritten like any transport failure.
-    // Safe: an arbitrary thrown value, narrowed by the typeof.
-    if (typeof (err as { code?: unknown } | null)?.code === 'string') throw err;
+    if (thrownCode(err) !== undefined) throw err;
     // undici reports every transport failure as the same TypeError, so the cause matters
     // more than the name; either way the mailbox is unreachable rather than unauthorized.
     throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
@@ -338,7 +328,7 @@ export async function testGmailAccess(
     }
     return { ok: true };
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     return code === PROVIDER_AUTH_EXPIRED
       ? { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE }
       : { ok: false, code: CONNECTION_FAILED, message: UNREACHABLE_MESSAGE };
@@ -559,7 +549,7 @@ async function sendMessage(
   const bound = startBound(SEND_TIMEOUT_MS);
 
   try {
-    const response = await fetchImpl(`${GMAIL_API_BASE}/messages/send`, {
+    const response = await fetchImpl(`${gmailApiBase()}/messages/send`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,

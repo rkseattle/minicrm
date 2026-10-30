@@ -508,11 +508,18 @@ const SEND_PATH_MESSAGE_INSERT = 'INSERT INTO email_messages AS m';
  * with `await pool.connect()`: `fail` rejects it as a storage outage would, `empty` answers
  * it with no rows as losing a race would. Undo with `vi.restoreAllMocks()`.
  *
+ * @returns Every destroying release a checked-out client made, so a test can tell a
+ *   connection returned to the pool from one destroyed.
+ *
  * Those clients are proxied rather than patched, so a pooled client returns to the pool
  * unchanged. `pool.query` checks out through the callback form, which passes straight
  * through.
  */
-export function stubClientQueries(fragments: readonly string[], outcome: 'fail' | 'empty'): void {
+export function stubClientQueries(
+  fragments: readonly string[],
+  outcome: 'fail' | 'empty',
+): { destroyed: unknown[] } {
+  const destroyed: unknown[] = [];
   const realConnect = pool.connect.bind(pool);
   // Safe: pg's connect has a callback overload, which this calls with one.
   const connectWithCallback = realConnect as unknown as (callback: unknown) => void;
@@ -520,6 +527,12 @@ export function stubClientQueries(fragments: readonly string[], outcome: 'fail' 
     const client = await realConnect();
     return new Proxy(client, {
       get(target, property, receiver): unknown {
+        if (property === 'release') {
+          return (destroy?: Error | boolean): void => {
+            if (destroy) destroyed.push(destroy);
+            target.release(destroy);
+          };
+        }
         if (property === 'query') {
           return (text: unknown, ...rest: unknown[]): unknown => {
             if (typeof text === 'string' && fragments.some((fragment) => text.includes(fragment))) {
@@ -540,6 +553,7 @@ export function stubClientQueries(fragments: readonly string[], outcome: 'fail' 
   // Safe: both overloads of connect are honored; the cast only satisfies the spy's type.
   vi.spyOn(pool, 'connect').mockImplementation(((callback?: unknown) =>
     callback ? connectWithCallback(callback) : stubbed()) as typeof pool.connect);
+  return { destroyed };
 }
 
 /** Makes every client statement containing `fragment` fail, as a storage outage would. */

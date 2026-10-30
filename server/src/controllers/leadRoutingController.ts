@@ -16,6 +16,7 @@ import {
   setTeamRoutingOverrideSchema,
 } from '@minicrm/shared/schemas/leadRoutingSchema.js';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** GET /api/v1/admin/ai/lead-routing-config */
 export async function getLeadRoutingConfigHandler(_req: Request, res: Response): Promise<void> {
@@ -56,7 +57,7 @@ export async function setTeamRoutingOverrideHandler(req: Request, res: Response)
     await setTeamRoutingOverride(teamId, parsed.data.enabled, actor);
     res.status(200).json({ team_id: teamId, enabled: parsed.data.enabled });
   } catch (err) {
-    if ((err as { code?: string }).code === 'TEAM_NOT_FOUND') {
+    if (thrownCode(err) === 'TEAM_NOT_FOUND') {
       res.status(404).json({ error: { code: 'TEAM_NOT_FOUND', message: 'Team not found' } });
       return;
     }

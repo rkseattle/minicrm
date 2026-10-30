@@ -22,6 +22,7 @@ import type {
   FlagGroupRow,
   GroupBetaUserEntry,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -893,8 +894,7 @@ export async function enrollBetaUser(
     };
   } catch (err) {
     await client.query('ROLLBACK');
-    const pgErr = err as { code?: string };
-    if (pgErr.code === '23505') {
+    if (thrownCode(err) === '23505') {
       throw Object.assign(new Error(`User is already enrolled in the beta for '${flagKey}'`), {
         code: 'BETA_USER_ALREADY_ENROLLED',
       });
@@ -1238,8 +1238,7 @@ export async function createFlagGroup(
     return toFlagGroupRow({ ...inserted, updated_by_name: actor.name }, 0, 0);
   } catch (err) {
     await client.query('ROLLBACK');
-    const pgErr = err as { code?: string };
-    if (pgErr.code === '23505') {
+    if (thrownCode(err) === '23505') {
       throw Object.assign(new Error(`Feature flag group '${input.group_key}' already exists`), {
         code: 'FLAG_GROUP_DUPLICATE_KEY',
       });
@@ -1570,8 +1569,7 @@ export async function addGroupBetaUser(
     };
   } catch (err) {
     await client.query('ROLLBACK');
-    const pgErr = err as { code?: string };
-    if (pgErr.code === '23505') {
+    if (thrownCode(err) === '23505') {
       throw Object.assign(
         new Error(`User is already enrolled in the beta for group '${groupKey}'`),
         { code: 'GROUP_BETA_USER_ALREADY_ENROLLED' },
@@ -1579,7 +1577,7 @@ export async function addGroupBetaUser(
     }
     // 23503 = FK violation: group was deleted between FOR UPDATE and INSERT (should not
     // happen now that we lock the group row, but handle defensively).
-    if (pgErr.code === '23503') {
+    if (thrownCode(err) === '23503') {
       throw Object.assign(new Error(`Feature flag group '${groupKey}' not found`), {
         code: 'FLAG_GROUP_NOT_FOUND',
       });

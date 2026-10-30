@@ -17,6 +17,7 @@ import { getEmailNotificationsEnabled } from './settingsService.js';
 import { sendOverdueTaskDigest, sendAssignmentNotification } from './emailService.js';
 import type { OverdueTaskItem, AssignmentItem } from './emailService.js';
 import { recordPathOrNull } from '@minicrm/shared/types/recordPath.js';
+import { findUserById } from './userService.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,31 @@ const pendingBatches = new Map<string, PendingBatch>();
 
 /** Batching window in milliseconds (2 minutes) */
 const BATCH_WINDOW_MS = 2 * 60 * 1000;
+
+/**
+ * Tells a record's new owner about the reassignment, in the background.
+ *
+ * Fire-and-forget, as every reassignment notice is: the response has already gone, so a
+ * failure is logged rather than thrown, and an owner who opted out gets nothing.
+ *
+ * @param newOwnerId - The user the record was just assigned to.
+ * @param item - The assignment details.
+ */
+export function notifyReassignedOwner(newOwnerId: string, item: AssignmentItem): void {
+  void (async () => {
+    try {
+      const owner = await findUserById(newOwnerId);
+      if (owner?.notify_assignments) {
+        queueAssignmentNotification(owner.id, owner.email, owner.name, item);
+      }
+    } catch (err) {
+      logger.warn(
+        { err, newOwnerId, recordType: item.recordType },
+        'notificationService: reassignment notification failed',
+      );
+    }
+  })();
+}
 
 /**
  * Queues an assignment notification for a user.

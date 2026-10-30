@@ -49,6 +49,7 @@ import customFieldValueRoutes from './routes/customFieldValues.js';
 import noteRoutes from './routes/notes.js';
 import gdprRoutes from './routes/gdpr.js';
 import mfaRoutes from './routes/mfa.js';
+import testEmailSyncRoutes from './routes/testEmailSync.js';
 import ssoRoutes from './routes/sso.js';
 import pipelineRoutes from './routes/pipelines.js';
 import customReportRoutes from './routes/customReports.js';
@@ -222,9 +223,9 @@ app.use(`${API_V1}/admin/feature-flags`, featureFlagRoutes);
 app.use(`${API_V1}/teams`, teamRoutes);
 app.use(`${API_V1}/custom-roles`, customRoleRoutes);
 // SCIM token management — issue/revoke the long-lived SCIM bearer token.
-app.use(API_V1, scimTokenRoutes);
+app.use(`${API_V1}/scim-token`, scimTokenRoutes);
 // SCIM group → role mapping admin endpoints
-app.use(API_V1, scimGroupMappingRoutes);
+app.use(`${API_V1}/scim/group-role-mappings`, scimGroupMappingRoutes);
 app.use('/scim/v2', scimRoutes);
 // User-facing AI routes — only /token-budget/me; no admin handlers.
 app.use(`${API_V1}/ai`, aiUserRouter);
@@ -302,6 +303,8 @@ if (isNonProductionEnv()) {
 // the narrower list: staging serves the API docs but is a real deployment, and
 // this runs a background job on demand with no authentication of its own.
 if (isAuthBypassEnv()) {
+  app.use(`${API_V1}/test`, testEmailSyncRoutes);
+
   /**
    * POST /api/v1/test/advance-sequences — dev/test only.
    * Calls advanceDueEnrollments() immediately so E2E tests can verify

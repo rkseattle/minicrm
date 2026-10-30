@@ -86,7 +86,7 @@ const MAX_TCP_PORT = 65535;
 const MAX_HOSTNAME_LENGTH = 253;
 
 /** Longest legal email address, per RFC 5321. */
-const MAX_EMAIL_LENGTH = 254;
+export const MAX_EMAIL_LENGTH = 254;
 
 /** Upper bound on a stored IMAP password, generous enough for app-specific passwords. */
 const MAX_PASSWORD_LENGTH = 1024;
@@ -134,6 +134,16 @@ export const connectedAccountResponseSchema = z.object({
 });
 
 export type ConnectedAccountResponse = z.infer<typeof connectedAccountResponseSchema>;
+
+/** Response of GET /api/v1/connected-accounts. */
+export const connectedAccountListResponseSchema = z.object({
+  accounts: z.array(connectedAccountResponseSchema),
+});
+export type ConnectedAccountListResponse = z.infer<typeof connectedAccountListResponseSchema>;
+
+/** Response of every route that answers with one account: create, update, and test seeding. */
+export const connectedAccountEnvelopeSchema = z.object({ account: connectedAccountResponseSchema });
+export type ConnectedAccountEnvelope = z.infer<typeof connectedAccountEnvelopeSchema>;
 
 /**
  * The owner's own sync controls for one mailbox. At least one field is required, so an
