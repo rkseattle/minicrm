@@ -103,6 +103,32 @@ describe('boundaries', () => {
     expect((await seedAs(repCookie)).status).toBe(403);
   });
 
+  it('returns 403 on both routes while sync is off org-wide, even for a user forced on', async () => {
+    await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
+    await pool.query(
+      `INSERT INTO feature_flag_user_overrides (flag_key, user_id, override)
+       SELECT 'email_sync', id, 'force_enabled' FROM users WHERE email = $1`,
+      [`${FILE_PREFIX}-rep@example.com`],
+    );
+    invalidateFeatureFlagCache();
+    try {
+      const seeded = await seedAs(repCookie);
+      const run = await request(app)
+        .post(runUrl('00000000-0000-4000-8000-000000000000'))
+        .set('Cookie', repCookie);
+
+      expect([seeded.status, seeded.body.error?.code]).toEqual([403, 'FEATURE_DISABLED']);
+      expect([run.status, run.body.error?.code]).toEqual([403, 'FEATURE_DISABLED']);
+    } finally {
+      await pool.query(
+        `DELETE FROM feature_flag_user_overrides
+          WHERE flag_key = 'email_sync'
+            AND user_id IN (SELECT id FROM users WHERE email = $1)`,
+        [`${FILE_PREFIX}-rep@example.com`],
+      );
+    }
+  });
+
   it('returns 403 to a role that may not manage mailboxes', async () => {
     expect((await seedAs(viewerCookie)).status).toBe(403);
   });

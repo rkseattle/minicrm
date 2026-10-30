@@ -558,10 +558,12 @@ export async function syncOneAccount(
  * lock keeps two runs of one mailbox apart, keyed on the canonical UUID text so two
  * spellings of an id contend for one lock.
  *
- * The same flag, governance, and failure recording as syncDueAccounts apply.
+ * It runs the tick's own two steps, prepareTick and syncClaimedAccount: the send-intent
+ * sweep, the org-wide and per-user flags, governance, and failure recording all apply.
  *
  * @param provider - Injected so tests can drive a fake, as for syncOneAccount.
- * @returns null when the account is not the user's, cannot sync, or the user's flag is off.
+ * @returns null when email sync is off for the org or the user, or the account is not the
+ *   user's or cannot sync.
  * @throws `SCHEDULER_RUNNING` unless the scheduler is off, and `SYNC_IN_PROGRESS` when
  *   another run of this mailbox holds the lock.
  */
@@ -575,9 +577,9 @@ export async function syncAccountNow(
       code: SCHEDULER_RUNNING,
     });
   }
-  // Read before claiming, as a tick does: a malformed org setting is no mailbox's failure.
-  const governance = await readSyncGovernance();
-  const dealAutoLink = await getDealAutoLink();
+  // Before claiming, as a tick does; unreadable settings throw, so a caller sees why.
+  const tick = await prepareTick(readSyncGovernance);
+  if (!tick) return null;
 
   // A session lock, not a transaction one: the sync makes network calls while it is held,
   // and no transaction may stay open across those.
@@ -597,17 +599,7 @@ export async function syncAccountNow(
 
     const account = await claimAccountByIdForSync(accountId, userId);
     if (!account) return null;
-    if (!(await isFlagEnabledForUser(EMAIL_SYNC_FLAG, account.userId, account.userRole))) {
-      return null;
-    }
-    try {
-      const outcome = await syncOneAccount(account, provider, undefined, dealAutoLink, governance);
-      return { status: 'synced', outcome };
-    } catch (err) {
-      logger.warn({ err, accountId }, 'emailSyncService: run-now sync failed');
-      captureException(err);
-      return { status: 'failed', errorCode: await recordSyncFailure(account, err) };
-    }
+    return await syncClaimedAccount(account, tick, provider);
   } finally {
     await releaseSyncNowLock(lockClient, accountId, held);
   }
@@ -751,6 +743,43 @@ export async function syncDueAccounts(
   refresh: TokenRefresh = refreshAccessToken,
   readGovernance: () => Promise<SyncGovernance> = readSyncGovernance,
 ): Promise<SyncOutcome[]> {
+  // Before claiming: a malformed org setting must leave every mailbox's cursor where it is
+  // rather than store mail it may exclude. Not a per-mailbox failure, so no mailbox's
+  // backoff pays for it; the next tick retries once an admin corrects the setting.
+  let tick: TickSettings | null;
+  try {
+    tick = await prepareTick(readGovernance);
+  } catch (err) {
+    logger.error({ err }, 'emailSyncService: email sync settings unreadable, tick skipped');
+    captureException(err);
+    return [];
+  }
+  if (!tick) return [];
+
+  const claimed = await claimAccountsDueForSync(MAX_ACCOUNTS_PER_TICK);
+  const outcomes: SyncOutcome[] = [];
+  for (const account of claimed) {
+    const result = await syncClaimedAccount(account, tick, provider, refresh);
+    if (result?.status === 'synced') outcomes.push(result.outcome);
+  }
+  return outcomes;
+}
+
+/** What one tick reads once and applies to every mailbox it syncs. */
+interface TickSettings {
+  governance: SyncGovernance;
+  dealAutoLink: boolean;
+}
+
+/**
+ * What every sync runs before claiming: the send-intent sweep, then the org-wide flag.
+ *
+ * @returns the tick's settings, or null when email sync is off for the whole org.
+ * @throws when the org's email sync settings cannot be read.
+ */
+async function prepareTick(
+  readGovernance: () => Promise<SyncGovernance>,
+): Promise<TickSettings | null> {
   // Before the flag: sends made while it was on must still be audited after it goes off.
   try {
     await sweepUnsettledIntents();
@@ -758,43 +787,41 @@ export async function syncDueAccounts(
     // A failed sweep only delays an unconfirmed report; it must not stop mail syncing.
     logger.warn({ err }, 'emailSyncService: send-intent sweep failed');
   }
+  // The org-wide switch: a per-user override must not sync anyone while it is off.
+  if (!(await isFeatureEnabled(EMAIL_SYNC_FLAG))) return null;
+  const governance = await readGovernance();
+  // Once per tick: a single global row, and a change mid-tick may wait for the next.
+  return { governance, dealAutoLink: await getDealAutoLink() };
+}
 
-  if (!(await isFeatureEnabled(EMAIL_SYNC_FLAG))) return [];
-
-  // Before claiming: a malformed org setting must leave every mailbox's cursor where it is
-  // rather than store mail it may exclude. Not a per-mailbox failure, so no mailbox's
-  // backoff pays for it; the next tick retries once an admin corrects the setting.
-  let governance: SyncGovernance;
+/**
+ * Syncs one claimed mailbox, recording a failure on it rather than throwing.
+ *
+ * @returns the result, or null when the flag is off for the mailbox's owner.
+ */
+async function syncClaimedAccount(
+  account: ClaimedSyncAccount,
+  tick: TickSettings,
+  provider?: MailProvider,
+  refresh: TokenRefresh = refreshAccessToken,
+): Promise<SyncNowResult | null> {
+  // Per account, because the flag can be rolled out to a subset of users.
+  if (!(await isFlagEnabledForUser(EMAIL_SYNC_FLAG, account.userId, account.userRole))) {
+    return null;
+  }
   try {
-    governance = await readGovernance();
+    const outcome = await syncOneAccount(
+      account,
+      provider,
+      refresh,
+      tick.dealAutoLink,
+      tick.governance,
+    );
+    return { status: 'synced', outcome };
   } catch (err) {
-    logger.error({ err }, 'emailSyncService: email sync settings unreadable, tick skipped');
+    // Per account, so one dead server cannot end the tick for every other mailbox.
+    logger.warn({ err, accountId: account.id }, 'emailSyncService: account sync failed');
     captureException(err);
-    return [];
+    return { status: 'failed', errorCode: await recordSyncFailure(account, err) };
   }
-
-  const claimed = await claimAccountsDueForSync(MAX_ACCOUNTS_PER_TICK);
-  const outcomes: SyncOutcome[] = [];
-  // Once for the tick rather than once per account: it is a single global row, and a
-  // change landing mid-tick may as well take effect on the next one.
-  const dealAutoLink = await getDealAutoLink();
-
-  for (const account of claimed) {
-    // Checked per account rather than once, because the flag can be rolled out to a
-    // subset of users and the claim query cannot know that.
-    if (!(await isFlagEnabledForUser(EMAIL_SYNC_FLAG, account.userId, account.userRole))) {
-      continue;
-    }
-
-    try {
-      outcomes.push(await syncOneAccount(account, provider, refresh, dealAutoLink, governance));
-    } catch (err) {
-      // Per account, so one dead server cannot end the tick for every other mailbox.
-      logger.warn({ err, accountId: account.id }, 'emailSyncService: account sync failed');
-      captureException(err);
-      await recordSyncFailure(account, err);
-    }
-  }
-
-  return outcomes;
 }
