@@ -433,8 +433,7 @@ export async function parseMessage(
     threading: {},
   };
 
-  // Held outside the try so a failed text conversion still stores the HTML the parser had
-  // already returned: it is the more faithful record of the two.
+  // Held outside the try so a parse that fails after reading the HTML still stores it.
   let bodyHtml: string | null = null;
   try {
     // Neither output is read, and each costs memory proportional to the document.
@@ -454,7 +453,16 @@ export async function parseMessage(
       !options?.headersOnly && typeof parsed.html === 'string' && parsed.html !== ''
         ? storable(parsed.html)
         : null;
-    const bodyText = options?.headersOnly ? null : bodyTextOf(parsed.text, parsed.html);
+    // Its own try: htmlToText can overflow on sender markup the parser accepted, and losing
+    // the text must not cost the headers, without which the message matches no record.
+    let bodyText: string | null = null;
+    if (!options?.headersOnly) {
+      try {
+        bodyText = bodyTextOf(parsed.text, parsed.html);
+      } catch (err) {
+        logger.warn({ err }, 'messageBody: body text could not be derived; keeping the HTML');
+      }
+    }
 
     return {
       bodyText,
@@ -476,9 +484,8 @@ export async function parseMessage(
           : (parsed.references ?? null),
       },
     };
-  } catch {
-    // lostText stays true even when the HTML survived: the text and snippet columns are
-    // null either way, and that is what the caller reports.
+  } catch (err) {
+    logger.warn({ err }, 'messageBody: message source would not parse');
     return { ...empty, bodyHtml };
   }
 }
