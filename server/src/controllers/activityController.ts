@@ -22,6 +22,7 @@ import {
   deleteActivity,
 } from '../services/activityService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -198,7 +199,7 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
   try {
     activity = await updateActivity(id, parsed.data, actor);
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
       // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findActivityById(id);

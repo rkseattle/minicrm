@@ -17,6 +17,7 @@ import {
   updatePipelineSchema,
 } from '@minicrm/shared/schemas/pipelineSchema.js';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /**
  * GET /api/v1/pipelines
@@ -43,7 +44,7 @@ export async function createPipelineHandler(req: Request, res: Response): Promis
     const pipeline = await createPipeline(parsed.data, actor);
     res.status(201).json(toPipelineResponse(pipeline));
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'PIPELINE_NAME_CONFLICT') {
+    if (thrownCode(err) === 'PIPELINE_NAME_CONFLICT') {
       res
         .status(409)
         .json({ error: { code: 'PIPELINE_NAME_CONFLICT', message: (err as Error).message } });
@@ -75,7 +76,7 @@ export async function updatePipelineHandler(req: Request, res: Response): Promis
     }
     res.status(200).json(toPipelineResponse(pipeline));
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'PIPELINE_NAME_CONFLICT') {
+    if (thrownCode(err) === 'PIPELINE_NAME_CONFLICT') {
       res
         .status(409)
         .json({ error: { code: 'PIPELINE_NAME_CONFLICT', message: (err as Error).message } });
@@ -104,7 +105,7 @@ export async function deletePipelineHandler(req: Request, res: Response): Promis
     await deletePipeline(id, actor);
     res.status(200).json({ id });
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'PIPELINE_DEFAULT') {
       res
         .status(403)

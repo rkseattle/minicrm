@@ -17,6 +17,7 @@ import {
   PROVIDER_AUTH_EXPIRED,
   type ConnectedAccountStatusDetail,
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
+import { thrownCauseCode, thrownCode } from '../../utils/errorCode.js';
 
 /** The provider may have accepted the message. Never retry, never report it as failed. */
 export const SEND_OUTCOME_UNKNOWN = 'SEND_OUTCOME_UNKNOWN';
@@ -95,9 +96,9 @@ export function sendFailure(code: SendFailureCode, provider: string): Error {
 
 /** True for an error this module built, which a driver must rethrow untouched. */
 export function isSendFailure(err: unknown): err is Error & { code: SendFailureCode } {
-  const code = (err as { code?: unknown } | null)?.code; // Safe: narrowed by the typeof below.
+  const code = thrownCode(err);
   // Safe: widening the tuple so includes() accepts any string.
-  return typeof code === 'string' && (SEND_FAILURE_CODES as readonly string[]).includes(code);
+  return code !== undefined && (SEND_FAILURE_CODES as readonly string[]).includes(code);
 }
 
 /**
@@ -108,9 +109,8 @@ export function isSendFailure(err: unknown): err is Error & { code: SendFailureC
  */
 export function transportFailureCode(err: unknown, aborted: boolean): SendFailureCode {
   if (aborted) return SEND_OUTCOME_UNKNOWN;
-  // Safe: an arbitrary thrown value, narrowed by the typeof below.
-  const cause = (err as { cause?: { code?: unknown } } | null)?.cause?.code;
-  return typeof cause === 'string' && NEVER_CONNECTED_CODES.includes(cause)
+  const cause = thrownCauseCode(err);
+  return cause !== undefined && NEVER_CONNECTED_CODES.includes(cause)
     ? SEND_NOT_SENT
     : SEND_OUTCOME_UNKNOWN;
 }

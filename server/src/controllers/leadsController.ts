@@ -42,6 +42,7 @@ import {
   type PdfTableRow,
 } from '../services/pdfExportService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -391,7 +392,7 @@ export async function updateLeadHandler(req: Request, res: Response): Promise<vo
   try {
     lead = await updateLead(id, parsed.data, { id: req.user!.id, name: req.user!.name });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
       // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findLeadById(id);
@@ -473,15 +474,16 @@ export async function convertLeadHandler(req: Request, res: Response): Promise<v
     });
     res.status(201).json({ conversion: result });
   } catch (err) {
-    const error = err as Error & { code?: string };
-    if (error.code === 'NOT_FOUND') {
-      res.status(404).json({ error: { code: 'NOT_FOUND', message: error.message } });
-    } else if (error.code === 'ALREADY_CONVERTED') {
-      res.status(409).json({ error: { code: 'ALREADY_CONVERTED', message: error.message } });
-    } else if (error.code === 'DISQUALIFIED') {
-      res.status(422).json({ error: { code: 'DISQUALIFIED', message: error.message } });
-    } else if (error.code === 'ACCOUNT_NOT_FOUND') {
-      res.status(400).json({ error: { code: 'ACCOUNT_NOT_FOUND', message: error.message } });
+    const code = thrownCode(err);
+    const message = err instanceof Error ? err.message : '';
+    if (code === 'NOT_FOUND') {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: message } });
+    } else if (code === 'ALREADY_CONVERTED') {
+      res.status(409).json({ error: { code: 'ALREADY_CONVERTED', message: message } });
+    } else if (code === 'DISQUALIFIED') {
+      res.status(422).json({ error: { code: 'DISQUALIFIED', message: message } });
+    } else if (code === 'ACCOUNT_NOT_FOUND') {
+      res.status(400).json({ error: { code: 'ACCOUNT_NOT_FOUND', message: message } });
     } else {
       throw err;
     }

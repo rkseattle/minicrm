@@ -12,6 +12,7 @@ import {
   getMeetingBrief,
 } from '../services/meetingBriefService.js';
 import { toUtcDateString } from '../utils/utcDate.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -79,7 +80,7 @@ export async function generateMeetingBriefHandler(req: Request, res: Response): 
     res.status(200).json(result);
   } catch (err: unknown) {
     if (handleAiServiceError(err, res)) return;
-    if (err instanceof Error && 'code' in err && err.code === BRIEF_SOURCES_CHANGED) {
+    if (thrownCode(err) === BRIEF_SOURCES_CHANGED) {
       res.status(409).json({
         error: {
           code: BRIEF_SOURCES_CHANGED,

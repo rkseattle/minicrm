@@ -23,6 +23,7 @@ import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
 import { z } from 'zod';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /**
  * GET /api/v1/data-hygiene/findings
@@ -74,7 +75,7 @@ export async function dismissHygieneFindingHandler(req: Request, res: Response):
     // non-admin's WHERE ... AND (owner_id = $x OR admin) excludes a finding they
     // don't own — same response either way, so ownership can't be probed via a
     // 403-vs-404 status difference.
-    if ((err as { code?: string }).code === 'NOT_FOUND') {
+    if (thrownCode(err) === 'NOT_FOUND') {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Hygiene finding not found' } });
       return;
     }
@@ -110,7 +111,7 @@ export async function clearFindingsForEntityHandler(req: Request, res: Response)
     );
     res.status(200).json({ cleared: true });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'NOT_FOUND') {
       res
         .status(404)
@@ -152,7 +153,7 @@ export async function mergeDuplicateContactFindingsHandler(
     await mergeDuplicateContactFindings(parsed.data.winnerId, parsed.data.loserId, actor, isAdmin);
     res.status(200).json({ merged: true });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'SELF_MERGE') {
       res
         .status(400)

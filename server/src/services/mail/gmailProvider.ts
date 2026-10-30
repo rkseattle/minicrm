@@ -45,6 +45,7 @@ import {
 } from './sendOutcome.js';
 import { readBodyOrNull, startBound } from './transport.js';
 import { gmailApiBase } from './providerEndpoints.js';
+import { thrownCode } from '../../utils/errorCode.js';
 
 /** How this driver names its provider in messages. */
 const PROVIDER_NAME = 'Gmail';
@@ -295,8 +296,7 @@ async function gmailRequest(
   } catch (err) {
     // A string code marks an error this module classified. An abort's DOMException also
     // carries `code`, but a numeric one, and must be rewritten like any transport failure.
-    // Safe: an arbitrary thrown value, narrowed by the typeof.
-    if (typeof (err as { code?: unknown } | null)?.code === 'string') throw err;
+    if (thrownCode(err) !== undefined) throw err;
     // undici reports every transport failure as the same TypeError, so the cause matters
     // more than the name; either way the mailbox is unreachable rather than unauthorized.
     throw providerError(UNREACHABLE_MESSAGE, CONNECTION_FAILED);
@@ -337,7 +337,7 @@ export async function testGmailAccess(
     }
     return { ok: true };
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     return code === PROVIDER_AUTH_EXPIRED
       ? { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE }
       : { ok: false, code: CONNECTION_FAILED, message: UNREACHABLE_MESSAGE };

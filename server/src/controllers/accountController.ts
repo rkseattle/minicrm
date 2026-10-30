@@ -51,6 +51,7 @@ import {
 } from '../services/pdfExportService.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -98,7 +99,7 @@ export async function createAccountHandler(req: Request, res: Response): Promise
     );
     res.status(201).json({ account });
   } catch (err) {
-    const linkCode = (err as { code?: string }).code;
+    const linkCode = thrownCode(err);
     if (linkCode === 'CONTACT_LINKED_ELSEWHERE' || linkCode === 'CONTACT_NOT_LINKABLE') {
       res.status(409).json({ error: { code: linkCode, message: (err as Error).message } });
       return;
@@ -261,7 +262,7 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
       existing,
     );
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'CIRCULAR_PARENT') {
       res.status(400).json({ error: { code, message: (err as Error).message } });
       return;

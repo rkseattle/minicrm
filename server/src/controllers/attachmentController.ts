@@ -18,6 +18,7 @@ import {
   testStorageConnection,
 } from '../services/storageService.js';
 import { respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const VALID_RECORD_TYPES = new Set<RecordType>(['contact', 'account', 'deal', 'lead']);
 
@@ -92,7 +93,7 @@ export async function uploadAttachmentHandler(req: Request, res: Response): Prom
       uploaderName: req.user!.name,
     });
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'STORAGE_CAP_EXCEEDED') {
       res.status(400).json({
         error: {
@@ -131,7 +132,7 @@ export async function downloadAttachmentHandler(req: Request, res: Response): Pr
   try {
     result = await downloadAttachment(id, req.user!.id, req.user!.role);
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'NOT_FOUND') {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Attachment not found' } });
       return;
@@ -162,7 +163,7 @@ export async function deleteAttachmentHandler(req: Request, res: Response): Prom
   try {
     await deleteAttachment(id, req.user!.id, req.user!.role, req.user!.name);
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'NOT_FOUND') {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Attachment not found' } });
       return;

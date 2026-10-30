@@ -21,6 +21,7 @@ import {
 } from '../services/noteService.js';
 import { getTagsRestrictCreation } from '../services/settingsService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Validates that a string is a UUID */
 const uuidSchema = z.string().uuid();
@@ -100,8 +101,7 @@ export async function createNoteHandler(req: Request, res: Response): Promise<vo
     const note = await createNote(entityType, entityId, parsed.data, actor);
     res.status(201).json({ note });
   } catch (err) {
-    const typedErr = err as { code?: string };
-    if (typedErr.code === 'ENTITY_NOT_FOUND') {
+    if (thrownCode(err) === 'ENTITY_NOT_FOUND') {
       res
         .status(404)
         .json({ error: { code: 'ENTITY_NOT_FOUND', message: `${entityType} not found` } });
@@ -186,8 +186,7 @@ export async function updateNoteHandler(req: Request, res: Response): Promise<vo
     }
     res.status(200).json({ note });
   } catch (err) {
-    const typedErr = err as { code?: string };
-    if (typedErr.code === 'FORBIDDEN') {
+    if (thrownCode(err) === 'FORBIDDEN') {
       res.status(403).json({
         error: {
           code: 'FORBIDDEN',
@@ -196,7 +195,7 @@ export async function updateNoteHandler(req: Request, res: Response): Promise<vo
       });
       return;
     }
-    if (typedErr.code === 'VISIBILITY_CHANGE_FORBIDDEN') {
+    if (thrownCode(err) === 'VISIBILITY_CHANGE_FORBIDDEN') {
       res.status(403).json({
         error: {
           code: 'VISIBILITY_CHANGE_FORBIDDEN',
@@ -237,8 +236,7 @@ export async function deleteNoteHandler(req: Request, res: Response): Promise<vo
     }
     res.status(204).send();
   } catch (err) {
-    const typedErr = err as { code?: string };
-    if (typedErr.code === 'FORBIDDEN') {
+    if (thrownCode(err) === 'FORBIDDEN') {
       res.status(403).json({
         error: {
           code: 'FORBIDDEN',

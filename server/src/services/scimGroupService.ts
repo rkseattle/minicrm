@@ -11,6 +11,7 @@ import type { PoolClient } from 'pg';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import logger from '../logger.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -151,7 +152,7 @@ export async function provisionScimGroup(
   } catch (err) {
     await client.query('ROLLBACK');
     // PG unique constraint violation on teams.name — report as 409 Conflict
-    if (err instanceof Error && 'code' in err && (err as { code: string }).code === '23505') {
+    if (thrownCode(err) === '23505') {
       const conflict = new Error('A team with this name already exists') as Error & {
         statusCode: number;
         code: string;

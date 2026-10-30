@@ -22,6 +22,7 @@ import { createRequire } from 'module';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import pg from 'pg';
 import logger from './logger.js';
+import { thrownCode } from './utils/errorCode.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -380,10 +381,8 @@ async function ensureCoverageDatabaseExists(): Promise<void> {
         await adminClient.query(`CREATE DATABASE "${coverageDbName.replace(/"/g, '""')}"`);
         logger.info({ coverageDbName }, 'Created coverage database');
       } catch (err) {
-        const isConcurrentCreation =
-          err instanceof Error &&
-          'code' in err &&
-          (err.code === PG_DUPLICATE_DATABASE || err.code === PG_UNIQUE_VIOLATION);
+        const code = thrownCode(err);
+        const isConcurrentCreation = code === PG_DUPLICATE_DATABASE || code === PG_UNIQUE_VIOLATION;
         if (isConcurrentCreation) {
           logger.info(
             { coverageDbName },

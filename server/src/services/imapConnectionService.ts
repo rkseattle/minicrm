@@ -18,6 +18,7 @@ import {
 
 import logger from '../logger.js';
 import { UrlNotSafeError, assertHostnameIsSafe } from '../utils/urlSafetyUtils.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Candidate IMAP credentials, before they are trusted enough to store. */
 export interface ImapConnectionCandidate {
@@ -67,9 +68,10 @@ const AUTH_FAILURE_CODE = 'AUTHENTICATIONFAILED';
 export function classifyImapError(
   err: unknown,
 ): typeof CONNECTION_FAILED | typeof PROVIDER_AUTH_EXPIRED {
-  const candidate = err as { authenticationFailed?: boolean; responseText?: string; code?: string };
-  if (candidate.authenticationFailed === true) return PROVIDER_AUTH_EXPIRED;
-  if (candidate.code === AUTH_FAILURE_CODE) return PROVIDER_AUTH_EXPIRED;
+  // Safe: optional chaining tolerates a thrown null; the flag is compared to true only.
+  const candidate = err as { authenticationFailed?: boolean } | null | undefined;
+  if (candidate?.authenticationFailed === true) return PROVIDER_AUTH_EXPIRED;
+  if (thrownCode(err) === AUTH_FAILURE_CODE) return PROVIDER_AUTH_EXPIRED;
   return CONNECTION_FAILED;
 }
 

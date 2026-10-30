@@ -82,6 +82,7 @@ import { refreshAccessToken, type RefreshedTokens } from './oauthProviderService
 import { withRlsQuery } from './rlsContextService.js';
 import { getDealAutoLink } from './settingsService.js';
 import { shouldSkipRateLimit } from '../utils/nodeEnv.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** The API's codes for a send that did not complete. The controller maps each to a status. */
 export const EMAIL_ACCOUNT_NOT_FOUND = 'EMAIL_ACCOUNT_NOT_FOUND' satisfies SendErrorCode;
@@ -178,7 +179,7 @@ function constructSender(account: ConnectedAccountInternal): MailProvider | null
   try {
     return senderFor(account);
   } catch (err) {
-    if ((err as { code?: unknown } | null)?.code !== INSUFFICIENT_SCOPE) throw err;
+    if (thrownCode(err) !== INSUFFICIENT_SCOPE) throw err;
     throw sendError(RECONNECT_REQUIRED, 'Reconnect this mailbox to send from it.');
   }
 }

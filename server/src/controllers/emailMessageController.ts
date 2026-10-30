@@ -58,6 +58,7 @@ import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import { errorBody } from '../utils/errorBody.js';
 import { uuidParams } from '../utils/uuidParams.js';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /**
  * Whether the caller may see the record a message is filed against.
@@ -234,7 +235,7 @@ export async function createLinkHandler(req: Request, res: Response): Promise<vo
     const link = await createManualLink(messageId, record_type, record_id, req.user!.id, actor);
     res.status(201).json({ link });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     // A message outside the caller's mailboxes is reported as absent rather than
     // forbidden: whether it exists is not theirs to learn.
     if (code === 'EMAIL_MESSAGE_NOT_FOUND') {
@@ -328,15 +329,14 @@ const SEND_ERROR_STATUS: Readonly<Record<Exclude<SendErrorCode, SendRequestError
 
 /** Maps a send error to its response, or rethrows anything that is not one. */
 function respondToSendError(err: unknown, res: Response): void {
-  // Safe: a thrown value of any shape, narrowed by the typeof below.
-  const code = (err as { code?: unknown } | null)?.code;
+  const code = thrownCode(err);
   const status =
-    typeof code === 'string' && Object.hasOwn(SEND_ERROR_STATUS, code)
+    code !== undefined && Object.hasOwn(SEND_ERROR_STATUS, code)
       ? // Safe: the hasOwn check proves code is one of the table's keys.
         SEND_ERROR_STATUS[code as keyof typeof SEND_ERROR_STATUS]
       : undefined;
-  if (typeof code !== 'string' || status === undefined) throw err;
-  // Safe: a thrown value of any shape, narrowed by the typeof below.
+  if (code === undefined || status === undefined) throw err;
+  // Safe: the field is read as unknown and narrowed by the typeof below.
   const retryAfter = (err as { retryAfterSeconds?: unknown }).retryAfterSeconds;
   if (typeof retryAfter === 'number') res.set('Retry-After', String(retryAfter));
   // Safe: every code in SEND_ERROR_STATUS is thrown by sendError, which builds an Error.

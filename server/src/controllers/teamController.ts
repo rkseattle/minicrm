@@ -20,6 +20,7 @@ import {
   removeTeamMember,
 } from '../services/teamService.js';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ── Teams ──────────────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ export async function createTeamHandler(req: Request, res: Response): Promise<vo
     const team = await createTeam(parsed.data, actor);
     res.status(201).json({ team });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'TEAM_NAME_DUPLICATE') {
       res.status(409).json({ error: { code, message: (err as Error).message } });
       return;
@@ -78,7 +79,7 @@ export async function updateTeamHandler(req: Request, res: Response): Promise<vo
     }
     res.json({ team });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'TEAM_NAME_DUPLICATE') {
       res.status(409).json({ error: { code, message: (err as Error).message } });
       return;
@@ -101,7 +102,7 @@ export async function deleteTeamHandler(req: Request, res: Response): Promise<vo
     }
     res.status(204).send();
   } catch (err) {
-    if ((err as { code?: string }).code === 'TEAM_HAS_CHILDREN') {
+    if (thrownCode(err) === 'TEAM_HAS_CHILDREN') {
       res
         .status(409)
         .json({ error: { code: 'TEAM_HAS_CHILDREN', message: (err as Error).message } });
@@ -146,7 +147,7 @@ export async function addTeamMemberHandler(req: Request, res: Response): Promise
     );
     res.status(201).json({ member });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'TEAM_MEMBER_ALREADY_EXISTS') {
       res.status(409).json({ error: { code, message: (err as Error).message } });
       return;
