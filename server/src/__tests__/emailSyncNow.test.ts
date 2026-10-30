@@ -8,6 +8,7 @@
 
 import 'dotenv/config';
 
+import pg, { type PoolClient } from 'pg';
 import pool from '../db.js';
 import { SYNC_FAILED_DETAIL } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 import { createUser } from '../services/userService.js';
@@ -279,10 +280,43 @@ describe('syncAccountNow', () => {
     expect(row.rows[0]?.parked).toBe(true);
   });
 
+  // The lock is released by ending its transaction, which a returned connection proves; a
+  // destroyed one releases it only once Postgres notices, so the probe below can race it.
+  it('returns every connection the run takes to the pool rather than destroying it', async () => {
+    const destroyed: unknown[] = [];
+    const connect = pool.connect.bind(pool);
+    // Only the promise form is wrapped: pool.query calls connect with a callback internally.
+    // Safe: both overloads are served, the callback one by the real connect unchanged.
+    const spy = vi.spyOn(pool, 'connect').mockImplementation(((callback?: unknown) => {
+      // Safe: typeof proved it a function; connect's callback overload accepts it as is.
+      if (typeof callback === 'function') return connect(callback as never);
+      return wrapped();
+    }) as typeof pool.connect);
+    const wrapped = async (): Promise<PoolClient> => {
+      const client = await connect();
+      const release = client.release.bind(client);
+      client.release = (destroy?: Error | boolean): void => {
+        if (destroy) destroyed.push(destroy);
+        release(destroy);
+      };
+      return client;
+    };
+    try {
+      await syncAccountNow(accountId, repId, provider([new Error('boom')]));
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(destroyed).toEqual([]);
+  });
+
   it('releases the lock after a failed run, so the next one proceeds', async () => {
     await syncAccountNow(accountId, repId, provider([new Error('boom')]));
 
-    const probe = await pool.connect();
+    // A session of its own: a pooled probe could be handed the lock's connection, where an
+    // advisory lock is re-entrant and the try would succeed whether or not it was released.
+    const probe = new pg.Client(pool.options);
+    await probe.connect();
     try {
       const lock = await probe.query<{ locked: boolean }>(
         `SELECT pg_try_advisory_lock(${LOCK_SQL}) AS locked`,
@@ -291,7 +325,7 @@ describe('syncAccountNow', () => {
       expect(lock.rows[0]?.locked).toBe(true);
       await probe.query(`SELECT pg_advisory_unlock(${LOCK_SQL})`, [accountId]);
     } finally {
-      probe.release();
+      await probe.end();
     }
   });
 });

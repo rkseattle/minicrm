@@ -606,8 +606,24 @@ export async function syncAccountNow(
       return { status: 'failed', errorCode: await recordSyncFailure(account, err) };
     }
   } finally {
-    // Destroyed, not returned: ending the session ends its transaction and the lock with it.
-    lockClient.release(true);
+    await releaseSyncNowLock(lockClient);
+  }
+}
+
+/**
+ * Ends the lock's transaction, which releases the lock before this returns.
+ *
+ * Destroying the connection alone is not enough: Postgres ends the backend, and the lock
+ * with it, only once it notices the closed socket, so a run straight after would still
+ * find it held. The connection is destroyed only when the rollback itself fails.
+ */
+async function releaseSyncNowLock(lockClient: PoolClient): Promise<void> {
+  try {
+    await lockClient.query('ROLLBACK');
+    lockClient.release();
+  } catch (err) {
+    logger.warn({ err }, 'emailSyncService: could not end the run-now lock transaction');
+    lockClient.release(err instanceof Error ? err : true);
   }
 }
 
