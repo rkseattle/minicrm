@@ -52,16 +52,19 @@ describe('legacy /api → /api/v1 redirects', () => {
     expect(followed.status).toBe(401);
   });
 
-  // The bare prefix redirects to /api/v1/automation, which no router serves. It answers
-  // 401 rather than 404 because a router mounted at the bare /api/v1 prefix runs its
-  // auth check before the not-found handler — so 401 here is not evidence of a route.
+  // The bare prefix redirects to /api/v1/automation, which no router serves.
   it('redirects the bare legacy automation prefix to an unrouted path', async () => {
     const res = await request(app).get('/api/automation');
     expect(res.status).toBe(308);
     expect(res.headers['location']).toBe('/api/v1/automation');
 
     const followed = await request(app).get(res.headers['location'] as string);
-    expect(followed.status).toBe(401);
+    expect(followed.status).toBe(404);
+  });
+
+  // Guards a router mounted at bare /api/v1 with router.use, which would 401 every later path.
+  it('answers an unmatched /api/v1 path with 404 for a caller with no session', async () => {
+    expect((await request(app).get('/api/v1/no-such-route-probe')).status).toBe(404);
   });
 
   it('leaves an already-versioned path alone', async () => {

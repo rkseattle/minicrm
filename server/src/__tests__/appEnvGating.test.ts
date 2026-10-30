@@ -28,10 +28,8 @@ const TEST_EMAIL_SYNC_PATHS = [
   '/api/v1/test/email-sync/accounts/not-a-uuid/run',
 ];
 
-// Two SCIM routers mount `authenticate` at the bare /api/v1 prefix, so an
-// unauthenticated request to any unmatched path there is challenged with 401
-// before reaching the 404 handler. Authenticating is what makes 404 (route not
-// registered) distinguishable from 401 (registered, or merely unreachable).
+// Signed in as admin, so a guarded route that is mounted answers past its guard: a 404
+// then means the route is not registered, never that a guard refused the request.
 let adminCookie: string;
 
 beforeAll(async () => {

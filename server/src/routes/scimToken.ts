@@ -1,5 +1,5 @@
 /**
- * SCIM token management routes. Mounted at /api/v1 in app.ts.
+ * SCIM token management routes. Mounted at /api/v1/scim-token in app.ts.
  * Both routes require authenticate + requireCapability(Capability.IntegrationsManage).
  */
 
@@ -60,7 +60,7 @@ router.use(authenticate);
  *         $ref: '#/components/responses/Forbidden'
  */
 router.get(
-  '/scim-token',
+  '/',
   requireCapability(Capability.IntegrationsManage),
   asyncHandler(getScimTokenMetaHandler),
 );
@@ -103,7 +103,7 @@ router.get(
  *         $ref: '#/components/responses/Forbidden'
  */
 router.post(
-  '/scim-token',
+  '/',
   requireCapability(Capability.IntegrationsManage),
   asyncHandler(postScimTokenHandler),
 );
@@ -140,10 +140,10 @@ router.post(
  *         description: No active SCIM token to revoke
  */
 router.delete(
-  '/scim-token',
+  '/',
   requireCapability(Capability.IntegrationsManage),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    // Safe: req.user is guaranteed by the authenticate middleware on this router.
+    // Safe: req.user is guaranteed by the router-level authenticate middleware.
     const actor = { id: req.user!.id, name: req.user!.name };
 
     const revoked = await revokeScimToken(actor);
