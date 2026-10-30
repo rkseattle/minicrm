@@ -269,7 +269,8 @@ services:
   # In greenmail.users, `rep:secret-pass-12@example.com` is login `rep`, password
   # `secret-pass-12`, domain `example.com`. The IMAP login is `rep`, NOT the address.
   # auth.disabled lets any password log in, and delivery to an unknown address creates
-  # that mailbox, so each E2E spec owns a fresh one.
+  # that mailbox, so each E2E spec owns a fresh one. CI repeats these options in ci.yml's
+  # e2e-serial job and tia-record-mode.yml; server-tests' copy omits auth.disabled.
   greenmail:
     container_name: minicrm-test-greenmail
     logging: *default-logging

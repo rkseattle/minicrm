@@ -849,6 +849,20 @@ under another value:
 | `GRAPH_API_BASE_URL`         | Replaces `https://graph.microsoft.com/v1.0/me`; delta links pin to its origin.  |
 | `EMAIL_SYNC_SCHEDULER`       | `off` leaves the sync job unscheduled; the test-only run-now route requires it. |
 
+`docker-compose.test.yml` sets them for its server, naming its own services. A server run on
+the host against that stack's published ports uses host names instead, as CI's `e2e-serial`
+job does:
+
+```bash
+SSRF_ALLOWED_PRIVATE_HOSTS=localhost
+GMAIL_API_BASE_URL=http://localhost:4010/gmail/v1/users/me
+GRAPH_API_BASE_URL=http://localhost:4010/v1.0/me
+EMAIL_SYNC_SCHEDULER=off
+```
+
+Set those in the shell that starts the server, not in the root `.env`: the compose file reads
+that file for its own defaults, and these values would point its container at itself.
+
 An allowlisted host may resolve only into public, loopback, or RFC 1918 space. Link-local,
 carrier-grade NAT, and IPv6 unique-local space, where cloud metadata services live, stay refused.
 

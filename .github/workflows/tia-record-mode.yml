@@ -135,7 +135,9 @@ jobs:
           - 1025:1025
           - 8025:8025
 
-      # The email sync specs' IMAP provider, as in ci.yml's e2e-serial job.
+      # The email sync specs' IMAP provider. Workflow services cannot be shared, so this
+      # repeats ci.yml's e2e-serial block and docker-compose.test.yml: change all three.
+      # server-tests' copy omits auth.disabled on purpose; its live IMAP test logs in as rep.
       greenmail:
         image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-greenmail:2.1.13
         credentials:

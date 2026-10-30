@@ -2193,7 +2193,9 @@ jobs:
           - 8025:8025
 
       # The email sync specs' IMAP provider. auth.disabled, and a mailbox created on first
-      # delivery, let each spec own a fresh mailbox; see docker-compose.test.yml.
+      # delivery, let each spec own a fresh mailbox; see docker-compose.test.yml. Workflow
+      # services cannot be shared, so tia-record-mode.yml and docker-compose.test.yml repeat
+      # these options: change all three.
       greenmail:
         image: ghcr.io/${{ github.repository_owner }}/minicrm-ci-greenmail:2.1.13
         credentials:
