@@ -554,9 +554,9 @@ export async function syncOneAccount(
  *
  * Refused unless EMAIL_SYNC_SCHEDULER=off: the claim ignores the due time, which is also
  * the scheduler's only lease, so with the scheduler on a tick could sync the same mailbox
- * from a stale cursor. With it off, run-now is the only sync, and a transaction-scoped
- * advisory lock keeps two runs of one mailbox apart, keyed on the canonical UUID text so
- * two spellings of an id contend for one lock.
+ * from a stale cursor. With it off, run-now is the only sync, and a session-level advisory
+ * lock keeps two runs of one mailbox apart, keyed on the canonical UUID text so two
+ * spellings of an id contend for one lock.
  *
  * The same flag, governance, and failure recording as syncDueAccounts apply.
  *
@@ -579,14 +579,17 @@ export async function syncAccountNow(
   const governance = await readSyncGovernance();
   const dealAutoLink = await getDealAutoLink();
 
+  // A session lock, not a transaction one: the sync makes network calls while it is held,
+  // and no transaction may stay open across those.
   const lockClient = await pool.connect();
+  let held = false;
   try {
-    await lockClient.query('BEGIN');
     const lock = await lockClient.query<{ locked: boolean }>(
-      'SELECT pg_try_advisory_xact_lock(hashtext($1), hashtext($2::uuid::text)) AS locked',
+      'SELECT pg_try_advisory_lock(hashtext($1), hashtext($2::uuid::text)) AS locked',
       [SYNC_NOW_LOCK_NAMESPACE, accountId],
     );
-    if (lock.rows[0]?.locked !== true) {
+    held = lock.rows[0]?.locked === true;
+    if (!held) {
       throw Object.assign(new Error('emailSyncService: this mailbox is already syncing'), {
         code: SYNC_IN_PROGRESS,
       });
@@ -606,23 +609,32 @@ export async function syncAccountNow(
       return { status: 'failed', errorCode: await recordSyncFailure(account, err) };
     }
   } finally {
-    await releaseSyncNowLock(lockClient);
+    await releaseSyncNowLock(lockClient, accountId, held);
   }
 }
 
 /**
- * Ends the lock's transaction, which releases the lock before this returns.
+ * Unlocks the run-now lock and returns its connection, so the lock is free before this does.
  *
  * Destroying the connection alone is not enough: Postgres ends the backend, and the lock
  * with it, only once it notices the closed socket, so a run straight after would still
- * find it held. The connection is destroyed only when the rollback itself fails.
+ * find it held. The connection is destroyed only when the unlock itself fails.
  */
-async function releaseSyncNowLock(lockClient: PoolClient): Promise<void> {
+async function releaseSyncNowLock(
+  lockClient: PoolClient,
+  accountId: string,
+  held: boolean,
+): Promise<void> {
   try {
-    await lockClient.query('ROLLBACK');
+    if (held) {
+      await lockClient.query('SELECT pg_advisory_unlock(hashtext($1), hashtext($2::uuid::text))', [
+        SYNC_NOW_LOCK_NAMESPACE,
+        accountId,
+      ]);
+    }
     lockClient.release();
   } catch (err) {
-    logger.warn({ err }, 'emailSyncService: could not end the run-now lock transaction');
+    logger.warn({ err }, 'emailSyncService: could not release the run-now lock');
     lockClient.release(err instanceof Error ? err : true);
   }
 }
