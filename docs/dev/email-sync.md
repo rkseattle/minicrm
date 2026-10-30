@@ -932,9 +932,14 @@ Two test-only routes, mounted only under `development` and `test`, do what a con
 screen and a scheduler tick otherwise would: `POST /api/v1/test/connected-accounts/oauth`
 stores a Gmail or Microsoft mailbox with the scopes real consent requests and a token the
 emulator knows, and `POST /api/v1/test/email-sync/accounts/:id/run` runs one tick's sync
-for one of the caller's mailboxes. The run refuses with 409 `SCHEDULER_RUNNING` unless
-`EMAIL_SYNC_SCHEDULER=off`, because its claim ignores the due time that is the
+for one of the caller's mailboxes, through the tick's own steps: the send-intent sweep and
+the org-wide flag first, so a per-user override cannot sync while sync is off. Both routes
+answer 403 while the flag is off org-wide. The run refuses with 409 `SCHEDULER_RUNNING`
+unless `EMAIL_SYNC_SCHEDULER=off`, because its claim ignores the due time that is the
 scheduler's only lease.
+
+The emulator listens on `MAIL_EMULATOR_PORT`, default 4010, which
+`qa/e2e/framework/fakes/start-mail-provider-emulator.mjs` reads at start.
 
 `npm run e2e:setup` waits for both fakes and resets the emulator. `docker compose -f
 docker-compose.test.yml up -d` starts them. In CI, `ci.yml`'s `e2e-serial` job and TIA

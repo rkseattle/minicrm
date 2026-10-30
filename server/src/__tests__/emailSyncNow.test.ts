@@ -280,6 +280,53 @@ describe('syncAccountNow', () => {
     expect(row.rows[0]?.parked).toBe(true);
   });
 
+  it('syncs nothing while the org-wide flag is off, even for a user forced on', async () => {
+    await pool.query(`UPDATE feature_flags SET enabled = false WHERE flag_key = 'email_sync'`);
+    await pool.query(
+      `INSERT INTO feature_flag_user_overrides (flag_key, user_id, override)
+       VALUES ('email_sync', $1, 'force_enabled')`,
+      [repId],
+    );
+    invalidateFeatureFlagCache();
+    const fake = provider([]);
+    try {
+      expect(await syncAccountNow(accountId, repId, fake)).toBeNull();
+      expect(fake.calls).toBe(0);
+      const row = await pool.query<{ parked: boolean }>(
+        `SELECT sync_next_attempt_at > NOW() + interval '30 minutes' AS parked
+           FROM connected_accounts WHERE id = $1`,
+        [accountId],
+      );
+      // Still parked an hour out: the gate ran before a claim could shorten it to the lease.
+      expect(row.rows[0]?.parked).toBe(true);
+    } finally {
+      await pool.query(
+        `DELETE FROM feature_flag_user_overrides WHERE flag_key = 'email_sync' AND user_id = $1`,
+        [repId],
+      );
+    }
+  });
+
+  it('sweeps stale send intents first, as a tick does', async () => {
+    const stale = await pool.query<{ id: string }>(
+      `INSERT INTO email_send_intents
+         (idempotency_key, request_hash, user_id, actor_name, connected_account_id, rfc_message_id,
+          status, updated_at)
+       VALUES (gen_random_uuid(), '', $1, 'Sync Now rep', $2, 'stale@example.com', 'sent',
+               now() - interval '2 hours')
+       RETURNING id`,
+      [repId, accountId],
+    );
+
+    await syncAccountNow(accountId, repId, provider([page([], 1)]));
+
+    const after = await pool.query<{ status: string }>(
+      'SELECT status FROM email_send_intents WHERE id = $1',
+      [stale.rows[0]?.id],
+    );
+    expect(after.rows[0]?.status).toBe('unconfirmed');
+  });
+
   it('holds no transaction open while the provider is called', async () => {
     let openLockTransactions = -1;
     const fake = provider([]);
