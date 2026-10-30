@@ -9,7 +9,7 @@
  * so a caller cannot leak a stack trace or a server banner into a response.
  */
 
-import { ImapFlow } from 'imapflow';
+import { ImapFlow, type ImapFlowError } from 'imapflow';
 
 import {
   CONNECTION_FAILED,
@@ -18,7 +18,6 @@ import {
 
 import logger from '../logger.js';
 import { UrlNotSafeError, assertHostnameIsSafe } from '../utils/urlSafetyUtils.js';
-import { thrownCode } from '../utils/errorCode.js';
 
 /** Candidate IMAP credentials, before they are trusted enough to store. */
 export interface ImapConnectionCandidate {
@@ -54,7 +53,7 @@ const CONNECTION_TIMEOUT_MS = 10_000;
 const GREETING_TIMEOUT_MS = 8_000;
 const SOCKET_TIMEOUT_MS = 15_000;
 
-/** imapflow's authentication failures carry this response code. */
+/** The `serverResponseCode` imapflow sets when the server rejects the login. */
 const AUTH_FAILURE_CODE = 'AUTHENTICATIONFAILED';
 
 /**
@@ -62,16 +61,16 @@ const AUTH_FAILURE_CODE = 'AUTHENTICATIONFAILED';
  *
  * The distinction is what the user acts on: a wrong password is theirs to fix, an
  * unreachable host usually is not. imapflow signals auth failure through
- * `authenticationFailed` or an `AUTHENTICATIONFAILED` response code; everything else —
+ * `authenticationFailed` or an `AUTHENTICATIONFAILED` `serverResponseCode`; everything else —
  * DNS, TLS, refused connection, timeout — is a reachability problem.
  */
 export function classifyImapError(
   err: unknown,
 ): typeof CONNECTION_FAILED | typeof PROVIDER_AUTH_EXPIRED {
-  // Safe: optional chaining tolerates a thrown null; the flag is compared to true only.
-  const candidate = err as { authenticationFailed?: boolean } | null | undefined;
+  // Safe: optional chaining tolerates a thrown null; both fields are compared, never trusted.
+  const candidate = err as Partial<ImapFlowError> | null | undefined;
   if (candidate?.authenticationFailed === true) return PROVIDER_AUTH_EXPIRED;
-  if (thrownCode(err) === AUTH_FAILURE_CODE) return PROVIDER_AUTH_EXPIRED;
+  if (candidate?.serverResponseCode === AUTH_FAILURE_CODE) return PROVIDER_AUTH_EXPIRED;
   return CONNECTION_FAILED;
 }
 
