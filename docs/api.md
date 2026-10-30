@@ -148,7 +148,7 @@ All error responses use a consistent JSON envelope:
 | `PIPELINE_STAGE_IN_USE`    | 409    | Cannot delete a stage that has deals in it                     |
 | `PIPELINE_STAGE_FIXED`     | 409    | Cannot modify a fixed stage (Closed Won / Closed Lost)         |
 | `USER_EMAIL_DUPLICATE`     | 409    | A user with that email already exists                          |
-| `WEBHOOK_URL_NOT_ALLOWED`  | 422    | URL resolves to a blocked/private IP range                     |
+| `WEBHOOK_URL_NOT_ALLOWED`  | 422    | URL resolves to an address that is not public unicast          |
 | `PASSWORD_CHANGE_REQUIRED` | 403    | User must change their password before proceeding              |
 
 ---

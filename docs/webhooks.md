@@ -32,6 +32,10 @@ This guide is for developers building systems that consume MiniCRM events.
   retries are held **in memory** and are lost if the server restarts — see
   [Delivery and retries](#6-delivery-and-retries).
 - All webhook management endpoints are **admin-only**.
+- The endpoint URL must resolve to a **public unicast** address. MiniCRM refuses one that
+  resolves anywhere else with `422 WEBHOOK_URL_NOT_ALLOWED`: loopback, private (RFC 1918),
+  link-local, unique-local IPv6, carrier-grade NAT (`100.64.0.0/10`), the IPv6 transition
+  ranges (6to4, NAT64, Teredo), and reserved, benchmarking, broadcast or multicast space.
 
 ---
 
