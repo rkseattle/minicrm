@@ -1709,14 +1709,27 @@ const DEMO_PIPELINE_STAGES = [
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Returns true if any demo records exist in the accounts table.
+ * Returns true if any table with an `is_demo` column holds a demo row.
+ *
+ * Any, not accounts alone: an admin can delete the demo accounts and leave the rest, which
+ * removal must still find. The tables come from the catalog, so detection covers a new
+ * flagged table on its own; removeDemoData's deletes are still a list, which the
+ * seed-after-remove test catches drifting.
  *
  * @param client - Active DB client.
  */
 async function hasDemoData(client: pg.PoolClient): Promise<boolean> {
-  const result = await client.query<{ exists: boolean }>(
-    `SELECT EXISTS (SELECT 1 FROM accounts WHERE is_demo = true) AS exists`,
+  const flagged = await client.query<{ table_name: string }>(
+    `SELECT table_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND column_name = 'is_demo'`,
   );
+  const probes = flagged.rows
+    .map(
+      ({ table_name }) =>
+        `EXISTS (SELECT 1 FROM ${client.escapeIdentifier(table_name)} WHERE is_demo)`,
+    )
+    .join(' OR ');
+  const result = await client.query<{ exists: boolean }>(`SELECT (${probes}) AS exists`);
   return result.rows[0].exists;
 }
 
