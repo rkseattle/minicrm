@@ -12,7 +12,12 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { gotoAndSettle, navigateAndSettle } from '@apps/minicrm/helpers.js';
+import {
+  gotoAndSettle,
+  navigateAndSettle,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+} from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
 
@@ -536,10 +541,11 @@ export async function saveCustomReport(
   await nameInput.fill(name);
 
   // Exact path: the same prefix also serves POST /run and POST /:id/run.
-  const responseReceived = context.page.waitForResponse(
-    (res) =>
-      res.request().method() === 'POST' && new URL(res.url()).pathname === '/api/v1/reports/custom',
-    { timeout },
+  const responseReceived = awaitApiResponse(
+    context.page,
+    'POST',
+    '/api/v1/reports/custom',
+    timeout,
   );
   const confirmBtn = await reportsPage.saveReportConfirmLocator();
   await confirmBtn.click();
@@ -645,8 +651,11 @@ export async function clickReportExportPdfAndAwaitResponse(
 ): Promise<{ status: number; contentType: string }> {
   const reportsPage = new ReportsPage(context);
   await reportsPage.openActivityVolumeExportMenu();
-  const responsePromise = context.page.waitForResponse(
-    (response) => response.url().includes(urlPattern) && response.request().method() === 'GET',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'GET',
+    (url) => url.href.includes(urlPattern),
+    NO_RESPONSE_TIMEOUT,
   );
   const button = await reportsPage.activityVolumeExportPdfButtonLocator();
   await button.click();

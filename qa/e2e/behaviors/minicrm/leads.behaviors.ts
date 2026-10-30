@@ -15,7 +15,13 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { LeadsPage } from '@pages/minicrm/LeadsPage.js';
 import { LeadDetailPage } from '@pages/minicrm/LeadDetailPage.js';
-import { navigateAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  navigateAndSettle,
+  FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+  AI_RESPONSE_TIMEOUT_MS,
+} from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -689,9 +695,11 @@ export async function fillLeadDetailField(
  */
 export async function saveLead(context: LeadsBehaviorContext): Promise<void> {
   const detailPage = new LeadDetailPage(context);
-  const patchDone = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/leads/') && response.request().method() === 'PATCH',
+  const patchDone = awaitApiResponse(
+    context.page,
+    'PATCH',
+    (url) => url.href.includes('/api/v1/leads/'),
+    NO_RESPONSE_TIMEOUT,
   );
   await detailPage.save();
   await patchDone;
@@ -733,9 +741,11 @@ export async function requestLeadScoreNarrative(
 ): Promise<RequestLeadScoreNarrativeResult> {
   const detailPage = new LeadDetailPage(context);
 
-  const responseReceived = context.page.waitForResponse(
-    (res) => res.request().method() === 'POST' && res.url().includes('/score-narrative'),
-    { timeout: 30_000 },
+  const responseReceived = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => url.href.includes('/score-narrative'),
+    AI_RESPONSE_TIMEOUT_MS,
   );
   await detailPage.clickScoreWhy(FIRST_INTERACTION_TIMEOUT_MS);
   const response = await responseReceived;
@@ -764,10 +774,11 @@ export async function clickLeadExportPdfAndAwaitResponse(
   context: LeadsBehaviorContext,
 ): Promise<{ status: number; contentType: string }> {
   const detail = new LeadDetailPage(context);
-  const responsePromise = context.page.waitForResponse(
-    (response) =>
-      response.url().includes(`/api/v1/leads/${id}/export.pdf`) &&
-      response.request().method() === 'GET',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'GET',
+    (url) => url.href.includes(`/api/v1/leads/${id}/export.pdf`),
+    NO_RESPONSE_TIMEOUT,
   );
   const button = await detail.exportPdfButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await button.click();

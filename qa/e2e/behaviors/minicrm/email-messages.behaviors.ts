@@ -10,7 +10,11 @@
 import { RestClientError, type RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { EmailsSectionPage } from '@pages/minicrm/EmailsSectionPage.js';
-import { FIRST_INTERACTION_TIMEOUT_MS, gotoAndSettle } from '@apps/minicrm/helpers.js';
+import {
+  FIRST_INTERACTION_TIMEOUT_MS,
+  gotoAndSettle,
+  awaitApiResponse,
+} from '@apps/minicrm/helpers.js';
 import {
   emailThreadPageSchema,
   type EmailLinkRecordType,
@@ -146,18 +150,18 @@ export async function navigateToRecordAndAwaitEmailRequests(
   recordId: string,
 ): Promise<RecordEmailRequestStatuses> {
   const { page } = context;
-  const threads = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'GET' &&
-      response.url().includes('/api/v1/email-messages?') &&
-      response.url().includes(`record_id=${recordId}`),
-    { timeout: FIRST_INTERACTION_TIMEOUT_MS },
+  const threads = awaitApiResponse(
+    page,
+    'GET',
+    (url) =>
+      url.href.includes('/api/v1/email-messages?') && url.href.includes(`record_id=${recordId}`),
+    FIRST_INTERACTION_TIMEOUT_MS,
   );
-  const mailboxes = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'GET' &&
-      new URL(response.url()).pathname === '/api/v1/connected-accounts',
-    { timeout: FIRST_INTERACTION_TIMEOUT_MS },
+  const mailboxes = awaitApiResponse(
+    page,
+    'GET',
+    '/api/v1/connected-accounts',
+    FIRST_INTERACTION_TIMEOUT_MS,
   );
 
   await gotoAndSettle(page, `/${DETAIL_PATH_SEGMENT[recordType]}/${recordId}`);

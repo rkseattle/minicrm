@@ -12,7 +12,11 @@
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AiPage } from '@pages/minicrm/AiPage.js';
-import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+} from '@apps/minicrm/helpers.js';
 import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
 import type { AiMessageResponse } from '@minicrm/shared/schemas/aiSessionSchema.js';
 import {
@@ -374,10 +378,11 @@ export async function clickNewSessionButton(context: AiBehaviorContext): Promise
     : await aiPage.newSessionButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await btn.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 
-  const responsePromise = context.page.waitForResponse(
-    (res) =>
-      /\/api\/v1\/ai\/sessions$/.test(new URL(res.url()).pathname) &&
-      res.request().method() === 'POST',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => /\/api\/v1\/ai\/sessions$/.test(url.pathname),
+    NO_RESPONSE_TIMEOUT,
   );
   await aiPage.clickNewSession();
   const response = await responsePromise;

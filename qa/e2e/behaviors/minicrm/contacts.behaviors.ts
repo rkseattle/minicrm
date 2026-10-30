@@ -16,6 +16,9 @@ import {
   gotoAndSettle,
   navigateAndSettle,
   FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+  AI_RESPONSE_TIMEOUT_MS,
 } from '@apps/minicrm/helpers.js';
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
@@ -345,9 +348,11 @@ export async function createContactViaUI(
   if (expectsNetworkRequest) {
     // Register the listener before clicking so the POST is always captured
     // even if the server responds before the next await resolves.
-    const createDone = context.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/contacts') && response.request().method() === 'POST',
+    const createDone = awaitApiResponse(
+      context.page,
+      'POST',
+      (url) => url.href.includes('/api/v1/contacts'),
+      NO_RESPONSE_TIMEOUT,
     );
     await contactsPage.submitCreateForm();
     const createResponse = await createDone;
@@ -1155,9 +1160,11 @@ export async function saveContact(context: ContactsBehaviorContext): Promise<voi
   // the server responds before the next await resolves.
   // No status filter — callers such as concurrency tests deliberately trigger
   // 409 responses and must handle the outcome themselves after this returns.
-  const patchDone = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/contacts/') && response.request().method() === 'PATCH',
+  const patchDone = awaitApiResponse(
+    context.page,
+    'PATCH',
+    (url) => url.href.includes('/api/v1/contacts/'),
+    NO_RESPONSE_TIMEOUT,
   );
   await detailPage.save();
   await patchDone;
@@ -1745,9 +1752,11 @@ export async function draftEmailFromContactDetail(
 ): Promise<DraftEmailResult> {
   const detail = new ContactDetailPage(context);
 
-  const responseReceived = context.page.waitForResponse(
-    (res) => res.request().method() === 'POST' && res.url().includes('/email-draft'),
-    { timeout: 30_000 },
+  const responseReceived = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => url.href.includes('/email-draft'),
+    AI_RESPONSE_TIMEOUT_MS,
   );
   await detail.clickDraftEmail(FIRST_INTERACTION_TIMEOUT_MS);
   const response = await responseReceived;
@@ -1872,9 +1881,11 @@ export async function explainContactDuplicate(
 ): Promise<ExplainDuplicateResult> {
   const contactsPage = new ContactsPage(context);
 
-  const responseReceived = context.page.waitForResponse(
-    (res) => res.request().method() === 'POST' && res.url().includes('/duplicates/explain'),
-    { timeout: 30_000 },
+  const responseReceived = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => url.href.includes('/duplicates/explain'),
+    AI_RESPONSE_TIMEOUT_MS,
   );
   await contactsPage.clickDuplicateExplain(FIRST_INTERACTION_TIMEOUT_MS);
   const response = await responseReceived;
@@ -1908,10 +1919,11 @@ export async function clickContactExportPdfAndAwaitResponse(
   context: ContactsBehaviorContext,
 ): Promise<{ status: number; contentType: string }> {
   const detail = new ContactDetailPage(context);
-  const responsePromise = context.page.waitForResponse(
-    (response) =>
-      response.url().includes(`/api/v1/contacts/${id}/export.pdf`) &&
-      response.request().method() === 'GET',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'GET',
+    (url) => url.href.includes(`/api/v1/contacts/${id}/export.pdf`),
+    NO_RESPONSE_TIMEOUT,
   );
   const button = await detail.exportPdfButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await button.click();
