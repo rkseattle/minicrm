@@ -148,13 +148,16 @@ async function readBody(req: http.IncomingMessage): Promise<Buffer> {
 
 async function readJson(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   const body = await readBody(req);
+  let parsed: unknown;
   try {
-    const parsed: unknown = JSON.parse(body.toString('utf8') || '{}');
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      // Safe: checked just above to be a non-array object.
-      return parsed as Record<string, unknown>;
-    }
-  } catch {}
+    parsed = JSON.parse(body.toString('utf8') || '{}');
+  } catch (err) {
+    throw new HttpError(400, { error: `expected a JSON object: ${String(err)}` });
+  }
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    // Safe: checked just above to be a non-array object.
+    return parsed as Record<string, unknown>;
+  }
   throw new HttpError(400, { error: 'expected a JSON object' });
 }
 
