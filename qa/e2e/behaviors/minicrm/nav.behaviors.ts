@@ -749,10 +749,7 @@ export async function waitForNavLayoutFetched(
   context: NavBehaviorContext,
   timeout = 10_000,
 ): Promise<void> {
-  await context.page.waitForResponse(
-    (res) => res.url().includes('/api/v1/settings/nav-layout') && res.status() === 200,
-    { timeout },
-  );
+  await awaitApiResponse(context.page, 'GET', '/api/v1/settings/nav-layout', timeout, 200);
 }
 
 /**
