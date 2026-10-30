@@ -148,9 +148,11 @@ export type EmailThread = z.infer<typeof emailThreadSchema>;
 
 /** Response of both thread list endpoints: the unmatched inbox and one record's mail. */
 export const emailThreadPageSchema = paginatedResponseSchema(emailThreadSchema);
+export type EmailThreadPage = z.infer<typeof emailThreadPageSchema>;
 
 /** Response of GET /api/v1/email-messages/:id. */
 export const emailMessageEnvelopeSchema = z.object({ message: emailMessageDetailSchema });
+export type EmailMessageEnvelope = z.infer<typeof emailMessageEnvelopeSchema>;
 
 /** Body of PATCH /api/v1/email-messages/:id/thread-privacy; applies to the whole thread. */
 export const threadPrivacySchema = z

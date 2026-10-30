@@ -4,6 +4,8 @@
  */
 
 import type {
+  ConnectedAccountEnvelope,
+  ConnectedAccountListResponse,
   ConnectedAccountResponse,
   ConnectionTestResult,
   ImapCredentialsInput,
@@ -18,28 +20,19 @@ import apiClient from './axiosInstance.js';
 /** React Query cache key for the caller's connected mailboxes */
 export const CONNECTED_ACCOUNTS_QUERY_KEY = ['connected-accounts'] as const;
 
-// ── Response types ────────────────────────────────────────────────────────────
-
-export interface ListConnectedAccountsResponse {
-  accounts: ConnectedAccountResponse[];
-}
-
 // ── API functions ─────────────────────────────────────────────────────────────
 
 /** Returns the calling user's connected mailboxes. Credentials are never included. */
-export async function getConnectedAccounts(): Promise<ListConnectedAccountsResponse> {
-  const response = await apiClient.get<ListConnectedAccountsResponse>('/connected-accounts');
+export async function getConnectedAccounts(): Promise<ConnectedAccountListResponse> {
+  const response = await apiClient.get<ConnectedAccountListResponse>('/connected-accounts');
   return response.data;
 }
 
 /** Connects a mailbox by IMAP. The server tests the credentials before storing them. */
 export async function createImapAccount(
   input: ImapCredentialsInput,
-): Promise<{ account: ConnectedAccountResponse }> {
-  const response = await apiClient.post<{ account: ConnectedAccountResponse }>(
-    '/connected-accounts',
-    input,
-  );
+): Promise<ConnectedAccountEnvelope> {
+  const response = await apiClient.post<ConnectedAccountEnvelope>('/connected-accounts', input);
   return response.data;
 }
 
@@ -74,7 +67,7 @@ export async function updateConnectedAccount(
   id: string,
   patch: UpdateConnectedAccountInput,
 ): Promise<ConnectedAccountResponse> {
-  const response = await apiClient.patch<{ account: ConnectedAccountResponse }>(
+  const response = await apiClient.patch<ConnectedAccountEnvelope>(
     `/connected-accounts/${id}`,
     patch,
   );
