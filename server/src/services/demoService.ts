@@ -1490,7 +1490,7 @@ const DEMO_CUSTOM_REPORTS: Array<{
  * transaction and write derived rows, so a removal that overlaps them leaves findings
  * naming records that no longer exist.
  */
-const DEMO_PRODUCER_LOCK = 'demo_post_seed_producers';
+export const DEMO_PRODUCER_LOCK = 'demo_post_seed_producers';
 
 const DEMO_CUSTOM_REPORT_NAMES = DEMO_CUSTOM_REPORTS.map((r) => r.name);
 
@@ -1750,6 +1750,23 @@ async function getAdminUserId(client: pg.PoolClient): Promise<string> {
 }
 
 // ── Public service functions ───────────────────────────────────────────────────
+
+/**
+ * Unlocks DEMO_PRODUCER_LOCK and returns the connection, which must happen even when the
+ * unlock fails: a pooled connection kept open would hold the session lock for the life of
+ * the process. On failure the connection is destroyed, and ending its session drops the lock.
+ *
+ * @param client - The connection that took the lock.
+ */
+async function releaseProducerLock(client: pg.PoolClient): Promise<void> {
+  try {
+    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
+    client.release();
+  } catch (err) {
+    logger.warn({ err }, 'demoService: could not release the demo producer lock');
+    client.release(err instanceof Error ? err : true);
+  }
+}
 
 /**
  * Returns whether demo data is currently present in the database.
@@ -3069,8 +3086,7 @@ export async function removeDemo(): Promise<{ removed: boolean; reason?: string 
     await client.query('ROLLBACK');
     throw err;
   } finally {
-    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
-    client.release();
+    await releaseProducerLock(client);
   }
 }
 
@@ -3098,8 +3114,7 @@ export async function resetDemo(): Promise<{ reset: boolean }> {
     await client.query('ROLLBACK');
     throw err;
   } finally {
-    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
-    client.release();
+    await releaseProducerLock(client);
   }
 
   logger.info('Demo service-account token regenerated');
@@ -3145,7 +3160,6 @@ export async function runPostSeedProducers(): Promise<void> {
       logger.error({ err }, 'demoService: post-seed coaching generation failed');
     }
   } finally {
-    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
-    client.release();
+    await releaseProducerLock(client);
   }
 }
