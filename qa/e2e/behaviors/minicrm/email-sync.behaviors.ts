@@ -25,15 +25,18 @@ import {
 import {
   emailMessageLinkEnvelopeSchema,
   type EmailLinkRecordType,
+  type EmailMessageLinkEnvelope,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
 import {
   syncNowResponseSchema,
+  type SeedOAuthMailboxInput,
   type SyncNowResponse,
 } from '@minicrm/shared/schemas/testEmailSyncSchema.js';
 import type { FeatureFlagKey } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import { ProfilePage } from '@pages/minicrm/ProfilePage.js';
 import { EmailsSectionPage } from '@pages/minicrm/EmailsSectionPage.js';
 import { EmailComposerPage } from '@pages/minicrm/EmailComposerPage.js';
+import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import { awaitApiResponse, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 import {
@@ -240,11 +243,8 @@ export async function connectEmulatedMailbox(
   testData.registerCustomTeardown('mail-emulator-mailbox', () => emulator.deleteMailbox(token));
 
   // Parsed after the teardown is registered, not by the client, so a drifted body cannot leak the row.
-  const res = await restClient.post<unknown>('/api/v1/test/connected-accounts/oauth', {
-    provider,
-    email_address: address,
-    access_token: token,
-  });
+  const seed: SeedOAuthMailboxInput = { provider, email_address: address, access_token: token };
+  const res = await restClient.post<unknown>('/api/v1/test/connected-accounts/oauth', seed);
   registerTeardownFromRawBody(testData, restClient, owner, res.body);
   return { account: connectedAccountEnvelopeSchema.parse(res.body).account, token };
 }
@@ -384,7 +384,7 @@ export async function linkMessageToRecord(
   recordType: EmailLinkRecordType,
   recordId: string,
 ): Promise<string> {
-  const res = await restClient.post<{ link: { id: string } }>(
+  const res = await restClient.post<EmailMessageLinkEnvelope>(
     `/api/v1/email-messages/${messageId}/links`,
     { record_type: recordType, record_id: recordId },
     { schema: emailMessageLinkEnvelopeSchema },
@@ -476,6 +476,31 @@ export async function toggleThreadPrivacy(
   );
   await button.click();
   return (await patched).status();
+}
+
+/**
+ * Composes a new email from a contact's detail page through one of the user's mailboxes.
+ *
+ * @param ctx - The page, already on the contact's detail page.
+ * @param accountId - The connected mailbox to send from.
+ * @param subject - Subject line.
+ * @param body - Plain-text body.
+ * @returns The send request's HTTP status.
+ */
+export async function composeFromMailbox(
+  ctx: EmailSyncBehaviorContext,
+  accountId: string,
+  subject: string,
+  body: string,
+): Promise<number> {
+  const detail = new ContactDetailPage(ctx);
+  await detail.clickSendEmail();
+  await detail.selectSendEmailFrom(accountId);
+  await detail.fillSendEmailSubject(subject);
+  await detail.fillSendEmailBody(body);
+  const sent = awaitApiResponse(ctx.page, 'POST', '/api/v1/email-messages/send');
+  await detail.submitSendEmail();
+  return (await sent).status();
 }
 
 /**

@@ -95,6 +95,7 @@ export const emailMessageLinkEnvelopeSchema = z.object({
     created_at: z.string(),
   }),
 });
+export type EmailMessageLinkEnvelope = z.infer<typeof emailMessageLinkEnvelopeSchema>;
 
 /**
  * One message as the API returns it.
