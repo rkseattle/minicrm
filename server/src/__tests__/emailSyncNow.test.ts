@@ -8,7 +8,7 @@
 
 import 'dotenv/config';
 
-import pg, { type PoolClient } from 'pg';
+import pg from 'pg';
 import pool from '../db.js';
 import { SYNC_FAILED_DETAIL } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 import { createUser } from '../services/userService.js';
@@ -29,7 +29,7 @@ import {
 } from '../services/emailSyncService.js';
 import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 
-import { parkFromScheduler, purgeFixtureUsers } from './testUtils.js';
+import { parkFromScheduler, purgeFixtureUsers, stubClientQueries } from './testUtils.js';
 
 const FILE_PREFIX = 'emailsyncnow';
 
@@ -349,31 +349,46 @@ describe('syncAccountNow', () => {
   // A destroyed connection releases the lock only once Postgres notices, so the probe in the
   // next test could race it; a returned one has unlocked first.
   it('returns every connection the run takes to the pool rather than destroying it', async () => {
-    const destroyed: unknown[] = [];
-    const connect = pool.connect.bind(pool);
-    // Only the promise form is wrapped: pool.query calls connect with a callback internally.
-    // Safe: both overloads are served, the callback one by the real connect unchanged.
-    const spy = vi.spyOn(pool, 'connect').mockImplementation(((callback?: unknown) => {
-      // Safe: typeof proved it a function; connect's callback overload accepts it as is.
-      if (typeof callback === 'function') return connect(callback as never);
-      return wrapped();
-    }) as typeof pool.connect);
-    const wrapped = async (): Promise<PoolClient> => {
-      const client = await connect();
-      const release = client.release.bind(client);
-      client.release = (destroy?: Error | boolean): void => {
-        if (destroy) destroyed.push(destroy);
-        release(destroy);
-      };
-      return client;
-    };
+    const { destroyed } = stubClientQueries([], 'fail');
     try {
       await syncAccountNow(accountId, repId, provider([new Error('boom')]));
     } finally {
-      spy.mockRestore();
+      vi.restoreAllMocks();
     }
 
     expect(destroyed).toEqual([]);
+  });
+
+  it('destroys the connection whose lock query failed rather than pooling it', async () => {
+    const { destroyed } = stubClientQueries(['pg_try_advisory_lock'], 'fail');
+    try {
+      await expect(syncAccountNow(accountId, repId, provider([]))).rejects.toThrow('storage down');
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    expect(destroyed).toEqual([expect.any(Error)]);
+  });
+
+  it('destroys the connection whose unlock failed, so its session ends and frees the lock', async () => {
+    const { destroyed } = stubClientQueries(['pg_advisory_unlock'], 'fail');
+    try {
+      await syncAccountNow(accountId, repId, provider([page([], 1)]));
+    } finally {
+      vi.restoreAllMocks();
+    }
+    expect(destroyed).toEqual([expect.any(Error)]);
+
+    // A session of its own; the destroyed one frees the lock once Postgres sees it end.
+    const probe = new pg.Client(pool.options);
+    await probe.connect();
+    try {
+      await probe.query(`SET lock_timeout = '5s'`);
+      await probe.query(`SELECT pg_advisory_lock(${LOCK_SQL})`, [accountId]);
+      await probe.query(`SELECT pg_advisory_unlock(${LOCK_SQL})`, [accountId]);
+    } finally {
+      await probe.end();
+    }
   });
 
   it('releases the lock after a failed run, so the next one proceeds', async () => {
