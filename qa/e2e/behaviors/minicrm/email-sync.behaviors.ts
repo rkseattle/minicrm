@@ -18,6 +18,8 @@ import type { SeededMessage } from '@framework/clients/mail-emulator-client.js';
 import {
   connectedAccountEnvelopeSchema,
   connectedAccountListResponseSchema,
+  type ConnectedAccountEnvelope,
+  type ConnectedAccountListResponse,
   type ConnectedAccountResponse,
 } from '@minicrm/shared/schemas/connectedAccountSchema.js';
 import {
@@ -260,7 +262,7 @@ export async function setMailboxExcludedDomains(
   accountId: string,
   domains: string[],
 ): Promise<ConnectedAccountResponse> {
-  const res = await restClient.patch<{ account: ConnectedAccountResponse }>(
+  const res = await restClient.patch<ConnectedAccountEnvelope>(
     `/api/v1/connected-accounts/${accountId}`,
     { excluded_domains: domains },
     { schema: connectedAccountEnvelopeSchema },
@@ -287,10 +289,9 @@ export async function readMailboxStatusLabel(
  * @param restClient - Authenticated as the mailboxes' owner.
  */
 export async function listMyMailboxes(restClient: RestClient): Promise<ConnectedAccountResponse[]> {
-  const res = await restClient.get<{ accounts: ConnectedAccountResponse[] }>(
-    '/api/v1/connected-accounts',
-    { schema: connectedAccountListResponseSchema },
-  );
+  const res = await restClient.get<ConnectedAccountListResponse>('/api/v1/connected-accounts', {
+    schema: connectedAccountListResponseSchema,
+  });
   return res.body.accounts;
 }
 

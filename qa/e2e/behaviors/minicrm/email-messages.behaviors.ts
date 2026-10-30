@@ -15,8 +15,8 @@ import {
   emailThreadPageSchema,
   type EmailLinkRecordType,
   type EmailThread,
+  type EmailThreadPage,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
-import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 
 // ---------------------------------------------------------------------------
 // API data types
@@ -26,7 +26,7 @@ import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema
 export type TestEmailThread = EmailThread;
 
 /** A page of threads. */
-export type TestEmailThreadPage = PaginatedResponse<EmailThread>;
+export type TestEmailThreadPage = EmailThreadPage;
 
 // ---------------------------------------------------------------------------
 // Behaviors

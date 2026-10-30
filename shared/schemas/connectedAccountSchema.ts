@@ -139,9 +139,11 @@ export type ConnectedAccountResponse = z.infer<typeof connectedAccountResponseSc
 export const connectedAccountListResponseSchema = z.object({
   accounts: z.array(connectedAccountResponseSchema),
 });
+export type ConnectedAccountListResponse = z.infer<typeof connectedAccountListResponseSchema>;
 
 /** Response of every route that answers with one account: create, update, and test seeding. */
 export const connectedAccountEnvelopeSchema = z.object({ account: connectedAccountResponseSchema });
+export type ConnectedAccountEnvelope = z.infer<typeof connectedAccountEnvelopeSchema>;
 
 /**
  * The owner's own sync controls for one mailbox. At least one field is required, so an
