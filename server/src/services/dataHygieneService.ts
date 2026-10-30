@@ -33,6 +33,7 @@ import type {
 } from '@minicrm/shared/schemas/dataHygieneSchema.js';
 import type { SetDataHygieneConfigInput } from '@minicrm/shared/schemas/dataHygieneSchema.js';
 import { domainOfAddress } from '../utils/emailAddress.js';
+import { thrownCauseCode, thrownCode } from '../utils/errorCode.js';
 
 export interface HygieneConfig {
   contact_inactivity_days: number;
@@ -169,8 +170,8 @@ export async function resolveMailDomainStatus(email: string): Promise<MailDomain
     const acceptsMail = records.some((record) => record.exchange.trim() !== '');
     return acceptsMail ? 'accepts-mail' : 'no-mail';
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    if (code && DEFINITIVE_DNS_FAILURE_CODES.has(code)) return 'no-mail';
+    const code = thrownCode(err);
+    if (code !== undefined && DEFINITIVE_DNS_FAILURE_CODES.has(code)) return 'no-mail';
     logger.warn({ err, domain }, 'dataHygiene: MX lookup inconclusive — not flagging');
     return 'unknown';
   }
@@ -413,8 +414,8 @@ export async function checkWebsiteStatus(url: string): Promise<WebsiteStatus> {
       logger.warn({ url }, 'dataHygiene: website check timed out — not flagging');
       return 'unknown';
     }
-    const code = (err as { cause?: NodeJS.ErrnoException }).cause?.code;
-    if (code && DEFINITIVE_DNS_FAILURE_CODES.has(code)) return 'unreachable';
+    const code = thrownCauseCode(err);
+    if (code !== undefined && DEFINITIVE_DNS_FAILURE_CODES.has(code)) return 'unreachable';
     logger.warn({ err, url }, 'dataHygiene: website check inconclusive — not flagging');
     return 'unknown';
   } finally {

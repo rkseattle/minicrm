@@ -43,6 +43,7 @@ import { z } from 'zod';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
 import { toUtcDateString } from '../utils/utcDate.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -229,7 +230,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
       role: req.user!.role,
     });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
       // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findDealById(id);

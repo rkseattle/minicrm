@@ -16,6 +16,7 @@ import { writeAuditEntry, getFieldDisplayName } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import { normalizeAddress } from '../utils/emailAddress.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -433,13 +434,11 @@ export async function seedDefaultAdmin(): Promise<void> {
       status: 'active',
     });
   } catch (error) {
-    // `in` narrowing rather than an `as` cast, matching migrate.ts:313. The constraint
-    // name is checked too: 23505 on any other unique index is a different bug and must
-    // not be swallowed as an already-seeded admin.
+    // The constraint name is checked too: 23505 on any other unique index is a different
+    // bug and must not be swallowed as an already-seeded admin.
     const isEmailCollision =
+      thrownCode(error) === PG_UNIQUE_VIOLATION &&
       error instanceof Error &&
-      'code' in error &&
-      error.code === PG_UNIQUE_VIOLATION &&
       'constraint' in error &&
       error.constraint === USERS_EMAIL_CONSTRAINT;
     if (!isEmailCollision) throw error;

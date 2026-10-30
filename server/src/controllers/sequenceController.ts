@@ -29,6 +29,7 @@ import {
   validateStepActionConfig,
 } from '../services/sequenceService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ── Sequence handlers ──────────────────────────────────────────────────────────
 
@@ -109,9 +110,7 @@ export async function deleteSequenceHandler(req: Request, res: Response): Promis
   try {
     deleted = await deleteSequence(id, actor);
   } catch (err) {
-    if (
-      (err as NodeJS.ErrnoException & { code?: string }).code === 'SEQUENCE_HAS_ACTIVE_ENROLLMENTS'
-    ) {
+    if (thrownCode(err) === 'SEQUENCE_HAS_ACTIVE_ENROLLMENTS') {
       res.status(409).json({
         error: {
           code: 'SEQUENCE_HAS_ACTIVE_ENROLLMENTS',
@@ -181,7 +180,7 @@ export async function createStepHandler(req: Request, res: Response): Promise<vo
   try {
     step = await createStep(sequenceId, parsed.data, actor);
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === '23505') {
+    if (thrownCode(err) === '23505') {
       res.status(409).json({
         error: {
           code: 'STEP_SORT_ORDER_CONFLICT',
@@ -231,7 +230,7 @@ export async function updateStepHandler(req: Request, res: Response): Promise<vo
   try {
     step = await updateStep(stepId, parsed.data, actor);
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === '23505') {
+    if (thrownCode(err) === '23505') {
       res.status(409).json({
         error: {
           code: 'STEP_SORT_ORDER_CONFLICT',
@@ -262,7 +261,7 @@ export async function deleteStepHandler(req: Request, res: Response): Promise<vo
   try {
     deleted = await deleteStep(stepId, actor);
   } catch (err) {
-    if ((err as NodeJS.ErrnoException & { code?: string }).code === 'STEP_HAS_ACTIVE_ENROLLMENTS') {
+    if (thrownCode(err) === 'STEP_HAS_ACTIVE_ENROLLMENTS') {
       res.status(409).json({
         error: { code: 'STEP_HAS_ACTIVE_ENROLLMENTS', message: (err as Error).message },
       });
@@ -299,7 +298,7 @@ export async function enrollContactHandler(req: Request, res: Response): Promise
   try {
     enrollment = await enrollContact(sequenceIdRaw, contactId, actor);
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException & { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'SEQUENCE_NOT_FOUND') {
       res
         .status(404)
@@ -352,7 +351,7 @@ export async function unenrollContactHandler(req: Request, res: Response): Promi
   try {
     enrollment = await unenrollContact(enrollmentId, actor);
   } catch (err) {
-    if ((err as NodeJS.ErrnoException & { code?: string }).code === 'ENROLLMENT_NOT_ACTIVE') {
+    if (thrownCode(err) === 'ENROLLMENT_NOT_ACTIVE') {
       res.status(409).json({
         error: { code: 'ENROLLMENT_NOT_ACTIVE', message: (err as Error).message },
       });

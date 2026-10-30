@@ -14,6 +14,7 @@ import {
 import * as roleService from '../services/roleService.js';
 import { findUserById } from '../services/userService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ── Custom role CRUD ──────────────────────────────────────────────────────────
 
@@ -52,9 +53,9 @@ export async function createCustomRoleHandler(req: Request, res: Response): Prom
     const role = await roleService.createCustomRole(parse.data, actor);
     res.status(201).json({ data: role });
   } catch (err: unknown) {
-    const serviceErr = err as Error & { code?: string; statusCode?: number };
+    const code = thrownCode(err);
     // Postgres unique_violation on custom_roles.name
-    if (serviceErr.code === 'CUSTOM_ROLE_DUPLICATE' || serviceErr.code === '23505') {
+    if (code === 'CUSTOM_ROLE_DUPLICATE' || code === '23505') {
       res.status(409).json({
         error: { code: 'CUSTOM_ROLE_DUPLICATE', message: 'A role with that name already exists' },
       });
@@ -83,15 +84,14 @@ export async function updateCustomRoleHandler(req: Request, res: Response): Prom
     const role = await roleService.updateCustomRole(idParse.data, parse.data, actor);
     res.json({ data: role });
   } catch (err: unknown) {
-    const serviceErr = err as Error & { code?: string; statusCode?: number };
-    if (serviceErr.code === 'CUSTOM_ROLE_NOT_FOUND') {
-      res
-        .status(404)
-        .json({ error: { code: 'CUSTOM_ROLE_NOT_FOUND', message: serviceErr.message } });
+    const code = thrownCode(err);
+    const message = err instanceof Error ? err.message : '';
+    if (code === 'CUSTOM_ROLE_NOT_FOUND') {
+      res.status(404).json({ error: { code: 'CUSTOM_ROLE_NOT_FOUND', message: message } });
       return;
     }
-    if (serviceErr.code === 'CUSTOM_ROLE_BUILTIN') {
-      res.status(409).json({ error: { code: 'CUSTOM_ROLE_BUILTIN', message: serviceErr.message } });
+    if (code === 'CUSTOM_ROLE_BUILTIN') {
+      res.status(409).json({ error: { code: 'CUSTOM_ROLE_BUILTIN', message: message } });
       return;
     }
     throw err;
@@ -111,21 +111,18 @@ export async function deleteCustomRoleHandler(req: Request, res: Response): Prom
     await roleService.deleteCustomRole(idParse.data, actor);
     res.status(204).send();
   } catch (err: unknown) {
-    const serviceErr = err as Error & { code?: string; statusCode?: number };
-    if (serviceErr.code === 'CUSTOM_ROLE_NOT_FOUND') {
-      res
-        .status(404)
-        .json({ error: { code: 'CUSTOM_ROLE_NOT_FOUND', message: serviceErr.message } });
+    const code = thrownCode(err);
+    const message = err instanceof Error ? err.message : '';
+    if (code === 'CUSTOM_ROLE_NOT_FOUND') {
+      res.status(404).json({ error: { code: 'CUSTOM_ROLE_NOT_FOUND', message: message } });
       return;
     }
-    if (serviceErr.code === 'CUSTOM_ROLE_BUILTIN') {
-      res.status(409).json({ error: { code: 'CUSTOM_ROLE_BUILTIN', message: serviceErr.message } });
+    if (code === 'CUSTOM_ROLE_BUILTIN') {
+      res.status(409).json({ error: { code: 'CUSTOM_ROLE_BUILTIN', message: message } });
       return;
     }
-    if (serviceErr.code === 'CUSTOM_ROLE_HAS_ASSIGNEES') {
-      res
-        .status(409)
-        .json({ error: { code: 'CUSTOM_ROLE_HAS_ASSIGNEES', message: serviceErr.message } });
+    if (code === 'CUSTOM_ROLE_HAS_ASSIGNEES') {
+      res.status(409).json({ error: { code: 'CUSTOM_ROLE_HAS_ASSIGNEES', message: message } });
       return;
     }
     throw err;
@@ -177,11 +174,10 @@ export async function assignUserRoleHandler(req: Request, res: Response): Promis
     await roleService.assignRoleToUser(idParse.data, parse.data.roleId, actor);
     res.status(204).send();
   } catch (err: unknown) {
-    const serviceErr = err as Error & { code?: string; statusCode?: number };
-    if (serviceErr.code === 'CUSTOM_ROLE_NOT_FOUND') {
-      res
-        .status(404)
-        .json({ error: { code: 'CUSTOM_ROLE_NOT_FOUND', message: serviceErr.message } });
+    const code = thrownCode(err);
+    const message = err instanceof Error ? err.message : '';
+    if (code === 'CUSTOM_ROLE_NOT_FOUND') {
+      res.status(404).json({ error: { code: 'CUSTOM_ROLE_NOT_FOUND', message: message } });
       return;
     }
     throw err;
@@ -207,11 +203,10 @@ export async function removeUserRoleHandler(req: Request, res: Response): Promis
     await roleService.removeRoleFromUser(userIdParse.data, roleIdParse.data, actor);
     res.status(204).send();
   } catch (err: unknown) {
-    const serviceErr = err as Error & { code?: string; statusCode?: number };
-    if (serviceErr.code === 'CUSTOM_ROLE_NOT_FOUND') {
-      res
-        .status(404)
-        .json({ error: { code: 'CUSTOM_ROLE_NOT_FOUND', message: serviceErr.message } });
+    const code = thrownCode(err);
+    const message = err instanceof Error ? err.message : '';
+    if (code === 'CUSTOM_ROLE_NOT_FOUND') {
+      res.status(404).json({ error: { code: 'CUSTOM_ROLE_NOT_FOUND', message: message } });
       return;
     }
     throw err;

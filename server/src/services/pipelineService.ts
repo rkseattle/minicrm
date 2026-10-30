@@ -13,6 +13,7 @@ import type {
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { withRlsQuery } from './rlsContextService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 export const SYSTEM_ACTOR: AuditActor = {
   id: '00000000-0000-0000-0000-000000000000',
@@ -116,7 +117,7 @@ export async function createPipeline(
     return pipeline;
   } catch (err) {
     await client.query('ROLLBACK');
-    if ((err as NodeJS.ErrnoException).code === '23505') {
+    if (thrownCode(err) === '23505') {
       const e = new Error(`A pipeline named "${name}" already exists`);
       (e as NodeJS.ErrnoException).code = 'PIPELINE_NAME_CONFLICT';
       throw e;
@@ -175,7 +176,7 @@ export async function updatePipeline(
     return updated;
   } catch (err) {
     await client.query('ROLLBACK');
-    if ((err as NodeJS.ErrnoException).code === '23505') {
+    if (thrownCode(err) === '23505') {
       const e = new Error(`A pipeline named "${params.name}" already exists`);
       (e as NodeJS.ErrnoException).code = 'PIPELINE_NAME_CONFLICT';
       throw e;

@@ -47,6 +47,7 @@ import {
 import logger from '../logger.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -106,7 +107,7 @@ export async function createContactHandler(req: Request, res: Response): Promise
     );
   } catch (err) {
     // DB unique constraint fired (TOCTOU race or force=true on an existing email).
-    if ((err as { code?: string }).code === 'DUPLICATE_EMAIL') {
+    if (thrownCode(err) === 'DUPLICATE_EMAIL') {
       res.status(409).json({
         error: { code: 'DUPLICATE_EMAIL', message: 'A contact with this email already exists' },
       });
@@ -245,7 +246,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
       { id: req.user!.id, role: req.user!.role },
     );
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
       // Include current server state so the client can render a three-way merge without a second round-trip
       const current = await findContactById(id);

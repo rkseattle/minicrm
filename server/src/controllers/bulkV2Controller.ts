@@ -29,6 +29,7 @@ import {
   respondValidationMessage,
 } from '../utils/validationError.js';
 import { errorBody } from '../utils/errorBody.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Maximum number of IDs allowed in a single bulk request. */
 const BULK_MAX_IDS = 500;
@@ -187,7 +188,7 @@ export async function bulkPatchDealsHandler(req: Request, res: Response): Promis
     const result = await bulkPatchDeals(parsed.data, actor);
     res.json(result);
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === VALIDATION_ERROR_CODE) {
       respondValidationMessage(res, (err as Error).message);
       return;

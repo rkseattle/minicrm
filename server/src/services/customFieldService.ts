@@ -12,6 +12,7 @@ import type {
 } from '@minicrm/shared/schemas/customFieldSchema.js';
 import { writeAuditEntry, writeAuditEntryBestEffort } from './auditService.js';
 import type { AuditActor, AuditRecordType } from './auditService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -92,7 +93,7 @@ export async function createDefinition(
     );
     return result.rows[0];
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === '23505') {
+    if (thrownCode(err) === '23505') {
       const e = new Error(`A custom field named "${name}" already exists for ${entity_type}`);
       (e as NodeJS.ErrnoException).code = 'CUSTOM_FIELD_NAME_CONFLICT';
       throw e;
@@ -182,7 +183,7 @@ export async function updateDefinition(
     return updated;
   } catch (err) {
     await client.query('ROLLBACK');
-    if ((err as NodeJS.ErrnoException).code === '23505') {
+    if (thrownCode(err) === '23505') {
       const e = new Error(
         `A custom field named "${input.name}" already exists for this entity type`,
       );

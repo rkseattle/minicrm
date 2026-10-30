@@ -36,6 +36,7 @@ import { decryptVersioned, encryptVersioned } from './cryptoService.js';
 import { PROVIDER_AUTH_EXPIRED } from './imapConnectionService.js';
 import { isDeadGrantError } from './oauthProviderService.js';
 import type { RefreshedTokens } from './oauthProviderService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ── Row type ──────────────────────────────────────────────────────────────────
 
@@ -213,7 +214,7 @@ function toConnectedAccountResponse(
 
 /** Wraps a PG unique violation on the mailbox key as a domain error. */
 function asDuplicateError(err: unknown): Error | null {
-  if ((err as { code?: string }).code !== '23505') return null;
+  if (thrownCode(err) !== '23505') return null;
   return Object.assign(new Error('That mailbox is already connected to your account'), {
     code: 'CONNECTED_ACCOUNT_DUPLICATE',
   });

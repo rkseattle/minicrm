@@ -29,6 +29,7 @@ import {
   deleteScimGroupRoleMapping,
 } from '../services/scimGroupService.js';
 import type { AuditActor } from '../services/auditService.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -415,15 +416,11 @@ export async function putScimGroupRoleMappingHandler(req: Request, res: Response
     await setScimGroupRoleMapping(scimGroupId, groupName, roleId, actor);
     res.status(204).send();
   } catch (err: unknown) {
-    if (err instanceof Error && 'code' in err && (err as { code: string }).code === '23503') {
+    if (thrownCode(err) === '23503') {
       res.status(400).json({ error: { code: 'INVALID_ROLE_ID', message: 'Role not found' } });
       return;
     }
-    if (
-      err instanceof Error &&
-      'code' in err &&
-      (err as { code: string }).code === 'SCIM_MAPPING_BUILTIN_ROLE'
-    ) {
+    if (err instanceof Error && thrownCode(err) === 'SCIM_MAPPING_BUILTIN_ROLE') {
       res.status(409).json({
         error: { code: 'SCIM_MAPPING_BUILTIN_ROLE', message: err.message },
       });

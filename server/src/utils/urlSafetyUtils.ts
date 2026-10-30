@@ -10,6 +10,7 @@ import dns from 'dns';
 import { isProductionEnv } from './nodeEnv.js';
 import { nonProductionSeam } from './nonProductionSeams.js';
 import ipaddr from 'ipaddr.js';
+import { thrownCode } from './errorCode.js';
 
 /**
  * The one range a server-initiated fetch of a user-supplied URL may reach: public unicast.
@@ -122,7 +123,7 @@ export async function assertHostnameIsSafe(hostname: string): Promise<void> {
     throw new UrlNotSafeError(
       'unresolvable_hostname',
       `Unable to resolve hostname: ${hostname}`,
-      (err as NodeJS.ErrnoException).code,
+      thrownCode(err),
     );
   }
 

@@ -25,6 +25,7 @@ import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema
 import { countActiveNotificationRecipients } from '../services/userService.js';
 import { sendInviteEmail } from '../services/emailService.js';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Zod schema for PATCH /users/:id/status body */
 const updateStatusSchema = z.object({
@@ -429,11 +430,7 @@ export async function resetOnboardingHandler(req: Request, res: Response): Promi
     await userService.resetUserOnboarding(id as string, actor);
     res.status(200).json({ success: true });
   } catch (err) {
-    if (
-      err instanceof Error &&
-      'code' in err &&
-      (err as { code: string }).code === 'USER_NOT_FOUND'
-    ) {
+    if (thrownCode(err) === 'USER_NOT_FOUND') {
       res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
       return;
     }

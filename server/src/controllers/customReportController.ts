@@ -28,6 +28,7 @@ import {
   type PdfTableRow,
 } from '../services/pdfExportService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 function isValidEntityType(value: string): value is (typeof REPORT_ENTITY_TYPES)[number] {
   return (REPORT_ENTITY_TYPES as readonly string[]).includes(value);
@@ -75,7 +76,7 @@ export async function createCustomReportHandler(req: Request, res: Response): Pr
     const report = await createReport(parsed.data, actor);
     res.status(201).json(toReportResponse(report));
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'CUSTOM_REPORT_NAME_CONFLICT') {
       res.status(409).json({
         error: { code: 'CUSTOM_REPORT_NAME_CONFLICT', message: (err as Error).message },
@@ -115,7 +116,7 @@ export async function updateCustomReportHandler(req: Request, res: Response): Pr
     }
     res.status(200).json(toReportResponse(report));
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'REPORT_FORBIDDEN') {
       res
         .status(403)
@@ -154,7 +155,7 @@ export async function deleteCustomReportHandler(req: Request, res: Response): Pr
     }
     res.status(200).json({ id });
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'REPORT_FORBIDDEN') {
+    if (thrownCode(err) === 'REPORT_FORBIDDEN') {
       res
         .status(403)
         .json({ error: { code: 'REPORT_FORBIDDEN', message: (err as Error).message } });
@@ -186,7 +187,7 @@ export async function runCustomReportHandler(req: Request, res: Response): Promi
     const result = await executeReport(report.entity_type, report.config, scopeOwnerId);
     res.status(200).json(result);
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'INVALID_REPORT_FIELD') {
+    if (thrownCode(err) === 'INVALID_REPORT_FIELD') {
       res.status(400).json({
         error: { code: 'INVALID_REPORT_FIELD', message: (err as Error).message },
       });
@@ -222,7 +223,7 @@ export async function runAdHocReportHandler(req: Request, res: Response): Promis
     const result = await executeReport(entityTypeRaw, configParsed.data, scopeOwnerId);
     res.status(200).json(result);
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'INVALID_REPORT_FIELD') {
+    if (thrownCode(err) === 'INVALID_REPORT_FIELD') {
       res.status(400).json({
         error: { code: 'INVALID_REPORT_FIELD', message: (err as Error).message },
       });
@@ -275,7 +276,7 @@ export async function exportCustomReportHandler(req: Request, res: Response): Pr
     }
     res.end();
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'INVALID_REPORT_FIELD') {
+    if (thrownCode(err) === 'INVALID_REPORT_FIELD') {
       res.status(400).json({
         error: { code: 'INVALID_REPORT_FIELD', message: (err as Error).message },
       });
@@ -325,7 +326,7 @@ export async function exportCustomReportPdfHandler(req: Request, res: Response):
       branding,
     );
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'INVALID_REPORT_FIELD') {
+    if (thrownCode(err) === 'INVALID_REPORT_FIELD') {
       res.status(400).json({
         error: { code: 'INVALID_REPORT_FIELD', message: (err as Error).message },
       });

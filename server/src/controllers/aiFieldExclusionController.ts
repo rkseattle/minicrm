@@ -11,6 +11,7 @@ import {
 } from '../services/aiFieldExclusionService.js';
 import { setFieldExclusionSchema } from '@minicrm/shared/schemas/aiFieldExclusionSchema.js';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 export async function listFieldExclusionsHandler(req: Request, res: Response): Promise<void> {
   const list = await getEffectiveExclusionList();
@@ -39,7 +40,7 @@ export async function setFieldExclusionHandler(req: Request, res: Response): Pro
       excluded: parsed.data.excluded,
     });
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'UNKNOWN_FIELD') {
+    if (thrownCode(err) === 'UNKNOWN_FIELD') {
       res.status(400).json({ error: { code: 'UNKNOWN_FIELD', message: (err as Error).message } });
       return;
     }

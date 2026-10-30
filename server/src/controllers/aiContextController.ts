@@ -16,6 +16,7 @@ import {
   deleteContextEntry,
 } from '../services/aiContextService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const idSchema = z.string().uuid();
 
@@ -37,7 +38,7 @@ export async function createAiContextHandler(req: Request, res: Response): Promi
     res.status(201).json(entry);
   } catch (err: unknown) {
     const statusCode = (err as { statusCode?: number }).statusCode;
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (statusCode === 409 && code === 'CONTEXT_ENTRY_LIMIT_REACHED') {
       res.status(409).json({
         error: {
@@ -79,7 +80,7 @@ export async function updateAiContextHandler(req: Request, res: Response): Promi
     res.status(200).json(entry);
   } catch (err: unknown) {
     const statusCode = (err as { statusCode?: number }).statusCode;
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (statusCode === 404) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Context entry not found' } });
       return;

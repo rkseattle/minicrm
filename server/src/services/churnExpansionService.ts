@@ -29,6 +29,7 @@ import type {
   ChurnExpansionSignalType,
 } from '@minicrm/shared/schemas/churnExpansionSchema.js';
 import { recordPath } from '@minicrm/shared/types/recordPath.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 const IS_E2E = process.env.E2E === 'true';
 
@@ -367,7 +368,7 @@ async function processAccount(
     // detection run already inserted the active row for this account/signal_type
     // between our read of `existing` and this insert. That run's row wins; this
     // one is a no-op rather than a crash.
-    if ((err as { code?: string }).code === '23505') {
+    if (thrownCode(err) === '23505') {
       logger.warn(
         { accountId: account.id, signalType: result.signalType },
         'churnExpansionService: skipped duplicate active signal from a concurrent detection run',

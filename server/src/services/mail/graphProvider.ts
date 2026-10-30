@@ -45,6 +45,7 @@ import {
 } from './sendOutcome.js';
 import { isTransportFailure, readBodyOrNull, startBound } from './transport.js';
 import { graphApiBase, isGraphOriginUrl } from './providerEndpoints.js';
+import { thrownCode } from '../../utils/errorCode.js';
 
 // Re-exported from the shared list rather than restated: this value reaches status_detail,
 // which the client renders by translating, so a copy that drifts degrades the mailbox to
@@ -687,7 +688,7 @@ export async function testGraphAccess(
     }
     return { ok: true };
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     return code === PROVIDER_AUTH_EXPIRED
       ? { ok: false, code: PROVIDER_AUTH_EXPIRED, message: REJECTED_CREDENTIAL_MESSAGE }
       : { ok: false, code: CONNECTION_FAILED, message: UNREACHABLE_MESSAGE };

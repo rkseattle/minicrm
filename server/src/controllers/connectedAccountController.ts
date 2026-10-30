@@ -49,6 +49,7 @@ import {
   revokeProviderTokens,
 } from '../services/oauthProviderService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Path parameter guard — an unvalidated string reaching a uuid column throws a PG error. */
 const accountIdSchema = z.string().uuid();
@@ -91,7 +92,7 @@ export async function createConnectedAccountHandler(req: Request, res: Response)
     const account = await createImapAccount(req.user!.id, parsed.data, actor);
     res.status(201).json({ account });
   } catch (err) {
-    const code = (err as { code?: string }).code;
+    const code = thrownCode(err);
     if (code === 'CONNECTED_ACCOUNT_DUPLICATE') {
       res.status(409).json(errorBody(code, (err as Error).message));
       return;
@@ -327,7 +328,7 @@ export async function startOAuthFlowHandler(req: Request, res: Response): Promis
     res.redirect(302, request.authorizationUrl);
   } catch (err) {
     logger.warn({ err, provider }, 'connectedAccountController: could not start OAuth flow');
-    redirectToProfile(res, (err as { code?: string }).code ?? 'OAUTH_FAILED');
+    redirectToProfile(res, thrownCode(err) ?? 'OAUTH_FAILED');
   }
 }
 
@@ -405,6 +406,6 @@ export async function oauthCallbackHandler(req: Request, res: Response): Promise
     redirectToProfile(res, 'connected');
   } catch (err) {
     logger.warn({ err }, 'connectedAccountController: OAuth callback failed');
-    redirectToProfile(res, (err as { code?: string }).code ?? 'OAUTH_FAILED');
+    redirectToProfile(res, thrownCode(err) ?? 'OAUTH_FAILED');
   }
 }

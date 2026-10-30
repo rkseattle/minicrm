@@ -16,6 +16,7 @@ import type { SsoConfigPublic } from '@minicrm/shared/schemas/settingsSchema.js'
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /**
  * GET /api/v1/settings/sso
@@ -52,11 +53,7 @@ export async function putSsoConfigHandler(req: Request, res: Response): Promise<
   try {
     saved = await setSsoConfig(parsed.data, { id: req.user!.id, name: req.user!.name });
   } catch (err: unknown) {
-    if (
-      err instanceof Error &&
-      'code' in err &&
-      (err as { code: string }).code === 'SSO_JIT_ROLE_BUILTIN'
-    ) {
+    if (err instanceof Error && thrownCode(err) === 'SSO_JIT_ROLE_BUILTIN') {
       res.status(409).json({ error: { code: 'SSO_JIT_ROLE_BUILTIN', message: err.message } });
       return;
     }

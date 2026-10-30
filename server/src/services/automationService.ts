@@ -22,6 +22,7 @@ import {
 } from '@minicrm/shared/schemas/automationSchema.js';
 import { sendWebhookForAutomation } from './webhookService.js';
 import { firstIssueMessage } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Columns that may be updated via updateAutomationRule — guards against SQL injection */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateAutomationRuleInput> = new Set([
@@ -343,7 +344,7 @@ async function writeRuleLog(params: {
     );
   } catch (err) {
     // 23503 = FK violation: the rule was deleted between query and log write — no log needed
-    if ((err as { code?: string }).code === '23503') return;
+    if (thrownCode(err) === '23503') return;
     throw err;
   }
 }

@@ -21,6 +21,7 @@ import {
 } from '../services/gdprService.js';
 import { respondValidationError, respondValidationMessage } from '../utils/validationError.js';
 import { errorBody } from '../utils/errorBody.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /** Schema for the optional notes field in erasure request bodies */
 const eraseBodySchema = z.object({
@@ -55,8 +56,7 @@ export async function eraseContactHandler(req: Request, res: Response): Promise<
     const row = await eraseContact(id, actor, bodyParsed.data.notes);
     res.status(200).json({ success: true, erasedAt: row.completed_at });
   } catch (err: unknown) {
-    const domainErr = err as { code?: string };
-    if (domainErr.code === 'GDPR_ALREADY_ERASED') {
+    if (thrownCode(err) === 'GDPR_ALREADY_ERASED') {
       res.status(409).json({
         error: {
           code: 'GDPR_ALREADY_ERASED',
@@ -95,8 +95,7 @@ export async function eraseLeadHandler(req: Request, res: Response): Promise<voi
     const row = await eraseLead(id, actor, bodyParsed.data.notes);
     res.status(200).json({ success: true, erasedAt: row.completed_at });
   } catch (err: unknown) {
-    const domainErr = err as { code?: string };
-    if (domainErr.code === 'GDPR_ALREADY_ERASED') {
+    if (thrownCode(err) === 'GDPR_ALREADY_ERASED') {
       res.status(409).json({
         error: {
           code: 'GDPR_ALREADY_ERASED',
@@ -112,8 +111,7 @@ export async function eraseLeadHandler(req: Request, res: Response): Promise<voi
 
 /** Answers 404 for a service's NOT_FOUND; true when it did. */
 function respondIfNotFound(err: unknown, res: Response, entity: 'Contact' | 'Lead'): boolean {
-  // Safe: a domain error carries an optional string code; null or a non-object has none.
-  if ((err as { code?: string } | null | undefined)?.code !== 'NOT_FOUND') return false;
+  if (thrownCode(err) !== 'NOT_FOUND') return false;
   res.status(404).json(errorBody('NOT_FOUND', `${entity} not found`));
   return true;
 }

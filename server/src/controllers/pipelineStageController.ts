@@ -22,6 +22,7 @@ import {
 } from '@minicrm/shared/schemas/pipelineStageSchema.js';
 import logger from '../logger.js';
 import { respondValidationError } from '../utils/validationError.js';
+import { thrownCode } from '../utils/errorCode.js';
 
 /**
  * GET /api/v1/settings/pipeline-stages
@@ -67,7 +68,7 @@ export async function createPipelineStageHandler(req: Request, res: Response): P
       logger.warn({ err }, 'markPipelineStagesReviewed failed after create'),
     );
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'STAGE_NAME_CONFLICT') {
       res
         .status(409)
@@ -109,7 +110,7 @@ export async function updatePipelineStageHandler(req: Request, res: Response): P
       logger.warn({ err }, 'markPipelineStagesReviewed failed after update'),
     );
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'STAGE_FIXED') {
       res.status(403).json({ error: { code: 'STAGE_FIXED', message: (err as Error).message } });
       return;
@@ -152,7 +153,7 @@ export async function reorderPipelineStagesHandler(req: Request, res: Response):
     const rows = await reorderPipelineStages(parsed.data, actor);
     res.status(200).json({ stages: rows.map(toStageResponse) });
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'STAGE_NOT_FOUND') {
       res.status(404).json({ error: { code: 'STAGE_NOT_FOUND', message: (err as Error).message } });
       return;
@@ -185,7 +186,7 @@ export async function deletePipelineStageHandler(req: Request, res: Response): P
     await deletePipelineStage(id, actor);
     res.status(200).json({ id });
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = thrownCode(err);
     if (code === 'STAGE_FIXED') {
       res.status(403).json({ error: { code: 'STAGE_FIXED', message: (err as Error).message } });
       return;
