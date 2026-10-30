@@ -43,12 +43,8 @@ export function nonProductionSeam(key: NonProductionSeamKey): string | undefined
 }
 
 function urlProblem(key: NonProductionSeamKey, value: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(value);
-  } catch {
-    return `${key} is not a valid URL: ${value}`;
-  }
+  const parsed = URL.parse(value);
+  if (!parsed) return `${key} is not a valid URL: ${value}`;
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     return `${key} must be an http or https URL: ${value}`;
   }
