@@ -7,11 +7,18 @@
  */
 
 import { MailEmulatorClient } from '@framework/clients/mail-emulator-client.js';
-import { SmtpSeedClient, type SeedMail } from '@framework/clients/smtp-seed-client.js';
+import {
+  referencesOf,
+  SmtpSeedClient,
+  type SeedMail,
+} from '@framework/clients/smtp-seed-client.js';
 import MailComposer from 'nodemailer/lib/mail-composer';
+import { mailFakeCoordinates } from '@minicrm/shared/testing/testStackMailFakes.js';
+
+const COORDINATES = mailFakeCoordinates(process.env);
 
 /** GreenMail's SMTP port as the test runner reaches it, for delivering seeded mail. */
-export const GREENMAIL_SMTP_URL = process.env['E2E_GREENMAIL_SMTP_URL'] || 'smtp://localhost:3025';
+export const GREENMAIL_SMTP_URL = COORDINATES.greenmailSmtpUrl;
 
 /** The IMAP host the server dials: the Compose service name locally, localhost in CI. */
 export const IMAP_HOST_FOR_SERVER = process.env['E2E_IMAP_HOST_FOR_SERVER'] || 'greenmail';
@@ -20,7 +27,7 @@ export const IMAP_HOST_FOR_SERVER = process.env['E2E_IMAP_HOST_FOR_SERVER'] || '
 export const GREENMAIL_IMAP_PORT = 3143;
 
 /** The mail provider emulator's admin API as the test runner reaches it. */
-export const MAIL_EMULATOR_URL = process.env['E2E_MAIL_EMULATOR_URL'] || 'http://localhost:4010';
+export const MAIL_EMULATOR_URL = COORDINATES.emulatorUrl;
 
 /** A client for the emulator's admin API. */
 export function mailEmulator(): MailEmulatorClient {
@@ -49,7 +56,7 @@ export async function rfc822Message(mail: SeedMail): Promise<string> {
     text: mail.text,
     messageId: mail.messageId,
     inReplyTo: mail.inReplyTo,
-    references: mail.references ?? mail.inReplyTo,
+    references: referencesOf(mail),
     date: mail.date,
   });
   const built = await composer.compile().build();

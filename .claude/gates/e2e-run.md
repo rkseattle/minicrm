@@ -113,7 +113,8 @@ export GIT_COMMIT_SHA=$(git rev-parse HEAD)
 docker compose -f docker-compose.test.yml build server
 docker compose -f docker-compose.test.yml up -d server
 
-# Re-seed admin user, MinIO storage config, Mailhog SMTP config
+# Re-seed admin user, MinIO storage config, Mailhog SMTP config; wait for the mail fakes
+# and reset the emulator
 env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
 
 # Clear stale results — the run clears them too, but not if it dies before starting
