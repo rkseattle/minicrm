@@ -223,9 +223,9 @@ app.use(`${API_V1}/admin/feature-flags`, featureFlagRoutes);
 app.use(`${API_V1}/teams`, teamRoutes);
 app.use(`${API_V1}/custom-roles`, customRoleRoutes);
 // SCIM token management — issue/revoke the long-lived SCIM bearer token.
-app.use(API_V1, scimTokenRoutes);
+app.use(`${API_V1}/scim-token`, scimTokenRoutes);
 // SCIM group → role mapping admin endpoints
-app.use(API_V1, scimGroupMappingRoutes);
+app.use(`${API_V1}/scim/group-role-mappings`, scimGroupMappingRoutes);
 app.use('/scim/v2', scimRoutes);
 // User-facing AI routes — only /token-budget/me; no admin handlers.
 app.use(`${API_V1}/ai`, aiUserRouter);

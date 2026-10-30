@@ -1,8 +1,8 @@
 /**
  * Integration tests for SCIM 2.0 controller handlers.
  *
- * Covers HTTP-layer behaviour of /scim/v2/Users, /scim/v2/Groups, and
- * /api/v1/scim/group-role-mappings — request validation, error shapes,
+ * Covers HTTP-layer behaviour of /scim/v2/Users, /scim/v2/Groups,
+ * /api/v1/scim/group-role-mappings and /api/v1/scim-token — request validation, error shapes,
  * authentication guard, and happy paths.
  *
  * Uses supertest against the Express app with a real bearer token issued by
@@ -552,5 +552,61 @@ describe('DELETE /api/v1/scim/group-role-mappings/:scimGroupId', () => {
       .delete('/api/v1/scim/group-role-mappings/ctrl-del-group')
       .set('Cookie', adminCookie);
     expect(res.status).toBe(204);
+  });
+});
+
+describe('SCIM admin routers', () => {
+  it('mounts both routers and guards them, refusing an unauthenticated caller', async () => {
+    expect((await request(app).get('/api/v1/scim-token')).status).toBe(401);
+    expect((await request(app).get('/api/v1/scim/group-role-mappings')).status).toBe(401);
+  });
+});
+
+// Last in the file: rotating and revoking ends the token the /scim/v2 tests above use.
+describe('/api/v1/scim-token', () => {
+  it('refuses a caller without the integrations capability on every token route', async () => {
+    const rep = await createUser({
+      email: `${FILE_PREFIX}-token-rep@example.com`,
+      name: 'SCIM Token Rep',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder_hash',
+      status: 'active',
+    });
+    const repCookie = makeAuthCookie({
+      id: rep.id,
+      email: rep.email,
+      name: rep.name,
+      role: rep.role,
+    });
+
+    expect((await request(app).get('/api/v1/scim-token').set('Cookie', repCookie)).status).toBe(
+      403,
+    );
+    expect((await request(app).post('/api/v1/scim-token').set('Cookie', repCookie)).status).toBe(
+      403,
+    );
+    expect((await request(app).delete('/api/v1/scim-token').set('Cookie', repCookie)).status).toBe(
+      403,
+    );
+  });
+
+  it('reads, rotates and revokes the active token', async () => {
+    const issued = await request(app).post('/api/v1/scim-token').set('Cookie', adminCookie);
+    expect(issued.status).toBe(201);
+    const meta = await request(app).get('/api/v1/scim-token').set('Cookie', adminCookie);
+    expect(meta.status).toBe(200);
+    expect(meta.body.token).toMatchObject({ id: issued.body.token.id });
+
+    const rotated = await request(app).post('/api/v1/scim-token').set('Cookie', adminCookie);
+    expect(rotated.status).toBe(201);
+    expect(rotated.body.token.rawToken).toEqual(expect.any(String));
+
+    const revoked = await request(app).delete('/api/v1/scim-token').set('Cookie', adminCookie);
+    expect(revoked.status).toBe(200);
+    expect(revoked.body).toEqual({ revoked: true });
+
+    const again = await request(app).delete('/api/v1/scim-token').set('Cookie', adminCookie);
+    expect(again.status).toBe(404);
+    expect(again.body.error.code).toBe('SCIM_TOKEN_NOT_FOUND');
   });
 });

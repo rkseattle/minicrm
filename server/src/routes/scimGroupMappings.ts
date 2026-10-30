@@ -1,5 +1,5 @@
 /**
- * SCIM group-role mapping admin routes. Mounted at /api/v1 in app.ts.
+ * SCIM group-role mapping admin routes. Mounted at /api/v1/scim/group-role-mappings in app.ts.
  *
  * All three routes require authenticate + requireCapability(Capability.IntegrationsManage).
  * These are standard JSON responses (not SCIM format) for use by the admin UI.
@@ -57,7 +57,7 @@ router.use(authenticate);
  *                         format: date-time
  */
 router.get(
-  '/scim/group-role-mappings',
+  '/',
   requireCapability(Capability.IntegrationsManage),
   asyncHandler(listScimGroupRoleMappingsHandler),
 );
@@ -99,7 +99,7 @@ router.get(
  *         description: The role is a built-in and cannot be mapped
  */
 router.put(
-  '/scim/group-role-mappings/:scimGroupId',
+  '/:scimGroupId',
   requireCapability(Capability.IntegrationsManage),
   asyncHandler(putScimGroupRoleMappingHandler),
 );
@@ -126,7 +126,7 @@ router.put(
  *         description: No mapping exists for that group ID
  */
 router.delete(
-  '/scim/group-role-mappings/:scimGroupId',
+  '/:scimGroupId',
   requireCapability(Capability.IntegrationsManage),
   asyncHandler(deleteScimGroupRoleMappingHandler),
 );

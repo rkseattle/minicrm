@@ -241,10 +241,10 @@ Two further traps. `/api/automation` redirects to `/api/v1/automation`, but the 
 mounts at `/api/v1/automation/rules`, so only the suffixed form resolves. And
 `/api/admin/automation` was never a route at any version.
 
-Note that a `/api/v1/` path with no matching route answers `401`, not `404`: an
-authenticated router is mounted at the bare `/api/v1` prefix, so its auth check runs
-before the not-found handler. Treat `401` on an unfamiliar path as "wrong path or no
-session", not as proof the path exists.
+An unmatched path directly under `/api/v1/` answers `404`, signed in or not. Under a
+resource prefix whose router guards every path, such as `/api/v1/users/`, the guard answers
+first, with `401` or `403`, so treat those as "wrong path or no access" rather than proof the
+path exists.
 
 **These redirects will be removed.** Treat them as a migration aid, not an interface —
 send `/api/v1/` directly.
