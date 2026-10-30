@@ -28,9 +28,5 @@ export function graphApiBase(): string {
  * the origin requests are already sent to — never at one a tampered row names.
  */
 export function isGraphOriginUrl(value: string): boolean {
-  try {
-    return new URL(value).origin === new URL(graphApiBase()).origin;
-  } catch {
-    return false;
-  }
+  return URL.canParse(value) && new URL(value).origin === new URL(graphApiBase()).origin;
 }

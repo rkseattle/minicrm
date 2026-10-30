@@ -44,12 +44,8 @@ function isAllowlistedPrivateHost(hostname: string): boolean {
  * so `::ffff:169.254.169.254` is judged as the metadata address it is.
  */
 function isPermittedAddress(address: string, allowlisted: boolean): boolean {
-  let range: string;
-  try {
-    range = ipaddr.process(address).range();
-  } catch {
-    return false;
-  }
+  if (!ipaddr.isValid(address)) return false;
+  const range = ipaddr.process(address).range();
   return range === PUBLIC_RANGE || (allowlisted && ALLOWLISTED_EXTRA_RANGES.has(range));
 }
 

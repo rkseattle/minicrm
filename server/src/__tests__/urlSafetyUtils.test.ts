@@ -52,6 +52,15 @@ describe('assertUrlIsFetchSafe', () => {
     ).rejects.toMatchObject({ reason: 'unresolvable_hostname' });
   });
 
+  it('refuses a resolved address that is not an IP at all, rather than throwing', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce([
+      { address: 'not-an-ip', family: 4 },
+    ] as never);
+    await expect(assertUrlIsFetchSafe('https://example.com/logo.png')).rejects.toMatchObject({
+      reason: 'blocked_address',
+    });
+  });
+
   it('rejects a loopback address with reason blocked_address', async () => {
     vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce([
       { address: '127.0.0.1', family: 4 },
