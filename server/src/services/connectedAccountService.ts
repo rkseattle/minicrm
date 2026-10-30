@@ -175,6 +175,58 @@ function isOAuthProvider(provider: ConnectedAccountProvider): provider is OAuthP
 }
 
 /**
+ * Encrypts credentials for storage, the inverse of decryptAuth below.
+ *
+ * @param auth - The decrypted credentials.
+ * @returns The ciphertext and the key version it was written under.
+ */
+export function encryptAccountAuth(auth: ConnectedAccountAuth): {
+  ciphertext: string;
+  keyVersion: number;
+} {
+  return encryptVersioned(JSON.stringify(auth));
+}
+
+/** The demo seed's mailbox: never dialed, so stored without a connection test. */
+export interface DemoMailboxInsert {
+  userId: string;
+  provider: ConnectedAccountProvider;
+  emailAddress: string;
+  auth: ConnectedAccountAuth;
+}
+
+/**
+ * Inserts the demo seed's mailbox on the seed's transaction: paused, so no sync claims it,
+ * and flagged is_demo, so demo removal finds it. Unaudited, as the rest of the seed is.
+ *
+ * @param client - The seed's transaction client.
+ * @param mailbox - The row to write.
+ * @returns The new mailbox's id.
+ */
+export async function insertDemoMailboxWithinTransaction(
+  client: PoolClient,
+  mailbox: DemoMailboxInsert,
+): Promise<string> {
+  const encrypted = encryptAccountAuth(mailbox.auth);
+  const result = await client.query<{ id: string }>(
+    `INSERT INTO connected_accounts
+       (user_id, provider, email_address, auth_encrypted, key_version, status,
+        last_sync_at, sync_paused_at, is_demo)
+     VALUES ($1, $2, $3, $4, $5, 'active', now(), now(), true)
+     RETURNING id`,
+    [
+      mailbox.userId,
+      mailbox.provider,
+      mailbox.emailAddress,
+      encrypted.ciphertext,
+      encrypted.keyVersion,
+    ],
+  );
+  // Safe: INSERT ... RETURNING yields exactly one row.
+  return result.rows[0]!.id;
+}
+
+/**
  * Decrypts one row's stored credentials.
  *
  * Returns null rather than throwing: every caller's answer to unreadable ciphertext is
@@ -387,7 +439,7 @@ export async function createImapAccount(
     password: input.password,
     secure: input.secure,
   };
-  const encrypted = encryptVersioned(JSON.stringify(payload));
+  const encrypted = encryptAccountAuth(payload);
 
   const client: PoolClient = await pool.connect();
   try {
@@ -436,7 +488,7 @@ export async function upsertOAuthAccount(
   params: OAuthAccountUpsert,
   actor: AuditActor,
 ): Promise<ConnectedAccountResponse> {
-  const encrypted = encryptVersioned(JSON.stringify(params.auth));
+  const encrypted = encryptAccountAuth(params.auth);
 
   const client: PoolClient = await pool.connect();
   try {
@@ -667,7 +719,7 @@ async function refreshLockedRow(
     refresh_token: refreshed.refreshToken,
     expires_at: refreshed.expiresAt,
   };
-  const encrypted = encryptVersioned(JSON.stringify(rotated));
+  const encrypted = encryptAccountAuth(rotated);
 
   // Deliberately leaves sync_failure_count alone, unlike the connect-test and
   // re-consent paths. A refreshed token proves the credential is valid, not that the

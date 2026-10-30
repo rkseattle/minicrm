@@ -15,7 +15,7 @@ import { writeDealStageHistoryEntry } from './dealService.js';
 import { runDataHygieneScan } from './dataHygieneService.js';
 import { generateRepCoachingInsights } from './repCoachingService.js';
 import logger from '../logger.js';
-import { encrypt, encryptVersioned } from './cryptoService.js';
+import { encrypt } from './cryptoService.js';
 import { setRlsUserId } from './rlsContextService.js';
 import { syncEntityTagsWithinTransaction } from './tagService.js';
 import type pg from 'pg';
@@ -24,7 +24,10 @@ import {
   matchMessagesToRecords,
   type MatchableMessage,
 } from './emailMatchingService.js';
-import type { ImapAuthPayload } from './connectedAccountService.js';
+import {
+  insertDemoMailboxWithinTransaction,
+  type ImapAuthPayload,
+} from './connectedAccountService.js';
 import { snippetOf } from './mail/messageBody.js';
 import { getDealAutoLink } from './settingsService.js';
 
@@ -797,7 +800,7 @@ const DEMO_SENIOR_REP_CAPABILITIES = [
  * rather than reaching a real server, and resuming it leaves it in error.
  */
 const DEMO_MAILBOX = {
-  provider: 'imap',
+  provider: 'imap' as const,
   host: 'imap.demo.invalid',
   port: 993,
   password: 'demo-mailbox-not-real',
@@ -2025,16 +2028,12 @@ async function insertDemoMail(
     password: DEMO_MAILBOX.password,
     secure: true,
   };
-  const credential = encryptVersioned(JSON.stringify(auth));
-  const account = await client.query<{ id: string }>(
-    `INSERT INTO connected_accounts
-       (user_id, provider, email_address, auth_encrypted, key_version, status,
-        last_sync_at, sync_paused_at, is_demo)
-     VALUES ($1, $2, $3, $4, $5, 'active', now(), now(), true)
-     RETURNING id`,
-    [repId, DEMO_MAILBOX.provider, DEMO_REP.email, credential.ciphertext, credential.keyVersion],
-  );
-  const accountId = account.rows[0].id;
+  const accountId = await insertDemoMailboxWithinTransaction(client, {
+    userId: repId,
+    provider: DEMO_MAILBOX.provider,
+    emailAddress: DEMO_REP.email,
+    auth,
+  });
 
   const created: MatchableMessage[] = [];
   for (const [threadIndex, thread] of DEMO_EMAIL_THREADS.entries()) {
