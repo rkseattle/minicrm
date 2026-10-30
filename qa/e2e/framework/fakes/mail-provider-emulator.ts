@@ -119,12 +119,15 @@ function parentIds(raw: Buffer): string[] {
   return named.flatMap((value) => value?.match(/<[^>]+>/g) ?? []);
 }
 
-/** A path segment decoded, or a 404 for one that is not valid percent-encoding. */
+/** A path segment decoded, or a 404 naming the decode error for invalid percent-encoding. */
 function decodeSegment(segment: string | undefined, notFound: () => HttpError): string {
   try {
     return decodeURIComponent(segment ?? '');
-  } catch {
-    throw notFound();
+  } catch (err) {
+    const base = notFound();
+    // Safe: every 404 builder here returns an object body, as the providers' errors are.
+    const body = base.body as Record<string, unknown>;
+    throw new HttpError(base.status, { ...body, cause: String(err) });
   }
 }
 
@@ -374,7 +377,9 @@ export function createMailProviderEmulator(): http.Server {
     }
     const single = /^\/messages\/([^/]+)$/.exec(path);
     if (req.method === 'GET' && single) {
-      const message = visible.find((m) => m.id === decodeSegment(single[1], gmailNotFound));
+      // Decoded once, before the lookup, so a malformed id is reported even in an empty mailbox.
+      const id = decodeSegment(single[1], gmailNotFound);
+      const message = visible.find((m) => m.id === id);
       if (!message) throw gmailNotFound();
       return sendJson(res, 200, {
         ...gmailRef(message),

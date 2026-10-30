@@ -131,6 +131,21 @@ test.describe('mail provider emulator — admin', () => {
     );
   });
 
+  test('names the decode error in a 404 for a malformed path, keeping each API error shape', async () => {
+    const bad = '%E0%A4%A';
+    const admin = await call('POST', `/__admin/mailboxes/${bad}/expire-cursors`);
+    const gmail = await call('GET', `${GMAIL}/messages/${bad}`);
+    const graph = await call('GET', `${GRAPH}/mailFolders/${bad}`);
+
+    for (const res of [admin, gmail, graph]) {
+      expect(res.status).toBe(404);
+      expect(String(res.json['cause'])).toContain('URIError');
+    }
+    expect(admin.json['error']).toBe('no such mailbox');
+    expect(gmail.json['error']).toEqual({ code: 404, status: 'NOT_FOUND' });
+    expect(graph.json['error']).toEqual({ code: 'ErrorItemNotFound', message: 'not found' });
+  });
+
   test('answers 404 for an unknown mailbox, a malformed name, and an unknown route', async () => {
     expect(
       (await call('POST', '/__admin/mailboxes/nobody/messages', { body: { raw: 'x' } })).status,

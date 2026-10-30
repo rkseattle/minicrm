@@ -24,7 +24,7 @@ const URL_SEAM_KEYS: ReadonlySet<NonProductionSeamKey> = new Set([
 ]);
 
 /** The values EMAIL_SYNC_SCHEDULER accepts; `off` leaves the email sync job unscheduled. */
-export const EMAIL_SYNC_SCHEDULER_VALUES = ['on', 'off'] as const;
+const EMAIL_SYNC_SCHEDULER_VALUES = ['on', 'off'] as const;
 
 const EMAIL_SYNC_SCHEDULER_OFF: (typeof EMAIL_SYNC_SCHEDULER_VALUES)[number] = 'off';
 

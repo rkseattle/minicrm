@@ -159,6 +159,23 @@ test.describe('SmtpSeedClient', () => {
     }
   });
 
+  test('defaults References to In-Reply-To when a reply names only the latter', async () => {
+    const client = new SmtpSeedClient(`smtp://127.0.0.1:${String(portOf(smtp))}`);
+    try {
+      await client.deliver({
+        from: 'buyer@customer.test',
+        to: ADDRESS,
+        subject: 'Re: Quote',
+        text: 'Thanks.',
+        inReplyTo: '<earlier@customer.test>',
+      });
+
+      expect(received.at(-1) ?? '').toMatch(/^References: <earlier@customer.test>$/m);
+    } finally {
+      client.close();
+    }
+  });
+
   test('mints a Message-ID when the caller names none', async () => {
     const client = new SmtpSeedClient(`smtp://127.0.0.1:${String(portOf(smtp))}`);
     try {

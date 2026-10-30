@@ -26,6 +26,7 @@ import { connect } from 'net';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { COVERAGE_E2E_DB_NAME, E2E_DB_NAME } from '@minicrm/shared/testing/testStackDbNames.js';
+import { mailFakeCoordinates } from '@minicrm/shared/testing/testStackMailFakes.js';
 // Shared with scripts/pre-push-tia.ts so the two dev-port guards cannot drift,
 // and so the rule has a test runner (root scripts/ has none).
 import {
@@ -66,6 +67,8 @@ const EXPORTED_DB_USER = process.env.DB_USER;
 const EXPORTED_DB_PASSWORD = process.env.DB_PASSWORD;
 const EXPORTED_ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL;
 const EXPORTED_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
+const EXPORTED_MAIL_EMULATOR_URL = process.env.E2E_MAIL_EMULATOR_URL;
+const EXPORTED_GREENMAIL_SMTP_URL = process.env.E2E_GREENMAIL_SMTP_URL;
 
 /**
  * Reads qa/e2e/.env directly, bypassing process.env — root .env is loaded below
@@ -157,11 +160,7 @@ const MINIO_ROOT_PASSWORD = 'minioadmin';
 const MAILHOG_SERVER_HOST = 'mailhog';
 const MAILHOG_SMTP_PORT = '1025';
 
-// Host-side ports of the fake mail providers in docker-compose.test.yml.
-const GREENMAIL_HOST = 'localhost';
 const GREENMAIL_IMAP_PORT = 3143;
-// The test stack's own emulator, which is the one setup provisions and resets.
-const MAIL_EMULATOR_URL = 'http://localhost:4010';
 
 const READINESS_TIMEOUT_MS = 30_000;
 const READINESS_POLL_INTERVAL_MS = 1_000;
@@ -476,7 +475,30 @@ function greetsWithImapOk(host: string, port: number): Promise<boolean> {
 
 // ── Step 7: Fake mail providers ──────────────────────────────────────────────
 
+/**
+ * The fakes the specs seed through, so setup waits on and resets those same ones: exported
+ * values first, then qa/e2e/.env, as for the admin credentials. Captured before the root
+ * .env merge, which must not steer setup to fakes the specs never see.
+ */
+function resolveMailFakes(): { greenmailHost: string; emulatorUrl: string } {
+  const file = readE2eEnvFile();
+  const coordinates = mailFakeCoordinates({
+    E2E_MAIL_EMULATOR_URL: EXPORTED_MAIL_EMULATOR_URL || file['E2E_MAIL_EMULATOR_URL'],
+    E2E_GREENMAIL_SMTP_URL: EXPORTED_GREENMAIL_SMTP_URL || file['E2E_GREENMAIL_SMTP_URL'],
+  });
+  const smtp = URL.parse(coordinates.greenmailSmtpUrl);
+  if (!smtp) {
+    throw new Error(`E2E_GREENMAIL_SMTP_URL is not a URL: ${coordinates.greenmailSmtpUrl}`);
+  }
+  // URL keeps an IPv6 host in brackets, which a socket connect will not take.
+  return {
+    greenmailHost: smtp.hostname.replace(/^\[|\]$/g, ''),
+    emulatorUrl: coordinates.emulatorUrl,
+  };
+}
+
 async function prepareFakeMailProviders(): Promise<void> {
+  const { greenmailHost: GREENMAIL_HOST, emulatorUrl: MAIL_EMULATOR_URL } = resolveMailFakes();
   await waitUntilReady('GreenMail', () => greetsWithImapOk(GREENMAIL_HOST, GREENMAIL_IMAP_PORT));
   await waitUntilReady(
     'the mail provider emulator',

@@ -16,8 +16,18 @@ export interface SeedMail {
   /** Defaults to a fresh id; set it when a later message must reply to this one. */
   messageId?: string;
   inReplyTo?: string;
+  /** Defaults to `[inReplyTo]` when a reply names only that, as a mail client threads one. */
   references?: string[];
   date?: Date;
+}
+
+/**
+ * The References a seeded message carries: its own, else the message it replies to.
+ *
+ * @param mail - The message to deliver.
+ */
+export function referencesOf(mail: SeedMail): string[] | undefined {
+  return mail.references ?? (mail.inReplyTo ? [mail.inReplyTo] : undefined);
 }
 
 /** Per-phase budget, so a hung server fails naming the delivery, not as a test timeout. */
@@ -51,7 +61,7 @@ export class SmtpSeedClient {
       text: mail.text,
       messageId: mail.messageId,
       inReplyTo: mail.inReplyTo,
-      references: mail.references,
+      references: referencesOf(mail),
       date: mail.date,
     });
     return info.messageId;
