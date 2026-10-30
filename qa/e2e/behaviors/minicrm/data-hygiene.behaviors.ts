@@ -8,6 +8,7 @@
 
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { DataHygienePage } from '@pages/minicrm/DataHygienePage.js';
+import { awaitApiResponse, NO_RESPONSE_TIMEOUT } from '@apps/minicrm/helpers.js';
 
 export interface DataHygieneBehaviorContext {
   page: PageFacade;
@@ -66,10 +67,11 @@ export async function dismissHygieneFindingViaUI(
   await hygienePage.clickDismiss(findingId);
   await hygienePage.fillDismissReason(reason);
 
-  const responsePromise = context.page.waitForResponse(
-    (response) =>
-      response.url().includes(`/api/v1/data-hygiene/findings/${findingId}/dismiss`) &&
-      response.request().method() === 'POST',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => url.href.includes(`/api/v1/data-hygiene/findings/${findingId}/dismiss`),
+    NO_RESPONSE_TIMEOUT,
   );
   await hygienePage.clickDismissConfirm();
   await responsePromise;

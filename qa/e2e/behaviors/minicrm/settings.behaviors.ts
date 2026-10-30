@@ -4,7 +4,12 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { gotoAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  gotoAndSettle,
+  FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+} from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 import type { AdminSettingsTab } from '@pages/minicrm/AdminSettingsPage.js';
@@ -2997,10 +3002,11 @@ export async function getAiFieldExclusionToggle(
 export async function clickDataHygieneRunNowAndAwaitResponse(
   context: AdminSettingsBehaviorContext,
 ): Promise<{ status: number }> {
-  const responsePromise = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/admin/ai/data-hygiene/run') &&
-      response.request().method() === 'POST',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'POST',
+    (url) => url.href.includes('/api/v1/admin/ai/data-hygiene/run'),
+    NO_RESPONSE_TIMEOUT,
   );
   await new AdminSettingsPage(context).clickDataHygieneRunNowButton();
   const response = await responsePromise;

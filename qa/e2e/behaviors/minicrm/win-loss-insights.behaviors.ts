@@ -8,7 +8,11 @@
 
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { WinLossInsightsPage } from '@pages/minicrm/WinLossInsightsPage.js';
-import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+  NO_RESPONSE_TIMEOUT,
+} from '@apps/minicrm/helpers.js';
 
 export interface WinLossInsightsBehaviorContext {
   page: PageFacade;
@@ -81,10 +85,11 @@ export async function clickWinLossExportPdfAndAwaitResponse(
 ): Promise<{ status: number; contentType: string }> {
   const insightsPage = new WinLossInsightsPage(context);
   await insightsPage.openExportMenu();
-  const responsePromise = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/insights/win-loss/export.pdf') &&
-      response.request().method() === 'GET',
+  const responsePromise = awaitApiResponse(
+    context.page,
+    'GET',
+    (url) => url.href.includes('/api/v1/insights/win-loss/export.pdf'),
+    NO_RESPONSE_TIMEOUT,
   );
   const button = await insightsPage.exportPdfButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await button.click();

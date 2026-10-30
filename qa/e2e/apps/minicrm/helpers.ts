@@ -897,6 +897,9 @@ const FLAG_QUERY_TIMEOUT_MS = 15_000;
  */
 export const FIRST_INTERACTION_TIMEOUT_MS = 15_000;
 
+/** How long an AI-backed endpoint may take to answer: model latency, not page load. */
+export const AI_RESPONSE_TIMEOUT_MS = 30_000;
+
 /**
  * Navigates and then waits for the app to be genuinely ready to query, rather
  * than for the network to fall quiet.
@@ -1084,26 +1087,28 @@ export async function withAdminFlagList(
   });
 }
 
+/** No limit of the wait's own: the test's timeout bounds it, as Playwright's default does here. */
+export const NO_RESPONSE_TIMEOUT = 0;
+
 /**
- * Arms a wait for the next API response with this method and path; await it after acting.
+ * Arms a wait for the next API response with this method and URL; await it after acting.
  *
  * Arm it before the click or navigation that sends the request, or a fast answer is missed.
  *
  * @param page - The page whose network to watch.
  * @param method - HTTP method, upper case.
- * @param path - The exact pathname, or a test on it.
- * @param timeout - How long to wait for the response.
+ * @param path - The exact pathname, or a test on the whole URL.
+ * @param timeout - How long to wait for the response; NO_RESPONSE_TIMEOUT for no limit.
  */
 export function awaitApiResponse(
   page: Pick<Page, 'waitForResponse'>,
   method: string,
-  path: string | ((pathname: string) => boolean),
+  path: string | ((url: URL) => boolean),
   timeout: number = FIRST_INTERACTION_TIMEOUT_MS,
 ): ReturnType<Page['waitForResponse']> {
-  const matches = typeof path === 'string' ? (pathname: string) => pathname === path : path;
+  const matches = typeof path === 'string' ? (url: URL) => url.pathname === path : path;
   return page.waitForResponse(
-    (response) =>
-      response.request().method() === method && matches(new URL(response.url()).pathname),
+    (response) => response.request().method() === method && matches(new URL(response.url())),
     { timeout },
   );
 }

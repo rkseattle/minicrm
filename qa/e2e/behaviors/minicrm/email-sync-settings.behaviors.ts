@@ -17,6 +17,7 @@ import {
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { EmailSyncSettingsPage } from '@pages/minicrm/EmailSyncSettingsPage.js';
 import { navigateToAdminSettingsIntegrations } from './settings.behaviors.js';
+import { awaitApiResponse, NO_RESPONSE_TIMEOUT } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -91,8 +92,11 @@ export async function saveOrgExcludedDomains(
   await (await panel.domainsInputLocator()).fill(text);
   const save = await panel.domainsSaveLocator();
   const [response] = await Promise.all([
-    ctx.page.waitForResponse(
-      (resp) => resp.url().includes(DOMAINS_PATH) && resp.request().method() === 'PATCH',
+    awaitApiResponse(
+      ctx.page,
+      'PATCH',
+      (url) => url.href.includes(DOMAINS_PATH),
+      NO_RESPONSE_TIMEOUT,
     ),
     save.click(),
   ]);
@@ -142,9 +146,7 @@ export async function saveBackfillWindow(
   await (await panel.daysInputLocator()).fill(String(days));
   const save = await panel.daysSaveLocator();
   const [response] = await Promise.all([
-    ctx.page.waitForResponse(
-      (resp) => resp.url().includes(DAYS_PATH) && resp.request().method() === 'PATCH',
-    ),
+    awaitApiResponse(ctx.page, 'PATCH', (url) => url.href.includes(DAYS_PATH), NO_RESPONSE_TIMEOUT),
     save.click(),
   ]);
   return response.status();

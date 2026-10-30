@@ -471,8 +471,8 @@ export async function toggleThreadPrivacy(
   await section.expandThread(subject, FIRST_INTERACTION_TIMEOUT_MS);
   const button = await section.threadPrivacyButtonLocator(subject, FIRST_INTERACTION_TIMEOUT_MS);
 
-  const patched = awaitApiResponse(ctx.page, 'PATCH', (pathname) =>
-    pathname.endsWith('/thread-privacy'),
+  const patched = awaitApiResponse(ctx.page, 'PATCH', (url) =>
+    url.pathname.endsWith('/thread-privacy'),
   );
   await button.click();
   return (await patched).status();
