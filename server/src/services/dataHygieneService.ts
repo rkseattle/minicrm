@@ -358,14 +358,11 @@ export async function checkWebsiteStatus(url: string): Promise<WebsiteStatus> {
   // A reserved name cannot resolve by definition, so NXDOMAIN here proves nothing about
   // the site. Without this, every demo account's *.example.com website is reported as
   // broken — the same false positive isReservedDomain already prevents for mail.
-  try {
-    const hostname = new URL(url).hostname.toLowerCase();
-    // 'unknown', not 'reachable': the name was never probed, and only 'unreachable' is
-    // ever reported, so an unprobed site must not assert it is alive.
-    if (isReservedDomain(hostname)) return 'unknown';
-  } catch {
-    // A URL the parser rejects is handled below, where invalid_url is already classified.
-  }
+  // A URL the parser rejects is handled below, where invalid_url is already classified.
+  const hostname = URL.parse(url)?.hostname.toLowerCase();
+  // 'unknown', not 'reachable': the name was never probed, and only 'unreachable' is
+  // ever reported, so an unprobed site must not assert it is alive.
+  if (hostname !== undefined && isReservedDomain(hostname)) return 'unknown';
 
   try {
     await assertUrlIsFetchSafe(url);

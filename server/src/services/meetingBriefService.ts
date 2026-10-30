@@ -153,12 +153,8 @@ async function gatherNewsHook(
         // self-review)
         if (typeof result.title !== 'string' || !result.title.trim()) continue;
         if (typeof result.url !== 'string' || !result.url.trim()) continue;
-        let hostname: string;
-        try {
-          hostname = new URL(result.url).hostname;
-        } catch {
-          continue;
-        }
+        const hostname = URL.parse(result.url)?.hostname;
+        if (hostname === undefined) continue;
         items.push({
           title: result.title,
           url: result.url,
