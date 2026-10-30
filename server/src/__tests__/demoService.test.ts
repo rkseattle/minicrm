@@ -504,6 +504,30 @@ describe('removeDemo', () => {
     expect(activities.rowCount).toBe(0);
   });
 
+  it('removes the rest after an admin deleted only the demo accounts, so a re-seed succeeds', async () => {
+    await seedDemo();
+    await pool.query(`UPDATE contacts SET account_id = NULL WHERE is_demo = true`);
+    await pool.query(`UPDATE deals SET account_id = NULL WHERE is_demo = true`);
+    await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
+
+    expect((await getDemoStatus()).active).toBe(true);
+    await removeDemo();
+    const leftover = await pool.query(`SELECT id FROM contacts WHERE is_demo = true`);
+    expect(leftover.rowCount).toBe(0);
+    await expect(seedDemo()).resolves.toMatchObject({ seeded: true });
+  });
+
+  it('reports demo data when a flagged mailbox is all that is left', async () => {
+    const leftover = await insertParkedMailbox(adminUserId, `${FILE_PREFIX}-leftover@example.com`);
+    try {
+      expect((await getDemoStatus()).active).toBe(false);
+      await pool.query(`UPDATE connected_accounts SET is_demo = true WHERE id = $1`, [leftover]);
+      expect((await getDemoStatus()).active).toBe(true);
+    } finally {
+      await pool.query(`DELETE FROM connected_accounts WHERE id = $1`, [leftover]);
+    }
+  });
+
   it('removes the demo mailbox and its mail, and leaves real mail alone', async () => {
     await seedDemo();
     const realMailbox = await insertParkedMailbox(adminUserId, `${FILE_PREFIX}-real@example.com`);
