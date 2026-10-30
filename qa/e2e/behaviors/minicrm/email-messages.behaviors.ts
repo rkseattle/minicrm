@@ -18,19 +18,8 @@ import {
 import {
   emailThreadPageSchema,
   type EmailLinkRecordType,
-  type EmailThread,
   type EmailThreadPage,
 } from '@minicrm/shared/schemas/emailMessageSchema.js';
-
-// ---------------------------------------------------------------------------
-// API data types
-// ---------------------------------------------------------------------------
-
-/** One thread as the read endpoints return it. */
-export type TestEmailThread = EmailThread;
-
-/** A page of threads. */
-export type TestEmailThreadPage = EmailThreadPage;
 
 // ---------------------------------------------------------------------------
 // Behaviors
@@ -42,8 +31,8 @@ export type TestEmailThreadPage = EmailThreadPage;
  * @param restClient - The authenticated client whose mailboxes are read.
  * @returns One page of unmatched threads.
  */
-export async function listUnmatchedMail(restClient: RestClient): Promise<TestEmailThreadPage> {
-  const res = await restClient.get<TestEmailThreadPage>('/api/v1/email-messages/unmatched', {
+export async function listUnmatchedMail(restClient: RestClient): Promise<EmailThreadPage> {
+  const res = await restClient.get<EmailThreadPage>('/api/v1/email-messages/unmatched', {
     schema: emailThreadPageSchema,
   });
   return res.body;
@@ -61,7 +50,7 @@ export async function listUnmatchedMail(restClient: RestClient): Promise<TestEma
  */
 export async function statusOfUnmatchedMailRequest(restClient: RestClient): Promise<number> {
   try {
-    const res = await restClient.get<TestEmailThreadPage>('/api/v1/email-messages/unmatched', {
+    const res = await restClient.get<EmailThreadPage>('/api/v1/email-messages/unmatched', {
       schema: emailThreadPageSchema,
     });
     return res.status;
@@ -85,8 +74,8 @@ export async function listMailForRecord(
   restClient: RestClient,
   recordType: EmailLinkRecordType,
   recordId: string,
-): Promise<TestEmailThreadPage> {
-  const res = await restClient.get<TestEmailThreadPage>(
+): Promise<EmailThreadPage> {
+  const res = await restClient.get<EmailThreadPage>(
     `/api/v1/email-messages?record_type=${recordType}&record_id=${recordId}`,
     { schema: emailThreadPageSchema },
   );
@@ -102,9 +91,6 @@ export interface EmailsSectionBehaviorContext {
   page: PageFacade;
 }
 
-/** A record type the Emails section is embedded in: any record mail can be filed on. */
-export type EmailRecordType = EmailLinkRecordType;
-
 /** What the detail page's own email requests answered. */
 export interface RecordEmailRequestStatuses {
   /** Status of the page's `GET /api/v1/email-messages?record_type=&record_id=`. */
@@ -116,7 +102,7 @@ export interface RecordEmailRequestStatuses {
 /** How long a doesNotExist probe waits once the page has proved it rendered. */
 const SECTION_ABSENCE_PROBE_MS = 2_000;
 
-const DETAIL_PATH_SEGMENT: Record<EmailRecordType, string> = {
+const DETAIL_PATH_SEGMENT: Record<EmailLinkRecordType, string> = {
   contact: 'contacts',
   lead: 'leads',
   account: 'accounts',
@@ -146,7 +132,7 @@ const READ_ACCESSIBLE_DESCRIPTION = new Function(
  */
 export async function navigateToRecordAndAwaitEmailRequests(
   context: EmailsSectionBehaviorContext,
-  recordType: EmailRecordType,
+  recordType: EmailLinkRecordType,
   recordId: string,
 ): Promise<RecordEmailRequestStatuses> {
   const { page } = context;

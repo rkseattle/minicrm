@@ -60,11 +60,11 @@ export interface MailboxOwner {
   password: string;
 }
 
-/** One sync run's outcome, as the test-only run route reports it. */
-export type SyncOutcome = SyncNowResponse['outcome'];
+/** One successful sync round, as the test-only run route reports it; a failed one throws. */
+export type SyncOutcome = Extract<SyncNowResponse['outcome'], { status: 'synced' }>;
 
 /** Runs a run-now page by page; a seeded mailbox is a few messages, so a handful suffices. */
-const MAX_SYNC_ROUNDS = 10;
+export const MAX_SYNC_ROUNDS = 10;
 
 /** GreenMail's IMAP login takes any password once auth is disabled; one fixed value is enough. */
 const GREENMAIL_PASSWORD = 'any-password-1';
@@ -346,7 +346,8 @@ export async function listEmulatedMail(token: string): Promise<AdminMessage[]> {
  * @param restClient - Authenticated as the mailbox's owner.
  * @param accountId - The mailbox to sync.
  * @returns Every round's outcome, in order; the last one ends the run.
- * @throws When the mailbox still reports more after MAX_SYNC_ROUNDS rounds.
+ * @throws When a round fails, naming its error code, so a test stops at the cause rather
+ *   than at the absent mail; and when the mailbox still reports more after MAX_SYNC_ROUNDS.
  */
 export async function syncMailboxNow(
   restClient: RestClient,
@@ -359,8 +360,14 @@ export async function syncMailboxNow(
       {},
       { schema: syncNowResponseSchema },
     );
-    outcomes.push(res.body.outcome);
-    if (res.body.outcome.status !== 'synced' || !res.body.outcome.has_more) return outcomes;
+    const outcome = res.body.outcome;
+    if (outcome.status === 'failed') {
+      throw new Error(
+        `syncMailboxNow: round ${String(round + 1)} failed with ${outcome.error_code}`,
+      );
+    }
+    outcomes.push(outcome);
+    if (!outcome.has_more) return outcomes;
   }
   throw new Error(`syncMailboxNow: still more to sync after ${String(MAX_SYNC_ROUNDS)} rounds`);
 }

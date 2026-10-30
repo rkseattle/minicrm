@@ -828,7 +828,6 @@ export {
   listUnmatchedMail,
   statusOfUnmatchedMailRequest,
 } from './email-messages.behaviors.js';
-export type { TestEmailThread, TestEmailThreadPage } from './email-messages.behaviors.js';
 export {
   connectEmulatedMailbox,
   connectImapMailboxViaApi,
