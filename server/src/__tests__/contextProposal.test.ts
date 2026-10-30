@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { extractContextProposal } from '../ai/contextProposal.js';
+import logger from '../logger.js';
 
 describe('extractContextProposal', () => {
   it('returns null and original content when no marker is present', () => {
@@ -36,11 +37,17 @@ describe('extractContextProposal', () => {
     expect(result.cleanContent).not.toContain('%%CONTEXT_PROPOSAL%%');
   });
 
-  it('returns null for malformed JSON in the marker', () => {
+  it('returns null for malformed JSON in the marker, and logs it', () => {
+    const warn = vi.spyOn(logger, 'warn');
+    onTestFinished(() => warn.mockRestore());
     const content = 'Some response %%CONTEXT_PROPOSAL%%{not valid json}%%';
     const result = extractContextProposal(content);
     expect(result.proposal).toBeNull();
     expect(result.cleanContent).toBe('Some response');
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(SyntaxError) }),
+      expect.stringContaining('proposal block is not JSON'),
+    );
   });
 
   it('returns null when marker JSON is missing required fields', () => {

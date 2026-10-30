@@ -28,7 +28,7 @@ import { findAccountById } from '../services/accountService.js';
 import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
-import { queueAssignmentNotification } from '../services/notificationService.js';
+import { notifyReassignedOwner } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { sendContactEmail } from '../services/emailService.js';
 import { createActivity } from '../services/activityService.js';
@@ -263,21 +263,12 @@ export async function updateContactHandler(req: Request, res: Response): Promise
 
   // Fire-and-forget: notify the new owner when the contact is reassigned.
   if (contact && parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
-    void (async () => {
-      try {
-        const newOwner = await findUserById(parsed.data.owner_id!);
-        if (newOwner && newOwner.notify_assignments) {
-          queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
-            recordType: 'contact',
-            recordName: `${contact.first_name} ${contact.last_name}`,
-            recordPath: recordPath('contact', contact.id),
-            assignedByName: req.user!.name,
-          });
-        }
-      } catch {
-        // Swallow — notification failure must not affect the response
-      }
-    })();
+    notifyReassignedOwner(parsed.data.owner_id, {
+      recordType: 'contact',
+      recordName: `${contact.first_name} ${contact.last_name}`,
+      recordPath: recordPath('contact', contact.id),
+      assignedByName: req.user!.name,
+    });
   }
 }
 

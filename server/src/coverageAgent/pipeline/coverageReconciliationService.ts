@@ -51,6 +51,7 @@ import {
   updateCoverageUnitConfidence,
 } from '../../services/coverageModelService.js';
 import type { CoverageUnit } from '@minicrm/shared/schemas/coveragePipelineSchema.js';
+import { thrownCode } from '../../utils/errorCode.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -81,11 +82,15 @@ export function computeConfidenceScore(lastSeenAt: Date, now: Date): number {
 }
 
 /** True if filePath exists under sourceRoot on the current filesystem. */
-async function fileExists(sourceRoot: string, filePath: string): Promise<boolean> {
+export async function fileExists(sourceRoot: string, filePath: string): Promise<boolean> {
   try {
     await access(join(sourceRoot, filePath));
     return true;
-  } catch {
+  } catch (err) {
+    // A missing file is the expected answer; anything else is reported, then read as absent.
+    if (thrownCode(err) !== 'ENOENT') {
+      logger.warn({ err, filePath }, 'coverageReconciliation: could not check a source file');
+    }
     return false;
   }
 }
