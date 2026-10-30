@@ -46,6 +46,7 @@ import {
 import { isTransportFailure, readBodyOrNull, startBound } from './transport.js';
 import { graphApiBase, isGraphOriginUrl } from './providerEndpoints.js';
 import { thrownCode } from '../../utils/errorCode.js';
+import { parseStoredCursor } from './storedCursor.js';
 
 // Re-exported from the shared list rather than restated: this value reaches status_detail,
 // which the client renders by translating, so a copy that drifts degrades the mailbox to
@@ -130,16 +131,10 @@ export function parseCursor(cursor: string | null): CursorByFolder {
   const parsed: CursorByFolder = new Map();
   if (!cursor) return parsed;
 
-  let decoded: unknown;
-  try {
-    decoded = JSON.parse(cursor);
-  } catch {
-    return parsed;
-  }
-  if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return parsed;
+  const decoded = parseStoredCursor(cursor, PROVIDER_NAME);
+  if (!decoded) return parsed;
 
-  // Safe: the guard above rejects anything that is not a non-array object.
-  for (const [folder, value] of Object.entries(decoded as Record<string, unknown>)) {
+  for (const [folder, value] of Object.entries(decoded)) {
     if (!isSyncedFolder(folder)) continue;
     if (typeof value !== 'object' || value === null) continue;
 

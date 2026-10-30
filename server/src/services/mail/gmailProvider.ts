@@ -46,6 +46,7 @@ import {
 import { readBodyOrNull, startBound } from './transport.js';
 import { gmailApiBase } from './providerEndpoints.js';
 import { thrownCode } from '../../utils/errorCode.js';
+import { parseStoredCursor } from './storedCursor.js';
 
 /** How this driver names its provider in messages. */
 const PROVIDER_NAME = 'Gmail';
@@ -172,20 +173,10 @@ interface GmailCursor {
 export function parseCursor(cursor: string | null): GmailCursor | null {
   if (!cursor) return null;
 
-  let decoded: unknown;
-  try {
-    decoded = JSON.parse(cursor);
-  } catch {
-    return null;
-  }
-  if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return null;
+  const decoded = parseStoredCursor(cursor, PROVIDER_NAME);
+  if (!decoded) return null;
 
-  const { phase, historyId, pageToken, afterSeconds } = decoded as {
-    phase?: unknown;
-    historyId?: unknown;
-    pageToken?: unknown;
-    afterSeconds?: unknown;
-  };
+  const { phase, historyId, pageToken, afterSeconds } = decoded;
   if (phase !== 'backfill' && phase !== 'incremental') return null;
   if (typeof historyId !== 'string' || historyId === '') return null;
   if (pageToken !== null && typeof pageToken !== 'string') return null;
