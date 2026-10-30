@@ -280,8 +280,27 @@ describe('syncAccountNow', () => {
     expect(row.rows[0]?.parked).toBe(true);
   });
 
-  // The lock is released by ending its transaction, which a returned connection proves; a
-  // destroyed one releases it only once Postgres notices, so the probe below can race it.
+  it('holds no transaction open while the provider is called', async () => {
+    let openLockTransactions = -1;
+    const fake = provider([]);
+    fake.fetchSince = async () => {
+      // The run-now lock query's own text, so no other suite's session is counted.
+      const open = await pool.query<{ count: string }>(
+        `SELECT count(*) FROM pg_stat_activity
+          WHERE datname = current_database() AND state = 'idle in transaction'
+            AND query LIKE '%hashtext($2::uuid::text)%'`,
+      );
+      openLockTransactions = Number(open.rows[0]?.count);
+      throw new Error('stop after the check');
+    };
+
+    await syncAccountNow(accountId, repId, fake);
+
+    expect(openLockTransactions).toBe(0);
+  });
+
+  // A destroyed connection releases the lock only once Postgres notices, so the probe in the
+  // next test could race it; a returned one has unlocked first.
   it('returns every connection the run takes to the pool rather than destroying it', async () => {
     const destroyed: unknown[] = [];
     const connect = pool.connect.bind(pool);
