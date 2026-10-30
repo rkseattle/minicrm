@@ -75,6 +75,7 @@ import { driverFetch } from './mail/transport.js';
 import { createImapProvider } from './mail/imapProvider.js';
 import type { MailProvider, NormalizedMessage, ProviderPage } from './mail/mailProvider.js';
 import type { OAuthProvider } from '@minicrm/shared/schemas/connectedAccountSchema.js';
+import { unlockThenDispose } from '../utils/advisoryLock.js';
 
 /** The org-wide kill switch. Off means no mailbox syncs, whatever a user's own flag says. */
 const EMAIL_SYNC_FLAG = 'email_sync';
@@ -584,13 +585,19 @@ export async function syncAccountNow(
   // A session lock, not a transaction one: the sync makes network calls while it is held,
   // and no transaction may stay open across those.
   const lockClient = await pool.connect();
-  let held = false;
+  let held: boolean;
   try {
     const lock = await lockClient.query<{ locked: boolean }>(
       'SELECT pg_try_advisory_lock(hashtext($1), hashtext($2::uuid::text)) AS locked',
       [SYNC_NOW_LOCK_NAMESPACE, accountId],
     );
     held = lock.rows[0]?.locked === true;
+  } catch (err) {
+    // A connection that failed this query may be broken, so it is destroyed, not returned.
+    lockClient.release(err instanceof Error ? err : true);
+    throw err;
+  }
+  try {
     if (!held) {
       throw Object.assign(new Error('emailSyncService: this mailbox is already syncing'), {
         code: SYNC_IN_PROGRESS,
@@ -601,33 +608,18 @@ export async function syncAccountNow(
     if (!account) return null;
     return await syncClaimedAccount(account, tick, provider);
   } finally {
-    await releaseSyncNowLock(lockClient, accountId, held);
-  }
-}
-
-/**
- * Unlocks the run-now lock and returns its connection, so the lock is free before this does.
- *
- * Destroying the connection alone is not enough: Postgres ends the backend, and the lock
- * with it, only once it notices the closed socket, so a run straight after would still
- * find it held. The connection is destroyed only when the unlock itself fails.
- */
-async function releaseSyncNowLock(
-  lockClient: PoolClient,
-  accountId: string,
-  held: boolean,
-): Promise<void> {
-  try {
-    if (held) {
-      await lockClient.query('SELECT pg_advisory_unlock(hashtext($1), hashtext($2::uuid::text))', [
-        SYNC_NOW_LOCK_NAMESPACE,
-        accountId,
-      ]);
-    }
-    lockClient.release();
-  } catch (err) {
-    logger.warn({ err }, 'emailSyncService: could not release the run-now lock');
-    lockClient.release(err instanceof Error ? err : true);
+    // Unlocked before release: a destroyed connection frees the lock only once Postgres notices.
+    await unlockThenDispose(
+      held
+        ? () =>
+            lockClient.query('SELECT pg_advisory_unlock(hashtext($1), hashtext($2::uuid::text))', [
+              SYNC_NOW_LOCK_NAMESPACE,
+              accountId,
+            ])
+        : null,
+      (failure) => lockClient.release(failure),
+      'emailSyncService run-now',
+    );
   }
 }
 

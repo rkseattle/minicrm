@@ -24,9 +24,13 @@ import {
   claimAccountByIdForSync,
   getAccountAuthForSync,
 } from '../services/connectedAccountService.js';
-import type { PoolClient } from 'pg';
 import pool from '../db.js';
-import { claimAdminResolution, insertParkedMailbox, purgeFixtureUsers } from './testUtils.js';
+import {
+  claimAdminResolution,
+  insertParkedMailbox,
+  purgeFixtureUsers,
+  stubClientQueries,
+} from './testUtils.js';
 import { clearDemoRecords } from './demoFixtures.js';
 import {
   gatherOfflineHygieneSignals,
@@ -492,35 +496,13 @@ describe('seedDemo email threads', () => {
 
 describe('demo producer lock', () => {
   it('frees the lock and its connection even when the unlock fails', async () => {
-    const connect = pool.connect.bind(pool);
-    // Only the promise form is wrapped: pool.query calls connect with a callback internally.
-    // Safe: both overloads are served, the callback one by the real connect unchanged.
-    const spy = vi.spyOn(pool, 'connect').mockImplementation(((callback?: unknown) => {
-      // Safe: typeof proved it a function; connect's callback overload accepts it as is.
-      if (typeof callback === 'function') return connect(callback as Parameters<typeof connect>[0]);
-      return failingUnlock();
-    }) as typeof pool.connect);
-    // A proxy, so the pooled client itself is never patched and goes back to the pool clean.
-    const failingUnlock = async (): Promise<PoolClient> => {
-      const client = await connect();
-      return new Proxy(client, {
-        get(target, property) {
-          if (property === 'query') {
-            return (text: unknown, ...rest: unknown[]): unknown =>
-              typeof text === 'string' && text.includes('pg_advisory_unlock')
-                ? Promise.reject(new Error('connection lost'))
-                : (target.query as (...args: unknown[]) => unknown).call(target, text, ...rest);
-          }
-          const value: unknown = Reflect.get(target, property, target);
-          return typeof value === 'function' ? value.bind(target) : value;
-        },
-      });
-    };
+    const { destroyed } = stubClientQueries(['pg_advisory_unlock'], 'fail');
     try {
       await runPostSeedProducers();
     } finally {
-      spy.mockRestore();
+      vi.restoreAllMocks();
     }
+    expect(destroyed).toEqual([expect.any(Error)]);
 
     const probe = await pool.connect();
     try {

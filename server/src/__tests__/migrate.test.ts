@@ -139,8 +139,8 @@ describe('withMigrationLock', () => {
     try {
       await expect(withMigrationLock(databaseUrl, async () => 'done')).resolves.toBe('done');
       expect(warn).toHaveBeenCalledWith(
-        expect.objectContaining({ err: expect.any(Error) }),
-        expect.stringContaining('could not release the migration lock'),
+        expect.objectContaining({ err: expect.any(Error), lock: 'migrate' }),
+        expect.stringContaining('could not release an advisory lock'),
       );
     } finally {
       spy.mockRestore();

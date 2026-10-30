@@ -23,6 +23,7 @@ import { runner as migrationRunner } from 'node-pg-migrate';
 import pg from 'pg';
 import logger from './logger.js';
 import { thrownCode } from './utils/errorCode.js';
+import { unlockThenDispose } from './utils/advisoryLock.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -106,15 +107,12 @@ export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promis
     // pg_advisory_unlock on a lock this session never held returns false and
     // logs a spurious server-side WARNING on every timeout, which would add
     // noise during an on-call investigation of a stuck migration lock.
-    if (acquired) {
-      // Logged, not thrown: client.end() below ends the session, which drops the lock anyway.
-      await client
-        .query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY])
-        .catch((err: unknown) => {
-          logger.warn({ err }, 'migrate: could not release the migration lock; ending the session');
-        });
-    }
-    await client.end();
+    // A dedicated client is ended either way, which drops the lock even if the unlock failed.
+    await unlockThenDispose(
+      acquired ? () => client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]) : null,
+      () => client.end(),
+      'migrate',
+    );
   }
 }
 

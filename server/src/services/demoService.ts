@@ -30,6 +30,7 @@ import {
 } from './connectedAccountService.js';
 import { snippetOf } from './mail/messageBody.js';
 import { getDealAutoLink } from './settingsService.js';
+import { unlockThenDispose } from '../utils/advisoryLock.js';
 
 /** Number of bcrypt salt rounds — matches userService.ts */
 const BCRYPT_SALT_ROUNDS = 12;
@@ -1762,13 +1763,11 @@ async function getAdminUserId(client: pg.PoolClient): Promise<string> {
  * @param client - The connection that took the lock.
  */
 async function releaseProducerLock(client: pg.PoolClient): Promise<void> {
-  try {
-    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]);
-    client.release();
-  } catch (err) {
-    logger.warn({ err }, 'demoService: could not release the demo producer lock');
-    client.release(err instanceof Error ? err : true);
-  }
+  await unlockThenDispose(
+    () => client.query('SELECT pg_advisory_unlock(hashtext($1))', [DEMO_PRODUCER_LOCK]),
+    (failure) => client.release(failure),
+    'demoService producer',
+  );
 }
 
 /**
