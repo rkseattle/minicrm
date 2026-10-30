@@ -14,9 +14,11 @@ import { vi } from 'vitest';
 import {
   sendOverdueDigests,
   queueAssignmentNotification,
+  notifyReassignedOwner,
 } from '../services/notificationService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
+import logger from '../logger.js';
 import { utcDayOffset } from '../utils/utcDate.js';
 import { purgeFixtureUsers } from './testUtils.js';
 
@@ -280,6 +282,28 @@ describe('sendOverdueDigests outer error handling', () => {
 });
 
 // ── queueAssignmentNotification ───────────────────────────────────────────────
+
+describe('notifyReassignedOwner', () => {
+  it('logs a failed owner lookup rather than throwing into the request', async () => {
+    const warn = vi.spyOn(logger, 'warn');
+    onTestFinished(() => warn.mockRestore());
+
+    // Not a UUID, so the owner lookup itself fails, as an outage would.
+    notifyReassignedOwner('not-a-uuid', {
+      recordType: 'deal',
+      recordName: 'Renewal',
+      recordPath: '/deals/x',
+      assignedByName: 'Admin',
+    });
+
+    await vi.waitFor(() => {
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({ newOwnerId: 'not-a-uuid', recordType: 'deal' }),
+        'notificationService: reassignment notification failed',
+      );
+    });
+  });
+});
 
 describe('queueAssignmentNotification', () => {
   it('does not throw when called with valid arguments', () => {

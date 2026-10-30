@@ -34,7 +34,7 @@ import {
   PAGINATION_MAX_LIMIT,
 } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
-import { queueAssignmentNotification } from '../services/notificationService.js';
+import { notifyReassignedOwner } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import { listNotes } from '../services/noteService.js';
@@ -285,21 +285,12 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
 
   // Fire-and-forget: notify the new owner when the account is reassigned.
   if (account && parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
-    void (async () => {
-      try {
-        const newOwner = await findUserById(parsed.data.owner_id!);
-        if (newOwner && newOwner.notify_assignments) {
-          queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
-            recordType: 'account',
-            recordName: account.name,
-            recordPath: recordPath('account', account.id),
-            assignedByName: req.user!.name,
-          });
-        }
-      } catch {
-        // Swallow — notification failure must not affect the response
-      }
-    })();
+    notifyReassignedOwner(parsed.data.owner_id, {
+      recordType: 'account',
+      recordName: account.name,
+      recordPath: recordPath('account', account.id),
+      assignedByName: req.user!.name,
+    });
   }
 }
 

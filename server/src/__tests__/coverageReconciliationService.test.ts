@@ -11,13 +11,15 @@
 
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
+import { chmod, mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import logger from '../logger.js';
 import {
   computeConfidenceScore,
   reconcileCoverageUnits,
+  fileExists,
 } from '../coverageAgent/pipeline/coverageReconciliationService.js';
 import {
   upsertCoverageUnits,
@@ -220,5 +222,37 @@ describe('reconcileCoverageUnits', () => {
       unitsPruned: 0,
       unitsRelocated: 0,
     });
+  });
+});
+
+describe('fileExists', () => {
+  let root: string;
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'file-exists-'));
+  });
+  afterEach(async () => {
+    await chmod(join(root, 'locked'), 0o755).catch(() => undefined);
+    await rm(root, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  it('answers false for a missing file without logging it, since that is the expected case', async () => {
+    const warn = vi.spyOn(logger, 'warn');
+    expect(await fileExists(root, 'absent.ts')).toBe(false);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('logs any other failure before answering false', async () => {
+    await mkdir(join(root, 'locked'));
+    await writeFile(join(root, 'locked', 'a.ts'), '');
+    await chmod(join(root, 'locked'), 0o000);
+    const warn = vi.spyOn(logger, 'warn');
+
+    expect(await fileExists(root, join('locked', 'a.ts'))).toBe(false);
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ filePath: join('locked', 'a.ts') }),
+      'coverageReconciliation: could not check a source file',
+    );
   });
 });

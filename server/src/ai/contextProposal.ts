@@ -14,6 +14,7 @@
  */
 
 import type { AiContextProposal } from '@minicrm/shared/schemas/aiContextSchema.js';
+import logger from '../logger.js';
 
 // Non-global: used with exec() to capture the first marker's JSON payload.
 const PROPOSAL_MATCH_REGEX = /%%CONTEXT_PROPOSAL%%(\{.*?\})%%/s;
@@ -60,8 +61,9 @@ export function extractContextProposal(content: string): ContextProposalExtracti
     ) {
       proposal = parsed as AiContextProposal;
     }
-  } catch {
-    // Malformed JSON — treat as absent.
+  } catch (err) {
+    // Treated as absent, but logged: a model emitting broken proposals is worth seeing.
+    logger.warn({ err }, 'contextProposal: proposal block is not JSON; ignoring it');
   }
 
   return { cleanContent, proposal };

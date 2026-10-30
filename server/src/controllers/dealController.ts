@@ -24,7 +24,7 @@ import { findAccountById } from '../services/accountService.js';
 import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
-import { queueAssignmentNotification } from '../services/notificationService.js';
+import { notifyReassignedOwner } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import { listNotes } from '../services/noteService.js';
@@ -269,21 +269,12 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
 
   // Fire-and-forget: notify the new owner when the deal is reassigned.
   if (parsed.data.owner_id !== undefined && parsed.data.owner_id !== existing.owner_id) {
-    void (async () => {
-      try {
-        const newOwner = await findUserById(parsed.data.owner_id!);
-        if (newOwner && newOwner.notify_assignments) {
-          queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
-            recordType: 'deal',
-            recordName: deal.name,
-            recordPath: recordPath('deal', deal.id),
-            assignedByName: req.user!.name,
-          });
-        }
-      } catch {
-        // Swallow — notification failure must not affect the response
-      }
-    })();
+    notifyReassignedOwner(parsed.data.owner_id, {
+      recordType: 'deal',
+      recordName: deal.name,
+      recordPath: recordPath('deal', deal.id),
+      assignedByName: req.user!.name,
+    });
   }
 }
 
