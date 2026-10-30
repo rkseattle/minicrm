@@ -107,7 +107,12 @@ export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promis
     // logs a spurious server-side WARNING on every timeout, which would add
     // noise during an on-call investigation of a stuck migration lock.
     if (acquired) {
-      await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]).catch(() => {});
+      // Logged, not thrown: client.end() below ends the session, which drops the lock anyway.
+      await client
+        .query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY])
+        .catch((err: unknown) => {
+          logger.warn({ err }, 'migrate: could not release the migration lock; ending the session');
+        });
     }
     await client.end();
   }

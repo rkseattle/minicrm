@@ -14,6 +14,7 @@ import { randomUUID } from 'crypto';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import pool from '../db.js';
+import logger from '../logger.js';
 import {
   withMigrationLock,
   assertBaselineCoverageMatches,
@@ -119,6 +120,39 @@ describe('withMigrationLock', () => {
     });
 
     expect(events).toEqual(['ran-after-failure']);
+  });
+
+  it('logs an unlock that fails rather than dropping it, and still ends the session', async () => {
+    const query = pg.Client.prototype.query;
+    // Safe: forwards every overload unchanged except the one statement it fails.
+    const spy = vi.spyOn(pg.Client.prototype, 'query').mockImplementation(function (
+      this: pg.Client,
+      text: unknown,
+      ...rest: unknown[]
+    ) {
+      if (typeof text === 'string' && text.includes('pg_advisory_unlock')) {
+        return Promise.reject(new Error('connection lost'));
+      }
+      return (query as (...args: unknown[]) => unknown).call(this, text, ...rest);
+    } as typeof query);
+    const warn = vi.spyOn(logger, 'warn');
+    try {
+      await expect(withMigrationLock(databaseUrl, async () => 'done')).resolves.toBe('done');
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        expect.stringContaining('could not release the migration lock'),
+      );
+    } finally {
+      spy.mockRestore();
+      warn.mockRestore();
+    }
+
+    // Ending the session dropped the lock the failed unlock left, so the next caller gets it.
+    const events: string[] = [];
+    await withMigrationLock(databaseUrl, async () => {
+      events.push('acquired');
+    });
+    expect(events).toEqual(['acquired']);
   });
 
   it('does not record a pgmigrations row without its schema change when two real migration runs race', async () => {
