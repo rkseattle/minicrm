@@ -16,6 +16,7 @@ import type { PageFacade } from '@framework/fixtures/index.js';
 import { ProfilePage } from '@pages/minicrm/ProfilePage.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 import type { NotificationPreferenceKey } from '@pages/minicrm/ProfilePage.js';
+import { NO_RESPONSE_TIMEOUT, awaitApiResponse } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -290,11 +291,12 @@ export async function toggleAdminEmailNotifications(
   // Register the response listener before clicking so the PATCH is always
   // captured — avoids the race where the mutation fires before waitForResponse
   // is registered if the toggle click resolves synchronously.
-  const patchDone = context.page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/settings/email-notifications') &&
-      response.request().method() === 'PATCH' &&
-      response.status() === 200,
+  const patchDone = awaitApiResponse(
+    context.page,
+    'PATCH',
+    '/api/v1/settings/email-notifications',
+    NO_RESPONSE_TIMEOUT,
+    200,
   );
   await adminSettings.toggleEmailNotifications();
   await patchDone;

@@ -10,7 +10,11 @@
  */
 
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
-import { gotoAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  gotoAndSettle,
+  FIRST_INTERACTION_TIMEOUT_MS,
+  awaitApiResponse,
+} from '@apps/minicrm/helpers.js';
 import type { PageFacadeShape } from '@framework/fixtures/heal-methods.js';
 import { StrategyExhaustedError } from '@framework/healing/index.js';
 
@@ -120,9 +124,12 @@ export async function navigateToContactDetailPage(
   // Register before goto so a fast server response isn't missed.
   // networkidle can resolve before React Query renders the contact data;
   // waiting for the GET response ensures data is in the cache before callers assert.
-  const contactLoaded = context.page.waitForResponse(
-    (res) => res.url().includes(`/api/v1/contacts/${contactId}`) && res.status() === 200,
-    { timeout: 15_000 },
+  const contactLoaded = awaitApiResponse(
+    context.page,
+    'GET',
+    `/api/v1/contacts/${contactId}`,
+    FIRST_INTERACTION_TIMEOUT_MS,
+    200,
   );
   await gotoAndSettle(context.page, `/contacts/${contactId}`);
   await contactLoaded;

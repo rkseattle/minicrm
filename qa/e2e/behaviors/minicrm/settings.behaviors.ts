@@ -257,11 +257,12 @@ export async function clickMoveUpAndWaitForReorder(
 ): Promise<StageReorderResult> {
   const moveUpButton = await new AdminSettingsPage(context).pipelineStageMoveUpLocator(stageId);
   const [reorderResp] = await Promise.all([
-    context.page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/pipeline-stages/reorder') &&
-        resp.request().method() === 'PUT' &&
-        resp.status() === 200,
+    awaitApiResponse(
+      context.page,
+      'PUT',
+      '/api/v1/settings/pipeline-stages/reorder',
+      NO_RESPONSE_TIMEOUT,
+      200,
     ),
     moveUpButton.click(),
   ]);
@@ -279,11 +280,12 @@ export async function clickMoveDownAndWaitForReorder(
 ): Promise<StageReorderResult> {
   const moveDownButton = await new AdminSettingsPage(context).pipelineStageMoveDownLocator(stageId);
   const [reorderResp] = await Promise.all([
-    context.page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/pipeline-stages/reorder') &&
-        resp.request().method() === 'PUT' &&
-        resp.status() === 200,
+    awaitApiResponse(
+      context.page,
+      'PUT',
+      '/api/v1/settings/pipeline-stages/reorder',
+      NO_RESPONSE_TIMEOUT,
+      200,
     ),
     moveDownButton.click(),
   ]);
@@ -1204,9 +1206,12 @@ export async function clickAiToggleConfirmButton(
 export async function clickAiToggleConfirmAndWait(
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
-  const toggleDone = context.page.waitForResponse(
-    (res) => res.url().includes('/admin/ai/master-toggle') && res.status() === 200,
-    { timeout: 15_000 },
+  const toggleDone = awaitApiResponse(
+    context.page,
+    'PATCH',
+    '/api/v1/admin/ai/master-toggle',
+    FIRST_INTERACTION_TIMEOUT_MS,
+    200,
   );
   await (await new AdminSettingsPage(context).aiToggleConfirmButtonLocator()).click();
   await toggleDone;
@@ -1941,9 +1946,12 @@ export async function clickAiDpaCheckbox(context: AdminSettingsBehaviorContext):
  * cache briefly re-renders dpa_acknowledged: false during the refetch window.
  */
 export async function acknowledgeAiDpa(context: AdminSettingsBehaviorContext): Promise<void> {
-  const dpaPostDone = context.page.waitForResponse(
-    (res) => res.url().includes('/admin/ai/dpa-acknowledgment') && res.status() === 200,
-    { timeout: 15_000 },
+  const dpaPostDone = awaitApiResponse(
+    context.page,
+    'POST',
+    '/api/v1/admin/ai/dpa-acknowledgment',
+    FIRST_INTERACTION_TIMEOUT_MS,
+    200,
   );
   await (await new AdminSettingsPage(context).aiDpaCheckboxLocator()).click();
   await dpaPostDone;
