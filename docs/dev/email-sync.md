@@ -919,7 +919,9 @@ The E2E specs sync real mailboxes through the running server, against two fakes:
 
 - **GreenMail** for IMAP. With `-Dgreenmail.auth.disabled` any password logs in, and
   delivery to an unknown address creates that mailbox, so each spec seeds a message to a
-  fresh address over SMTP before connecting it. The server dials it by Compose service
+  fresh address over SMTP before connecting it. SMTP dates every message now, so mail
+  older than a backfill window goes in by IMAP `APPEND` with an internal date
+  (`ImapAppendClient`), the date `SEARCH SINCE` reads. The server dials it by Compose service
   name (`greenmail`) locally and by `localhost` in CI, which is why both names appear in
   `SSRF_ALLOWED_PRIVATE_HOSTS` across the two environments.
 - **The mail provider emulator** (`qa/e2e/framework/fakes/mail-provider-emulator.ts`) for

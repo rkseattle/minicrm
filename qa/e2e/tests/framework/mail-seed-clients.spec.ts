@@ -1,7 +1,7 @@
 /**
  * Unit tests for the mail seeding clients: MailEmulatorClient against a real emulator on an
- * ephemeral port, and SmtpSeedClient against a minimal SMTP responder that records what it
- * is sent. No test mail server or app is involved.
+ * ephemeral port, and SmtpSeedClient and ImapAppendClient against minimal SMTP and IMAP
+ * responders that record what they are sent. No test mail server or app is involved.
  */
 
 import { test, expect } from '@framework/fixtures';
@@ -10,6 +10,7 @@ import { createServer as createHttpServer, type Server as HttpServer } from 'nod
 import { createMailProviderEmulator } from '@framework/fakes/mail-provider-emulator';
 import { MailEmulatorClient, MailEmulatorError } from '@framework/clients/mail-emulator-client';
 import { SmtpSeedClient } from '@framework/clients/smtp-seed-client';
+import { ImapAppendClient } from '@framework/clients/imap-append-client';
 
 const TOKEN = 'seed-client-token';
 const ADDRESS = 'seed@example.test';
@@ -226,5 +227,93 @@ test.describe('MailEmulatorClient against a misbehaving server', () => {
   test('rethrows a delete failure other than not-found', async () => {
     answer = { status: 500, body: '{"error":"boom"}' };
     await expect(client.deleteMailbox(TOKEN)).rejects.toMatchObject({ status: 500 });
+  });
+});
+
+test.describe('ImapAppendClient', () => {
+  let imap: NetServer;
+  const appends: { user: string; command: string; literal: string }[] = [];
+  /** A login under this name has its APPEND refused, as a server over quota would. */
+  const REFUSED_USER = 'full@example.test';
+
+  /** Speaks just enough IMAP4rev1 to log in, take one APPEND literal, and log out. */
+  function respond(socket: Socket): void {
+    let buffered = Buffer.alloc(0);
+    let user = '';
+    let pending: { tag: string; command: string; size: number } | null = null;
+    socket.write('* OK [CAPABILITY IMAP4rev1] test ready\r\n');
+    socket.on('data', (chunk: Buffer) => {
+      buffered = Buffer.concat([buffered, chunk]);
+      for (;;) {
+        if (pending) {
+          // The literal, then the CRLF that ends the APPEND command line.
+          if (buffered.length < pending.size + 2) return;
+          const literal = buffered.subarray(0, pending.size).toString('utf8');
+          buffered = buffered.subarray(pending.size + 2);
+          appends.push({ user, command: pending.command, literal });
+          socket.write(
+            user === REFUSED_USER
+              ? `${pending.tag} NO [OVERQUOTA] mailbox full\r\n`
+              : `${pending.tag} OK [APPENDUID 1 1] appended\r\n`,
+          );
+          pending = null;
+          continue;
+        }
+        const newline = buffered.indexOf('\r\n');
+        if (newline === -1) return;
+        const line = buffered.subarray(0, newline).toString('utf8');
+        buffered = buffered.subarray(newline + 2);
+        const [tag = '*', verb = ''] = line.split(' ');
+        const literalSize = /\{(\d+)\}$/.exec(line);
+        if (/^APPEND$/i.test(verb) && literalSize) {
+          pending = { tag, command: line, size: Number(literalSize[1]) };
+          socket.write('+ go ahead\r\n');
+        } else if (/^LOGIN$/i.test(verb)) {
+          user = (line.split(' ')[2] ?? '').replace(/"/g, '');
+          socket.write(`${tag} OK logged in\r\n`);
+        } else if (/^CAPABILITY$/i.test(verb)) {
+          socket.write(`* CAPABILITY IMAP4rev1\r\n${tag} OK done\r\n`);
+        } else if (/^LOGOUT$/i.test(verb)) {
+          socket.end(`* BYE\r\n${tag} OK bye\r\n`);
+          return;
+        } else {
+          socket.write(`${tag} OK done\r\n`);
+        }
+      }
+    });
+  }
+
+  function client(): ImapAppendClient {
+    return new ImapAppendClient({
+      host: '127.0.0.1',
+      port: portOf(imap),
+      password: 'any-password-1',
+    });
+  }
+
+  test.beforeAll(async () => {
+    imap = createServer(respond);
+    await new Promise<void>((resolve) => imap.listen(0, '127.0.0.1', resolve));
+  });
+
+  test.afterAll(async () => {
+    await new Promise<void>((resolve) => imap.close(() => resolve()));
+  });
+
+  test('appends the message to INBOX as the mailbox user, carrying the internal date', async () => {
+    const raw = 'Subject: Dated\r\n\r\nOld news.\r\n';
+    await client().append(ADDRESS, raw, new Date('2024-01-15T12:00:00Z'));
+
+    const sent = appends.at(-1);
+    expect(sent?.user).toBe(ADDRESS);
+    expect(sent?.command).toMatch(/ APPEND "?INBOX"? /i);
+    expect(sent?.command).toContain('"15-Jan-2024 ');
+    expect(sent?.literal).toBe(raw);
+  });
+
+  test('rejects when the server refuses the append', async () => {
+    await expect(
+      client().append(REFUSED_USER, 'Subject: x\r\n\r\nx\r\n', new Date()),
+    ).rejects.toThrow();
   });
 });

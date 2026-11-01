@@ -41,9 +41,12 @@ import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import { awaitApiResponse, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 import {
   GREENMAIL_IMAP_PORT,
+  GREENMAIL_PASSWORD,
   IMAP_HOST_FOR_SERVER,
+  greenMailImap,
   greenMailSmtp,
   mailEmulator,
+  rfc822Message,
 } from '@apps/minicrm/mail-fakes.js';
 import { loginAs, loginAsAdmin } from './auth.behaviors.js';
 import { updateFeatureFlag } from './feature-flags.behaviors.js';
@@ -65,9 +68,6 @@ export type SyncOutcome = Extract<SyncNowResponse['outcome'], { status: 'synced'
 
 /** Runs a run-now page by page; a seeded mailbox is a few messages, so a handful suffices. */
 export const MAX_SYNC_ROUNDS = 10;
-
-/** GreenMail's IMAP login takes any password once auth is disabled; one fixed value is enough. */
-const GREENMAIL_PASSWORD = 'any-password-1';
 
 /** The flag every email sync route sits behind. */
 export const EMAIL_SYNC_FLAG = 'email_sync' satisfies FeatureFlagKey;
@@ -312,6 +312,18 @@ export async function deliverToImapMailbox(mail: SeedMail): Promise<string> {
   } finally {
     smtp.close();
   }
+}
+
+/**
+ * Stores one message in a GreenMail mailbox as though it arrived at `receivedAt`.
+ *
+ * SMTP delivery is always dated now; this is how a test seeds mail older than a sync window.
+ *
+ * @param mail - The message; `to` is the mailbox, which must already exist.
+ * @param receivedAt - The internal date GreenMail records, which IMAP SEARCH SINCE reads.
+ */
+export async function appendDatedToImapMailbox(mail: SeedMail, receivedAt: Date): Promise<void> {
+  await greenMailImap().append(mail.to, await rfc822Message(mail), receivedAt);
 }
 
 /**
