@@ -105,13 +105,20 @@ export function createImapClient(
 /**
  * Ends a session, guaranteeing the socket is released.
  *
- * logout() negotiates a clean IMAP BYE and can itself hang or throw on a socket that is
- * already gone; close() is unconditional and is what actually frees the fd.
+ * - Not usable (never connected, or already dropped): close() only; there is no session.
+ * - Usable: logout() sends BYE, and imapflow tears the socket down once the server answers.
+ * - Logout fails: the error is logged at warn, then close() frees the socket.
  */
 export async function closeImapClient(client: ImapFlow): Promise<void> {
+  // An unusable client has no live session to say BYE to; logout would only reject.
+  if (!client.usable) {
+    client.close();
+    return;
+  }
   try {
     await client.logout();
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, 'imapConnectionService: logout failed; closing the socket');
     client.close();
   }
 }

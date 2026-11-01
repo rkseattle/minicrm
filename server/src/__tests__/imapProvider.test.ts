@@ -132,6 +132,8 @@ function makeFakeClient(mailboxes: FakeMailbox[]): {
   let open: FakeMailbox | undefined;
 
   const client = {
+    // A connected session, as imapflow reports one once connect() resolves.
+    usable: true,
     list: async () => {
       // imapflow reports `name` as the last path segment, not the whole path. A fake that
       // conflates them hides every defect in code that reads one and means the other.
