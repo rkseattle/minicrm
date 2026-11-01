@@ -13,6 +13,7 @@
 
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
+import { awaitResponse, NO_RESPONSE_TIMEOUT } from '@framework/network/await-response.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context accepted by this Page Object
@@ -268,11 +269,11 @@ export class AccountsPage {
     // Register before fill so we never miss the response even if the debounced
     // search fires before the next await. The predicate requires the search
     // query param to be present so the initial page-load GET is not matched.
-    const responsePromise = this.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/accounts') &&
-        response.url().includes('search=') &&
-        response.request().method() === 'GET',
+    const responsePromise = awaitResponse(
+      this.page,
+      'GET',
+      (url) => url.href.includes('/api/v1/accounts') && url.href.includes('search='),
+      NO_RESPONSE_TIMEOUT,
     );
     await this.page.fill(
       term,

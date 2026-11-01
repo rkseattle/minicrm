@@ -13,6 +13,7 @@
 
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
+import { awaitResponse, NO_RESPONSE_TIMEOUT } from '@framework/network/await-response.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context accepted by this Page Object
@@ -257,11 +258,11 @@ export class ContactsPage {
     // Register before fill so we never miss the response even if the debounced
     // search fires before the next await. The predicate requires the search
     // query param to be present so the initial page-load GET is not matched.
-    const responsePromise = this.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/contacts') &&
-        response.url().includes('search=') &&
-        response.request().method() === 'GET',
+    const responsePromise = awaitResponse(
+      this.page,
+      'GET',
+      (url) => url.href.includes('/api/v1/contacts') && url.href.includes('search='),
+      NO_RESPONSE_TIMEOUT,
     );
     await this.page.fill(
       term,
@@ -527,9 +528,11 @@ export class ContactsPage {
    */
   async confirmBulkReassign(): Promise<void> {
     // Register before click so the PATCH response is never missed.
-    const reassignDone = this.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/contacts/bulk') && response.request().method() === 'PATCH',
+    const reassignDone = awaitResponse(
+      this.page,
+      'PATCH',
+      (url) => url.href.includes('/api/v1/contacts/bulk'),
+      NO_RESPONSE_TIMEOUT,
     );
     await this.page.click(
       [
@@ -593,10 +596,11 @@ export class ContactsPage {
     await el.waitFor({ state: 'visible', timeout: 8_000 });
     // Register the response listener before clicking so the DELETE is always
     // captured and fully awaited before control returns.
-    const deleteDone = this.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/contacts/bulk') &&
-        response.request().method() === 'DELETE',
+    const deleteDone = awaitResponse(
+      this.page,
+      'DELETE',
+      (url) => url.href.includes('/api/v1/contacts/bulk'),
+      NO_RESPONSE_TIMEOUT,
     );
     await el.click({ force });
     await deleteDone;

@@ -12,6 +12,7 @@
 
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
+import { awaitResponse, NO_RESPONSE_TIMEOUT } from '@framework/network/await-response.js';
 
 /** Subset of Playwright fixtures required by TagInputWidget. */
 export interface TagInputWidgetContext {
@@ -80,10 +81,12 @@ export class TagInputWidget {
     //
     // The entity segment is deliberately loose: this widget serves contacts,
     // accounts and deals, whose endpoints differ only in that segment.
-    const attachDone = this.page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        new RegExp(`/api/v1/(contacts|accounts|deals)/${this.entityId}/tags$`).test(response.url()),
+    const attachDone = awaitResponse(
+      this.page,
+      'POST',
+      (url) =>
+        new RegExp(`/api/v1/(contacts|accounts|deals)/${this.entityId}/tags$`).test(url.href),
+      NO_RESPONSE_TIMEOUT,
     );
     await this.page.fill(
       tagName,
@@ -126,12 +129,14 @@ export class TagInputWidget {
    */
   async removeBadge(tagId: string): Promise<void> {
     // Registered before the click for the same reason as typeAndConfirm.
-    const detachDone = this.page.waitForResponse(
-      (response) =>
-        response.request().method() === 'DELETE' &&
+    const detachDone = awaitResponse(
+      this.page,
+      'DELETE',
+      (url) =>
         new RegExp(`/api/v1/(contacts|accounts|deals)/${this.entityId}/tags/${tagId}$`).test(
-          response.url(),
+          url.href,
         ),
+      NO_RESPONSE_TIMEOUT,
     );
     await this.page.click(
       [
