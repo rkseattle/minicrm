@@ -56,10 +56,12 @@ test.beforeEach(async ({ restClient, testData, page }) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns the first and last day of the current calendar month as YYYY-MM-DD strings.
+ * Returns the first and last day of `now`'s calendar month as YYYY-MM-DD strings.
+ *
+ * A test reads the clock once and passes the same `now` to every helper, so a run that
+ * crosses midnight at month-end cannot put "this month" and "last month" in one month.
  */
-function currentMonthDateRange(): { start: string; end: string } {
-  const now = new Date();
+function currentMonthDateRange(now: Date): { start: string; end: string } {
   const year = now.getFullYear();
   const month = now.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -70,10 +72,9 @@ function currentMonthDateRange(): { start: string; end: string } {
 }
 
 /**
- * Returns the first day of the previous calendar month as a YYYY-MM-DD string.
+ * Returns the first day of the month before `now`'s as a YYYY-MM-DD string.
  */
-function previousMonthFirstDay(): string {
-  const now = new Date();
+function previousMonthFirstDay(now: Date): string {
   const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
@@ -106,7 +107,7 @@ test(
   'F10-WL1: Win/Loss report shows correct won count, lost count, and win rate for seeded deals',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    const { start, end } = currentMonthDateRange();
+    const { start, end } = currentMonthDateRange(new Date());
 
     const account = await createTestAccount(testData, restClient, {
       name: `WL1-Acct ${test.info().title}`,
@@ -159,8 +160,9 @@ test(
   'F10-WL2: date filter excludes a deal closed in the previous month',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    const { start: monthStart, end: monthEnd } = currentMonthDateRange();
-    const prevMonthDate = previousMonthFirstDay();
+    const now = new Date();
+    const { start: monthStart, end: monthEnd } = currentMonthDateRange(now);
+    const prevMonthDate = previousMonthFirstDay(now);
 
     const account = await createTestAccount(testData, restClient, {
       name: `WL2-Acct ${test.info().title}`,
@@ -217,7 +219,7 @@ test(
   'F10-WL3: API endpoint returns wonCount and lostCount matching the UI for seeded deals',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    const { start, end } = currentMonthDateRange();
+    const { start, end } = currentMonthDateRange(new Date());
 
     const account = await createTestAccount(testData, restClient, {
       name: `WL3-Acct ${test.info().title}`,
@@ -280,7 +282,7 @@ test(
   'F10-WL4: Win/Loss report stat cards are visible on mobile viewport',
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
-    const { start, end } = currentMonthDateRange();
+    const { start, end } = currentMonthDateRange(new Date());
 
     const account = await createTestAccount(testData, restClient, {
       name: `WL4-Acct ${test.info().title}`,
