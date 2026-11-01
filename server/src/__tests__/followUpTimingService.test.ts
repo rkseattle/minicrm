@@ -20,23 +20,13 @@ import { purgeFixtureUsers } from './testUtils.js';
 
 const FILE_PREFIX = 'followup-timing-svc';
 
-/**
- * Returns the current UTC-offset (in whole hours) for `timezone`, e.g. -8 for
- * America/Los_Angeles in PST or -7 in PDT. Used so timezone-projection test
- * expectations reflect whatever DST rules are in effect when the suite runs,
- * rather than hardcoding an offset that only holds for part of the year —
- * projectToTimezone() itself uses the current week's offset, so tests must match that same "now-relative" behavior.
- */
-function currentUtcOffsetHours(timezone: string): number {
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    timeZoneName: 'shortOffset',
-  }).formatToParts(now);
-  const offsetStr = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+0';
-  const match = /GMT([+-]\d+)/.exec(offsetStr);
-  return match ? parseInt(match[1], 10) : 0;
-}
+// Projection uses the offset of the week it is read in, so each Los Angeles test
+// passes the instant it reads at rather than depending on the season it runs in.
+
+/** A Wednesday well inside Pacific Standard Time, when Los Angeles is UTC-8. */
+const PST_WEEK = new Date('2026-01-14T12:00:00Z');
+/** A Wednesday well inside Pacific Daylight Time, when Los Angeles is UTC-7. */
+const PDT_WEEK = new Date('2026-07-15T12:00:00Z');
 
 let ownerId: string;
 
@@ -189,14 +179,11 @@ describe('getFollowUpTiming', () => {
       );
     }
 
-    const suggestion = await getFollowUpTiming(contact.id);
+    const suggestion = await getFollowUpTiming(contact.id, PST_WEEK);
     expect(suggestion).not.toBeNull();
     expect(suggestion!.timezone).toBe('America/Los_Angeles');
-    // projectToTimezone uses the current week's DST offset (see the history follow-up
-    // fix), not the offset in effect on the fixture dates above — so the expected
-    // hour must be computed from today's offset, not hardcoded to January's PST.
-    const expectedHour = (17 + currentUtcOffsetHours('America/Los_Angeles') + 24) % 24;
-    expect(suggestion!.hour_start).toBe(expectedHour);
+    // 17:00 UTC in PST (UTC-8) is 09:00 local.
+    expect(suggestion!.hour_start).toBe(9);
   });
 
   it('projects an hour_end_utc of 24 (end-of-day) into the display timezone instead of returning it raw', async () => {
@@ -220,28 +207,18 @@ describe('getFollowUpTiming', () => {
       );
     }
 
-    const suggestion = await getFollowUpTiming(contact.id);
+    const suggestion = await getFollowUpTiming(contact.id, PST_WEEK);
     expect(suggestion).not.toBeNull();
-    // projectToTimezone uses the current week's DST offset (see the history follow-up
-    // fix), so expected hours are computed from today's offset rather than hardcoded
-    // to January's PST. hour_end_utc=24 (Wed 00:00 UTC) projects to hour_start + 1 —
+    // 23:00 UTC in PST is 15:00; hour_end_utc=24 (Wed 00:00 UTC) projects to 16:00 —
     // a coherent 1-hour range, not "3pm-12pm".
-    const offset = currentUtcOffsetHours('America/Los_Angeles');
-    const expectedStart = (23 + offset + 24) % 24;
-    expect(suggestion!.hour_start).toBe(expectedStart);
-    expect(suggestion!.hour_end).toBe((expectedStart + 1) % 24);
+    expect(suggestion!.hour_start).toBe(15);
+    expect(suggestion!.hour_end).toBe(16);
     expect(suggestion!.hour_end).toBeGreaterThan(suggestion!.hour_start);
   });
 
-  it('projects using the currently-observed DST offset, not a fixed historical date', async () => {
-    // Regression test: projectToTimezone previously anchored every projection to
-    // January 1970, so a summer bucket in a DST-observing zone was projected using
-    // winter's offset instead of summer's. America/Los_Angeles is UTC-7 in July
-    // (PDT) but was UTC-8 in January 1970 (no DST that winter) — a 17:00 UTC bucket
-    // must project to 10:00 local (PDT), not 09:00 (the stale 1970 offset).
-    await setDefaultTimezone('America/Los_Angeles');
+  async function contactWithJulyCalls(label: string): Promise<string> {
     const contact = await createContact({
-      email: `${FILE_PREFIX}-dst-contact-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
+      email: `${FILE_PREFIX}-${label}-contact-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
       first_name: 'DST',
       last_name: 'Contact',
       owner_id: ownerId,
@@ -255,11 +232,30 @@ describe('getFollowUpTiming', () => {
         [contact.id, ownerId, date],
       );
     }
+    return contact.id;
+  }
 
-    const suggestion = await getFollowUpTiming(contact.id);
+  it('projects using the currently-observed DST offset, not a fixed historical date', async () => {
+    // Regression test: projectToTimezone previously anchored every projection to
+    // January 1970, so a summer bucket in a DST-observing zone was projected using
+    // winter's offset instead of summer's. America/Los_Angeles is UTC-7 in July
+    // (PDT) but was UTC-8 in January 1970 (no DST that winter) — a 17:00 UTC bucket
+    // must project to 10:00 local (PDT), not 09:00 (the stale 1970 offset).
+    await setDefaultTimezone('America/Los_Angeles');
+
+    const suggestion = await getFollowUpTiming(await contactWithJulyCalls('dst'), PDT_WEEK);
     expect(suggestion).not.toBeNull();
-    // 17:00 UTC in July (PDT, UTC-7) is 10:00 local.
     expect(suggestion!.hour_start).toBe(10);
+  });
+
+  it('projects summer activity with the winter offset when read in winter', async () => {
+    // The offset follows the week the suggestion is read in, not the activity dates.
+    await setDefaultTimezone('America/Los_Angeles');
+
+    const suggestion = await getFollowUpTiming(await contactWithJulyCalls('dst-winter'), PST_WEEK);
+    expect(suggestion).not.toBeNull();
+    // 17:00 UTC in PST (UTC-8) is 09:00 local.
+    expect(suggestion!.hour_start).toBe(9);
   });
 
   it('falls back to UTC when the stored default timezone is not a valid IANA identifier', async () => {
