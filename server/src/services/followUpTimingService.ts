@@ -163,18 +163,18 @@ function resolveValidTimezone(timezone: string): string {
  * stored UTC day, so the displayed day is always locally correct.
  *
  * `timezone` must already be validated (see resolveValidTimezone) — this
- * function assumes it will not throw.
+ * function assumes it will not throw. `now` picks the week whose offset applies.
  */
 function projectToTimezone(
   dayOfWeek: number,
   hourUtc: number,
   timezone: string,
+  now: Date,
 ): { dayOfWeek: number; hour: number } {
   // Anchor to the most recent UTC Sunday plus dayOfWeek days and hourUtc hours, then read
   // back the local day/hour in the target timezone. Anchoring to the current week (rather
   // than a fixed historical date) ensures DST-observing zones use the offset in effect now,
   // not whatever offset applied on some arbitrary reference date.
-  const now = new Date();
   const mostRecentSunday = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - now.getUTCDay()),
   );
@@ -215,16 +215,17 @@ function toSuggestion(
     computed_at: Date;
   },
   requestedTimezone: string,
+  now: Date,
 ): FollowUpTimingSuggestion {
   const timezone = resolveValidTimezone(requestedTimezone);
-  const start = projectToTimezone(row.day_of_week, row.hour_start_utc, timezone);
+  const start = projectToTimezone(row.day_of_week, row.hour_start_utc, timezone, now);
   // hour_end_utc may be 24 (end of day, i.e. midnight of the *next* UTC day) — project
   // it as day+1/hour 0 so the timezone shift is applied correctly instead of reusing
   // hour_start_utc's day, which would otherwise treat "24" as the same day's midnight.
   const end =
     row.hour_end_utc === 24
-      ? projectToTimezone((row.day_of_week + 1) % 7, 0, timezone)
-      : projectToTimezone(row.day_of_week, row.hour_end_utc, timezone);
+      ? projectToTimezone((row.day_of_week + 1) % 7, 0, timezone, now)
+      : projectToTimezone(row.day_of_week, row.hour_end_utc, timezone, now);
 
   return {
     contact_id: row.contact_id,
@@ -243,9 +244,13 @@ function toSuggestion(
  * row is missing or older than the contact's most recent logged activity —
  * satisfies "updates as new interaction data accumulates" without waiting
  * for the next nightly run. Returns null when there is insufficient data.
+ *
+ * @param contactId - The contact to suggest a time for.
+ * @param now - The instant whose week's UTC offset the suggestion is projected with.
  */
 export async function getFollowUpTiming(
   contactId: string,
+  now: Date = new Date(),
 ): Promise<FollowUpTimingSuggestion | null> {
   const [cached, latestActivity] = await Promise.all([
     pool.query<{
@@ -288,9 +293,10 @@ export async function getFollowUpTiming(
         computed_at: computedAt,
       },
       timezone,
+      now,
     );
   }
 
   const timezone = await getDefaultTimezone();
-  return toSuggestion(cachedRow, timezone);
+  return toSuggestion(cachedRow, timezone, now);
 }
