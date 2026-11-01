@@ -13,6 +13,7 @@
 
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { t } from '@framework/i18n/locale.js';
+import { awaitResponse, NO_RESPONSE_TIMEOUT } from '@framework/network/await-response.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -685,10 +686,11 @@ export class AdminSettingsPage {
   async saveExchangeRates(): Promise<void> {
     // Register the listener before clicking so the PUT response is always
     // captured even when the server responds before the next await resolves.
-    const putDone = this.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/settings/currencies') &&
-        response.request().method() === 'PUT',
+    const putDone = awaitResponse(
+      this.page,
+      'PUT',
+      (url) => url.href.includes('/api/v1/settings/currencies'),
+      NO_RESPONSE_TIMEOUT,
     );
     await this.page.click(
       [

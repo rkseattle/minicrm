@@ -22,6 +22,7 @@ import type { Page, BrowserContext } from '@playwright/test';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { isAlreadyGone, RestClientError } from '@framework/clients/rest-client.js';
 import type { SafePage } from '@framework/types/safe-page.js';
+import { awaitResponse, type HttpMethod } from '@framework/network/await-response.js';
 import type { TestDataManager } from './test-data-manager.js';
 import { contactResponseEnvelopeSchema } from '@minicrm/shared/schemas/contactSchema.js';
 import { accountResponseEnvelopeSchema } from '@minicrm/shared/schemas/accountSchema.js';
@@ -1087,18 +1088,11 @@ export async function withAdminFlagList(
   });
 }
 
-/** No limit of the wait's own: the test's timeout bounds it, as Playwright's default does here. */
-export const NO_RESPONSE_TIMEOUT = 0;
-
-/** The methods an API response is matched on. */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+export { NO_RESPONSE_TIMEOUT, type HttpMethod } from '@framework/network/await-response.js';
 
 /**
  * Arms a wait for the next API response with this method and URL; await it after acting.
- *
- * Arm it before the click or navigation that sends the request, or a fast answer is missed.
- * With `status`, the first matching response must have it: any other fails the wait at once,
- * naming the status that came, rather than being passed over until the wait times out.
+ * `awaitResponse` with this app's first-interaction timeout as the default.
  *
  * @param page - The page whose network to watch.
  * @param method - HTTP method.
@@ -1113,17 +1107,5 @@ export async function awaitApiResponse(
   timeout: number = FIRST_INTERACTION_TIMEOUT_MS,
   status?: number | ((status: number) => boolean),
 ): ReturnType<Page['waitForResponse']> {
-  const matches = typeof path === 'string' ? (url: URL) => url.pathname === path : path;
-  const response = await page.waitForResponse(
-    (candidate) => candidate.request().method() === method && matches(new URL(candidate.url())),
-    { timeout },
-  );
-  const expected = typeof status === 'number' ? (actual: number) => actual === status : status;
-  if (expected && !expected(response.status())) {
-    throw new Error(
-      `${method} ${new URL(response.url()).pathname} answered ${String(response.status())}` +
-        (typeof status === 'number' ? `, expected ${String(status)}` : ', which the wait rejects'),
-    );
-  }
-  return response;
+  return awaitResponse(page, method, path, timeout, status);
 }
