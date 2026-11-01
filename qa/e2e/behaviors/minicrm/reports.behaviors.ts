@@ -16,10 +16,13 @@ import {
   gotoAndSettle,
   navigateAndSettle,
   awaitApiResponse,
+  FIRST_INTERACTION_TIMEOUT_MS,
   NO_RESPONSE_TIMEOUT,
 } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
+
+const WIN_LOSS_REPORT_PATH = '/api/v1/reports/win-loss';
 
 // ---------------------------------------------------------------------------
 // API data types
@@ -45,15 +48,18 @@ export interface WinLossReport {
  * @param restClient - Authenticated RestClient.
  * @param start - Start date in YYYY-MM-DD format.
  * @param end - End date in YYYY-MM-DD format.
+ * @param ownerId - Scopes the report to this owner's deals; honored only for an admin caller.
  * @returns The win-loss report.
  */
 export async function getWinLossReport(
   restClient: RestClient,
   start: string,
   end: string,
+  ownerId?: string,
 ): Promise<WinLossReport> {
+  const owner = ownerId === undefined ? '' : `&owner_id=${ownerId}`;
   const res = await restClient.get<WinLossReport>(
-    `/api/v1/reports/win-loss?start=${start}&end=${end}`,
+    `${WIN_LOSS_REPORT_PATH}?start=${start}&end=${end}${owner}`,
   );
   return res.body;
 }
@@ -355,6 +361,41 @@ export async function selectReportsDatePreset(
   const reportsPage = new ReportsPage(context);
   const locator = await reportsPage.datePresetSelectLocator();
   await locator.selectOption(preset);
+}
+
+/**
+ * Switches the report to My View and applies a custom date range, then waits for the
+ * win/loss response for exactly that range and owner, so the stat cards read afterwards
+ * show it rather than an earlier fetch.
+ *
+ * @param start - Start date in YYYY-MM-DD format.
+ * @param end - End date in YYYY-MM-DD format.
+ * @param ownerId - The signed-in admin's id, which My View sends as owner_id.
+ * @param context - The page fixture.
+ */
+export async function applyWinLossMyViewDateRange(
+  start: string,
+  end: string,
+  ownerId: string,
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const reportsPage = new ReportsPage(context);
+  const finalReport = awaitApiResponse(
+    context.page,
+    'GET',
+    (url) =>
+      url.pathname === WIN_LOSS_REPORT_PATH &&
+      url.searchParams.get('start') === start &&
+      url.searchParams.get('end') === end &&
+      url.searchParams.get('owner_id') === ownerId,
+    FIRST_INTERACTION_TIMEOUT_MS,
+    200,
+  );
+  await (await reportsPage.myViewButtonLocator()).click();
+  await selectReportsDatePreset('custom', context);
+  await fillReportsCustomStartInput(start, context);
+  await fillReportsCustomEndInput(end, context);
+  await finalReport;
 }
 
 /**

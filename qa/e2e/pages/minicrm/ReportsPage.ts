@@ -316,6 +316,21 @@ export class ReportsPage {
   }
 
   /**
+   * Returns a resolved locator for the My View toggle, shown to admins only.
+   */
+  async myViewButtonLocator(timeout?: number) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'view-mode-my' },
+          { type: 'css', value: '[data-testid="view-mode-my"]' },
+        ],
+        { intent: 'My View toggle scoping reports to the signed-in user' },
+      )
+      .resolve(timeout);
+  }
+
+  /**
    * Returns a resolved locator for the won count stat value.
    */
   async wonCountValueLocator(timeout?: number) {

@@ -1,12 +1,12 @@
 # data-testid Audit Report
 
-Generated: 2026-11-01T20:43:02.235Z
+Generated: 2026-11-01T22:47:38.821Z
 
 ## Summary
 
-- Matched: 617
+- Matched: 618
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1042
+- Unexercised (in app, not in tests): 1041
 - Dynamic (manual review required): 719
 
 ## Stale testids (action required)
@@ -231,7 +231,6 @@ _None — all test-referenced testids are present in the application source._
 | `proposal-draft-add-line-item` | client/src/components/ProposalDraftEditor.tsx | 362 |
 | `proposal-draft-next-steps` | client/src/components/ProposalDraftEditor.tsx | 376 |
 | `view-mode-team` | client/src/components/ReportFilterBar.tsx | 70 |
-| `view-mode-my` | client/src/components/ReportFilterBar.tsx | 82 |
 | `view-mode-toggle` | client/src/components/ReportFilterBar.tsx | 60 |
 | `owner-filter-select` | client/src/components/ReportFilterBar.tsx | 169 |
 | `report-filters` | client/src/components/ReportFilterBar.tsx | 92 |
@@ -1637,22 +1636,22 @@ _None — all test-referenced testids are present in the application source._
 | `activity-summary-task-dismiss-*` | qa/e2e/pages/minicrm/ActivityTimelinePage.ts | 183 | test |
 | `task-suggestion-accept-*` | qa/e2e/pages/minicrm/ActivityTimelinePage.ts | 273 | test |
 | `generate-brief-*` | qa/e2e/pages/minicrm/ActivityTimelinePage.ts | 336 | test |
-| `webhook-row-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 228 | test |
-| `nav-layout-option-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 423 | test |
-| `nav-layout-option-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 448 | test |
-| `exchange-rate-row-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 565 | test |
-| `webhook-event-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 760 | test |
-| `webhook-toggle-button-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 801 | test |
-| `webhook-delete-button-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 816 | test |
-| `pipeline-stage-move-up-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1006 | test |
-| `pipeline-stage-move-down-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1023 | test |
-| `ai-settings-tab-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1194 | test |
-| `ai-settings-panel-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1212 | test |
-| `role-view-button-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1509 | test |
-| `role-capability-panel-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1525 | test |
-| `readonly-capability-checkbox-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1555 | test |
-| `field-exclusion-toggle-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1694 | test |
-| `field-exclusion-toggle-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1704 | test |
+| `webhook-row-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 229 | test |
+| `nav-layout-option-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 424 | test |
+| `nav-layout-option-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 449 | test |
+| `exchange-rate-row-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 566 | test |
+| `webhook-event-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 762 | test |
+| `webhook-toggle-button-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 803 | test |
+| `webhook-delete-button-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 818 | test |
+| `pipeline-stage-move-up-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1008 | test |
+| `pipeline-stage-move-down-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1025 | test |
+| `ai-settings-tab-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1196 | test |
+| `ai-settings-panel-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1214 | test |
+| `role-view-button-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1511 | test |
+| `role-capability-panel-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1527 | test |
+| `readonly-capability-checkbox-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1557 | test |
+| `field-exclusion-toggle-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1696 | test |
+| `field-exclusion-toggle-*` | qa/e2e/pages/minicrm/AdminSettingsPage.ts | 1706 | test |
 | `admin-tag-row-*` | qa/e2e/pages/minicrm/AdminTagsPage.ts | 141 | test |
 | `rename-tag-*` | qa/e2e/pages/minicrm/AdminTagsPage.ts | 161 | test |
 | `rename-input-*` | qa/e2e/pages/minicrm/AdminTagsPage.ts | 178 | test |
@@ -1682,10 +1681,10 @@ _None — all test-referenced testids are present in the application source._
 | `followup-timing-card-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 600 | test |
 | `find-warm-path-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 616 | test |
 | `warm-intro-paths-results-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 650 | test |
-| `contact-link-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 160 | test |
-| `bulk-select-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 180 | test |
-| `bulk-select-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 205 | test |
-| `contact-link-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 860 | test |
+| `contact-link-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 161 | test |
+| `bulk-select-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 181 | test |
+| `bulk-select-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 206 | test |
+| `contact-link-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 864 | test |
 | `data-hygiene-dismiss-*` | qa/e2e/pages/minicrm/DataHygienePage.ts | 107 | test |
 | `linked-contact-*` | qa/e2e/pages/minicrm/DealDetailPage.ts | 310 | test |
 | `unlink-contact-*` | qa/e2e/pages/minicrm/DealDetailPage.ts | 327 | test |
@@ -1721,11 +1720,11 @@ _None — all test-referenced testids are present in the application source._
 | `connected-accounts-connect-*` | qa/e2e/pages/minicrm/ProfilePage.ts | 569 | test |
 | `connected-accounts-imap-*` | qa/e2e/pages/minicrm/ProfilePage.ts | 600 | test |
 | `connected-account-status-*` | qa/e2e/pages/minicrm/ProfilePage.ts | 652 | test |
-| `tag-input-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 48 | test |
-| `tag-input-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 91 | test |
-| `tag-badge-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 110 | test |
-| `remove-tag-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 138 | test |
-| `tag-badge-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 147 | test |
+| `tag-input-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 49 | test |
+| `tag-input-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 94 | test |
+| `tag-badge-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 113 | test |
+| `remove-tag-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 143 | test |
+| `tag-badge-*` | qa/e2e/pages/minicrm/TagInputWidget.ts | 152 | test |
 | `user-card-*` | qa/e2e/pages/minicrm/UsersPage.ts | 143 | test |
 | `user-actions-*` | qa/e2e/pages/minicrm/UsersPage.ts | 169 | test |
 | `reset-onboarding-*` | qa/e2e/pages/minicrm/UsersPage.ts | 190 | test |

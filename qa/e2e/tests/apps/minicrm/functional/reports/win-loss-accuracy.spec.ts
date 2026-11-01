@@ -5,8 +5,9 @@
  * rate for a controlled set of seeded deals, and that the date filter correctly
  * excludes deals outside the selected window.
  *
- * Tests also assert the underlying API endpoint returns the same numbers as
- * the UI, providing a data-integrity check alongside the UX assertion.
+ * Parallel tests add deals to the team-wide report, so every exact count is scoped
+ * to the test's own admin, who creates every deal it seeds: the API by owner_id,
+ * the UI by its My View toggle, which sends the same filter.
  *
  * Framework conventions:
  *   - All tests tagged @functional
@@ -23,9 +24,11 @@ import {
   createTestAdmin,
   createTestDeal,
   withFlags,
+  type EphemeralUserCredentials,
 } from '@apps/minicrm/helpers.js';
-import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAs, loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
+  applyWinLossMyViewDateRange,
   getWinLossReport,
   navigateToWinLossReport,
   waitForReportsLoadingHidden,
@@ -41,12 +44,17 @@ import {
   expectReportsTabListSelectHasValue,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
+import type { RestClient } from '@framework/clients/rest-client.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
+
+/** The admin each test creates; deals are owned by their creator, so seeding as them scopes them. */
+let testAdmin: EphemeralUserCredentials;
 
 test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
   const admin = await createTestAdmin(testData, restClient);
+  testAdmin = admin;
   await withFlags(page, { reporting: true });
   await loginViaBrowser(admin.email, admin.password, { page });
 });
@@ -80,6 +88,11 @@ function previousMonthFirstDay(now: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
 }
 
+/** Signs the REST client in as this test's admin, so the deals it seeds are theirs. */
+async function seedAsTestAdmin(restClient: RestClient): Promise<void> {
+  expect(await loginAs(restClient, testAdmin.email, testAdmin.password)).toBe(200);
+}
+
 /**
  * Waits for the Win/Loss report loading indicator to disappear and for the
  * stat cards container to become visible.
@@ -108,6 +121,7 @@ test(
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
     const { start, end } = currentMonthDateRange(new Date());
+    await seedAsTestAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `WL1-Acct ${test.info().title}`,
@@ -137,18 +151,18 @@ test(
 
     await expectReportsWinLossHeadingVisible({ page }, 10_000);
 
-    await applyCustomDateFilter(page, start, end);
+    await applyWinLossMyViewDateRange(start, end, testAdmin.userId, { page });
     await waitForReportLoaded(page);
 
-    const wonCountText = await getReportsWonCountText({ page });
-    const lostCountText = await getReportsLostCountText({ page });
-    const winRateText = await getReportsWinRateText({ page });
+    // The UI renders raw counts and Math.round(rate * 100) + "%": 3 won, 2 lost is 60%.
+    expect(await getReportsWonCountText({ page })).toBe('3');
+    expect(await getReportsLostCountText({ page })).toBe('2');
+    expect(await getReportsWinRateText({ page })).toBe('60%');
 
-    // The UI renders raw wonCount/lostCount integers and formatWinRate(rate)
-    // which is Math.round(rate * 100) + "%" — 3 won, 2 lost → 60%
-    expect(parseInt(wonCountText ?? '0', 10)).toBeGreaterThanOrEqual(3);
-    expect(parseInt(lostCountText ?? '0', 10)).toBeGreaterThanOrEqual(2);
-    expect(winRateText).toMatch(/\d+%/);
+    const ownWinLossReport = await getWinLossReport(restClient, start, end, testAdmin.userId);
+    expect(ownWinLossReport.wonCount).toBe(3);
+    expect(ownWinLossReport.lostCount).toBe(2);
+    expect(ownWinLossReport.winRate).toBeCloseTo(0.6);
   },
 );
 
@@ -163,6 +177,7 @@ test(
     const now = new Date();
     const { start: monthStart, end: monthEnd } = currentMonthDateRange(now);
     const prevMonthDate = previousMonthFirstDay(now);
+    await seedAsTestAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `WL2-Acct ${test.info().title}`,
@@ -188,26 +203,24 @@ test(
 
     await navigateToWinLossReport({ page });
 
-    await applyCustomDateFilter(page, monthStart, monthEnd);
+    await applyWinLossMyViewDateRange(monthStart, monthEnd, testAdmin.userId, { page });
     await waitForReportLoaded(page);
 
-    // Verify via API that the current-month filter does not include the previous-month deal.
-    const report = await getWinLossReport(restClient, monthStart, monthEnd);
+    // Exactly one of this admin's two won deals falls in each window: the filter both
+    // includes the in-month deal and excludes the previous month's.
+    const report = await getWinLossReport(restClient, monthStart, monthEnd, testAdmin.userId);
+    expect(report.wonCount).toBe(1);
 
-    // The previous-month deal should not be in the won count for this month
-    const prevStart = prevMonthDate;
-    const prevEnd = prevMonthDate; // single-day range containing only the prev-month deal
-    const prevReport = await getWinLossReport(restClient, prevStart, prevEnd);
+    const prevReport = await getWinLossReport(
+      restClient,
+      prevMonthDate,
+      prevMonthDate,
+      testAdmin.userId,
+    );
+    expect(prevReport.wonCount).toBe(1);
 
-    // The previous-month deal shows up in its own period
-    expect(prevReport.wonCount).toBeGreaterThanOrEqual(1);
-
-    // The current-month filter includes the seeded in-month deal
-    expect(report.wonCount).toBeGreaterThanOrEqual(1);
-
-    // The UI reflects the current-month filter result
-    const wonCountText = await getReportsWonCountText({ page });
-    expect(parseInt(wonCountText ?? '0', 10)).toBeGreaterThanOrEqual(1);
+    // The UI's current-month window shows the in-month deal and not the previous month's.
+    expect(await getReportsWonCountText({ page })).toBe('1');
   },
 );
 
@@ -220,6 +233,7 @@ test(
   { tag: ['@functional'] },
   async ({ testData, restClient, page }) => {
     const { start, end } = currentMonthDateRange(new Date());
+    await seedAsTestAdmin(restClient);
 
     const account = await createTestAccount(testData, restClient, {
       name: `WL3-Acct ${test.info().title}`,
@@ -251,26 +265,15 @@ test(
       lostDeals.push(deal.id);
     }
 
-    // UI assertion first — navigate and apply the same date filter
     await navigateToWinLossReport({ page });
-    await applyCustomDateFilter(page, start, end);
+    await applyWinLossMyViewDateRange(start, end, testAdmin.userId, { page });
     await waitForReportLoaded(page);
 
-    const uiWonCount = parseInt((await getReportsWonCountText({ page })) ?? '0', 10);
-
-    // UI must include at minimum our 3 seeded won deals (other tests may add more)
-    expect(uiWonCount).toBeGreaterThanOrEqual(3);
-
-    // Secondary API assertion
-    const report = await getWinLossReport(restClient, start, end);
-
-    // At minimum our seeded deals must be counted (other tests may have seeded data too)
-    expect(report.wonCount).toBeGreaterThanOrEqual(3);
-    expect(report.lostCount).toBeGreaterThanOrEqual(2);
-    expect(report.winRate).not.toBeNull();
-    // winRate is a 0–1 decimal; 3 won out of 5 minimum → at most 1.0
-    expect(report.winRate).toBeGreaterThan(0);
-    expect(report.winRate).toBeLessThanOrEqual(1);
+    const report = await getWinLossReport(restClient, start, end, testAdmin.userId);
+    expect(report.wonCount).toBe(3);
+    expect(report.lostCount).toBe(2);
+    expect(await getReportsWonCountText({ page })).toBe(String(report.wonCount));
+    expect(await getReportsLostCountText({ page })).toBe(String(report.lostCount));
   },
 );
 
