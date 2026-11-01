@@ -1,12 +1,12 @@
 # data-testid Audit Report
 
-Generated: 2026-10-29T21:34:03.147Z
+Generated: 2026-11-01T20:43:02.235Z
 
 ## Summary
 
-- Matched: 616
+- Matched: 617
 - Stale (broken locators): 0
-- Unexercised (in app, not in tests): 1043
+- Unexercised (in app, not in tests): 1042
 - Dynamic (manual review required): 719
 
 ## Stale testids (action required)
@@ -243,7 +243,6 @@ _None — all test-referenced testids are present in the application source._
 | `proposal-draft-next-steps-content` | client/src/components/RichTextField.tsx | 157 |
 | `send-email-accounts-loading` | client/src/components/SendEmailModal.tsx | 296 |
 | `send-email-accounts-error` | client/src/components/SendEmailModal.tsx | 301 |
-| `send-email-from` | client/src/components/SendEmailModal.tsx | 315 |
 | `send-email-templates-loading` | client/src/components/SendEmailModal.tsx | 328 |
 | `send-email-templates-error` | client/src/components/SendEmailModal.tsx | 333 |
 | `send-email-template` | client/src/components/SendEmailModal.tsx | 347 |
@@ -1677,12 +1676,12 @@ _None — all test-referenced testids are present in the application source._
 | `ai-usage-range-*` | qa/e2e/pages/minicrm/AiUsageDashboardPage.ts | 73 | test |
 | `field-merge-radio-*` | qa/e2e/pages/minicrm/ConflictBannerWidget.ts | 139 | test |
 | `field-merge-radio-*` | qa/e2e/pages/minicrm/ConflictBannerWidget.ts | 157 | test |
-| `attachment-delete-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 400 | test |
-| `champion-blocker-badge-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 516 | test |
-| `sentiment-trend-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 557 | test |
-| `followup-timing-card-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 582 | test |
-| `find-warm-path-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 598 | test |
-| `warm-intro-paths-results-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 632 | test |
+| `attachment-delete-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 418 | test |
+| `champion-blocker-badge-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 534 | test |
+| `sentiment-trend-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 575 | test |
+| `followup-timing-card-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 600 | test |
+| `find-warm-path-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 616 | test |
+| `warm-intro-paths-results-*` | qa/e2e/pages/minicrm/ContactDetailPage.ts | 650 | test |
 | `contact-link-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 160 | test |
 | `bulk-select-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 180 | test |
 | `bulk-select-*` | qa/e2e/pages/minicrm/ContactsPage.ts | 205 | test |
@@ -1731,55 +1730,55 @@ _None — all test-referenced testids are present in the application source._
 | `user-actions-*` | qa/e2e/pages/minicrm/UsersPage.ts | 169 | test |
 | `reset-onboarding-*` | qa/e2e/pages/minicrm/UsersPage.ts | 190 | test |
 | `user-card-*` | qa/e2e/pages/minicrm/UsersPage.ts | 309 | test |
-| `linked-contact-*` | qa/e2e/behaviors/minicrm/accounts.behaviors.ts | 679 | test |
-| `task-overdue-badge-*` | qa/e2e/behaviors/minicrm/activities.behaviors.ts | 197 | test |
+| `linked-contact-*` | qa/e2e/behaviors/minicrm/accounts.behaviors.ts | 681 | test |
+| `task-overdue-badge-*` | qa/e2e/behaviors/minicrm/activities.behaviors.ts | 201 | test |
 | `attachment-row-*` | qa/e2e/behaviors/minicrm/attachments.behaviors.ts | 124 | test |
 | `audit-log-row-button-*` | qa/e2e/behaviors/minicrm/audit-log.behaviors.ts | 187 | test |
 | `audit-log-row-button-*` | qa/e2e/behaviors/minicrm/audit-log.behaviors.ts | 199 | test |
 | `audit-log-detail-*` | qa/e2e/behaviors/minicrm/audit-log.behaviors.ts | 213 | test |
-| `stat-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 379 | test |
-| `stat-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 396 | test |
-| `recent-activity-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 415 | test |
-| `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 812 | test |
-| `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 801 | test |
-| `pipeline-stage-name-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 364 | test |
-| `pipeline-edit-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1332 | test |
-| `pipeline-edit-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1350 | test |
-| `pipeline-save-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1367 | test |
-| `pipeline-delete-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1384 | test |
-| `pipeline-stage-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1436 | test |
-| `pipeline-stage-edit-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1476 | test |
-| `pipeline-stage-save-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1488 | test |
-| `pipeline-stage-exit-required-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1501 | test |
-| `pipeline-stage-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1623 | test |
-| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1646 | test |
-| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1669 | test |
-| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1690 | test |
-| `webhook-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2191 | test |
-| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2229 | test |
-| `feature-flag-badge-off-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2250 | test |
-| `feature-flag-enable-at-clear-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2263 | test |
-| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2282 | test |
-| `feature-flag-advanced-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2304 | test |
-| `feature-flag-beta-expand-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2331 | test |
-| `feature-flag-beta-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2353 | test |
-| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2376 | test |
-| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2399 | test |
-| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2422 | test |
-| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2445 | test |
-| `rollout-percentage-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2463 | test |
-| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2493 | test |
-| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2516 | test |
-| `feature-flag-overrides-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2535 | test |
-| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2560 | test |
-| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2583 | test |
-| `override-remove-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2600 | test |
-| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2648 | test |
-| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2670 | test |
-| `flag-group-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2686 | test |
-| `feature-flag-role-override-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2713 | test |
-| `group-detail-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2744 | test |
-| `group-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2759 | test |
+| `stat-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 386 | test |
+| `stat-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 403 | test |
+| `recent-activity-*` | qa/e2e/behaviors/minicrm/layout.behaviors.ts | 422 | test |
+| `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 814 | test |
+| `nav-top-*` | qa/e2e/behaviors/minicrm/nav.behaviors.ts | 803 | test |
+| `pipeline-stage-name-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 371 | test |
+| `pipeline-edit-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1342 | test |
+| `pipeline-edit-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1360 | test |
+| `pipeline-save-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1377 | test |
+| `pipeline-delete-button-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1394 | test |
+| `pipeline-stage-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1446 | test |
+| `pipeline-stage-edit-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1486 | test |
+| `pipeline-stage-save-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1498 | test |
+| `pipeline-stage-exit-required-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1511 | test |
+| `pipeline-stage-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1633 | test |
+| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1656 | test |
+| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1679 | test |
+| `feature-flag-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 1700 | test |
+| `webhook-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2204 | test |
+| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2242 | test |
+| `feature-flag-badge-off-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2263 | test |
+| `feature-flag-enable-at-clear-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2276 | test |
+| `feature-flag-badge-scheduled-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2295 | test |
+| `feature-flag-advanced-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2317 | test |
+| `feature-flag-beta-expand-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2344 | test |
+| `feature-flag-beta-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2366 | test |
+| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2389 | test |
+| `beta-user-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2412 | test |
+| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2435 | test |
+| `rollout-percentage-badge-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2458 | test |
+| `rollout-percentage-input-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2476 | test |
+| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2506 | test |
+| `override-count-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2529 | test |
+| `feature-flag-overrides-panel-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2548 | test |
+| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2573 | test |
+| `override-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2596 | test |
+| `override-remove-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2613 | test |
+| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2661 | test |
+| `flag-group-row-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2683 | test |
+| `flag-group-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2699 | test |
+| `feature-flag-role-override-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2726 | test |
+| `group-detail-toggle-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2757 | test |
+| `group-delete-*` | qa/e2e/behaviors/minicrm/settings.behaviors.ts | 2772 | test |
 | `custom-field-delete-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 597 | test |
 | `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 616 | test |
 | `custom-field-input-*` | qa/e2e/behaviors/minicrm/setup.behaviors.ts | 639 | test |
