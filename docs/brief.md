@@ -34,9 +34,11 @@ self-healing E2E tests, and adversarial review gates are first-class goals, not 
 
 Core CRM records and pipeline · activity and task management · roles, permissions, teams,
 SSO and SCIM · reporting and dashboards · workflow automation · CSV import and export ·
-attachments · audit log · email notifications · multi-currency · feature-flag targeting ·
-AI natural-language assistant with admin controls and token budgets · data hygiene and
-duplicate merging · mobile browser support · v1.0 release prep.
+attachments · audit log · email notifications · mailbox sync (IMAP, Gmail, Microsoft
+Graph: scheduled INBOX and Sent sync, matching to records, sending through Gmail and
+Graph) · multi-currency · feature-flag targeting · AI natural-language assistant with
+admin controls and token budgets · data hygiene and duplicate merging · mobile browser
+support · v1.0 release prep.
 
 Engineering track: the self-healing Playwright framework (MINCRM-106), sharded E2E
 (MINCRM-215), and the Coverage/TIA platform (MINCRM-603 through 632) — per-test coverage
@@ -54,13 +56,14 @@ range.
 
 - Integration testing layer (MINCRM-643) — OpenAPI contract tests, async pipeline tests,
   TestContainers DB isolation, webhook contracts.
-- Sending mail through a connected IMAP mailbox (MINCRM-748).
+- Sending mail through a connected IMAP mailbox over SMTP (MINCRM-748), the remaining
+  send path of the email epic (MINCRM-570).
 - Dependency security cleanup (MINCRM-746, 747).
 
-**Drafted roadmap (not started):** two-way email and inbox sync (570), calendar sync and
-scheduling links (571), telephony (572), integration platform with scoped API keys,
-inbound webhooks and Zapier (573), forecasting, quotas and territories (574), native
-mobile app (575), and ML-based predictive test selection (638).
+**Drafted roadmap (not started):** calendar sync and scheduling links (571), telephony
+(572), integration platform with scoped API keys, inbound webhooks and Zapier (573),
+forecasting, quotas and territories (574), native mobile app (575), and ML-based
+predictive test selection (638).
 
 ## Shape of the system
 
